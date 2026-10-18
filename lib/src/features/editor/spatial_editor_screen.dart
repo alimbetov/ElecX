@@ -37,8 +37,16 @@ class _SpatialEditorScreenState extends State<SpatialEditorScreen> {
       appBar: AppBar(
         title: const Text('БЦ Alatau · Этаж 1'),
         actions: [
-          IconButton(onPressed: () {}, tooltip: 'Undo', icon: const Icon(Icons.undo)),
-          IconButton(onPressed: () {}, tooltip: 'Redo', icon: const Icon(Icons.redo)),
+          IconButton(
+            onPressed: () {},
+            tooltip: 'Undo',
+            icon: const Icon(Icons.undo),
+          ),
+          IconButton(
+            onPressed: () {},
+            tooltip: 'Redo',
+            icon: const Icon(Icons.redo),
+          ),
           const SizedBox(width: 8),
         ],
       ),
@@ -56,11 +64,17 @@ class _SpatialEditorScreenState extends State<SpatialEditorScreen> {
                 if (!wide) return canvas;
                 return Row(
                   children: [
-                    SizedBox(width: 240, child: _ProjectTree(controller: controller)),
+                    SizedBox(
+                      width: 240,
+                      child: _ProjectTree(controller: controller),
+                    ),
                     const VerticalDivider(width: 1),
                     Expanded(child: canvas),
                     const VerticalDivider(width: 1),
-                    SizedBox(width: 300, child: _PropertiesPanel(controller: controller)),
+                    SizedBox(
+                      width: 300,
+                      child: _PropertiesPanel(controller: controller),
+                    ),
                   ],
                 );
               },
@@ -75,6 +89,7 @@ class _SpatialEditorScreenState extends State<SpatialEditorScreen> {
 
 class _Toolbar extends StatelessWidget {
   const _Toolbar({required this.controller});
+
   final EditorController controller;
 
   @override
@@ -122,6 +137,17 @@ class _Toolbar extends StatelessWidget {
               avatar: const Icon(Icons.straighten, size: 18),
               label: const Text('Размеры'),
             ),
+            if (controller.routeSegments.isNotEmpty) ...[
+              const SizedBox(width: 6),
+              ActionChip(
+                avatar: const Icon(Icons.route, size: 18),
+                label: Text(
+                  '${(controller.routeLengthMm / 1000).toStringAsFixed(2)} m',
+                ),
+                onPressed: controller.clearRouteDraft,
+                tooltip: 'Очистить текущую трассу',
+              ),
+            ],
             const SizedBox(width: 12),
             IconButton(
               onPressed: controller.zoomOut,
@@ -146,6 +172,7 @@ class _Toolbar extends StatelessWidget {
 
 class _SurfaceNavigator extends StatelessWidget {
   const _SurfaceNavigator({required this.controller});
+
   final EditorController controller;
 
   @override
@@ -172,7 +199,8 @@ class _SurfaceNavigator extends StatelessWidget {
                 context,
                 label: 'Пол',
                 icon: Icons.grid_on,
-                selected: controller.activeSurface?.type == SurfacePlaneType.floor,
+                selected:
+                    controller.activeSurface?.type == SurfacePlaneType.floor,
                 onTap: controller.showFloor,
               ),
               const SizedBox(width: 6),
@@ -180,7 +208,8 @@ class _SurfaceNavigator extends StatelessWidget {
                 context,
                 label: 'Потолок',
                 icon: Icons.view_in_ar_outlined,
-                selected: controller.activeSurface?.type == SurfacePlaneType.ceiling,
+                selected:
+                    controller.activeSurface?.type == SurfacePlaneType.ceiling,
                 onTap: controller.showCeiling,
               ),
               const SizedBox(width: 12),
@@ -189,7 +218,8 @@ class _SurfaceNavigator extends StatelessWidget {
                   context,
                   label: 'Стена ${i + 1}',
                   icon: Icons.crop_landscape,
-                  selected: controller.activeSurface?.type == SurfacePlaneType.wall &&
+                  selected: controller.activeSurface?.type ==
+                          SurfacePlaneType.wall &&
                       controller.activeSurface?.wallIndex == i,
                   onTap: () => controller.showWall(i),
                 ),
@@ -220,6 +250,7 @@ class _SurfaceNavigator extends StatelessWidget {
 
 class _ProjectTree extends StatelessWidget {
   const _ProjectTree({required this.controller});
+
   final EditorController controller;
 
   @override
@@ -271,6 +302,7 @@ class _ProjectTree extends StatelessWidget {
 
 class _PropertiesPanel extends StatelessWidget {
   const _PropertiesPanel({required this.controller});
+
   final EditorController controller;
 
   @override
@@ -292,7 +324,10 @@ class _PropertiesPanel extends StatelessWidget {
         _value('Центр Y', '${space.referenceFrame.origin.y} mm'),
         if (surface != null) ...[
           const Divider(height: 32),
-          Text('Активная плоскость', style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'Активная плоскость',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 8),
           _value('Тип', _surfaceName(surface)),
           if (controller.activeWall case final wall?) ...[
@@ -321,6 +356,16 @@ class _PropertiesPanel extends StatelessWidget {
             ),
           ],
         ],
+        if (controller.routeSegments.isNotEmpty) ...[
+          const Divider(height: 32),
+          Text('Трасса', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          _value(
+            'Длина',
+            '${(controller.routeLengthMm / 1000).toStringAsFixed(3)} m',
+          ),
+          _value('Плоскостей', '${controller.routeSegments.length}'),
+        ],
         const Divider(height: 32),
         const Text('Локальная сетка'),
         const SizedBox(height: 8),
@@ -344,7 +389,8 @@ class _PropertiesPanel extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         const Text(
-          'Сетка, центровочные линии и размеры работают в координатах активной плоскости.',
+          'Сетка, центровочные линии и размеры работают в координатах '
+          'активной плоскости.',
         ),
       ],
     );
@@ -366,6 +412,7 @@ class _PropertiesPanel extends StatelessWidget {
 
 class _StatusBar extends StatelessWidget {
   const _StatusBar({required this.controller});
+
   final EditorController controller;
 
   @override
@@ -379,6 +426,9 @@ class _StatusBar extends StatelessWidget {
             SurfacePlaneType.ceiling => 'Ceiling',
             SurfacePlaneType.wall => 'Wall ${(surface.wallIndex ?? 0) + 1}',
           };
+    final route = controller.routeSegments.isEmpty
+        ? ''
+        : ' · Route ${(controller.routeLengthMm / 1000).toStringAsFixed(3)} m';
     return Container(
       height: 30,
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -386,7 +436,7 @@ class _StatusBar extends StatelessWidget {
       child: Text(
         'Metric · $view · Floor grid ${controller.floorGridMm} mm · '
         'Room grid $grid mm · Snap ${controller.snapEnabled ? 'ON' : 'OFF'} · '
-        'Zoom ${(controller.zoom * 100).round()}%',
+        'Zoom ${(controller.zoom * 100).round()}%$route',
       ),
     );
   }
