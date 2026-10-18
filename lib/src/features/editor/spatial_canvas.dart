@@ -11,6 +11,7 @@ import '../../engine/render_policy.dart';
 import '../../engine/spatial_scene_index.dart';
 import '../../engine/world_camera.dart';
 import 'editor_controller.dart';
+import 'editor_viewport_commands.dart';
 
 class SpatialCanvas extends StatefulWidget {
   const SpatialCanvas({required this.controller, super.key});
@@ -28,6 +29,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     mmPerPixel: 12,
   );
   int _sceneFingerprint = -1;
+  int _lastViewportRevision = 0;
   Size _lastSize = Size.zero;
   Offset? _panAnchor;
   WorldCamera? _touchStartCamera;
@@ -39,6 +41,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
   void initState() {
     super.initState();
     _sceneIndex = SpatialSceneIndex();
+    _lastViewportRevision = controller.viewportCommandRevision;
     _rebuildIndex(force: true);
   }
 
@@ -46,6 +49,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
   void didUpdateWidget(covariant SpatialCanvas oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
+      _lastViewportRevision = controller.viewportCommandRevision;
       _rebuildIndex(force: true);
     }
   }
@@ -73,21 +77,27 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     _sceneFingerprint = fingerprint;
   }
 
-  void _fitLevel() {
+  WorldCamera _fitLevelCamera() {
     if (_lastSize.isEmpty || controller.level.spaces.isEmpty) {
-      return;
+      return _camera;
     }
     var bounds = controller.level.spaces.first.boundary.bounds;
     for (final space in controller.level.spaces.skip(1)) {
       bounds = bounds.union(space.boundary.bounds);
     }
-    setState(() {
-      _camera = _camera.fitBounds(
-        bounds: bounds,
-        viewportWidthPx: _lastSize.width,
-        viewportHeightPx: _lastSize.height,
-      );
-    });
+    return _camera.fitBounds(
+      bounds: bounds,
+      viewportWidthPx: _lastSize.width,
+      viewportHeightPx: _lastSize.height,
+    );
+  }
+
+  void _fitLevel() {
+    final next = _fitLevelCamera();
+    if (next == _camera) {
+      return;
+    }
+    setState(() => _camera = next);
   }
 
   void _fitSelection() {
@@ -104,19 +114,41 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     });
   }
 
-  void _zoomAt(Offset cursor, double factor) {
+  WorldCamera _zoomedCamera(Offset cursor, double factor) {
     if (_lastSize.isEmpty) {
+      return _camera;
+    }
+    return _camera.zoomAt(
+      factor: factor,
+      viewportWidthPx: _lastSize.width,
+      viewportHeightPx: _lastSize.height,
+      cursorXpx: cursor.dx,
+      cursorYpx: cursor.dy,
+    );
+  }
+
+  void _zoomAt(Offset cursor, double factor) {
+    setState(() => _camera = _zoomedCamera(cursor, factor));
+  }
+
+  void _consumeViewportCommand() {
+    final revision = controller.viewportCommandRevision;
+    if (revision == _lastViewportRevision || _lastSize.isEmpty) {
       return;
     }
-    setState(() {
-      _camera = _camera.zoomAt(
-        factor: factor,
-        viewportWidthPx: _lastSize.width,
-        viewportHeightPx: _lastSize.height,
-        cursorXpx: cursor.dx,
-        cursorYpx: cursor.dy,
-      );
-    });
+    _lastViewportRevision = revision;
+    final command = controller.viewportCommand;
+    final center = _lastSize.center(Offset.zero);
+    switch (command) {
+      case EditorViewportCommand.zoomIn:
+        _camera = _zoomedCamera(center, 1.25);
+      case EditorViewportCommand.zoomOut:
+        _camera = _zoomedCamera(center, 0.8);
+      case EditorViewportCommand.reset:
+        _camera = _fitLevelCamera();
+      case null:
+        break;
+    }
   }
 
   void _startTouchGesture(ScaleStartDetails details) {
@@ -164,6 +196,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     return LayoutBuilder(
       builder: (context, constraints) {
         _lastSize = Size(constraints.maxWidth, constraints.maxHeight);
+        _consumeViewportCommand();
         final visibleBounds = _camera.visibleWorldBounds(
           viewportWidthPx: _lastSize.width,
           viewportHeightPx: _lastSize.height,
