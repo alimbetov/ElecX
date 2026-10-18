@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/geometry.dart';
 import '../../engine/world_camera.dart';
+import 'cad_visual_tokens.dart';
 import 'site_map_interaction.dart';
 
 class SiteMapCanvas extends StatefulWidget {
@@ -47,6 +48,9 @@ class _SiteMapCanvasState extends State<SiteMapCanvas> {
       oldWidget.interaction.removeListener(_refresh);
       widget.interaction.addListener(_refresh);
     }
+    if (oldWidget.entities != widget.entities) {
+      _fitted = false;
+    }
   }
 
   @override
@@ -76,9 +80,13 @@ class _SiteMapCanvasState extends State<SiteMapCanvas> {
           }
           _fitted = true;
         }
+        final scheme = Theme.of(context).colorScheme;
         return Listener(
           onPointerSignal: _onPointerSignal,
           child: MouseRegion(
+            cursor: widget.interaction.hoveredNodeId == null
+                ? SystemMouseCursors.basic
+                : SystemMouseCursors.click,
             onHover: (event) => _updateHover(event.localPosition),
             onExit: (_) => widget.interaction.hover(null),
             child: GestureDetector(
@@ -106,6 +114,7 @@ class _SiteMapCanvasState extends State<SiteMapCanvas> {
                   entities: widget.entities,
                   hoveredNodeId: widget.interaction.hoveredNodeId,
                   selectedNodeId: widget.interaction.selectedNodeId,
+                  scheme: scheme,
                 ),
                 child: const SizedBox.expand(),
               ),
@@ -171,7 +180,9 @@ class _SiteMapCanvasState extends State<SiteMapCanvas> {
   MmBounds? _allBounds() {
     MmBounds? result;
     for (final entity in widget.entities) {
-      result = result == null ? entity.boundary.bounds : result.union(entity.boundary.bounds);
+      result = result == null
+          ? entity.boundary.bounds
+          : result.union(entity.boundary.bounds);
     }
     return result;
   }
@@ -183,47 +194,59 @@ class _SiteMapPainter extends CustomPainter {
     required this.entities,
     required this.hoveredNodeId,
     required this.selectedNodeId,
+    required this.scheme,
   });
 
   final WorldCamera camera;
   final List<SiteMapEntity> entities;
   final String? hoveredNodeId;
   final String? selectedNodeId;
+  final ColorScheme scheme;
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0xFFF7F8FA));
+    canvas.drawRect(Offset.zero & size, Paint()..color = scheme.surface);
     for (final entity in entities) {
       final selected = entity.navigatorNodeId == selectedNodeId;
       final hovered = entity.navigatorNodeId == hoveredNodeId;
       final path = Path();
+      final screenPoints = <Offset>[];
       for (var i = 0; i < entity.boundary.vertices.length; i++) {
         final screen = camera.worldToScreen(
           viewportWidthPx: size.width,
           viewportHeightPx: size.height,
           point: entity.boundary.vertices[i],
         );
+        final point = Offset(screen.x, screen.y);
+        screenPoints.add(point);
         if (i == 0) {
-          path.moveTo(screen.x, screen.y);
+          path.moveTo(point.dx, point.dy);
         } else {
-          path.lineTo(screen.x, screen.y);
+          path.lineTo(point.dx, point.dy);
         }
       }
       path.close();
       final fill = Paint()
         ..style = PaintingStyle.fill
         ..color = selected
-            ? const Color(0x33244A7C)
+            ? CadVisualTokens.selectedFill(scheme)
             : hovered
-                ? const Color(0x22244A7C)
-                : const Color(0x0F244A7C);
+                ? CadVisualTokens.hoverFill(scheme)
+                : CadVisualTokens.ghostFill(scheme);
       final stroke = Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = selected ? 2.5 : hovered ? 2.0 : 1.2
-        ..color = const Color(0xFF244A7C);
+        ..strokeWidth = selected
+            ? CadVisualTokens.selectedGeometryStroke
+            : hovered
+                ? 1.8
+                : CadVisualTokens.geometryStroke
+        ..color = selected
+            ? CadVisualTokens.selectedGeometry(scheme)
+            : CadVisualTokens.geometry(scheme);
       canvas.drawPath(path, fill);
       canvas.drawPath(path, stroke);
 
+      if (!_labelFits(screenPoints)) continue;
       final center = camera.worldToScreen(
         viewportWidthPx: size.width,
         viewportHeightPx: size.height,
@@ -233,22 +256,47 @@ class _SiteMapPainter extends CustomPainter {
         text: TextSpan(
           text: entity.label,
           style: TextStyle(
-            color: const Color(0xFF1F2937),
-            fontSize: selected || hovered ? 13 : 12,
-            fontWeight: selected || hovered ? FontWeight.w700 : FontWeight.w500,
+            color: scheme.onSurface,
+            fontSize: selected || hovered ? 12 : 11,
+            fontWeight:
+                selected || hovered ? FontWeight.w700 : FontWeight.w500,
           ),
         ),
         textDirection: TextDirection.ltr,
         maxLines: 1,
-      )..layout(maxWidth: 220);
-      painter.paint(canvas, Offset(center.x - painter.width / 2, center.y - painter.height / 2));
+        ellipsis: '…',
+      )..layout(maxWidth: 180);
+      painter.paint(
+        canvas,
+        Offset(center.x - painter.width / 2, center.y - painter.height / 2),
+      );
     }
   }
+
+  bool _labelFits(List<Offset> points) {
+    if (points.isEmpty) return false;
+    var minX = points.first.dx;
+    var maxX = points.first.dx;
+    var minY = points.first.dy;
+    var maxY = points.first.dy;
+    for (final point in points.skip(1)) {
+      minX = mathMin(minX, point.dx);
+      maxX = mathMax(maxX, point.dx);
+      minY = mathMin(minY, point.dy);
+      maxY = mathMax(maxY, point.dy);
+    }
+    return maxX - minX >= 62 && maxY - minY >= 24;
+  }
+
+  double mathMin(double a, double b) => a < b ? a : b;
+
+  double mathMax(double a, double b) => a > b ? a : b;
 
   @override
   bool shouldRepaint(covariant _SiteMapPainter oldDelegate) =>
       oldDelegate.camera != camera ||
       oldDelegate.hoveredNodeId != hoveredNodeId ||
       oldDelegate.selectedNodeId != selectedNodeId ||
-      oldDelegate.entities != entities;
+      oldDelegate.entities != entities ||
+      oldDelegate.scheme != scheme;
 }
