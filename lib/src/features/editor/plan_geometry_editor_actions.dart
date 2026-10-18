@@ -16,15 +16,45 @@ extension PlanGeometryEditorActions on EditorController {
       referenceFrame: RoomReferenceFrame(origin: candidate.bounds.center),
     );
 
+    final replacements = <String, EngineeringSpace>{current.id: candidateSpace};
+    for (final neighbor in level.spaces) {
+      if (neighbor.id == current.id) continue;
+      final propagated = _propagateSharedEdges(
+        source: current,
+        editedSource: candidateSpace,
+        neighbor: neighbor,
+      );
+      if (propagated == null) return false;
+      if (propagated != neighbor) replacements[neighbor.id] = propagated;
+    }
+
+    for (final replacement in replacements.values) {
+      if (!_spaceGeometryIsCompatible(replacement)) return false;
+    }
+
+    level = level.copyWith(
+      spaces: [
+        for (final space in level.spaces) replacements[space.id] ?? space,
+      ],
+    );
+
+    // Draft routes use surface-local coordinates based on the old geometry.
+    // Clearing the draft is safer than silently keeping stale coordinates.
+    routeSegments.clear();
+    selectSpace(current.id);
+    return true;
+  }
+
+  bool _spaceGeometryIsCompatible(EngineeringSpace candidateSpace) {
     final walls = RoomSurfaceResolver.walls(candidateSpace);
-    for (final entry in current.wallProfiles.entries) {
+    for (final entry in candidateSpace.wallProfiles.entries) {
       final index = entry.key;
       if (index < 0 || index >= walls.length) return false;
       if (entry.value.maxX != walls[index].lengthMm.round()) return false;
     }
 
     for (final opening in openings) {
-      if (opening.hostWall.spaceId != current.id) continue;
+      if (opening.hostWall.spaceId != candidateSpace.id) continue;
       final index = opening.hostWall.wallIndex;
       if (index == null || index < 0 || index >= walls.length) return false;
       if (!RoomSurfaceResolver.openingFitsWall(
@@ -34,18 +64,6 @@ extension PlanGeometryEditorActions on EditorController {
         return false;
       }
     }
-
-    level = level.copyWith(
-      spaces: [
-        for (final space in level.spaces)
-          if (space.id == current.id) candidateSpace else space,
-      ],
-    );
-
-    // Draft routes use surface-local coordinates based on the old geometry.
-    // Clearing the draft is safer than silently keeping stale coordinates.
-    routeSegments.clear();
-    selectSpace(current.id);
     return true;
   }
 
@@ -127,6 +145,49 @@ extension PlanGeometryEditorActions on EditorController {
     final projected = (px * dx + py * dy) / length;
     return projected.round();
   }
+}
+
+EngineeringSpace? _propagateSharedEdges({
+  required EngineeringSpace source,
+  required EngineeringSpace editedSource,
+  required EngineeringSpace neighbor,
+}) {
+  final sourceVertices = source.boundary.vertices;
+  final editedVertices = editedSource.boundary.vertices;
+  final neighborVertices = [...neighbor.boundary.vertices];
+  var changed = false;
+
+  for (var i = 0; i < sourceVertices.length; i++) {
+    final nextI = (i + 1) % sourceVertices.length;
+    final oldA = sourceVertices[i];
+    final oldB = sourceVertices[nextI];
+    final newA = editedVertices[i];
+    final newB = editedVertices[nextI];
+    if (oldA == newA && oldB == newB) continue;
+
+    for (var j = 0; j < neighborVertices.length; j++) {
+      final nextJ = (j + 1) % neighborVertices.length;
+      final neighborA = neighborVertices[j];
+      final neighborB = neighborVertices[nextJ];
+      if (neighborA == oldA && neighborB == oldB) {
+        neighborVertices[j] = newA;
+        neighborVertices[nextJ] = newB;
+        changed = true;
+      } else if (neighborA == oldB && neighborB == oldA) {
+        neighborVertices[j] = newB;
+        neighborVertices[nextJ] = newA;
+        changed = true;
+      }
+    }
+  }
+
+  if (!changed) return neighbor;
+  final boundary = MmPolygon(neighborVertices);
+  if (!PlanGeometryEditing.isValid(boundary)) return null;
+  return neighbor.copyWith(
+    boundary: boundary,
+    referenceFrame: RoomReferenceFrame(origin: boundary.bounds.center),
+  );
 }
 
 double _distanceToSegment(MmPoint p, MmPoint a, MmPoint b) {
