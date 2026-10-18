@@ -9,7 +9,9 @@ import 'editor_controller.dart';
 extension PlanGeometryEditorActions on EditorController {
   bool commitSelectedBoundary(MmPolygon candidate) {
     final current = selectedSpace;
-    if (current == null || !PlanGeometryEditing.isValid(candidate)) return false;
+    if (current == null || !PlanGeometryEditing.isValid(candidate)) {
+      return false;
+    }
 
     final candidateSpace = current.copyWith(
       boundary: candidate,
@@ -18,18 +20,26 @@ extension PlanGeometryEditorActions on EditorController {
 
     final replacements = <String, EngineeringSpace>{current.id: candidateSpace};
     for (final neighbor in level.spaces) {
-      if (neighbor.id == current.id) continue;
+      if (neighbor.id == current.id) {
+        continue;
+      }
       final propagated = _propagateSharedEdges(
         source: current,
         editedSource: candidateSpace,
         neighbor: neighbor,
       );
-      if (propagated == null) return false;
-      if (propagated != neighbor) replacements[neighbor.id] = propagated;
+      if (propagated == null) {
+        return false;
+      }
+      if (propagated != neighbor) {
+        replacements[neighbor.id] = propagated;
+      }
     }
 
     for (final replacement in replacements.values) {
-      if (!_spaceGeometryIsCompatible(replacement)) return false;
+      if (!_spaceGeometryIsCompatible(replacement)) {
+        return false;
+      }
     }
 
     level = level.copyWith(
@@ -49,14 +59,22 @@ extension PlanGeometryEditorActions on EditorController {
     final walls = RoomSurfaceResolver.walls(candidateSpace);
     for (final entry in candidateSpace.wallProfiles.entries) {
       final index = entry.key;
-      if (index < 0 || index >= walls.length) return false;
-      if (entry.value.maxX != walls[index].lengthMm.round()) return false;
+      if (index < 0 || index >= walls.length) {
+        return false;
+      }
+      if (entry.value.maxX != walls[index].lengthMm.round()) {
+        return false;
+      }
     }
 
     for (final opening in openings) {
-      if (opening.hostWall.spaceId != candidateSpace.id) continue;
+      if (opening.hostWall.spaceId != candidateSpace.id) {
+        continue;
+      }
       final index = opening.hostWall.wallIndex;
-      if (index == null || index < 0 || index >= walls.length) return false;
+      if (index == null || index < 0 || index >= walls.length) {
+        return false;
+      }
       if (!RoomSurfaceResolver.openingFitsWall(
         opening: opening,
         wall: walls[index],
@@ -78,17 +96,23 @@ extension PlanGeometryEditorActions on EditorController {
   bool moveSelectedOpeningAlongWall(int targetCenterMm) {
     final opening = selectedOpening;
     final wall = activeWall;
-    if (opening == null || wall == null) return false;
+    if (opening == null || wall == null) {
+      return false;
+    }
     final offset = targetCenterMm - opening.widthMm ~/ 2;
     return updateSelectedOpening(offsetFromStartMm: offset);
   }
 
   bool resizeSelectedOpeningFromStart(int newStartMm) {
     final opening = selectedOpening;
-    if (opening == null) return false;
+    if (opening == null) {
+      return false;
+    }
     final end = opening.offsetFromStartMm + opening.widthMm;
     final width = end - newStartMm;
-    if (width < 300) return false;
+    if (width < 300) {
+      return false;
+    }
     return updateSelectedOpening(
       offsetFromStartMm: newStartMm,
       widthMm: width,
@@ -97,9 +121,13 @@ extension PlanGeometryEditorActions on EditorController {
 
   bool resizeSelectedOpeningFromEnd(int newEndMm) {
     final opening = selectedOpening;
-    if (opening == null) return false;
+    if (opening == null) {
+      return false;
+    }
     final width = newEndMm - opening.offsetFromStartMm;
-    if (width < 300) return false;
+    if (width < 300) {
+      return false;
+    }
     return updateSelectedOpening(widthMm: width);
   }
 
@@ -114,7 +142,9 @@ extension PlanGeometryEditorActions on EditorController {
           .where((item) => item.id == opening.hostWall.spaceId)
           .firstOrNull;
       final wallIndex = opening.hostWall.wallIndex;
-      if (space == null || wallIndex == null) continue;
+      if (space == null || wallIndex == null) {
+        continue;
+      }
       final wall = RoomSurfaceResolver.wall(space, wallIndex);
       final a = RoomSurfaceResolver.wallLocalToPlan(
         wall,
@@ -135,11 +165,15 @@ extension PlanGeometryEditorActions on EditorController {
 
   int? planPointToActiveWallOffset(MmPoint point) {
     final wall = activeWall;
-    if (wall == null) return null;
+    if (wall == null) {
+      return null;
+    }
     final dx = (wall.end.x - wall.start.x).toDouble();
     final dy = (wall.end.y - wall.start.y).toDouble();
     final length = wall.lengthMm;
-    if (length <= 0) return null;
+    if (length <= 0) {
+      return null;
+    }
     final px = (point.x - wall.start.x).toDouble();
     final py = (point.y - wall.start.y).toDouble();
     final projected = (px * dx + py * dy) / length;
@@ -163,7 +197,9 @@ EngineeringSpace? _propagateSharedEdges({
     final oldB = sourceVertices[nextI];
     final newA = editedVertices[i];
     final newB = editedVertices[nextI];
-    if (oldA == newA && oldB == newB) continue;
+    if (oldA == newA && oldB == newB) {
+      continue;
+    }
 
     for (var j = 0; j < neighborVertices.length; j++) {
       final nextJ = (j + 1) % neighborVertices.length;
@@ -181,9 +217,13 @@ EngineeringSpace? _propagateSharedEdges({
     }
   }
 
-  if (!changed) return neighbor;
+  if (!changed) {
+    return neighbor;
+  }
   final boundary = MmPolygon(neighborVertices);
-  if (!PlanGeometryEditing.isValid(boundary)) return null;
+  if (!PlanGeometryEditing.isValid(boundary)) {
+    return null;
+  }
   return neighbor.copyWith(
     boundary: boundary,
     referenceFrame: RoomReferenceFrame(origin: boundary.bounds.center),
@@ -193,7 +233,9 @@ EngineeringSpace? _propagateSharedEdges({
 double _distanceToSegment(MmPoint p, MmPoint a, MmPoint b) {
   final dx = (b.x - a.x).toDouble();
   final dy = (b.y - a.y).toDouble();
-  if (dx == 0 && dy == 0) return p.distanceTo(a);
+  if (dx == 0 && dy == 0) {
+    return p.distanceTo(a);
+  }
   final t = (((p.x - a.x) * dx + (p.y - a.y) * dy) /
           (dx * dx + dy * dy))
       .clamp(0.0, 1.0);
