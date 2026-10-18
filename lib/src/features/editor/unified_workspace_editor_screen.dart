@@ -9,6 +9,7 @@ import 'editor_layout_policy.dart';
 import 'editor_shell_state.dart';
 import 'editor_ui_tokens.dart';
 import 'engineering_inspector.dart';
+import 'engineering_placement_cursor_hud.dart';
 import 'site_map_interaction.dart';
 import 'spatial_canvas.dart';
 import 'surface_canvas.dart';
@@ -73,9 +74,19 @@ class _UnifiedWorkspaceEditorScreenState
         builder: (context, constraints) {
           final mode = EditorLayoutPolicy.forWidth(constraints.maxWidth);
           final desktop = mode == EditorLayoutMode.desktop;
-          final canvas = controller.viewMode == EditorViewMode.plan
+          final rawCanvas = controller.viewMode == EditorViewMode.plan
               ? SpatialCanvas(controller: controller)
               : SurfaceCanvas(controller: controller);
+          final canvas = Stack(
+            children: [
+              Positioned.fill(child: rawCanvas),
+              Positioned(
+                right: 12,
+                bottom: 52,
+                child: EngineeringPlacementCursorHud(controller: controller),
+              ),
+            ],
+          );
 
           return Scaffold(
             drawer: desktop
