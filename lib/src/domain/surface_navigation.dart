@@ -10,9 +10,7 @@ abstract final class SurfaceNavigationResolver {
     required WallNavigationEdge edge,
   }) {
     final wallCount = space.boundary.vertices.length;
-    if (wallIndex < 0 || wallIndex >= wallCount) {
-      throw RangeError.range(wallIndex, 0, wallCount - 1, 'wallIndex');
-    }
+    _validateWallIndex(wallIndex, wallCount);
 
     return switch (edge) {
       WallNavigationEdge.floor => RoomSurfaceRef.floor(space.id),
@@ -22,5 +20,20 @@ abstract final class SurfaceNavigationResolver {
       WallNavigationEdge.end =>
         RoomSurfaceRef.wall(space.id, (wallIndex + 1) % wallCount),
     };
+  }
+
+  static RoomSurfaceRef targetForHorizontalBoundary({
+    required EngineeringSpace space,
+    required int boundaryEdgeIndex,
+  }) {
+    final wallCount = space.boundary.vertices.length;
+    _validateWallIndex(boundaryEdgeIndex, wallCount);
+    return RoomSurfaceRef.wall(space.id, boundaryEdgeIndex);
+  }
+
+  static void _validateWallIndex(int wallIndex, int wallCount) {
+    if (wallIndex < 0 || wallIndex >= wallCount) {
+      throw RangeError.range(wallIndex, 0, wallCount - 1, 'wallIndex');
+    }
   }
 }
