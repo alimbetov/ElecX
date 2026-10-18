@@ -8,6 +8,7 @@ import 'editor_keyboard_scope.dart';
 import 'editor_layout_policy.dart';
 import 'editor_shell_state.dart';
 import 'editor_ui_tokens.dart';
+import 'engineering_inspector.dart';
 import 'site_map_interaction.dart';
 import 'spatial_canvas.dart';
 import 'surface_canvas.dart';
@@ -39,7 +40,9 @@ class _UnifiedWorkspaceEditorScreenState
   }
 
   void _refresh() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _openMiniMap() {
@@ -93,7 +96,7 @@ class _UnifiedWorkspaceEditorScreenState
                 : Drawer(
                     width: EditorLayoutPolicy.inspectorWidth(mode),
                     child: SafeArea(
-                      child: _WorkspaceInspector(workspace: workspace),
+                      child: EngineeringInspector(workspace: workspace),
                     ),
                   ),
             appBar: _WorkspaceAppBar(
@@ -183,7 +186,7 @@ class _DesktopWorkspace extends StatelessWidget {
             tooltip: 'Показать навигатор',
             onPressed: shell.toggleNavigator,
           ),
-        VerticalDivider(width: 1, color: EditorUiTokens.divider(context).color),
+        const VerticalDivider(width: 1),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.all(EditorUiTokens.canvasInset),
@@ -193,7 +196,7 @@ class _DesktopWorkspace extends StatelessWidget {
             ),
           ),
         ),
-        VerticalDivider(width: 1, color: EditorUiTokens.divider(context).color),
+        const VerticalDivider(width: 1),
         if (shell.inspectorVisible)
           SizedBox(
             width: EditorUiTokens.desktopInspectorWidth,
@@ -252,23 +255,27 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
       actions: [
         if (!compact)
           IconButton(
-            tooltip: shell.navigatorVisible ? 'Свернуть навигатор' : 'Показать навигатор',
+            tooltip: shell.navigatorVisible
+                ? 'Свернуть навигатор'
+                : 'Показать навигатор',
             onPressed: shell.toggleNavigator,
             icon: Icon(
-              shell.navigatorVisible ? Icons.left_panel_close_outlined : Icons.left_panel_open_outlined,
-              size: 20,
+              shell.navigatorVisible
+                  ? Icons.keyboard_double_arrow_left
+                  : Icons.keyboard_double_arrow_right,
+              size: 19,
             ),
           ),
         IconButton(
           tooltip: 'Микро-карта',
           onPressed: onOpenMiniMap,
-          icon: const Icon(Icons.map_outlined, size: 20),
+          icon: const Icon(Icons.map_outlined, size: 19),
         ),
         if (workspace.context == EditorWorkspaceContext.buildingLevel) ...[
           IconButton(
             tooltip: 'Предыдущий уровень',
             onPressed: workspace.previousLevel,
-            icon: const Icon(Icons.keyboard_arrow_down, size: 20),
+            icon: const Icon(Icons.keyboard_arrow_down, size: 19),
           ),
           if (!compact)
             Padding(
@@ -290,16 +297,20 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
           IconButton(
             tooltip: 'Следующий уровень',
             onPressed: workspace.nextLevel,
-            icon: const Icon(Icons.keyboard_arrow_up, size: 20),
+            icon: const Icon(Icons.keyboard_arrow_up, size: 19),
           ),
         ],
         if (!compact) ...[
           IconButton(
-            tooltip: shell.inspectorVisible ? 'Свернуть свойства' : 'Показать свойства',
+            tooltip: shell.inspectorVisible
+                ? 'Свернуть свойства'
+                : 'Показать свойства',
             onPressed: shell.toggleInspector,
             icon: Icon(
-              shell.inspectorVisible ? Icons.right_panel_close_outlined : Icons.right_panel_open_outlined,
-              size: 20,
+              shell.inspectorVisible
+                  ? Icons.keyboard_double_arrow_right
+                  : Icons.keyboard_double_arrow_left,
+              size: 19,
             ),
           ),
           IconButton(
@@ -316,7 +327,7 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
             builder: (context) => IconButton(
               tooltip: 'Свойства',
               onPressed: Scaffold.of(context).openEndDrawer,
-              icon: const Icon(Icons.tune, size: 20),
+              icon: const Icon(Icons.tune, size: 19),
             ),
           ),
         const SizedBox(width: 2),
@@ -426,7 +437,10 @@ class _InspectorPanel extends StatelessWidget {
                 const Icon(Icons.tune, size: 17),
                 const SizedBox(width: 7),
                 Expanded(
-                  child: Text('СВОЙСТВА', style: Theme.of(context).textTheme.labelMedium),
+                  child: Text(
+                    'СВОЙСТВА',
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
                 ),
                 IconButton(
                   tooltip: 'Свернуть свойства',
@@ -438,7 +452,7 @@ class _InspectorPanel extends StatelessWidget {
             ),
           ),
           const Divider(height: 1),
-          Expanded(child: _WorkspaceInspector(workspace: workspace)),
+          Expanded(child: EngineeringInspector(workspace: workspace)),
         ],
       );
 }
@@ -468,81 +482,6 @@ class _SideRail extends StatelessWidget {
               visualDensity: VisualDensity.compact,
             ),
           ),
-        ),
-      );
-}
-
-class _WorkspaceInspector extends StatelessWidget {
-  const _WorkspaceInspector({required this.workspace});
-
-  final EditorBuildingWorkspace workspace;
-
-  @override
-  Widget build(BuildContext context) {
-    final editor = workspace.editor;
-    final level = workspace.activeLevel;
-    final zone = workspace.selectedZone;
-    final room = editor.selectedSpace;
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 24),
-      children: [
-        _property(
-          'Режим',
-          workspace.context == EditorWorkspaceContext.siteOutdoor
-              ? 'Площадка / двор'
-              : 'Здание',
-        ),
-        if (workspace.context == EditorWorkspaceContext.buildingLevel) ...[
-          _property('Уровень', level?.displayName ?? editor.level.name),
-          _property('Отметка', '${editor.level.elevationMm} mm'),
-          _property('Помещений', '${editor.level.spaces.length}'),
-          _property('Квартир', '${level?.apartments.length ?? 0}'),
-        ],
-        if (zone != null) ...[
-          const Divider(height: 20),
-          _sectionTitle(context, 'ЗОНА'),
-          _property('Название', zone.name),
-          _property('Помещений', '${zone.spaceIds.length}'),
-        ],
-        if (room != null) ...[
-          const Divider(height: 20),
-          _sectionTitle(context, 'ПОМЕЩЕНИЕ'),
-          _property('Название', room.name),
-          _property('Тип', room.type.name),
-          _property(
-            'BBox',
-            '${room.boundary.bounds.width} × ${room.boundary.bounds.height} mm',
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _sectionTitle(BuildContext context, String value) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(value, style: Theme.of(context).textTheme.labelSmall),
-      );
-
-  Widget _property(String name, String value) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Text(
-                name,
-                style: const TextStyle(fontSize: 11),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                value,
-                textAlign: TextAlign.right,
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
         ),
       );
 }
@@ -589,7 +528,9 @@ String _contextPath(EditorBuildingWorkspace workspace) {
 extension _FirstOrNull<T> on Iterable<T> {
   T? get firstOrNull {
     final iterator = this.iterator;
-    if (!iterator.moveNext()) return null;
+    if (!iterator.moveNext()) {
+      return null;
+    }
     return iterator.current;
   }
 }
