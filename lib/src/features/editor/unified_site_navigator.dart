@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'editor_building_workspace.dart';
+import 'editor_ui_tokens.dart';
 import 'site_map_interaction.dart';
 import 'site_navigation_model.dart';
 
@@ -60,7 +61,9 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
   }
 
   void _refresh() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   NavigatorNode get _root => SiteNavigationProjection.apartmentTower(
@@ -82,15 +85,14 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
           _header(context),
           _breadcrumb(context, root),
           Padding(
-            padding: const EdgeInsets.fromLTRB(10, 4, 10, 8),
+            padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
             child: TextField(
               controller: _search,
               onChanged: (_) => setState(() {}),
+              style: const TextStyle(fontSize: 12),
               decoration: const InputDecoration(
-                isDense: true,
-                prefixIcon: Icon(Icons.search, size: 19),
+                prefixIcon: Icon(Icons.search, size: 17),
                 hintText: 'Этаж, квартира, комната…',
-                border: OutlineInputBorder(),
               ),
             ),
           ),
@@ -98,7 +100,7 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
           const Divider(height: 1),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(6, 6, 6, 24),
+              padding: const EdgeInsets.fromLTRB(4, 4, 4, 16),
               children: [
                 for (final child in visible.children)
                   _nodeTile(context, child, depth: 0),
@@ -110,23 +112,24 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
     );
   }
 
-  Widget _header(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 8, 6),
+  Widget _header(BuildContext context) => SizedBox(
+        height: EditorUiTokens.panelHeaderHeight,
         child: Row(
           children: [
-            const Icon(Icons.account_tree_outlined, size: 20),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
+            const Icon(Icons.account_tree_outlined, size: 17),
+            const SizedBox(width: 7),
             Expanded(
               child: Text(
                 'НАВИГАТОР',
-                style: Theme.of(context).textTheme.labelLarge,
+                style: Theme.of(context).textTheme.labelMedium,
               ),
             ),
             IconButton(
               tooltip: 'Карта площадки',
               visualDensity: VisualDensity.compact,
               onPressed: widget.onOpenSiteMap,
-              icon: const Icon(Icons.map_outlined),
+              icon: const Icon(Icons.map_outlined, size: 18),
             ),
             IconButton(
               tooltip: 'Предыдущий уровень',
@@ -134,7 +137,7 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
               onPressed: workspace.context == EditorWorkspaceContext.buildingLevel
                   ? workspace.previousLevel
                   : null,
-              icon: const Icon(Icons.keyboard_arrow_down),
+              icon: const Icon(Icons.keyboard_arrow_down, size: 18),
             ),
             IconButton(
               tooltip: 'Следующий уровень',
@@ -142,7 +145,7 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
               onPressed: workspace.context == EditorWorkspaceContext.buildingLevel
                   ? workspace.nextLevel
                   : null,
-              icon: const Icon(Icons.keyboard_arrow_up),
+              icon: const Icon(Icons.keyboard_arrow_up, size: 18),
             ),
           ],
         ),
@@ -153,14 +156,14 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
     final path = activeNodeId == null ? <NavigatorNode>[root] : root.pathTo(activeNodeId);
     final effective = path.isEmpty ? <NavigatorNode>[root] : path;
     return SizedBox(
-      height: 34,
+      height: 28,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         itemCount: effective.length,
         separatorBuilder: (_, __) => const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 2),
-          child: Icon(Icons.chevron_right, size: 15),
+          padding: EdgeInsets.symmetric(horizontal: 1),
+          child: Icon(Icons.chevron_right, size: 13),
         ),
         itemBuilder: (context, index) {
           final node = effective[index];
@@ -180,31 +183,29 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
   }
 
   Widget _levelFilter(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+        padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
         child: SegmentedButton<LevelNavigatorFilter>(
           segments: const [
             ButtonSegment(
               value: LevelNavigatorFilter.all,
               label: Text('Все'),
-              icon: Icon(Icons.layers_outlined, size: 16),
+              icon: Icon(Icons.layers_outlined, size: 14),
             ),
             ButtonSegment(
               value: LevelNavigatorFilter.residential,
               label: Text('Этажи'),
-              icon: Icon(Icons.apartment_outlined, size: 16),
+              icon: Icon(Icons.apartment_outlined, size: 14),
             ),
             ButtonSegment(
               value: LevelNavigatorFilter.basement,
               label: Text('B'),
-              icon: Icon(Icons.foundation_outlined, size: 16),
+              icon: Icon(Icons.foundation_outlined, size: 14),
             ),
           ],
           selected: {_filter},
           showSelectedIcon: false,
           onSelectionChanged: (value) => setState(() => _filter = value.first),
-          style: ButtonStyle(
-            visualDensity: widget.compact ? VisualDensity.compact : null,
-          ),
+          style: const ButtonStyle(visualDensity: VisualDensity.compact),
         ),
       );
 
@@ -217,7 +218,7 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
     final expanded = _expanded.contains(node.id) || _forceExpanded(node);
     final selected = _isSelected(node) || widget.interaction?.selectedNodeId == node.id;
     final hovered = widget.interaction?.hoveredNodeId == node.id;
-    final indent = 8.0 + depth * 14;
+    final indent = 5.0 + depth * 12;
 
     return Column(
       children: [
@@ -232,42 +233,54 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
             },
             child: DecoratedBox(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(7),
                 border: hovered
-                    ? Border.all(color: Theme.of(context).colorScheme.primary, width: 1)
+                    ? Border.all(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 1,
+                      )
                     : null,
               ),
               child: ListTile(
                 dense: true,
-                minLeadingWidth: 24,
-                horizontalTitleGap: 6,
+                visualDensity: VisualDensity.compact,
+                minLeadingWidth: 22,
+                horizontalTitleGap: 4,
+                minTileHeight: 34,
                 selected: selected,
                 selectedTileColor: Theme.of(context).colorScheme.secondaryContainer,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
                 leading: hasChildren
                     ? IconButton(
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints.tightFor(width: 28, height: 28),
+                        constraints: const BoxConstraints.tightFor(width: 26, height: 26),
                         onPressed: () => setState(() {
-                          if (!_expanded.add(node.id)) _expanded.remove(node.id);
+                          if (!_expanded.add(node.id)) {
+                            _expanded.remove(node.id);
+                          }
                         }),
                         icon: Icon(
                           expanded ? Icons.expand_more : Icons.chevron_right,
-                          size: 18,
+                          size: 17,
                         ),
                       )
-                    : Icon(_iconFor(node.kind), size: 18),
-                title: Text(node.label, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    : Icon(_iconFor(node.kind), size: 16),
+                title: Text(
+                  node.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
                 subtitle: node.subtitle == null
                     ? null
                     : Text(
                         node.subtitle!,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall,
+                        style: Theme.of(context).textTheme.labelSmall,
                       ),
                 trailing: node.kind == NavigatorNodeKind.level && selected
-                    ? const Icon(Icons.my_location, size: 16)
+                    ? const Icon(Icons.my_location, size: 14)
                     : null,
                 onTap: () => _activate(node),
               ),
@@ -286,15 +299,21 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
     switch (node.kind) {
       case NavigatorNodeKind.outdoorZone:
         final target = node.targetId;
-        if (target != null) workspace.selectOutdoorZone(target);
+        if (target != null) {
+          workspace.selectOutdoorZone(target);
+        }
       case NavigatorNodeKind.level:
         final level = node.levelNumber;
-        if (level != null) workspace.selectLevel(level);
+        if (level != null) {
+          workspace.selectLevel(level);
+        }
       case NavigatorNodeKind.zone:
         workspace.selectZone(node.targetId);
       case NavigatorNodeKind.room:
         final target = node.targetId;
-        if (target != null) workspace.editor.selectSpace(target);
+        if (target != null) {
+          workspace.editor.selectSpace(target);
+        }
       case NavigatorNodeKind.site:
         widget.onOpenSiteMap?.call();
       case NavigatorNodeKind.lot:
@@ -303,7 +322,9 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
       case NavigatorNodeKind.network:
         if (node.children.isNotEmpty) {
           setState(() {
-            if (!_expanded.add(node.id)) _expanded.remove(node.id);
+            if (!_expanded.add(node.id)) {
+              _expanded.remove(node.id);
+            }
           });
         }
     }
@@ -327,7 +348,9 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
       final ownMatch = query.isEmpty ||
           node.label.toLowerCase().contains(query) ||
           (node.subtitle?.toLowerCase().contains(query) ?? false);
-      if (!ownMatch && children.isEmpty && query.isNotEmpty) return null;
+      if (!ownMatch && children.isEmpty && query.isNotEmpty) {
+        return null;
+      }
       return NavigatorNode(
         id: node.id,
         label: node.label,
@@ -350,7 +373,9 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
       return id == null ? null : 'outdoor:$id';
     }
     final roomId = workspace.editor.selectedSpaceId;
-    if (roomId != null) return 'room:$roomId';
+    if (roomId != null) {
+      return 'room:$roomId';
+    }
     final zoneId = workspace.selectedZoneId;
     if (zoneId != null) {
       return 'level:${workspace.activeLevelNumber}:zone:$zoneId';
