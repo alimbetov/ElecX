@@ -10,6 +10,8 @@ The editor is built around one spatial source of truth:
 
 Plan, floor, ceiling and wall elevations are projections of the same model. No view may create an independent copy of room or opening geometry.
 
+Performance and large-map scalability are governed by `docs/spatial-engine-architecture.md`. Electrical placement and routing are governed by `docs/electrical-authoring-requirements.md`.
+
 ## UX principles
 
 1. **Directness** — the engineer should select the object that is visible and edit its engineering properties without searching through unrelated dialogs.
@@ -20,6 +22,8 @@ Plan, floor, ceiling and wall elevations are projections of the same model. No v
 6. **Desktop speed** — keyboard and mouse workflows are first-class. Repetitive engineering actions must not require modal navigation.
 7. **Model before paint** — dimensions, guides, openings and routes are model-backed or model-derived. Painter output is never the source of truth.
 8. **Safe editing** — invalid geometry is rejected before mutation and the user is told why.
+9. **Viewport scalability** — pan, zoom, hover and hit testing operate on visible/indexed geometry rather than scanning the complete project.
+10. **Semantic LOD** — the editor reveals site, building, level, room and detail information progressively as scale changes.
 
 ## P0 — spatial authoring workflow
 
@@ -84,7 +88,7 @@ Doors/windows are hosted wall objects. The editor must support:
 - delete;
 - render consistently in plan and wall elevation.
 
-Validation must reject openings extending beyond wall length or height.
+Validation must reject openings extending beyond wall length, height or edited wall profile.
 
 P1 direct manipulation adds drag handles for opening edges and centre while preserving the same validation contract.
 
@@ -123,7 +127,7 @@ Show:
 
 - wall identity;
 - length;
-- height;
+- height/profile;
 - previous/next wall navigation;
 - hosted openings;
 - add Door / Window actions.
@@ -143,14 +147,16 @@ Invalid edits must leave the previous model state intact.
 
 ## P1 — CAD interaction quality
 
-The next interaction kernel must provide:
+The interaction kernel must provide:
 
 - pan;
 - cursor-centred zoom;
 - fit level;
 - fit room;
 - fit selection;
-- screen/world transform owned by a ViewportController;
+- camera-owned screen/world transform;
+- visible-world culling via spatial index;
+- site/building/level/room/detail LOD;
 - endpoint snap;
 - midpoint snap;
 - centre snap;
@@ -172,7 +178,9 @@ Objects that may be directly dragged must first have command semantics:
 - opening resize;
 - room edge move;
 - room vertex move;
-- route point move.
+- wall-profile vertex move;
+- route point move;
+- electrical component move.
 
 A drag previews candidate geometry; model mutation occurs through a validated command. Every completed command is undoable.
 
@@ -205,8 +213,10 @@ Examples:
 - `AddOpening`;
 - `UpdateOpening`;
 - `DeleteOpening`;
+- `UpdateWallProfile`;
 - `AddRoutePoint`;
-- `TransitionRouteSurface`.
+- `TransitionRouteSurface`;
+- `PlaceElectricalComponent`.
 
 ## P2 — engineering workspace integration
 
@@ -227,6 +237,17 @@ The engineering layer includes:
 
 These objects reference spatial surfaces; they must not create a parallel geometry model.
 
+## Performance acceptance
+
+The engine must follow `docs/spatial-engine-architecture.md`:
+
+- no O(total project objects) scan during pan/zoom;
+- viewport and hover queries use visible/indexed data;
+- grids are generated only inside visible bounds;
+- static and transient layers are repaint-isolated;
+- semantic LOD suppresses irrelevant detail at distant scales;
+- canonical engineering geometry is never replaced by simplified render geometry.
+
 ## Acceptance scenarios
 
 The spatial foundation is suitable for Desktop Preview when an engineer can complete all of these without editing raw data:
@@ -240,4 +261,6 @@ The spatial foundation is suitable for Desktop Preview when an engineer can comp
 7. Attempt invalid opening geometry and observe that the model remains unchanged.
 8. Start a cable route on a wall, transition to floor/ceiling/adjacent wall and retain route continuity.
 9. Perform core tool/zoom operations from keyboard without leaving the canvas.
-10. Pass `dart format`, `flutter analyze` and `flutter test` on the exact branch HEAD.
+10. Zoom from detail toward room/level/building/site views while world coordinates stay stable and LOD removes irrelevant detail.
+11. Pan/zoom queries only visible indexed geometry rather than scanning the full project.
+12. Pass `dart format`, `flutter analyze` and `flutter test` on the exact branch HEAD.
