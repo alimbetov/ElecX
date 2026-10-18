@@ -19,6 +19,13 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: controller.p2,
+      builder: (context, _) => _buildToolbar(context),
+    );
+  }
+
+  Widget _buildToolbar(BuildContext context) {
     final p2 = controller.p2;
     final buttons = <Widget>[
       _toolButton(
@@ -44,7 +51,7 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
         context,
         tool: EditorTool.cableRoute,
         icon: Icons.alt_route,
-        tooltip: 'Кабельная трасса (C)',
+        tooltip: 'Ручная кабельная трасса (C)',
       ),
       const _ToolbarDivider(),
       _ElectricalPaletteButton(controller: controller),
@@ -109,11 +116,21 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
       const _ToolbarDivider(),
       _LayerMenuButton(controller: controller),
       _RoutePreferenceButton(controller: controller),
+      _iconButton(
+        context,
+        icon: Icons.auto_fix_high,
+        tooltip: p2.selection.ids.length == 2
+            ? 'Автотрасса между двумя выбранными компонентами'
+            : 'Для автотрассы выберите два компонента',
+        onPressed: p2.selection.ids.length == 2
+            ? () => p2.autoRouteSelectedPair()
+            : null,
+      ),
       if (controller.routeSegments.isNotEmpty)
         _iconButton(
           context,
           icon: Icons.clear_all,
-          tooltip: 'Очистить черновик трассы',
+          tooltip: 'Очистить черновик ручной трассы',
           onPressed: controller.clearRouteDraft,
         ),
     ];
@@ -237,7 +254,9 @@ class _ElectricalPaletteButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(22),
             ),
             child: Icon(
-              selected == null ? Icons.electrical_services : _componentIcon(selected),
+              selected == null
+                  ? Icons.electrical_services
+                  : _componentIcon(selected),
               size: 21,
             ),
           ),
