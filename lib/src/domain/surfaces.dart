@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'geometry.dart';
 import 'project_model.dart';
+import 'wall_profile.dart';
 
 enum SurfacePlaneType { floor, ceiling, wall }
 
@@ -67,12 +68,14 @@ final class RoomWallSurface {
     required this.start,
     required this.end,
     required this.heightMm,
+    required this.profile,
   });
 
   final RoomSurfaceRef ref;
   final MmPoint start;
   final MmPoint end;
   final int heightMm;
+  final WallProfile profile;
 
   double get lengthMm => start.distanceTo(end);
 }
@@ -167,13 +170,28 @@ abstract final class RoomSurfaceResolver {
     final vertices = space.boundary.vertices;
     return List.unmodifiable([
       for (var i = 0; i < vertices.length; i++)
-        RoomWallSurface(
-          ref: RoomSurfaceRef.wall(space.id, i),
-          start: vertices[i],
-          end: vertices[(i + 1) % vertices.length],
-          heightMm: defaultHeightMm,
-        ),
+        _wallForIndex(space, i, defaultHeightMm),
     ]);
+  }
+
+  static RoomWallSurface _wallForIndex(
+    EngineeringSpace space,
+    int wallIndex,
+    int defaultHeightMm,
+  ) {
+    final vertices = space.boundary.vertices;
+    final start = vertices[wallIndex];
+    final end = vertices[(wallIndex + 1) % vertices.length];
+    final length = start.distanceTo(end).round();
+    final profile = space.wallProfiles[wallIndex] ??
+        WallProfile.rectangle(widthMm: length, heightMm: defaultHeightMm);
+    return RoomWallSurface(
+      ref: RoomSurfaceRef.wall(space.id, wallIndex),
+      start: start,
+      end: end,
+      heightMm: profile.maxY,
+      profile: profile,
+    );
   }
 
   static RoomWallSurface wall(
@@ -193,9 +211,12 @@ abstract final class RoomSurfaceResolver {
     required RoomWallSurface wall,
   }) {
     if (opening.hostWall != wall.ref) return false;
-    final wallLength = wall.lengthMm;
-    final right = opening.offsetFromStartMm + opening.widthMm;
-    return right <= wallLength + 0.5 && opening.topMm <= wall.heightMm;
+    return wall.profile.containsRect(
+      leftMm: opening.offsetFromStartMm,
+      bottomMm: opening.sillHeightMm,
+      widthMm: opening.widthMm,
+      heightMm: opening.heightMm,
+    );
   }
 
   /// Converts a wall-local x coordinate back to a point on the floor plan.
