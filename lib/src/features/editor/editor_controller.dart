@@ -125,6 +125,12 @@ final class EditorController extends ChangeNotifier {
     return last.surface == surface ? last : null;
   }
 
+  SurfacePointMm? get routeDraftStart {
+    final segment = activeRouteSegment;
+    if (segment == null || segment.points.isEmpty) return null;
+    return segment.points.last;
+  }
+
   double get routeLengthMm => routeSegments.fold(
         0.0,
         (sum, segment) => sum + segment.lengthMm,
