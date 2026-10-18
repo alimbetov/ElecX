@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../domain/geometry.dart';
 import '../../domain/project_model.dart';
+import '../../domain/surface_navigation.dart';
 import '../../domain/surface_routing.dart';
 import '../../domain/surfaces.dart';
 
@@ -216,6 +217,22 @@ final class EditorController extends ChangeNotifier {
       return;
     }
     _switchSurface(RoomSurfaceRef.wall(space.id, wallIndex));
+  }
+
+  void navigateWallEdge(WallNavigationEdge edge, SurfacePointMm point) {
+    final space = selectedSpace;
+    final wall = activeWall;
+    if (space == null || wall == null) return;
+
+    if (tool == EditorTool.cableRoute) {
+      surfaceTap(point);
+    }
+    final target = SurfaceNavigationResolver.targetForWallEdge(
+      space: space,
+      wallIndex: wall.ref.wallIndex!,
+      edge: edge,
+    );
+    _switchSurface(target);
   }
 
   void _switchSurface(RoomSurfaceRef target) {
