@@ -26,11 +26,15 @@ final class PropertyLot {
     required this.kind,
     required this.boundary,
     required Iterable<String> buildingIds,
-    this.outdoorZoneIds = const {},
+    Iterable<String> outdoorZoneIds = const {},
   })  : buildingIds = Set.unmodifiable(buildingIds),
         outdoorZoneIds = Set.unmodifiable(outdoorZoneIds) {
-    if (id.isEmpty) throw ArgumentError('Lot id must be non-empty.');
-    if (name.isEmpty) throw ArgumentError('Lot name must be non-empty.');
+    if (id.isEmpty) {
+      throw ArgumentError('Lot id must be non-empty.');
+    }
+    if (name.isEmpty) {
+      throw ArgumentError('Lot name must be non-empty.');
+    }
     if (this.buildingIds.isEmpty && kind != PropertyLotKind.technical) {
       throw ArgumentError('Non-technical lot must reference a building.');
     }
@@ -62,7 +66,9 @@ final class SiteNetwork {
     required Iterable<String> servedBuildingIds,
     this.sourceOutdoorZoneId,
   }) : servedBuildingIds = Set.unmodifiable(servedBuildingIds) {
-    if (id.isEmpty) throw ArgumentError('Network id must be non-empty.');
+    if (id.isEmpty) {
+      throw ArgumentError('Network id must be non-empty.');
+    }
     if (this.servedBuildingIds.isEmpty) {
       throw ArgumentError('Network must serve at least one building.');
     }
@@ -88,7 +94,9 @@ final class ComposedSite {
     this.lots = const [],
     this.networks = const [],
   }) {
-    if (id.isEmpty) throw ArgumentError('Site id must be non-empty.');
+    if (id.isEmpty) {
+      throw ArgumentError('Site id must be non-empty.');
+    }
     final buildingIds = site.buildings.map((b) => b.id).toSet();
     final zoneIds = outdoorZones.map((z) => z.id).toSet();
     final lotIds = <String>{};
