@@ -89,15 +89,14 @@ void main() {
   test('controller rejects boundary that invalidates hosted opening', () {
     final controller = EditorController.demo();
     final source = controller.selectedSpace!.boundary;
-    final edited = PlanGeometryEditing.moveEdge(
+    final edited = PlanGeometryEditing.moveVertex(
       boundary: source,
-      edgeIndex: 2,
-      dragStart: const MmPoint(3100, 4400),
-      dragCurrent: const MmPoint(3100, 2500),
+      vertexIndex: 3,
+      target: const MmPoint(3000, 4400),
     );
 
     expect(edited, isNotNull);
     expect(controller.commitSelectedBoundary(edited!), isFalse);
-    expect(controller.selectedSpace!.boundary.bounds.top, 4400);
+    expect(controller.selectedSpace!.boundary.vertices[3], source.vertices[3]);
   });
 }
