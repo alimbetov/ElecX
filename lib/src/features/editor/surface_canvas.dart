@@ -29,7 +29,8 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
   EditorController get controller => widget.controller;
 
   WorldCamera _fittedCamera(_SurfaceExtent extent) {
-    final base = _camera ?? const WorldCamera(centerMm: MmPoint(0, 0), mmPerPixel: 10);
+    final base = _camera ??
+        const WorldCamera(centerMm: MmPoint(0, 0), mmPerPixel: 10);
     if (_size.isEmpty) return base;
     return base.fitBounds(
       bounds: MmBounds(
@@ -129,7 +130,8 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTapDown: (details) {
-                    final point = projection.viewportToSurface(details.localPosition);
+                    final point =
+                        projection.viewportToSurface(details.localPosition);
                     if (point == null) return;
                     if (surface.type == SurfacePlaneType.wall) {
                       final hit = projection.wallEdgeHit(
@@ -147,7 +149,10 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
                         thresholdPx: 20,
                       );
                       if (hit != null) {
-                        controller.navigateHorizontalBoundary(hit.edgeIndex, hit.point);
+                        controller.navigateHorizontalBoundary(
+                          hit.edgeIndex,
+                          hit.point,
+                        );
                         return;
                       }
                     }
@@ -169,16 +174,21 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
                       icon: const Icon(Icons.fit_screen),
                     ),
                     IconButton(
-                      onPressed: () => _zoomAt(_size.center(Offset.zero), 0.8),
+                      onPressed: () =>
+                          _zoomAt(_size.center(Offset.zero), 0.8),
                       icon: const Icon(Icons.zoom_out),
                     ),
                     IconButton(
-                      onPressed: () => _zoomAt(_size.center(Offset.zero), 1.25),
+                      onPressed: () =>
+                          _zoomAt(_size.center(Offset.zero), 1.25),
                       icon: const Icon(Icons.zoom_in),
                     ),
                     Padding(
                       padding: const EdgeInsets.only(right: 10),
-                      child: Text('${lod.name} · ${camera.mmPerPixel.toStringAsFixed(1)} mm/px'),
+                      child: Text(
+                        '${lod.name} · '
+                        '${camera.mmPerPixel.toStringAsFixed(1)} mm/px',
+                      ),
                     ),
                   ],
                 ),
@@ -228,12 +238,14 @@ final class _SurfaceExtent {
 
 final class _WallEdgeHit {
   const _WallEdgeHit(this.edge, this.point);
+
   final WallNavigationEdge edge;
   final SurfacePointMm point;
 }
 
 final class _HorizontalBoundaryHit {
   const _HorizontalBoundaryHit(this.edgeIndex, this.point);
+
   final int edgeIndex;
   final SurfacePointMm point;
 }
@@ -271,7 +283,10 @@ final class _SurfaceProjection {
       xPx: point.dx,
       yPx: point.dy,
     );
-    if (world.x < 0 || world.y < 0 || world.x > extent.widthMm || world.y > extent.heightMm) {
+    if (world.x < 0 ||
+        world.y < 0 ||
+        world.x > extent.widthMm ||
+        world.y > extent.heightMm) {
       return null;
     }
     return SurfacePointMm(world.x, world.y);
@@ -282,7 +297,10 @@ final class _SurfaceProjection {
         surfaceToViewport(SurfacePointMm(extent.widthMm, 0)),
       );
 
-  _WallEdgeHit? wallEdgeHit(Offset viewportPoint, {required double thresholdPx}) {
+  _WallEdgeHit? wallEdgeHit(
+    Offset viewportPoint, {
+    required double thresholdPx,
+  }) {
     final local = viewportToSurface(viewportPoint);
     if (local == null) return null;
     final thresholdMm = thresholdPx * camera.mmPerPixel;
@@ -292,13 +310,15 @@ final class _SurfaceProjection {
       WallNavigationEdge.floor: local.yMm.toDouble(),
       WallNavigationEdge.ceiling: heightMm - local.yMm,
     };
-    final entry = distances.entries.reduce((a, b) => a.value <= b.value ? a : b);
+    final entry =
+        distances.entries.reduce((a, b) => a.value <= b.value ? a : b);
     if (entry.value > thresholdMm) return null;
     final point = switch (entry.key) {
       WallNavigationEdge.start => SurfacePointMm(0, local.yMm),
       WallNavigationEdge.end => SurfacePointMm(extent.widthMm, local.yMm),
       WallNavigationEdge.floor => SurfacePointMm(local.xMm, 0),
-      WallNavigationEdge.ceiling => SurfacePointMm(local.xMm, extent.heightMm),
+      WallNavigationEdge.ceiling =>
+        SurfacePointMm(local.xMm, extent.heightMm),
     };
     return _WallEdgeHit(entry.key, point);
   }
@@ -322,7 +342,9 @@ final class _SurfaceProjection {
         nearestPoint = candidate;
       }
     }
-    if (nearestIndex == null || nearestPoint == null || nearestDistance > thresholdPx) {
+    if (nearestIndex == null ||
+        nearestPoint == null ||
+        nearestDistance > thresholdPx) {
       return null;
     }
     final local = viewportToSurface(nearestPoint);
@@ -341,7 +363,8 @@ final class _SurfaceProjection {
     final lengthSquared = ab.dx * ab.dx + ab.dy * ab.dy;
     if (lengthSquared == 0) return a;
     final ap = point - a;
-    final t = ((ap.dx * ab.dx + ap.dy * ab.dy) / lengthSquared).clamp(0.0, 1.0);
+    final t = ((ap.dx * ab.dx + ap.dy * ab.dy) / lengthSquared)
+        .clamp(0.0, 1.0);
     return a + ab * t;
   }
 }
@@ -355,7 +378,10 @@ class _SurfacePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0xFFF7F8FA));
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()..color = const Color(0xFFF7F8FA),
+    );
     final surface = controller.activeSurface!;
     if (surface.type == SurfacePlaneType.wall) {
       _drawWall(canvas);
@@ -377,16 +403,33 @@ class _SurfacePainter extends CustomPainter {
     }
     canvas.drawRect(
       rect,
-      Paint()..style = PaintingStyle.stroke..strokeWidth = 2..color = const Color(0xFF263238),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = const Color(0xFF263238),
     );
     _drawNavigationEdges(canvas, rect);
-    if (controller.dimensionsVisible && RenderPolicy.showFineDimensions(lod)) {
-      _horizontalDimension(canvas, rect.left, rect.right, rect.bottom + 30, '${wall.lengthMm.round()} mm');
-      _verticalDimension(canvas, rect.right + 34, rect.top, rect.bottom, '${wall.heightMm} mm');
+    if (controller.dimensionsVisible &&
+        RenderPolicy.showFineDimensions(lod)) {
+      _horizontalDimension(
+        canvas,
+        rect.left,
+        rect.right,
+        rect.bottom + 30,
+        '${wall.lengthMm.round()} mm',
+      );
+      _verticalDimension(
+        canvas,
+        rect.right + 34,
+        rect.top,
+        rect.bottom,
+        '${wall.heightMm} mm',
+      );
     }
     _label(
       canvas,
-      'Стена ${(wall.ref.wallIndex ?? 0) + 1} · ${wall.lengthMm.round()} × ${wall.heightMm} mm',
+      'Стена ${(wall.ref.wallIndex ?? 0) + 1} · '
+      '${wall.lengthMm.round()} × ${wall.heightMm} mm',
       Offset(rect.center.dx, rect.top - 34),
       centered: true,
       bold: true,
@@ -410,11 +453,16 @@ class _SurfacePainter extends CustomPainter {
     canvas.restore();
     canvas.drawPath(
       path,
-      Paint()..style = PaintingStyle.stroke..strokeWidth = 2..color = const Color(0xFF263238),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = const Color(0xFF263238),
     );
     _label(
       canvas,
-      type == SurfacePlaneType.floor ? 'ПОЛ · ${space.name}' : 'ПОТОЛОК · ${space.name}',
+      type == SurfacePlaneType.floor
+          ? 'ПОЛ · ${space.name}'
+          : 'ПОТОЛОК · ${space.name}',
       Offset(projection.surfaceRect.center.dx, projection.surfaceRect.top - 34),
       centered: true,
       bold: true,
@@ -423,32 +471,62 @@ class _SurfacePainter extends CustomPainter {
 
   void _drawAdaptiveGrid(Canvas canvas, Rect rect) {
     final spec = AdaptiveGridPolicy.forScale(projection.camera.mmPerPixel);
-    final minor = Paint()..color = const Color(0xFFE8EBEF)..strokeWidth = 0.7;
-    final major = Paint()..color = const Color(0xFFCDD3DB)..strokeWidth = 1.0;
-    for (var x = 0; x <= projection.extent.widthMm; x += spec.minorStepMm) {
+    final minor = Paint()
+      ..color = const Color(0xFFE8EBEF)
+      ..strokeWidth = 0.7;
+    final major = Paint()
+      ..color = const Color(0xFFCDD3DB)
+      ..strokeWidth = 1.0;
+    for (var x = 0;
+        x <= projection.extent.widthMm;
+        x += spec.minorStepMm) {
       final isMajor = x % spec.majorStepMm == 0;
-      if (!isMajor && (!spec.showMinor || lod.index < RenderLod.room.index)) continue;
+      if (!isMajor &&
+          (!spec.showMinor || lod.index < RenderLod.room.index)) {
+        continue;
+      }
       final point = projection.surfaceToViewport(SurfacePointMm(x, 0));
-      canvas.drawLine(Offset(point.dx, rect.top), Offset(point.dx, rect.bottom), isMajor ? major : minor);
+      canvas.drawLine(
+        Offset(point.dx, rect.top),
+        Offset(point.dx, rect.bottom),
+        isMajor ? major : minor,
+      );
     }
-    for (var y = 0; y <= projection.extent.heightMm; y += spec.minorStepMm) {
+    for (var y = 0;
+        y <= projection.extent.heightMm;
+        y += spec.minorStepMm) {
       final isMajor = y % spec.majorStepMm == 0;
-      if (!isMajor && (!spec.showMinor || lod.index < RenderLod.room.index)) continue;
+      if (!isMajor &&
+          (!spec.showMinor || lod.index < RenderLod.room.index)) {
+        continue;
+      }
       final point = projection.surfaceToViewport(SurfacePointMm(0, y));
-      canvas.drawLine(Offset(rect.left, point.dy), Offset(rect.right, point.dy), isMajor ? major : minor);
+      canvas.drawLine(
+        Offset(rect.left, point.dy),
+        Offset(rect.right, point.dy),
+        isMajor ? major : minor,
+      );
     }
   }
 
   void _drawOpening(Canvas canvas, ArchitecturalOpening opening) {
-    final a = projection.surfaceToViewport(SurfacePointMm(opening.offsetFromStartMm, opening.topMm));
+    final a = projection.surfaceToViewport(
+      SurfacePointMm(opening.offsetFromStartMm, opening.topMm),
+    );
     final b = projection.surfaceToViewport(
-      SurfacePointMm(opening.offsetFromStartMm + opening.widthMm, opening.sillHeightMm),
+      SurfacePointMm(
+        opening.offsetFromStartMm + opening.widthMm,
+        opening.sillHeightMm,
+      ),
     );
     final rect = Rect.fromPoints(a, b);
     canvas.drawRect(rect, Paint()..color = const Color(0xFFDDEFF7));
     canvas.drawRect(
       rect,
-      Paint()..style = PaintingStyle.stroke..strokeWidth = 1.5..color = const Color(0xFF54606B),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5
+        ..color = const Color(0xFF54606B),
     );
   }
 
@@ -463,30 +541,61 @@ class _SurfacePainter extends CustomPainter {
     Offset? previous;
     for (final point in segment.points) {
       final current = projection.surfaceToViewport(point);
-      if (previous != null) canvas.drawLine(previous, current, paint);
+      if (previous != null) {
+        canvas.drawLine(previous, current, paint);
+      }
       canvas.drawCircle(current, 4.2, paint);
       previous = current;
     }
   }
 
   void _drawNavigationEdges(Canvas canvas, Rect rect) {
-    final paint = Paint()..color = const Color(0x33246DB3)..strokeWidth = 7;
+    final paint = Paint()
+      ..color = const Color(0x33246DB3)
+      ..strokeWidth = 7;
     canvas.drawLine(rect.topLeft, rect.topRight, paint);
     canvas.drawLine(rect.bottomLeft, rect.bottomRight, paint);
     canvas.drawLine(rect.topLeft, rect.bottomLeft, paint);
     canvas.drawLine(rect.topRight, rect.bottomRight, paint);
   }
 
-  void _horizontalDimension(Canvas canvas, double left, double right, double y, String text) {
-    final paint = Paint()..color = const Color(0xFF4B5563)..strokeWidth = 0.9;
+  void _horizontalDimension(
+    Canvas canvas,
+    double left,
+    double right,
+    double y,
+    String text,
+  ) {
+    final paint = Paint()
+      ..color = const Color(0xFF4B5563)
+      ..strokeWidth = 0.9;
     canvas.drawLine(Offset(left, y), Offset(right, y), paint);
-    _label(canvas, text, Offset((left + right) / 2, y - 10), centered: true, small: true);
+    _label(
+      canvas,
+      text,
+      Offset((left + right) / 2, y - 10),
+      centered: true,
+      small: true,
+    );
   }
 
-  void _verticalDimension(Canvas canvas, double x, double top, double bottom, String text) {
-    final paint = Paint()..color = const Color(0xFF4B5563)..strokeWidth = 0.9;
+  void _verticalDimension(
+    Canvas canvas,
+    double x,
+    double top,
+    double bottom,
+    String text,
+  ) {
+    final paint = Paint()
+      ..color = const Color(0xFF4B5563)
+      ..strokeWidth = 0.9;
     canvas.drawLine(Offset(x, top), Offset(x, bottom), paint);
-    _label(canvas, text, Offset(x + 8, (top + bottom) / 2), small: true);
+    _label(
+      canvas,
+      text,
+      Offset(x + 8, (top + bottom) / 2),
+      small: true,
+    );
   }
 
   void _label(
@@ -510,7 +619,9 @@ class _SurfacePainter extends CustomPainter {
     )..layout();
     painter.paint(
       canvas,
-      centered ? point - Offset(painter.width / 2, painter.height / 2) : point,
+      centered
+          ? point - Offset(painter.width / 2, painter.height / 2)
+          : point,
     );
   }
 
@@ -519,5 +630,6 @@ class _SurfacePainter extends CustomPainter {
       oldDelegate.projection.camera != projection.camera ||
       oldDelegate.lod != lod ||
       oldDelegate.controller.activeSurface != controller.activeSurface ||
-      oldDelegate.controller.routeSegments.length != controller.routeSegments.length;
+      oldDelegate.controller.routeSegments.length !=
+          controller.routeSegments.length;
 }
