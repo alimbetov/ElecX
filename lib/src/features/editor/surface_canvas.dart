@@ -39,6 +39,16 @@ class SurfaceCanvas extends StatelessWidget {
                 controller.navigateWallEdge(hit.edge, hit.point);
                 return;
               }
+            } else {
+              final hit = projection.horizontalBoundaryHit(
+                space.boundary.vertices,
+                details.localPosition,
+                thresholdPx: 20,
+              );
+              if (hit != null) {
+                controller.navigateHorizontalBoundary(hit.edgeIndex, hit.point);
+                return;
+              }
             }
 
             controller.surfaceTap(point);
@@ -57,6 +67,13 @@ final class _WallEdgeHit {
   const _WallEdgeHit(this.edge, this.point);
 
   final WallNavigationEdge edge;
+  final SurfacePointMm point;
+}
+
+final class _HorizontalBoundaryHit {
+  const _HorizontalBoundaryHit(this.edgeIndex, this.point);
+
+  final int edgeIndex;
   final SurfacePointMm point;
 }
 
@@ -148,6 +165,52 @@ final class _SurfaceProjection {
     return _WallEdgeHit(nearest, clamped);
   }
 
+  _HorizontalBoundaryHit? horizontalBoundaryHit(
+    List<MmPoint> vertices,
+    Offset viewportPoint, {
+    required double thresholdPx,
+  }) {
+    if (vertices.length < 3) return null;
+
+    var nearestDistance = double.infinity;
+    int? nearestIndex;
+    Offset? nearestPoint;
+
+    for (var i = 0; i < vertices.length; i++) {
+      final a = floorPointToViewport(vertices[i]);
+      final b = floorPointToViewport(vertices[(i + 1) % vertices.length]);
+      final candidate = _closestPointOnSegment(viewportPoint, a, b);
+      final distance = (viewportPoint - candidate).distance;
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = i;
+        nearestPoint = candidate;
+      }
+    }
+
+    if (nearestIndex == null ||
+        nearestPoint == null ||
+        nearestDistance > thresholdPx) {
+      return null;
+    }
+
+    final local = viewportToSurface(nearestPoint);
+    if (local == null) return null;
+    return _HorizontalBoundaryHit(nearestIndex, local);
+  }
+
+  Offset _closestPointOnSegment(Offset point, Offset a, Offset b) {
+    final ab = b - a;
+    final lengthSquared = ab.dx * ab.dx + ab.dy * ab.dy;
+    if (lengthSquared == 0) return a;
+    final ap = point - a;
+    final t = ((ap.dx * ab.dx + ap.dy * ab.dy) / lengthSquared).clamp(
+      0.0,
+      1.0,
+    );
+    return a + ab * t;
+  }
+
   Offset floorPointToViewport(MmPoint point) => surfaceToViewport(
         SurfacePointMm(point.x - floorLeftMm, point.y - floorBottomMm),
       );
@@ -204,7 +267,7 @@ class _SurfacePainter extends CustomPainter {
         ..color = const Color(0xFF263238),
     );
 
-    _drawNavigationEdges(canvas, wallRect, wall);
+    _drawNavigationEdges(canvas, wallRect);
 
     if (controller.dimensionsVisible) {
       _drawWallDimensions(canvas, wallRect, wall);
@@ -220,11 +283,7 @@ class _SurfacePainter extends CustomPainter {
     );
   }
 
-  void _drawNavigationEdges(
-    Canvas canvas,
-    Rect wallRect,
-    RoomWallSurface wall,
-  ) {
+  void _drawNavigationEdges(Canvas canvas, Rect wallRect) {
     final paint = Paint()
       ..color = const Color(0x33246DB3)
       ..strokeWidth = 7;
@@ -287,6 +346,13 @@ class _SurfacePainter extends CustomPainter {
       path,
       Paint()
         ..style = PaintingStyle.stroke
+        ..strokeWidth = 6
+        ..color = const Color(0x33246DB3),
+    );
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
         ..strokeWidth = 2
         ..color = const Color(0xFF263238),
     );
@@ -321,6 +387,13 @@ class _SurfacePainter extends CustomPainter {
       Offset(rect.center.dx, rect.top - 38),
       centered: true,
       bold: true,
+    );
+    _label(
+      canvas,
+      'Нажмите у границы для перехода на стену',
+      Offset(rect.center.dx, rect.bottom + 56),
+      centered: true,
+      small: true,
     );
   }
 
