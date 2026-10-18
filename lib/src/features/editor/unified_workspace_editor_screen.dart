@@ -6,6 +6,8 @@ import 'editor_building_workspace.dart';
 import 'editor_controller.dart';
 import 'editor_keyboard_scope.dart';
 import 'editor_layout_policy.dart';
+import 'editor_shell_state.dart';
+import 'editor_ui_tokens.dart';
 import 'site_map_interaction.dart';
 import 'spatial_canvas.dart';
 import 'surface_canvas.dart';
@@ -25,6 +27,7 @@ class _UnifiedWorkspaceEditorScreenState
   late final EditorController controller;
   late final EditorBuildingWorkspace workspace;
   late final SiteMapInteractionController siteInteraction;
+  late final EditorShellState shell;
 
   @override
   void initState() {
@@ -32,6 +35,7 @@ class _UnifiedWorkspaceEditorScreenState
     controller = EditorController.demo()..addListener(_refresh);
     workspace = EditorBuildingWorkspace.demo(controller)..addListener(_refresh);
     siteInteraction = SiteMapInteractionController();
+    shell = EditorShellState()..addListener(_refresh);
   }
 
   void _refresh() {
@@ -48,6 +52,8 @@ class _UnifiedWorkspaceEditorScreenState
 
   @override
   void dispose() {
+    shell.removeListener(_refresh);
+    shell.dispose();
     siteInteraction.dispose();
     workspace.removeListener(_refresh);
     workspace.dispose();
@@ -86,10 +92,13 @@ class _UnifiedWorkspaceEditorScreenState
                 ? null
                 : Drawer(
                     width: EditorLayoutPolicy.inspectorWidth(mode),
-                    child: SafeArea(child: _WorkspaceInspector(workspace: workspace)),
+                    child: SafeArea(
+                      child: _WorkspaceInspector(workspace: workspace),
+                    ),
                   ),
             appBar: _WorkspaceAppBar(
               workspace: workspace,
+              shell: shell,
               compact: !desktop,
               onOpenMiniMap: _openMiniMap,
             ),
@@ -99,27 +108,16 @@ class _UnifiedWorkspaceEditorScreenState
                   controller: controller,
                   compact: !desktop,
                 ),
-                _ContextStrip(workspace: workspace),
+                if (shell.contextBarVisible)
+                  _ContextStrip(workspace: workspace),
                 Expanded(
                   child: desktop
-                      ? Row(
-                          children: [
-                            SizedBox(
-                              width: EditorLayoutPolicy.navigatorWidth(mode),
-                              child: UnifiedSiteNavigator(
-                                workspace: workspace,
-                                interaction: siteInteraction,
-                                onOpenSiteMap: _openMiniMap,
-                              ),
-                            ),
-                            const VerticalDivider(width: 1),
-                            Expanded(child: canvas),
-                            const VerticalDivider(width: 1),
-                            SizedBox(
-                              width: EditorLayoutPolicy.inspectorWidth(mode),
-                              child: _WorkspaceInspector(workspace: workspace),
-                            ),
-                          ],
+                      ? _DesktopWorkspace(
+                          workspace: workspace,
+                          shell: shell,
+                          interaction: siteInteraction,
+                          canvas: canvas,
+                          onOpenMiniMap: _openMiniMap,
                         )
                       : Stack(
                           children: [
@@ -141,70 +139,176 @@ class _UnifiedWorkspaceEditorScreenState
   }
 }
 
+class _DesktopWorkspace extends StatelessWidget {
+  const _DesktopWorkspace({
+    required this.workspace,
+    required this.shell,
+    required this.interaction,
+    required this.canvas,
+    required this.onOpenMiniMap,
+  });
+
+  final EditorBuildingWorkspace workspace;
+  final EditorShellState shell;
+  final SiteMapInteractionController interaction;
+  final Widget canvas;
+  final VoidCallback onOpenMiniMap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (shell.focusMode) {
+      return Padding(
+        padding: const EdgeInsets.all(EditorUiTokens.canvasInset),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(EditorUiTokens.panelRadius),
+          child: canvas,
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        if (shell.navigatorVisible)
+          SizedBox(
+            width: EditorUiTokens.desktopNavigatorWidth,
+            child: UnifiedSiteNavigator(
+              workspace: workspace,
+              interaction: interaction,
+              onOpenSiteMap: onOpenMiniMap,
+            ),
+          )
+        else
+          _SideRail(
+            icon: Icons.account_tree_outlined,
+            tooltip: 'Показать навигатор',
+            onPressed: shell.toggleNavigator,
+          ),
+        VerticalDivider(width: 1, color: EditorUiTokens.divider(context).color),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(EditorUiTokens.canvasInset),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(EditorUiTokens.panelRadius),
+              child: canvas,
+            ),
+          ),
+        ),
+        VerticalDivider(width: 1, color: EditorUiTokens.divider(context).color),
+        if (shell.inspectorVisible)
+          SizedBox(
+            width: EditorUiTokens.desktopInspectorWidth,
+            child: _InspectorPanel(
+              workspace: workspace,
+              onCollapse: shell.toggleInspector,
+            ),
+          )
+        else
+          _SideRail(
+            icon: Icons.tune,
+            tooltip: 'Показать свойства',
+            onPressed: shell.toggleInspector,
+          ),
+      ],
+    );
+  }
+}
+
 class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
   const _WorkspaceAppBar({
     required this.workspace,
+    required this.shell,
     required this.compact,
     required this.onOpenMiniMap,
   });
 
   final EditorBuildingWorkspace workspace;
+  final EditorShellState shell;
   final bool compact;
   final VoidCallback onOpenMiniMap;
 
   @override
-  Size get preferredSize => const Size.fromHeight(58);
+  Size get preferredSize => const Size.fromHeight(EditorUiTokens.appBarHeight);
 
   @override
   Widget build(BuildContext context) {
     final editor = workspace.editor;
     return AppBar(
-      titleSpacing: compact ? 6 : 18,
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      toolbarHeight: EditorUiTokens.appBarHeight,
+      titleSpacing: compact ? 6 : 12,
+      title: Row(
         children: [
-          Text(
-            compact ? 'ElecX' : 'ElecX · Site / Building',
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-          Text(
-            _contextPath(workspace),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w400),
+          const Icon(Icons.electric_bolt_outlined, size: 19),
+          const SizedBox(width: 7),
+          Flexible(
+            child: Text(
+              compact ? 'ElecX' : _contextPath(workspace),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),
       actions: [
+        if (!compact)
+          IconButton(
+            tooltip: shell.navigatorVisible ? 'Свернуть навигатор' : 'Показать навигатор',
+            onPressed: shell.toggleNavigator,
+            icon: Icon(
+              shell.navigatorVisible ? Icons.left_panel_close_outlined : Icons.left_panel_open_outlined,
+              size: 20,
+            ),
+          ),
         IconButton(
           tooltip: 'Микро-карта',
           onPressed: onOpenMiniMap,
-          icon: const Icon(Icons.map_outlined),
+          icon: const Icon(Icons.map_outlined, size: 20),
         ),
         if (workspace.context == EditorWorkspaceContext.buildingLevel) ...[
           IconButton(
             tooltip: 'Предыдущий уровень',
             onPressed: workspace.previousLevel,
-            icon: const Icon(Icons.keyboard_arrow_down),
+            icon: const Icon(Icons.keyboard_arrow_down, size: 20),
           ),
           if (!compact)
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.secondaryContainer,
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                child: Text(
-                  workspace.activeLevel?.displayName ?? editor.level.name,
-                  style: Theme.of(context).textTheme.labelLarge,
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.secondaryContainer,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                  child: Text(
+                    workspace.activeLevel?.displayName ?? editor.level.name,
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
                 ),
               ),
             ),
           IconButton(
             tooltip: 'Следующий уровень',
             onPressed: workspace.nextLevel,
-            icon: const Icon(Icons.keyboard_arrow_up),
+            icon: const Icon(Icons.keyboard_arrow_up, size: 20),
+          ),
+        ],
+        if (!compact) ...[
+          IconButton(
+            tooltip: shell.inspectorVisible ? 'Свернуть свойства' : 'Показать свойства',
+            onPressed: shell.toggleInspector,
+            icon: Icon(
+              shell.inspectorVisible ? Icons.right_panel_close_outlined : Icons.right_panel_open_outlined,
+              size: 20,
+            ),
+          ),
+          IconButton(
+            tooltip: shell.focusMode ? 'Выйти из Focus mode' : 'Focus mode',
+            onPressed: shell.toggleFocusMode,
+            icon: Icon(
+              shell.focusMode ? Icons.fullscreen_exit : Icons.fullscreen,
+              size: 20,
+            ),
           ),
         ],
         if (compact)
@@ -212,10 +316,10 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
             builder: (context) => IconButton(
               tooltip: 'Свойства',
               onPressed: Scaffold.of(context).openEndDrawer,
-              icon: const Icon(Icons.tune),
+              icon: const Icon(Icons.tune, size: 20),
             ),
           ),
-        const SizedBox(width: 4),
+        const SizedBox(width: 2),
       ],
     );
   }
@@ -232,60 +336,140 @@ class _ContextStrip extends StatelessWidget {
     return Material(
       color: Theme.of(context).colorScheme.surfaceContainerLow,
       child: SizedBox(
-        height: 44,
+        height: EditorUiTokens.contextBarHeight,
         child: ListView(
           scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
           children: [
             ActionChip(
-              avatar: const Icon(Icons.park_outlined, size: 16),
+              avatar: const Icon(Icons.park_outlined, size: 14),
               label: const Text('Двор'),
+              visualDensity: VisualDensity.compact,
               onPressed: workspace.site.outdoorZones.isEmpty
                   ? null
                   : () => workspace.selectOutdoorZone(
                         workspace.site.outdoorZones.first.id,
                       ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 4),
             if (workspace.context == EditorWorkspaceContext.siteOutdoor)
               ActionChip(
-                avatar: const Icon(Icons.apartment_outlined, size: 16),
+                avatar: const Icon(Icons.apartment_outlined, size: 14),
                 label: const Text('Building A'),
+                visualDensity: VisualDensity.compact,
                 onPressed: () => workspace.selectLevel(1),
               )
             else ...[
-              ActionChip(
-                avatar: const Icon(Icons.layers_outlined, size: 16),
-                label: Text(workspace.activeLevel?.displayName ?? editor.level.name),
-                onPressed: null,
+              _ContextPill(
+                icon: Icons.layers_outlined,
+                label: workspace.activeLevel?.displayName ?? editor.level.name,
               ),
-              if (workspace.selectedZone case final zone?) ...[
-                const SizedBox(width: 6),
-                ActionChip(
-                  avatar: const Icon(Icons.home_work_outlined, size: 16),
-                  label: Text(zone.name),
-                  onPressed: null,
+              if (workspace.selectedZone case final zone?)
+                _ContextPill(icon: Icons.home_work_outlined, label: zone.name),
+              if (editor.selectedSpace case final room?)
+                _ContextPill(
+                  icon: room.type == SpaceType.corridor
+                      ? Icons.linear_scale
+                      : Icons.crop_square,
+                  label: room.name,
                 ),
-              ],
-              if (editor.selectedSpace case final room?) ...[
-                const SizedBox(width: 6),
-                ActionChip(
-                  avatar: Icon(
-                    room.type == SpaceType.corridor
-                        ? Icons.linear_scale
-                        : Icons.crop_square,
-                    size: 16,
-                  ),
-                  label: Text(room.name),
-                  onPressed: null,
-                ),
-              ],
             ],
           ],
         ),
       ),
     );
   }
+}
+
+class _ContextPill extends StatelessWidget {
+  const _ContextPill({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(left: 4),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            child: Row(
+              children: [
+                Icon(icon, size: 13),
+                const SizedBox(width: 5),
+                Text(label, style: Theme.of(context).textTheme.labelSmall),
+              ],
+            ),
+          ),
+        ),
+      );
+}
+
+class _InspectorPanel extends StatelessWidget {
+  const _InspectorPanel({required this.workspace, required this.onCollapse});
+
+  final EditorBuildingWorkspace workspace;
+  final VoidCallback onCollapse;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        children: [
+          SizedBox(
+            height: EditorUiTokens.panelHeaderHeight,
+            child: Row(
+              children: [
+                const SizedBox(width: 12),
+                const Icon(Icons.tune, size: 17),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text('СВОЙСТВА', style: Theme.of(context).textTheme.labelMedium),
+                ),
+                IconButton(
+                  tooltip: 'Свернуть свойства',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: onCollapse,
+                  icon: const Icon(Icons.chevron_right, size: 18),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(child: _WorkspaceInspector(workspace: workspace)),
+        ],
+      );
+}
+
+class _SideRail extends StatelessWidget {
+  const _SideRail({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: EditorUiTokens.collapsedRailWidth,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: IconButton(
+              tooltip: tooltip,
+              onPressed: onPressed,
+              icon: Icon(icon, size: 19),
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+        ),
+      );
 }
 
 class _WorkspaceInspector extends StatelessWidget {
@@ -300,10 +484,8 @@ class _WorkspaceInspector extends StatelessWidget {
     final zone = workspace.selectedZone;
     final room = editor.selectedSpace;
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 24),
       children: [
-        Text('КОНТЕКСТ', style: Theme.of(context).textTheme.labelLarge),
-        const SizedBox(height: 12),
         _property(
           'Режим',
           workspace.context == EditorWorkspaceContext.siteOutdoor
@@ -317,20 +499,18 @@ class _WorkspaceInspector extends StatelessWidget {
           _property('Квартир', '${level?.apartments.length ?? 0}'),
         ],
         if (zone != null) ...[
-          const Divider(height: 28),
-          Text('ЗОНА', style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 8),
+          const Divider(height: 20),
+          _sectionTitle(context, 'ЗОНА'),
           _property('Название', zone.name),
           _property('Помещений', '${zone.spaceIds.length}'),
         ],
         if (room != null) ...[
-          const Divider(height: 28),
-          Text('ПОМЕЩЕНИЕ', style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 8),
+          const Divider(height: 20),
+          _sectionTitle(context, 'ПОМЕЩЕНИЕ'),
           _property('Название', room.name),
           _property('Тип', room.type.name),
           _property(
-            'Размер bbox',
+            'BBox',
             '${room.boundary.bounds.width} × ${room.boundary.bounds.height} mm',
           ),
         ],
@@ -338,18 +518,28 @@ class _WorkspaceInspector extends StatelessWidget {
     );
   }
 
-  Widget _property(String name, String value) => Padding(
+  Widget _sectionTitle(BuildContext context, String value) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
+        child: Text(value, style: Theme.of(context).textTheme.labelSmall),
+      );
+
+  Widget _property(String name, String value) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: Text(name, style: const TextStyle(fontSize: 12))),
-            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                name,
+                style: const TextStyle(fontSize: 11),
+              ),
+            ),
+            const SizedBox(width: 8),
             Flexible(
               child: Text(
                 value,
                 textAlign: TextAlign.right,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -364,9 +554,9 @@ class _ContextBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-        elevation: 2,
+        elevation: 1,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
           child: Text(
             _contextPath(workspace),
             style: Theme.of(context).textTheme.labelSmall,
