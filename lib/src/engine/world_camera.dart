@@ -69,6 +69,16 @@ final class WorldCamera {
         (centerMm.y - (yPx - viewportHeightPx / 2) * mmPerPixel).round(),
       );
 
+  ({double x, double y}) worldToScreen({
+    required double viewportWidthPx,
+    required double viewportHeightPx,
+    required MmPoint point,
+  }) =>
+      (
+        x: viewportWidthPx / 2 + (point.x - centerMm.x) / mmPerPixel,
+        y: viewportHeightPx / 2 - (point.y - centerMm.y) / mmPerPixel,
+      );
+
   MmBounds visibleWorldBounds({
     required double viewportWidthPx,
     required double viewportHeightPx,
