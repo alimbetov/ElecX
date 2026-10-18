@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
 import 'editor_building_workspace.dart';
 import 'editor_controller.dart';
