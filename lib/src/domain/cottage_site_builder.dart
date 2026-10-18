@@ -15,7 +15,7 @@ abstract final class CottageSiteBuilder {
       kind: PropertyLotKind.detachedHouse,
       boundary: lotBoundary,
       buildingIds: {house.id},
-      outdoorZoneIds: outdoorZones.map((zone) => zone.id),
+      outdoorZoneIds: outdoorZones.map((zone) => zone.id).toSet(),
     );
     final site = ProjectSite(
       id: 'site-house',
@@ -46,7 +46,9 @@ abstract final class CottageSiteBuilder {
     if (lotWidthMm <= 0 || lotDepthMm <= 0) {
       throw ArgumentError('Lot dimensions must be positive.');
     }
-    if (columns <= 0) throw ArgumentError.value(columns, 'columns');
+    if (columns <= 0) {
+      throw ArgumentError.value(columns, 'columns');
+    }
 
     final buildings = <Building>[];
     final lots = <PropertyLot>[];
