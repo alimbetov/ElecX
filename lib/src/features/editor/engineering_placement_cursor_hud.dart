@@ -55,9 +55,7 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   cursor.coordinateLabel,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
+                  style: Theme.of(context).textTheme.labelSmall,
                 ),
                 const SizedBox(height: 2),
                 Text(
