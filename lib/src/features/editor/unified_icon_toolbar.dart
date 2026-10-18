@@ -123,7 +123,7 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
             ? 'Автотрасса между двумя выбранными компонентами'
             : 'Для автотрассы выберите два компонента',
         onPressed: p2.selection.ids.length == 2
-            ? () => p2.autoRouteSelectedPair()
+            ? () => p2.autoRouteSelectedPair(space: controller.selectedSpace)
             : null,
       ),
       if (controller.routeSegments.isNotEmpty)
@@ -273,22 +273,72 @@ class _LayerMenuButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p2 = controller.p2;
-    return PopupMenuButton<EditorLayerId>(
-      tooltip: 'Слои',
-      onSelected: (id) => p2.setLayerVisible(id, !p2.layers.isVisible(id)),
-      itemBuilder: (context) => [
-        for (final layer in EditorLayerId.values)
-          CheckedPopupMenuItem(
-            value: layer,
-            checked: p2.layers.isVisible(layer),
-            child: Text(_layerName(layer)),
+    return IconButton(
+      tooltip: 'Слои: видимость и блокировка',
+      onPressed: () => _showLayers(context),
+      icon: const Icon(Icons.layers_outlined, size: 21),
+      style: IconButton.styleFrom(
+        minimumSize: const Size(42, 42),
+        maximumSize: const Size(42, 42),
+      ),
+    );
+  }
+
+  Future<void> _showLayers(BuildContext context) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => ListenableBuilder(
+        listenable: controller.p2,
+        builder: (context, _) => AlertDialog(
+          title: const Text('Слои'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final layer in EditorLayerId.values)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: IconButton(
+                      tooltip: controller.p2.layers.isVisible(layer)
+                          ? 'Скрыть слой'
+                          : 'Показать слой',
+                      onPressed: () => controller.p2.setLayerVisible(
+                        layer,
+                        !controller.p2.layers.isVisible(layer),
+                      ),
+                      icon: Icon(
+                        controller.p2.layers.isVisible(layer)
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                    ),
+                    title: Text(_layerName(layer)),
+                    trailing: IconButton(
+                      tooltip: controller.p2.layers.isLocked(layer)
+                          ? 'Разблокировать слой'
+                          : 'Заблокировать слой',
+                      onPressed: () => controller.p2.setLayerLocked(
+                        layer,
+                        !controller.p2.layers.isLocked(layer),
+                      ),
+                      icon: Icon(
+                        controller.p2.layers.isLocked(layer)
+                            ? Icons.lock_outline
+                            : Icons.lock_open_outlined,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
-      ],
-      child: const SizedBox(
-        width: 42,
-        height: 42,
-        child: Icon(Icons.layers_outlined, size: 21),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Готово'),
+            ),
+          ],
+        ),
       ),
     );
   }
