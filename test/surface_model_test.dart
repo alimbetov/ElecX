@@ -1,5 +1,6 @@
 import 'package:elecx/src/domain/geometry.dart';
 import 'package:elecx/src/domain/project_model.dart';
+import 'package:elecx/src/domain/surface_navigation.dart';
 import 'package:elecx/src/domain/surface_routing.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
@@ -116,8 +117,83 @@ void main() {
     controller.nextWall();
 
     expect(controller.routeSegments, hasLength(2));
-    expect(controller.routeSegments.last.surface, RoomSurfaceRef.wall('room-101', 1));
+    expect(
+      controller.routeSegments.last.surface,
+      RoomSurfaceRef.wall('room-101', 1),
+    );
     expect(controller.routeSegments.last.points.single.xMm, 0);
     expect(controller.routeSegments.last.points.single.yMm, 1200);
+  });
+
+  test('wall edges resolve to floor ceiling and adjacent walls', () {
+    final controller = EditorController.demo();
+    final room = controller.selectedSpace!;
+
+    expect(
+      SurfaceNavigationResolver.targetForWallEdge(
+        space: room,
+        wallIndex: 0,
+        edge: WallNavigationEdge.floor,
+      ),
+      RoomSurfaceRef.floor(room.id),
+    );
+    expect(
+      SurfaceNavigationResolver.targetForWallEdge(
+        space: room,
+        wallIndex: 0,
+        edge: WallNavigationEdge.ceiling,
+      ),
+      RoomSurfaceRef.ceiling(room.id),
+    );
+    expect(
+      SurfaceNavigationResolver.targetForWallEdge(
+        space: room,
+        wallIndex: 0,
+        edge: WallNavigationEdge.start,
+      ),
+      RoomSurfaceRef.wall(room.id, 3),
+    );
+    expect(
+      SurfaceNavigationResolver.targetForWallEdge(
+        space: room,
+        wallIndex: 0,
+        edge: WallNavigationEdge.end,
+      ),
+      RoomSurfaceRef.wall(room.id, 1),
+    );
+  });
+
+  test('edge navigation carries active cable route to adjacent wall', () {
+    final controller = EditorController.demo();
+    controller.setTool(EditorTool.cableRoute);
+    controller.showWall(0);
+    final wall = controller.activeWall!;
+
+    controller.navigateWallEdge(
+      WallNavigationEdge.end,
+      SurfacePointMm(wall.lengthMm.round(), 1200),
+    );
+
+    expect(controller.activeSurface, RoomSurfaceRef.wall('room-101', 1));
+    expect(controller.routeSegments, hasLength(2));
+    expect(controller.routeSegments.first.points.single.yMm, 1200);
+    expect(controller.routeSegments.last.points.single.xMm, 0);
+    expect(controller.routeSegments.last.points.single.yMm, 1200);
+  });
+
+  test('edge navigation carries cable route from wall to floor', () {
+    final controller = EditorController.demo();
+    controller.setTool(EditorTool.cableRoute);
+    controller.showWall(0);
+
+    controller.navigateWallEdge(
+      WallNavigationEdge.floor,
+      const SurfacePointMm(1000, 0),
+    );
+
+    expect(controller.activeSurface, RoomSurfaceRef.floor('room-101'));
+    expect(controller.routeSegments, hasLength(2));
+    expect(controller.routeSegments.last.points.single.xMm, 1000);
+    expect(controller.routeSegments.last.points.single.yMm, 0);
   });
 }
