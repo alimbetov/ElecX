@@ -10,6 +10,7 @@ import '../../domain/surface_navigation.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/adaptive_grid.dart';
 import '../../engine/constraint_engine.dart';
+import '../../engine/direct_manipulation.dart';
 import '../../engine/editor_layers.dart';
 import '../../engine/render_policy.dart';
 import '../../engine/selection_engine.dart';
@@ -37,6 +38,8 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
   Offset? _touchStartFocal;
   String? _dragComponentId;
   SurfacePointMm? _dragStartPosition;
+  Offset? _marqueeStart;
+  Offset? _marqueeCurrent;
   int _lastViewportRevision = 0;
   Size _size = Size.zero;
 
@@ -263,6 +266,23 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
     return best;
   }
 
+  ElectricalComponentPlacement? _componentForHandle(
+    SurfacePointMm point,
+    _SurfaceProjection projection,
+  ) {
+    final radiusMm = math.max(80.0, projection.camera.mmPerPixel * 18);
+    final handle = DirectManipulationEngine.hitTest(
+      handles: controller.p2.handlesForSelection(),
+      point: MmPoint(point.xMm, point.yMm),
+      radiusMm: radiusMm,
+    );
+    if (handle == null) return null;
+    for (final component in controller.p2.components) {
+      if (component.id == handle.ownerId) return component;
+    }
+    return null;
+  }
+
   SelectionMode _selectionModeForKeyboard() {
     final keyboard = HardwareKeyboard.instance;
     if (keyboard.isControlPressed || keyboard.isMetaPressed) {
@@ -316,7 +336,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
         }
         return;
       }
-      controller.p2.clearSelection();
+      if (_marqueeStart == null) controller.p2.clearSelection();
     }
 
     if (surface.type == SurfacePlaneType.wall) {
@@ -342,8 +362,68 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
     controller.surfaceTap(point);
   }
 
-  void _finishComponentDrag({required bool cancelled}) {
+  Rect? get _marqueeRect {
+    final start = _marqueeStart;
+    final current = _marqueeCurrent;
+    if (start == null || current == null) return null;
+    return Rect.fromPoints(start, current);
+  }
+
+  void _commitMarquee(_SurfaceProjection projection) {
+    final rect = _marqueeRect;
+    if (rect == null || rect.width < 3 || rect.height < 3) return;
+    final a = projection.viewportToSurface(rect.topLeft);
+    final b = projection.viewportToSurface(rect.bottomRight);
+    if (a == null || b == null) return;
+    final box = MmBounds.fromPoints(
+      MmPoint(a.xMm, a.yMm),
+      MmPoint(b.xMm, b.yMm),
+    );
+    final surface = controller.activeSurface;
+    final objects = <SelectableBounds>[
+      for (final component in controller.p2.components)
+        if (component.surface == surface)
+          SelectableBounds(
+            id: component.id,
+            kind: SelectionKind.electricalComponent,
+            bounds: MmBounds(
+              left: component.position.xMm - 1,
+              bottom: component.position.yMm - 1,
+              right: component.position.xMm + 1,
+              top: component.position.yMm + 1,
+            ),
+          ),
+    ];
+    final next = SelectionEngine.boxSelect(
+      objects: objects,
+      box: box,
+      current: controller.p2.selection,
+      mode: _selectionModeForKeyboard(),
+      allowedKinds: const {SelectionKind.electricalComponent},
+    );
+    controller.p2.clearSelection();
+    var first = true;
+    for (final id in next.ids) {
+      controller.p2.select(
+        id,
+        mode: first ? SelectionMode.replace : SelectionMode.add,
+      );
+      first = false;
+    }
+  }
+
+  void _finishPointer(
+    _SurfaceProjection projection, {
+    required bool cancelled,
+  }) {
     _panAnchor = null;
+    if (_marqueeStart != null) {
+      if (!cancelled) _commitMarquee(projection);
+      setState(() {
+        _marqueeStart = null;
+        _marqueeCurrent = null;
+      });
+    }
     if (_dragComponentId != null) {
       if (cancelled) {
         controller.p2.cancelMoveSelectedComponent();
@@ -405,21 +485,29 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
                     _panAnchor = event.localPosition;
                     return;
                   }
-                  if (event.buttons == kPrimaryMouseButton &&
-                      controller.tool == EditorTool.select &&
-                      controller.p2.placementType == null) {
-                    final raw = projection.viewportToSurface(event.localPosition);
-                    if (raw == null) return;
-                    final component = _componentAt(raw, projection);
-                    if (component == null) return;
+                  if (event.buttons != kPrimaryMouseButton ||
+                      controller.tool != EditorTool.select ||
+                      controller.p2.placementType != null) {
+                    return;
+                  }
+                  final raw = projection.viewportToSurface(event.localPosition);
+                  if (raw == null) return;
+                  final handleOwner = _componentForHandle(raw, projection);
+                  final component = handleOwner ?? _componentAt(raw, projection);
+                  if (component != null) {
                     controller.p2.select(
                       component.id,
-                      mode: _selectionModeForKeyboard(),
+                      mode: handleOwner != null
+                          ? SelectionMode.replace
+                          : _selectionModeForKeyboard(),
                     );
                     if (!controller.p2.selection.contains(component.id)) return;
                     _dragComponentId = component.id;
                     _dragStartPosition = component.position;
                     controller.p2.beginMoveSelectedComponent();
+                  } else {
+                    _marqueeStart = event.localPosition;
+                    _marqueeCurrent = event.localPosition;
                   }
                 },
                 onPointerMove: (event) {
@@ -430,6 +518,11 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
                     setState(() {
                       _camera = _camera!.panPixels(delta.dx, delta.dy);
                     });
+                    return;
+                  }
+                  if (_marqueeStart != null &&
+                      event.buttons == kPrimaryMouseButton) {
+                    setState(() => _marqueeCurrent = event.localPosition);
                     return;
                   }
                   if (_dragComponentId != null &&
@@ -443,8 +536,14 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
                     }
                   }
                 },
-                onPointerUp: (_) => _finishComponentDrag(cancelled: false),
-                onPointerCancel: (_) => _finishComponentDrag(cancelled: true),
+                onPointerUp: (_) => _finishPointer(
+                  projection,
+                  cancelled: false,
+                ),
+                onPointerCancel: (_) => _finishPointer(
+                  projection,
+                  cancelled: true,
+                ),
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTapUp: (details) => _handleTap(
@@ -459,6 +558,21 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
                 ),
               ),
             ),
+            if (_marqueeRect case final rect?)
+              Positioned(
+                left: rect.left,
+                top: rect.top,
+                width: rect.width,
+                height: rect.height,
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: const Color(0x181565C0),
+                      border: Border.all(color: const Color(0xFF1565C0)),
+                    ),
+                  ),
+                ),
+              ),
             if (surface.type == SurfacePlaneType.wall)
               Positioned(
                 left: compact ? 8 : 12,
