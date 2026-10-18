@@ -63,38 +63,47 @@ class EngineeringInspector extends StatelessWidget {
 
   Widget _wallSection(BuildContext context, RoomWallSurface wall) {
     final notch = controller.activeWallTopNotch;
+    final external = controller.activeWallIsExternal;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _SectionLabel('СТЕНА'),
         _ValueRow('Длина', '${wall.lengthMm.round()} mm'),
         _ValueRow('Высота', '${wall.heightMm} mm'),
-        _ValueRow('Шаг перемещения', '$_stepMm mm'),
-        const SizedBox(height: 6),
-        const _DirectionCaption(
-          icon: Icons.swap_vert,
-          text: 'Перемещение стены — только по нормали',
-        ),
-        const SizedBox(height: 5),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => controller.nudgeActiveWallNormal(-_stepMm),
-                icon: const Icon(Icons.arrow_back, size: 17),
-                label: Text('-$_stepMm'),
+        if (external) ...[
+          _ValueRow('Шаг перемещения', '$_stepMm mm'),
+          const SizedBox(height: 6),
+          const _DirectionCaption(
+            icon: Icons.swap_vert,
+            text: 'Внешняя стена — перемещение по нормали',
+          ),
+          const SizedBox(height: 5),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => controller.nudgeActiveWallNormal(-_stepMm),
+                  icon: const Icon(Icons.arrow_back, size: 17),
+                  label: Text('-$_stepMm'),
+                ),
               ),
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () => controller.nudgeActiveWallNormal(_stepMm),
-                icon: const Icon(Icons.arrow_forward, size: 17),
-                label: Text('+$_stepMm'),
+              const SizedBox(width: 6),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => controller.nudgeActiveWallNormal(_stepMm),
+                  icon: const Icon(Icons.arrow_forward, size: 17),
+                  label: Text('+$_stepMm'),
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+        ] else ...[
+          const SizedBox(height: 6),
+          const _DirectionCaption(
+            icon: Icons.link,
+            text: 'Общая граница: directional-кнопки скрыты',
+          ),
+        ],
         const SizedBox(height: 6),
         Row(
           children: [
