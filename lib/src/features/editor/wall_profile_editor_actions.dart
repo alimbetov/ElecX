@@ -41,7 +41,7 @@ extension WallProfileEditorActions on EditorController {
     }
 
     level = candidateLevel;
-    notifyListeners();
+    selectSpace(space.id);
     return true;
   }
 
@@ -77,7 +77,7 @@ extension WallProfileEditorActions on EditorController {
       spaceId: space.id,
       wallIndex: wallIndex,
     );
-    notifyListeners();
+    selectSpace(space.id);
     return true;
   }
 
