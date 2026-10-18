@@ -95,7 +95,10 @@ final class ArchitecturalOpening {
     if (hostWall.type != SurfacePlaneType.wall) {
       throw ArgumentError('Architectural openings must be hosted by a wall.');
     }
-    if (offsetFromStartMm < 0 || widthMm <= 0 || heightMm <= 0 || sillHeightMm < 0) {
+    if (offsetFromStartMm < 0 ||
+        widthMm <= 0 ||
+        heightMm <= 0 ||
+        sillHeightMm < 0) {
       throw ArgumentError('Opening dimensions and offsets are invalid.');
     }
   }
@@ -109,6 +112,25 @@ final class ArchitecturalOpening {
   final int sillHeightMm;
 
   int get topMm => sillHeightMm + heightMm;
+  int get endOffsetMm => offsetFromStartMm + widthMm;
+
+  ArchitecturalOpening copyWith({
+    RoomSurfaceRef? hostWall,
+    ArchitecturalOpeningType? type,
+    int? offsetFromStartMm,
+    int? widthMm,
+    int? heightMm,
+    int? sillHeightMm,
+  }) =>
+      ArchitecturalOpening(
+        id: id,
+        hostWall: hostWall ?? this.hostWall,
+        type: type ?? this.type,
+        offsetFromStartMm: offsetFromStartMm ?? this.offsetFromStartMm,
+        widthMm: widthMm ?? this.widthMm,
+        heightMm: heightMm ?? this.heightMm,
+        sillHeightMm: sillHeightMm ?? this.sillHeightMm,
+      );
 }
 
 /// A point in coordinates local to a physical surface.
