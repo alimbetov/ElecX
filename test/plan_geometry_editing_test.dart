@@ -99,4 +99,42 @@ void main() {
     expect(controller.commitSelectedBoundary(edited!), isFalse);
     expect(controller.selectedSpace!.boundary.vertices[3], source.vertices[3]);
   });
+
+  test('opening remains selected while direct editing stays on plan', () {
+    final controller = EditorController.demo();
+    final opening = controller.openings.first;
+
+    controller.selectOpeningForPlan(opening);
+
+    expect(controller.selectedOpeningId, opening.id);
+    expect(controller.viewMode, EditorViewMode.plan);
+    expect(controller.activeSurface, opening.hostWall);
+  });
+
+  test('opening center drag moves opening along host wall', () {
+    final controller = EditorController.demo();
+    final opening = controller.openings.first;
+    controller.selectOpeningForPlan(opening);
+
+    expect(controller.moveSelectedOpeningAlongWall(1800), isTrue);
+    expect(
+      controller.selectedOpening!.offsetFromStartMm,
+      1800 - opening.widthMm ~/ 2,
+    );
+  });
+
+  test('opening edge drag resizes width and rejects invalid geometry', () {
+    final controller = EditorController.demo();
+    final opening = controller.openings.first;
+    controller.selectOpeningForPlan(opening);
+
+    final oldEnd = opening.offsetFromStartMm + opening.widthMm;
+    expect(controller.resizeSelectedOpeningFromStart(400), isTrue);
+    expect(controller.selectedOpening!.offsetFromStartMm, 400);
+    expect(controller.selectedOpening!.widthMm, oldEnd - 400);
+
+    final before = controller.selectedOpening!;
+    expect(controller.resizeSelectedOpeningFromEnd(99999), isFalse);
+    expect(controller.selectedOpening!.widthMm, before.widthMm);
+  });
 }
