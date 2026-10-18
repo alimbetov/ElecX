@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../domain/project_model.dart';
 import 'editor_building_workspace.dart';
 import 'editor_controller.dart';
 import 'editor_keyboard_scope.dart';
@@ -272,9 +273,12 @@ class _WorkspaceInspector extends StatelessWidget {
       children: [
         Text('КОНТЕКСТ', style: Theme.of(context).textTheme.labelLarge),
         const SizedBox(height: 12),
-        _property('Режим', workspace.context == EditorWorkspaceContext.siteOutdoor
-            ? 'Площадка / двор'
-            : 'Здание'),
+        _property(
+          'Режим',
+          workspace.context == EditorWorkspaceContext.siteOutdoor
+              ? 'Площадка / двор'
+              : 'Здание',
+        ),
         if (workspace.context == EditorWorkspaceContext.buildingLevel) ...[
           _property('Уровень', level?.displayName ?? editor.level.name),
           _property('Отметка', '${editor.level.elevationMm} mm'),
