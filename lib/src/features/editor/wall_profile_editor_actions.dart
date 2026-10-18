@@ -56,10 +56,8 @@ extension WallProfileEditorActions on EditorController {
     }
 
     level = candidateLevel;
-    selectedSpaceId = space.id;
-    activeSurface = RoomSurfaceRef.wall(space.id, wallIndex);
-    viewMode = EditorViewMode.surface;
-    notifyListeners();
+    selectSpace(space.id);
+    showWall(wallIndex);
     return true;
   }
 
@@ -84,8 +82,6 @@ extension WallProfileEditorActions on EditorController {
     }
   }
 
-  /// Returns the current simple rectangular top notch, when the wall profile
-  /// has exactly the shape produced by [WallProfile.withTopNotch].
   WallTopNotchState? get activeWallTopNotch {
     final space = selectedSpace;
     final wallIndex = activeSurface?.wallIndex;
@@ -99,7 +95,6 @@ extension WallProfileEditorActions on EditorController {
     return _topNotchFromProfile(profile);
   }
 
-  /// Moves the active beam/notch left/right along the wall X axis.
   bool nudgeActiveWallTopNotchX(int deltaMm) {
     final notch = activeWallTopNotch;
     if (notch == null || deltaMm == 0) {
@@ -112,8 +107,6 @@ extension WallProfileEditorActions on EditorController {
     );
   }
 
-  /// Changes the beam/notch depth. Positive values move its bottom edge down;
-  /// negative values move it back toward the ceiling.
   bool nudgeActiveWallTopNotchDepth(int deltaMm) {
     final notch = activeWallTopNotch;
     if (notch == null || deltaMm == 0) {
@@ -137,10 +130,8 @@ extension WallProfileEditorActions on EditorController {
       spaceId: space.id,
       wallIndex: wallIndex,
     );
-    selectedSpaceId = space.id;
-    activeSurface = RoomSurfaceRef.wall(space.id, wallIndex);
-    viewMode = EditorViewMode.surface;
-    notifyListeners();
+    selectSpace(space.id);
+    showWall(wallIndex);
     return true;
   }
 
