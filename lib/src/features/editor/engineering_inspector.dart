@@ -80,7 +80,6 @@ class EngineeringInspector extends StatelessWidget {
           children: [
             Expanded(
               child: OutlinedButton.icon(
-                tooltip: 'Сдвинуть стену по отрицательной нормали',
                 onPressed: () => controller.nudgeActiveWallNormal(-_stepMm),
                 icon: const Icon(Icons.arrow_back, size: 17),
                 label: Text('-$_stepMm'),
@@ -89,7 +88,6 @@ class EngineeringInspector extends StatelessWidget {
             const SizedBox(width: 6),
             Expanded(
               child: OutlinedButton.icon(
-                tooltip: 'Сдвинуть стену по положительной нормали',
                 onPressed: () => controller.nudgeActiveWallNormal(_stepMm),
                 icon: const Icon(Icons.arrow_forward, size: 17),
                 label: Text('+$_stepMm'),
@@ -412,7 +410,6 @@ class _OpeningEditor extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    tooltip: 'Сдвинуть к началу стены',
                     onPressed: () => controller.nudgeSelectedOpening(-stepMm),
                     icon: const Icon(Icons.arrow_back, size: 17),
                     label: Text('-$stepMm'),
@@ -421,7 +418,6 @@ class _OpeningEditor extends StatelessWidget {
                 const SizedBox(width: 6),
                 Expanded(
                   child: OutlinedButton.icon(
-                    tooltip: 'Сдвинуть к концу стены',
                     onPressed: () => controller.nudgeSelectedOpening(stepMm),
                     icon: const Icon(Icons.arrow_forward, size: 17),
                     label: Text('+$stepMm'),
