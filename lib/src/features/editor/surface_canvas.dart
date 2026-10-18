@@ -24,6 +24,8 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
   WorldCamera? _camera;
   String? _surfaceId;
   Offset? _panAnchor;
+  WorldCamera? _touchStartCamera;
+  Offset? _touchStartFocal;
   Size _size = Size.zero;
 
   EditorController get controller => widget.controller;
@@ -31,7 +33,9 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
   WorldCamera _fittedCamera(_SurfaceExtent extent) {
     final base = _camera ??
         const WorldCamera(centerMm: MmPoint(0, 0), mmPerPixel: 10);
-    if (_size.isEmpty) return base;
+    if (_size.isEmpty) {
+      return base;
+    }
     return base.fitBounds(
       bounds: MmBounds(
         left: 0,
@@ -47,19 +51,25 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
 
   void _ensureCamera(_SurfaceExtent extent) {
     final id = controller.activeSurface?.id;
-    if (_camera != null && _surfaceId == id) return;
+    if (_camera != null && _surfaceId == id) {
+      return;
+    }
     _surfaceId = id;
     _camera = _fittedCamera(extent);
   }
 
   void _fit(_SurfaceExtent extent) {
-    if (_size.isEmpty) return;
+    if (_size.isEmpty) {
+      return;
+    }
     setState(() => _camera = _fittedCamera(extent));
   }
 
   void _zoomAt(Offset cursor, double factor) {
     final camera = _camera;
-    if (camera == null || _size.isEmpty) return;
+    if (camera == null || _size.isEmpty) {
+      return;
+    }
     setState(() {
       _camera = camera.zoomAt(
         factor: factor,
@@ -69,6 +79,70 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
         cursorYpx: cursor.dy,
       );
     });
+  }
+
+  void _startTouchGesture(ScaleStartDetails details) {
+    _touchStartCamera = _camera;
+    _touchStartFocal = details.localFocalPoint;
+  }
+
+  void _updateTouchGesture(ScaleUpdateDetails details) {
+    if (details.pointerCount < 2 || _size.isEmpty) {
+      return;
+    }
+    final startCamera = _touchStartCamera;
+    final startFocal = _touchStartFocal;
+    if (startCamera == null || startFocal == null) {
+      return;
+    }
+    final delta = details.localFocalPoint - startFocal;
+    var next = startCamera.panPixels(delta.dx, delta.dy);
+    next = next.zoomAt(
+      factor: details.scale,
+      viewportWidthPx: _size.width,
+      viewportHeightPx: _size.height,
+      cursorXpx: details.localFocalPoint.dx,
+      cursorYpx: details.localFocalPoint.dy,
+    );
+    setState(() => _camera = next);
+  }
+
+  void _endTouchGesture(ScaleEndDetails details) {
+    _touchStartCamera = null;
+    _touchStartFocal = null;
+  }
+
+  void _handleTap(
+    TapUpDetails details,
+    _SurfaceProjection projection,
+    RoomSurfaceRef surface,
+    List<MmPoint> roomVertices,
+  ) {
+    final point = projection.viewportToSurface(details.localPosition);
+    if (point == null) {
+      return;
+    }
+    if (surface.type == SurfacePlaneType.wall) {
+      final hit = projection.wallEdgeHit(
+        details.localPosition,
+        thresholdPx: 20,
+      );
+      if (hit != null) {
+        controller.navigateWallEdge(hit.edge, hit.point);
+        return;
+      }
+    } else {
+      final hit = projection.horizontalBoundaryHit(
+        roomVertices,
+        details.localPosition,
+        thresholdPx: 20,
+      );
+      if (hit != null) {
+        controller.navigateHorizontalBoundary(hit.edgeIndex, hit.point);
+        return;
+      }
+    }
+    controller.surfaceTap(point);
   }
 
   @override
@@ -92,6 +166,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
           extent: extent,
         );
         final lod = RenderPolicy.lodForWorldUnitsPerPixel(camera.mmPerPixel);
+        final compactControls = MediaQuery.sizeOf(context).width < 700;
 
         return Stack(
           children: [
@@ -106,7 +181,9 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
               child: Listener(
                 behavior: HitTestBehavior.opaque,
                 onPointerSignal: (event) {
-                  if (event is! PointerScrollEvent) return;
+                  if (event is! PointerScrollEvent) {
+                    return;
+                  }
                   _zoomAt(
                     event.localPosition,
                     event.scrollDelta.dy < 0 ? 1.18 : 1 / 1.18,
@@ -119,7 +196,9 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
                 },
                 onPointerMove: (event) {
                   final anchor = _panAnchor;
-                  if (anchor == null) return;
+                  if (anchor == null) {
+                    return;
+                  }
                   final delta = event.localPosition - anchor;
                   _panAnchor = event.localPosition;
                   setState(() {
@@ -127,76 +206,86 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
                   });
                 },
                 onPointerUp: (_) => _panAnchor = null,
+                onPointerCancel: (_) => _panAnchor = null,
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTapDown: (details) {
-                    final point =
-                        projection.viewportToSurface(details.localPosition);
-                    if (point == null) return;
-                    if (surface.type == SurfacePlaneType.wall) {
-                      final hit = projection.wallEdgeHit(
-                        details.localPosition,
-                        thresholdPx: 20,
-                      );
-                      if (hit != null) {
-                        controller.navigateWallEdge(hit.edge, hit.point);
-                        return;
-                      }
-                    } else {
-                      final hit = projection.horizontalBoundaryHit(
-                        space.boundary.vertices,
-                        details.localPosition,
-                        thresholdPx: 20,
-                      );
-                      if (hit != null) {
-                        controller.navigateHorizontalBoundary(
-                          hit.edgeIndex,
-                          hit.point,
-                        );
-                        return;
-                      }
-                    }
-                    controller.surfaceTap(point);
-                  },
+                  onTapUp: (details) => _handleTap(
+                    details,
+                    projection,
+                    surface,
+                    space.boundary.vertices,
+                  ),
+                  onScaleStart: _startTouchGesture,
+                  onScaleUpdate: _updateTouchGesture,
+                  onScaleEnd: _endTouchGesture,
                 ),
               ),
             ),
             Positioned(
-              right: 12,
-              top: 12,
-              child: Card(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      tooltip: 'Вписать поверхность',
-                      onPressed: () => _fit(extent),
-                      icon: const Icon(Icons.fit_screen),
-                    ),
-                    IconButton(
-                      onPressed: () =>
-                          _zoomAt(_size.center(Offset.zero), 0.8),
-                      icon: const Icon(Icons.zoom_out),
-                    ),
-                    IconButton(
-                      onPressed: () =>
-                          _zoomAt(_size.center(Offset.zero), 1.25),
-                      icon: const Icon(Icons.zoom_in),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(right: 10),
-                      child: Text(
-                        '${lod.name} · '
-                        '${camera.mmPerPixel.toStringAsFixed(1)} mm/px',
-                      ),
-                    ),
-                  ],
-                ),
+              right: compactControls ? 8 : 12,
+              top: compactControls ? 8 : 12,
+              child: _SurfaceViewportControls(
+                compact: compactControls,
+                lod: lod,
+                mmPerPixel: camera.mmPerPixel,
+                onFit: () => _fit(extent),
+                onZoomOut: () => _zoomAt(_size.center(Offset.zero), 0.8),
+                onZoomIn: () => _zoomAt(_size.center(Offset.zero), 1.25),
               ),
             ),
           ],
         );
       },
+    );
+  }
+}
+
+class _SurfaceViewportControls extends StatelessWidget {
+  const _SurfaceViewportControls({
+    required this.compact,
+    required this.lod,
+    required this.mmPerPixel,
+    required this.onFit,
+    required this.onZoomOut,
+    required this.onZoomIn,
+  });
+
+  final bool compact;
+  final RenderLod lod;
+  final double mmPerPixel;
+  final VoidCallback onFit;
+  final VoidCallback onZoomOut;
+  final VoidCallback onZoomIn;
+
+  @override
+  Widget build(BuildContext context) {
+    final buttons = <Widget>[
+      IconButton(
+        tooltip: 'Вписать поверхность',
+        onPressed: onFit,
+        icon: const Icon(Icons.fit_screen),
+      ),
+      IconButton(onPressed: onZoomOut, icon: const Icon(Icons.zoom_out)),
+      IconButton(onPressed: onZoomIn, icon: const Icon(Icons.zoom_in)),
+    ];
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: compact
+            ? Column(mainAxisSize: MainAxisSize.min, children: buttons)
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ...buttons,
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Text(
+                      '${lod.name} · ${mmPerPixel.toStringAsFixed(1)} mm/px',
+                    ),
+                  ),
+                ],
+              ),
+      ),
     );
   }
 }
@@ -302,7 +391,9 @@ final class _SurfaceProjection {
     required double thresholdPx,
   }) {
     final local = viewportToSurface(viewportPoint);
-    if (local == null) return null;
+    if (local == null) {
+      return null;
+    }
     final thresholdMm = thresholdPx * camera.mmPerPixel;
     final distances = <WallNavigationEdge, double>{
       WallNavigationEdge.start: local.xMm.toDouble(),
@@ -312,7 +403,9 @@ final class _SurfaceProjection {
     };
     final entry =
         distances.entries.reduce((a, b) => a.value <= b.value ? a : b);
-    if (entry.value > thresholdMm) return null;
+    if (entry.value > thresholdMm) {
+      return null;
+    }
     final point = switch (entry.key) {
       WallNavigationEdge.start => SurfacePointMm(0, local.yMm),
       WallNavigationEdge.end => SurfacePointMm(extent.widthMm, local.yMm),
@@ -361,7 +454,9 @@ final class _SurfaceProjection {
   Offset _closestPointOnSegment(Offset point, Offset a, Offset b) {
     final ab = b - a;
     final lengthSquared = ab.dx * ab.dx + ab.dy * ab.dy;
-    if (lengthSquared == 0) return a;
+    if (lengthSquared == 0) {
+      return a;
+    }
     final ap = point - a;
     final t = ((ap.dx * ab.dx + ap.dy * ab.dy) / lengthSquared)
         .clamp(0.0, 1.0);
@@ -370,11 +465,56 @@ final class _SurfaceProjection {
 }
 
 class _SurfacePainter extends CustomPainter {
-  _SurfacePainter(this.controller, this.projection, this.lod);
+  _SurfacePainter(
+    this.controller,
+    this.projection,
+    this.lod,
+  )   : activeSurfaceId = controller.activeSurface?.id,
+        selectedSpaceId = controller.selectedSpaceId,
+        dimensionsVisible = controller.dimensionsVisible,
+        openingsFingerprint = Object.hashAll(
+          controller.activeWallOpenings.map(
+            (opening) => Object.hash(
+              opening.id,
+              opening.type,
+              opening.offsetFromStartMm,
+              opening.widthMm,
+              opening.heightMm,
+              opening.sillHeightMm,
+            ),
+          ),
+        ),
+        routeFingerprint = Object.hashAll(
+          controller.routeSegments.expand(
+            (segment) => <Object?>[
+              segment.surface.id,
+              ...segment.points.expand(
+                (point) => <Object?>[point.xMm, point.yMm],
+              ),
+            ],
+          ),
+        ),
+        profileFingerprint = Object.hashAll(
+          controller.selectedSpace?.wallProfiles.entries.expand(
+                (entry) => <Object?>[
+                  entry.key,
+                  ...entry.value.vertices.expand(
+                    (point) => <Object?>[point.xMm, point.yMm],
+                  ),
+                ],
+              ) ??
+              const <Object?>[],
+        );
 
   final EditorController controller;
   final _SurfaceProjection projection;
   final RenderLod lod;
+  final String? activeSurfaceId;
+  final String? selectedSpaceId;
+  final bool dimensionsVisible;
+  final int openingsFingerprint;
+  final int routeFingerprint;
+  final int profileFingerprint;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -388,29 +528,58 @@ class _SurfacePainter extends CustomPainter {
     } else {
       _drawHorizontalSurface(canvas, surface.type);
     }
-    _drawRoute(canvas);
+  }
+
+  Path _wallPath() {
+    final wall = controller.activeWall!;
+    final wallIndex = wall.ref.wallIndex ?? 0;
+    final profile = controller.selectedSpace!.wallProfiles[wallIndex];
+    if (profile == null) {
+      return Path()..addRect(projection.surfaceRect);
+    }
+
+    final path = Path();
+    final first = profile.vertices.first;
+    final firstPoint = projection.surfaceToViewport(
+      SurfacePointMm(first.xMm, first.yMm),
+    );
+    path.moveTo(firstPoint.dx, firstPoint.dy);
+    for (final vertex in profile.vertices.skip(1)) {
+      final point = projection.surfaceToViewport(
+        SurfacePointMm(vertex.xMm, vertex.yMm),
+      );
+      path.lineTo(point.dx, point.dy);
+    }
+    path.close();
+    return path;
   }
 
   void _drawWall(Canvas canvas) {
     final wall = controller.activeWall!;
     final rect = projection.surfaceRect;
-    canvas.drawRect(rect, Paint()..color = Colors.white);
+    final wallPath = _wallPath();
+
+    canvas.drawPath(wallPath, Paint()..color = Colors.white);
+    canvas.save();
+    canvas.clipPath(wallPath);
     _drawAdaptiveGrid(canvas, rect);
     if (RenderPolicy.showOpenings(lod)) {
       for (final opening in controller.activeWallOpenings) {
         _drawOpening(canvas, opening);
       }
     }
-    canvas.drawRect(
-      rect,
+    _drawRoute(canvas);
+    canvas.restore();
+
+    canvas.drawPath(
+      wallPath,
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2
         ..color = const Color(0xFF263238),
     );
     _drawNavigationEdges(canvas, rect);
-    if (controller.dimensionsVisible &&
-        RenderPolicy.showFineDimensions(lod)) {
+    if (dimensionsVisible && RenderPolicy.showFineDimensions(lod)) {
       _horizontalDimension(
         canvas,
         rect.left,
@@ -450,6 +619,7 @@ class _SurfacePainter extends CustomPainter {
     canvas.save();
     canvas.clipPath(path);
     _drawAdaptiveGrid(canvas, projection.surfaceRect);
+    _drawRoute(canvas);
     canvas.restore();
     canvas.drawPath(
       path,
@@ -520,7 +690,10 @@ class _SurfacePainter extends CustomPainter {
       ),
     );
     final rect = Rect.fromPoints(a, b);
-    canvas.drawRect(rect, Paint()..color = const Color(0xFFDDEFF7));
+    final fill = opening.type == ArchitecturalOpeningType.door
+        ? const Color(0xFFEDE4D3)
+        : const Color(0xFFDDEFF7);
+    canvas.drawRect(rect, Paint()..color = fill);
     canvas.drawRect(
       rect,
       Paint()
@@ -532,7 +705,9 @@ class _SurfacePainter extends CustomPainter {
 
   void _drawRoute(Canvas canvas) {
     final segment = controller.activeRouteSegment;
-    if (segment == null || segment.points.isEmpty) return;
+    if (segment == null || segment.points.isEmpty) {
+      return;
+    }
     final paint = Paint()
       ..color = const Color(0xFFD66B2C)
       ..strokeWidth = 2.6
@@ -629,7 +804,10 @@ class _SurfacePainter extends CustomPainter {
   bool shouldRepaint(covariant _SurfacePainter oldDelegate) =>
       oldDelegate.projection.camera != projection.camera ||
       oldDelegate.lod != lod ||
-      oldDelegate.controller.activeSurface != controller.activeSurface ||
-      oldDelegate.controller.routeSegments.length !=
-          controller.routeSegments.length;
+      oldDelegate.activeSurfaceId != activeSurfaceId ||
+      oldDelegate.selectedSpaceId != selectedSpaceId ||
+      oldDelegate.dimensionsVisible != dimensionsVisible ||
+      oldDelegate.openingsFingerprint != openingsFingerprint ||
+      oldDelegate.routeFingerprint != routeFingerprint ||
+      oldDelegate.profileFingerprint != profileFingerprint;
 }
