@@ -35,8 +35,12 @@ final class OutdoorZone {
     required this.boundary,
     this.grid = const GridDefinition(minorStepMm: 500, majorEvery: 10),
   }) {
-    if (id.isEmpty) throw ArgumentError('Outdoor zone id must be non-empty.');
-    if (name.isEmpty) throw ArgumentError('Outdoor zone name must be non-empty.');
+    if (id.isEmpty) {
+      throw ArgumentError('Outdoor zone id must be non-empty.');
+    }
+    if (name.isEmpty) {
+      throw ArgumentError('Outdoor zone name must be non-empty.');
+    }
   }
 
   final String id;
@@ -61,7 +65,9 @@ final class SiteBuildingConnection {
     required this.levelPoint,
     this.targetSpaceId,
   }) {
-    if (id.isEmpty) throw ArgumentError('Connection id must be non-empty.');
+    if (id.isEmpty) {
+      throw ArgumentError('Connection id must be non-empty.');
+    }
     if (levelNumber < -30 || levelNumber > 200) {
       throw RangeError.range(levelNumber, -30, 200, 'levelNumber');
     }
