@@ -10,9 +10,8 @@ import 'editor_controller.dart';
 
 /// Connected engineering overview of one room.
 ///
-/// It deliberately stays 2.5D: all faces are real [RoomSurfaceRef] objects,
-/// but they are laid out with gravity semantics (ceiling above, floor below)
-/// so routes and openings can be inspected without losing topology.
+/// It is intentionally 2.5D: every tile is a real [RoomSurfaceRef], while
+/// gravity semantics keep ceiling above, floor below and ordered walls between.
 class RoomWorldCanvas extends StatelessWidget {
   const RoomWorldCanvas({required this.controller, super.key});
 
@@ -24,8 +23,8 @@ class RoomWorldCanvas extends StatelessWidget {
     if (space == null) {
       return const Center(child: Text('Выберите комнату'));
     }
-    final walls = RoomSurfaceResolver.walls(space);
     final layout = RoomWorldLayout.build(space);
+    final walls = RoomSurfaceResolver.walls(space);
     final ceiling = layout.firstWhere(
       (tile) => tile.surface.type == SurfacePlaneType.ceiling,
     );
@@ -42,7 +41,7 @@ class RoomWorldCanvas extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         child: Column(
           children: [
-            _WorldHeader(controller: controller, roomName: space.name),
+            _GravityLegend(routeLengthMm: controller.routeLengthMm),
             const SizedBox(height: 8),
             Expanded(
               flex: 3,
@@ -51,7 +50,7 @@ class RoomWorldCanvas extends StatelessWidget {
                 space: space,
                 surface: ceiling.surface,
                 title: 'ПОТОЛОК',
-                subtitle: 'верхняя плоскость · click для редактирования',
+                subtitle: 'верхняя плоскость',
                 gravity: Alignment.topCenter,
               ),
             ),
@@ -63,14 +62,13 @@ class RoomWorldCanvas extends StatelessWidget {
                 itemCount: wallTiles.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
                 itemBuilder: (context, index) {
-                  final tile = wallTiles[index];
                   final wall = walls[index];
                   return SizedBox(
                     width: math.max(190, math.min(360, wall.lengthMm / 14)),
                     child: _SurfaceTile(
                       controller: controller,
                       space: space,
-                      surface: tile.surface,
+                      surface: wallTiles[index].surface,
                       title: 'СТЕНА ${index + 1}',
                       subtitle: '${wall.lengthMm.round()} × ${wall.heightMm} mm',
                       gravity: Alignment.center,
@@ -87,7 +85,7 @@ class RoomWorldCanvas extends StatelessWidget {
                 space: space,
                 surface: floor.surface,
                 title: 'ПОЛ',
-                subtitle: 'нижняя плоскость · click для редактирования',
+                subtitle: 'нижняя плоскость',
                 gravity: Alignment.bottomCenter,
               ),
             ),
@@ -98,40 +96,34 @@ class RoomWorldCanvas extends StatelessWidget {
   }
 }
 
-class _WorldHeader extends StatelessWidget {
-  const _WorldHeader({required this.controller, required this.roomName});
+class _GravityLegend extends StatelessWidget {
+  const _GravityLegend({required this.routeLengthMm});
 
-  final EditorController controller;
-  final String roomName;
+  final double routeLengthMm;
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: 38,
+        height: 30,
         child: Row(
           children: [
-            IconButton(
-              tooltip: 'Назад на план',
-              visualDensity: VisualDensity.compact,
-              onPressed: controller.showPlan,
-              icon: const Icon(Icons.arrow_back, size: 18),
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-                '$roomName · ROOM WORLD',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-            ),
             const Icon(Icons.vertical_align_top, size: 15),
             const SizedBox(width: 4),
-            Text('Потолок', style: Theme.of(context).textTheme.labelSmall),
+            Text('потолок', style: Theme.of(context).textTheme.labelSmall),
+            const SizedBox(width: 12),
+            const Icon(Icons.view_week_outlined, size: 15),
+            const SizedBox(width: 4),
+            Text('стены', style: Theme.of(context).textTheme.labelSmall),
             const SizedBox(width: 12),
             const Icon(Icons.vertical_align_bottom, size: 15),
             const SizedBox(width: 4),
-            Text('Пол', style: Theme.of(context).textTheme.labelSmall),
-            const SizedBox(width: 8),
+            Text('пол', style: Theme.of(context).textTheme.labelSmall),
+            const Spacer(),
+            const Icon(Icons.alt_route, size: 15),
+            const SizedBox(width: 4),
+            Text(
+              '${routeLengthMm.toStringAsFixed(0)} mm',
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
           ],
         ),
       );
@@ -218,11 +210,14 @@ class _SurfaceTile extends StatelessWidget {
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
                   ),
-                  if (routes.isNotEmpty)
-                    Tooltip(
-                      message: 'Трасса: ${routes.length} segment(s)',
-                      child: const Icon(Icons.alt_route, size: 15),
+                  if (routes.isNotEmpty) ...[
+                    const Icon(Icons.alt_route, size: 15),
+                    const SizedBox(width: 3),
+                    Text(
+                      '${routes.length}',
+                      style: Theme.of(context).textTheme.labelSmall,
                     ),
+                  ],
                 ],
               ),
             ),
@@ -272,9 +267,11 @@ class _RoomWorldSurfacePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (size.isEmpty) return;
     final bounds = _surfaceBounds();
-    final sx = size.width / math.max(1, bounds.$1);
-    final sy = size.height / math.max(1, bounds.$2);
-    final scale = math.min(sx, sy) * 0.88;
+    final scale = math.min(
+          size.width / math.max(1, bounds.$1),
+          size.height / math.max(1, bounds.$2),
+        ) *
+        0.88;
     final dx = (size.width - bounds.$1 * scale) / 2;
     final dy = (size.height - bounds.$2 * scale) / 2;
 
@@ -302,16 +299,14 @@ class _RoomWorldSurfacePainter extends CustomPainter {
       }
       path.close();
       canvas.drawPath(path, outline);
-
       for (final opening in openings) {
-        final a = mapPoint(
-          SurfacePointMm(opening.offsetFromStartMm, opening.sillHeightMm),
-        );
-        final b = mapPoint(
-          SurfacePointMm(opening.endOffsetMm, opening.topMm),
-        );
         canvas.drawRect(
-          Rect.fromPoints(a, b),
+          Rect.fromPoints(
+            mapPoint(
+              SurfacePointMm(opening.offsetFromStartMm, opening.sillHeightMm),
+            ),
+            mapPoint(SurfacePointMm(opening.endOffsetMm, opening.topMm)),
+          ),
           Paint()
             ..style = PaintingStyle.stroke
             ..strokeWidth = 1.4
@@ -348,13 +343,12 @@ class _RoomWorldSurfacePainter extends CustomPainter {
     final nodePaint = Paint()..color = scheme.primary;
     for (final segment in routeSegments) {
       if (segment.points.isEmpty) continue;
+      final first = mapPoint(segment.points.first);
       if (segment.points.length == 1) {
-        canvas.drawCircle(mapPoint(segment.points.first), 3.2, nodePaint);
+        canvas.drawCircle(first, 3.2, nodePaint);
         continue;
       }
-      final path = Path();
-      final first = mapPoint(segment.points.first);
-      path.moveTo(first.dx, first.dy);
+      final path = Path()..moveTo(first.dx, first.dy);
       for (final point in segment.points.skip(1)) {
         final mapped = mapPoint(point);
         path.lineTo(mapped.dx, mapped.dy);
