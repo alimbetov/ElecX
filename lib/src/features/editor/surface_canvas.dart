@@ -16,6 +16,7 @@ import '../../engine/render_policy.dart';
 import '../../engine/selection_engine.dart';
 import '../../engine/snap_engine.dart';
 import '../../engine/world_camera.dart';
+import 'cad_visual_tokens.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 import 'editor_viewport_commands.dart';
@@ -311,7 +312,6 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
     TapUpDetails details,
     _SurfaceProjection projection,
     RoomSurfaceRef surface,
-    List<MmPoint> roomVertices,
   ) {
     final raw = projection.viewportToSurface(details.localPosition);
     if (raw == null) return;
@@ -339,6 +339,16 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
       if (_marqueeStart == null) controller.p2.clearSelection();
     }
 
+    controller.surfaceTap(point);
+  }
+
+  void _handleDoubleTap(
+    TapDownDetails details,
+    _SurfaceProjection projection,
+    RoomSurfaceRef surface,
+    List<MmPoint> roomVertices,
+  ) {
+    if (controller.p2.placementType != null) return;
     if (surface.type == SurfacePlaneType.wall) {
       final hit = projection.wallEdgeHit(
         details.localPosition,
@@ -346,20 +356,17 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
       );
       if (hit != null) {
         controller.navigateWallEdge(hit.edge, hit.point);
-        return;
       }
-    } else {
-      final hit = projection.horizontalBoundaryHit(
-        roomVertices,
-        details.localPosition,
-        thresholdPx: 20,
-      );
-      if (hit != null) {
-        controller.navigateHorizontalBoundary(hit.edgeIndex, hit.point);
-        return;
-      }
+      return;
     }
-    controller.surfaceTap(point);
+    final hit = projection.horizontalBoundaryHit(
+      roomVertices,
+      details.localPosition,
+      thresholdPx: 20,
+    );
+    if (hit != null) {
+      controller.navigateHorizontalBoundary(hit.edgeIndex, hit.point);
+    }
   }
 
   Rect? get _marqueeRect {
@@ -459,13 +466,19 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
         );
         final lod = RenderPolicy.lodForWorldUnitsPerPixel(camera.mmPerPixel);
         final compact = MediaQuery.sizeOf(context).width < 700;
+        final scheme = Theme.of(context).colorScheme;
 
         return Stack(
           children: [
             Positioned.fill(
               child: RepaintBoundary(
                 child: CustomPaint(
-                  painter: _SurfacePainter(controller, projection, lod),
+                  painter: _SurfacePainter(
+                    controller,
+                    projection,
+                    lod,
+                    scheme,
+                  ),
                 ),
               ),
             ),
@@ -550,6 +563,11 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
                     details,
                     projection,
                     surface,
+                  ),
+                  onDoubleTapDown: (details) => _handleDoubleTap(
+                    details,
+                    projection,
+                    surface,
                     space.boundary.vertices,
                   ),
                   onScaleStart: _startTouchGesture,
@@ -567,8 +585,10 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
                 child: IgnorePointer(
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: const Color(0x181565C0),
-                      border: Border.all(color: const Color(0xFF1565C0)),
+                      color: CadVisualTokens.selectedFill(scheme),
+                      border: Border.all(
+                        color: CadVisualTokens.selectedGeometry(scheme),
+                      ),
                     ),
                   ),
                 ),
@@ -586,6 +606,11 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
               right: compact ? 8 : 12,
               top: compact ? 8 : 12,
               child: _ViewportBadge(lod: lod, mmPerPixel: camera.mmPerPixel),
+            ),
+            Positioned(
+              right: compact ? 8 : 12,
+              bottom: compact ? 8 : 12,
+              child: _EdgeNavigationHint(surface: surface),
             ),
             if (controller.p2.placementType case final type?)
               Positioned(
@@ -612,10 +637,54 @@ class _ViewportBadge extends StatelessWidget {
   final double mmPerPixel;
 
   @override
-  Widget build(BuildContext context) => Card(
+  Widget build(BuildContext context) => DecoratedBox(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+        ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Text('${lod.name} · ${mmPerPixel.toStringAsFixed(1)} mm/px'),
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+          child: Text(
+            '${lod.name} · ${mmPerPixel.toStringAsFixed(1)} mm/px',
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+        ),
+      );
+}
+
+class _EdgeNavigationHint extends StatelessWidget {
+  const _EdgeNavigationHint({required this.surface});
+
+  final RoomSurfaceRef surface;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHigh
+              .withValues(alpha: 0.90),
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.touch_app_outlined, size: 14),
+              const SizedBox(width: 4),
+              Text(
+                surface.type == SurfacePlaneType.wall
+                    ? 'Double-click кромки → соседняя плоскость'
+                    : 'Double-click границы → стена',
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            ],
+          ),
         ),
       );
 }
@@ -631,10 +700,19 @@ class _WallProfileQuickEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
+    final scheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHigh.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(
+          color: controller.activeWallHasCustomProfile
+              ? CadVisualTokens.profileGuide(scheme)
+              : scheme.outlineVariant,
+        ),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(4),
+        padding: const EdgeInsets.all(3),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -643,11 +721,22 @@ class _WallProfileQuickEditor extends StatelessWidget {
               child: compact
                   ? IconButton(
                       onPressed: () => _showNotchDialog(context),
-                      icon: const Icon(Icons.architecture_outlined),
+                      icon: Icon(
+                        Icons.architecture_outlined,
+                        color: controller.activeWallHasCustomProfile
+                            ? CadVisualTokens.profile(scheme)
+                            : null,
+                      ),
                     )
                   : FilledButton.tonalIcon(
                       onPressed: () => _showNotchDialog(context),
-                      icon: const Icon(Icons.architecture_outlined, size: 18),
+                      icon: Icon(
+                        Icons.architecture_outlined,
+                        size: 18,
+                        color: controller.activeWallHasCustomProfile
+                            ? CadVisualTokens.profile(scheme)
+                            : null,
+                      ),
                       label: const Text('Балка / выемка'),
                     ),
             ),
@@ -711,7 +800,9 @@ class _WallProfileQuickEditor extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       error!,
-                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                     ),
                   ],
                 ],
@@ -940,8 +1031,12 @@ final class _SurfaceProjection {
 }
 
 class _SurfacePainter extends CustomPainter {
-  _SurfacePainter(this.controller, this.projection, this.lod)
-      : activeSurfaceId = controller.activeSurface?.id,
+  _SurfacePainter(
+    this.controller,
+    this.projection,
+    this.lod,
+    this.scheme,
+  )   : activeSurfaceId = controller.activeSurface?.id,
         selectedSpaceId = controller.selectedSpaceId,
         dimensionsVisible = controller.dimensionsVisible &&
             controller.p2.layers.isVisible(EditorLayerId.dimensions),
@@ -1017,6 +1112,7 @@ class _SurfacePainter extends CustomPainter {
   final EditorController controller;
   final _SurfaceProjection projection;
   final RenderLod lod;
+  final ColorScheme scheme;
   final String? activeSurfaceId;
   final String? selectedSpaceId;
   final bool dimensionsVisible;
@@ -1034,7 +1130,7 @@ class _SurfacePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     canvas.drawRect(
       Offset.zero & size,
-      Paint()..color = const Color(0xFFF7F8FA),
+      Paint()..color = scheme.surface,
     );
     final surface = controller.activeSurface!;
     if (surface.type == SurfacePlaneType.wall) {
@@ -1068,7 +1164,12 @@ class _SurfacePainter extends CustomPainter {
     final wall = controller.activeWall!;
     final rect = projection.surfaceRect;
     final wallPath = _wallPath();
-    canvas.drawPath(wallPath, Paint()..color = Colors.white);
+    final customProfile = controller.selectedSpace!.wallProfiles
+        .containsKey(wall.ref.wallIndex ?? 0);
+    canvas.drawPath(
+      wallPath,
+      Paint()..color = scheme.surfaceContainerLowest,
+    );
     canvas.save();
     canvas.clipPath(wallPath);
     _drawAdaptiveGrid(canvas, rect);
@@ -1084,8 +1185,13 @@ class _SurfacePainter extends CustomPainter {
       wallPath,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
-        ..color = const Color(0xFF263238),
+        ..strokeWidth = customProfile
+            ? CadVisualTokens.profileStroke
+            : CadVisualTokens.geometryStroke
+        ..strokeJoin = StrokeJoin.miter
+        ..color = customProfile
+            ? CadVisualTokens.profile(scheme)
+            : CadVisualTokens.geometry(scheme),
     );
     _drawNavigationEdges(canvas, rect);
     if (dimensionsVisible && RenderPolicy.showFineDimensions(lod)) {
@@ -1124,7 +1230,10 @@ class _SurfacePainter extends CustomPainter {
       path.lineTo(point.dx, point.dy);
     }
     path.close();
-    canvas.drawPath(path, Paint()..color = Colors.white);
+    canvas.drawPath(
+      path,
+      Paint()..color = scheme.surfaceContainerLowest,
+    );
     canvas.save();
     canvas.clipPath(path);
     _drawAdaptiveGrid(canvas, projection.surfaceRect);
@@ -1135,8 +1244,15 @@ class _SurfacePainter extends CustomPainter {
       path,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
-        ..color = const Color(0xFF263238),
+        ..strokeWidth = CadVisualTokens.geometryStroke
+        ..color = CadVisualTokens.geometry(scheme),
+    );
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 5
+        ..color = scheme.primary.withValues(alpha: 0.12),
     );
     _label(
       canvas,
@@ -1152,10 +1268,10 @@ class _SurfacePainter extends CustomPainter {
   void _drawAdaptiveGrid(Canvas canvas, Rect rect) {
     final spec = AdaptiveGridPolicy.forScale(projection.camera.mmPerPixel);
     final minor = Paint()
-      ..color = const Color(0xFFE8EBEF)
+      ..color = CadVisualTokens.gridMinor(scheme)
       ..strokeWidth = 0.7;
     final major = Paint()
-      ..color = const Color(0xFFCDD3DB)
+      ..color = CadVisualTokens.gridMajor(scheme)
       ..strokeWidth = 1.0;
     for (var x = 0;
         x <= projection.extent.widthMm;
@@ -1201,23 +1317,23 @@ class _SurfacePainter extends CustomPainter {
     );
     final rect = Rect.fromPoints(a, b);
     final fill = opening.type == ArchitecturalOpeningType.door
-        ? const Color(0xFFEDE4D3)
-        : const Color(0xFFDDEFF7);
+        ? scheme.tertiaryContainer.withValues(alpha: 0.42)
+        : scheme.secondaryContainer.withValues(alpha: 0.42);
     canvas.drawRect(rect, Paint()..color = fill);
     canvas.drawRect(
       rect,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5
-        ..color = const Color(0xFF54606B),
+        ..strokeWidth = CadVisualTokens.openingStroke
+        ..color = CadVisualTokens.opening(scheme),
     );
   }
 
   void _drawRoutes(Canvas canvas) {
     if (!cableRoutesVisible) return;
     final paint = Paint()
-      ..color = const Color(0xFFD66B2C)
-      ..strokeWidth = 2.6
+      ..color = CadVisualTokens.route(scheme)
+      ..strokeWidth = CadVisualTokens.routeStroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
     final draft = controller.activeRouteSegment;
@@ -1241,7 +1357,11 @@ class _SurfacePainter extends CustomPainter {
     for (final point in points) {
       final current = projection.surfaceToViewport(point);
       if (previous != null) canvas.drawLine(previous, current, paint);
-      canvas.drawCircle(current, 4.2, paint);
+      canvas.drawCircle(
+        current,
+        CadVisualTokens.transitionNodeRadius,
+        paint,
+      );
       previous = current;
     }
   }
@@ -1266,7 +1386,7 @@ class _SurfacePainter extends CustomPainter {
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.5
-          ..color = const Color(0xFF1565C0),
+          ..color = CadVisualTokens.selectedGeometry(scheme),
       );
       _label(
         canvas,
@@ -1286,10 +1406,14 @@ class _SurfacePainter extends CustomPainter {
     final stroke = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = selected ? 2.6 : 1.8
-      ..color = selected ? const Color(0xFF1565C0) : const Color(0xFF263238);
+      ..color = selected
+          ? CadVisualTokens.selectedGeometry(scheme)
+          : scheme.onSurface;
     final fill = Paint()
       ..style = PaintingStyle.fill
-      ..color = selected ? const Color(0x221565C0) : Colors.white;
+      ..color = selected
+          ? CadVisualTokens.selectedFill(scheme)
+          : scheme.surfaceContainerLowest;
     canvas.drawCircle(center, selected ? 11 : 9, fill);
     switch (type) {
       case ElectricalComponentType.socketOutlet:
@@ -1375,19 +1499,19 @@ class _SurfacePainter extends CustomPainter {
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.2
-          ..color = const Color(0xFF1565C0),
+          ..color = CadVisualTokens.selectedGeometry(scheme),
       );
       canvas.drawRect(
         Rect.fromCenter(center: center, width: 5, height: 5),
-        Paint()..color = const Color(0xFF1565C0),
+        Paint()..color = CadVisualTokens.selectedGeometry(scheme),
       );
     }
   }
 
   void _drawNavigationEdges(Canvas canvas, Rect rect) {
     final paint = Paint()
-      ..color = const Color(0x33246DB3)
-      ..strokeWidth = 7;
+      ..color = scheme.primary.withValues(alpha: 0.12)
+      ..strokeWidth = 5;
     canvas.drawLine(rect.topLeft, rect.topRight, paint);
     canvas.drawLine(rect.bottomLeft, rect.bottomRight, paint);
     canvas.drawLine(rect.topLeft, rect.bottomLeft, paint);
@@ -1402,7 +1526,7 @@ class _SurfacePainter extends CustomPainter {
     String text,
   ) {
     final paint = Paint()
-      ..color = const Color(0xFF4B5563)
+      ..color = scheme.outline
       ..strokeWidth = 0.9;
     canvas.drawLine(Offset(left, y), Offset(right, y), paint);
     _label(
@@ -1422,7 +1546,7 @@ class _SurfacePainter extends CustomPainter {
     String text,
   ) {
     final paint = Paint()
-      ..color = const Color(0xFF4B5563)
+      ..color = scheme.outline
       ..strokeWidth = 0.9;
     canvas.drawLine(Offset(x, top), Offset(x, bottom), paint);
     _label(canvas, text, Offset(x + 8, (top + bottom) / 2), small: true);
@@ -1440,7 +1564,7 @@ class _SurfacePainter extends CustomPainter {
       text: TextSpan(
         text: text,
         style: TextStyle(
-          color: const Color(0xFF374151),
+          color: scheme.onSurfaceVariant,
           fontSize: small ? 10 : 12,
           fontWeight: bold ? FontWeight.w600 : FontWeight.w400,
         ),
@@ -1459,6 +1583,7 @@ class _SurfacePainter extends CustomPainter {
   bool shouldRepaint(covariant _SurfacePainter oldDelegate) =>
       oldDelegate.projection.camera != projection.camera ||
       oldDelegate.lod != lod ||
+      oldDelegate.scheme != scheme ||
       oldDelegate.activeSurfaceId != activeSurfaceId ||
       oldDelegate.selectedSpaceId != selectedSpaceId ||
       oldDelegate.dimensionsVisible != dimensionsVisible ||
