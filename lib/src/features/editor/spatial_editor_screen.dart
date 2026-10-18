@@ -349,7 +349,7 @@ class _ProjectTree extends StatelessWidget {
                   Text('Базовое помещение: ${controller.selectedSpace?.name}'),
                   const SizedBox(height: 14),
                   DropdownButtonFormField<int>(
-                    value: wallIndex,
+                    initialValue: wallIndex,
                     decoration: const InputDecoration(
                       labelText: 'Сторона примыкания',
                       border: OutlineInputBorder(),
@@ -605,7 +605,7 @@ class _PropertiesPanel extends StatelessWidget {
         Text('СЕТКА', style: Theme.of(context).textTheme.labelLarge),
         const SizedBox(height: 8),
         DropdownButtonFormField<int>(
-          value: space.grid.minorStepMm,
+          initialValue: space.grid.minorStepMm,
           items: const [50, 100, 250, 500]
               .map(
                 (value) => DropdownMenuItem(value: value, child: Text('$value mm')),
@@ -662,7 +662,7 @@ class _OpeningEditor extends StatelessWidget {
           Text('Редактирование', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 10),
           DropdownButtonFormField<ArchitecturalOpeningType>(
-            value: opening.type,
+            initialValue: opening.type,
             decoration: const InputDecoration(
               labelText: 'Тип',
               border: OutlineInputBorder(),
