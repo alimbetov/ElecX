@@ -6,10 +6,10 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('EngineeringPlacementCursor', () {
     test('nudges in surface-local millimetres', () {
-      const surface = RoomSurfaceRef.floor('room-1');
-      const state = EngineeringPlacementCursorState(
+      final surface = RoomSurfaceRef.floor('room-1');
+      final state = EngineeringPlacementCursorState(
         surface: surface,
-        position: SurfacePointMm(1200, 900),
+        position: const SurfacePointMm(1200, 900),
         componentType: ElectricalComponentType.socketOutlet,
       );
 
@@ -26,9 +26,9 @@ void main() {
     });
 
     test('moveTo preserves component and reports snap source', () {
-      const state = EngineeringPlacementCursorState(
+      final state = EngineeringPlacementCursorState(
         surface: RoomSurfaceRef.wall('room-1', 2),
-        position: SurfacePointMm(0, 0),
+        position: const SurfacePointMm(0, 0),
         componentType: ElectricalComponentType.switchControl,
       );
 
