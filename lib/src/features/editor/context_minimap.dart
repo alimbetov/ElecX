@@ -4,6 +4,7 @@ import '../../domain/geometry.dart';
 import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
 import 'editor_building_workspace.dart';
+import 'editor_controller.dart';
 import 'site_map_canvas.dart';
 import 'site_map_interaction.dart';
 
@@ -56,9 +57,11 @@ class _MiniMapSheet extends StatelessWidget {
       elevation: 12,
       borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
       clipBehavior: Clip.antiAlias,
-      child: Column(
+      child: ListView(
+        controller: scrollController,
+        padding: EdgeInsets.zero,
         children: [
-          _SheetHandle(scrollController: scrollController),
+          const _SheetHandle(),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
             child: Row(
@@ -83,7 +86,7 @@ class _MiniMapSheet extends StatelessWidget {
                         siteMode
                             ? 'Двор · здание · точки входа'
                             : selectedRoom == null
-                                ? 'Выберите помещение на мини-карте'
+                                ? 'Выберите помещение на микро-карте'
                                 : '${selectedRoom.name} · ${selectedRoom.type.name}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -103,7 +106,8 @@ class _MiniMapSheet extends StatelessWidget {
           if (!siteMode && selectedRoom != null)
             _SurfaceQuickNav(workspace: workspace, room: selectedRoom),
           const Divider(height: 1),
-          Expanded(
+          SizedBox(
+            height: 430,
             child: siteMode
                 ? SiteMapCanvas(
                     entities: SiteMapProjection.tower(workspace),
@@ -127,6 +131,7 @@ class _MiniMapSheet extends StatelessWidget {
                     zoneSpaceIds: zone?.spaceIds,
                   ),
           ),
+          const SizedBox(height: 12),
         ],
       ),
     );
@@ -134,9 +139,7 @@ class _MiniMapSheet extends StatelessWidget {
 }
 
 class _SheetHandle extends StatelessWidget {
-  const _SheetHandle({required this.scrollController});
-
-  final ScrollController scrollController;
+  const _SheetHandle();
 
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -170,21 +173,18 @@ class _SurfaceQuickNav extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
         children: [
           _surfaceButton(
-            context,
             label: 'Plan',
             icon: Icons.map_outlined,
             selected: editor.viewMode == EditorViewMode.plan,
             onPressed: editor.showPlan,
           ),
           _surfaceButton(
-            context,
             label: 'Floor',
             icon: Icons.grid_on,
             selected: editor.activeSurface?.type == SurfacePlaneType.floor,
             onPressed: editor.showFloor,
           ),
           _surfaceButton(
-            context,
             label: 'Ceil',
             icon: Icons.view_in_ar_outlined,
             selected: editor.activeSurface?.type == SurfacePlaneType.ceiling,
@@ -192,7 +192,6 @@ class _SurfaceQuickNav extends StatelessWidget {
           ),
           for (var i = 0; i < room.boundary.vertices.length; i++)
             _surfaceButton(
-              context,
               label: 'W${i + 1}',
               icon: Icons.crop_landscape,
               selected: editor.activeSurface?.type == SurfacePlaneType.wall &&
@@ -204,8 +203,7 @@ class _SurfaceQuickNav extends StatelessWidget {
     );
   }
 
-  Widget _surfaceButton(
-    BuildContext context, {
+  Widget _surfaceButton({
     required String label,
     required IconData icon,
     required bool selected,
@@ -252,27 +250,24 @@ class _LevelMiniMapState extends State<_LevelMiniMap> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final size = Size(constraints.maxWidth, constraints.maxHeight);
         final bounds = _unionBounds(spaces);
         return MouseRegion(
+          onHover: (event) {
+            final hit = _hitSpace(event.localPosition, size, bounds, spaces);
+            if (hit?.id != _hoveredSpaceId) {
+              setState(() => _hoveredSpaceId = hit?.id);
+            }
+          },
           onExit: (_) => setState(() => _hoveredSpaceId = null),
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTapUp: (details) {
-              final hit = _hitSpace(
-                details.localPosition,
-                Size(constraints.maxWidth, constraints.maxHeight),
-                bounds,
-                spaces,
-              );
+              final hit = _hitSpace(details.localPosition, size, bounds, spaces);
               if (hit != null) widget.workspace.editor.selectSpace(hit.id);
             },
             onDoubleTapDown: (details) {
-              final hit = _hitSpace(
-                details.localPosition,
-                Size(constraints.maxWidth, constraints.maxHeight),
-                bounds,
-                spaces,
-              );
+              final hit = _hitSpace(details.localPosition, size, bounds, spaces);
               if (hit != null) {
                 widget.workspace.editor.selectSpace(hit.id);
                 widget.workspace.editor.showPlan();
@@ -285,20 +280,7 @@ class _LevelMiniMapState extends State<_LevelMiniMap> {
                 selectedSpaceId: widget.workspace.editor.selectedSpaceId,
                 hoveredSpaceId: _hoveredSpaceId,
               ),
-              child: MouseRegion(
-                onHover: (event) {
-                  final hit = _hitSpace(
-                    event.localPosition,
-                    Size(constraints.maxWidth, constraints.maxHeight),
-                    bounds,
-                    spaces,
-                  );
-                  if (hit?.id != _hoveredSpaceId) {
-                    setState(() => _hoveredSpaceId = hit?.id);
-                  }
-                },
-                child: const SizedBox.expand(),
-              ),
+              child: const SizedBox.expand(),
             ),
           ),
         );
@@ -320,21 +302,14 @@ class _LevelMiniMapState extends State<_LevelMiniMap> {
     MmBounds bounds,
     List<EngineeringSpace> spaces,
   ) {
-    final world = _screenToWorld(point, size, bounds);
+    final transform = _MiniTransform.fit(bounds, size);
+    final world = transform.toWorld(point);
     for (final space in spaces.reversed) {
       if (space.boundary.contains(world) || space.boundary.bounds.contains(world)) {
         return space;
       }
     }
     return null;
-  }
-
-  MmPoint _screenToWorld(Offset point, Size size, MmBounds bounds) {
-    final transform = _MiniTransform.fit(bounds, size);
-    return MmPoint(
-      ((point.dx - transform.offset.dx) / transform.scale + bounds.left).round(),
-      ((transform.offset.dy - point.dy) / transform.scale + bounds.top).round(),
-    );
   }
 }
 
@@ -414,7 +389,11 @@ class _LevelMiniMapPainter extends CustomPainter {
 }
 
 final class _MiniTransform {
-  const _MiniTransform({required this.scale, required this.offset});
+  const _MiniTransform({
+    required this.scale,
+    required this.offset,
+    required this.bounds,
+  });
 
   factory _MiniTransform.fit(MmBounds bounds, Size size) {
     const padding = 22.0;
@@ -427,18 +406,25 @@ final class _MiniTransform {
     final drawingHeight = bounds.height * scale;
     return _MiniTransform(
       scale: scale,
+      bounds: bounds,
       offset: Offset(
         (size.width - drawingWidth) / 2,
-        (size.height + drawingHeight) / 2,
+        (size.height - drawingHeight) / 2,
       ),
     );
   }
 
   final double scale;
   final Offset offset;
+  final MmBounds bounds;
 
   Offset toScreen(MmPoint point) => Offset(
-        offset.dx + point.x * scale,
-        offset.dy - point.y * scale,
+        offset.dx + (point.x - bounds.left) * scale,
+        offset.dy + (bounds.top - point.y) * scale,
+      );
+
+  MmPoint toWorld(Offset point) => MmPoint(
+        (bounds.left + (point.dx - offset.dx) / scale).round(),
+        (bounds.top - (point.dy - offset.dy) / scale).round(),
       );
 }
