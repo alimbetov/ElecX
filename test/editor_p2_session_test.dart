@@ -1,4 +1,6 @@
 import 'package:elecx/src/domain/electrical_placement.dart';
+import 'package:elecx/src/domain/geometry.dart';
+import 'package:elecx/src/domain/project_model.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/engine/editor_layers.dart';
 import 'package:elecx/src/engine/selection_engine.dart';
@@ -7,6 +9,17 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   final wall = RoomSurfaceRef.wall('room-1', 0);
+  final roomBoundary = MmPolygon.rectangle(
+    const MmPoint(0, 0),
+    const MmPoint(5000, 4000),
+  );
+  final room = EngineeringSpace(
+    id: 'room-1',
+    name: 'Room 1',
+    type: SpaceType.room,
+    boundary: roomBoundary,
+    referenceFrame: RoomReferenceFrame(origin: roomBoundary.bounds.center),
+  );
 
   test('component placement is undoable and redoable', () {
     final session = EditorP2Session();
@@ -94,7 +107,33 @@ void main() {
     expect(session.routes.single.target.componentId, socket.id);
   });
 
-  test('auto route does not connect selected components on different surfaces', () {
+  test('wall source can auto-route to ceiling load through topology', () {
+    final session = EditorP2Session();
+    addTearDown(session.dispose);
+
+    final source = session.placeComponent(
+      type: ElectricalComponentType.powerSource,
+      surface: wall,
+      position: const SurfacePointMm(500, 1800),
+    );
+    final target = session.placeComponent(
+      type: ElectricalComponentType.lightingPoint,
+      surface: RoomSurfaceRef.ceiling('room-1'),
+      position: const SurfacePointMm(3000, 1500),
+    );
+    session.select(source.id, mode: SelectionMode.replace);
+    session.select(target.id, mode: SelectionMode.add);
+
+    expect(session.autoRouteSelectedPair(space: room), isTrue);
+    expect(session.routes, hasLength(1));
+    final surfaceTypes = session.routes.single.segments
+        .map((segment) => segment.surface.type)
+        .toSet();
+    expect(surfaceTypes, contains(SurfacePlaneType.wall));
+    expect(surfaceTypes, contains(SurfacePlaneType.ceiling));
+  });
+
+  test('cross-surface auto route requires room topology context', () {
     final session = EditorP2Session();
     addTearDown(session.dispose);
 
