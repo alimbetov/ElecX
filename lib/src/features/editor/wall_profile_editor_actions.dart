@@ -1,3 +1,4 @@
+import '../../domain/surfaces.dart';
 import 'editor_controller.dart';
 import 'wall_profile_command.dart';
 
@@ -12,20 +13,56 @@ extension WallProfileEditorActions on EditorController {
     if (space == null || wallIndex == null) {
       return false;
     }
+
+    final candidateLevel = switch (_candidateLevel(
+      spaceId: space.id,
+      wallIndex: wallIndex,
+      startMm: startMm,
+      widthMm: widthMm,
+      depthMm: depthMm,
+    )) {
+      final candidate? => candidate,
+      null => return false,
+    };
+
+    final candidateSpace = candidateLevel.spaces.firstWhere(
+      (candidate) => candidate.id == space.id,
+    );
+    final candidateWall = RoomSurfaceResolver.wall(candidateSpace, wallIndex);
+    final invalidatesOpening = activeWallOpenings.any(
+      (opening) => !RoomSurfaceResolver.openingFitsWall(
+        opening: opening,
+        wall: candidateWall,
+      ),
+    );
+    if (invalidatesOpening) {
+      return false;
+    }
+
+    level = candidateLevel;
+    notifyListeners();
+    return true;
+  }
+
+  BuildingLevel? _candidateLevel({
+    required String spaceId,
+    required int wallIndex,
+    required int startMm,
+    required int widthMm,
+    required int depthMm,
+  }) {
     try {
-      level = WallProfileCommand.addTopBeamNotch(
+      return WallProfileCommand.addTopBeamNotch(
         level: level,
-        spaceId: space.id,
+        spaceId: spaceId,
         wallIndex: wallIndex,
         startMm: startMm,
         widthMm: widthMm,
         depthMm: depthMm,
       );
     } on ArgumentError {
-      return false;
+      return null;
     }
-    notifyListeners();
-    return true;
   }
 
   bool resetActiveWallProfile() {
