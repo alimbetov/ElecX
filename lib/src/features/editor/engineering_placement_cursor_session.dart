@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../domain/engineering_placement_cursor.dart';
+import '../../domain/geometry.dart';
 import '../../domain/surfaces.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
@@ -12,7 +13,8 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
   EngineeringPlacementCursorState? _state;
 
   EngineeringPlacementCursorState? get state => _state;
-  bool get active => controller.p2.placementType != null && controller.activeSurface != null;
+  bool get active =>
+      controller.p2.placementType != null && controller.activeSurface != null;
 
   EngineeringPlacementCursorState? ensure() {
     final type = controller.p2.placementType;
@@ -26,7 +28,9 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
       return null;
     }
     final current = _state;
-    if (current != null && current.surface == surface && current.componentType == type) {
+    if (current != null &&
+        current.surface == surface &&
+        current.componentType == type) {
       return current;
     }
 
@@ -87,7 +91,11 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
     );
   }
 
-  bool nudgeGrid({required int dxSteps, required int dySteps, int multiplier = 1}) {
+  bool nudgeGrid({
+    required int dxSteps,
+    required int dySteps,
+    int multiplier = 1,
+  }) {
     final step = controller.selectedSpace?.grid.minorStepMm ?? 100;
     return nudge(
       dxMm: dxSteps * step * multiplier,
@@ -124,29 +132,12 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
     }
     final bounds = space.boundary.bounds;
     if (point.xMm > bounds.width || point.yMm > bounds.height) return false;
-    final planPoint = SurfacePointMm(
-      point.xMm + bounds.left,
-      point.yMm + bounds.bottom,
-    );
     return space.boundary.contains(
-      // SurfacePointMm is surface-local; convert to the plan integer point.
-      // ignore: avoid_dynamic_calls
-      _toPlanPoint(planPoint),
+      MmPoint(
+        point.xMm + bounds.left,
+        point.yMm + bounds.bottom,
+      ),
     );
-  }
-
-  dynamic _toPlanPoint(SurfacePointMm point) {
-    // Kept local to avoid duplicating a second coordinate model in the cursor.
-    // The returned type is MmPoint at runtime.
-    return _MmPointFactory.create(point.xMm, point.yMm);
-  }
-}
-
-// Tiny indirection keeps cursor state independent from plan geometry imports in
-// its public API while still validating floor/ceiling positions against rooms.
-abstract final class _MmPointFactory {
-  static dynamic create(int x, int y) {
-    throw UnimplementedError('Replaced by imported geometry implementation');
   }
 }
 
