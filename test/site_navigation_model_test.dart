@@ -16,8 +16,10 @@ void main() {
       buildingName: 'Tower A',
       residentialTemplate: residential,
       basementTemplate: basement,
-      residentialFloorCount: 16,
-      basementFloorCount: 30,
+      spec: const ResidentialTowerSpec(
+        lowestBasementLevel: -30,
+        highestResidentialLevel: 16,
+      ),
     );
     final yard = OutdoorZone(
       id: 'yard',
