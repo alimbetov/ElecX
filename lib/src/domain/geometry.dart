@@ -68,6 +68,13 @@ final class MmBounds {
       top: top + marginMm,
     );
   }
+
+  MmBounds union(MmBounds other) => MmBounds(
+        left: math.min(left, other.left),
+        bottom: math.min(bottom, other.bottom),
+        right: math.max(right, other.right),
+        top: math.max(top, other.top),
+      );
 }
 
 final class MmPolygon {
