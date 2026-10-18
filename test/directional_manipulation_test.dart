@@ -1,3 +1,5 @@
+import 'package:elecx/src/domain/geometry.dart';
+import 'package:elecx/src/domain/project_model.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
 import 'package:elecx/src/features/editor/plan_geometry_editor_actions.dart';
 import 'package:elecx/src/features/editor/wall_profile_editor_actions.dart';
@@ -16,6 +18,45 @@ void main() {
     expect(after[1].x, before[1].x);
     expect(after[0].y, before[0].y + 100);
     expect(after[1].y, before[1].y + 100);
+  });
+
+  test('external boundary is movable but shared boundary hides movement', () {
+    final controller = EditorController.demo();
+    final roomA = _space('a', 0, 0, 4000, 3000);
+    final roomB = _space('b', 4000, 0, 8000, 3000);
+    controller.level = BuildingLevel(
+      id: 'shared',
+      name: 'Shared',
+      elevationMm: 0,
+      spaces: [roomA, roomB],
+    );
+    controller.openings = [];
+    controller.selectSpace(roomA.id);
+
+    expect(controller.isSelectedWallExternal(0), isTrue);
+    expect(controller.isSelectedWallExternal(1), isFalse);
+
+    final sharedBefore = controller.selectedSpace!.boundary.vertices;
+    expect(controller.nudgeSelectedBoundaryEdgeNormal(1, 100), isFalse);
+    expect(controller.selectedSpace!.boundary.vertices, sharedBefore);
+
+    expect(controller.nudgeSelectedBoundaryEdgeNormal(0, 100), isTrue);
+  });
+
+  test('partial collinear overlap is treated as shared wall', () {
+    final controller = EditorController.demo();
+    final roomA = _space('a', 0, 0, 4000, 3000);
+    final roomB = _space('b', 4000, 1000, 7000, 2500);
+    controller.level = BuildingLevel(
+      id: 'partial-shared',
+      name: 'Partial shared',
+      elevationMm: 0,
+      spaces: [roomA, roomB],
+    );
+    controller.openings = [];
+    controller.selectSpace(roomA.id);
+
+    expect(controller.isSelectedWallExternal(1), isFalse);
   });
 
   test('opening nudges along host wall and rejects outside position', () {
@@ -80,4 +121,24 @@ void main() {
     expect(after.widthMm, before.widthMm);
     expect(after.depthMm, before.depthMm);
   });
+}
+
+EngineeringSpace _space(
+  String id,
+  int left,
+  int bottom,
+  int right,
+  int top,
+) {
+  final boundary = MmPolygon.rectangle(
+    MmPoint(left, bottom),
+    MmPoint(right, top),
+  );
+  return EngineeringSpace(
+    id: id,
+    name: id,
+    type: SpaceType.room,
+    boundary: boundary,
+    referenceFrame: RoomReferenceFrame(origin: boundary.bounds.center),
+  );
 }
