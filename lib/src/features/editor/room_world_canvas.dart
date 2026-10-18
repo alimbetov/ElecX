@@ -6,6 +6,7 @@ import '../../domain/project_model.dart';
 import '../../domain/surface_routing.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/room_world_layout.dart';
+import 'cad_dimension_painter.dart';
 import 'cad_visual_tokens.dart';
 import 'editor_controller.dart';
 
@@ -71,7 +72,7 @@ class RoomWorldCanvas extends StatelessWidget {
                       space: space,
                       surface: wallTiles[index].surface,
                       title: 'СТЕНА ${index + 1}',
-                      subtitle: '${wall.lengthMm.round()} × ${wall.heightMm} mm',
+                      subtitle: 'L ${wall.lengthMm.round()} · H ${wall.heightMm} mm',
                       role: _SurfaceRole.wall,
                     ),
                   );
@@ -310,7 +311,7 @@ class _RoomWorldSurfacePainter extends CustomPainter {
           size.width / math.max(1, bounds.$1),
           size.height / math.max(1, bounds.$2),
         ) *
-        0.88;
+        0.82;
     final dx = (size.width - bounds.$1 * scale) / 2;
     final dy = (size.height - bounds.$2 * scale) / 2;
 
@@ -377,6 +378,10 @@ class _RoomWorldSurfacePainter extends CustomPainter {
             ..color = openingColor,
         );
       }
+
+      if (size.width >= 150 && size.height >= 100) {
+        _drawWallDimensions(canvas, wall, mapPoint);
+      }
     } else {
       final roomBounds = space.boundary.bounds;
       final path = Path();
@@ -439,6 +444,37 @@ class _RoomWorldSurfacePainter extends CustomPainter {
         nodePaint,
       );
     }
+  }
+
+  void _drawWallDimensions(
+    Canvas canvas,
+    RoomWallSurface wall,
+    Offset Function(SurfacePointMm point) mapPoint,
+  ) {
+    final bottomLeft = mapPoint(const SurfacePointMm(0, 0));
+    final bottomRight = mapPoint(SurfacePointMm(wall.lengthMm.round(), 0));
+    final topRight = mapPoint(
+      SurfacePointMm(wall.lengthMm.round(), wall.heightMm),
+    );
+
+    CadDimensionPainter.drawLinear(
+      canvas,
+      geometryStart: bottomLeft,
+      geometryEnd: bottomRight,
+      dimensionStart: bottomLeft + const Offset(0, 15),
+      dimensionEnd: bottomRight + const Offset(0, 15),
+      label: 'L ${wall.lengthMm.round()} mm',
+      scheme: scheme,
+    );
+    CadDimensionPainter.drawLinear(
+      canvas,
+      geometryStart: bottomRight,
+      geometryEnd: topRight,
+      dimensionStart: bottomRight + const Offset(15, 0),
+      dimensionEnd: topRight + const Offset(15, 0),
+      label: 'H ${wall.heightMm} mm',
+      scheme: scheme,
+    );
   }
 
   (int, int) _surfaceBounds() {
