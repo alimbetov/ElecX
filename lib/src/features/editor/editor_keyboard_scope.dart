@@ -2,7 +2,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import 'editor_controller.dart';
+import 'editor_p2_session.dart';
 import 'editor_viewport_commands.dart';
+import 'engineering_placement_cursor_session.dart';
 
 /// Desktop-first keyboard layer for the spatial editor.
 ///
@@ -19,6 +21,15 @@ class EditorKeyboardScope extends StatelessWidget {
   final EditorController controller;
   final Widget child;
 
+  void _nudgeCursor(int dx, int dy, {int multiplier = 1}) {
+    if (controller.p2.placementType == null) return;
+    controller.placementCursor.nudgeGrid(
+      dxSteps: dx,
+      dySteps: dy,
+      multiplier: multiplier,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return CallbackShortcuts(
@@ -34,8 +45,39 @@ class EditorKeyboardScope extends StatelessWidget {
             controller.setTool(EditorTool.guide),
         const SingleActivator(LogicalKeyboardKey.keyC): () =>
             controller.setTool(EditorTool.cableRoute),
-        const SingleActivator(LogicalKeyboardKey.escape): () =>
-            controller.setTool(EditorTool.select),
+        const SingleActivator(LogicalKeyboardKey.escape): () {
+          if (controller.p2.placementType != null) {
+            controller.placementCursor.cancel();
+          } else {
+            controller.setTool(EditorTool.select);
+          }
+        },
+        const SingleActivator(LogicalKeyboardKey.enter): () {
+          if (controller.p2.placementType != null) {
+            controller.placementCursor.confirm();
+          }
+        },
+        const SingleActivator(LogicalKeyboardKey.numpadEnter): () {
+          if (controller.p2.placementType != null) {
+            controller.placementCursor.confirm();
+          }
+        },
+        const SingleActivator(LogicalKeyboardKey.arrowLeft): () =>
+            _nudgeCursor(-1, 0),
+        const SingleActivator(LogicalKeyboardKey.arrowRight): () =>
+            _nudgeCursor(1, 0),
+        const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
+            _nudgeCursor(0, 1),
+        const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
+            _nudgeCursor(0, -1),
+        const SingleActivator(LogicalKeyboardKey.arrowLeft, shift: true): () =>
+            _nudgeCursor(-1, 0, multiplier: 10),
+        const SingleActivator(LogicalKeyboardKey.arrowRight, shift: true): () =>
+            _nudgeCursor(1, 0, multiplier: 10),
+        const SingleActivator(LogicalKeyboardKey.arrowUp, shift: true): () =>
+            _nudgeCursor(0, 1, multiplier: 10),
+        const SingleActivator(LogicalKeyboardKey.arrowDown, shift: true): () =>
+            _nudgeCursor(0, -1, multiplier: 10),
         const SingleActivator(LogicalKeyboardKey.delete): () {
           if (controller.selectedOpening != null) {
             controller.deleteSelectedOpening();
