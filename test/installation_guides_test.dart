@@ -1,5 +1,5 @@
-import 'package:electra/src/domain/installation_guides.dart';
-import 'package:electra/src/domain/surfaces.dart';
+import 'package:elecx/src/domain/installation_guides.dart';
+import 'package:elecx/src/domain/surfaces.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
