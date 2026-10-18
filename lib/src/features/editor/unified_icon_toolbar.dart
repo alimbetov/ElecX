@@ -18,8 +18,9 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
   final EditorController controller;
   final bool compact;
 
-  double get _target =>
-      compact ? EditorUiTokens.compactCommandTarget : EditorUiTokens.commandTarget;
+  double get _target => compact
+      ? EditorUiTokens.compactCommandTarget
+      : EditorUiTokens.commandTarget;
 
   @override
   Widget build(BuildContext context) {
@@ -32,48 +33,86 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
   Widget _buildToolbar(BuildContext context) {
     final p2 = controller.p2;
     final buttons = <Widget>[
-      _toolButton(context, tool: EditorTool.select, icon: Icons.near_me_outlined, tooltip: 'Выбор (V)'),
+      _toolButton(
+        context,
+        tool: EditorTool.select,
+        icon: Icons.near_me_outlined,
+        tooltip: 'Выбор (V)',
+      ),
       if (controller.viewMode == EditorViewMode.plan)
-        _toolButton(context, tool: EditorTool.roomRectangle, icon: Icons.crop_square, tooltip: 'Комната (R)'),
-      _toolButton(context, tool: EditorTool.guide, icon: Icons.straighten, tooltip: 'Направляющая (G)'),
-      _toolButton(context, tool: EditorTool.cableRoute, icon: Icons.alt_route, tooltip: 'Ручная кабельная трасса (C)'),
+        _toolButton(
+          context,
+          tool: EditorTool.roomRectangle,
+          icon: Icons.crop_square,
+          tooltip: 'Комната (R)',
+        ),
+      _toolButton(
+        context,
+        tool: EditorTool.guide,
+        icon: Icons.horizontal_rule,
+        tooltip: 'Направляющая (G)',
+      ),
+      _toolButton(
+        context,
+        tool: EditorTool.cableRoute,
+        icon: Icons.alt_route,
+        tooltip: 'Ручная кабельная трасса (C)',
+      ),
       const _ToolbarDivider(),
       _ElectricalPaletteButton(controller: controller, target: _target),
       _toggleButton(
         context,
         selected: controller.snapEnabled,
         icon: controller.snapEnabled ? Icons.grid_4x4 : Icons.grid_off,
-        tooltip: controller.snapEnabled ? 'Отключить привязку' : 'Включить привязку',
+        tooltip: controller.snapEnabled
+            ? 'Отключить привязку'
+            : 'Включить привязку',
         onPressed: () => controller.setSnapEnabled(!controller.snapEnabled),
       ),
       _toggleButton(
         context,
         selected: controller.dimensionsVisible,
         icon: Icons.straighten,
-        tooltip: controller.dimensionsVisible ? 'Скрыть размеры' : 'Показать размеры',
-        onPressed: () => controller.setDimensionsVisible(!controller.dimensionsVisible),
+        tooltip: controller.dimensionsVisible
+            ? 'Скрыть размеры'
+            : 'Показать размеры',
+        onPressed: () =>
+            controller.setDimensionsVisible(!controller.dimensionsVisible),
       ),
       const _ToolbarDivider(),
-      _iconButton(context, icon: Icons.undo, tooltip: 'Отменить', onPressed: p2.canUndo ? p2.undo : null),
-      _iconButton(context, icon: Icons.redo, tooltip: 'Повторить', onPressed: p2.canRedo ? p2.redo : null),
+      _iconButton(
+        context,
+        icon: Icons.undo,
+        tooltip: 'Отменить',
+        onPressed: p2.canUndo ? p2.undo : null,
+      ),
+      _iconButton(
+        context,
+        icon: Icons.redo,
+        tooltip: 'Повторить',
+        onPressed: p2.canRedo ? p2.redo : null,
+      ),
       const _ToolbarDivider(),
       _iconButton(
         context,
         icon: Icons.fit_screen,
         tooltip: 'Вписать текущий вид (0)',
-        onPressed: () => controller.requestViewportCommand(EditorViewportCommand.reset),
+        onPressed: () =>
+            controller.requestViewportCommand(EditorViewportCommand.reset),
       ),
       _iconButton(
         context,
         icon: Icons.zoom_out,
         tooltip: 'Уменьшить (-)',
-        onPressed: () => controller.requestViewportCommand(EditorViewportCommand.zoomOut),
+        onPressed: () =>
+            controller.requestViewportCommand(EditorViewportCommand.zoomOut),
       ),
       _iconButton(
         context,
         icon: Icons.zoom_in,
         tooltip: 'Увеличить (+)',
-        onPressed: () => controller.requestViewportCommand(EditorViewportCommand.zoomIn),
+        onPressed: () =>
+            controller.requestViewportCommand(EditorViewportCommand.zoomIn),
       ),
       const _ToolbarDivider(),
       _LayerMenuButton(controller: controller, target: _target),
@@ -110,6 +149,19 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
     );
   }
 
+  ButtonStyle _commandStyle(
+    BuildContext context, {
+    bool selected = false,
+  }) =>
+      IconButton.styleFrom(
+        minimumSize: Size(_target, _target),
+        maximumSize: Size(_target, _target),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+        backgroundColor: selected
+            ? Theme.of(context).colorScheme.secondaryContainer
+            : Theme.of(context).colorScheme.surfaceContainerHigh,
+      );
+
   Widget _toolButton(
     BuildContext context, {
     required EditorTool tool,
@@ -141,13 +193,7 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
           isSelected: selected,
           tooltip: tooltip,
           icon: Icon(icon, size: 20),
-          style: IconButton.styleFrom(
-            minimumSize: Size(_target, _target),
-            maximumSize: Size(_target, _target),
-            backgroundColor: selected
-                ? Theme.of(context).colorScheme.secondaryContainer
-                : Theme.of(context).colorScheme.surfaceContainerHigh,
-          ),
+          style: _commandStyle(context, selected: selected),
         ),
       );
 
@@ -163,16 +209,16 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
           onPressed: onPressed,
           tooltip: tooltip,
           icon: Icon(icon, size: 20),
-          style: IconButton.styleFrom(
-            minimumSize: Size(_target, _target),
-            maximumSize: Size(_target, _target),
-          ),
+          style: _commandStyle(context),
         ),
       );
 }
 
 class _ElectricalPaletteButton extends StatelessWidget {
-  const _ElectricalPaletteButton({required this.controller, required this.target});
+  const _ElectricalPaletteButton({
+    required this.controller,
+    required this.target,
+  });
 
   final EditorController controller;
   final double target;
@@ -180,6 +226,7 @@ class _ElectricalPaletteButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = controller.p2.placementType;
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 1),
       child: PopupMenuButton<ElectricalComponentType>(
@@ -212,12 +259,14 @@ class _ElectricalPaletteButton extends StatelessWidget {
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: selected == null
-                  ? Theme.of(context).colorScheme.surfaceContainerHigh
-                  : Theme.of(context).colorScheme.secondaryContainer,
-              borderRadius: BorderRadius.circular(target / 2),
+                  ? scheme.surfaceContainerHigh
+                  : scheme.secondaryContainer,
+              borderRadius: BorderRadius.circular(7),
             ),
             child: Icon(
-              selected == null ? Icons.electrical_services : _componentIcon(selected),
+              selected == null
+                  ? Icons.electrical_services
+                  : _componentIcon(selected),
               size: 20,
             ),
           ),
@@ -242,6 +291,8 @@ class _LayerMenuButton extends StatelessWidget {
       style: IconButton.styleFrom(
         minimumSize: Size(target, target),
         maximumSize: Size(target, target),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
       ),
     );
   }
@@ -262,7 +313,9 @@ class _LayerMenuButton extends StatelessWidget {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: IconButton(
-                      tooltip: controller.p2.layers.isVisible(layer) ? 'Скрыть слой' : 'Показать слой',
+                      tooltip: controller.p2.layers.isVisible(layer)
+                          ? 'Скрыть слой'
+                          : 'Показать слой',
                       onPressed: () => controller.p2.setLayerVisible(
                         layer,
                         !controller.p2.layers.isVisible(layer),
@@ -305,7 +358,10 @@ class _LayerMenuButton extends StatelessWidget {
 }
 
 class _RoutePreferenceButton extends StatelessWidget {
-  const _RoutePreferenceButton({required this.controller, required this.target});
+  const _RoutePreferenceButton({
+    required this.controller,
+    required this.target,
+  });
 
   final EditorController controller;
   final double target;
@@ -326,7 +382,13 @@ class _RoutePreferenceButton extends StatelessWidget {
       child: SizedBox(
         width: target,
         height: target,
-        child: const Icon(Icons.route_outlined, size: 20),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(7),
+          ),
+          child: const Icon(Icons.route_outlined, size: 20),
+        ),
       ),
     );
   }
