@@ -15,16 +15,16 @@ extension WallProfileEditorActions on EditorController {
       return false;
     }
 
-    final candidateLevel = switch (_candidateLevel(
+    final candidateLevel = _candidateLevel(
       spaceId: space.id,
       wallIndex: wallIndex,
       startMm: startMm,
       widthMm: widthMm,
       depthMm: depthMm,
-    )) {
-      final candidate? => candidate,
-      null => return false,
-    };
+    );
+    if (candidateLevel == null) {
+      return false;
+    }
 
     final candidateSpace = candidateLevel.spaces.firstWhere(
       (candidate) => candidate.id == space.id,
