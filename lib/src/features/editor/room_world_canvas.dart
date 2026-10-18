@@ -6,6 +6,7 @@ import '../../domain/project_model.dart';
 import '../../domain/surface_routing.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/room_world_layout.dart';
+import 'cad_visual_tokens.dart';
 import 'editor_controller.dart';
 
 /// Connected engineering overview of one room.
@@ -38,10 +39,10 @@ class RoomWorldCanvas extends StatelessWidget {
     return ColoredBox(
       color: Theme.of(context).colorScheme.surface,
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
         child: Column(
           children: [
-            _GravityLegend(routeLengthMm: controller.routeLengthMm),
+            _RoomWorldStatus(controller: controller),
             const SizedBox(height: 8),
             Expanded(
               flex: 3,
@@ -51,7 +52,7 @@ class RoomWorldCanvas extends StatelessWidget {
                 surface: ceiling.surface,
                 title: 'ПОТОЛОК',
                 subtitle: 'верхняя плоскость',
-                gravity: Alignment.topCenter,
+                role: _SurfaceRole.ceiling,
               ),
             ),
             const SizedBox(height: 8),
@@ -71,7 +72,7 @@ class RoomWorldCanvas extends StatelessWidget {
                       surface: wallTiles[index].surface,
                       title: 'СТЕНА ${index + 1}',
                       subtitle: '${wall.lengthMm.round()} × ${wall.heightMm} mm',
-                      gravity: Alignment.center,
+                      role: _SurfaceRole.wall,
                     ),
                   );
                 },
@@ -86,7 +87,7 @@ class RoomWorldCanvas extends StatelessWidget {
                 surface: floor.surface,
                 title: 'ПОЛ',
                 subtitle: 'нижняя плоскость',
-                gravity: Alignment.bottomCenter,
+                role: _SurfaceRole.floor,
               ),
             ),
           ],
@@ -96,38 +97,68 @@ class RoomWorldCanvas extends StatelessWidget {
   }
 }
 
-class _GravityLegend extends StatelessWidget {
-  const _GravityLegend({required this.routeLengthMm});
+class _RoomWorldStatus extends StatelessWidget {
+  const _RoomWorldStatus({required this.controller});
 
-  final double routeLengthMm;
+  final EditorController controller;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-        height: 30,
-        child: Row(
-          children: [
-            const Icon(Icons.vertical_align_top, size: 15),
-            const SizedBox(width: 4),
-            Text('потолок', style: Theme.of(context).textTheme.labelSmall),
-            const SizedBox(width: 12),
-            const Icon(Icons.view_week_outlined, size: 15),
-            const SizedBox(width: 4),
-            Text('стены', style: Theme.of(context).textTheme.labelSmall),
-            const SizedBox(width: 12),
-            const Icon(Icons.vertical_align_bottom, size: 15),
-            const SizedBox(width: 4),
-            Text('пол', style: Theme.of(context).textTheme.labelSmall),
-            const Spacer(),
-            const Icon(Icons.alt_route, size: 15),
-            const SizedBox(width: 4),
-            Text(
-              '${routeLengthMm.toStringAsFixed(0)} mm',
-              style: Theme.of(context).textTheme.labelSmall,
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final route = _routeChain(controller.routeSegments);
+    return SizedBox(
+      height: 34,
+      child: Row(
+        children: [
+          const Icon(Icons.vertical_align_top, size: 15),
+          const SizedBox(width: 4),
+          Text('потолок ↑', style: Theme.of(context).textTheme.labelSmall),
+          const SizedBox(width: 10),
+          Text('стены ↔', style: Theme.of(context).textTheme.labelSmall),
+          const SizedBox(width: 10),
+          Text('пол ↓', style: Theme.of(context).textTheme.labelSmall),
+          const Spacer(),
+          if (route.isNotEmpty) ...[
+            Icon(Icons.alt_route, size: 15, color: CadVisualTokens.route(scheme)),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                route,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: CadVisualTokens.route(scheme),
+                      fontWeight: FontWeight.w600,
+                    ),
+              ),
             ),
+            const SizedBox(width: 8),
           ],
-        ),
-      );
+          Text(
+            '${(controller.routeLengthMm / 1000).toStringAsFixed(2)} m',
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+        ],
+      ),
+    );
+  }
 }
+
+String _routeChain(List<SurfaceRouteSegmentDraft> segments) {
+  if (segments.isEmpty) return '';
+  final labels = <String>[];
+  for (final segment in segments) {
+    final label = switch (segment.surface.type) {
+      SurfacePlaneType.floor => 'Floor',
+      SurfacePlaneType.ceiling => 'Ceiling',
+      SurfacePlaneType.wall => 'W${segment.surface.wallIndex! + 1}',
+    };
+    if (labels.isEmpty || labels.last != label) labels.add(label);
+  }
+  return labels.join(' → ');
+}
+
+enum _SurfaceRole { ceiling, wall, floor }
 
 class _SurfaceTile extends StatelessWidget {
   const _SurfaceTile({
@@ -136,7 +167,7 @@ class _SurfaceTile extends StatelessWidget {
     required this.surface,
     required this.title,
     required this.subtitle,
-    required this.gravity,
+    required this.role,
   });
 
   final EditorController controller;
@@ -144,7 +175,7 @@ class _SurfaceTile extends StatelessWidget {
   final RoomSurfaceRef surface;
   final String title;
   final String subtitle;
-  final Alignment gravity;
+  final _SurfaceRole role;
 
   void _openSurface() {
     switch (surface.type) {
@@ -166,12 +197,22 @@ class _SurfaceTile extends StatelessWidget {
         .where((opening) => opening.hostWall == surface)
         .toList(growable: false);
     final scheme = Theme.of(context).colorScheme;
+    final profileIsCustom = surface.type == SurfacePlaneType.wall &&
+        space.wallProfiles.containsKey(surface.wallIndex);
 
     return Material(
-      color: scheme.surfaceContainerLow,
+      color: switch (role) {
+        _SurfaceRole.ceiling => scheme.surfaceContainerLow.withValues(alpha: 0.72),
+        _SurfaceRole.wall => scheme.surfaceContainerLow,
+        _SurfaceRole.floor => scheme.surfaceContainerLowest,
+      },
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: scheme.outlineVariant),
+        borderRadius: BorderRadius.circular(CadVisualTokens.surfaceRadius),
+        side: BorderSide(
+          color: profileIsCustom
+              ? CadVisualTokens.profileGuide(scheme)
+              : scheme.outlineVariant,
+        ),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -180,7 +221,7 @@ class _SurfaceTile extends StatelessWidget {
           children: [
             Positioned.fill(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 30, 10, 8),
+                padding: const EdgeInsets.fromLTRB(10, 32, 10, 9),
                 child: CustomPaint(
                   painter: _RoomWorldSurfacePainter(
                     space: space,
@@ -210,8 +251,20 @@ class _SurfaceTile extends StatelessWidget {
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
                   ),
+                  if (profileIsCustom) ...[
+                    Icon(
+                      Icons.account_tree_outlined,
+                      size: 14,
+                      color: CadVisualTokens.profile(scheme),
+                    ),
+                    const SizedBox(width: 5),
+                  ],
                   if (routes.isNotEmpty) ...[
-                    const Icon(Icons.alt_route, size: 15),
+                    Icon(
+                      Icons.alt_route,
+                      size: 15,
+                      color: CadVisualTokens.route(scheme),
+                    ),
                     const SizedBox(width: 3),
                     Text(
                       '${routes.length}',
@@ -219,20 +272,6 @@ class _SurfaceTile extends StatelessWidget {
                     ),
                   ],
                 ],
-              ),
-            ),
-            Align(
-              alignment: gravity,
-              child: IgnorePointer(
-                child: Container(
-                  width: 46,
-                  height: 3,
-                  margin: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(
-                    color: scheme.primary.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
               ),
             ),
           ],
@@ -244,7 +283,7 @@ class _SurfaceTile extends StatelessWidget {
 
 IconData _surfaceIcon(RoomSurfaceRef surface) => switch (surface.type) {
       SurfacePlaneType.floor => Icons.grid_4x4_outlined,
-      SurfacePlaneType.ceiling => Icons.view_in_ar_outlined,
+      SurfacePlaneType.ceiling => Icons.vertical_align_top,
       SurfacePlaneType.wall => Icons.crop_landscape_outlined,
     };
 
@@ -282,35 +321,60 @@ class _RoomWorldSurfacePainter extends CustomPainter {
 
     final outline = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2
-      ..color = scheme.outline;
+      ..strokeWidth = CadVisualTokens.geometryStroke
+      ..strokeJoin = StrokeJoin.miter
+      ..color = CadVisualTokens.geometry(scheme);
 
     if (surface.type == SurfacePlaneType.wall) {
       final wall = RoomSurfaceResolver.wall(space, surface.wallIndex!);
-      final path = Path();
+      final profilePath = Path();
       for (var i = 0; i < wall.profile.vertices.length; i++) {
         final point = wall.profile.vertices[i];
         final mapped = mapPoint(SurfacePointMm(point.xMm, point.yMm));
         if (i == 0) {
-          path.moveTo(mapped.dx, mapped.dy);
+          profilePath.moveTo(mapped.dx, mapped.dy);
         } else {
-          path.lineTo(mapped.dx, mapped.dy);
+          profilePath.lineTo(mapped.dx, mapped.dy);
         }
       }
-      path.close();
-      canvas.drawPath(path, outline);
-      for (final opening in openings) {
-        canvas.drawRect(
-          Rect.fromPoints(
-            mapPoint(
-              SurfacePointMm(opening.offsetFromStartMm, opening.sillHeightMm),
-            ),
-            mapPoint(SurfacePointMm(opening.endOffsetMm, opening.topMm)),
-          ),
+      profilePath.close();
+      canvas.drawPath(
+        profilePath,
+        Paint()
+          ..style = PaintingStyle.fill
+          ..color = CadVisualTokens.ghostFill(scheme),
+      );
+      canvas.drawPath(profilePath, outline);
+
+      if (space.wallProfiles.containsKey(surface.wallIndex)) {
+        canvas.drawPath(
+          profilePath,
           Paint()
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.4
-            ..color = scheme.tertiary,
+            ..strokeWidth = CadVisualTokens.profileStroke
+            ..strokeJoin = StrokeJoin.miter
+            ..color = CadVisualTokens.profile(scheme),
+        );
+      }
+
+      for (final opening in openings) {
+        final rect = Rect.fromPoints(
+          mapPoint(
+            SurfacePointMm(opening.offsetFromStartMm, opening.sillHeightMm),
+          ),
+          mapPoint(SurfacePointMm(opening.endOffsetMm, opening.topMm)),
+        );
+        final openingColor = CadVisualTokens.opening(scheme);
+        canvas.drawRect(
+          rect,
+          Paint()..color = openingColor.withValues(alpha: 0.08),
+        );
+        canvas.drawRect(
+          rect,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = CadVisualTokens.openingStroke
+            ..color = openingColor,
         );
       }
     } else {
@@ -331,6 +395,12 @@ class _RoomWorldSurfacePainter extends CustomPainter {
         }
       }
       path.close();
+      canvas.drawPath(
+        path,
+        Paint()
+          ..style = PaintingStyle.fill
+          ..color = CadVisualTokens.ghostFill(scheme),
+      );
       canvas.drawPath(path, outline);
     }
 
@@ -338,14 +408,18 @@ class _RoomWorldSurfacePainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
-      ..strokeWidth = 2.6
-      ..color = scheme.primary;
-    final nodePaint = Paint()..color = scheme.primary;
+      ..strokeWidth = CadVisualTokens.routeStroke
+      ..color = CadVisualTokens.route(scheme);
+    final nodePaint = Paint()..color = CadVisualTokens.route(scheme);
     for (final segment in routeSegments) {
       if (segment.points.isEmpty) continue;
       final first = mapPoint(segment.points.first);
       if (segment.points.length == 1) {
-        canvas.drawCircle(first, 3.2, nodePaint);
+        canvas.drawCircle(
+          first,
+          CadVisualTokens.transitionNodeRadius,
+          nodePaint,
+        );
         continue;
       }
       final path = Path()..moveTo(first.dx, first.dy);
@@ -354,8 +428,16 @@ class _RoomWorldSurfacePainter extends CustomPainter {
         path.lineTo(mapped.dx, mapped.dy);
       }
       canvas.drawPath(path, routePaint);
-      canvas.drawCircle(first, 3, nodePaint);
-      canvas.drawCircle(mapPoint(segment.points.last), 3, nodePaint);
+      canvas.drawCircle(
+        first,
+        CadVisualTokens.transitionNodeRadius,
+        nodePaint,
+      );
+      canvas.drawCircle(
+        mapPoint(segment.points.last),
+        CadVisualTokens.transitionNodeRadius,
+        nodePaint,
+      );
     }
   }
 
