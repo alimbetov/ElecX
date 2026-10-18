@@ -1,3 +1,5 @@
+import 'editor_ui_tokens.dart';
+
 enum EditorLayoutMode {
   mobile,
   tablet,
@@ -21,14 +23,14 @@ abstract final class EditorLayoutPolicy {
       mode != EditorLayoutMode.desktop;
 
   static double navigatorWidth(EditorLayoutMode mode) => switch (mode) {
-        EditorLayoutMode.desktop => 280,
-        EditorLayoutMode.tablet => 340,
-        EditorLayoutMode.mobile => 300,
+        EditorLayoutMode.desktop => EditorUiTokens.desktopNavigatorWidth,
+        EditorLayoutMode.tablet => 328,
+        EditorLayoutMode.mobile => 292,
       };
 
   static double inspectorWidth(EditorLayoutMode mode) => switch (mode) {
-        EditorLayoutMode.desktop => 360,
-        EditorLayoutMode.tablet => 380,
-        EditorLayoutMode.mobile => 320,
+        EditorLayoutMode.desktop => EditorUiTokens.desktopInspectorWidth,
+        EditorLayoutMode.tablet => 356,
+        EditorLayoutMode.mobile => 304,
       };
 }
