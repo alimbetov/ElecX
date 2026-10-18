@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../domain/geometry.dart';
+import '../../domain/surface_navigation.dart';
 import '../../domain/surfaces.dart';
 import 'editor_controller.dart';
 
@@ -27,7 +28,20 @@ class SurfaceCanvas extends StatelessWidget {
           behavior: HitTestBehavior.opaque,
           onTapDown: (details) {
             final point = projection.viewportToSurface(details.localPosition);
-            if (point != null) controller.surfaceTap(point);
+            if (point == null) return;
+
+            if (surface.type == SurfacePlaneType.wall) {
+              final hit = projection.wallEdgeHit(
+                details.localPosition,
+                thresholdPx: 20,
+              );
+              if (hit != null) {
+                controller.navigateWallEdge(hit.edge, hit.point);
+                return;
+              }
+            }
+
+            controller.surfaceTap(point);
           },
           child: CustomPaint(
             painter: _SurfacePainter(controller, projection),
@@ -37,6 +51,13 @@ class SurfaceCanvas extends StatelessWidget {
       },
     );
   }
+}
+
+final class _WallEdgeHit {
+  const _WallEdgeHit(this.edge, this.point);
+
+  final WallNavigationEdge edge;
+  final SurfacePointMm point;
 }
 
 final class _SurfaceProjection {
@@ -59,7 +80,10 @@ final class _SurfaceProjection {
     const verticalPadding = 82.0;
     final fitX = (viewportSize.width - horizontalPadding * 2) / widthMm;
     final fitY = (viewportSize.height - verticalPadding * 2) / heightMm;
-    pixelsPerMm = math.max(0.0001, math.min(fitX, fitY) * controller.zoom);
+    pixelsPerMm = math.max(
+      0.0001,
+      math.min(fitX, fitY) * controller.zoom,
+    );
     final drawingWidth = widthMm * pixelsPerMm;
     final drawingHeight = heightMm * pixelsPerMm;
     origin = Offset(
@@ -89,6 +113,41 @@ final class _SurfaceProjection {
     return SurfacePointMm(x.round(), y.round());
   }
 
+  _WallEdgeHit? wallEdgeHit(
+    Offset viewportPoint, {
+    required double thresholdPx,
+  }) {
+    final local = viewportToSurface(viewportPoint);
+    if (local == null) return null;
+
+    final thresholdMm = thresholdPx / pixelsPerMm;
+    final distances = <WallNavigationEdge, double>{
+      WallNavigationEdge.start: local.xMm.toDouble(),
+      WallNavigationEdge.end: widthMm - local.xMm,
+      WallNavigationEdge.floor: local.yMm.toDouble(),
+      WallNavigationEdge.ceiling: heightMm - local.yMm,
+    };
+
+    WallNavigationEdge? nearest;
+    var nearestDistance = double.infinity;
+    for (final entry in distances.entries) {
+      if (entry.value < nearestDistance) {
+        nearestDistance = entry.value;
+        nearest = entry.key;
+      }
+    }
+    if (nearest == null || nearestDistance > thresholdMm) return null;
+
+    final clamped = switch (nearest) {
+      WallNavigationEdge.start => SurfacePointMm(0, local.yMm),
+      WallNavigationEdge.end => SurfacePointMm(widthMm.round(), local.yMm),
+      WallNavigationEdge.floor => SurfacePointMm(local.xMm, 0),
+      WallNavigationEdge.ceiling =>
+        SurfacePointMm(local.xMm, heightMm.round()),
+    };
+    return _WallEdgeHit(nearest, clamped);
+  }
+
   Offset floorPointToViewport(MmPoint point) => surfaceToViewport(
         SurfacePointMm(point.x - floorLeftMm, point.y - floorBottomMm),
       );
@@ -102,25 +161,36 @@ class _SurfacePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0xFFF7F8FA));
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()..color = const Color(0xFFF7F8FA),
+    );
     final surface = controller.activeSurface!;
     if (surface.type == SurfacePlaneType.wall) {
       _drawWall(canvas);
     } else {
       _drawHorizontalSurface(canvas, surface.type);
     }
+    _drawRoute(canvas);
   }
 
   void _drawWall(Canvas canvas) {
     final wall = controller.activeWall!;
-    final topLeft = projection.surfaceToViewport(SurfacePointMm(0, wall.heightMm));
+    final topLeft = projection.surfaceToViewport(
+      SurfacePointMm(0, wall.heightMm),
+    );
     final bottomRight = projection.surfaceToViewport(
       SurfacePointMm(wall.lengthMm.round(), 0),
     );
     final wallRect = Rect.fromPoints(topLeft, bottomRight);
 
     canvas.drawRect(wallRect, Paint()..color = Colors.white);
-    _drawSurfaceGrid(canvas, wallRect, wall.lengthMm.round(), wall.heightMm);
+    _drawSurfaceGrid(
+      canvas,
+      wallRect,
+      wall.lengthMm.round(),
+      wall.heightMm,
+    );
 
     for (final opening in controller.activeWallOpenings) {
       _drawOpening(canvas, opening);
@@ -134,36 +204,60 @@ class _SurfacePainter extends CustomPainter {
         ..color = const Color(0xFF263238),
     );
 
+    _drawNavigationEdges(canvas, wallRect, wall);
+
     if (controller.dimensionsVisible) {
       _drawWallDimensions(canvas, wallRect, wall);
     }
 
-    final draft = controller.routeDraftStart;
-    if (draft != null) {
-      final center = projection.surfaceToViewport(draft);
-      canvas.drawCircle(center, 6, Paint()..color = const Color(0xFFD66B2C));
-      canvas.drawLine(
-        Offset(wallRect.left, center.dy),
-        Offset(wallRect.right, center.dy),
-        Paint()
-          ..color = const Color(0x55D66B2C)
-          ..strokeWidth = 1,
-      );
-      canvas.drawLine(
-        Offset(center.dx, wallRect.top),
-        Offset(center.dx, wallRect.bottom),
-        Paint()
-          ..color = const Color(0x55D66B2C)
-          ..strokeWidth = 1,
-      );
-    }
-
     _label(
       canvas,
-      'Стена ${(wall.ref.wallIndex ?? 0) + 1} · ${wall.lengthMm.round()} × ${wall.heightMm} mm',
+      'Стена ${(wall.ref.wallIndex ?? 0) + 1} · '
+      '${wall.lengthMm.round()} × ${wall.heightMm} mm',
       Offset(wallRect.center.dx, wallRect.top - 38),
       centered: true,
       bold: true,
+    );
+  }
+
+  void _drawNavigationEdges(
+    Canvas canvas,
+    Rect wallRect,
+    RoomWallSurface wall,
+  ) {
+    final paint = Paint()
+      ..color = const Color(0x33246DB3)
+      ..strokeWidth = 7;
+    canvas.drawLine(wallRect.topLeft, wallRect.topRight, paint);
+    canvas.drawLine(wallRect.bottomLeft, wallRect.bottomRight, paint);
+    canvas.drawLine(wallRect.topLeft, wallRect.bottomLeft, paint);
+    canvas.drawLine(wallRect.topRight, wallRect.bottomRight, paint);
+
+    _label(
+      canvas,
+      'ПОТОЛОК ↑',
+      Offset(wallRect.center.dx, wallRect.top + 13),
+      centered: true,
+      small: true,
+    );
+    _label(
+      canvas,
+      '↓ ПОЛ',
+      Offset(wallRect.center.dx, wallRect.bottom - 13),
+      centered: true,
+      small: true,
+    );
+    _label(
+      canvas,
+      '← соседняя стена',
+      Offset(wallRect.left + 10, wallRect.center.dy),
+      small: true,
+    );
+    _label(
+      canvas,
+      'соседняя стена →',
+      Offset(wallRect.right - 104, wallRect.center.dy),
+      small: true,
     );
   }
 
@@ -221,10 +315,56 @@ class _SurfacePainter extends CustomPainter {
 
     _label(
       canvas,
-      type == SurfacePlaneType.floor ? 'ПОЛ · ${space.name}' : 'ПОТОЛОК · ${space.name}',
+      type == SurfacePlaneType.floor
+          ? 'ПОЛ · ${space.name}'
+          : 'ПОТОЛОК · ${space.name}',
       Offset(rect.center.dx, rect.top - 38),
       centered: true,
       bold: true,
+    );
+  }
+
+  void _drawRoute(Canvas canvas) {
+    final segment = controller.activeRouteSegment;
+    if (segment == null || segment.points.isEmpty) return;
+
+    final paint = Paint()
+      ..color = const Color(0xFFD66B2C)
+      ..strokeWidth = 2.6
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    Offset? previous;
+    for (final point in segment.points) {
+      final current = projection.surfaceToViewport(point);
+      if (previous != null) {
+        canvas.drawLine(previous, current, paint);
+      }
+      canvas.drawCircle(current, 4.5, paint);
+      previous = current;
+    }
+
+    final last = projection.surfaceToViewport(segment.points.last);
+    canvas.drawLine(
+      Offset(
+        last.dx,
+        projection.origin.dy -
+            projection.heightMm * projection.pixelsPerMm,
+      ),
+      Offset(last.dx, projection.origin.dy),
+      Paint()
+        ..color = const Color(0x44D66B2C)
+        ..strokeWidth = 0.9,
+    );
+    canvas.drawLine(
+      Offset(projection.origin.dx, last.dy),
+      Offset(
+        projection.origin.dx + projection.widthMm * projection.pixelsPerMm,
+        last.dy,
+      ),
+      Paint()
+        ..color = const Color(0x44D66B2C)
+        ..strokeWidth = 0.9,
     );
   }
 
@@ -259,10 +399,20 @@ class _SurfacePainter extends CustomPainter {
       ArchitecturalOpeningType.passage => 'Проём',
       ArchitecturalOpeningType.technicalOpening => 'Тех. проём',
     };
-    _label(canvas, '$name ${opening.widthMm}×${opening.heightMm}', rect.center, centered: true);
+    _label(
+      canvas,
+      '$name ${opening.widthMm}×${opening.heightMm}',
+      rect.center,
+      centered: true,
+    );
   }
 
-  void _drawSurfaceGrid(Canvas canvas, Rect rect, int widthMm, int heightMm) {
+  void _drawSurfaceGrid(
+    Canvas canvas,
+    Rect rect,
+    int widthMm,
+    int heightMm,
+  ) {
     final step = controller.selectedSpace?.grid.minorStepMm ?? 100;
     final majorStep = step * 10;
     final minor = Paint()
@@ -290,7 +440,11 @@ class _SurfacePainter extends CustomPainter {
     }
   }
 
-  void _drawWallDimensions(Canvas canvas, Rect wallRect, RoomWallSurface wall) {
+  void _drawWallDimensions(
+    Canvas canvas,
+    Rect wallRect,
+    RoomWallSurface wall,
+  ) {
     _horizontalDimension(
       canvas,
       wallRect.left,
@@ -348,7 +502,12 @@ class _SurfacePainter extends CustomPainter {
     }
   }
 
-  void _drawRectDimensions(Canvas canvas, Rect rect, int widthMm, int heightMm) {
+  void _drawRectDimensions(
+    Canvas canvas,
+    Rect rect,
+    int widthMm,
+    int heightMm,
+  ) {
     _horizontalDimension(
       canvas,
       rect.left,
@@ -379,12 +538,26 @@ class _SurfacePainter extends CustomPainter {
     final paint = Paint()
       ..color = const Color(0xFF4B5563)
       ..strokeWidth = 0.9;
-    canvas.drawLine(Offset(left, extensionTop + 4), Offset(left, y + 4), paint);
-    canvas.drawLine(Offset(right, extensionTop + 4), Offset(right, y + 4), paint);
+    canvas.drawLine(
+      Offset(left, extensionTop + 4),
+      Offset(left, y + 4),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(right, extensionTop + 4),
+      Offset(right, y + 4),
+      paint,
+    );
     canvas.drawLine(Offset(left, y), Offset(right, y), paint);
     _tick(canvas, Offset(left, y), paint);
     _tick(canvas, Offset(right, y), paint);
-    _label(canvas, text, Offset((left + right) / 2, y - 10), centered: true, small: small);
+    _label(
+      canvas,
+      text,
+      Offset((left + right) / 2, y - 10),
+      centered: true,
+      small: small,
+    );
   }
 
   void _verticalDimension(
@@ -398,8 +571,16 @@ class _SurfacePainter extends CustomPainter {
     final paint = Paint()
       ..color = const Color(0xFF4B5563)
       ..strokeWidth = 0.9;
-    canvas.drawLine(Offset(extensionLeft + 4, top), Offset(x + 4, top), paint);
-    canvas.drawLine(Offset(extensionLeft + 4, bottom), Offset(x + 4, bottom), paint);
+    canvas.drawLine(
+      Offset(extensionLeft + 4, top),
+      Offset(x + 4, top),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(extensionLeft + 4, bottom),
+      Offset(x + 4, bottom),
+      paint,
+    );
     canvas.drawLine(Offset(x, top), Offset(x, bottom), paint);
     _tick(canvas, Offset(x, top), paint);
     _tick(canvas, Offset(x, bottom), paint);
@@ -407,7 +588,11 @@ class _SurfacePainter extends CustomPainter {
   }
 
   void _tick(Canvas canvas, Offset point, Paint paint) {
-    canvas.drawLine(point + const Offset(-4, 4), point + const Offset(4, -4), paint);
+    canvas.drawLine(
+      point + const Offset(-4, 4),
+      point + const Offset(4, -4),
+      paint,
+    );
   }
 
   void _dashLine(Canvas canvas, Offset a, Offset b, Paint paint) {
@@ -447,7 +632,9 @@ class _SurfacePainter extends CustomPainter {
     )..layout();
     painter.paint(
       canvas,
-      centered ? point - Offset(painter.width / 2, painter.height / 2) : point,
+      centered
+          ? point - Offset(painter.width / 2, painter.height / 2)
+          : point,
     );
   }
 
