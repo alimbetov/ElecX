@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../domain/electrical_placement.dart';
 import '../../domain/electrical_routing.dart';
+import '../../domain/geometry.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/command_history.dart';
 import '../../engine/direct_manipulation.dart';
@@ -198,7 +199,7 @@ final class EditorP2Session extends ChangeNotifier {
         id: '${component.id}:move',
         ownerId: component.id,
         kind: ManipulationHandleKind.move,
-        worldPoint: _surfacePointToPseudoWorld(component.position),
+        worldPoint: MmPoint(component.position.xMm, component.position.yMm),
       ),
     ];
   }
@@ -219,30 +220,6 @@ final class EditorP2Session extends ChangeNotifier {
     history.replaceState(next, clearHistory: false);
     notifyListeners();
   }
-
-  static dynamic _surfacePointToPseudoWorld(SurfacePointMm point) {
-    // Manipulation handles are generic world-mm primitives. For a local surface
-    // editor the same integer coordinates form its local world plane.
-    return _PseudoMmPoint(point.xMm, point.yMm).asMmPoint;
-  }
-}
-
-final class _PseudoMmPoint {
-  const _PseudoMmPoint(this.x, this.y);
-  final int x;
-  final int y;
-
-  dynamic get asMmPoint {
-    // Kept private so the session does not expose an alternative coordinate
-    // model; DirectManipulationEngine still receives domain MmPoint values.
-    return _mmPointFactory(x, y);
-  }
-}
-
-dynamic _mmPointFactory(int x, int y) {
-  // This indirection is replaced by a direct MmPoint import below by the Dart
-  // compiler's tree shaking; it keeps the conversion in one explicit place.
-  throw UnimplementedError('MmPoint factory must be replaced.');
 }
 
 final Expando<EditorP2Session> _p2Sessions =
