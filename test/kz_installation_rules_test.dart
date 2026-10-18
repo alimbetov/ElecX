@@ -1,4 +1,4 @@
-import 'package:electra/src/engine/kz_installation_rules.dart';
+import 'package:elecx/src/engine/kz_installation_rules.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
