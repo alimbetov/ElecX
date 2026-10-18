@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
 import 'editor_controller.dart';
-import 'spatial_canvas.dart';
+import 'plan_dimension_layer.dart';
 import 'surface_canvas.dart';
 
 class SpatialEditorScreen extends StatefulWidget {
@@ -59,7 +59,7 @@ class _SpatialEditorScreenState extends State<SpatialEditorScreen> {
               builder: (context, constraints) {
                 final wide = constraints.maxWidth >= 980;
                 final canvas = controller.viewMode == EditorViewMode.plan
-                    ? SpatialCanvas(controller: controller)
+                    ? PlanDimensionLayer(controller: controller)
                     : SurfaceCanvas(controller: controller);
                 if (!wide) return canvas;
                 return Row(
