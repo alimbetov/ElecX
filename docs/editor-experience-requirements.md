@@ -210,14 +210,17 @@ Examples:
 
 ## P2 — engineering workspace integration
 
-Only after the spatial editor interaction kernel is stable should the main electrical authoring layers be added:
+Electrical authoring requirements are specified in `docs/electrical-authoring-requirements.md`.
+
+The engineering layer includes:
 
 - sockets;
 - switches;
-- luminaires;
+- lighting points / luminaires;
+- curtain motors / actuators;
 - junction boxes;
-- panels;
-- cable routes;
+- panels and power sources;
+- cable routes bound to source/target ports;
 - circuits;
 - equipment catalogue bindings;
 - engineering calculations.
