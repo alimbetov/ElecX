@@ -42,6 +42,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     super.initState();
     _sceneIndex = SpatialSceneIndex();
     _lastViewportRevision = controller.viewportCommandRevision;
+    controller.viewportCommandListenable.addListener(_onViewportCommand);
     _rebuildIndex(force: true);
   }
 
@@ -49,8 +50,23 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
   void didUpdateWidget(covariant SpatialCanvas oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.viewportCommandListenable
+          .removeListener(_onViewportCommand);
       _lastViewportRevision = controller.viewportCommandRevision;
+      controller.viewportCommandListenable.addListener(_onViewportCommand);
       _rebuildIndex(force: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    controller.viewportCommandListenable.removeListener(_onViewportCommand);
+    super.dispose();
+  }
+
+  void _onViewportCommand() {
+    if (mounted) {
+      setState(() {});
     }
   }
 
