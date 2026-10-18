@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/project_model.dart';
+import '../../domain/surfaces.dart';
 import 'editor_controller.dart';
 import 'spatial_canvas.dart';
+import 'surface_canvas.dart';
 
 class SpatialEditorScreen extends StatefulWidget {
   const SpatialEditorScreen({super.key});
@@ -43,18 +45,22 @@ class _SpatialEditorScreenState extends State<SpatialEditorScreen> {
       body: Column(
         children: [
           _Toolbar(controller: controller),
+          _SurfaceNavigator(controller: controller),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final wide = constraints.maxWidth >= 980;
-                if (!wide) return SpatialCanvas(controller: controller);
+                final canvas = controller.viewMode == EditorViewMode.plan
+                    ? SpatialCanvas(controller: controller)
+                    : SurfaceCanvas(controller: controller);
+                if (!wide) return canvas;
                 return Row(
                   children: [
                     SizedBox(width: 240, child: _ProjectTree(controller: controller)),
                     const VerticalDivider(width: 1),
-                    Expanded(child: SpatialCanvas(controller: controller)),
+                    Expanded(child: canvas),
                     const VerticalDivider(width: 1),
-                    SizedBox(width: 280, child: _PropertiesPanel(controller: controller)),
+                    SizedBox(width: 300, child: _PropertiesPanel(controller: controller)),
                   ],
                 );
               },
@@ -98,8 +104,10 @@ class _Toolbar extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           children: [
             tool(EditorTool.select, Icons.near_me_outlined, 'Выбор'),
-            tool(EditorTool.roomRectangle, Icons.crop_square, 'Комната'),
+            if (controller.viewMode == EditorViewMode.plan)
+              tool(EditorTool.roomRectangle, Icons.crop_square, 'Комната'),
             tool(EditorTool.guide, Icons.straighten, 'Направляющая'),
+            tool(EditorTool.cableRoute, Icons.alt_route, 'Трасса'),
             const SizedBox(width: 10),
             FilterChip(
               selected: controller.snapEnabled,
@@ -107,9 +115,105 @@ class _Toolbar extends StatelessWidget {
               avatar: const Icon(Icons.grid_4x4, size: 18),
               label: const Text('Snap'),
             ),
+            const SizedBox(width: 6),
+            FilterChip(
+              selected: controller.dimensionsVisible,
+              onSelected: controller.setDimensionsVisible,
+              avatar: const Icon(Icons.straighten, size: 18),
+              label: const Text('Размеры'),
+            ),
+            const SizedBox(width: 12),
+            IconButton(
+              onPressed: controller.zoomOut,
+              tooltip: 'Уменьшить',
+              icon: const Icon(Icons.zoom_out),
+            ),
+            TextButton(
+              onPressed: controller.resetZoom,
+              child: Text('${(controller.zoom * 100).round()}%'),
+            ),
+            IconButton(
+              onPressed: controller.zoomIn,
+              tooltip: 'Увеличить',
+              icon: const Icon(Icons.zoom_in),
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _SurfaceNavigator extends StatelessWidget {
+  const _SurfaceNavigator({required this.controller});
+  final EditorController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final space = controller.selectedSpace;
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      child: SizedBox(
+        height: 46,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          children: [
+            _viewChip(
+              context,
+              label: 'План',
+              icon: Icons.map_outlined,
+              selected: controller.viewMode == EditorViewMode.plan,
+              onTap: controller.showPlan,
+            ),
+            if (space != null) ...[
+              const SizedBox(width: 6),
+              _viewChip(
+                context,
+                label: 'Пол',
+                icon: Icons.grid_on,
+                selected: controller.activeSurface?.type == SurfacePlaneType.floor,
+                onTap: controller.showFloor,
+              ),
+              const SizedBox(width: 6),
+              _viewChip(
+                context,
+                label: 'Потолок',
+                icon: Icons.view_in_ar_outlined,
+                selected: controller.activeSurface?.type == SurfacePlaneType.ceiling,
+                onTap: controller.showCeiling,
+              ),
+              const SizedBox(width: 12),
+              for (var i = 0; i < space.boundary.vertices.length; i++) ...[
+                _viewChip(
+                  context,
+                  label: 'Стена ${i + 1}',
+                  icon: Icons.crop_landscape,
+                  selected: controller.activeSurface?.type == SurfacePlaneType.wall &&
+                      controller.activeSurface?.wallIndex == i,
+                  onTap: () => controller.showWall(i),
+                ),
+                const SizedBox(width: 6),
+              ],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _viewChip(
+    BuildContext context, {
+    required String label,
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return ChoiceChip(
+      selected: selected,
+      onSelected: (_) => onTap(),
+      avatar: Icon(icon, size: 16),
+      label: Text(label),
     );
   }
 }
@@ -173,7 +277,9 @@ class _PropertiesPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final space = controller.selectedSpace;
     if (space == null) return const Center(child: Text('Выберите помещение'));
+    final surface = controller.activeSurface;
     final bounds = space.boundary.bounds;
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -184,6 +290,37 @@ class _PropertiesPanel extends StatelessWidget {
         _value('Длина', '${bounds.height} mm'),
         _value('Центр X', '${space.referenceFrame.origin.x} mm'),
         _value('Центр Y', '${space.referenceFrame.origin.y} mm'),
+        if (surface != null) ...[
+          const Divider(height: 32),
+          Text('Активная плоскость', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          _value('Тип', _surfaceName(surface)),
+          if (controller.activeWall case final wall?) ...[
+            _value('Длина стены', '${wall.lengthMm.round()} mm'),
+            _value('Высота', '${wall.heightMm} mm'),
+            _value('Проёмы', '${controller.activeWallOpenings.length}'),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: controller.previousWall,
+                    icon: const Icon(Icons.chevron_left),
+                    label: const Text('Пред.'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: controller.nextWall,
+                    icon: const Icon(Icons.chevron_right),
+                    label: const Text('След.'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
         const Divider(height: 32),
         const Text('Локальная сетка'),
         const SizedBox(height: 8),
@@ -207,11 +344,17 @@ class _PropertiesPanel extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         const Text(
-          'Центровочные линии создаются автоматически по локальному центру помещения.',
+          'Сетка, центровочные линии и размеры работают в координатах активной плоскости.',
         ),
       ],
     );
   }
+
+  String _surfaceName(RoomSurfaceRef surface) => switch (surface.type) {
+        SurfacePlaneType.floor => 'Пол',
+        SurfacePlaneType.ceiling => 'Потолок',
+        SurfacePlaneType.wall => 'Стена ${(surface.wallIndex ?? 0) + 1}',
+      };
 
   Widget _value(String label, String value) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
@@ -228,13 +371,22 @@ class _StatusBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final grid = controller.selectedSpace?.grid.minorStepMm ?? 100;
+    final surface = controller.activeSurface;
+    final view = surface == null
+        ? 'Plan'
+        : switch (surface.type) {
+            SurfacePlaneType.floor => 'Floor',
+            SurfacePlaneType.ceiling => 'Ceiling',
+            SurfacePlaneType.wall => 'Wall ${(surface.wallIndex ?? 0) + 1}',
+          };
     return Container(
       height: 30,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       alignment: Alignment.centerLeft,
       child: Text(
-        'Metric · Floor grid ${controller.floorGridMm} mm · '
-        'Room grid $grid mm · Snap ${controller.snapEnabled ? 'ON' : 'OFF'}',
+        'Metric · $view · Floor grid ${controller.floorGridMm} mm · '
+        'Room grid $grid mm · Snap ${controller.snapEnabled ? 'ON' : 'OFF'} · '
+        'Zoom ${(controller.zoom * 100).round()}%',
       ),
     );
   }
