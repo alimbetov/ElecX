@@ -10,7 +10,7 @@ void main() {
     controller.showWall(0);
 
     final applied = controller.addActiveWallTopNotch(
-      startMm: 1000,
+      startMm: 2000,
       widthMm: 600,
       depthMm: 300,
     );
@@ -38,5 +38,22 @@ void main() {
 
     expect(applied, isFalse);
     expect(controller.selectedSpace!.wallProfiles.containsKey(0), isFalse);
+  });
+
+  test('notch that would intersect an existing door is rejected atomically', () {
+    final controller = EditorController.demo();
+    addTearDown(controller.dispose);
+
+    controller.showWall(0);
+
+    final applied = controller.addActiveWallTopNotch(
+      startMm: 500,
+      widthMm: 1200,
+      depthMm: 1000,
+    );
+
+    expect(applied, isFalse);
+    expect(controller.selectedSpace!.wallProfiles.containsKey(0), isFalse);
+    expect(controller.activeWallOpenings, hasLength(1));
   });
 }
