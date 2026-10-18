@@ -28,31 +28,32 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
 
   EditorController get controller => widget.controller;
 
+  WorldCamera _fittedCamera(_SurfaceExtent extent) {
+    final base = _camera ?? const WorldCamera(centerMm: MmPoint(0, 0), mmPerPixel: 10);
+    if (_size.isEmpty) return base;
+    return base.fitBounds(
+      bounds: MmBounds(
+        left: 0,
+        bottom: 0,
+        right: math.max(1, extent.widthMm),
+        top: math.max(1, extent.heightMm),
+      ),
+      viewportWidthPx: _size.width,
+      viewportHeightPx: _size.height,
+      paddingPx: 88,
+    );
+  }
+
   void _ensureCamera(_SurfaceExtent extent) {
     final id = controller.activeSurface?.id;
     if (_camera != null && _surfaceId == id) return;
     _surfaceId = id;
-    _camera = const WorldCamera(centerMm: MmPoint(0, 0), mmPerPixel: 10);
-    if (!_size.isEmpty) _fit(extent);
+    _camera = _fittedCamera(extent);
   }
 
   void _fit(_SurfaceExtent extent) {
     if (_size.isEmpty) return;
-    final bounds = MmBounds(
-      left: 0,
-      bottom: 0,
-      right: math.max(1, extent.widthMm),
-      top: math.max(1, extent.heightMm),
-    );
-    setState(() {
-      _camera = (_camera ?? const WorldCamera(centerMm: MmPoint(0, 0), mmPerPixel: 10))
-          .fitBounds(
-        bounds: bounds,
-        viewportWidthPx: _size.width,
-        viewportHeightPx: _size.height,
-        paddingPx: 88,
-      );
-    });
+    setState(() => _camera = _fittedCamera(extent));
   }
 
   void _zoomAt(Offset cursor, double factor) {
