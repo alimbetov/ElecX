@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'editor_building_workspace.dart';
+import 'site_map_interaction.dart';
 import 'site_navigation_model.dart';
 
 enum LevelNavigatorFilter { all, residential, basement }
@@ -8,11 +9,15 @@ enum LevelNavigatorFilter { all, residential, basement }
 class UnifiedSiteNavigator extends StatefulWidget {
   const UnifiedSiteNavigator({
     required this.workspace,
+    this.interaction,
+    this.onOpenSiteMap,
     this.compact = false,
     super.key,
   });
 
   final EditorBuildingWorkspace workspace;
+  final SiteMapInteractionController? interaction;
+  final VoidCallback? onOpenSiteMap;
   final bool compact;
 
   @override
@@ -30,6 +35,7 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
   void initState() {
     super.initState();
     workspace.addListener(_refresh);
+    widget.interaction?.addListener(_refresh);
   }
 
   @override
@@ -39,11 +45,16 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
       oldWidget.workspace.removeListener(_refresh);
       workspace.addListener(_refresh);
     }
+    if (oldWidget.interaction != widget.interaction) {
+      oldWidget.interaction?.removeListener(_refresh);
+      widget.interaction?.addListener(_refresh);
+    }
   }
 
   @override
   void dispose() {
     workspace.removeListener(_refresh);
+    widget.interaction?.removeListener(_refresh);
     _search.dispose();
     super.dispose();
   }
@@ -110,6 +121,12 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
                 'НАВИГАТОР',
                 style: Theme.of(context).textTheme.labelLarge,
               ),
+            ),
+            IconButton(
+              tooltip: 'Карта площадки',
+              visualDensity: VisualDensity.compact,
+              onPressed: widget.onOpenSiteMap,
+              icon: const Icon(Icons.map_outlined),
             ),
             IconButton(
               tooltip: 'Предыдущий уровень',
@@ -198,46 +215,63 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
   }) {
     final hasChildren = node.children.isNotEmpty;
     final expanded = _expanded.contains(node.id) || _forceExpanded(node);
-    final selected = _isSelected(node);
+    final selected = _isSelected(node) || widget.interaction?.selectedNodeId == node.id;
+    final hovered = widget.interaction?.hoveredNodeId == node.id;
     final indent = 8.0 + depth * 14;
 
     return Column(
       children: [
         Padding(
           padding: EdgeInsets.only(left: indent),
-          child: ListTile(
-            dense: true,
-            minLeadingWidth: 24,
-            horizontalTitleGap: 6,
-            selected: selected,
-            selectedTileColor: Theme.of(context).colorScheme.secondaryContainer,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            leading: hasChildren
-                ? IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints.tightFor(width: 28, height: 28),
-                    onPressed: () => setState(() {
-                      if (!_expanded.add(node.id)) _expanded.remove(node.id);
-                    }),
-                    icon: Icon(
-                      expanded ? Icons.expand_more : Icons.chevron_right,
-                      size: 18,
-                    ),
-                  )
-                : Icon(_iconFor(node.kind), size: 18),
-            title: Text(node.label, maxLines: 1, overflow: TextOverflow.ellipsis),
-            subtitle: node.subtitle == null
-                ? null
-                : Text(
-                    node.subtitle!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-            trailing: node.kind == NavigatorNodeKind.level && selected
-                ? const Icon(Icons.my_location, size: 16)
-                : null,
-            onTap: () => _activate(node),
+          child: MouseRegion(
+            onEnter: (_) => widget.interaction?.hover(node.id),
+            onExit: (_) {
+              if (widget.interaction?.hoveredNodeId == node.id) {
+                widget.interaction?.hover(null);
+              }
+            },
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: hovered
+                    ? Border.all(color: Theme.of(context).colorScheme.primary, width: 1)
+                    : null,
+              ),
+              child: ListTile(
+                dense: true,
+                minLeadingWidth: 24,
+                horizontalTitleGap: 6,
+                selected: selected,
+                selectedTileColor: Theme.of(context).colorScheme.secondaryContainer,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                leading: hasChildren
+                    ? IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints.tightFor(width: 28, height: 28),
+                        onPressed: () => setState(() {
+                          if (!_expanded.add(node.id)) _expanded.remove(node.id);
+                        }),
+                        icon: Icon(
+                          expanded ? Icons.expand_more : Icons.chevron_right,
+                          size: 18,
+                        ),
+                      )
+                    : Icon(_iconFor(node.kind), size: 18),
+                title: Text(node.label, maxLines: 1, overflow: TextOverflow.ellipsis),
+                subtitle: node.subtitle == null
+                    ? null
+                    : Text(
+                        node.subtitle!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                trailing: node.kind == NavigatorNodeKind.level && selected
+                    ? const Icon(Icons.my_location, size: 16)
+                    : null,
+                onTap: () => _activate(node),
+              ),
+            ),
           ),
         ),
         if (hasChildren && expanded)
@@ -248,6 +282,7 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
   }
 
   void _activate(NavigatorNode node) {
+    widget.interaction?.select(node.id);
     switch (node.kind) {
       case NavigatorNodeKind.outdoorZone:
         final target = node.targetId;
@@ -261,6 +296,7 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
         final target = node.targetId;
         if (target != null) workspace.editor.selectSpace(target);
       case NavigatorNodeKind.site:
+        widget.onOpenSiteMap?.call();
       case NavigatorNodeKind.lot:
       case NavigatorNodeKind.building:
       case NavigatorNodeKind.surface:
