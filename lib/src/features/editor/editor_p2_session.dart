@@ -44,6 +44,7 @@ final class EditorP2Session extends ChangeNotifier {
   SnapCandidate? activeSnap;
   ElectricalComponentType? placementType;
   RoutePreference routePreference = RoutePreference.shortest;
+  ElectricalComponentPlacement? _moveOrigin;
   int _componentSequence = 1;
   int _routeSequence = 1;
 
@@ -53,6 +54,7 @@ final class EditorP2Session extends ChangeNotifier {
   SelectionState get selection => state.selection;
   bool get canUndo => history.canUndo;
   bool get canRedo => history.canRedo;
+  bool get isManipulating => _moveOrigin != null;
 
   ElectricalComponentPlacement? get selectedComponent {
     final id = selection.primaryId;
@@ -62,6 +64,10 @@ final class EditorP2Session extends ChangeNotifier {
     }
     return null;
   }
+
+  List<ElectricalComponentPlacement> get selectedComponents => components
+      .where((component) => selection.ids.contains(component.id))
+      .toList(growable: false);
 
   void setPlacementType(ElectricalComponentType? type) {
     placementType = type;
@@ -84,6 +90,7 @@ final class EditorP2Session extends ChangeNotifier {
   }
 
   void updateSnap(SnapCandidate? candidate) {
+    if (_sameSnap(activeSnap, candidate)) return;
     activeSnap = candidate;
     notifyListeners();
   }
@@ -97,6 +104,7 @@ final class EditorP2Session extends ChangeNotifier {
   }
 
   void clearSelection() {
+    if (selection.ids.isEmpty) return;
     _replaceState(state.copyWith(selection: const SelectionState()));
   }
 
@@ -118,18 +126,67 @@ final class EditorP2Session extends ChangeNotifier {
       ports: ElectricalComponentDefaults.portsFor(type),
     );
     history.execute(_AddComponentCommand(component));
-    history.replaceState(
+    _replaceState(
       history.state.copyWith(
         selection: SelectionState(
           ids: {component.id},
           primaryId: component.id,
         ),
       ),
-      clearHistory: false,
+      notify: false,
     );
     placementType = null;
     notifyListeners();
     return component;
+  }
+
+  bool beginMoveSelectedComponent() {
+    final component = selectedComponent;
+    if (component == null || layers.isLocked(EditorLayerId.electrical)) {
+      return false;
+    }
+    _moveOrigin = component;
+    return true;
+  }
+
+  bool previewMoveSelectedComponent(SurfacePointMm point) {
+    final origin = _moveOrigin;
+    final current = selectedComponent;
+    if (origin == null || current == null || current.id != origin.id) {
+      return false;
+    }
+    _replaceState(
+      _replaceComponent(
+        state,
+        current.copyWith(position: point),
+      ),
+    );
+    return true;
+  }
+
+  bool commitMoveSelectedComponent() {
+    final origin = _moveOrigin;
+    final current = selectedComponent;
+    _moveOrigin = null;
+    if (origin == null || current == null || current.id != origin.id) {
+      return false;
+    }
+    if (origin.position.xMm == current.position.xMm &&
+        origin.position.yMm == current.position.yMm) {
+      return false;
+    }
+    history.execute(
+      _ReplaceComponentCommand(before: origin, after: current),
+    );
+    notifyListeners();
+    return true;
+  }
+
+  void cancelMoveSelectedComponent() {
+    final origin = _moveOrigin;
+    _moveOrigin = null;
+    if (origin == null) return;
+    _replaceState(_replaceComponent(state, origin));
   }
 
   bool moveSelectedComponent(SurfacePointMm point) {
@@ -150,14 +207,14 @@ final class EditorP2Session extends ChangeNotifier {
   bool deleteSelection() {
     final ids = selection.ids;
     if (ids.isEmpty || layers.isLocked(EditorLayerId.electrical)) return false;
-    final selectedComponents = components
+    final deleted = components
         .where((component) => ids.contains(component.id))
         .toList(growable: false);
-    if (selectedComponents.isEmpty) return false;
-    history.execute(_DeleteComponentsCommand(selectedComponents));
-    history.replaceState(
+    if (deleted.isEmpty) return false;
+    history.execute(_DeleteComponentsCommand(deleted));
+    _replaceState(
       history.state.copyWith(selection: const SelectionState()),
-      clearHistory: false,
+      notify: false,
     );
     notifyListeners();
     return true;
@@ -186,9 +243,62 @@ final class EditorP2Session extends ChangeNotifier {
       segments: RouteEngine.toSegments(graph, solution),
       cableType: cableType,
     );
+    if (!ElectricalConnectivityValidator.routeIsConnected(
+      route: route,
+      components: components,
+    )) {
+      return false;
+    }
     history.execute(_AddRouteCommand(route));
     notifyListeners();
     return true;
+  }
+
+  bool autoRouteSelectedPair({String? cableType}) {
+    final pair = selectedComponents;
+    if (pair.length != 2) return false;
+    final sourceComponent = _preferredSource(pair[0], pair[1]);
+    final targetComponent = identical(sourceComponent, pair[0]) ? pair[1] : pair[0];
+    if (sourceComponent.surface != targetComponent.surface) {
+      return false;
+    }
+    final sourcePort = _portForSource(sourceComponent);
+    final targetPort = _portForTarget(targetComponent);
+    if (sourcePort == null || targetPort == null) return false;
+
+    final surface = sourceComponent.surface;
+    final a = sourceComponent.position;
+    final d = targetComponent.position;
+    final elbowX = SurfacePointMm(d.xMm, a.yMm);
+    final elbowY = SurfacePointMm(a.xMm, d.yMm);
+    final graph = RoutingGraph(
+      nodes: {
+        'a': RouteNode(id: 'a', surface: surface, point: a),
+        'bx': RouteNode(id: 'bx', surface: surface, point: elbowX),
+        'by': RouteNode(id: 'by', surface: surface, point: elbowY),
+        'd': RouteNode(id: 'd', surface: surface, point: d),
+      },
+      edges: [
+        RouteEdge(from: 'a', to: 'bx', cost: _axisDistance(a, elbowX)),
+        RouteEdge(from: 'bx', to: 'd', cost: _axisDistance(elbowX, d)),
+        RouteEdge(from: 'a', to: 'by', cost: _axisDistance(a, elbowY)),
+        RouteEdge(from: 'by', to: 'd', cost: _axisDistance(elbowY, d)),
+      ],
+    );
+    return addAutoRoute(
+      graph: graph,
+      startNodeId: 'a',
+      endNodeId: 'd',
+      source: ElectricalEndpointRef(
+        componentId: sourceComponent.id,
+        portId: sourcePort.id,
+      ),
+      target: ElectricalEndpointRef(
+        componentId: targetComponent.id,
+        portId: targetPort.id,
+      ),
+      cableType: cableType,
+    );
   }
 
   List<ManipulationHandle> handlesForSelection() {
@@ -205,21 +315,97 @@ final class EditorP2Session extends ChangeNotifier {
   }
 
   void undo() {
-    if (!history.canUndo) return;
+    if (!history.canUndo || isManipulating) return;
     history.undo();
+    _normalizeSelection();
     notifyListeners();
   }
 
   void redo() {
-    if (!history.canRedo) return;
+    if (!history.canRedo || isManipulating) return;
     history.redo();
+    _normalizeSelection();
     notifyListeners();
   }
 
-  void _replaceState(EditorP2State next) {
-    history.replaceState(next, clearHistory: false);
-    notifyListeners();
+  void _normalizeSelection() {
+    final valid = components.map((component) => component.id).toSet();
+    final ids = selection.ids.where(valid.contains).toSet();
+    if (ids.length == selection.ids.length) return;
+    _replaceState(
+      state.copyWith(
+        selection: SelectionState(
+          ids: Set.unmodifiable(ids),
+          primaryId: ids.contains(selection.primaryId)
+              ? selection.primaryId
+              : ids.isEmpty
+                  ? null
+                  : ids.first,
+        ),
+      ),
+      notify: false,
+    );
   }
+
+  void _replaceState(EditorP2State next, {bool notify = true}) {
+    history.replaceState(next, clearHistory: false);
+    if (notify) notifyListeners();
+  }
+
+  static bool _sameSnap(SnapCandidate? a, SnapCandidate? b) =>
+      a?.kind == b?.kind &&
+      a?.point.x == b?.point.x &&
+      a?.point.y == b?.point.y &&
+      a?.sourceId == b?.sourceId;
+
+  static EditorP2State _replaceComponent(
+    EditorP2State state,
+    ElectricalComponentPlacement replacement,
+  ) =>
+      state.copyWith(
+        components: [
+          for (final component in state.components)
+            if (component.id == replacement.id) replacement else component,
+        ],
+      );
+
+  static ElectricalComponentPlacement _preferredSource(
+    ElectricalComponentPlacement first,
+    ElectricalComponentPlacement second,
+  ) {
+    bool hasPowerOut(ElectricalComponentPlacement component) => component.ports
+        .any((port) => port.kind == ElectricalPortKind.powerOut);
+    if (hasPowerOut(first) && !hasPowerOut(second)) return first;
+    if (hasPowerOut(second) && !hasPowerOut(first)) return second;
+    return first;
+  }
+
+  static ElectricalPortDefinition? _portForSource(
+    ElectricalComponentPlacement component,
+  ) {
+    for (final port in component.ports) {
+      if (port.kind == ElectricalPortKind.powerOut ||
+          port.kind == ElectricalPortKind.controlOut) {
+        return port;
+      }
+    }
+    return component.ports.isEmpty ? null : component.ports.first;
+  }
+
+  static ElectricalPortDefinition? _portForTarget(
+    ElectricalComponentPlacement component,
+  ) {
+    for (final port in component.ports) {
+      if (port.kind == ElectricalPortKind.powerIn ||
+          port.kind == ElectricalPortKind.controlIn) {
+        return port;
+      }
+    }
+    return component.ports.isEmpty ? null : component.ports.first;
+  }
+
+  static double _axisDistance(SurfacePointMm a, SurfacePointMm b) =>
+      (a.xMm - b.xMm).abs() + (a.yMm - b.yMm).abs().toDouble();
 }
 
 final Expando<EditorP2Session> _p2Sessions =
@@ -258,21 +444,12 @@ final class _ReplaceComponentCommand implements EditorCommand<EditorP2State> {
   String get label => 'Move ${before.label}';
 
   @override
-  EditorP2State execute(EditorP2State state) => _replace(state, after);
+  EditorP2State execute(EditorP2State state) =>
+      EditorP2Session._replaceComponent(state, after);
 
   @override
-  EditorP2State undo(EditorP2State state) => _replace(state, before);
-
-  EditorP2State _replace(
-    EditorP2State state,
-    ElectricalComponentPlacement replacement,
-  ) =>
-      state.copyWith(
-        components: [
-          for (final component in state.components)
-            if (component.id == replacement.id) replacement else component,
-        ],
-      );
+  EditorP2State undo(EditorP2State state) =>
+      EditorP2Session._replaceComponent(state, before);
 }
 
 final class _DeleteComponentsCommand implements EditorCommand<EditorP2State> {
