@@ -9,7 +9,7 @@ import '../../engine/snap_engine.dart';
 
 enum EditorTool { select, roomRectangle, guide, cableRoute }
 
-enum EditorViewMode { plan, surface }
+enum EditorViewMode { plan, roomWorld, surface }
 
 final class EditorController extends ChangeNotifier {
   EditorController.demo()
@@ -162,6 +162,25 @@ final class EditorController extends ChangeNotifier {
       activeSurface = null;
       viewMode = EditorViewMode.plan;
     }
+    notifyListeners();
+  }
+
+  void enterRoomWorld([String? spaceId]) {
+    final id = spaceId ?? selectedSpaceId;
+    if (id == null || !level.spaces.any((space) => space.id == id)) return;
+    selectedSpaceId = id;
+    selectedOpeningId = null;
+    activeSurface = null;
+    viewMode = EditorViewMode.roomWorld;
+    tool = EditorTool.select;
+    notifyListeners();
+  }
+
+  void showRoomWorld() {
+    if (selectedSpace == null) return;
+    selectedOpeningId = null;
+    activeSurface = null;
+    viewMode = EditorViewMode.roomWorld;
     notifyListeners();
   }
 
