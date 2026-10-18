@@ -5,6 +5,7 @@ import '../../domain/project_model.dart';
 import '../../domain/surface_navigation.dart';
 import '../../domain/surface_routing.dart';
 import '../../domain/surfaces.dart';
+import '../../engine/snap_engine.dart';
 
 enum EditorTool { select, roomRectangle, guide, cableRoute }
 
@@ -278,11 +279,48 @@ final class EditorController extends ChangeNotifier {
 
   void resetZoom() => setZoom(1.0);
 
-  MmPoint snap(MmPoint point, {int? stepMm}) {
-    if (!snapEnabled) return point;
+  SnapCandidate? resolvePlanSnap(
+    MmPoint point, {
+    int? stepMm,
+    double acquisitionRadiusMm = 80,
+  }) {
+    if (!snapEnabled) return null;
     final step = stepMm ?? selectedSpace?.grid.minorStepMm ?? 100;
-    int round(int value) => (value / step).round() * step;
-    return MmPoint(round(point.x), round(point.y));
+    final segments = <SnapSegment>[];
+    for (final space in level.spaces) {
+      final vertices = space.boundary.vertices;
+      for (var i = 0; i < vertices.length; i++) {
+        segments.add(
+          SnapSegment(
+            id: '${space.id}:edge:$i',
+            a: vertices[i],
+            b: vertices[(i + 1) % vertices.length],
+          ),
+        );
+      }
+    }
+    return SnapEngine.resolve(
+      SnapRequest(
+        rawPoint: point,
+        acquisitionRadiusMm: acquisitionRadiusMm,
+        gridStepMm: step,
+        segments: segments,
+      ),
+    );
+  }
+
+  MmPoint snap(
+    MmPoint point, {
+    int? stepMm,
+    double acquisitionRadiusMm = 80,
+  }) {
+    if (!snapEnabled) return point;
+    return resolvePlanSnap(
+          point,
+          stepMm: stepMm,
+          acquisitionRadiusMm: acquisitionRadiusMm,
+        )?.point ??
+        point;
   }
 
   SurfacePointMm snapSurfacePoint(SurfacePointMm point, {int? stepMm}) {
@@ -404,8 +442,11 @@ final class EditorController extends ChangeNotifier {
     showWall((current + 1) % count);
   }
 
-  void canvasTap(MmPoint rawPoint) {
-    final point = snap(rawPoint);
+  void canvasTap(MmPoint rawPoint, {double? snapRadiusMm}) {
+    final point = snap(
+      rawPoint,
+      acquisitionRadiusMm: snapRadiusMm ?? 80,
+    );
     switch (tool) {
       case EditorTool.select:
         selectAt(point);
