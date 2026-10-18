@@ -50,8 +50,12 @@ class _PinUnlockScreenState extends State<PinUnlockScreen> {
                       margin: const EdgeInsets.symmetric(horizontal: 8),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: Theme.of(context).colorScheme.primary),
-                        color: filled ? Theme.of(context).colorScheme.primary : null,
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        color: filled
+                            ? Theme.of(context).colorScheme.primary
+                            : null,
                       ),
                     );
                   }),
@@ -74,17 +78,28 @@ class _PinUnlockScreenState extends State<PinUnlockScreen> {
                             : TextButton(
                                 onPressed: value == '⌫'
                                     ? () => setState(() {
-                                          if (_pin.isNotEmpty) _pin = _pin.substring(0, _pin.length - 1);
+                                          if (_pin.isNotEmpty) {
+                                            _pin = _pin.substring(
+                                              0,
+                                              _pin.length - 1,
+                                            );
+                                          }
                                         })
                                     : () => _press(value),
-                                child: Text(value, style: Theme.of(context).textTheme.headlineSmall),
+                                child: Text(
+                                  value,
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.headlineSmall,
+                                ),
                               ),
                       );
                     }).toList(),
                   ),
                 const SizedBox(height: 20),
                 Text(
-                  'Prototype: PIN — локальная быстрая разблокировка, не замена учётной записи.',
+                  'Prototype: PIN — локальная быстрая разблокировка, '
+                  'не замена учётной записи.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
