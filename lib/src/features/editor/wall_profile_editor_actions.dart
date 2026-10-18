@@ -1,3 +1,4 @@
+import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
 import 'editor_controller.dart';
 import 'wall_profile_command.dart';
