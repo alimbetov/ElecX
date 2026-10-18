@@ -11,7 +11,14 @@ enum ElectricalComponentType {
   custom,
 }
 
-enum ElectricalPortKind { powerIn, powerOut, controlIn, controlOut, neutral, earth }
+enum ElectricalPortKind {
+  powerIn,
+  powerOut,
+  controlIn,
+  controlOut,
+  neutral,
+  earth,
+}
 
 final class ElectricalPortDefinition {
   const ElectricalPortDefinition({required this.id, required this.kind});
@@ -34,9 +41,15 @@ final class ElectricalComponentPlacement {
     this.voltageV = 230,
     this.ports = const [],
   }) {
-    if (id.isEmpty) throw ArgumentError('Component id must be non-empty.');
-    if (label.isEmpty) throw ArgumentError('Component label must be non-empty.');
-    if (voltageV <= 0) throw ArgumentError.value(voltageV, 'voltageV');
+    if (id.isEmpty) {
+      throw ArgumentError('Component id must be non-empty.');
+    }
+    if (label.isEmpty) {
+      throw ArgumentError('Component label must be non-empty.');
+    }
+    if (voltageV <= 0) {
+      throw ArgumentError.value(voltageV, 'voltageV');
+    }
     if (ratedPowerW != null && ratedPowerW! < 0) {
       throw ArgumentError.value(ratedPowerW, 'ratedPowerW');
     }
@@ -74,36 +87,87 @@ final class ElectricalComponentPlacement {
 }
 
 abstract final class ElectricalComponentDefaults {
-  static List<ElectricalPortDefinition> portsFor(ElectricalComponentType type) => switch (type) {
+  static List<ElectricalPortDefinition> portsFor(
+    ElectricalComponentType type,
+  ) =>
+      switch (type) {
         ElectricalComponentType.socketOutlet => const [
-            ElectricalPortDefinition(id: 'power-in', kind: ElectricalPortKind.powerIn),
-            ElectricalPortDefinition(id: 'earth', kind: ElectricalPortKind.earth),
+            ElectricalPortDefinition(
+              id: 'power-in',
+              kind: ElectricalPortKind.powerIn,
+            ),
+            ElectricalPortDefinition(
+              id: 'earth',
+              kind: ElectricalPortKind.earth,
+            ),
           ],
         ElectricalComponentType.switchControl => const [
-            ElectricalPortDefinition(id: 'power-in', kind: ElectricalPortKind.powerIn),
-            ElectricalPortDefinition(id: 'control-out', kind: ElectricalPortKind.controlOut),
+            ElectricalPortDefinition(
+              id: 'power-in',
+              kind: ElectricalPortKind.powerIn,
+            ),
+            ElectricalPortDefinition(
+              id: 'control-out',
+              kind: ElectricalPortKind.controlOut,
+            ),
           ],
         ElectricalComponentType.lightingPoint => const [
-            ElectricalPortDefinition(id: 'power-in', kind: ElectricalPortKind.powerIn),
-            ElectricalPortDefinition(id: 'control-in', kind: ElectricalPortKind.controlIn),
-            ElectricalPortDefinition(id: 'earth', kind: ElectricalPortKind.earth),
+            ElectricalPortDefinition(
+              id: 'power-in',
+              kind: ElectricalPortKind.powerIn,
+            ),
+            ElectricalPortDefinition(
+              id: 'control-in',
+              kind: ElectricalPortKind.controlIn,
+            ),
+            ElectricalPortDefinition(
+              id: 'earth',
+              kind: ElectricalPortKind.earth,
+            ),
           ],
         ElectricalComponentType.curtainMotor => const [
-            ElectricalPortDefinition(id: 'power-in', kind: ElectricalPortKind.powerIn),
-            ElectricalPortDefinition(id: 'control-in', kind: ElectricalPortKind.controlIn),
-            ElectricalPortDefinition(id: 'earth', kind: ElectricalPortKind.earth),
+            ElectricalPortDefinition(
+              id: 'power-in',
+              kind: ElectricalPortKind.powerIn,
+            ),
+            ElectricalPortDefinition(
+              id: 'control-in',
+              kind: ElectricalPortKind.controlIn,
+            ),
+            ElectricalPortDefinition(
+              id: 'earth',
+              kind: ElectricalPortKind.earth,
+            ),
           ],
         ElectricalComponentType.junctionBox => const [
-            ElectricalPortDefinition(id: 'power-in', kind: ElectricalPortKind.powerIn),
-            ElectricalPortDefinition(id: 'power-out', kind: ElectricalPortKind.powerOut),
+            ElectricalPortDefinition(
+              id: 'power-in',
+              kind: ElectricalPortKind.powerIn,
+            ),
+            ElectricalPortDefinition(
+              id: 'power-out',
+              kind: ElectricalPortKind.powerOut,
+            ),
           ],
         ElectricalComponentType.powerSource => const [
-            ElectricalPortDefinition(id: 'power-out', kind: ElectricalPortKind.powerOut),
-            ElectricalPortDefinition(id: 'earth', kind: ElectricalPortKind.earth),
+            ElectricalPortDefinition(
+              id: 'power-out',
+              kind: ElectricalPortKind.powerOut,
+            ),
+            ElectricalPortDefinition(
+              id: 'earth',
+              kind: ElectricalPortKind.earth,
+            ),
           ],
         ElectricalComponentType.distributionBoard => const [
-            ElectricalPortDefinition(id: 'power-out', kind: ElectricalPortKind.powerOut),
-            ElectricalPortDefinition(id: 'earth', kind: ElectricalPortKind.earth),
+            ElectricalPortDefinition(
+              id: 'power-out',
+              kind: ElectricalPortKind.powerOut,
+            ),
+            ElectricalPortDefinition(
+              id: 'earth',
+              kind: ElectricalPortKind.earth,
+            ),
           ],
         ElectricalComponentType.custom => const [],
       };
