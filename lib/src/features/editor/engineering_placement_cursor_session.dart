@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 
+import '../../domain/electrical_placement.dart';
 import '../../domain/engineering_placement_cursor.dart';
 import '../../domain/geometry.dart';
+import '../../domain/installation_guides.dart';
 import '../../domain/surfaces.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
@@ -31,24 +33,36 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
       return current;
     }
 
-    final SurfacePointMm center;
+    late final SurfacePointMm initial;
+    var snapKind = PlacementCursorSnapKind.centerAxis;
+    var snapLabel = 'CENTER';
     if (surface.type == SurfacePlaneType.wall) {
       final wall = controller.activeWall!;
-      center = SurfacePointMm(
-        wall.lengthMm.round() ~/ 2,
-        wall.heightMm ~/ 2,
-      );
+      final profile = InstallationGuideProfile.residentialProjectDefault;
+      final yMm = switch (type) {
+        ElectricalComponentType.socketOutlet => profile.socketHeightMm,
+        ElectricalComponentType.switchControl => profile.switchHeightMm,
+        _ => wall.heightMm ~/ 2,
+      };
+      if (type == ElectricalComponentType.socketOutlet ||
+          type == ElectricalComponentType.switchControl) {
+        snapKind = PlacementCursorSnapKind.installationGuide;
+        snapLabel = type == ElectricalComponentType.socketOutlet
+            ? 'SOCKET ${profile.socketHeightMm}'
+            : 'SWITCH ${profile.switchHeightMm}';
+      }
+      initial = SurfacePointMm(wall.lengthMm.round() ~/ 2, yMm);
     } else {
       final bounds = space.boundary.bounds;
-      center = SurfacePointMm(bounds.width ~/ 2, bounds.height ~/ 2);
+      initial = SurfacePointMm(bounds.width ~/ 2, bounds.height ~/ 2);
     }
     _state = EngineeringPlacementCursorState(
       surface: surface,
-      position: center,
+      position: initial,
       componentType: type,
-      snapKind: PlacementCursorSnapKind.centerAxis,
-      snapLabel: 'CENTER',
-      isValid: _isUsable(surface, center),
+      snapKind: snapKind,
+      snapLabel: snapLabel,
+      isValid: _isUsable(surface, initial),
     );
     return _state;
   }
