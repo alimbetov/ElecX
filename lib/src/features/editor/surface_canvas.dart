@@ -3,13 +3,18 @@ import 'dart:math' as math;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+import '../../domain/electrical_placement.dart';
 import '../../domain/geometry.dart';
 import '../../domain/surface_navigation.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/adaptive_grid.dart';
+import '../../engine/editor_layers.dart';
 import '../../engine/render_policy.dart';
+import '../../engine/selection_engine.dart';
+import '../../engine/snap_engine.dart';
 import '../../engine/world_camera.dart';
 import 'editor_controller.dart';
+import 'editor_p2_session.dart';
 import 'editor_viewport_commands.dart';
 import 'wall_profile_editor_actions.dart';
 
@@ -28,6 +33,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
   Offset? _panAnchor;
   WorldCamera? _touchStartCamera;
   Offset? _touchStartFocal;
+  String? _dragComponentId;
   int _lastViewportRevision = 0;
   Size _size = Size.zero;
 
@@ -38,6 +44,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
     super.initState();
     _lastViewportRevision = controller.viewportCommandRevision;
     controller.viewportCommandListenable.addListener(_onViewportCommand);
+    controller.p2.addListener(_onP2Changed);
   }
 
   @override
@@ -46,29 +53,32 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller.viewportCommandListenable
           .removeListener(_onViewportCommand);
+      oldWidget.controller.p2.removeListener(_onP2Changed);
       _lastViewportRevision = controller.viewportCommandRevision;
       controller.viewportCommandListenable.addListener(_onViewportCommand);
+      controller.p2.addListener(_onP2Changed);
     }
   }
 
   @override
   void dispose() {
     controller.viewportCommandListenable.removeListener(_onViewportCommand);
+    controller.p2.removeListener(_onP2Changed);
     super.dispose();
   }
 
   void _onViewportCommand() {
-    if (mounted) {
-      setState(() {});
-    }
+    if (mounted) setState(() {});
+  }
+
+  void _onP2Changed() {
+    if (mounted) setState(() {});
   }
 
   WorldCamera _fittedCamera(_SurfaceExtent extent) {
     final base = _camera ??
         const WorldCamera(centerMm: MmPoint(0, 0), mmPerPixel: 10);
-    if (_size.isEmpty) {
-      return base;
-    }
+    if (_size.isEmpty) return base;
     return base.fitBounds(
       bounds: MmBounds(
         left: 0,
@@ -84,18 +94,10 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
 
   void _ensureCamera(_SurfaceExtent extent) {
     final id = controller.activeSurface?.id;
-    if (_camera != null && _surfaceId == id) {
-      return;
-    }
+    if (_camera != null && _surfaceId == id) return;
     _surfaceId = id;
     _camera = _fittedCamera(extent);
-  }
-
-  void _fit(_SurfaceExtent extent) {
-    if (_size.isEmpty) {
-      return;
-    }
-    setState(() => _camera = _fittedCamera(extent));
+    controller.p2.updateSnap(null);
   }
 
   WorldCamera _zoomedCamera(Offset cursor, double factor) {
@@ -142,14 +144,10 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
   }
 
   void _updateTouchGesture(ScaleUpdateDetails details) {
-    if (details.pointerCount < 2 || _size.isEmpty) {
-      return;
-    }
+    if (details.pointerCount < 2 || _size.isEmpty) return;
     final startCamera = _touchStartCamera;
     final startFocal = _touchStartFocal;
-    if (startCamera == null || startFocal == null) {
-      return;
-    }
+    if (startCamera == null || startFocal == null) return;
     final delta = details.localFocalPoint - startFocal;
     var next = startCamera.panPixels(delta.dx, delta.dy);
     next = next.zoomAt(
@@ -167,16 +165,129 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
     _touchStartFocal = null;
   }
 
+  SurfacePointMm _snapSurfacePoint(
+    SurfacePointMm raw,
+    _SurfaceProjection projection,
+  ) {
+    if (!controller.snapEnabled) {
+      controller.p2.updateSnap(null);
+      return raw;
+    }
+    final request = SnapRequest(
+      rawPoint: MmPoint(raw.xMm, raw.yMm),
+      acquisitionRadiusMm: math.max(20, projection.camera.mmPerPixel * 14),
+      gridStepMm: controller.selectedSpace?.grid.minorStepMm ?? 100,
+      segments: _snapSegments(projection),
+    );
+    final candidate = SnapEngine.resolve(request);
+    controller.p2.updateSnap(candidate);
+    final point = candidate?.point ?? request.rawPoint;
+    return SurfacePointMm(point.x, point.y);
+  }
+
+  List<SnapSegment> _snapSegments(_SurfaceProjection projection) {
+    final surface = controller.activeSurface!;
+    if (surface.type == SurfacePlaneType.wall) {
+      final profile = controller.activeWall!.profile;
+      return [
+        for (var i = 0; i < profile.vertices.length; i++)
+          SnapSegment(
+            id: 'profile-$i',
+            a: MmPoint(
+              profile.vertices[i].xMm,
+              profile.vertices[i].yMm,
+            ),
+            b: MmPoint(
+              profile.vertices[(i + 1) % profile.vertices.length].xMm,
+              profile.vertices[(i + 1) % profile.vertices.length].yMm,
+            ),
+          ),
+      ];
+    }
+    final vertices = controller.selectedSpace!.boundary.vertices;
+    return [
+      for (var i = 0; i < vertices.length; i++)
+        SnapSegment(
+          id: 'boundary-$i',
+          a: MmPoint(
+            vertices[i].x - projection.extent.floorLeftMm,
+            vertices[i].y - projection.extent.floorBottomMm,
+          ),
+          b: MmPoint(
+            vertices[(i + 1) % vertices.length].x -
+                projection.extent.floorLeftMm,
+            vertices[(i + 1) % vertices.length].y -
+                projection.extent.floorBottomMm,
+          ),
+        ),
+    ];
+  }
+
+  bool _pointIsUsable(SurfacePointMm point, _SurfaceProjection projection) {
+    final surface = controller.activeSurface!;
+    if (surface.type == SurfacePlaneType.wall) {
+      return controller.activeWall!.profile.containsPoint(point.xMm, point.yMm);
+    }
+    final planPoint = MmPoint(
+      point.xMm + projection.extent.floorLeftMm,
+      point.yMm + projection.extent.floorBottomMm,
+    );
+    return controller.selectedSpace!.boundary.contains(planPoint);
+  }
+
+  ElectricalComponentPlacement? _componentAt(
+    SurfacePointMm point,
+    _SurfaceProjection projection,
+  ) {
+    if (!controller.p2.layers.isVisible(EditorLayerId.electrical)) return null;
+    final surface = controller.activeSurface;
+    if (surface == null) return null;
+    final radiusMm = math.max(80, projection.camera.mmPerPixel * 18);
+    ElectricalComponentPlacement? best;
+    var bestDistance = double.infinity;
+    for (final component in controller.p2.components.reversed) {
+      if (component.surface != surface) continue;
+      final dx = (component.position.xMm - point.xMm).toDouble();
+      final dy = (component.position.yMm - point.yMm).toDouble();
+      final distance = math.sqrt(dx * dx + dy * dy);
+      if (distance <= radiusMm && distance < bestDistance) {
+        best = component;
+        bestDistance = distance;
+      }
+    }
+    return best;
+  }
+
   void _handleTap(
     TapUpDetails details,
     _SurfaceProjection projection,
     RoomSurfaceRef surface,
     List<MmPoint> roomVertices,
   ) {
-    final point = projection.viewportToSurface(details.localPosition);
-    if (point == null) {
+    final raw = projection.viewportToSurface(details.localPosition);
+    if (raw == null) return;
+    final point = _snapSurfacePoint(raw, projection);
+    if (!_pointIsUsable(point, projection)) return;
+
+    final placementType = controller.p2.placementType;
+    if (placementType != null) {
+      controller.p2.placeComponent(
+        type: placementType,
+        surface: surface,
+        position: point,
+      );
       return;
     }
+
+    if (controller.tool == EditorTool.select) {
+      final component = _componentAt(point, projection);
+      if (component != null) {
+        controller.p2.select(component.id);
+        return;
+      }
+      controller.p2.clearSelection();
+    }
+
     if (surface.type == SurfacePlaneType.wall) {
       final hit = projection.wallEdgeHit(
         details.localPosition,
@@ -222,7 +333,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
           extent: extent,
         );
         final lod = RenderPolicy.lodForWorldUnitsPerPixel(camera.mmPerPixel);
-        final compactControls = MediaQuery.sizeOf(context).width < 700;
+        final compact = MediaQuery.sizeOf(context).width < 700;
 
         return Stack(
           children: [
@@ -237,32 +348,60 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
               child: Listener(
                 behavior: HitTestBehavior.opaque,
                 onPointerSignal: (event) {
-                  if (event is! PointerScrollEvent) {
-                    return;
+                  if (event is PointerScrollEvent) {
+                    _zoomAt(
+                      event.localPosition,
+                      event.scrollDelta.dy < 0 ? 1.18 : 1 / 1.18,
+                    );
                   }
-                  _zoomAt(
-                    event.localPosition,
-                    event.scrollDelta.dy < 0 ? 1.18 : 1 / 1.18,
-                  );
                 },
                 onPointerDown: (event) {
                   if (event.buttons == kMiddleMouseButton) {
                     _panAnchor = event.localPosition;
+                    return;
+                  }
+                  if (event.buttons == kPrimaryMouseButton &&
+                      controller.tool == EditorTool.select &&
+                      controller.p2.placementType == null) {
+                    final raw = projection.viewportToSurface(event.localPosition);
+                    if (raw == null) return;
+                    final component = _componentAt(raw, projection);
+                    if (component != null) {
+                      controller.p2.select(component.id);
+                      _dragComponentId = component.id;
+                    }
                   }
                 },
                 onPointerMove: (event) {
                   final anchor = _panAnchor;
-                  if (anchor == null) {
+                  if (anchor != null) {
+                    final delta = event.localPosition - anchor;
+                    _panAnchor = event.localPosition;
+                    setState(() {
+                      _camera = _camera!.panPixels(delta.dx, delta.dy);
+                    });
                     return;
                   }
-                  final delta = event.localPosition - anchor;
-                  _panAnchor = event.localPosition;
-                  setState(() {
-                    _camera = _camera!.panPixels(delta.dx, delta.dy);
-                  });
+                  if (_dragComponentId != null &&
+                      event.buttons == kPrimaryMouseButton) {
+                    final raw = projection.viewportToSurface(event.localPosition);
+                    if (raw == null) return;
+                    final point = _snapSurfacePoint(raw, projection);
+                    if (_pointIsUsable(point, projection)) {
+                      controller.p2.moveSelectedComponent(point);
+                    }
+                  }
                 },
-                onPointerUp: (_) => _panAnchor = null,
-                onPointerCancel: (_) => _panAnchor = null,
+                onPointerUp: (_) {
+                  _panAnchor = null;
+                  _dragComponentId = null;
+                  controller.p2.updateSnap(null);
+                },
+                onPointerCancel: (_) {
+                  _panAnchor = null;
+                  _dragComponentId = null;
+                  controller.p2.updateSnap(null);
+                },
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTapUp: (details) => _handleTap(
@@ -279,30 +418,49 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
             ),
             if (surface.type == SurfacePlaneType.wall)
               Positioned(
-                left: compactControls ? 8 : 12,
-                top: compactControls ? 8 : 12,
+                left: compact ? 8 : 12,
+                top: compact ? 8 : 12,
                 child: _WallProfileQuickEditor(
                   controller: controller,
-                  compact: compactControls,
+                  compact: compact,
                 ),
               ),
             Positioned(
-              right: compactControls ? 8 : 12,
-              top: compactControls ? 8 : 12,
-              child: _SurfaceViewportControls(
-                compact: compactControls,
-                lod: lod,
-                mmPerPixel: camera.mmPerPixel,
-                onFit: () => _fit(extent),
-                onZoomOut: () => _zoomAt(_size.center(Offset.zero), 0.8),
-                onZoomIn: () => _zoomAt(_size.center(Offset.zero), 1.25),
-              ),
+              right: compact ? 8 : 12,
+              top: compact ? 8 : 12,
+              child: _ViewportBadge(lod: lod, mmPerPixel: camera.mmPerPixel),
             ),
+            if (controller.p2.placementType case final type?)
+              Positioned(
+                left: 12,
+                bottom: 12,
+                child: Chip(
+                  avatar: const Icon(Icons.add_location_alt_outlined, size: 18),
+                  label: Text(
+                    'Размещение: ${ElectricalComponentDefaults.defaultLabel(type)}',
+                  ),
+                ),
+              ),
           ],
         );
       },
     );
   }
+}
+
+class _ViewportBadge extends StatelessWidget {
+  const _ViewportBadge({required this.lod, required this.mmPerPixel});
+
+  final RenderLod lod;
+  final double mmPerPixel;
+
+  @override
+  Widget build(BuildContext context) => Card(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Text('${lod.name} · ${mmPerPixel.toStringAsFixed(1)} mm/px'),
+        ),
+      );
 }
 
 class _WallProfileQuickEditor extends StatelessWidget {
@@ -350,9 +508,7 @@ class _WallProfileQuickEditor extends StatelessWidget {
 
   Future<void> _showNotchDialog(BuildContext context) async {
     final wall = controller.activeWall;
-    if (wall == null) {
-      return;
-    }
+    if (wall == null) return;
     final wallLength = wall.lengthMm.round();
     final wallHeight = wall.heightMm;
     var widthMm = math.min(600, math.max(100, wallLength ~/ 3));
@@ -363,82 +519,72 @@ class _WallProfileQuickEditor extends StatelessWidget {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            title: const Text('Балка / верхняя выемка'),
-            content: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Стена: $wallLength × $wallHeight mm',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 12),
-                    _ProfileIntField(
-                      label: 'X от начала стены',
-                      value: startMm,
-                      onChanged: (value) => startMm = value,
-                    ),
-                    const SizedBox(height: 10),
-                    _ProfileIntField(
-                      label: 'Ширина балки / выемки',
-                      value: widthMm,
-                      onChanged: (value) => widthMm = value,
-                    ),
-                    const SizedBox(height: 10),
-                    _ProfileIntField(
-                      label: 'Глубина вниз от потолка',
-                      value: depthMm,
-                      onChanged: (value) => depthMm = value,
-                    ),
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Балка / верхняя выемка'),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Стена: $wallLength × $wallHeight mm',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 12),
+                  _ProfileIntField(
+                    label: 'X от начала стены',
+                    value: startMm,
+                    onChanged: (value) => startMm = value,
+                  ),
+                  const SizedBox(height: 10),
+                  _ProfileIntField(
+                    label: 'Ширина балки / выемки',
+                    value: widthMm,
+                    onChanged: (value) => widthMm = value,
+                  ),
+                  const SizedBox(height: 10),
+                  _ProfileIntField(
+                    label: 'Глубина вниз от потолка',
+                    value: depthMm,
+                    onChanged: (value) => depthMm = value,
+                  ),
+                  if (error != null) ...[
                     const SizedBox(height: 8),
                     Text(
-                      'Условие: X + ширина ≤ $wallLength mm; '
-                      'глубина < $wallHeight mm.',
-                      style: Theme.of(context).textTheme.bodySmall,
+                      error!,
+                      style: TextStyle(color: Theme.of(context).colorScheme.error),
                     ),
-                    if (error != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        error!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                    ],
                   ],
-                ),
+                ],
               ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Отмена'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  final applied = controller.addActiveWallTopNotch(
-                    startMm: startMm,
-                    widthMm: widthMm,
-                    depthMm: depthMm,
-                  );
-                  if (applied) {
-                    Navigator.pop(dialogContext);
-                  } else {
-                    setDialogState(() {
-                      error = 'Параметры выходят за допустимый профиль стены.';
-                    });
-                  }
-                },
-                child: const Text('Применить'),
-              ),
-            ],
-          );
-        },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Отмена'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final applied = controller.addActiveWallTopNotch(
+                  startMm: startMm,
+                  widthMm: widthMm,
+                  depthMm: depthMm,
+                );
+                if (applied) {
+                  Navigator.pop(dialogContext);
+                } else {
+                  setDialogState(() {
+                    error = 'Параметры конфликтуют со стеной или проёмами.';
+                  });
+                }
+              },
+              child: const Text('Применить'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -456,73 +602,19 @@ class _ProfileIntField extends StatelessWidget {
   final ValueChanged<int> onChanged;
 
   @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      initialValue: '$value',
-      keyboardType: TextInputType.number,
-      decoration: InputDecoration(
-        labelText: label,
-        suffixText: 'mm',
-        border: const OutlineInputBorder(),
-      ),
-      onChanged: (text) {
-        final parsed = int.tryParse(text);
-        if (parsed != null) {
-          onChanged(parsed);
-        }
-      },
-    );
-  }
-}
-
-class _SurfaceViewportControls extends StatelessWidget {
-  const _SurfaceViewportControls({
-    required this.compact,
-    required this.lod,
-    required this.mmPerPixel,
-    required this.onFit,
-    required this.onZoomOut,
-    required this.onZoomIn,
-  });
-
-  final bool compact;
-  final RenderLod lod;
-  final double mmPerPixel;
-  final VoidCallback onFit;
-  final VoidCallback onZoomOut;
-  final VoidCallback onZoomIn;
-
-  @override
-  Widget build(BuildContext context) {
-    final buttons = <Widget>[
-      IconButton(
-        tooltip: 'Вписать поверхность',
-        onPressed: onFit,
-        icon: const Icon(Icons.fit_screen),
-      ),
-      IconButton(onPressed: onZoomOut, icon: const Icon(Icons.zoom_out)),
-      IconButton(onPressed: onZoomIn, icon: const Icon(Icons.zoom_in)),
-    ];
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(4),
-        child: compact
-            ? Column(mainAxisSize: MainAxisSize.min, children: buttons)
-            : Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ...buttons,
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: Text(
-                      '${lod.name} · ${mmPerPixel.toStringAsFixed(1)} mm/px',
-                    ),
-                  ),
-                ],
-              ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => TextFormField(
+        initialValue: '$value',
+        keyboardType: TextInputType.number,
+        decoration: InputDecoration(
+          labelText: label,
+          suffixText: 'mm',
+          border: const OutlineInputBorder(),
+        ),
+        onChanged: (text) {
+          final parsed = int.tryParse(text);
+          if (parsed != null) onChanged(parsed);
+        },
+      );
 }
 
 final class _SurfaceExtent {
@@ -562,14 +654,12 @@ final class _SurfaceExtent {
 
 final class _WallEdgeHit {
   const _WallEdgeHit(this.edge, this.point);
-
   final WallNavigationEdge edge;
   final SurfacePointMm point;
 }
 
 final class _HorizontalBoundaryHit {
   const _HorizontalBoundaryHit(this.edgeIndex, this.point);
-
   final int edgeIndex;
   final SurfacePointMm point;
 }
@@ -589,7 +679,6 @@ final class _SurfaceProjection {
 
   double get widthMm => extent.widthMm.toDouble();
   double get heightMm => extent.heightMm.toDouble();
-  double get pixelsPerMm => 1 / camera.mmPerPixel;
 
   Offset surfaceToViewport(SurfacePointMm point) {
     final screen = camera.worldToScreen(
@@ -626,9 +715,7 @@ final class _SurfaceProjection {
     required double thresholdPx,
   }) {
     final local = viewportToSurface(viewportPoint);
-    if (local == null) {
-      return null;
-    }
+    if (local == null) return null;
     final thresholdMm = thresholdPx * camera.mmPerPixel;
     final distances = <WallNavigationEdge, double>{
       WallNavigationEdge.start: local.xMm.toDouble(),
@@ -638,9 +725,7 @@ final class _SurfaceProjection {
     };
     final entry =
         distances.entries.reduce((a, b) => a.value <= b.value ? a : b);
-    if (entry.value > thresholdMm) {
-      return null;
-    }
+    if (entry.value > thresholdMm) return null;
     final point = switch (entry.key) {
       WallNavigationEdge.start => SurfacePointMm(0, local.yMm),
       WallNavigationEdge.end => SurfacePointMm(extent.widthMm, local.yMm),
@@ -689,9 +774,7 @@ final class _SurfaceProjection {
   Offset _closestPointOnSegment(Offset point, Offset a, Offset b) {
     final ab = b - a;
     final lengthSquared = ab.dx * ab.dx + ab.dy * ab.dy;
-    if (lengthSquared == 0) {
-      return a;
-    }
+    if (lengthSquared == 0) return a;
     final ap = point - a;
     final t = ((ap.dx * ab.dx + ap.dy * ab.dy) / lengthSquared)
         .clamp(0.0, 1.0);
@@ -700,13 +783,16 @@ final class _SurfaceProjection {
 }
 
 class _SurfacePainter extends CustomPainter {
-  _SurfacePainter(
-    this.controller,
-    this.projection,
-    this.lod,
-  )   : activeSurfaceId = controller.activeSurface?.id,
+  _SurfacePainter(this.controller, this.projection, this.lod)
+      : activeSurfaceId = controller.activeSurface?.id,
         selectedSpaceId = controller.selectedSpaceId,
-        dimensionsVisible = controller.dimensionsVisible,
+        dimensionsVisible = controller.dimensionsVisible &&
+            controller.p2.layers.isVisible(EditorLayerId.dimensions),
+        openingsVisible = controller.p2.layers.isVisible(EditorLayerId.openings),
+        electricalVisible =
+            controller.p2.layers.isVisible(EditorLayerId.electrical),
+        cableRoutesVisible =
+            controller.p2.layers.isVisible(EditorLayerId.cableRoutes),
         openingsFingerprint = Object.hashAll(
           controller.activeWallOpenings.map(
             (opening) => Object.hash(
@@ -719,8 +805,8 @@ class _SurfacePainter extends CustomPainter {
             ),
           ),
         ),
-        routeFingerprint = Object.hashAll(
-          controller.routeSegments.expand(
+        routeFingerprint = Object.hashAll([
+          ...controller.routeSegments.expand(
             (segment) => <Object?>[
               segment.surface.id,
               ...segment.points.expand(
@@ -728,7 +814,37 @@ class _SurfacePainter extends CustomPainter {
               ),
             ],
           ),
+          ...controller.p2.routes.expand(
+            (route) => route.segments.expand(
+              (segment) => <Object?>[
+                segment.surface.id,
+                ...segment.points.expand(
+                  (point) => <Object?>[point.xMm, point.yMm],
+                ),
+              ],
+            ),
+          ),
+        ]),
+        componentsFingerprint = Object.hashAll(
+          controller.p2.components.expand(
+            (component) => <Object?>[
+              component.id,
+              component.type,
+              component.surface.id,
+              component.position.xMm,
+              component.position.yMm,
+              component.rotationDegrees,
+            ],
+          ),
         ),
+        selectionFingerprint = Object.hashAll(controller.p2.selection.ids),
+        snapFingerprint = controller.p2.activeSnap == null
+            ? 0
+            : Object.hash(
+                controller.p2.activeSnap!.kind,
+                controller.p2.activeSnap!.point.x,
+                controller.p2.activeSnap!.point.y,
+              ),
         profileFingerprint = Object.hashAll(
           controller.selectedSpace?.wallProfiles.entries.expand(
                 (entry) => <Object?>[
@@ -747,8 +863,14 @@ class _SurfacePainter extends CustomPainter {
   final String? activeSurfaceId;
   final String? selectedSpaceId;
   final bool dimensionsVisible;
+  final bool openingsVisible;
+  final bool electricalVisible;
+  final bool cableRoutesVisible;
   final int openingsFingerprint;
   final int routeFingerprint;
+  final int componentsFingerprint;
+  final int selectionFingerprint;
+  final int snapFingerprint;
   final int profileFingerprint;
 
   @override
@@ -769,10 +891,7 @@ class _SurfacePainter extends CustomPainter {
     final wall = controller.activeWall!;
     final wallIndex = wall.ref.wallIndex ?? 0;
     final profile = controller.selectedSpace!.wallProfiles[wallIndex];
-    if (profile == null) {
-      return Path()..addRect(projection.surfaceRect);
-    }
-
+    if (profile == null) return Path()..addRect(projection.surfaceRect);
     final path = Path();
     final first = profile.vertices.first;
     final firstPoint = projection.surfaceToViewport(
@@ -785,27 +904,25 @@ class _SurfacePainter extends CustomPainter {
       );
       path.lineTo(point.dx, point.dy);
     }
-    path.close();
-    return path;
+    return path..close();
   }
 
   void _drawWall(Canvas canvas) {
     final wall = controller.activeWall!;
     final rect = projection.surfaceRect;
     final wallPath = _wallPath();
-
     canvas.drawPath(wallPath, Paint()..color = Colors.white);
     canvas.save();
     canvas.clipPath(wallPath);
     _drawAdaptiveGrid(canvas, rect);
-    if (RenderPolicy.showOpenings(lod)) {
+    if (openingsVisible && RenderPolicy.showOpenings(lod)) {
       for (final opening in controller.activeWallOpenings) {
         _drawOpening(canvas, opening);
       }
     }
-    _drawRoute(canvas);
+    _drawRoutes(canvas);
+    _drawElectricalComponents(canvas);
     canvas.restore();
-
     canvas.drawPath(
       wallPath,
       Paint()
@@ -854,7 +971,8 @@ class _SurfacePainter extends CustomPainter {
     canvas.save();
     canvas.clipPath(path);
     _drawAdaptiveGrid(canvas, projection.surfaceRect);
-    _drawRoute(canvas);
+    _drawRoutes(canvas);
+    _drawElectricalComponents(canvas);
     canvas.restore();
     canvas.drawPath(
       path,
@@ -938,24 +1056,115 @@ class _SurfacePainter extends CustomPainter {
     );
   }
 
-  void _drawRoute(Canvas canvas) {
-    final segment = controller.activeRouteSegment;
-    if (segment == null || segment.points.isEmpty) {
-      return;
-    }
+  void _drawRoutes(Canvas canvas) {
+    if (!cableRoutesVisible) return;
     final paint = Paint()
       ..color = const Color(0xFFD66B2C)
       ..strokeWidth = 2.6
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
-    Offset? previous;
-    for (final point in segment.points) {
-      final current = projection.surfaceToViewport(point);
-      if (previous != null) {
-        canvas.drawLine(previous, current, paint);
+    final draft = controller.activeRouteSegment;
+    if (draft != null) _drawRoutePoints(canvas, draft.points, paint);
+    final activeSurface = controller.activeSurface;
+    for (final route in controller.p2.routes) {
+      for (final segment in route.segments) {
+        if (segment.surface == activeSurface) {
+          _drawRoutePoints(canvas, segment.points, paint);
+        }
       }
+    }
+  }
+
+  void _drawRoutePoints(
+    Canvas canvas,
+    List<SurfacePointMm> points,
+    Paint paint,
+  ) {
+    Offset? previous;
+    for (final point in points) {
+      final current = projection.surfaceToViewport(point);
+      if (previous != null) canvas.drawLine(previous, current, paint);
       canvas.drawCircle(current, 4.2, paint);
       previous = current;
+    }
+  }
+
+  void _drawElectricalComponents(Canvas canvas) {
+    if (!electricalVisible) return;
+    final surface = controller.activeSurface;
+    for (final component in controller.p2.components) {
+      if (component.surface != surface) continue;
+      final center = projection.surfaceToViewport(component.position);
+      final selected = controller.p2.selection.contains(component.id);
+      _drawComponentSymbol(canvas, component.type, center, selected);
+    }
+    final snap = controller.p2.activeSnap;
+    if (snap != null) {
+      final center = projection.surfaceToViewport(
+        SurfacePointMm(snap.point.x, snap.point.y),
+      );
+      canvas.drawCircle(
+        center,
+        7,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5
+          ..color = const Color(0xFF1565C0),
+      );
+      _label(
+        canvas,
+        snap.kind.name.toUpperCase(),
+        center + const Offset(9, -16),
+        small: true,
+      );
+    }
+  }
+
+  void _drawComponentSymbol(
+    Canvas canvas,
+    ElectricalComponentType type,
+    Offset center,
+    bool selected,
+  ) {
+    final stroke = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = selected ? 2.6 : 1.8
+      ..color = selected ? const Color(0xFF1565C0) : const Color(0xFF263238);
+    final fill = Paint()
+      ..style = PaintingStyle.fill
+      ..color = selected ? const Color(0x221565C0) : Colors.white;
+    canvas.drawCircle(center, selected ? 11 : 9, fill);
+    switch (type) {
+      case ElectricalComponentType.socketOutlet:
+        canvas.drawCircle(center, 8, stroke);
+        canvas.drawLine(center + const Offset(-4, 0), center + const Offset(4, 0), stroke);
+        canvas.drawLine(center + const Offset(-2, -3), center + const Offset(-2, 3), stroke);
+        canvas.drawLine(center + const Offset(2, -3), center + const Offset(2, 3), stroke);
+      case ElectricalComponentType.switchControl:
+        canvas.drawCircle(center, 8, stroke);
+        canvas.drawLine(center + const Offset(-4, 4), center + const Offset(4, -4), stroke);
+      case ElectricalComponentType.lightingPoint:
+        canvas.drawCircle(center, 8, stroke);
+        canvas.drawLine(center + const Offset(-5, -5), center + const Offset(5, 5), stroke);
+        canvas.drawLine(center + const Offset(5, -5), center + const Offset(-5, 5), stroke);
+      case ElectricalComponentType.curtainMotor:
+        canvas.drawRect(Rect.fromCenter(center: center, width: 16, height: 11), stroke);
+        _label(canvas, 'M', center, centered: true, small: true);
+      case ElectricalComponentType.junctionBox:
+        canvas.drawRect(Rect.fromCenter(center: center, width: 15, height: 15), stroke);
+        canvas.drawCircle(center, 2, stroke);
+      case ElectricalComponentType.powerSource:
+        canvas.drawCircle(center, 8, stroke);
+        canvas.drawLine(center + const Offset(0, -5), center + const Offset(0, 5), stroke);
+      case ElectricalComponentType.distributionBoard:
+        canvas.drawRect(Rect.fromCenter(center: center, width: 15, height: 18), stroke);
+        canvas.drawLine(center + const Offset(-4, -3), center + const Offset(4, -3), stroke);
+        canvas.drawLine(center + const Offset(-4, 2), center + const Offset(4, 2), stroke);
+      case ElectricalComponentType.custom:
+        canvas.drawRect(Rect.fromCenter(center: center, width: 15, height: 15), stroke);
+    }
+    if (selected) {
+      canvas.drawCircle(center, 13, stroke..strokeWidth = 1.2);
     }
   }
 
@@ -1000,12 +1209,7 @@ class _SurfacePainter extends CustomPainter {
       ..color = const Color(0xFF4B5563)
       ..strokeWidth = 0.9;
     canvas.drawLine(Offset(x, top), Offset(x, bottom), paint);
-    _label(
-      canvas,
-      text,
-      Offset(x + 8, (top + bottom) / 2),
-      small: true,
-    );
+    _label(canvas, text, Offset(x + 8, (top + bottom) / 2), small: true);
   }
 
   void _label(
@@ -1042,7 +1246,13 @@ class _SurfacePainter extends CustomPainter {
       oldDelegate.activeSurfaceId != activeSurfaceId ||
       oldDelegate.selectedSpaceId != selectedSpaceId ||
       oldDelegate.dimensionsVisible != dimensionsVisible ||
+      oldDelegate.openingsVisible != openingsVisible ||
+      oldDelegate.electricalVisible != electricalVisible ||
+      oldDelegate.cableRoutesVisible != cableRoutesVisible ||
       oldDelegate.openingsFingerprint != openingsFingerprint ||
       oldDelegate.routeFingerprint != routeFingerprint ||
+      oldDelegate.componentsFingerprint != componentsFingerprint ||
+      oldDelegate.selectionFingerprint != selectionFingerprint ||
+      oldDelegate.snapFingerprint != snapFingerprint ||
       oldDelegate.profileFingerprint != profileFingerprint;
 }
