@@ -8,13 +8,17 @@ When documents conflict, use this order:
 
 1. `docs/product/product-vision.md` — what ElecX is and what user problem it solves.
 2. `docs/product/user-journeys.md` — the primary engineer workflows the product must make excellent.
-3. `docs/product/target-capabilities.md` — target functional capability map.
-4. `docs/architecture/README.md` — target system architecture and bounded contexts.
-5. `docs/architecture/spatial-platform.md` — spatial/CAD model and surface navigation contract.
-6. `docs/architecture/engineering-platform.md` — engineering model, solvers, catalog, constraints and configuration.
-7. `docs/product/roadmap.md` — implementation sequence and release waves.
-8. Feature-level implementation specifications and ADRs.
-9. `docs/migration/electra-to-elecx.md` — provenance and migration mapping from the former `electra` repository.
+3. `docs/product/technical-specification.md` — consolidated top-level technical contract.
+4. `docs/product/target-capabilities.md` — target functional capability map.
+5. `docs/architecture/README.md` — target system architecture and bounded contexts.
+6. `docs/architecture/spatial-platform.md` — spatial/CAD model and surface navigation contract.
+7. `docs/architecture/engineering-platform.md` — engineering model, solvers, catalog, constraints and configuration.
+8. `docs/product/engineering-workspace-ui.md` — target engineer workspace and interaction contract.
+9. `docs/product/acceptance-criteria.md` — product-level acceptance invariants.
+10. `docs/product/roadmap.md` — implementation sequence and release waves.
+11. Feature-level implementation specifications and ADRs.
+12. `docs/migration/electra-to-elecx.md` — provenance and migration mapping from the former `electra` repository.
+13. `docs/migration/electra-source-index.md` — legacy source inventory and migration ownership.
 
 Historical Electra ELV1–ELV8 documents are design inputs and provenance only. They do not define ElecX runtime boundaries.
 
@@ -55,3 +59,7 @@ Source code, domain terms, schemas, APIs and technical documentation are English
 The current codebase implements the first spatial-editor vertical slice: quick local PIN unlock, project hub, project/site/building/level/space hierarchy, room-local grids and reference frames, surface-centric wall/floor/ceiling navigation, openings, dimensions and multi-surface route foundations.
 
 The next engineering priority is not ELV stage expansion. It is to complete the CAD-grade spatial foundation, then attach engineering layers to it.
+
+## Legacy source policy
+
+The former `electra` repository remains the provenance archive for validated engineering work. Migration is complete only after useful requirements are assigned to an ElecX bounded context, rewritten for the new architecture, backed by qualification/regression tests and made understandable without requiring the reader to know ELV stage chronology.
