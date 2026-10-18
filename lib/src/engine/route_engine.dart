@@ -1,5 +1,3 @@
-import 'dart:collection';
-
 import '../domain/electrical_routing.dart';
 import '../domain/surfaces.dart';
 
@@ -60,12 +58,11 @@ abstract final class RouteEngine {
 
     final distances = <String, double>{startNodeId: 0};
     final previous = <String, String>{};
-    final queue = PriorityQueue<_QueueEntry>(
-      (a, b) => a.cost.compareTo(b.cost),
-    )..add(_QueueEntry(startNodeId, 0));
+    final queue = <_QueueEntry>[_QueueEntry(startNodeId, 0)];
 
     while (queue.isNotEmpty) {
-      final current = queue.removeFirst();
+      queue.sort((a, b) => a.cost.compareTo(b.cost));
+      final current = queue.removeAt(0);
       if (current.cost != distances[current.id]) continue;
       if (current.id == endNodeId) break;
 
