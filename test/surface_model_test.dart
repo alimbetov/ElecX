@@ -1,5 +1,6 @@
 import 'package:elecx/src/domain/geometry.dart';
 import 'package:elecx/src/domain/project_model.dart';
+import 'package:elecx/src/domain/surface_routing.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -32,7 +33,10 @@ void main() {
     final wall = controller.activeWall!;
     final door = controller.activeWallOpenings.single;
 
-    expect(RoomSurfaceResolver.openingFitsWall(opening: door, wall: wall), isTrue);
+    expect(
+      RoomSurfaceResolver.openingFitsWall(opening: door, wall: wall),
+      isTrue,
+    );
   });
 
   test('surface navigator preserves selected room and switches wall', () {
@@ -60,5 +64,60 @@ void main() {
       RoomSurfaceResolver.wallLocalToPlan(wall, 1000),
       const MmPoint(2000, 1200),
     );
+  });
+
+  test('route point transfers from wall base to the same floor point', () {
+    final controller = EditorController.demo();
+    final room = controller.selectedSpace!;
+
+    final mapped = SurfaceTransitionResolver.mapPoint(
+      space: room,
+      from: RoomSurfaceRef.wall(room.id, 0),
+      point: const SurfacePointMm(1000, 0),
+      to: RoomSurfaceRef.floor(room.id),
+    );
+
+    expect(mapped?.xMm, 1000);
+    expect(mapped?.yMm, 0);
+  });
+
+  test('route point transfers between adjacent walls only at shared edge', () {
+    final controller = EditorController.demo();
+    final room = controller.selectedSpace!;
+    final firstWall = controller.selectedWalls.first;
+
+    final mapped = SurfaceTransitionResolver.mapPoint(
+      space: room,
+      from: firstWall.ref,
+      point: SurfacePointMm(firstWall.lengthMm.round(), 1200),
+      to: RoomSurfaceRef.wall(room.id, 1),
+    );
+
+    expect(mapped, isNotNull);
+    expect(mapped?.xMm, 0);
+    expect(mapped?.yMm, 1200);
+
+    final invalid = SurfaceTransitionResolver.mapPoint(
+      space: room,
+      from: firstWall.ref,
+      point: const SurfacePointMm(1000, 1200),
+      to: RoomSurfaceRef.wall(room.id, 1),
+    );
+    expect(invalid, isNull);
+  });
+
+  test('controller creates a new route segment when surface transition is valid', () {
+    final controller = EditorController.demo();
+    controller.setTool(EditorTool.cableRoute);
+    controller.showWall(0);
+    final wall = controller.activeWall!;
+    controller.surfaceTap(SurfacePointMm(wall.lengthMm.round(), 1200));
+
+    controller.nextWall();
+
+    expect(controller.routeSegments, hasLength(2));
+    expect(controller.routeSegments.last.surface, RoomSurfaceRef.wall('room-101', 1));
+    expect(controller.routeSegments.last.points.single.xMm, 0);
+    expect(controller.routeSegments.last.points.single.yMm, 1200);
   });
 }
