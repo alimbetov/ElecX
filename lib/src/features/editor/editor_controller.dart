@@ -2,8 +2,11 @@ import 'package:flutter/foundation.dart';
 
 import '../../domain/geometry.dart';
 import '../../domain/project_model.dart';
+import '../../domain/surfaces.dart';
 
-enum EditorTool { select, roomRectangle, guide }
+enum EditorTool { select, roomRectangle, guide, cableRoute }
+
+enum EditorViewMode { plan, surface }
 
 final class EditorController extends ChangeNotifier {
   EditorController.demo()
@@ -28,6 +31,26 @@ final class EditorController extends ChangeNotifier {
           ],
         ) {
     selectedSpaceId = 'room-101';
+    openings = [
+      ArchitecturalOpening(
+        id: 'door-101-a',
+        hostWall: RoomSurfaceRef.wall('room-101', 0),
+        type: ArchitecturalOpeningType.door,
+        offsetFromStartMm: 650,
+        widthMm: 900,
+        heightMm: 2100,
+        sillHeightMm: 0,
+      ),
+      ArchitecturalOpening(
+        id: 'window-101-a',
+        hostWall: RoomSurfaceRef.wall('room-101', 2),
+        type: ArchitecturalOpeningType.window,
+        offsetFromStartMm: 1150,
+        widthMm: 1600,
+        heightMm: 1400,
+        sillHeightMm: 900,
+      ),
+    ];
   }
 
   static EngineeringSpace _room(
@@ -48,12 +71,18 @@ final class EditorController extends ChangeNotifier {
   }
 
   BuildingLevel level;
+  late List<ArchitecturalOpening> openings;
   EditorTool tool = EditorTool.select;
+  EditorViewMode viewMode = EditorViewMode.plan;
   String? selectedSpaceId;
+  RoomSurfaceRef? activeSurface;
   MmPoint? draftStart;
+  SurfacePointMm? routeDraftStart;
   bool snapEnabled = true;
+  bool dimensionsVisible = true;
   int floorGridMm = 500;
   int roomSequence = 102;
+  double zoom = 1.0;
 
   EngineeringSpace? get selectedSpace {
     for (final space in level.spaces) {
@@ -62,14 +91,43 @@ final class EditorController extends ChangeNotifier {
     return null;
   }
 
+  List<RoomWallSurface> get selectedWalls {
+    final space = selectedSpace;
+    if (space == null) return const [];
+    return RoomSurfaceResolver.walls(space);
+  }
+
+  RoomWallSurface? get activeWall {
+    final surface = activeSurface;
+    final space = selectedSpace;
+    if (surface == null ||
+        space == null ||
+        surface.type != SurfacePlaneType.wall ||
+        surface.wallIndex == null) {
+      return null;
+    }
+    return RoomSurfaceResolver.wall(space, surface.wallIndex!);
+  }
+
+  List<ArchitecturalOpening> get activeWallOpenings {
+    final surface = activeSurface;
+    if (surface == null) return const [];
+    return openings.where((opening) => opening.hostWall == surface).toList(growable: false);
+  }
+
   void setTool(EditorTool value) {
     tool = value;
     draftStart = null;
+    routeDraftStart = null;
     notifyListeners();
   }
 
   void selectSpace(String? id) {
     selectedSpaceId = id;
+    if (id == null || activeSurface?.spaceId != id) {
+      activeSurface = null;
+      viewMode = EditorViewMode.plan;
+    }
     notifyListeners();
   }
 
@@ -78,11 +136,86 @@ final class EditorController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setDimensionsVisible(bool value) {
+    dimensionsVisible = value;
+    notifyListeners();
+  }
+
+  void setZoom(double value) {
+    zoom = value.clamp(0.35, 6.0);
+    notifyListeners();
+  }
+
+  void zoomIn() => setZoom(zoom * 1.25);
+
+  void zoomOut() => setZoom(zoom / 1.25);
+
+  void resetZoom() => setZoom(1.0);
+
   MmPoint snap(MmPoint point, {int? stepMm}) {
     if (!snapEnabled) return point;
     final step = stepMm ?? selectedSpace?.grid.minorStepMm ?? 100;
     int round(int value) => (value / step).round() * step;
     return MmPoint(round(point.x), round(point.y));
+  }
+
+  SurfacePointMm snapSurfacePoint(SurfacePointMm point, {int? stepMm}) {
+    if (!snapEnabled) return point;
+    final step = stepMm ?? selectedSpace?.grid.minorStepMm ?? 100;
+    int round(int value) => (value / step).round() * step;
+    return SurfacePointMm(round(point.xMm), round(point.yMm));
+  }
+
+  void showPlan() {
+    viewMode = EditorViewMode.plan;
+    activeSurface = null;
+    routeDraftStart = null;
+    notifyListeners();
+  }
+
+  void showFloor() {
+    final space = selectedSpace;
+    if (space == null) return;
+    viewMode = EditorViewMode.surface;
+    activeSurface = RoomSurfaceRef.floor(space.id);
+    routeDraftStart = null;
+    notifyListeners();
+  }
+
+  void showCeiling() {
+    final space = selectedSpace;
+    if (space == null) return;
+    viewMode = EditorViewMode.surface;
+    activeSurface = RoomSurfaceRef.ceiling(space.id);
+    routeDraftStart = null;
+    notifyListeners();
+  }
+
+  void showWall(int wallIndex) {
+    final space = selectedSpace;
+    if (space == null || wallIndex < 0 || wallIndex >= space.boundary.vertices.length) {
+      return;
+    }
+    viewMode = EditorViewMode.surface;
+    activeSurface = RoomSurfaceRef.wall(space.id, wallIndex);
+    routeDraftStart = null;
+    notifyListeners();
+  }
+
+  void previousWall() {
+    final space = selectedSpace;
+    if (space == null) return;
+    final count = space.boundary.vertices.length;
+    final current = activeSurface?.wallIndex ?? 0;
+    showWall((current - 1 + count) % count);
+  }
+
+  void nextWall() {
+    final space = selectedSpace;
+    if (space == null) return;
+    final count = space.boundary.vertices.length;
+    final current = activeSurface?.wallIndex ?? -1;
+    showWall((current + 1) % count);
   }
 
   void canvasTap(MmPoint rawPoint) {
@@ -101,10 +234,20 @@ final class EditorController extends ChangeNotifier {
           notifyListeners();
         }
       case EditorTool.guide:
-        // Persistent user guides are introduced in the next editor increment.
+        draftStart = point;
+        notifyListeners();
+      case EditorTool.cableRoute:
+        // Cable routing on plan will share the same surface-route contract.
         draftStart = point;
         notifyListeners();
     }
+  }
+
+  void surfaceTap(SurfacePointMm rawPoint) {
+    final point = snapSurfacePoint(rawPoint);
+    if (tool != EditorTool.cableRoute) return;
+    routeDraftStart = point;
+    notifyListeners();
   }
 
   void selectAt(MmPoint point) {
