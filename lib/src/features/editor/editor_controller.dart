@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../domain/geometry.dart';
 import '../../domain/project_model.dart';
+import '../../domain/surface_routing.dart';
 import '../../domain/surfaces.dart';
 
 enum EditorTool { select, roomRectangle, guide, cableRoute }
@@ -72,12 +73,12 @@ final class EditorController extends ChangeNotifier {
 
   BuildingLevel level;
   late List<ArchitecturalOpening> openings;
+  final List<SurfaceRouteSegmentDraft> routeSegments = [];
   EditorTool tool = EditorTool.select;
   EditorViewMode viewMode = EditorViewMode.plan;
   String? selectedSpaceId;
   RoomSurfaceRef? activeSurface;
   MmPoint? draftStart;
-  SurfacePointMm? routeDraftStart;
   bool snapEnabled = true;
   bool dimensionsVisible = true;
   int floorGridMm = 500;
@@ -112,13 +113,26 @@ final class EditorController extends ChangeNotifier {
   List<ArchitecturalOpening> get activeWallOpenings {
     final surface = activeSurface;
     if (surface == null) return const [];
-    return openings.where((opening) => opening.hostWall == surface).toList(growable: false);
+    return openings
+        .where((opening) => opening.hostWall == surface)
+        .toList(growable: false);
   }
+
+  SurfaceRouteSegmentDraft? get activeRouteSegment {
+    final surface = activeSurface;
+    if (surface == null || routeSegments.isEmpty) return null;
+    final last = routeSegments.last;
+    return last.surface == surface ? last : null;
+  }
+
+  double get routeLengthMm => routeSegments.fold(
+        0.0,
+        (sum, segment) => sum + segment.lengthMm,
+      );
 
   void setTool(EditorTool value) {
     tool = value;
     draftStart = null;
-    routeDraftStart = null;
     notifyListeners();
   }
 
@@ -142,7 +156,11 @@ final class EditorController extends ChangeNotifier {
   }
 
   void setZoom(double value) {
-    zoom = value.clamp(0.35, 6.0);
+    zoom = value < 0.35
+        ? 0.35
+        : value > 6.0
+            ? 6.0
+            : value;
     notifyListeners();
   }
 
@@ -169,36 +187,56 @@ final class EditorController extends ChangeNotifier {
   void showPlan() {
     viewMode = EditorViewMode.plan;
     activeSurface = null;
-    routeDraftStart = null;
     notifyListeners();
   }
 
   void showFloor() {
     final space = selectedSpace;
     if (space == null) return;
-    viewMode = EditorViewMode.surface;
-    activeSurface = RoomSurfaceRef.floor(space.id);
-    routeDraftStart = null;
-    notifyListeners();
+    _switchSurface(RoomSurfaceRef.floor(space.id));
   }
 
   void showCeiling() {
     final space = selectedSpace;
     if (space == null) return;
-    viewMode = EditorViewMode.surface;
-    activeSurface = RoomSurfaceRef.ceiling(space.id);
-    routeDraftStart = null;
-    notifyListeners();
+    _switchSurface(RoomSurfaceRef.ceiling(space.id));
   }
 
   void showWall(int wallIndex) {
     final space = selectedSpace;
-    if (space == null || wallIndex < 0 || wallIndex >= space.boundary.vertices.length) {
+    if (space == null ||
+        wallIndex < 0 ||
+        wallIndex >= space.boundary.vertices.length) {
       return;
     }
+    _switchSurface(RoomSurfaceRef.wall(space.id, wallIndex));
+  }
+
+  void _switchSurface(RoomSurfaceRef target) {
+    final space = selectedSpace;
+    if (space == null) return;
+
+    if (tool == EditorTool.cableRoute &&
+        activeSurface != null &&
+        routeSegments.isNotEmpty) {
+      final lastSegment = routeSegments.last;
+      if (lastSegment.surface == activeSurface && lastSegment.points.isNotEmpty) {
+        final mapped = SurfaceTransitionResolver.mapPoint(
+          space: space,
+          from: activeSurface!,
+          point: lastSegment.points.last,
+          to: target,
+        );
+        if (mapped != null) {
+          routeSegments.add(
+            SurfaceRouteSegmentDraft(surface: target, points: [mapped]),
+          );
+        }
+      }
+    }
+
     viewMode = EditorViewMode.surface;
-    activeSurface = RoomSurfaceRef.wall(space.id, wallIndex);
-    routeDraftStart = null;
+    activeSurface = target;
     notifyListeners();
   }
 
@@ -237,16 +275,28 @@ final class EditorController extends ChangeNotifier {
         draftStart = point;
         notifyListeners();
       case EditorTool.cableRoute:
-        // Cable routing on plan will share the same surface-route contract.
         draftStart = point;
         notifyListeners();
     }
   }
 
   void surfaceTap(SurfacePointMm rawPoint) {
+    final surface = activeSurface;
+    if (tool != EditorTool.cableRoute || surface == null) return;
     final point = snapSurfacePoint(rawPoint);
-    if (tool != EditorTool.cableRoute) return;
-    routeDraftStart = point;
+
+    if (routeSegments.isEmpty || routeSegments.last.surface != surface) {
+      routeSegments.add(
+        SurfaceRouteSegmentDraft(surface: surface, points: [point]),
+      );
+    } else {
+      routeSegments[routeSegments.length - 1] = routeSegments.last.append(point);
+    }
+    notifyListeners();
+  }
+
+  void clearRouteDraft() {
+    routeSegments.clear();
     notifyListeners();
   }
 
