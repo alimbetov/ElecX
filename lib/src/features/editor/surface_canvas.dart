@@ -10,6 +10,7 @@ import '../../engine/adaptive_grid.dart';
 import '../../engine/render_policy.dart';
 import '../../engine/world_camera.dart';
 import 'editor_controller.dart';
+import 'editor_viewport_commands.dart';
 
 class SurfaceCanvas extends StatefulWidget {
   const SurfaceCanvas({required this.controller, super.key});
@@ -26,9 +27,24 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
   Offset? _panAnchor;
   WorldCamera? _touchStartCamera;
   Offset? _touchStartFocal;
+  int _lastViewportRevision = 0;
   Size _size = Size.zero;
 
   EditorController get controller => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastViewportRevision = controller.viewportCommandRevision;
+  }
+
+  @override
+  void didUpdateWidget(covariant SurfaceCanvas oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      _lastViewportRevision = controller.viewportCommandRevision;
+    }
+  }
 
   WorldCamera _fittedCamera(_SurfaceExtent extent) {
     final base = _camera ??
@@ -65,20 +81,42 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
     setState(() => _camera = _fittedCamera(extent));
   }
 
-  void _zoomAt(Offset cursor, double factor) {
+  WorldCamera _zoomedCamera(Offset cursor, double factor) {
     final camera = _camera;
     if (camera == null || _size.isEmpty) {
+      return camera ??
+          const WorldCamera(centerMm: MmPoint(0, 0), mmPerPixel: 10);
+    }
+    return camera.zoomAt(
+      factor: factor,
+      viewportWidthPx: _size.width,
+      viewportHeightPx: _size.height,
+      cursorXpx: cursor.dx,
+      cursorYpx: cursor.dy,
+    );
+  }
+
+  void _zoomAt(Offset cursor, double factor) {
+    setState(() => _camera = _zoomedCamera(cursor, factor));
+  }
+
+  void _consumeViewportCommand(_SurfaceExtent extent) {
+    final revision = controller.viewportCommandRevision;
+    if (revision == _lastViewportRevision || _size.isEmpty || _camera == null) {
       return;
     }
-    setState(() {
-      _camera = camera.zoomAt(
-        factor: factor,
-        viewportWidthPx: _size.width,
-        viewportHeightPx: _size.height,
-        cursorXpx: cursor.dx,
-        cursorYpx: cursor.dy,
-      );
-    });
+    _lastViewportRevision = revision;
+    final center = _size.center(Offset.zero);
+    switch (controller.viewportCommand) {
+      case EditorViewportCommand.zoomIn:
+        _camera = _zoomedCamera(center, 1.25);
+      case EditorViewportCommand.zoomOut:
+        _camera = _zoomedCamera(center, 0.8);
+      case EditorViewportCommand.reset:
+        _camera = _fittedCamera(extent);
+      case null:
+        break;
+    }
   }
 
   void _startTouchGesture(ScaleStartDetails details) {
@@ -158,6 +196,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
         _size = Size(constraints.maxWidth, constraints.maxHeight);
         final extent = _SurfaceExtent.fromController(controller);
         _ensureCamera(extent);
+        _consumeViewportCommand(extent);
         final camera = _camera!;
         final projection = _SurfaceProjection(
           controller: controller,
