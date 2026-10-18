@@ -1,15 +1,21 @@
-import 'package:electra/src/domain/geometry.dart';
-import 'package:electra/src/domain/wall_construction.dart';
+import 'package:elecx/src/domain/geometry.dart';
+import 'package:elecx/src/domain/wall_construction.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('rectangle boundary is counter-clockwise', () {
-    final room = MmPolygon.rectangle(const MmPoint(0, 0), const MmPoint(4000, 3000));
+    final room = MmPolygon.rectangle(
+      const MmPoint(0, 0),
+      const MmPoint(4000, 3000),
+    );
     expect(WallPlanGeometry.isCounterClockwise(room), isTrue);
   });
 
   test('bottom external wall projects thickness outside room', () {
-    final room = MmPolygon.rectangle(const MmPoint(0, 0), const MmPoint(4000, 3000));
+    final room = MmPolygon.rectangle(
+      const MmPoint(0, 0),
+      const MmPoint(4000, 3000),
+    );
     final body = WallPlanGeometry.externalWallBody(
       spaceId: 'room-1',
       roomBoundary: room,
@@ -25,7 +31,10 @@ void main() {
   });
 
   test('right external wall projects thickness to the right', () {
-    final room = MmPolygon.rectangle(const MmPoint(0, 0), const MmPoint(4000, 3000));
+    final room = MmPolygon.rectangle(
+      const MmPoint(0, 0),
+      const MmPoint(4000, 3000),
+    );
     final body = WallPlanGeometry.externalWallBody(
       spaceId: 'room-1',
       roomBoundary: room,
@@ -38,7 +47,10 @@ void main() {
   });
 
   test('wall thickness must be positive', () {
-    final room = MmPolygon.rectangle(const MmPoint(0, 0), const MmPoint(4000, 3000));
+    final room = MmPolygon.rectangle(
+      const MmPoint(0, 0),
+      const MmPoint(4000, 3000),
+    );
     expect(
       () => WallPlanGeometry.externalWallBody(
         spaceId: 'room-1',
