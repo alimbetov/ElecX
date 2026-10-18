@@ -47,9 +47,7 @@ class _SpatialEditorScreenState extends State<SpatialEditorScreen> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final wide = constraints.maxWidth >= 980;
-                if (!wide) {
-                  return SpatialCanvas(controller: controller);
-                }
+                if (!wide) return SpatialCanvas(controller: controller);
                 return Row(
                   children: [
                     SizedBox(width: 240, child: _ProjectTree(controller: controller)),
@@ -83,7 +81,9 @@ class _Toolbar extends StatelessWidget {
             label: Text(label),
             style: ButtonStyle(
               backgroundColor: WidgetStatePropertyAll(
-                controller.tool == value ? Theme.of(context).colorScheme.secondaryContainer : null,
+                controller.tool == value
+                    ? Theme.of(context).colorScheme.secondaryContainer
+                    : null,
               ),
             ),
           ),
@@ -125,14 +125,26 @@ class _ProjectTree extends StatelessWidget {
       children: [
         Text('ОБЪЕКТ', style: Theme.of(context).textTheme.labelLarge),
         const SizedBox(height: 8),
-        const ListTile(dense: true, leading: Icon(Icons.location_on_outlined), title: Text('Площадка')),
+        const ListTile(
+          dense: true,
+          leading: Icon(Icons.location_on_outlined),
+          title: Text('Площадка'),
+        ),
         const Padding(
           padding: EdgeInsets.only(left: 16),
-          child: ListTile(dense: true, leading: Icon(Icons.apartment), title: Text('Building A')),
+          child: ListTile(
+            dense: true,
+            leading: Icon(Icons.apartment),
+            title: Text('Building A'),
+          ),
         ),
         Padding(
           padding: const EdgeInsets.only(left: 32),
-          child: ListTile(dense: true, leading: const Icon(Icons.layers_outlined), title: Text(controller.level.name)),
+          child: ListTile(
+            dense: true,
+            leading: const Icon(Icons.layers_outlined),
+            title: Text(controller.level.name),
+          ),
         ),
         const Divider(),
         Text('ПОМЕЩЕНИЯ', style: Theme.of(context).textTheme.labelLarge),
@@ -140,12 +152,13 @@ class _ProjectTree extends StatelessWidget {
           ListTile(
             dense: true,
             selected: controller.selectedSpaceId == space.id,
-            leading: Icon(space.type == SpaceType.corridor ? Icons.linear_scale : Icons.crop_square),
+            leading: Icon(
+              space.type == SpaceType.corridor
+                  ? Icons.linear_scale
+                  : Icons.crop_square,
+            ),
             title: Text(space.name),
-            onTap: () {
-              controller.selectedSpaceId = space.id;
-              controller.notifyListeners();
-            },
+            onTap: () => controller.selectSpace(space.id),
           ),
       ],
     );
@@ -159,9 +172,7 @@ class _PropertiesPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final space = controller.selectedSpace;
-    if (space == null) {
-      return const Center(child: Text('Выберите помещение'));
-    }
+    if (space == null) return const Center(child: Text('Выберите помещение'));
     final bounds = space.boundary.bounds;
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -177,24 +188,36 @@ class _PropertiesPanel extends StatelessWidget {
         const Text('Локальная сетка'),
         const SizedBox(height: 8),
         DropdownButtonFormField<int>(
-          value: space.grid.minorStepMm,
+          initialValue: space.grid.minorStepMm,
           items: const [50, 100, 250, 500]
-              .map((value) => DropdownMenuItem(value: value, child: Text('$value mm')))
+              .map(
+                (value) => DropdownMenuItem(
+                  value: value,
+                  child: Text('$value mm'),
+                ),
+              )
               .toList(),
           onChanged: (value) {
             if (value != null) controller.updateSelectedGrid(value);
           },
-          decoration: const InputDecoration(border: OutlineInputBorder(), labelText: 'Шаг'),
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            labelText: 'Шаг',
+          ),
         ),
         const SizedBox(height: 12),
-        const Text('Центровочные линии создаются автоматически по локальному центру помещения.'),
+        const Text(
+          'Центровочные линии создаются автоматически по локальному центру помещения.',
+        ),
       ],
     );
   }
 
   Widget _value(String label, String value) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(children: [Expanded(child: Text(label)), Text(value)]),
+        child: Row(
+          children: [Expanded(child: Text(label)), Text(value)],
+        ),
       );
 }
 
@@ -209,7 +232,10 @@ class _StatusBar extends StatelessWidget {
       height: 30,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       alignment: Alignment.centerLeft,
-      child: Text('Metric · Floor grid ${controller.floorGridMm} mm · Room grid $grid mm · Snap ${controller.snapEnabled ? 'ON' : 'OFF'}'),
+      child: Text(
+        'Metric · Floor grid ${controller.floorGridMm} mm · '
+        'Room grid $grid mm · Snap ${controller.snapEnabled ? 'ON' : 'OFF'}',
+      ),
     );
   }
 }

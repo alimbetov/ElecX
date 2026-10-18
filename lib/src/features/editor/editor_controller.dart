@@ -12,8 +12,19 @@ final class EditorController extends ChangeNotifier {
           name: 'Этаж 1',
           elevationMm: 0,
           spaces: [
-            _room('room-101', 'Комната 101', const MmPoint(1000, 1200), const MmPoint(5200, 4400)),
-            _room('corridor-1', 'Коридор', const MmPoint(1000, 4600), const MmPoint(9800, 5900), type: SpaceType.corridor),
+            _room(
+              'room-101',
+              'Комната 101',
+              const MmPoint(1000, 1200),
+              const MmPoint(5200, 4400),
+            ),
+            _room(
+              'corridor-1',
+              'Коридор',
+              const MmPoint(1000, 4600),
+              const MmPoint(9800, 5900),
+              type: SpaceType.corridor,
+            ),
           ],
         ) {
     selectedSpaceId = 'room-101';
@@ -57,6 +68,11 @@ final class EditorController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void selectSpace(String? id) {
+    selectedSpaceId = id;
+    notifyListeners();
+  }
+
   void setSnapEnabled(bool value) {
     snapEnabled = value;
     notifyListeners();
@@ -85,7 +101,7 @@ final class EditorController extends ChangeNotifier {
           notifyListeners();
         }
       case EditorTool.guide:
-        // Reserved for persistent user guides in the next editor increment.
+        // Persistent user guides are introduced in the next editor increment.
         draftStart = point;
         notifyListeners();
     }
@@ -94,13 +110,11 @@ final class EditorController extends ChangeNotifier {
   void selectAt(MmPoint point) {
     for (final space in level.spaces.reversed) {
       if (space.boundary.contains(point)) {
-        selectedSpaceId = space.id;
-        notifyListeners();
+        selectSpace(space.id);
         return;
       }
     }
-    selectedSpaceId = null;
-    notifyListeners();
+    selectSpace(null);
   }
 
   void addRectangleRoom(MmPoint a, MmPoint b) {
@@ -126,7 +140,9 @@ final class EditorController extends ChangeNotifier {
       spaces: [
         for (final space in level.spaces)
           if (space.id == selected.id)
-            space.copyWith(grid: space.grid.copyWith(minorStepMm: minorStepMm))
+            space.copyWith(
+              grid: space.grid.copyWith(minorStepMm: minorStepMm),
+            )
           else
             space,
       ],

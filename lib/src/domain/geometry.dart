@@ -13,14 +13,20 @@ final class MmPoint {
   }
 
   @override
-  bool operator ==(Object other) => other is MmPoint && other.x == x && other.y == y;
+  bool operator ==(Object other) =>
+      other is MmPoint && other.x == x && other.y == y;
 
   @override
   int get hashCode => Object.hash(x, y);
 }
 
 final class MmBounds {
-  const MmBounds({required this.left, required this.bottom, required this.right, required this.top});
+  const MmBounds({
+    required this.left,
+    required this.bottom,
+    required this.right,
+    required this.top,
+  });
 
   final int left;
   final int bottom;
@@ -32,7 +38,10 @@ final class MmBounds {
   MmPoint get center => MmPoint(left + width ~/ 2, bottom + height ~/ 2);
 
   bool contains(MmPoint point) =>
-      point.x >= left && point.x <= right && point.y >= bottom && point.y <= top;
+      point.x >= left &&
+      point.x <= right &&
+      point.y >= bottom &&
+      point.y <= top;
 }
 
 final class MmPolygon {
@@ -64,10 +73,10 @@ final class MmPolygon {
     final xs = vertices.map((point) => point.x);
     final ys = vertices.map((point) => point.y);
     return MmBounds(
-      left: xs.reduce(math.min),
-      bottom: ys.reduce(math.min),
-      right: xs.reduce(math.max),
-      top: ys.reduce(math.max),
+      left: xs.reduce((a, b) => a < b ? a : b),
+      bottom: ys.reduce((a, b) => a < b ? a : b),
+      right: xs.reduce((a, b) => a > b ? a : b),
+      top: ys.reduce((a, b) => a > b ? a : b),
     );
   }
 
@@ -78,9 +87,10 @@ final class MmPolygon {
       final b = vertices[j];
       final crosses = (a.y > point.y) != (b.y > point.y);
       if (!crosses) continue;
-      final crossingX = (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x;
+      final crossingX =
+          (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x;
       if (point.x < crossingX) inside = !inside;
     }
-    return inside || bounds.contains(point) && vertices.length == 4;
+    return inside;
   }
 }
