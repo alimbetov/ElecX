@@ -27,6 +27,10 @@ void main() {
     expect(shell.inspectorVisible, isFalse);
     expect(shell.contextBarVisible, isFalse);
 
+    shell.toggleNavigator();
+    shell.toggleInspector();
+    shell.toggleContextBar();
+
     shell.toggleFocusMode();
     expect(shell.focusMode, isFalse);
     expect(shell.navigatorVisible, isFalse);
