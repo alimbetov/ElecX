@@ -1,4 +1,5 @@
 import 'geometry.dart';
+import 'wall_profile.dart';
 
 enum SpaceType { room, corridor, hall, technicalRoom, stair, shaft, outdoorArea }
 
@@ -32,6 +33,7 @@ final class EngineeringSpace {
     required this.boundary,
     required this.referenceFrame,
     this.grid = const GridDefinition(),
+    this.wallProfiles = const {},
   });
 
   final String id;
@@ -41,14 +43,43 @@ final class EngineeringSpace {
   final RoomReferenceFrame referenceFrame;
   final GridDefinition grid;
 
-  EngineeringSpace copyWith({GridDefinition? grid}) => EngineeringSpace(
+  /// Optional wall-elevation overrides by room boundary edge index.
+  /// Missing entries use a rectangular wall profile.
+  final Map<int, WallProfile> wallProfiles;
+
+  EngineeringSpace copyWith({
+    GridDefinition? grid,
+    MmPolygon? boundary,
+    RoomReferenceFrame? referenceFrame,
+    Map<int, WallProfile>? wallProfiles,
+  }) =>
+      EngineeringSpace(
         id: id,
         name: name,
         type: type,
-        boundary: boundary,
-        referenceFrame: referenceFrame,
+        boundary: boundary ?? this.boundary,
+        referenceFrame: referenceFrame ?? this.referenceFrame,
         grid: grid ?? this.grid,
+        wallProfiles: wallProfiles ?? this.wallProfiles,
       );
+
+  EngineeringSpace withWallProfile(int wallIndex, WallProfile profile) {
+    if (wallIndex < 0 || wallIndex >= boundary.vertices.length) {
+      throw RangeError.index(wallIndex, boundary.vertices, 'wallIndex');
+    }
+    return copyWith(
+      wallProfiles: {
+        ...wallProfiles,
+        wallIndex: profile,
+      },
+    );
+  }
+
+  EngineeringSpace withoutWallProfile(int wallIndex) {
+    if (!wallProfiles.containsKey(wallIndex)) return this;
+    final updated = Map<int, WallProfile>.from(wallProfiles)..remove(wallIndex);
+    return copyWith(wallProfiles: updated);
+  }
 }
 
 final class BuildingLevel {
