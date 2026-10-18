@@ -12,16 +12,25 @@ final class EditorShellState extends ChangeNotifier {
   bool get focusMode => _focusMode;
 
   void toggleNavigator() {
+    if (_focusMode) {
+      return;
+    }
     _navigatorVisible = !_navigatorVisible;
     notifyListeners();
   }
 
   void toggleInspector() {
+    if (_focusMode) {
+      return;
+    }
     _inspectorVisible = !_inspectorVisible;
     notifyListeners();
   }
 
   void toggleContextBar() {
+    if (_focusMode) {
+      return;
+    }
     _contextBarVisible = !_contextBarVisible;
     notifyListeners();
   }
@@ -32,7 +41,9 @@ final class EditorShellState extends ChangeNotifier {
   }
 
   void exitFocusMode() {
-    if (!_focusMode) return;
+    if (!_focusMode) {
+      return;
+    }
     _focusMode = false;
     notifyListeners();
   }
