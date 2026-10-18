@@ -11,6 +11,32 @@ enum EngineeringDiscipline {
   automation,
 }
 
+enum EngineeringSystemClass {
+  powerAc,
+  powerDc,
+  lighting,
+  structuredCabling,
+  poeNetwork,
+  fiberOptic,
+  cctv,
+  accessControl,
+  fireAlarm,
+  automationBus,
+  dryContact,
+  custom,
+}
+
+enum EngineeringCalculationKind {
+  powerCableSizing,
+  dcVoltageDrop,
+  poePowerBudget,
+  copperLinkLength,
+  fiberOpticalBudget,
+  fireLoopElectrical,
+  busTopology,
+  connectivityOnly,
+}
+
 enum EngineeringPortDirection { input, output, bidirectional }
 
 enum EngineeringConnectionType {
@@ -47,12 +73,33 @@ final class EngineeringPortSpec {
       allowedConnections.contains(type);
 }
 
+final class EngineeringComponentCapability {
+  EngineeringComponentCapability({
+    required this.componentTypeId,
+    required this.discipline,
+    required this.systemClass,
+    required this.calculationKind,
+    required this.ports,
+  }) {
+    if (componentTypeId.isEmpty) {
+      throw ArgumentError('componentTypeId must be non-empty.');
+    }
+  }
+
+  final String componentTypeId;
+  final EngineeringDiscipline discipline;
+  final EngineeringSystemClass systemClass;
+  final EngineeringCalculationKind calculationKind;
+  final List<EngineeringPortSpec> ports;
+}
+
 /// One placed engineering object. Position is always surface-local mm.
 final class EngineeringNode {
   EngineeringNode({
     required this.id,
     required this.componentTypeId,
     required this.discipline,
+    required this.systemClass,
     required this.surface,
     required this.position,
     required this.ports,
@@ -75,6 +122,7 @@ final class EngineeringNode {
   final String id;
   final String componentTypeId;
   final EngineeringDiscipline discipline;
+  final EngineeringSystemClass systemClass;
   final RoomSurfaceRef surface;
   final SurfacePointMm position;
   final List<EngineeringPortSpec> ports;
@@ -100,6 +148,7 @@ final class EngineeringEdge {
     required this.toNodeId,
     required this.toPortId,
     required this.connectionType,
+    required this.systemClass,
     this.routeId,
     this.circuitId,
   }) {
@@ -114,6 +163,7 @@ final class EngineeringEdge {
   final String toNodeId;
   final String toPortId;
   final EngineeringConnectionType connectionType;
+  final EngineeringSystemClass systemClass;
   final String? routeId;
   final String? circuitId;
 }
@@ -136,6 +186,79 @@ abstract final class EngineeringGraphValidator {
   }
 }
 
+abstract final class EngineeringSystemPolicy {
+  static EngineeringCalculationKind calculationFor(
+    EngineeringSystemClass systemClass,
+  ) => switch (systemClass) {
+        EngineeringSystemClass.powerAc ||
+        EngineeringSystemClass.lighting =>
+          EngineeringCalculationKind.powerCableSizing,
+        EngineeringSystemClass.powerDc ||
+        EngineeringSystemClass.accessControl =>
+          EngineeringCalculationKind.dcVoltageDrop,
+        EngineeringSystemClass.structuredCabling =>
+          EngineeringCalculationKind.copperLinkLength,
+        EngineeringSystemClass.poeNetwork ||
+        EngineeringSystemClass.cctv =>
+          EngineeringCalculationKind.poePowerBudget,
+        EngineeringSystemClass.fiberOptic =>
+          EngineeringCalculationKind.fiberOpticalBudget,
+        EngineeringSystemClass.fireAlarm =>
+          EngineeringCalculationKind.fireLoopElectrical,
+        EngineeringSystemClass.automationBus =>
+          EngineeringCalculationKind.busTopology,
+        EngineeringSystemClass.dryContact ||
+        EngineeringSystemClass.custom =>
+          EngineeringCalculationKind.connectivityOnly,
+      };
+
+  static Set<EngineeringConnectionType> preferredConnectionsFor(
+    EngineeringSystemClass systemClass,
+  ) => switch (systemClass) {
+        EngineeringSystemClass.powerAc ||
+        EngineeringSystemClass.lighting =>
+          <EngineeringConnectionType>{
+            EngineeringConnectionType.acSinglePhase,
+            EngineeringConnectionType.acThreePhase,
+          },
+        EngineeringSystemClass.powerDc => <EngineeringConnectionType>{
+            EngineeringConnectionType.dcPower,
+          },
+        EngineeringSystemClass.structuredCabling =>
+          <EngineeringConnectionType>{
+            EngineeringConnectionType.ethernetCopper,
+          },
+        EngineeringSystemClass.poeNetwork ||
+        EngineeringSystemClass.cctv =>
+          <EngineeringConnectionType>{
+            EngineeringConnectionType.poe,
+            EngineeringConnectionType.ethernetCopper,
+          },
+        EngineeringSystemClass.fiberOptic => <EngineeringConnectionType>{
+            EngineeringConnectionType.fiber,
+          },
+        EngineeringSystemClass.accessControl => <EngineeringConnectionType>{
+            EngineeringConnectionType.dcPower,
+            EngineeringConnectionType.rs485,
+            EngineeringConnectionType.dryContact,
+          },
+        EngineeringSystemClass.fireAlarm => <EngineeringConnectionType>{
+            EngineeringConnectionType.fireLoop,
+            EngineeringConnectionType.dcPower,
+          },
+        EngineeringSystemClass.automationBus => <EngineeringConnectionType>{
+            EngineeringConnectionType.rs485,
+            EngineeringConnectionType.analogSignal,
+          },
+        EngineeringSystemClass.dryContact => <EngineeringConnectionType>{
+            EngineeringConnectionType.dryContact,
+          },
+        EngineeringSystemClass.custom => <EngineeringConnectionType>{
+            EngineeringConnectionType.custom,
+          },
+      };
+}
+
 final class CircuitLoadInput {
   CircuitLoadInput({
     required this.circuitId,
@@ -149,9 +272,12 @@ final class CircuitLoadInput {
     if (connectedLoadW < 0 || voltageV <= 0) {
       throw ArgumentError('Invalid circuit load or voltage.');
     }
-    if (demandFactor <= 0 || demandFactor > 1 ||
-        simultaneityFactor <= 0 || simultaneityFactor > 1 ||
-        powerFactor <= 0 || powerFactor > 1) {
+    if (demandFactor <= 0 ||
+        demandFactor > 1 ||
+        simultaneityFactor <= 0 ||
+        simultaneityFactor > 1 ||
+        powerFactor <= 0 ||
+        powerFactor > 1) {
       throw ArgumentError('Load factors must be in (0, 1].');
     }
   }
