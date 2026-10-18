@@ -1,95 +1,125 @@
-# Surface-centric editor contract
+# Surface-Centric Editor — Implementation Bridge
 
-ElecX treats the floor plan, room walls, floor and ceiling as views of one spatial model rather than unrelated drawings.
+Status: current implementation contract / non-authoritative for long-term spatial architecture.
 
-## Navigation
+Authoritative target model: `docs/architecture/spatial-platform.md`.
 
-For a selected room the editor exposes:
+This file records the concrete surface interaction rules currently being implemented in ElecX while the code progresses from derived room surfaces toward the full `RoomSurface -> SurfacePatch -> SurfaceEdge` architecture.
+
+## Core rule
+
+ElecX treats floor plan, room walls, floor and ceiling as projections of one spatial model rather than unrelated drawings.
+
+For a selected room the current editor exposes:
 
 ```text
 Plan
-  -> Floor
-  -> Ceiling
-  -> Wall 1
-  -> Wall 2
-  -> ...
+Floor
+Ceiling
+Wall 1
+Wall 2
+...
 ```
 
-A wall is derived from the corresponding room-boundary edge. Its stable identity is:
+Current derived identities:
 
 ```text
 <spaceId>:wall:<edgeIndex>
-```
-
-Floor and ceiling identities are:
-
-```text
 <spaceId>:floor
 <spaceId>:ceiling
 ```
 
-This identity must remain the same when the user switches between plan and elevation views.
+These are an incremental implementation mechanism. The target architecture allows persisted concrete surfaces/patches while preserving stable physical identity.
 
 ## Surface coordinates
 
-Wall local coordinates:
+Current wall-local coordinates:
 
-- X = distance along the wall from its start vertex;
+- X = distance along wall from its start vertex;
 - Y = height above finished floor.
 
-Floor/ceiling coordinates use the selected room plane.
+Floor/ceiling work uses room-plane local coordinates.
 
-Persisted engineering coordinates use integer millimetres. Pixel coordinates are view-only.
+Canonical engineering units are millimetres; viewport pixels are never authoritative data.
 
 ## Architectural openings
 
-Doors, windows, passages and technical openings are hosted by a wall surface. An opening is defined by:
+Current opening types include doors and windows; the model is prepared for passages and technical openings.
 
-- wall reference;
+A wall-hosted opening carries:
+
+- host surface reference;
 - offset from wall start;
 - width;
-- sill height;
-- height.
+- height;
+- sill height.
 
-The same opening must render consistently in both plan and wall elevation.
+The same opening identity renders consistently in plan and elevation.
 
-## Cable routing
+## Edge-driven navigation
 
-Cable routing will use `SurfaceRouteDraft` segments bound to physical surfaces. A route may transition only through an explicit common edge or architectural opening:
+Current navigation contract:
+
+```text
+wall top    -> ceiling
+wall bottom -> floor
+wall start  -> previous adjacent wall
+wall end    -> next adjacent wall
+floor edge  -> corresponding wall
+ceiling edge -> corresponding wall
+```
+
+The current rectangle/polygon-edge implementation resolves these transitions from room geometry. The target patch model will make adjacency explicit for complex piecewise-planar rooms.
+
+## Cable-route continuity
+
+Current code supports surface-bound route draft segments and validated transitions.
+
+Examples:
 
 ```text
 wall -> wall
 wall -> floor
 wall -> ceiling
-wall -> passage -> adjacent room wall
 ```
 
-A transition must preserve the physical world point, route continuity and accumulated length. Surface changes are therefore topology operations, not visual navigation shortcuts.
+A transition is accepted only when the source point lies on the physical common boundary. The transition preserves the corresponding physical point and continues the same route draft.
 
-## CAD interaction baseline
+Important rule:
 
-The editor must provide:
+> A topology transition point must not be moved away from its shared physical edge by ordinary grid snap.
 
-- mouse-wheel / gesture zoom;
-- pan and fit-to-view;
+Current UI also exposes:
+
+- active route rendering on the selected surface;
+- accumulated route length;
+- number of involved surfaces;
+- dynamic distances from the active route point to all four edges of the current rectangular surface view.
+
+Target routing authority is described in `docs/architecture/engineering-platform.md` and will eventually persist explicit `Route`, `RouteNode` and `RouteSegment` entities.
+
+## CAD interaction direction
+
+The current editor has basic zoom and technical dimensions. The next dedicated CAD-control work must provide:
+
+- pan;
+- zoom around cursor/focal point;
+- fit-to-floor/room/selection;
 - persistent metric scale;
-- floor and room grids;
-- local room reference axes;
-- snap to grid, endpoint, midpoint, center, intersection, wall and guide;
+- semantic snap candidates;
+- cursor coordinates in the active frame;
+- persistent guides and smart guides;
+- arbitrary polygon geometry editing;
 - associative dimensions;
-- extension lines and dimension chains;
-- visible architectural openings in plan and elevation;
-- cursor coordinates in the active surface frame;
-- undo/redo for every geometry operation.
+- full undo/redo command semantics.
 
-Dimensions are model-derived annotations. They must never become an independent source of geometry.
+## Supersession rule
 
-## Next implementation increments
+If this implementation bridge conflicts with:
 
-1. Pan + zoom around cursor and fit-to-selection.
-2. Endpoint/midpoint/intersection snap engine.
-3. Persistent guide lines and smart alignment hints.
-4. Editable wall vertices and arbitrary room polygons.
-5. Door/window creation and editing from either plan or wall elevation.
-6. Multi-surface cable route with explicit transitions and measured total length.
-7. Associative dimension editing (typing a dimension mutates geometry through a constrained command).
+- `docs/architecture/spatial-platform.md`, or
+- `docs/product/technical-specification.md`,
+
+the target architecture/specification wins.
+
+This file should eventually shrink into an ADR/implementation note once full explicit surface-patch topology is implemented.
