@@ -26,7 +26,9 @@ class _SpatialEditorScreenState extends State<SpatialEditorScreen> {
   }
 
   void _refresh() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -70,7 +72,10 @@ class _SpatialEditorScreenState extends State<SpatialEditorScreen> {
               children: [
                 if (mode != EditorLayoutMode.mobile)
                   _ToolStrip(controller: controller, compact: !isDesktop),
-                _SurfaceStrip(controller: controller, compact: mode != EditorLayoutMode.desktop),
+                _SurfaceStrip(
+                  controller: controller,
+                  compact: mode != EditorLayoutMode.desktop,
+                ),
                 Expanded(
                   child: isDesktop
                       ? Row(
@@ -113,6 +118,8 @@ class _SpatialEditorScreenState extends State<SpatialEditorScreen> {
   }
 }
 
+enum _EditorMenuAction { toggleSnap, toggleDimensions, clearRoute }
+
 class _EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
   const _EditorAppBar({required this.controller, required this.mode});
 
@@ -146,18 +153,12 @@ class _EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
         ],
       ),
       actions: [
-        if (mode == EditorLayoutMode.desktop) ...[
-          IconButton(
-            onPressed: () {},
-            tooltip: 'Undo',
-            icon: const Icon(Icons.undo),
+        if (!compact)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: _EditorStatePill(controller: controller),
           ),
-          IconButton(
-            onPressed: () {},
-            tooltip: 'Redo',
-            icon: const Icon(Icons.redo),
-          ),
-        ] else ...[
+        if (compact)
           Builder(
             builder: (context) => IconButton(
               onPressed: Scaffold.of(context).openEndDrawer,
@@ -165,9 +166,74 @@ class _EditorAppBar extends StatelessWidget implements PreferredSizeWidget {
               icon: const Icon(Icons.tune),
             ),
           ),
-        ],
+        PopupMenuButton<_EditorMenuAction>(
+          tooltip: 'Параметры редактора',
+          onSelected: (action) {
+            switch (action) {
+              case _EditorMenuAction.toggleSnap:
+                controller.setSnapEnabled(!controller.snapEnabled);
+              case _EditorMenuAction.toggleDimensions:
+                controller.setDimensionsVisible(
+                  !controller.dimensionsVisible,
+                );
+              case _EditorMenuAction.clearRoute:
+                controller.clearRouteDraft();
+            }
+          },
+          itemBuilder: (context) => [
+            CheckedPopupMenuItem(
+              value: _EditorMenuAction.toggleSnap,
+              checked: controller.snapEnabled,
+              child: const Text('Привязка'),
+            ),
+            CheckedPopupMenuItem(
+              value: _EditorMenuAction.toggleDimensions,
+              checked: controller.dimensionsVisible,
+              child: const Text('Размеры'),
+            ),
+            if (controller.routeSegments.isNotEmpty)
+              const PopupMenuItem(
+                value: _EditorMenuAction.clearRoute,
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.clear_all),
+                  title: Text('Очистить черновик трассы'),
+                ),
+              ),
+          ],
+        ),
         const SizedBox(width: 4),
       ],
+    );
+  }
+}
+
+class _EditorStatePill extends StatelessWidget {
+  const _EditorStatePill({required this.controller});
+
+  final EditorController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(_toolIcon(controller.tool), size: 15),
+            const SizedBox(width: 5),
+            Text(
+              _toolName(controller.tool),
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -315,7 +381,9 @@ class _MobileToolBar extends StatelessWidget {
           case 0:
             controller.setTool(EditorTool.select);
           case 1:
-            if (controller.viewMode != EditorViewMode.plan) controller.showPlan();
+            if (controller.viewMode != EditorViewMode.plan) {
+              controller.showPlan();
+            }
             controller.setTool(EditorTool.roomRectangle);
           case 2:
             controller.setTool(EditorTool.guide);
@@ -324,9 +392,18 @@ class _MobileToolBar extends StatelessWidget {
         }
       },
       destinations: const [
-        NavigationDestination(icon: Icon(Icons.near_me_outlined), label: 'Выбор'),
-        NavigationDestination(icon: Icon(Icons.crop_square), label: 'Комната'),
-        NavigationDestination(icon: Icon(Icons.straighten), label: 'Линия'),
+        NavigationDestination(
+          icon: Icon(Icons.near_me_outlined),
+          label: 'Выбор',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.crop_square),
+          label: 'Комната',
+        ),
+        NavigationDestination(
+          icon: Icon(Icons.straighten),
+          label: 'Линия',
+        ),
         NavigationDestination(icon: Icon(Icons.alt_route), label: 'Трасса'),
       ],
     );
@@ -419,7 +496,20 @@ class _ProjectNavigator extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
         children: [
-          Text('ПРОЕКТ', style: Theme.of(context).textTheme.labelLarge),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'ПРОЕКТ',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+              ),
+              Text(
+                '${controller.level.spaces.length} помещений',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           const ListTile(
             dense: true,
@@ -450,7 +540,13 @@ class _ProjectNavigator extends StatelessWidget {
                 ),
               ),
               IconButton(
-                onPressed: () => controller.setTool(EditorTool.roomRectangle),
+                onPressed: () {
+                  controller.showPlan();
+                  controller.setTool(EditorTool.roomRectangle);
+                  if (Navigator.canPop(context)) {
+                    Navigator.maybePop(context);
+                  }
+                },
                 tooltip: 'Новая комната',
                 icon: const Icon(Icons.add_box_outlined),
               ),
@@ -474,11 +570,17 @@ class _ProjectNavigator extends StatelessWidget {
                 ),
                 title: Text(space.name),
                 subtitle: Text(
-                  '${space.boundary.bounds.width} × ${space.boundary.bounds.height} mm',
+                  '${space.boundary.bounds.width} × '
+                  '${space.boundary.bounds.height} mm',
                 ),
+                trailing: controller.selectedSpaceId == space.id
+                    ? const Icon(Icons.check_circle_outline, size: 18)
+                    : null,
                 onTap: () {
                   controller.selectSpace(space.id);
-                  if (Navigator.canPop(context)) Navigator.maybePop(context);
+                  if (Navigator.canPop(context)) {
+                    Navigator.maybePop(context);
+                  }
                 },
               ),
             ),
@@ -501,7 +603,9 @@ Future<void> _showAdjacentRoomDialog(
   EditorController controller,
 ) async {
   final walls = controller.selectedWalls;
-  if (walls.isEmpty) return;
+  if (walls.isEmpty) {
+    return;
+  }
 
   var wallIndex = 0;
   var offsetMm = 0;
@@ -522,6 +626,11 @@ Future<void> _showAdjacentRoomDialog(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  Text(
+                    'Новая комната будет построена наружу от выбранной стены.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 12),
                   DropdownButtonFormField<int>(
                     initialValue: wallIndex,
                     decoration: const InputDecoration(
@@ -533,12 +642,15 @@ Future<void> _showAdjacentRoomDialog(
                         DropdownMenuItem(
                           value: i,
                           child: Text(
-                            'Стена ${i + 1} · ${walls[i].lengthMm.round()} mm',
+                            'Стена ${i + 1} · '
+                            '${walls[i].lengthMm.round()} mm',
                           ),
                         ),
                     ],
                     onChanged: (value) {
-                      if (value == null) return;
+                      if (value == null) {
+                        return;
+                      }
                       setDialogState(() {
                         wallIndex = value;
                         offsetMm = 0;
@@ -570,7 +682,9 @@ Future<void> _showAdjacentRoomDialog(
                   const SizedBox(height: 8),
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: Text('Стена: ${wall.lengthMm.round()} mm'),
+                    child: Text(
+                      'Доступно по стене: ${wall.lengthMm.round()} mm',
+                    ),
                   ),
                   if (error != null) ...[
                     const SizedBox(height: 8),
@@ -590,7 +704,7 @@ Future<void> _showAdjacentRoomDialog(
               onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Отмена'),
             ),
-            FilledButton(
+            FilledButton.icon(
               onPressed: () {
                 final ok = AdjacentRoomCommand.execute(
                   controller,
@@ -607,7 +721,8 @@ Future<void> _showAdjacentRoomDialog(
                   });
                 }
               },
-              child: const Text('Создать'),
+              icon: const Icon(Icons.add_home_work_outlined),
+              label: const Text('Создать'),
             ),
           ],
         );
@@ -625,7 +740,7 @@ class _Inspector extends StatelessWidget {
   Widget build(BuildContext context) {
     final space = controller.selectedSpace;
     if (space == null) {
-      return const Center(child: Text('Выберите помещение'));
+      return const _InspectorEmptyState();
     }
     final bounds = space.boundary.bounds;
     final surface = controller.activeSurface;
@@ -636,19 +751,33 @@ class _Inspector extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.all(14),
         children: [
-          Text('СВОЙСТВА', style: Theme.of(context).textTheme.labelLarge),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'СВОЙСТВА',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+              ),
+              if (surface != null)
+                Chip(
+                  avatar: const Icon(Icons.layers_outlined, size: 15),
+                  label: Text(_surfaceName(surface)),
+                  visualDensity: VisualDensity.compact,
+                ),
+            ],
+          ),
           const SizedBox(height: 8),
           Text(space.name, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 10),
           _ValueRow('Тип', space.type.name),
           _ValueRow('Ширина', '${bounds.width} mm'),
           _ValueRow('Глубина', '${bounds.height} mm'),
-          if (surface != null) ...[
-            const Divider(height: 24),
-            _ValueRow('Плоскость', _surfaceName(surface)),
-          ],
           if (wall != null) ...[
-            _ValueRow('Длина стены', '${wall.lengthMm.round()} mm'),
+            const Divider(height: 24),
+            Text('СТЕНА', style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 6),
+            _ValueRow('Длина', '${wall.lengthMm.round()} mm'),
             _ValueRow('Высота', '${wall.heightMm} mm'),
             const SizedBox(height: 8),
             Row(
@@ -671,7 +800,20 @@ class _Inspector extends StatelessWidget {
               ],
             ),
             const Divider(height: 24),
-            Text('ДВЕРИ И ОКНА', style: Theme.of(context).textTheme.labelLarge),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'ДВЕРИ И ОКНА',
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                ),
+                Text(
+                  '${controller.activeWallOpenings.length}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -697,6 +839,11 @@ class _Inspector extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
+            if (controller.activeWallOpenings.isEmpty)
+              const _InlineEmptyState(
+                icon: Icons.sensor_door_outlined,
+                text: 'На этой стене пока нет проёмов.',
+              ),
             for (final opening in controller.activeWallOpenings)
               Card(
                 elevation: 0,
@@ -712,9 +859,12 @@ class _Inspector extends StatelessWidget {
                   ),
                   title: Text(_openingName(opening)),
                   subtitle: Text(
-                    '${opening.offsetFromStartMm} · '
+                    'x ${opening.offsetFromStartMm} mm · '
                     '${opening.widthMm}×${opening.heightMm} mm',
                   ),
+                  trailing: controller.selectedOpeningId == opening.id
+                      ? const Icon(Icons.edit_outlined, size: 18)
+                      : null,
                   onTap: () => controller.selectOpening(opening.id),
                 ),
               ),
@@ -725,8 +875,21 @@ class _Inspector extends StatelessWidget {
           ],
           if (controller.routeSegments.isNotEmpty) ...[
             const Divider(height: 24),
-            Text('ТРАССА', style: Theme.of(context).textTheme.labelLarge),
-            const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'ТРАССА',
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                ),
+                IconButton(
+                  onPressed: controller.clearRouteDraft,
+                  tooltip: 'Очистить черновик трассы',
+                  icon: const Icon(Icons.clear_all),
+                ),
+              ],
+            ),
             _ValueRow(
               'Длина',
               '${(controller.routeLengthMm / 1000).toStringAsFixed(3)} m',
@@ -747,12 +910,75 @@ class _Inspector extends StatelessWidget {
                 )
                 .toList(),
             onChanged: (value) {
-              if (value != null) controller.updateSelectedGrid(value);
+              if (value != null) {
+                controller.updateSelectedGrid(value);
+              }
             },
             decoration: const InputDecoration(
               labelText: 'Шаг сетки',
               border: OutlineInputBorder(),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InspectorEmptyState extends StatelessWidget {
+  const _InspectorEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.touch_app_outlined,
+              size: 38,
+              color: Theme.of(context).colorScheme.outline,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Выберите помещение',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'После выбора здесь появятся размеры, плоскости, проёмы и параметры сетки.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InlineEmptyState extends StatelessWidget {
+  const _InlineEmptyState({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(text, style: Theme.of(context).textTheme.bodySmall),
           ),
         ],
       ),
@@ -778,6 +1004,29 @@ class _OpeningEditor extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text('Редактирование', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<ArchitecturalOpeningType>(
+            initialValue: opening.type,
+            decoration: const InputDecoration(
+              labelText: 'Тип проёма',
+              border: OutlineInputBorder(),
+            ),
+            items: const [
+              DropdownMenuItem(
+                value: ArchitecturalOpeningType.door,
+                child: Text('Дверь'),
+              ),
+              DropdownMenuItem(
+                value: ArchitecturalOpeningType.window,
+                child: Text('Окно'),
+              ),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                controller.updateSelectedOpening(type: value);
+              }
+            },
+          ),
           const SizedBox(height: 8),
           _SubmitIntField(
             key: ValueKey('${opening.id}-offset-${opening.offsetFromStartMm}'),
@@ -811,6 +1060,11 @@ class _OpeningEditor extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
+          Text(
+            'Enter применяет значение. Недопустимая геометрия не сохраняется.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 4),
           TextButton.icon(
             onPressed: controller.deleteSelectedOpening,
             icon: const Icon(Icons.delete_outline),
@@ -846,7 +1100,9 @@ class _IntField extends StatelessWidget {
       ),
       onChanged: (text) {
         final parsed = int.tryParse(text);
-        if (parsed != null) onChanged(parsed);
+        if (parsed != null) {
+          onChanged(parsed);
+        }
       },
     );
   }
@@ -869,6 +1125,7 @@ class _SubmitIntField extends StatelessWidget {
     return TextFormField(
       initialValue: '$value',
       keyboardType: TextInputType.number,
+      textInputAction: TextInputAction.done,
       decoration: InputDecoration(
         labelText: label,
         suffixText: 'mm',
@@ -876,7 +1133,9 @@ class _SubmitIntField extends StatelessWidget {
       ),
       onFieldSubmitted: (text) {
         final parsed = int.tryParse(text);
-        if (parsed != null) onSubmit(parsed);
+        if (parsed != null) {
+          onSubmit(parsed);
+        }
       },
     );
   }
@@ -911,6 +1170,7 @@ class _CanvasContextBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = controller.selectedSpace;
+    final surface = controller.activeSurface;
     return Card(
       elevation: 2,
       child: Padding(
@@ -920,11 +1180,22 @@ class _CanvasContextBadge extends StatelessWidget {
           children: [
             Icon(_toolIcon(controller.tool), size: 16),
             const SizedBox(width: 6),
-            Text(
-              selected == null
-                  ? _toolName(controller.tool)
-                  : '${selected.name} · ${_toolName(controller.tool)}',
-              style: Theme.of(context).textTheme.labelMedium,
+            Flexible(
+              child: Text(
+                [
+                  if (selected != null) selected.name,
+                  if (surface != null) _surfaceName(surface),
+                  _toolName(controller.tool),
+                ].join(' · '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              controller.snapEnabled ? Icons.grid_4x4 : Icons.grid_off,
+              size: 14,
             ),
           ],
         ),
@@ -943,6 +1214,9 @@ class _StatusBar extends StatelessWidget {
     final grid = controller.selectedSpace?.grid.minorStepMm ?? 100;
     final surface = controller.activeSurface;
     final view = surface == null ? 'Plan' : _surfaceName(surface);
+    final route = controller.routeSegments.isEmpty
+        ? ''
+        : ' · Route ${(controller.routeLengthMm / 1000).toStringAsFixed(2)} m';
     return Container(
       height: 30,
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -950,7 +1224,8 @@ class _StatusBar extends StatelessWidget {
       child: Text(
         'Metric · $view · grid $grid mm · '
         'Snap ${controller.snapEnabled ? 'ON' : 'OFF'} · '
-        '${_toolName(controller.tool)}',
+        'Dimensions ${controller.dimensionsVisible ? 'ON' : 'OFF'} · '
+        '${_toolName(controller.tool)}$route',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
