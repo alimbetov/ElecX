@@ -26,7 +26,15 @@ final class MmBounds {
     required this.bottom,
     required this.right,
     required this.top,
-  });
+  })  : assert(right >= left),
+        assert(top >= bottom);
+
+  factory MmBounds.fromPoints(MmPoint a, MmPoint b) => MmBounds(
+        left: math.min(a.x, b.x),
+        bottom: math.min(a.y, b.y),
+        right: math.max(a.x, b.x),
+        top: math.max(a.y, b.y),
+      );
 
   final int left;
   final int bottom;
@@ -42,6 +50,24 @@ final class MmBounds {
       point.x <= right &&
       point.y >= bottom &&
       point.y <= top;
+
+  bool intersects(MmBounds other) =>
+      left <= other.right &&
+      right >= other.left &&
+      bottom <= other.top &&
+      top >= other.bottom;
+
+  MmBounds expanded(int marginMm) {
+    if (marginMm < 0) {
+      throw ArgumentError.value(marginMm, 'marginMm', 'Must be non-negative.');
+    }
+    return MmBounds(
+      left: left - marginMm,
+      bottom: bottom - marginMm,
+      right: right + marginMm,
+      top: top + marginMm,
+    );
+  }
 }
 
 final class MmPolygon {
