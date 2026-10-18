@@ -85,6 +85,43 @@ extension PlanGeometryEditorActions on EditorController {
     return true;
   }
 
+  /// Moves the active wall parallel to itself by [distanceMm].
+  ///
+  /// Positive and negative values select the two opposite wall-normal
+  /// directions. Shared room boundaries are propagated atomically by
+  /// [commitSelectedBoundary].
+  bool nudgeActiveWallNormal(int distanceMm) {
+    final space = selectedSpace;
+    final wallIndex = activeSurface?.wallIndex;
+    if (space == null || wallIndex == null || distanceMm == 0) {
+      return false;
+    }
+    final vertices = space.boundary.vertices;
+    if (wallIndex < 0 || wallIndex >= vertices.length) {
+      return false;
+    }
+    final a = vertices[wallIndex];
+    final b = vertices[(wallIndex + 1) % vertices.length];
+    final dx = (b.x - a.x).toDouble();
+    final dy = (b.y - a.y).toDouble();
+    final length = math.sqrt(dx * dx + dy * dy);
+    if (length == 0) {
+      return false;
+    }
+    final midpoint = MmPoint((a.x + b.x) ~/ 2, (a.y + b.y) ~/ 2);
+    final target = MmPoint(
+      (midpoint.x - dy / length * distanceMm).round(),
+      (midpoint.y + dx / length * distanceMm).round(),
+    );
+    final candidate = PlanGeometryEditing.moveEdge(
+      boundary: space.boundary,
+      edgeIndex: wallIndex,
+      dragStart: midpoint,
+      dragCurrent: target,
+    );
+    return candidate != null && commitSelectedBoundary(candidate);
+  }
+
   void selectOpeningForPlan(ArchitecturalOpening opening) {
     selectOpening(opening.id);
     // selectOpening establishes the host wall needed by opening validation.
@@ -101,6 +138,17 @@ extension PlanGeometryEditorActions on EditorController {
     }
     final offset = targetCenterMm - opening.widthMm ~/ 2;
     return updateSelectedOpening(offsetFromStartMm: offset);
+  }
+
+  /// Moves the selected window/door along its host wall.
+  bool nudgeSelectedOpening(int deltaMm) {
+    final opening = selectedOpening;
+    if (opening == null || deltaMm == 0) {
+      return false;
+    }
+    return updateSelectedOpening(
+      offsetFromStartMm: opening.offsetFromStartMm + deltaMm,
+    );
   }
 
   bool resizeSelectedOpeningFromStart(int newStartMm) {
