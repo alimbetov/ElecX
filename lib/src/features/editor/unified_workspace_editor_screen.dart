@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/project_model.dart';
+import 'context_minimap.dart';
 import 'editor_building_workspace.dart';
 import 'editor_controller.dart';
 import 'editor_keyboard_scope.dart';
 import 'editor_layout_policy.dart';
+import 'site_map_interaction.dart';
 import 'spatial_canvas.dart';
 import 'surface_canvas.dart';
 import 'unified_icon_toolbar.dart';
@@ -22,20 +24,31 @@ class _UnifiedWorkspaceEditorScreenState
     extends State<UnifiedWorkspaceEditorScreen> {
   late final EditorController controller;
   late final EditorBuildingWorkspace workspace;
+  late final SiteMapInteractionController siteInteraction;
 
   @override
   void initState() {
     super.initState();
     controller = EditorController.demo()..addListener(_refresh);
     workspace = EditorBuildingWorkspace.demo(controller)..addListener(_refresh);
+    siteInteraction = SiteMapInteractionController();
   }
 
   void _refresh() {
     if (mounted) setState(() {});
   }
 
+  void _openMiniMap() {
+    showContextMiniMapSheet(
+      context: context,
+      workspace: workspace,
+      siteInteraction: siteInteraction,
+    );
+  }
+
   @override
   void dispose() {
+    siteInteraction.dispose();
     workspace.removeListener(_refresh);
     workspace.dispose();
     controller.removeListener(_refresh);
@@ -63,6 +76,8 @@ class _UnifiedWorkspaceEditorScreenState
                     child: SafeArea(
                       child: UnifiedSiteNavigator(
                         workspace: workspace,
+                        interaction: siteInteraction,
+                        onOpenSiteMap: _openMiniMap,
                         compact: true,
                       ),
                     ),
@@ -76,6 +91,7 @@ class _UnifiedWorkspaceEditorScreenState
             appBar: _WorkspaceAppBar(
               workspace: workspace,
               compact: !desktop,
+              onOpenMiniMap: _openMiniMap,
             ),
             body: Column(
               children: [
@@ -90,7 +106,11 @@ class _UnifiedWorkspaceEditorScreenState
                           children: [
                             SizedBox(
                               width: EditorLayoutPolicy.navigatorWidth(mode),
-                              child: UnifiedSiteNavigator(workspace: workspace),
+                              child: UnifiedSiteNavigator(
+                                workspace: workspace,
+                                interaction: siteInteraction,
+                                onOpenSiteMap: _openMiniMap,
+                              ),
                             ),
                             const VerticalDivider(width: 1),
                             Expanded(child: canvas),
@@ -122,10 +142,15 @@ class _UnifiedWorkspaceEditorScreenState
 }
 
 class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const _WorkspaceAppBar({required this.workspace, required this.compact});
+  const _WorkspaceAppBar({
+    required this.workspace,
+    required this.compact,
+    required this.onOpenMiniMap,
+  });
 
   final EditorBuildingWorkspace workspace;
   final bool compact;
+  final VoidCallback onOpenMiniMap;
 
   @override
   Size get preferredSize => const Size.fromHeight(58);
@@ -151,25 +176,31 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
         ],
       ),
       actions: [
+        IconButton(
+          tooltip: 'Микро-карта',
+          onPressed: onOpenMiniMap,
+          icon: const Icon(Icons.map_outlined),
+        ),
         if (workspace.context == EditorWorkspaceContext.buildingLevel) ...[
           IconButton(
             tooltip: 'Предыдущий уровень',
             onPressed: workspace.previousLevel,
             icon: const Icon(Icons.keyboard_arrow_down),
           ),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.secondaryContainer,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              child: Text(
-                workspace.activeLevel?.displayName ?? editor.level.name,
-                style: Theme.of(context).textTheme.labelLarge,
+          if (!compact)
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.secondaryContainer,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                child: Text(
+                  workspace.activeLevel?.displayName ?? editor.level.name,
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
               ),
             ),
-          ),
           IconButton(
             tooltip: 'Следующий уровень',
             onPressed: workspace.nextLevel,
