@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../editor/spatial_editor_screen.dart';
+import '../editor/unified_workspace_editor_screen.dart';
 
 class ProjectHubScreen extends StatelessWidget {
   const ProjectHubScreen({super.key});
 
   void _openEditor(BuildContext context) {
     Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const SpatialEditorScreen()),
+      MaterialPageRoute<void>(
+        builder: (_) => const UnifiedWorkspaceEditorScreen(),
+      ),
     );
   }
 
@@ -31,8 +33,10 @@ class ProjectHubScreen extends StatelessWidget {
           Card(
             child: ListTile(
               leading: const Icon(Icons.apartment),
-              title: const Text('Демо — БЦ Alatau'),
-              subtitle: const Text('Этаж 1 · пространственный редактор'),
+              title: const Text('Демо — жилой комплекс'),
+              subtitle: const Text(
+                'Двор · B30…16 · квартиры · МОП · пространственный редактор',
+              ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _openEditor(context),
             ),
@@ -44,7 +48,9 @@ class ProjectHubScreen extends StatelessWidget {
             child: ListTile(
               leading: Icon(Icons.folder_outlined),
               title: Text('Пока пусто'),
-              subtitle: Text('Создайте первый объект и его пространственную модель.'),
+              subtitle: Text(
+                'Создайте первый объект и его пространственную модель.',
+              ),
             ),
           ),
         ],
