@@ -204,10 +204,9 @@ final class _SurfaceProjection {
     final lengthSquared = ab.dx * ab.dx + ab.dy * ab.dy;
     if (lengthSquared == 0) return a;
     final ap = point - a;
-    final t = ((ap.dx * ab.dx + ap.dy * ab.dy) / lengthSquared).clamp(
-      0.0,
-      1.0,
-    );
+    final t = ((ap.dx * ab.dx + ap.dy * ab.dy) / lengthSquared)
+        .clamp(0.0, 1.0)
+        .toDouble();
     return a + ab * t;
   }
 
@@ -417,7 +416,8 @@ class _SurfacePainter extends CustomPainter {
       previous = current;
     }
 
-    final last = projection.surfaceToViewport(segment.points.last);
+    final local = segment.points.last;
+    final last = projection.surfaceToViewport(local);
     canvas.drawLine(
       Offset(
         last.dx,
@@ -438,6 +438,64 @@ class _SurfacePainter extends CustomPainter {
       Paint()
         ..color = const Color(0x44D66B2C)
         ..strokeWidth = 0.9,
+    );
+
+    if (controller.dimensionsVisible) {
+      _drawLiveRouteDimensions(canvas, local, last);
+    }
+  }
+
+  void _drawLiveRouteDimensions(
+    Canvas canvas,
+    SurfacePointMm local,
+    Offset point,
+  ) {
+    final left = projection.origin.dx;
+    final right = left + projection.widthMm * projection.pixelsPerMm;
+    final bottom = projection.origin.dy;
+    final top = bottom - projection.heightMm * projection.pixelsPerMm;
+    final paint = Paint()
+      ..color = const Color(0xFF6B7280)
+      ..strokeWidth = 0.8;
+
+    final horizontalY = math.min(point.dy + 18, bottom - 8);
+    canvas.drawLine(Offset(left, horizontalY), Offset(point.dx, horizontalY), paint);
+    canvas.drawLine(Offset(point.dx, horizontalY), Offset(right, horizontalY), paint);
+    _tick(canvas, Offset(left, horizontalY), paint);
+    _tick(canvas, Offset(point.dx, horizontalY), paint);
+    _tick(canvas, Offset(right, horizontalY), paint);
+    _label(
+      canvas,
+      '${local.xMm} mm',
+      Offset((left + point.dx) / 2, horizontalY - 10),
+      centered: true,
+      small: true,
+    );
+    _label(
+      canvas,
+      '${projection.widthMm.round() - local.xMm} mm',
+      Offset((point.dx + right) / 2, horizontalY - 10),
+      centered: true,
+      small: true,
+    );
+
+    final verticalX = math.min(point.dx + 18, right - 8);
+    canvas.drawLine(Offset(verticalX, point.dy), Offset(verticalX, bottom), paint);
+    canvas.drawLine(Offset(verticalX, top), Offset(verticalX, point.dy), paint);
+    _tick(canvas, Offset(verticalX, top), paint);
+    _tick(canvas, Offset(verticalX, point.dy), paint);
+    _tick(canvas, Offset(verticalX, bottom), paint);
+    _label(
+      canvas,
+      '${local.yMm} mm',
+      Offset(verticalX + 6, (point.dy + bottom) / 2),
+      small: true,
+    );
+    _label(
+      canvas,
+      '${projection.heightMm.round() - local.yMm} mm',
+      Offset(verticalX + 6, (top + point.dy) / 2),
+      small: true,
     );
   }
 
