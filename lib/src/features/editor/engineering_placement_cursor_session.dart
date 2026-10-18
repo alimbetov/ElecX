@@ -21,10 +21,7 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
     final surface = controller.activeSurface;
     final space = controller.selectedSpace;
     if (type == null || surface == null || space == null) {
-      if (_state != null) {
-        _state = null;
-        notifyListeners();
-      }
+      _state = null;
       return null;
     }
     final current = _state;
@@ -53,7 +50,6 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
       snapLabel: 'CENTER',
       isValid: _isUsable(surface, center),
     );
-    notifyListeners();
     return _state;
   }
 
