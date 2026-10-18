@@ -36,13 +36,29 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
   void initState() {
     super.initState();
     _lastViewportRevision = controller.viewportCommandRevision;
+    controller.viewportCommandListenable.addListener(_onViewportCommand);
   }
 
   @override
   void didUpdateWidget(covariant SurfaceCanvas oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.viewportCommandListenable
+          .removeListener(_onViewportCommand);
       _lastViewportRevision = controller.viewportCommandRevision;
+      controller.viewportCommandListenable.addListener(_onViewportCommand);
+    }
+  }
+
+  @override
+  void dispose() {
+    controller.viewportCommandListenable.removeListener(_onViewportCommand);
+    super.dispose();
+  }
+
+  void _onViewportCommand() {
+    if (mounted) {
+      setState(() {});
     }
   }
 
