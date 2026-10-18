@@ -4,6 +4,7 @@ import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
 import 'adjacent_room_command.dart';
 import 'editor_controller.dart';
+import 'editor_keyboard_scope.dart';
 import 'spatial_canvas.dart';
 import 'surface_canvas.dart';
 
@@ -34,65 +35,68 @@ class _SpatialEditorScreenState extends State<SpatialEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 18,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('ElecX Spatial Editor'),
-            Text(
-              'БЦ Alatau · Building A · Этаж 1',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+    return EditorKeyboardScope(
+      controller: controller,
+      child: Scaffold(
+        appBar: AppBar(
+          titleSpacing: 18,
+          title: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('ElecX Spatial Editor'),
+              Text(
+                'БЦ Alatau · Building A · Этаж 1',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+              ),
+            ],
+          ),
+          actions: [
+            IconButton(
+              onPressed: () {},
+              tooltip: 'Undo',
+              icon: const Icon(Icons.undo),
             ),
+            IconButton(
+              onPressed: () {},
+              tooltip: 'Redo',
+              icon: const Icon(Icons.redo),
+            ),
+            const SizedBox(width: 8),
           ],
         ),
-        actions: [
-          IconButton(
-            onPressed: () {},
-            tooltip: 'Undo',
-            icon: const Icon(Icons.undo),
-          ),
-          IconButton(
-            onPressed: () {},
-            tooltip: 'Redo',
-            icon: const Icon(Icons.redo),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Column(
-        children: [
-          _Toolbar(controller: controller),
-          _SurfaceNavigator(controller: controller),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final wide = constraints.maxWidth >= 1080;
-                final canvas = controller.viewMode == EditorViewMode.plan
-                    ? SpatialCanvas(controller: controller)
-                    : SurfaceCanvas(controller: controller);
-                if (!wide) return canvas;
-                return Row(
-                  children: [
-                    SizedBox(
-                      width: 280,
-                      child: _ProjectTree(controller: controller),
-                    ),
-                    const VerticalDivider(width: 1),
-                    Expanded(child: canvas),
-                    const VerticalDivider(width: 1),
-                    SizedBox(
-                      width: 350,
-                      child: _PropertiesPanel(controller: controller),
-                    ),
-                  ],
-                );
-              },
+        body: Column(
+          children: [
+            _Toolbar(controller: controller),
+            _SurfaceNavigator(controller: controller),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final wide = constraints.maxWidth >= 1080;
+                  final canvas = controller.viewMode == EditorViewMode.plan
+                      ? SpatialCanvas(controller: controller)
+                      : SurfaceCanvas(controller: controller);
+                  if (!wide) return canvas;
+                  return Row(
+                    children: [
+                      SizedBox(
+                        width: 280,
+                        child: _ProjectTree(controller: controller),
+                      ),
+                      const VerticalDivider(width: 1),
+                      Expanded(child: canvas),
+                      const VerticalDivider(width: 1),
+                      SizedBox(
+                        width: 350,
+                        child: _PropertiesPanel(controller: controller),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
-          ),
-          _StatusBar(controller: controller),
-        ],
+            _StatusBar(controller: controller),
+          ],
+        ),
       ),
     );
   }
