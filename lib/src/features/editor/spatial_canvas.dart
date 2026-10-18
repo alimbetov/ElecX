@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/wall_profile.dart';
 import '../../engine/wall_profile_plan_projection.dart';
+import 'cad_visual_tokens.dart';
 import 'editable_spatial_canvas.dart' as editable;
 import 'editor_controller.dart';
 import 'room_world_overlay.dart';
@@ -76,7 +77,13 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
   @override
   Widget build(BuildContext context) {
     final space = controller.selectedSpace;
-    final profiles = space?.wallProfiles.entries.toList(growable: false) ?? const [];
+    final profiles = space?.wallProfiles.entries
+            .where(
+              (entry) =>
+                  WallProfilePlanProjection.hasVerticalVariation(entry.value),
+            )
+            .toList(growable: false) ??
+        const [];
 
     return Stack(
       children: [
@@ -97,9 +104,13 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
           Positioned(
             left: 10,
             top: 10,
-            child: _ProfiledWallsStrip(
-              controller: controller,
-              profiles: profiles,
+            right: 72,
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: _ProfiledWallsStrip(
+                controller: controller,
+                profiles: profiles,
+              ),
             ),
           ),
       ],
@@ -120,34 +131,61 @@ class _ProfiledWallsStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Material(
-      color: scheme.surfaceContainerHigh.withValues(alpha: 0.94),
+      color: scheme.surfaceContainerHigh.withValues(alpha: 0.92),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(9),
-        side: BorderSide(color: scheme.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.78)),
       ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 6, 6, 6),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        height: 40,
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.account_tree_outlined, size: 16),
-            const SizedBox(width: 6),
-            Text(
-              'ПРОФИЛЬ',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
+            Padding(
+              padding: const EdgeInsets.only(left: 8, right: 5),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.account_tree_outlined,
+                    size: 15,
+                    color: CadVisualTokens.profile(scheme),
                   ),
-            ),
-            const SizedBox(width: 6),
-            for (final entry in profiles) ...[
-              _ProfileWallButton(
-                wallIndex: entry.key,
-                profile: entry.value,
-                selected: controller.activeSurface?.wallIndex == entry.key,
-                onPressed: () => controller.showWall(entry.key),
+                  const SizedBox(width: 5),
+                  Text(
+                    'ПРОФИЛИ',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 4),
-            ],
+            ),
+            VerticalDivider(
+              width: 1,
+              color: scheme.outlineVariant.withValues(alpha: 0.72),
+            ),
+            Flexible(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final entry in profiles) ...[
+                      _ProfileWallButton(
+                        wallIndex: entry.key,
+                        profile: entry.value,
+                        selected: controller.activeSurface?.wallIndex == entry.key,
+                        onPressed: () => controller.showWall(entry.key),
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -175,28 +213,34 @@ class _ProfileWallButton extends StatelessWidget {
       message: 'W${wallIndex + 1}: нестандартный профиль стены',
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(5),
         child: Container(
           height: 30,
-          constraints: const BoxConstraints(minWidth: 64),
+          constraints: const BoxConstraints(minWidth: 60),
           padding: const EdgeInsets.symmetric(horizontal: 6),
           decoration: BoxDecoration(
-            color: selected ? scheme.secondaryContainer : scheme.surfaceContainer,
-            borderRadius: BorderRadius.circular(6),
+            color: selected
+                ? scheme.secondaryContainer
+                : scheme.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(5),
             border: Border.all(
-              color: selected ? scheme.primary : scheme.outlineVariant,
+              color: selected
+                  ? CadVisualTokens.selectedGeometry(scheme)
+                  : scheme.outlineVariant,
             ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox(
-                width: 34,
-                height: 18,
+                width: 32,
+                height: 17,
                 child: CustomPaint(
                   painter: _ProfileSparklinePainter(
                     profile: profile,
-                    color: selected ? scheme.primary : scheme.onSurfaceVariant,
+                    color: selected
+                        ? CadVisualTokens.selectedGeometry(scheme)
+                        : CadVisualTokens.profile(scheme),
                   ),
                 ),
               ),
@@ -244,19 +288,11 @@ class _ProfileSparklinePainter extends CustomPainter {
       path,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.8
+        ..strokeWidth = CadVisualTokens.profileStroke
         ..strokeCap = StrokeCap.square
         ..strokeJoin = StrokeJoin.miter
         ..color = color,
     );
-
-    if (WallProfilePlanProjection.hasVerticalVariation(profile)) {
-      canvas.drawCircle(
-        const Offset(3, 15),
-        2.2,
-        Paint()..color = color,
-      );
-    }
   }
 
   @override
