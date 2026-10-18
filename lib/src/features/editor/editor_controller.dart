@@ -223,7 +223,10 @@ final class EditorController extends ChangeNotifier {
     final sill = type == ArchitecturalOpeningType.window ? 900 : 0;
     final wallLength = wall.lengthMm.round();
     final width = defaultWidth.clamp(300, wallLength).toInt();
-    final offset = ((wallLength - width) / 2).round().clamp(0, wallLength - width);
+    final offset = ((wallLength - width) / 2)
+        .round()
+        .clamp(0, wallLength - width)
+        .toInt();
     final maxHeight = wall.heightMm - sill;
     if (maxHeight <= 0) return;
 
