@@ -1,6 +1,6 @@
 import 'geometry.dart';
 import 'project_model.dart';
-import 'site_outdoor.dart';
+import 'site_outdoor_model.dart';
 
 enum SiteTypology {
   apartmentTower,
