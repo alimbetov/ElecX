@@ -225,7 +225,7 @@ final class EditorController extends ChangeNotifier {
     if (space == null || wall == null) return;
 
     if (tool == EditorTool.cableRoute) {
-      surfaceTap(point);
+      _appendRoutePoint(point);
     }
     final target = SurfaceNavigationResolver.targetForWallEdge(
       space: space,
@@ -248,7 +248,7 @@ final class EditorController extends ChangeNotifier {
     }
 
     if (tool == EditorTool.cableRoute) {
-      surfaceTap(point);
+      _appendRoutePoint(point);
     }
     final target = SurfaceNavigationResolver.targetForHorizontalBoundary(
       space: space,
@@ -328,8 +328,13 @@ final class EditorController extends ChangeNotifier {
   void surfaceTap(SurfacePointMm rawPoint) {
     final surface = activeSurface;
     if (tool != EditorTool.cableRoute || surface == null) return;
-    final point = snapSurfacePoint(rawPoint);
+    _appendRoutePoint(snapSurfacePoint(rawPoint));
+    notifyListeners();
+  }
 
+  void _appendRoutePoint(SurfacePointMm point) {
+    final surface = activeSurface;
+    if (surface == null) return;
     if (routeSegments.isEmpty || routeSegments.last.surface != surface) {
       routeSegments.add(
         SurfaceRouteSegmentDraft(surface: surface, points: [point]),
@@ -337,7 +342,6 @@ final class EditorController extends ChangeNotifier {
     } else {
       routeSegments[routeSegments.length - 1] = routeSegments.last.append(point);
     }
-    notifyListeners();
   }
 
   void clearRouteDraft() {
