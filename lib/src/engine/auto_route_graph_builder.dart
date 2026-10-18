@@ -128,22 +128,22 @@ abstract final class AutoRouteGraphBuilder {
     final plan = _horizontalToPlan(space, component.position);
     for (var i = 0; i < space.boundary.vertices.length; i++) {
       final wall = RoomSurfaceResolver.wall(space, i);
-      final projected = _projectToWall(wall, plan);
-      final horizontalPoint = _wallXToHorizontal(space, wall, projected.xMm);
+      final xMm = _projectXOnWall(wall, plan);
+      final horizontalPoint = _wallXToHorizontal(space, wall, xMm);
       final horizontalId = '$componentId:${horizontalType.name}:w$i';
       builder.addNode(horizontalId, component.surface, horizontalPoint);
       builder.connectOrthogonal(componentId, horizontalId);
 
       final y = horizontalType == SurfacePlaneType.ceiling ? roomHeightMm : 0;
       if (horizontalType == SurfacePlaneType.ceiling &&
-          !wall.profile.containsPoint(projected.xMm, roomHeightMm)) {
+          !wall.profile.containsPoint(xMm, roomHeightMm)) {
         continue;
       }
       final wallId = '$componentId:wall:$i:${horizontalType.name}';
       builder.addNode(
         wallId,
         RoomSurfaceRef.wall(space.id, i),
-        SurfacePointMm(projected.xMm, y),
+        SurfacePointMm(xMm, y),
       );
       builder.connectTransition(horizontalId, wallId);
     }
@@ -219,33 +219,17 @@ abstract final class AutoRouteGraphBuilder {
     return MmPoint(bounds.left + point.xMm, bounds.bottom + point.yMm);
   }
 
-  static _ProjectedWallPoint _projectToWall(
-    RoomWallSurface wall,
-    MmPoint point,
-  ) {
+  static int _projectXOnWall(RoomWallSurface wall, MmPoint point) {
     final ax = wall.start.x.toDouble();
     final ay = wall.start.y.toDouble();
     final dx = (wall.end.x - wall.start.x).toDouble();
     final dy = (wall.end.y - wall.start.y).toDouble();
     final lengthSquared = dx * dx + dy * dy;
-    if (lengthSquared == 0) return const _ProjectedWallPoint(0, 0);
+    if (lengthSquared == 0) return 0;
     final rawT = ((point.x - ax) * dx + (point.y - ay) * dy) / lengthSquared;
     final t = rawT.clamp(0.0, 1.0);
-    final length = math.sqrt(lengthSquared);
-    final xMm = (length * t).round();
-    final projectedX = ax + dx * t;
-    final projectedY = ay + dy * t;
-    final distance = math.sqrt(
-      math.pow(point.x - projectedX, 2) + math.pow(point.y - projectedY, 2),
-    );
-    return _ProjectedWallPoint(xMm, distance);
+    return (math.sqrt(lengthSquared) * t).round();
   }
-}
-
-final class _ProjectedWallPoint {
-  const _ProjectedWallPoint(this.xMm, this.distanceMm);
-  final int xMm;
-  final double distanceMm;
 }
 
 final class _GraphBuilder {
