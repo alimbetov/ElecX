@@ -58,11 +58,10 @@ abstract final class RouteEngine {
 
     final distances = <String, double>{startNodeId: 0};
     final previous = <String, String>{};
-    final queue = <_QueueEntry>[_QueueEntry(startNodeId, 0)];
+    final queue = _MinQueue()..add(_QueueEntry(startNodeId, 0));
 
     while (queue.isNotEmpty) {
-      queue.sort((a, b) => a.cost.compareTo(b.cost));
-      final current = queue.removeAt(0);
+      final current = queue.removeFirst();
       if (current.cost != distances[current.id]) continue;
       if (current.id == endNodeId) break;
 
@@ -147,4 +146,44 @@ final class _QueueEntry {
 
   final String id;
   final double cost;
+}
+
+final class _MinQueue {
+  final List<_QueueEntry> _heap = [];
+
+  bool get isNotEmpty => _heap.isNotEmpty;
+
+  void add(_QueueEntry value) {
+    _heap.add(value);
+    var index = _heap.length - 1;
+    while (index > 0) {
+      final parent = (index - 1) ~/ 2;
+      if (_heap[parent].cost <= value.cost) break;
+      _heap[index] = _heap[parent];
+      index = parent;
+    }
+    _heap[index] = value;
+  }
+
+  _QueueEntry removeFirst() {
+    final result = _heap.first;
+    final last = _heap.removeLast();
+    if (_heap.isEmpty) return result;
+
+    var index = 0;
+    while (true) {
+      final left = index * 2 + 1;
+      if (left >= _heap.length) break;
+      final right = left + 1;
+      var child = left;
+      if (right < _heap.length && _heap[right].cost < _heap[left].cost) {
+        child = right;
+      }
+      if (_heap[child].cost >= last.cost) break;
+      _heap[index] = _heap[child];
+      index = child;
+    }
+    _heap[index] = last;
+    return result;
+  }
 }
