@@ -47,6 +47,8 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
   MmPolygon? _previewBoundary;
   ArchitecturalOpening? _dragBaseOpening;
   ArchitecturalOpening? _previewOpening;
+  int? _selectedExternalEdgeIndex;
+  String? _selectedExternalSpaceId;
 
   EditorController get controller => widget.controller;
 
@@ -67,6 +69,8 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
           .removeListener(_onViewportCommand);
       _lastViewportRevision = controller.viewportCommandRevision;
       controller.viewportCommandListenable.addListener(_onViewportCommand);
+      _selectedExternalEdgeIndex = null;
+      _selectedExternalSpaceId = null;
       _rebuildIndex(force: true);
     }
   }
@@ -292,6 +296,8 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
 
     final openingHandle = _openingHandleAt(event.localPosition);
     if (openingHandle != null) {
+      _selectedExternalEdgeIndex = null;
+      _selectedExternalSpaceId = null;
       _dragKind = openingHandle;
       _dragBaseOpening = controller.selectedOpening;
       _previewOpening = _dragBaseOpening;
@@ -304,6 +310,8 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
       radiusMm: _hitRadiusMm,
     );
     if (opening != null) {
+      _selectedExternalEdgeIndex = null;
+      _selectedExternalSpaceId = null;
       controller.selectOpeningForPlan(opening);
       _dragKind = _PlanDragKind.openingMove;
       _dragBaseOpening = opening;
@@ -313,6 +321,8 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
 
     final vertex = _vertexHandleAt(event.localPosition);
     if (vertex != null) {
+      _selectedExternalEdgeIndex = null;
+      _selectedExternalSpaceId = null;
       _dragKind = _PlanDragKind.vertex;
       _dragIndex = vertex;
       _dragBaseBoundary = controller.selectedSpace?.boundary;
@@ -461,13 +471,118 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
         radiusMm: _hitRadiusMm,
       );
       if (opening != null) {
+        setState(() {
+          _selectedExternalEdgeIndex = null;
+          _selectedExternalSpaceId = null;
+        });
         controller.selectOpeningForPlan(opening);
         return;
       }
+
+      final wallIndex = controller.selectedWallIndexAtPlanPoint(
+        world,
+        radiusMm: _hitRadiusMm,
+      );
+      if (wallIndex != null) {
+        final external = controller.isSelectedWallExternal(wallIndex);
+        setState(() {
+          _selectedExternalEdgeIndex = external ? wallIndex : null;
+          _selectedExternalSpaceId = external ? controller.selectedSpaceId : null;
+        });
+        return;
+      }
     }
+
+    setState(() {
+      _selectedExternalEdgeIndex = null;
+      _selectedExternalSpaceId = null;
+    });
     controller.canvasTap(
       world,
       snapRadiusMm: math.max(40, _camera.mmPerPixel * 12),
+    );
+  }
+
+  Widget? _buildExternalWallGizmo(ColorScheme scheme) {
+    final space = controller.selectedSpace;
+    final index = _selectedExternalEdgeIndex;
+    if (controller.tool != EditorTool.select ||
+        space == null ||
+        index == null ||
+        _selectedExternalSpaceId != space.id ||
+        index < 0 ||
+        index >= space.boundary.vertices.length ||
+        !controller.isSelectedWallExternal(index)) {
+      return null;
+    }
+
+    final vertices = space.boundary.vertices;
+    final a = _toScreen(vertices[index]);
+    final b = _toScreen(vertices[(index + 1) % vertices.length]);
+    final tangent = b - a;
+    final length = tangent.distance;
+    if (length < 1) return null;
+
+    final normal = Offset(-tangent.dy / length, tangent.dx / length);
+    final midpoint = Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
+    var center = midpoint + normal * 34;
+    center = Offset(
+      center.dx.clamp(42.0, math.max(42.0, _size.width - 42.0)),
+      center.dy.clamp(24.0, math.max(24.0, _size.height - 24.0)),
+    );
+    final angle = math.atan2(normal.dy, normal.dx);
+    final stepMm = space.grid.minorStepMm;
+
+    void nudge(int distanceMm) {
+      if (controller.nudgeSelectedBoundaryEdgeNormal(index, distanceMm)) {
+        _rebuildIndex(force: true);
+        setState(() {});
+      }
+    }
+
+    return Positioned(
+      left: center.dx - 39,
+      top: center.dy - 20,
+      child: Material(
+        elevation: 3,
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.96),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: scheme.outlineVariant),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 38,
+              height: 38,
+              child: IconButton(
+                tooltip: '-$stepMm mm по нормали',
+                padding: EdgeInsets.zero,
+                onPressed: () => nudge(-stepMm),
+                icon: Transform.rotate(
+                  angle: angle,
+                  child: const Icon(Icons.arrow_back, size: 18),
+                ),
+              ),
+            ),
+            Container(width: 1, height: 24, color: scheme.outlineVariant),
+            SizedBox(
+              width: 38,
+              height: 38,
+              child: IconButton(
+                tooltip: '+$stepMm mm по нормали',
+                padding: EdgeInsets.zero,
+                onPressed: () => nudge(stepMm),
+                icon: Transform.rotate(
+                  angle: angle,
+                  child: const Icon(Icons.arrow_forward, size: 18),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -486,6 +601,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
         final lod = RenderPolicy.lodForWorldUnitsPerPixel(_camera.mmPerPixel);
         final compact = MediaQuery.sizeOf(context).width < 700;
         final scheme = Theme.of(context).colorScheme;
+        final externalWallGizmo = _buildExternalWallGizmo(scheme);
 
         return Stack(
           children: [
@@ -553,6 +669,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                 ),
               ),
             ),
+            if (externalWallGizmo != null) externalWallGizmo,
             Positioned(
               right: compact ? 8 : 12,
               top: compact ? 8 : 12,
