@@ -169,12 +169,15 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                   if (anchor == null) return;
                   final delta = event.localPosition - anchor;
                   _panAnchor = event.localPosition;
-                  setState(() => _camera = _camera.panPixels(delta.dx, delta.dy));
+                  setState(
+                    () => _camera = _camera.panPixels(delta.dx, delta.dy),
+                  );
                 },
                 onPointerUp: (_) => _panAnchor = null,
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTapDown: (details) => controller.canvasTap(_toWorld(details.localPosition)),
+                  onTapDown: (details) =>
+                      controller.canvasTap(_toWorld(details.localPosition)),
                   child: RepaintBoundary(
                     child: CustomPaint(
                       painter: _InteractionPainter(
@@ -194,8 +197,10 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                 mmPerPixel: _camera.mmPerPixel,
                 onFitLevel: _fitLevel,
                 onFitSelection: _fitSelection,
-                onZoomIn: () => _zoomAt(_lastSize.center(Offset.zero), 1.25),
-                onZoomOut: () => _zoomAt(_lastSize.center(Offset.zero), 0.8),
+                onZoomIn: () =>
+                    _zoomAt(_lastSize.center(Offset.zero), 1.25),
+                onZoomOut: () =>
+                    _zoomAt(_lastSize.center(Offset.zero), 0.8),
               ),
             ),
           ],
@@ -232,7 +237,10 @@ class _ViewportControls extends StatelessWidget {
             children: [
               Tooltip(
                 message: 'Вписать этаж',
-                child: IconButton(onPressed: onFitLevel, icon: const Icon(Icons.fit_screen)),
+                child: IconButton(
+                  onPressed: onFitLevel,
+                  icon: const Icon(Icons.fit_screen),
+                ),
               ),
               Tooltip(
                 message: 'Вписать выбранное помещение',
@@ -241,11 +249,19 @@ class _ViewportControls extends StatelessWidget {
                   icon: const Icon(Icons.center_focus_strong),
                 ),
               ),
-              IconButton(onPressed: onZoomOut, icon: const Icon(Icons.zoom_out)),
-              IconButton(onPressed: onZoomIn, icon: const Icon(Icons.zoom_in)),
+              IconButton(
+                onPressed: onZoomOut,
+                icon: const Icon(Icons.zoom_out),
+              ),
+              IconButton(
+                onPressed: onZoomIn,
+                icon: const Icon(Icons.zoom_in),
+              ),
               Padding(
                 padding: const EdgeInsets.only(left: 4, right: 8),
-                child: Text('${lod.name} · ${mmPerPixel.toStringAsFixed(1)} mm/px'),
+                child: Text(
+                  '${lod.name} · ${mmPerPixel.toStringAsFixed(1)} mm/px',
+                ),
               ),
             ],
           ),
@@ -269,27 +285,39 @@ abstract class _CameraPainter extends CustomPainter {
 }
 
 class _GridPainter extends _CameraPainter {
-  _GridPainter({required super.camera, required this.lod});
+  _GridPainter({required WorldCamera camera, required this.lod}) : super(camera);
 
   final RenderLod lod;
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0xFFF7F8FA));
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()..color = const Color(0xFFF7F8FA),
+    );
     final visible = camera.visibleWorldBounds(
       viewportWidthPx: size.width,
       viewportHeightPx: size.height,
       overscanPx: 0,
     );
     final grid = AdaptiveGridPolicy.forScale(camera.mmPerPixel);
-    final startX = (visible.left / grid.minorStepMm).floor() * grid.minorStepMm;
-    final startY = (visible.bottom / grid.minorStepMm).floor() * grid.minorStepMm;
-    final minor = Paint()..color = const Color(0xFFE7E9ED)..strokeWidth = 0.65;
-    final major = Paint()..color = const Color(0xFFCCD2DA)..strokeWidth = 0.9;
+    final startX =
+        (visible.left / grid.minorStepMm).floor() * grid.minorStepMm;
+    final startY =
+        (visible.bottom / grid.minorStepMm).floor() * grid.minorStepMm;
+    final minor = Paint()
+      ..color = const Color(0xFFE7E9ED)
+      ..strokeWidth = 0.65;
+    final major = Paint()
+      ..color = const Color(0xFFCCD2DA)
+      ..strokeWidth = 0.9;
 
     for (var x = startX; x <= visible.right; x += grid.minorStepMm) {
       final isMajor = x % grid.majorStepMm == 0;
-      if (!isMajor && (!grid.showMinor || lod.index < RenderLod.room.index)) continue;
+      if (!isMajor &&
+          (!grid.showMinor || lod.index < RenderLod.room.index)) {
+        continue;
+      }
       canvas.drawLine(
         p(MmPoint(x, visible.bottom), size),
         p(MmPoint(x, visible.top), size),
@@ -298,7 +326,10 @@ class _GridPainter extends _CameraPainter {
     }
     for (var y = startY; y <= visible.top; y += grid.minorStepMm) {
       final isMajor = y % grid.majorStepMm == 0;
-      if (!isMajor && (!grid.showMinor || lod.index < RenderLod.room.index)) continue;
+      if (!isMajor &&
+          (!grid.showMinor || lod.index < RenderLod.room.index)) {
+        continue;
+      }
       canvas.drawLine(
         p(MmPoint(visible.left, y), size),
         p(MmPoint(visible.right, y), size),
@@ -315,10 +346,10 @@ class _GridPainter extends _CameraPainter {
 class _ArchitecturePainter extends _CameraPainter {
   _ArchitecturePainter({
     required this.controller,
-    required super.camera,
+    required WorldCamera camera,
     required this.visibleSpaces,
     required this.lod,
-  });
+  }) : super(camera);
 
   final EditorController controller;
   final List<EngineeringSpace> visibleSpaces;
@@ -327,11 +358,21 @@ class _ArchitecturePainter extends _CameraPainter {
   @override
   void paint(Canvas canvas, Size size) {
     for (final space in visibleSpaces) {
-      _drawSpace(canvas, size, space, selected: space.id == controller.selectedSpaceId);
+      _drawSpace(
+        canvas,
+        size,
+        space,
+        selected: space.id == controller.selectedSpaceId,
+      );
     }
   }
 
-  void _drawSpace(Canvas canvas, Size size, EngineeringSpace space, {required bool selected}) {
+  void _drawSpace(
+    Canvas canvas,
+    Size size,
+    EngineeringSpace space, {
+    required bool selected,
+  }) {
     final path = Path();
     final first = p(space.boundary.vertices.first, size);
     path.moveTo(first.dx, first.dy);
@@ -343,19 +384,30 @@ class _ArchitecturePainter extends _CameraPainter {
 
     canvas.drawPath(
       path,
-      Paint()..color = selected ? const Color(0x1F246DB3) : const Color(0x0D263238),
+      Paint()
+        ..color = selected
+            ? const Color(0x1F246DB3)
+            : const Color(0x0D263238),
     );
     canvas.drawPath(
       path,
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = selected ? 2.4 : 1.3
-        ..color = selected ? const Color(0xFF246DB3) : const Color(0xFF53606D),
+        ..color = selected
+            ? const Color(0xFF246DB3)
+            : const Color(0xFF53606D),
     );
 
-    if (RenderPolicy.showOpenings(lod)) _drawOpenings(canvas, size, space);
-    if (RenderPolicy.showRoomLabels(lod)) _drawLabel(canvas, size, space);
-    if (selected && RenderPolicy.showFineDimensions(lod) && controller.dimensionsVisible) {
+    if (RenderPolicy.showOpenings(lod)) {
+      _drawOpenings(canvas, size, space);
+    }
+    if (RenderPolicy.showRoomLabels(lod)) {
+      _drawLabel(canvas, size, space);
+    }
+    if (selected &&
+        RenderPolicy.showFineDimensions(lod) &&
+        controller.dimensionsVisible) {
       _drawDimensions(canvas, size, space);
     }
   }
@@ -363,16 +415,34 @@ class _ArchitecturePainter extends _CameraPainter {
   void _drawOpenings(Canvas canvas, Size size, EngineeringSpace space) {
     final walls = RoomSurfaceResolver.walls(space);
     for (final opening in controller.openings) {
-      if (opening.hostWall.spaceId != space.id || opening.hostWall.wallIndex == null) continue;
+      if (opening.hostWall.spaceId != space.id ||
+          opening.hostWall.wallIndex == null) {
+        continue;
+      }
       final index = opening.hostWall.wallIndex!;
       if (index < 0 || index >= walls.length) continue;
       final wall = walls[index];
-      final a = p(RoomSurfaceResolver.wallLocalToPlan(wall, opening.offsetFromStartMm), size);
-      final b = p(
-        RoomSurfaceResolver.wallLocalToPlan(wall, opening.offsetFromStartMm + opening.widthMm),
+      final a = p(
+        RoomSurfaceResolver.wallLocalToPlan(
+          wall,
+          opening.offsetFromStartMm,
+        ),
         size,
       );
-      canvas.drawLine(a, b, Paint()..color = const Color(0xFF4C89A8)..strokeWidth = 2.0);
+      final b = p(
+        RoomSurfaceResolver.wallLocalToPlan(
+          wall,
+          opening.offsetFromStartMm + opening.widthMm,
+        ),
+        size,
+      );
+      canvas.drawLine(
+        a,
+        b,
+        Paint()
+          ..color = const Color(0xFF4C89A8)
+          ..strokeWidth = 2.0,
+      );
     }
   }
 
@@ -381,11 +451,18 @@ class _ArchitecturePainter extends _CameraPainter {
     final painter = TextPainter(
       text: TextSpan(
         text: space.name,
-        style: const TextStyle(color: Color(0xFF263238), fontSize: 12, fontWeight: FontWeight.w600),
+        style: const TextStyle(
+          color: Color(0xFF263238),
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    painter.paint(canvas, center - Offset(painter.width / 2, painter.height / 2));
+    painter.paint(
+      canvas,
+      center - Offset(painter.width / 2, painter.height / 2),
+    );
   }
 
   void _drawDimensions(Canvas canvas, Size size, EngineeringSpace space) {
@@ -393,21 +470,43 @@ class _ArchitecturePainter extends _CameraPainter {
     final a = p(MmPoint(bounds.left, bounds.bottom), size);
     final b = p(MmPoint(bounds.right, bounds.bottom), size);
     final c = p(MmPoint(bounds.right, bounds.top), size);
-    final paint = Paint()..color = const Color(0xFF4B5563)..strokeWidth = 0.9;
+    final paint = Paint()
+      ..color = const Color(0xFF4B5563)
+      ..strokeWidth = 0.9;
     final y = math.max(a.dy, b.dy) + 24;
     canvas.drawLine(Offset(a.dx, y), Offset(b.dx, y), paint);
-    _text(canvas, '${bounds.width} mm', Offset((a.dx + b.dx) / 2, y - 8));
+    _text(
+      canvas,
+      '${bounds.width} mm',
+      Offset((a.dx + b.dx) / 2, y - 8),
+    );
     final x = c.dx + 26;
     canvas.drawLine(Offset(x, c.dy), Offset(x, b.dy), paint);
-    _text(canvas, '${bounds.height} mm', Offset(x + 6, (c.dy + b.dy) / 2), centered: false);
+    _text(
+      canvas,
+      '${bounds.height} mm',
+      Offset(x + 6, (c.dy + b.dy) / 2),
+      centered: false,
+    );
   }
 
-  void _text(Canvas canvas, String text, Offset at, {bool centered = true}) {
+  void _text(
+    Canvas canvas,
+    String text,
+    Offset at, {
+    bool centered = true,
+  }) {
     final painter = TextPainter(
-      text: TextSpan(text: text, style: const TextStyle(fontSize: 10, color: Color(0xFF4B5563))),
+      text: TextSpan(
+        text: text,
+        style: const TextStyle(fontSize: 10, color: Color(0xFF4B5563)),
+      ),
       textDirection: TextDirection.ltr,
     )..layout();
-    painter.paint(canvas, centered ? at - Offset(painter.width / 2, painter.height / 2) : at);
+    painter.paint(
+      canvas,
+      centered ? at - Offset(painter.width / 2, painter.height / 2) : at,
+    );
   }
 
   @override
@@ -419,7 +518,10 @@ class _ArchitecturePainter extends _CameraPainter {
 }
 
 class _InteractionPainter extends _CameraPainter {
-  _InteractionPainter({required this.controller, required super.camera});
+  _InteractionPainter({
+    required this.controller,
+    required WorldCamera camera,
+  }) : super(camera);
 
   final EditorController controller;
 
@@ -427,10 +529,15 @@ class _InteractionPainter extends _CameraPainter {
   void paint(Canvas canvas, Size size) {
     final draft = controller.draftStart;
     if (draft == null) return;
-    canvas.drawCircle(p(draft, size), 5, Paint()..color = const Color(0xFFD66B2C));
+    canvas.drawCircle(
+      p(draft, size),
+      5,
+      Paint()..color = const Color(0xFFD66B2C),
+    );
   }
 
   @override
   bool shouldRepaint(covariant _InteractionPainter oldDelegate) =>
-      oldDelegate.camera != camera || oldDelegate.controller.draftStart != controller.draftStart;
+      oldDelegate.camera != camera ||
+      oldDelegate.controller.draftStart != controller.draftStart;
 }
