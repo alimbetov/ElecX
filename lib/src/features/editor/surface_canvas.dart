@@ -11,6 +11,7 @@ import '../../engine/render_policy.dart';
 import '../../engine/world_camera.dart';
 import 'editor_controller.dart';
 import 'editor_viewport_commands.dart';
+import 'wall_profile_editor_actions.dart';
 
 class SurfaceCanvas extends StatefulWidget {
   const SurfaceCanvas({required this.controller, super.key});
@@ -276,6 +277,15 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
                 ),
               ),
             ),
+            if (surface.type == SurfacePlaneType.wall)
+              Positioned(
+                left: compactControls ? 8 : 12,
+                top: compactControls ? 8 : 12,
+                child: _WallProfileQuickEditor(
+                  controller: controller,
+                  compact: compactControls,
+                ),
+              ),
             Positioned(
               right: compactControls ? 8 : 12,
               top: compactControls ? 8 : 12,
@@ -290,6 +300,176 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
             ),
           ],
         );
+      },
+    );
+  }
+}
+
+class _WallProfileQuickEditor extends StatelessWidget {
+  const _WallProfileQuickEditor({
+    required this.controller,
+    required this.compact,
+  });
+
+  final EditorController controller;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Tooltip(
+              message: 'Добавить балку / верхнюю выемку',
+              child: compact
+                  ? IconButton(
+                      onPressed: () => _showNotchDialog(context),
+                      icon: const Icon(Icons.architecture_outlined),
+                    )
+                  : FilledButton.tonalIcon(
+                      onPressed: () => _showNotchDialog(context),
+                      icon: const Icon(Icons.architecture_outlined, size: 18),
+                      label: const Text('Балка / выемка'),
+                    ),
+            ),
+            if (controller.activeWallHasCustomProfile)
+              IconButton(
+                onPressed: controller.resetActiveWallProfile,
+                tooltip: 'Сбросить профиль стены',
+                icon: const Icon(Icons.restart_alt),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showNotchDialog(BuildContext context) async {
+    final wall = controller.activeWall;
+    if (wall == null) {
+      return;
+    }
+    final wallLength = wall.lengthMm.round();
+    final wallHeight = wall.heightMm;
+    var widthMm = math.min(600, math.max(100, wallLength ~/ 3));
+    var startMm = math.max(0, (wallLength - widthMm) ~/ 2);
+    var depthMm = math.min(300, math.max(50, wallHeight ~/ 6));
+    String? error;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text('Балка / верхняя выемка'),
+            content: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Стена: $wallLength × $wallHeight mm',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 12),
+                    _ProfileIntField(
+                      label: 'X от начала стены',
+                      value: startMm,
+                      onChanged: (value) => startMm = value,
+                    ),
+                    const SizedBox(height: 10),
+                    _ProfileIntField(
+                      label: 'Ширина балки / выемки',
+                      value: widthMm,
+                      onChanged: (value) => widthMm = value,
+                    ),
+                    const SizedBox(height: 10),
+                    _ProfileIntField(
+                      label: 'Глубина вниз от потолка',
+                      value: depthMm,
+                      onChanged: (value) => depthMm = value,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Условие: X + ширина ≤ $wallLength mm; '
+                      'глубина < $wallHeight mm.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    if (error != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        error!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Отмена'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final applied = controller.addActiveWallTopNotch(
+                    startMm: startMm,
+                    widthMm: widthMm,
+                    depthMm: depthMm,
+                  );
+                  if (applied) {
+                    Navigator.pop(dialogContext);
+                  } else {
+                    setDialogState(() {
+                      error = 'Параметры выходят за допустимый профиль стены.';
+                    });
+                  }
+                },
+                child: const Text('Применить'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ProfileIntField extends StatelessWidget {
+  const _ProfileIntField({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String label;
+  final int value;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      initialValue: '$value',
+      keyboardType: TextInputType.number,
+      decoration: InputDecoration(
+        labelText: label,
+        suffixText: 'mm',
+        border: const OutlineInputBorder(),
+      ),
+      onChanged: (text) {
+        final parsed = int.tryParse(text);
+        if (parsed != null) {
+          onChanged(parsed);
+        }
       },
     );
   }
