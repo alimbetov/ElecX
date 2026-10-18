@@ -8,6 +8,7 @@ import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/adaptive_grid.dart';
 import '../../engine/plan_geometry_editing.dart';
+import '../../engine/plan_pull_measure.dart';
 import '../../engine/render_policy.dart';
 import '../../engine/spatial_scene_index.dart';
 import '../../engine/world_camera.dart';
@@ -49,6 +50,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
   ArchitecturalOpening? _previewOpening;
   int? _selectedExternalEdgeIndex;
   String? _selectedExternalSpaceId;
+  int _selectedExternalPullSign = 1;
 
   EditorController get controller => widget.controller;
 
@@ -71,6 +73,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
       controller.viewportCommandListenable.addListener(_onViewportCommand);
       _selectedExternalEdgeIndex = null;
       _selectedExternalSpaceId = null;
+      _selectedExternalPullSign = 1;
       _rebuildIndex(force: true);
     }
   }
@@ -289,6 +292,46 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     return null;
   }
 
+  void _clearExternalWallSelection() {
+    _selectedExternalEdgeIndex = null;
+    _selectedExternalSpaceId = null;
+    _selectedExternalPullSign = 1;
+  }
+
+  int _pullSignForCursor(int edgeIndex, Offset cursor) {
+    final space = controller.selectedSpace;
+    if (space == null ||
+        edgeIndex < 0 ||
+        edgeIndex >= space.boundary.vertices.length) {
+      return 1;
+    }
+    final vertices = space.boundary.vertices;
+    final a = _toScreen(vertices[edgeIndex]);
+    final b = _toScreen(vertices[(edgeIndex + 1) % vertices.length]);
+    final tangent = b - a;
+    final length = tangent.distance;
+    if (length < 1) return 1;
+    final normal = Offset(-tangent.dy / length, tangent.dx / length);
+    final midpoint = Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
+    final delta = cursor - midpoint;
+    return delta.dx * normal.dx + delta.dy * normal.dy >= 0 ? 1 : -1;
+  }
+
+  void _updatePullSideFromPointer(Offset local) {
+    final index = _selectedExternalEdgeIndex;
+    final space = controller.selectedSpace;
+    if (index == null ||
+        space == null ||
+        _selectedExternalSpaceId != space.id ||
+        !controller.isSelectedWallExternal(index)) {
+      return;
+    }
+    final sign = _pullSignForCursor(index, local);
+    if (sign != _selectedExternalPullSign) {
+      setState(() => _selectedExternalPullSign = sign);
+    }
+  }
+
   void _beginPrimaryDrag(PointerDownEvent event) {
     if (controller.tool != EditorTool.select) {
       return;
@@ -296,8 +339,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
 
     final openingHandle = _openingHandleAt(event.localPosition);
     if (openingHandle != null) {
-      _selectedExternalEdgeIndex = null;
-      _selectedExternalSpaceId = null;
+      _clearExternalWallSelection();
       _dragKind = openingHandle;
       _dragBaseOpening = controller.selectedOpening;
       _previewOpening = _dragBaseOpening;
@@ -310,8 +352,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
       radiusMm: _hitRadiusMm,
     );
     if (opening != null) {
-      _selectedExternalEdgeIndex = null;
-      _selectedExternalSpaceId = null;
+      _clearExternalWallSelection();
       controller.selectOpeningForPlan(opening);
       _dragKind = _PlanDragKind.openingMove;
       _dragBaseOpening = opening;
@@ -321,8 +362,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
 
     final vertex = _vertexHandleAt(event.localPosition);
     if (vertex != null) {
-      _selectedExternalEdgeIndex = null;
-      _selectedExternalSpaceId = null;
+      _clearExternalWallSelection();
       _dragKind = _PlanDragKind.vertex;
       _dragIndex = vertex;
       _dragBaseBoundary = controller.selectedSpace?.boundary;
@@ -471,10 +511,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
         radiusMm: _hitRadiusMm,
       );
       if (opening != null) {
-        setState(() {
-          _selectedExternalEdgeIndex = null;
-          _selectedExternalSpaceId = null;
-        });
+        setState(_clearExternalWallSelection);
         controller.selectOpeningForPlan(opening);
         return;
       }
@@ -486,17 +523,20 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
       if (wallIndex != null) {
         final external = controller.isSelectedWallExternal(wallIndex);
         setState(() {
-          _selectedExternalEdgeIndex = external ? wallIndex : null;
-          _selectedExternalSpaceId = external ? controller.selectedSpaceId : null;
+          if (external) {
+            _selectedExternalEdgeIndex = wallIndex;
+            _selectedExternalSpaceId = controller.selectedSpaceId;
+            _selectedExternalPullSign =
+                _pullSignForCursor(wallIndex, details.localPosition);
+          } else {
+            _clearExternalWallSelection();
+          }
         });
         return;
       }
     }
 
-    setState(() {
-      _selectedExternalEdgeIndex = null;
-      _selectedExternalSpaceId = null;
-    });
+    setState(_clearExternalWallSelection);
     controller.canvasTap(
       world,
       snapRadiusMm: math.max(40, _camera.mmPerPixel * 12),
@@ -524,16 +564,18 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     if (length < 1) return null;
 
     final normal = Offset(-tangent.dy / length, tangent.dx / length);
+    final direction = normal * _selectedExternalPullSign.toDouble();
     final midpoint = Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
-    var center = midpoint + normal * 34;
+    var center = midpoint + direction * 34;
     center = Offset(
-      center.dx.clamp(42.0, math.max(42.0, _size.width - 42.0)),
+      center.dx.clamp(24.0, math.max(24.0, _size.width - 24.0)),
       center.dy.clamp(24.0, math.max(24.0, _size.height - 24.0)),
     );
-    final angle = math.atan2(normal.dy, normal.dx);
+    final angle = math.atan2(direction.dy, direction.dx);
     final stepMm = space.grid.minorStepMm;
 
-    void nudge(int distanceMm) {
+    void nudge() {
+      final distanceMm = _selectedExternalPullSign * stepMm;
       if (controller.nudgeSelectedBoundaryEdgeNormal(index, distanceMm)) {
         _rebuildIndex(force: true);
         setState(() {});
@@ -541,46 +583,53 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     }
 
     return Positioned(
-      left: center.dx - 39,
+      left: center.dx - 20,
       top: center.dy - 20,
       child: Material(
         elevation: 3,
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.96),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: BorderSide(color: scheme.outlineVariant),
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.97),
+        shape: CircleBorder(side: BorderSide(color: scheme.outlineVariant)),
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: IconButton(
+            tooltip: 'Потянуть границу на $stepMm mm',
+            padding: EdgeInsets.zero,
+            onPressed: nudge,
+            icon: Transform.rotate(
+              angle: angle,
+              child: const Icon(Icons.arrow_forward, size: 19),
+            ),
+          ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 38,
-              height: 38,
-              child: IconButton(
-                tooltip: '-$stepMm mm по нормали',
-                padding: EdgeInsets.zero,
-                onPressed: () => nudge(-stepMm),
-                icon: Transform.rotate(
-                  angle: angle,
-                  child: const Icon(Icons.arrow_back, size: 18),
-                ),
-              ),
-            ),
-            Container(width: 1, height: 24, color: scheme.outlineVariant),
-            SizedBox(
-              width: 38,
-              height: 38,
-              child: IconButton(
-                tooltip: '+$stepMm mm по нормали',
-                padding: EdgeInsets.zero,
-                onPressed: () => nudge(stepMm),
-                icon: Transform.rotate(
-                  angle: angle,
-                  child: const Icon(Icons.arrow_forward, size: 18),
-                ),
-              ),
-            ),
-          ],
+      ),
+    );
+  }
+
+  Widget? _buildPullMeasureOverlay(ColorScheme scheme) {
+    final space = controller.selectedSpace;
+    final index = _selectedExternalEdgeIndex;
+    if (space == null ||
+        index == null ||
+        _selectedExternalSpaceId != space.id ||
+        !controller.isSelectedWallExternal(index)) {
+      return null;
+    }
+    final measure = PlanPullMeasureResolver.nearestParallelBoundary(
+      space: space,
+      edgeIndex: index,
+    );
+    if (measure == null) return null;
+
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: CustomPaint(
+          painter: _PullMeasurePainter(
+            from: _toScreen(measure.sourceMidpoint),
+            to: _toScreen(measure.targetPoint),
+            distanceMm: measure.distanceMm,
+            scheme: scheme,
+          ),
         ),
       ),
     );
@@ -601,6 +650,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
         final lod = RenderPolicy.lodForWorldUnitsPerPixel(_camera.mmPerPixel);
         final compact = MediaQuery.sizeOf(context).width < 700;
         final scheme = Theme.of(context).colorScheme;
+        final pullMeasureOverlay = _buildPullMeasureOverlay(scheme);
         final externalWallGizmo = _buildExternalWallGizmo(scheme);
 
         return Stack(
@@ -620,9 +670,13 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                 ),
               ),
             ),
+            if (pullMeasureOverlay != null) pullMeasureOverlay,
             Positioned.fill(
               child: Listener(
                 behavior: HitTestBehavior.opaque,
+                onPointerHover: (event) {
+                  _updatePullSideFromPointer(event.localPosition);
+                },
                 onPointerSignal: (event) {
                   if (event is PointerScrollEvent) {
                     _zoomAt(
@@ -649,6 +703,9 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                       _camera = _camera.panPixels(delta.dx, delta.dy);
                     });
                     return;
+                  }
+                  if (event.buttons == 0) {
+                    _updatePullSideFromPointer(event.localPosition);
                   }
                   _updatePrimaryDrag(event);
                 },
@@ -1018,6 +1075,67 @@ class _PlanPainter extends CustomPainter {
       oldDelegate.openingFingerprint != openingFingerprint ||
       oldDelegate.previewBoundary != previewBoundary ||
       oldDelegate.previewOpening != previewOpening ||
+      oldDelegate.scheme != scheme;
+}
+
+class _PullMeasurePainter extends CustomPainter {
+  const _PullMeasurePainter({
+    required this.from,
+    required this.to,
+    required this.distanceMm,
+    required this.scheme,
+  });
+
+  final Offset from;
+  final Offset to;
+  final int distanceMm;
+  final ColorScheme scheme;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final delta = to - from;
+    final length = delta.distance;
+    if (length < 1) return;
+    final direction = delta / length;
+    final normal = Offset(-direction.dy, direction.dx);
+    final paint = Paint()
+      ..color = scheme.primary.withValues(alpha: 0.82)
+      ..strokeWidth = 1.15;
+
+    const dash = 7.0;
+    const gap = 4.0;
+    for (var d = 0.0; d < length; d += dash + gap) {
+      final end = math.min(d + dash, length);
+      canvas.drawLine(from + direction * d, from + direction * end, paint);
+    }
+    canvas.drawLine(from - normal * 6, from + normal * 6, paint);
+    canvas.drawLine(to - normal * 6, to + normal * 6, paint);
+
+    final midpoint = Offset((from.dx + to.dx) / 2, (from.dy + to.dy) / 2);
+    final text = TextPainter(
+      text: TextSpan(
+        text: '$distanceMm mm',
+        style: TextStyle(
+          color: scheme.onSurface,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          backgroundColor: scheme.surface.withValues(alpha: 0.88),
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final labelAt = midpoint + normal * 12;
+    text.paint(
+      canvas,
+      labelAt - Offset(text.width / 2, text.height / 2),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _PullMeasurePainter oldDelegate) =>
+      oldDelegate.from != from ||
+      oldDelegate.to != to ||
+      oldDelegate.distanceMm != distanceMm ||
       oldDelegate.scheme != scheme;
 }
 
