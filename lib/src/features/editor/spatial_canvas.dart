@@ -27,7 +27,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     centerMm: MmPoint(5000, 3500),
     mmPerPixel: 12,
   );
-  int _spaceCount = -1;
+  int _sceneFingerprint = -1;
   Size _lastSize = Size.zero;
   Offset? _panAnchor;
 
@@ -48,11 +48,25 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     }
   }
 
+  int _computeSceneFingerprint() => Object.hashAll(
+        controller.level.spaces.map((space) {
+          final bounds = space.boundary.bounds;
+          return Object.hash(
+            space.id,
+            bounds.left,
+            bounds.bottom,
+            bounds.right,
+            bounds.top,
+            space.boundary.vertices.length,
+          );
+        }),
+      );
+
   void _rebuildIndex({bool force = false}) {
-    final count = controller.level.spaces.length;
-    if (!force && count == _spaceCount) return;
+    final fingerprint = _computeSceneFingerprint();
+    if (!force && fingerprint == _sceneFingerprint) return;
     _sceneIndex.rebuildSpaces(controller.level.spaces);
-    _spaceCount = count;
+    _sceneFingerprint = fingerprint;
   }
 
   void _fitLevel() {
