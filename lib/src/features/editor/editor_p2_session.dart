@@ -3,7 +3,9 @@ import 'package:flutter/foundation.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/electrical_routing.dart';
 import '../../domain/geometry.dart';
+import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
+import '../../engine/auto_route_graph_builder.dart';
 import '../../engine/command_history.dart';
 import '../../engine/direct_manipulation.dart';
 import '../../engine/editor_layers.dart';
@@ -254,41 +256,58 @@ final class EditorP2Session extends ChangeNotifier {
     return true;
   }
 
-  bool autoRouteSelectedPair({String? cableType}) {
+  bool autoRouteSelectedPair({
+    EngineeringSpace? space,
+    String? cableType,
+  }) {
     final pair = selectedComponents;
     if (pair.length != 2) return false;
     final sourceComponent = _preferredSource(pair[0], pair[1]);
     final targetComponent = identical(sourceComponent, pair[0]) ? pair[1] : pair[0];
-    if (sourceComponent.surface != targetComponent.surface) {
-      return false;
-    }
     final sourcePort = _portForSource(sourceComponent);
     final targetPort = _portForTarget(targetComponent);
     if (sourcePort == null || targetPort == null) return false;
 
-    final surface = sourceComponent.surface;
-    final a = sourceComponent.position;
-    final d = targetComponent.position;
-    final elbowX = SurfacePointMm(d.xMm, a.yMm);
-    final elbowY = SurfacePointMm(a.xMm, d.yMm);
-    final graph = RoutingGraph(
-      nodes: {
-        'a': RouteNode(id: 'a', surface: surface, point: a),
-        'bx': RouteNode(id: 'bx', surface: surface, point: elbowX),
-        'by': RouteNode(id: 'by', surface: surface, point: elbowY),
-        'd': RouteNode(id: 'd', surface: surface, point: d),
-      },
-      edges: [
-        RouteEdge(from: 'a', to: 'bx', cost: _axisDistance(a, elbowX)),
-        RouteEdge(from: 'bx', to: 'd', cost: _axisDistance(elbowX, d)),
-        RouteEdge(from: 'a', to: 'by', cost: _axisDistance(a, elbowY)),
-        RouteEdge(from: 'by', to: 'd', cost: _axisDistance(elbowY, d)),
-      ],
-    );
+    late final RoutingGraph graph;
+    late final String startNodeId;
+    late final String endNodeId;
+    if (sourceComponent.surface == targetComponent.surface) {
+      final surface = sourceComponent.surface;
+      final a = sourceComponent.position;
+      final d = targetComponent.position;
+      final elbowX = SurfacePointMm(d.xMm, a.yMm);
+      final elbowY = SurfacePointMm(a.xMm, d.yMm);
+      graph = RoutingGraph(
+        nodes: {
+          'a': RouteNode(id: 'a', surface: surface, point: a),
+          'bx': RouteNode(id: 'bx', surface: surface, point: elbowX),
+          'by': RouteNode(id: 'by', surface: surface, point: elbowY),
+          'd': RouteNode(id: 'd', surface: surface, point: d),
+        },
+        edges: [
+          RouteEdge(from: 'a', to: 'bx', cost: _axisDistance(a, elbowX)),
+          RouteEdge(from: 'bx', to: 'd', cost: _axisDistance(elbowX, d)),
+          RouteEdge(from: 'a', to: 'by', cost: _axisDistance(a, elbowY)),
+          RouteEdge(from: 'by', to: 'd', cost: _axisDistance(elbowY, d)),
+        ],
+      );
+      startNodeId = 'a';
+      endNodeId = 'd';
+    } else {
+      if (space == null) return false;
+      graph = AutoRouteGraphBuilder.build(
+        space: space,
+        source: sourceComponent,
+        target: targetComponent,
+      );
+      startNodeId = 'source';
+      endNodeId = 'target';
+    }
+
     return addAutoRoute(
       graph: graph,
-      startNodeId: 'a',
-      endNodeId: 'd',
+      startNodeId: startNodeId,
+      endNodeId: endNodeId,
       source: ElectricalEndpointRef(
         componentId: sourceComponent.id,
         portId: sourcePort.id,
@@ -405,7 +424,8 @@ final class EditorP2Session extends ChangeNotifier {
   }
 
   static double _axisDistance(SurfacePointMm a, SurfacePointMm b) =>
-      (a.xMm - b.xMm).abs() + (a.yMm - b.yMm).abs().toDouble();
+      (a.xMm - b.xMm).abs().toDouble() +
+      (a.yMm - b.yMm).abs().toDouble();
 }
 
 final Expando<EditorP2Session> _p2Sessions =
