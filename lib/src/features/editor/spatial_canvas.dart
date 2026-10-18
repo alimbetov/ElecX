@@ -30,6 +30,8 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
   int _sceneFingerprint = -1;
   Size _lastSize = Size.zero;
   Offset? _panAnchor;
+  WorldCamera? _touchStartCamera;
+  Offset? _touchStartFocal;
 
   EditorController get controller => widget.controller;
 
@@ -64,13 +66,17 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
 
   void _rebuildIndex({bool force = false}) {
     final fingerprint = _computeSceneFingerprint();
-    if (!force && fingerprint == _sceneFingerprint) return;
+    if (!force && fingerprint == _sceneFingerprint) {
+      return;
+    }
     _sceneIndex.rebuildSpaces(controller.level.spaces);
     _sceneFingerprint = fingerprint;
   }
 
   void _fitLevel() {
-    if (_lastSize.isEmpty || controller.level.spaces.isEmpty) return;
+    if (_lastSize.isEmpty || controller.level.spaces.isEmpty) {
+      return;
+    }
     var bounds = controller.level.spaces.first.boundary.bounds;
     for (final space in controller.level.spaces.skip(1)) {
       bounds = bounds.union(space.boundary.bounds);
@@ -86,7 +92,9 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
 
   void _fitSelection() {
     final space = controller.selectedSpace;
-    if (space == null || _lastSize.isEmpty) return;
+    if (space == null || _lastSize.isEmpty) {
+      return;
+    }
     setState(() {
       _camera = _camera.fitBounds(
         bounds: space.boundary.bounds,
@@ -97,7 +105,9 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
   }
 
   void _zoomAt(Offset cursor, double factor) {
-    if (_lastSize.isEmpty) return;
+    if (_lastSize.isEmpty) {
+      return;
+    }
     setState(() {
       _camera = _camera.zoomAt(
         factor: factor,
@@ -107,6 +117,38 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
         cursorYpx: cursor.dy,
       );
     });
+  }
+
+  void _startTouchGesture(ScaleStartDetails details) {
+    _touchStartCamera = _camera;
+    _touchStartFocal = details.localFocalPoint;
+  }
+
+  void _updateTouchGesture(ScaleUpdateDetails details) {
+    if (details.pointerCount < 2 || _lastSize.isEmpty) {
+      return;
+    }
+    final startCamera = _touchStartCamera;
+    final startFocal = _touchStartFocal;
+    if (startCamera == null || startFocal == null) {
+      return;
+    }
+
+    final delta = details.localFocalPoint - startFocal;
+    var next = startCamera.panPixels(delta.dx, delta.dy);
+    next = next.zoomAt(
+      factor: details.scale,
+      viewportWidthPx: _lastSize.width,
+      viewportHeightPx: _lastSize.height,
+      cursorXpx: details.localFocalPoint.dx,
+      cursorYpx: details.localFocalPoint.dy,
+    );
+    setState(() => _camera = next);
+  }
+
+  void _endTouchGesture(ScaleEndDetails details) {
+    _touchStartCamera = null;
+    _touchStartFocal = null;
   }
 
   MmPoint _toWorld(Offset local) => _camera.screenToWorld(
@@ -128,6 +170,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
         );
         final visibleSpaces = _sceneIndex.visibleSpaces(visibleBounds);
         final lod = RenderPolicy.lodForWorldUnitsPerPixel(_camera.mmPerPixel);
+        final compactControls = MediaQuery.sizeOf(context).width < 700;
 
         return Stack(
           children: [
@@ -153,7 +196,9 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
             Positioned.fill(
               child: Listener(
                 onPointerSignal: (event) {
-                  if (event is! PointerScrollEvent) return;
+                  if (event is! PointerScrollEvent) {
+                    return;
+                  }
                   _zoomAt(
                     event.localPosition,
                     event.scrollDelta.dy < 0 ? 1.18 : 1 / 1.18,
@@ -166,7 +211,9 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                 },
                 onPointerMove: (event) {
                   final anchor = _panAnchor;
-                  if (anchor == null) return;
+                  if (anchor == null) {
+                    return;
+                  }
                   final delta = event.localPosition - anchor;
                   _panAnchor = event.localPosition;
                   setState(
@@ -174,10 +221,14 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                   );
                 },
                 onPointerUp: (_) => _panAnchor = null,
+                onPointerCancel: (_) => _panAnchor = null,
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTapDown: (details) =>
+                  onTapUp: (details) =>
                       controller.canvasTap(_toWorld(details.localPosition)),
+                  onScaleStart: _startTouchGesture,
+                  onScaleUpdate: _updateTouchGesture,
+                  onScaleEnd: _endTouchGesture,
                   child: RepaintBoundary(
                     child: CustomPaint(
                       painter: _InteractionPainter(
@@ -190,9 +241,10 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
               ),
             ),
             Positioned(
-              right: 12,
-              top: 12,
+              right: compactControls ? 8 : 12,
+              top: compactControls ? 8 : 12,
               child: _ViewportControls(
+                compact: compactControls,
                 lod: lod,
                 mmPerPixel: _camera.mmPerPixel,
                 onFitLevel: _fitLevel,
@@ -212,6 +264,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
 
 class _ViewportControls extends StatelessWidget {
   const _ViewportControls({
+    required this.compact,
     required this.lod,
     required this.mmPerPixel,
     required this.onFitLevel,
@@ -220,6 +273,7 @@ class _ViewportControls extends StatelessWidget {
     required this.onZoomOut,
   });
 
+  final bool compact;
   final RenderLod lod;
   final double mmPerPixel;
   final VoidCallback onFitLevel;
@@ -228,45 +282,47 @@ class _ViewportControls extends StatelessWidget {
   final VoidCallback onZoomOut;
 
   @override
-  Widget build(BuildContext context) => Card(
-        elevation: 2,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Tooltip(
-                message: 'Вписать этаж',
-                child: IconButton(
-                  onPressed: onFitLevel,
-                  icon: const Icon(Icons.fit_screen),
-                ),
-              ),
-              Tooltip(
-                message: 'Вписать выбранное помещение',
-                child: IconButton(
-                  onPressed: onFitSelection,
-                  icon: const Icon(Icons.center_focus_strong),
-                ),
-              ),
-              IconButton(
-                onPressed: onZoomOut,
-                icon: const Icon(Icons.zoom_out),
-              ),
-              IconButton(
-                onPressed: onZoomIn,
-                icon: const Icon(Icons.zoom_in),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(left: 4, right: 8),
-                child: Text(
-                  '${lod.name} · ${mmPerPixel.toStringAsFixed(1)} mm/px',
-                ),
-              ),
-            ],
-          ),
+  Widget build(BuildContext context) {
+    final buttons = <Widget>[
+      Tooltip(
+        message: 'Вписать этаж',
+        child: IconButton(
+          onPressed: onFitLevel,
+          icon: const Icon(Icons.fit_screen),
         ),
-      );
+      ),
+      Tooltip(
+        message: 'Вписать выбранное помещение',
+        child: IconButton(
+          onPressed: onFitSelection,
+          icon: const Icon(Icons.center_focus_strong),
+        ),
+      ),
+      IconButton(onPressed: onZoomOut, icon: const Icon(Icons.zoom_out)),
+      IconButton(onPressed: onZoomIn, icon: const Icon(Icons.zoom_in)),
+    ];
+
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: compact
+            ? Column(mainAxisSize: MainAxisSize.min, children: buttons)
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ...buttons,
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4, right: 8),
+                    child: Text(
+                      '${lod.name} · ${mmPerPixel.toStringAsFixed(1)} mm/px',
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
 }
 
 abstract class _CameraPainter extends CustomPainter {
@@ -345,15 +401,34 @@ class _GridPainter extends _CameraPainter {
 
 class _ArchitecturePainter extends _CameraPainter {
   _ArchitecturePainter({
-    required this.controller,
+    required EditorController controller,
     required WorldCamera camera,
     required this.visibleSpaces,
     required this.lod,
-  }) : super(camera);
+  })  : selectedSpaceId = controller.selectedSpaceId,
+        dimensionsVisible = controller.dimensionsVisible,
+        openings = List.unmodifiable(controller.openings),
+        openingFingerprint = Object.hashAll(
+          controller.openings.map(
+            (opening) => Object.hash(
+              opening.id,
+              opening.hostWall.id,
+              opening.offsetFromStartMm,
+              opening.widthMm,
+              opening.heightMm,
+              opening.sillHeightMm,
+              opening.type,
+            ),
+          ),
+        ),
+        super(camera);
 
-  final EditorController controller;
   final List<EngineeringSpace> visibleSpaces;
   final RenderLod lod;
+  final String? selectedSpaceId;
+  final bool dimensionsVisible;
+  final List<ArchitecturalOpening> openings;
+  final int openingFingerprint;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -362,7 +437,7 @@ class _ArchitecturePainter extends _CameraPainter {
         canvas,
         size,
         space,
-        selected: space.id == controller.selectedSpaceId,
+        selected: space.id == selectedSpaceId,
       );
     }
   }
@@ -407,20 +482,22 @@ class _ArchitecturePainter extends _CameraPainter {
     }
     if (selected &&
         RenderPolicy.showFineDimensions(lod) &&
-        controller.dimensionsVisible) {
+        dimensionsVisible) {
       _drawDimensions(canvas, size, space);
     }
   }
 
   void _drawOpenings(Canvas canvas, Size size, EngineeringSpace space) {
     final walls = RoomSurfaceResolver.walls(space);
-    for (final opening in controller.openings) {
+    for (final opening in openings) {
       if (opening.hostWall.spaceId != space.id ||
           opening.hostWall.wallIndex == null) {
         continue;
       }
       final index = opening.hostWall.wallIndex!;
-      if (index < 0 || index >= walls.length) continue;
+      if (index < 0 || index >= walls.length) {
+        continue;
+      }
       final wall = walls[index];
       final a = p(
         RoomSurfaceResolver.wallLocalToPlan(
@@ -514,21 +591,26 @@ class _ArchitecturePainter extends _CameraPainter {
       oldDelegate.camera != camera ||
       oldDelegate.lod != lod ||
       oldDelegate.visibleSpaces != visibleSpaces ||
-      oldDelegate.controller.selectedSpaceId != controller.selectedSpaceId;
+      oldDelegate.selectedSpaceId != selectedSpaceId ||
+      oldDelegate.dimensionsVisible != dimensionsVisible ||
+      oldDelegate.openingFingerprint != openingFingerprint;
 }
 
 class _InteractionPainter extends _CameraPainter {
   _InteractionPainter({
-    required this.controller,
+    required EditorController controller,
     required WorldCamera camera,
-  }) : super(camera);
+  })  : draftStart = controller.draftStart,
+        super(camera);
 
-  final EditorController controller;
+  final MmPoint? draftStart;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final draft = controller.draftStart;
-    if (draft == null) return;
+    final draft = draftStart;
+    if (draft == null) {
+      return;
+    }
     canvas.drawCircle(
       p(draft, size),
       5,
@@ -538,6 +620,5 @@ class _InteractionPainter extends _CameraPainter {
 
   @override
   bool shouldRepaint(covariant _InteractionPainter oldDelegate) =>
-      oldDelegate.camera != camera ||
-      oldDelegate.controller.draftStart != controller.draftStart;
+      oldDelegate.camera != camera || oldDelegate.draftStart != draftStart;
 }
