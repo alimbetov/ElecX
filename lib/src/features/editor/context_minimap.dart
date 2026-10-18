@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import '../../domain/geometry.dart';
 import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
+import 'cad_visual_tokens.dart';
 import 'editor_building_workspace.dart';
 import 'editor_controller.dart';
+import 'room_world_overlay.dart';
 import 'site_map_canvas.dart';
 import 'site_map_interaction.dart';
 
@@ -54,8 +56,8 @@ class _MiniMapSheet extends StatelessWidget {
 
     return Material(
       color: Theme.of(context).colorScheme.surface,
-      elevation: 12,
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+      elevation: 8,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
       clipBehavior: Clip.antiAlias,
       child: ListView(
         controller: scrollController,
@@ -63,11 +65,11 @@ class _MiniMapSheet extends StatelessWidget {
         children: [
           const _SheetHandle(),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
+            padding: const EdgeInsets.fromLTRB(14, 0, 6, 7),
             child: Row(
               children: [
-                const Icon(Icons.map_outlined, size: 20),
-                const SizedBox(width: 8),
+                const Icon(Icons.map_outlined, size: 18),
+                const SizedBox(width: 7),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -77,7 +79,8 @@ class _MiniMapSheet extends StatelessWidget {
                             ? 'Карта площадки'
                             : zone != null
                                 ? zone.name
-                                : workspace.activeLevel?.displayName ?? editor.level.name,
+                                : workspace.activeLevel?.displayName ??
+                                    editor.level.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleSmall,
@@ -98,7 +101,7 @@ class _MiniMapSheet extends StatelessWidget {
                 IconButton(
                   tooltip: 'Скрыть микро-карту',
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.keyboard_arrow_down),
+                  icon: const Icon(Icons.keyboard_arrow_down, size: 19),
                 ),
               ],
             ),
@@ -131,7 +134,7 @@ class _MiniMapSheet extends StatelessWidget {
                     zoneSpaceIds: zone?.spaceIds,
                   ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
         ],
       ),
     );
@@ -143,11 +146,11 @@ class _SheetHandle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: 26,
+        height: 24,
         child: Center(
           child: Container(
-            width: 42,
-            height: 4,
+            width: 38,
+            height: 3,
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.outlineVariant,
               borderRadius: BorderRadius.circular(99),
@@ -167,31 +170,35 @@ class _SurfaceQuickNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final editor = workspace.editor;
     return SizedBox(
-      height: 46,
+      height: 44,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         children: [
           _surfaceButton(
+            context,
             label: 'Plan',
             icon: Icons.map_outlined,
             selected: editor.viewMode == EditorViewMode.plan,
             onPressed: editor.showPlan,
           ),
           _surfaceButton(
+            context,
             label: 'Floor',
             icon: Icons.grid_on,
             selected: editor.activeSurface?.type == SurfacePlaneType.floor,
             onPressed: editor.showFloor,
           ),
           _surfaceButton(
+            context,
             label: 'Ceil',
-            icon: Icons.view_in_ar_outlined,
+            icon: Icons.vertical_align_top,
             selected: editor.activeSurface?.type == SurfacePlaneType.ceiling,
             onPressed: editor.showCeiling,
           ),
           for (var i = 0; i < room.boundary.vertices.length; i++)
             _surfaceButton(
+              context,
               label: 'W${i + 1}',
               icon: Icons.crop_landscape,
               selected: editor.activeSurface?.type == SurfacePlaneType.wall &&
@@ -203,23 +210,24 @@ class _SurfaceQuickNav extends StatelessWidget {
     );
   }
 
-  Widget _surfaceButton({
+  Widget _surfaceButton(
+    BuildContext context, {
     required String label,
     required IconData icon,
     required bool selected,
     required VoidCallback onPressed,
   }) =>
       Padding(
-        padding: const EdgeInsets.only(right: 6),
+        padding: const EdgeInsets.only(right: 5),
         child: selected
             ? FilledButton.tonalIcon(
                 onPressed: onPressed,
-                icon: Icon(icon, size: 16),
+                icon: Icon(icon, size: 15),
                 label: Text(label),
               )
             : OutlinedButton.icon(
                 onPressed: onPressed,
-                icon: Icon(icon, size: 16),
+                icon: Icon(icon, size: 15),
                 label: Text(label),
               ),
       );
@@ -242,7 +250,9 @@ class _LevelMiniMapState extends State<_LevelMiniMap> {
   Widget build(BuildContext context) {
     final spaces = [
       for (final space in widget.workspace.editor.level.spaces)
-        if (widget.zoneSpaceIds == null || widget.zoneSpaceIds!.contains(space.id)) space,
+        if (widget.zoneSpaceIds == null ||
+            widget.zoneSpaceIds!.contains(space.id))
+          space,
     ];
     if (spaces.isEmpty) {
       return const Center(child: Text('Нет геометрии для микро-карты'));
@@ -252,6 +262,7 @@ class _LevelMiniMapState extends State<_LevelMiniMap> {
       builder: (context, constraints) {
         final size = Size(constraints.maxWidth, constraints.maxHeight);
         final bounds = _unionBounds(spaces);
+        final scheme = Theme.of(context).colorScheme;
         return MouseRegion(
           onHover: (event) {
             final hit = _hitSpace(event.localPosition, size, bounds, spaces);
@@ -270,7 +281,8 @@ class _LevelMiniMapState extends State<_LevelMiniMap> {
               final hit = _hitSpace(details.localPosition, size, bounds, spaces);
               if (hit != null) {
                 widget.workspace.editor.selectSpace(hit.id);
-                widget.workspace.editor.showPlan();
+                Navigator.of(context).pop();
+                showRoomWorldOverlay(context, widget.workspace.editor);
               }
             },
             child: CustomPaint(
@@ -279,6 +291,7 @@ class _LevelMiniMapState extends State<_LevelMiniMap> {
                 bounds: bounds,
                 selectedSpaceId: widget.workspace.editor.selectedSpaceId,
                 hoveredSpaceId: _hoveredSpaceId,
+                scheme: scheme,
               ),
               child: const SizedBox.expand(),
             ),
@@ -305,7 +318,8 @@ class _LevelMiniMapState extends State<_LevelMiniMap> {
     final transform = _MiniTransform.fit(bounds, size);
     final world = transform.toWorld(point);
     for (final space in spaces.reversed) {
-      if (space.boundary.contains(world) || space.boundary.bounds.contains(world)) {
+      if (space.boundary.contains(world) ||
+          space.boundary.bounds.contains(world)) {
         return space;
       }
     }
@@ -319,17 +333,19 @@ class _LevelMiniMapPainter extends CustomPainter {
     required this.bounds,
     required this.selectedSpaceId,
     required this.hoveredSpaceId,
+    required this.scheme,
   });
 
   final List<EngineeringSpace> spaces;
   final MmBounds bounds;
   final String? selectedSpaceId;
   final String? hoveredSpaceId;
+  final ColorScheme scheme;
 
   @override
   void paint(Canvas canvas, Size size) {
     final transform = _MiniTransform.fit(bounds, size);
-    canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0xFFF7F8FA));
+    canvas.drawRect(Offset.zero & size, Paint()..color = scheme.surface);
     for (final space in spaces) {
       final selected = selectedSpaceId == space.id;
       final hovered = hoveredSpaceId == space.id;
@@ -348,17 +364,23 @@ class _LevelMiniMapPainter extends CustomPainter {
         Paint()
           ..style = PaintingStyle.fill
           ..color = selected
-              ? const Color(0x33244A7C)
+              ? CadVisualTokens.selectedFill(scheme)
               : hovered
-                  ? const Color(0x22244A7C)
-                  : const Color(0x0D244A7C),
+                  ? CadVisualTokens.hoverFill(scheme)
+                  : CadVisualTokens.ghostFill(scheme),
       );
       canvas.drawPath(
         path,
         Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = selected ? 2.4 : hovered ? 2.0 : 1.0
-          ..color = const Color(0xFF244A7C),
+          ..strokeWidth = selected
+              ? CadVisualTokens.selectedGeometryStroke
+              : hovered
+                  ? 1.8
+                  : CadVisualTokens.geometryStroke
+          ..color = selected
+              ? CadVisualTokens.selectedGeometry(scheme)
+              : CadVisualTokens.geometry(scheme),
       );
       if (space.boundary.bounds.width * transform.scale > 70 &&
           space.boundary.bounds.height * transform.scale > 26) {
@@ -367,15 +389,19 @@ class _LevelMiniMapPainter extends CustomPainter {
           text: TextSpan(
             text: space.name,
             style: TextStyle(
-              color: const Color(0xFF1F2937),
-              fontSize: selected || hovered ? 12 : 10,
-              fontWeight: selected || hovered ? FontWeight.w700 : FontWeight.w500,
+              color: scheme.onSurface,
+              fontSize: selected || hovered ? 11.5 : 10,
+              fontWeight:
+                  selected || hovered ? FontWeight.w700 : FontWeight.w500,
             ),
           ),
           maxLines: 1,
           textDirection: TextDirection.ltr,
         )..layout(maxWidth: 140);
-        text.paint(canvas, Offset(center.dx - text.width / 2, center.dy - text.height / 2));
+        text.paint(
+          canvas,
+          Offset(center.dx - text.width / 2, center.dy - text.height / 2),
+        );
       }
     }
   }
@@ -385,7 +411,8 @@ class _LevelMiniMapPainter extends CustomPainter {
       oldDelegate.selectedSpaceId != selectedSpaceId ||
       oldDelegate.hoveredSpaceId != hoveredSpaceId ||
       oldDelegate.spaces != spaces ||
-      oldDelegate.bounds != bounds;
+      oldDelegate.bounds != bounds ||
+      oldDelegate.scheme != scheme;
 }
 
 final class _MiniTransform {
@@ -397,8 +424,10 @@ final class _MiniTransform {
 
   factory _MiniTransform.fit(MmBounds bounds, Size size) {
     const padding = 22.0;
-    final usableWidth = (size.width - padding * 2).clamp(1.0, double.infinity);
-    final usableHeight = (size.height - padding * 2).clamp(1.0, double.infinity);
+    final usableWidth =
+        (size.width - padding * 2).clamp(1.0, double.infinity);
+    final usableHeight =
+        (size.height - padding * 2).clamp(1.0, double.infinity);
     final sx = usableWidth / (bounds.width == 0 ? 1 : bounds.width);
     final sy = usableHeight / (bounds.height == 0 ? 1 : bounds.height);
     final scale = sx < sy ? sx : sy;
