@@ -85,21 +85,74 @@ extension PlanGeometryEditorActions on EditorController {
     return true;
   }
 
-  /// Moves the active wall parallel to itself by [distanceMm].
-  ///
-  /// Positive and negative values select the two opposite wall-normal
-  /// directions. Shared room boundaries are propagated atomically by
-  /// [commitSelectedBoundary].
-  bool nudgeActiveWallNormal(int distanceMm) {
+  /// Returns true only when this selected-room edge is not shared by another
+  /// room. Partial collinear overlap also counts as a shared/internal edge.
+  bool isSelectedWallExternal(int wallIndex) {
     final space = selectedSpace;
-    final wallIndex = activeSurface?.wallIndex;
-    if (space == null || wallIndex == null || distanceMm == 0) {
+    if (space == null ||
+        wallIndex < 0 ||
+        wallIndex >= space.boundary.vertices.length) {
       return false;
     }
     final vertices = space.boundary.vertices;
-    if (wallIndex < 0 || wallIndex >= vertices.length) {
+    final a = vertices[wallIndex];
+    final b = vertices[(wallIndex + 1) % vertices.length];
+
+    for (final neighbor in level.spaces) {
+      if (neighbor.id == space.id) continue;
+      final other = neighbor.boundary.vertices;
+      for (var i = 0; i < other.length; i++) {
+        final c = other[i];
+        final d = other[(i + 1) % other.length];
+        if (_collinearOverlap(a, b, c, d)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  bool get activeWallIsExternal {
+    final index = activeSurface?.wallIndex;
+    return index != null && isSelectedWallExternal(index);
+  }
+
+  int? selectedWallIndexAtPlanPoint(
+    MmPoint point, {
+    required double radiusMm,
+  }) {
+    final space = selectedSpace;
+    if (space == null) return null;
+    final vertices = space.boundary.vertices;
+    int? bestIndex;
+    var bestDistance = double.infinity;
+    for (var i = 0; i < vertices.length; i++) {
+      final distance = _distanceToSegment(
+        point,
+        vertices[i],
+        vertices[(i + 1) % vertices.length],
+      );
+      if (distance <= radiusMm && distance < bestDistance) {
+        bestIndex = i;
+        bestDistance = distance;
+      }
+    }
+    return bestIndex;
+  }
+
+  /// Moves a concrete selected-room boundary edge parallel to itself.
+  /// Directional gizmos call this method directly so no surface-mode switch is
+  /// needed while working on the plan.
+  bool nudgeSelectedBoundaryEdgeNormal(int wallIndex, int distanceMm) {
+    final space = selectedSpace;
+    if (space == null ||
+        distanceMm == 0 ||
+        wallIndex < 0 ||
+        wallIndex >= space.boundary.vertices.length ||
+        !isSelectedWallExternal(wallIndex)) {
       return false;
     }
+    final vertices = space.boundary.vertices;
     final a = vertices[wallIndex];
     final b = vertices[(wallIndex + 1) % vertices.length];
     final dx = (b.x - a.x).toDouble();
@@ -120,6 +173,14 @@ extension PlanGeometryEditorActions on EditorController {
       dragCurrent: target,
     );
     return candidate != null && commitSelectedBoundary(candidate);
+  }
+
+  /// Moves the active wall parallel to itself by [distanceMm].
+  /// Movement controls are intentionally available only for external walls.
+  bool nudgeActiveWallNormal(int distanceMm) {
+    final wallIndex = activeSurface?.wallIndex;
+    if (wallIndex == null) return false;
+    return nudgeSelectedBoundaryEdgeNormal(wallIndex, distanceMm);
   }
 
   void selectOpeningForPlan(ArchitecturalOpening opening) {
@@ -276,6 +337,21 @@ EngineeringSpace? _propagateSharedEdges({
     boundary: boundary,
     referenceFrame: RoomReferenceFrame(origin: boundary.bounds.center),
   );
+}
+
+bool _collinearOverlap(MmPoint a, MmPoint b, MmPoint c, MmPoint d) {
+  int cross(MmPoint p, MmPoint q, MmPoint r) =>
+      (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+  if (cross(a, b, c) != 0 || cross(a, b, d) != 0) {
+    return false;
+  }
+  final useX = (b.x - a.x).abs() >= (b.y - a.y).abs();
+  int axis(MmPoint p) => useX ? p.x : p.y;
+  final aMin = math.min(axis(a), axis(b));
+  final aMax = math.max(axis(a), axis(b));
+  final bMin = math.min(axis(c), axis(d));
+  final bMax = math.max(axis(c), axis(d));
+  return math.min(aMax, bMax) > math.max(aMin, bMin);
 }
 
 double _distanceToSegment(MmPoint p, MmPoint a, MmPoint b) {
