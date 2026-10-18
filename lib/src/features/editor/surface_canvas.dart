@@ -2,12 +2,14 @@ import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../domain/electrical_placement.dart';
 import '../../domain/geometry.dart';
 import '../../domain/surface_navigation.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/adaptive_grid.dart';
+import '../../engine/constraint_engine.dart';
 import '../../engine/editor_layers.dart';
 import '../../engine/render_policy.dart';
 import '../../engine/selection_engine.dart';
@@ -34,6 +36,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
   WorldCamera? _touchStartCamera;
   Offset? _touchStartFocal;
   String? _dragComponentId;
+  SurfacePointMm? _dragStartPosition;
   int _lastViewportRevision = 0;
   Size _size = Size.zero;
 
@@ -97,7 +100,6 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
     if (_camera != null && _surfaceId == id) return;
     _surfaceId = id;
     _camera = _fittedCamera(extent);
-    controller.p2.updateSnap(null);
   }
 
   WorldCamera _zoomedCamera(Offset cursor, double factor) {
@@ -175,7 +177,10 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
     }
     final request = SnapRequest(
       rawPoint: MmPoint(raw.xMm, raw.yMm),
-      acquisitionRadiusMm: math.max(20, projection.camera.mmPerPixel * 14),
+      acquisitionRadiusMm: math.max(
+        20.0,
+        projection.camera.mmPerPixel * 14,
+      ),
       gridStepMm: controller.selectedSpace?.grid.minorStepMm ?? 100,
       segments: _snapSegments(projection),
     );
@@ -242,7 +247,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
     if (!controller.p2.layers.isVisible(EditorLayerId.electrical)) return null;
     final surface = controller.activeSurface;
     if (surface == null) return null;
-    final radiusMm = math.max(80, projection.camera.mmPerPixel * 18);
+    final radiusMm = math.max(80.0, projection.camera.mmPerPixel * 18);
     ElectricalComponentPlacement? best;
     var bestDistance = double.infinity;
     for (final component in controller.p2.components.reversed) {
@@ -256,6 +261,30 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
       }
     }
     return best;
+  }
+
+  SelectionMode _selectionModeForKeyboard() {
+    final keyboard = HardwareKeyboard.instance;
+    if (keyboard.isControlPressed || keyboard.isMetaPressed) {
+      return SelectionMode.toggle;
+    }
+    if (keyboard.isShiftPressed) return SelectionMode.add;
+    return SelectionMode.replace;
+  }
+
+  SurfacePointMm _applyDragConstraint(SurfacePointMm point) {
+    final start = _dragStartPosition;
+    if (start == null || !HardwareKeyboard.instance.isShiftPressed) {
+      return point;
+    }
+    final fixed = MmPoint(start.xMm, start.yMm);
+    final moving = MmPoint(point.xMm, point.yMm);
+    final dx = (moving.x - fixed.x).abs();
+    final dy = (moving.y - fixed.y).abs();
+    final result = dx >= dy
+        ? ConstraintEngine.horizontal(fixed, moving)
+        : ConstraintEngine.vertical(fixed, moving);
+    return SurfacePointMm(result.b.x, result.b.y);
   }
 
   void _handleTap(
@@ -282,7 +311,9 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
     if (controller.tool == EditorTool.select) {
       final component = _componentAt(point, projection);
       if (component != null) {
-        controller.p2.select(component.id);
+        if (!controller.p2.selection.contains(component.id)) {
+          controller.p2.select(component.id);
+        }
         return;
       }
       controller.p2.clearSelection();
@@ -309,6 +340,20 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
       }
     }
     controller.surfaceTap(point);
+  }
+
+  void _finishComponentDrag({required bool cancelled}) {
+    _panAnchor = null;
+    if (_dragComponentId != null) {
+      if (cancelled) {
+        controller.p2.cancelMoveSelectedComponent();
+      } else {
+        controller.p2.commitMoveSelectedComponent();
+      }
+    }
+    _dragComponentId = null;
+    _dragStartPosition = null;
+    controller.p2.updateSnap(null);
   }
 
   @override
@@ -366,10 +411,15 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
                     final raw = projection.viewportToSurface(event.localPosition);
                     if (raw == null) return;
                     final component = _componentAt(raw, projection);
-                    if (component != null) {
-                      controller.p2.select(component.id);
-                      _dragComponentId = component.id;
-                    }
+                    if (component == null) return;
+                    controller.p2.select(
+                      component.id,
+                      mode: _selectionModeForKeyboard(),
+                    );
+                    if (!controller.p2.selection.contains(component.id)) return;
+                    _dragComponentId = component.id;
+                    _dragStartPosition = component.position;
+                    controller.p2.beginMoveSelectedComponent();
                   }
                 },
                 onPointerMove: (event) {
@@ -386,22 +436,15 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
                       event.buttons == kPrimaryMouseButton) {
                     final raw = projection.viewportToSurface(event.localPosition);
                     if (raw == null) return;
-                    final point = _snapSurfacePoint(raw, projection);
+                    var point = _snapSurfacePoint(raw, projection);
+                    point = _applyDragConstraint(point);
                     if (_pointIsUsable(point, projection)) {
-                      controller.p2.moveSelectedComponent(point);
+                      controller.p2.previewMoveSelectedComponent(point);
                     }
                   }
                 },
-                onPointerUp: (_) {
-                  _panAnchor = null;
-                  _dragComponentId = null;
-                  controller.p2.updateSnap(null);
-                },
-                onPointerCancel: (_) {
-                  _panAnchor = null;
-                  _dragComponentId = null;
-                  controller.p2.updateSnap(null);
-                },
+                onPointerUp: (_) => _finishComponentDrag(cancelled: false),
+                onPointerCancel: (_) => _finishComponentDrag(cancelled: true),
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTapUp: (details) => _handleTap(
@@ -1137,34 +1180,93 @@ class _SurfacePainter extends CustomPainter {
     switch (type) {
       case ElectricalComponentType.socketOutlet:
         canvas.drawCircle(center, 8, stroke);
-        canvas.drawLine(center + const Offset(-4, 0), center + const Offset(4, 0), stroke);
-        canvas.drawLine(center + const Offset(-2, -3), center + const Offset(-2, 3), stroke);
-        canvas.drawLine(center + const Offset(2, -3), center + const Offset(2, 3), stroke);
+        canvas.drawLine(
+          center + const Offset(-4, 0),
+          center + const Offset(4, 0),
+          stroke,
+        );
+        canvas.drawLine(
+          center + const Offset(-2, -3),
+          center + const Offset(-2, 3),
+          stroke,
+        );
+        canvas.drawLine(
+          center + const Offset(2, -3),
+          center + const Offset(2, 3),
+          stroke,
+        );
       case ElectricalComponentType.switchControl:
         canvas.drawCircle(center, 8, stroke);
-        canvas.drawLine(center + const Offset(-4, 4), center + const Offset(4, -4), stroke);
+        canvas.drawLine(
+          center + const Offset(-4, 4),
+          center + const Offset(4, -4),
+          stroke,
+        );
       case ElectricalComponentType.lightingPoint:
         canvas.drawCircle(center, 8, stroke);
-        canvas.drawLine(center + const Offset(-5, -5), center + const Offset(5, 5), stroke);
-        canvas.drawLine(center + const Offset(5, -5), center + const Offset(-5, 5), stroke);
+        canvas.drawLine(
+          center + const Offset(-5, -5),
+          center + const Offset(5, 5),
+          stroke,
+        );
+        canvas.drawLine(
+          center + const Offset(5, -5),
+          center + const Offset(-5, 5),
+          stroke,
+        );
       case ElectricalComponentType.curtainMotor:
-        canvas.drawRect(Rect.fromCenter(center: center, width: 16, height: 11), stroke);
+        canvas.drawRect(
+          Rect.fromCenter(center: center, width: 16, height: 11),
+          stroke,
+        );
         _label(canvas, 'M', center, centered: true, small: true);
       case ElectricalComponentType.junctionBox:
-        canvas.drawRect(Rect.fromCenter(center: center, width: 15, height: 15), stroke);
+        canvas.drawRect(
+          Rect.fromCenter(center: center, width: 15, height: 15),
+          stroke,
+        );
         canvas.drawCircle(center, 2, stroke);
       case ElectricalComponentType.powerSource:
         canvas.drawCircle(center, 8, stroke);
-        canvas.drawLine(center + const Offset(0, -5), center + const Offset(0, 5), stroke);
+        canvas.drawLine(
+          center + const Offset(0, -5),
+          center + const Offset(0, 5),
+          stroke,
+        );
       case ElectricalComponentType.distributionBoard:
-        canvas.drawRect(Rect.fromCenter(center: center, width: 15, height: 18), stroke);
-        canvas.drawLine(center + const Offset(-4, -3), center + const Offset(4, -3), stroke);
-        canvas.drawLine(center + const Offset(-4, 2), center + const Offset(4, 2), stroke);
+        canvas.drawRect(
+          Rect.fromCenter(center: center, width: 15, height: 18),
+          stroke,
+        );
+        canvas.drawLine(
+          center + const Offset(-4, -3),
+          center + const Offset(4, -3),
+          stroke,
+        );
+        canvas.drawLine(
+          center + const Offset(-4, 2),
+          center + const Offset(4, 2),
+          stroke,
+        );
       case ElectricalComponentType.custom:
-        canvas.drawRect(Rect.fromCenter(center: center, width: 15, height: 15), stroke);
+        canvas.drawRect(
+          Rect.fromCenter(center: center, width: 15, height: 15),
+          stroke,
+        );
     }
     if (selected) {
-      canvas.drawCircle(center, 13, stroke..strokeWidth = 1.2);
+      canvas.drawCircle(
+        center,
+        13,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2
+          ..color = const Color(0xFF1565C0),
+      );
+      canvas.drawRect(
+        Rect.fromCenter(center: center, width: 5, height: 5),
+        Paint()..color = const Color(0xFF1565C0),
+      );
     }
   }
 
