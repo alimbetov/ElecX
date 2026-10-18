@@ -285,9 +285,27 @@ final class EditorController extends ChangeNotifier {
     double acquisitionRadiusMm = 80,
   }) {
     if (!snapEnabled) return null;
+    if (acquisitionRadiusMm <= 0) {
+      throw ArgumentError.value(
+        acquisitionRadiusMm,
+        'acquisitionRadiusMm',
+        'Must be positive.',
+      );
+    }
     final step = stepMm ?? selectedSpace?.grid.minorStepMm ?? 100;
+    final radius = acquisitionRadiusMm.ceil();
+    final left = point.x - radius;
+    final right = point.x + radius;
+    final bottom = point.y - radius;
+    final top = point.y + radius;
     final segments = <SnapSegment>[];
     for (final space in level.spaces) {
+      final bounds = space.boundary.bounds;
+      final outside = bounds.right < left ||
+          bounds.left > right ||
+          bounds.top < bottom ||
+          bounds.bottom > top;
+      if (outside) continue;
       final vertices = space.boundary.vertices;
       for (var i = 0; i < vertices.length; i++) {
         segments.add(
