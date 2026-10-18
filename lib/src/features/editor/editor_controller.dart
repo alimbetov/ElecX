@@ -235,6 +235,28 @@ final class EditorController extends ChangeNotifier {
     _switchSurface(target);
   }
 
+  void navigateHorizontalBoundary(
+    int boundaryEdgeIndex,
+    SurfacePointMm point,
+  ) {
+    final space = selectedSpace;
+    final surface = activeSurface;
+    if (space == null ||
+        surface == null ||
+        surface.type == SurfacePlaneType.wall) {
+      return;
+    }
+
+    if (tool == EditorTool.cableRoute) {
+      surfaceTap(point);
+    }
+    final target = SurfaceNavigationResolver.targetForHorizontalBoundary(
+      space: space,
+      boundaryEdgeIndex: boundaryEdgeIndex,
+    );
+    _switchSurface(target);
+  }
+
   void _switchSurface(RoomSurfaceRef target) {
     final space = selectedSpace;
     if (space == null) return;
