@@ -97,7 +97,11 @@ abstract final class ElectricalComponentDefaults {
             ElectricalPortDefinition(id: 'power-in', kind: ElectricalPortKind.powerIn),
             ElectricalPortDefinition(id: 'power-out', kind: ElectricalPortKind.powerOut),
           ],
-        ElectricalComponentType.powerSource || ElectricalComponentType.distributionBoard => const [
+        ElectricalComponentType.powerSource => const [
+            ElectricalPortDefinition(id: 'power-out', kind: ElectricalPortKind.powerOut),
+            ElectricalPortDefinition(id: 'earth', kind: ElectricalPortKind.earth),
+          ],
+        ElectricalComponentType.distributionBoard => const [
             ElectricalPortDefinition(id: 'power-out', kind: ElectricalPortKind.powerOut),
             ElectricalPortDefinition(id: 'earth', kind: ElectricalPortKind.earth),
           ],
