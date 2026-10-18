@@ -78,17 +78,28 @@ final class EditorController extends ChangeNotifier {
   EditorTool tool = EditorTool.select;
   EditorViewMode viewMode = EditorViewMode.plan;
   String? selectedSpaceId;
+  String? selectedOpeningId;
   RoomSurfaceRef? activeSurface;
   MmPoint? draftStart;
   bool snapEnabled = true;
   bool dimensionsVisible = true;
   int floorGridMm = 500;
   int roomSequence = 102;
+  int openingSequence = 1;
   double zoom = 1.0;
 
   EngineeringSpace? get selectedSpace {
     for (final space in level.spaces) {
       if (space.id == selectedSpaceId) return space;
+    }
+    return null;
+  }
+
+  ArchitecturalOpening? get selectedOpening {
+    final id = selectedOpeningId;
+    if (id == null) return null;
+    for (final opening in openings) {
+      if (opening.id == id) return opening;
     }
     return null;
   }
@@ -145,10 +156,97 @@ final class EditorController extends ChangeNotifier {
 
   void selectSpace(String? id) {
     selectedSpaceId = id;
+    selectedOpeningId = null;
     if (id == null || activeSurface?.spaceId != id) {
       activeSurface = null;
       viewMode = EditorViewMode.plan;
     }
+    notifyListeners();
+  }
+
+  void selectOpening(String? id) {
+    selectedOpeningId = id;
+    final opening = selectedOpening;
+    if (opening != null) {
+      selectedSpaceId = opening.hostWall.spaceId;
+      activeSurface = opening.hostWall;
+      viewMode = EditorViewMode.surface;
+      tool = EditorTool.select;
+    }
+    notifyListeners();
+  }
+
+  bool updateSelectedOpening({
+    ArchitecturalOpeningType? type,
+    int? offsetFromStartMm,
+    int? widthMm,
+    int? heightMm,
+    int? sillHeightMm,
+  }) {
+    final current = selectedOpening;
+    final wall = activeWall;
+    if (current == null || wall == null || current.hostWall != wall.ref) {
+      return false;
+    }
+
+    ArchitecturalOpening candidate;
+    try {
+      candidate = current.copyWith(
+        type: type,
+        offsetFromStartMm: offsetFromStartMm,
+        widthMm: widthMm,
+        heightMm: heightMm,
+        sillHeightMm: sillHeightMm,
+      );
+    } on ArgumentError {
+      return false;
+    }
+
+    if (!RoomSurfaceResolver.openingFitsWall(opening: candidate, wall: wall)) {
+      return false;
+    }
+
+    openings = [
+      for (final opening in openings)
+        if (opening.id == candidate.id) candidate else opening,
+    ];
+    notifyListeners();
+    return true;
+  }
+
+  void addOpening(ArchitecturalOpeningType type) {
+    final wall = activeWall;
+    if (wall == null) return;
+
+    final defaultWidth = type == ArchitecturalOpeningType.window ? 1200 : 900;
+    final defaultHeight = type == ArchitecturalOpeningType.window ? 1400 : 2100;
+    final sill = type == ArchitecturalOpeningType.window ? 900 : 0;
+    final wallLength = wall.lengthMm.round();
+    final width = defaultWidth.clamp(300, wallLength).toInt();
+    final offset = ((wallLength - width) / 2).round().clamp(0, wallLength - width);
+    final maxHeight = wall.heightMm - sill;
+    if (maxHeight <= 0) return;
+
+    final opening = ArchitecturalOpening(
+      id: 'opening-${openingSequence++}',
+      hostWall: wall.ref,
+      type: type,
+      offsetFromStartMm: offset,
+      widthMm: width,
+      heightMm: defaultHeight.clamp(300, maxHeight).toInt(),
+      sillHeightMm: sill,
+    );
+    openings = [...openings, opening];
+    selectedOpeningId = opening.id;
+    tool = EditorTool.select;
+    notifyListeners();
+  }
+
+  void deleteSelectedOpening() {
+    final id = selectedOpeningId;
+    if (id == null) return;
+    openings = openings.where((opening) => opening.id != id).toList();
+    selectedOpeningId = null;
     notifyListeners();
   }
 
@@ -194,6 +292,7 @@ final class EditorController extends ChangeNotifier {
   void showPlan() {
     viewMode = EditorViewMode.plan;
     activeSurface = null;
+    selectedOpeningId = null;
     notifyListeners();
   }
 
@@ -261,6 +360,7 @@ final class EditorController extends ChangeNotifier {
     final space = selectedSpace;
     if (space == null) return;
 
+    selectedOpeningId = null;
     if (tool == EditorTool.cableRoute &&
         activeSurface != null &&
         routeSegments.isNotEmpty) {
