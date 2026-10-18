@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'editor_controller.dart';
 
-enum EditorViewportCommand { zoomIn, zoomOut, reset, fitSelection }
+enum EditorViewportCommand { zoomIn, zoomOut, reset }
 
 final class EditorViewportCommandEvent {
   const EditorViewportCommandEvent({
