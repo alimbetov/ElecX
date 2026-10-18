@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../../domain/geometry.dart';
 import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
@@ -43,8 +45,16 @@ extension PlanGeometryEditorActions on EditorController {
     // Draft routes use surface-local coordinates based on the old geometry.
     // Clearing the draft is safer than silently keeping stale coordinates.
     routeSegments.clear();
-    notifyListeners();
+    selectSpace(current.id);
     return true;
+  }
+
+  void selectOpeningForPlan(ArchitecturalOpening opening) {
+    selectOpening(opening.id);
+    // selectOpening establishes the host wall needed by opening validation.
+    // Keep the Plan projection active so direct manipulation stays in place.
+    viewMode = EditorViewMode.plan;
+    activeSurface = opening.hostWall;
   }
 
   bool moveSelectedOpeningAlongWall(int targetCenterMm) {
@@ -82,11 +92,16 @@ extension PlanGeometryEditorActions on EditorController {
     ArchitecturalOpening? best;
     var bestDistance = double.infinity;
     for (final opening in openings.reversed) {
-      final space = level.spaces.where((item) => item.id == opening.hostWall.spaceId).firstOrNull;
+      final space = level.spaces
+          .where((item) => item.id == opening.hostWall.spaceId)
+          .firstOrNull;
       final wallIndex = opening.hostWall.wallIndex;
       if (space == null || wallIndex == null) continue;
       final wall = RoomSurfaceResolver.wall(space, wallIndex);
-      final a = RoomSurfaceResolver.wallLocalToPlan(wall, opening.offsetFromStartMm);
+      final a = RoomSurfaceResolver.wallLocalToPlan(
+        wall,
+        opening.offsetFromStartMm,
+      );
       final b = RoomSurfaceResolver.wallLocalToPlan(
         wall,
         opening.offsetFromStartMm + opening.widthMm,
@@ -118,28 +133,16 @@ double _distanceToSegment(MmPoint p, MmPoint a, MmPoint b) {
   final dx = (b.x - a.x).toDouble();
   final dy = (b.y - a.y).toDouble();
   if (dx == 0 && dy == 0) return p.distanceTo(a);
-  final t = (((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy))
+  final t = (((p.x - a.x) * dx + (p.y - a.y) * dy) /
+          (dx * dx + dy * dy))
       .clamp(0.0, 1.0);
   final x = a.x + t * dx;
   final y = a.y + t * dy;
   final ex = p.x - x;
   final ey = p.y - y;
-  return (ex * ex + ey * ey).sqrt();
+  return math.sqrt(ex * ex + ey * ey);
 }
 
 extension _NullableFirst<T> on Iterable<T> {
   T? get firstOrNull => isEmpty ? null : first;
-}
-
-extension _Sqrt on double {
-  double sqrt() {
-    if (this <= 0) return 0;
-    var x = this;
-    var y = 1.0;
-    while ((x - y).abs() > 0.000001) {
-      x = (x + y) / 2;
-      y = this / x;
-    }
-    return x;
-  }
 }
