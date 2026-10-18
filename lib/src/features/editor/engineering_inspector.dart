@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../domain/surfaces.dart';
 import 'editor_building_workspace.dart';
 import 'editor_controller.dart';
+import 'plan_geometry_editor_actions.dart';
 import 'wall_profile_editor_actions.dart';
 
 class EngineeringInspector extends StatelessWidget {
@@ -11,6 +12,8 @@ class EngineeringInspector extends StatelessWidget {
   final EditorBuildingWorkspace workspace;
 
   EditorController get controller => workspace.editor;
+
+  int get _stepMm => controller.selectedSpace?.grid.minorStepMm ?? 100;
 
   @override
   Widget build(BuildContext context) {
@@ -59,12 +62,41 @@ class EngineeringInspector extends StatelessWidget {
   }
 
   Widget _wallSection(BuildContext context, RoomWallSurface wall) {
+    final notch = controller.activeWallTopNotch;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _SectionLabel('СТЕНА'),
         _ValueRow('Длина', '${wall.lengthMm.round()} mm'),
         _ValueRow('Высота', '${wall.heightMm} mm'),
+        _ValueRow('Шаг перемещения', '$_stepMm mm'),
+        const SizedBox(height: 6),
+        const _DirectionCaption(
+          icon: Icons.swap_vert,
+          text: 'Перемещение стены — только по нормали',
+        ),
+        const SizedBox(height: 5),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                tooltip: 'Сдвинуть стену по отрицательной нормали',
+                onPressed: () => controller.nudgeActiveWallNormal(-_stepMm),
+                icon: const Icon(Icons.arrow_back, size: 17),
+                label: Text('-$_stepMm'),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: OutlinedButton.icon(
+                tooltip: 'Сдвинуть стену по положительной нормали',
+                onPressed: () => controller.nudgeActiveWallNormal(_stepMm),
+                icon: const Icon(Icons.arrow_forward, size: 17),
+                label: Text('+$_stepMm'),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 6),
         Row(
           children: [
@@ -91,6 +123,53 @@ class EngineeringInspector extends StatelessWidget {
           icon: const Icon(Icons.account_tree_outlined, size: 17),
           label: const Text('Балка / выемка'),
         ),
+        if (notch != null) ...[
+          const SizedBox(height: 7),
+          const _DirectionCaption(
+            icon: Icons.open_with,
+            text: 'Балка: ←/→ вдоль стены, ↑/↓ по глубине',
+          ),
+          const SizedBox(height: 5),
+          _ValueRow(
+            'Балка',
+            'X ${notch.startMm} · ${notch.widthMm}×${notch.depthMm} mm',
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: IconButton.outlined(
+                  tooltip: 'Балка влево',
+                  onPressed: () => controller.nudgeActiveWallTopNotchX(-_stepMm),
+                  icon: const Icon(Icons.arrow_back, size: 18),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: IconButton.outlined(
+                  tooltip: 'Балка вправо',
+                  onPressed: () => controller.nudgeActiveWallTopNotchX(_stepMm),
+                  icon: const Icon(Icons.arrow_forward, size: 18),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: IconButton.outlined(
+                  tooltip: 'Уменьшить глубину балки',
+                  onPressed: () => controller.nudgeActiveWallTopNotchDepth(-_stepMm),
+                  icon: const Icon(Icons.arrow_upward, size: 18),
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: IconButton.outlined(
+                  tooltip: 'Увеличить глубину балки',
+                  onPressed: () => controller.nudgeActiveWallTopNotchDepth(_stepMm),
+                  icon: const Icon(Icons.arrow_downward, size: 18),
+                ),
+              ),
+            ],
+          ),
+        ],
         if (controller.activeWallHasCustomProfile) ...[
           const SizedBox(height: 4),
           TextButton.icon(
@@ -163,7 +242,11 @@ class EngineeringInspector extends StatelessWidget {
           ),
         if (controller.selectedOpening case final opening?) ...[
           const SizedBox(height: 4),
-          _OpeningEditor(controller: controller, opening: opening),
+          _OpeningEditor(
+            controller: controller,
+            opening: opening,
+            stepMm: _stepMm,
+          ),
         ],
       ],
     );
@@ -225,9 +308,10 @@ class EngineeringInspector extends StatelessWidget {
     BuildContext context,
     RoomWallSurface wall,
   ) async {
-    var startMm = (wall.lengthMm * 0.25).round();
-    var widthMm = 600;
-    var depthMm = 300;
+    final current = controller.activeWallTopNotch;
+    var startMm = current?.startMm ?? (wall.lengthMm * 0.25).round();
+    var widthMm = current?.widthMm ?? 600;
+    var depthMm = current?.depthMm ?? 300;
     String? error;
 
     await showDialog<void>(
@@ -297,10 +381,15 @@ class EngineeringInspector extends StatelessWidget {
 }
 
 class _OpeningEditor extends StatelessWidget {
-  const _OpeningEditor({required this.controller, required this.opening});
+  const _OpeningEditor({
+    required this.controller,
+    required this.opening,
+    required this.stepMm,
+  });
 
   final EditorController controller;
   final ArchitecturalOpening opening;
+  final int stepMm;
 
   @override
   Widget build(BuildContext context) {
@@ -314,6 +403,33 @@ class _OpeningEditor extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            const _DirectionCaption(
+              icon: Icons.swap_horiz,
+              text: 'Проём перемещается только вдоль стены',
+            ),
+            const SizedBox(height: 5),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    tooltip: 'Сдвинуть к началу стены',
+                    onPressed: () => controller.nudgeSelectedOpening(-stepMm),
+                    icon: const Icon(Icons.arrow_back, size: 17),
+                    label: Text('-$stepMm'),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    tooltip: 'Сдвинуть к концу стены',
+                    onPressed: () => controller.nudgeSelectedOpening(stepMm),
+                    icon: const Icon(Icons.arrow_forward, size: 17),
+                    label: Text('+$stepMm'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 7),
             DropdownButtonFormField<ArchitecturalOpeningType>(
               initialValue: opening.type,
               decoration: const InputDecoration(labelText: 'Тип'),
@@ -373,6 +489,27 @@ class _OpeningEditor extends StatelessWidget {
       ),
     );
   }
+}
+
+class _DirectionCaption extends StatelessWidget {
+  const _DirectionCaption({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          Icon(icon, size: 14, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 5),
+          Expanded(
+            child: Text(
+              text,
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+          ),
+        ],
+      );
 }
 
 class _SubmitIntField extends StatelessWidget {
