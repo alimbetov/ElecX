@@ -117,7 +117,8 @@ void main() {
     expect(hints.every((hint) => hint.position.yMm > 2200), isTrue);
   });
 
-  test('room geometry derives inward vector and facade azimuth from host wall', () {
+  test('room geometry derives inward vector and facade azimuth from host wall',
+      () {
     final room = EngineeringSpace(
       id: 'room-1',
       name: 'Room',
@@ -157,7 +158,9 @@ void main() {
     expect(frame.depthMm(const MmPoint(1000, 1500)), closeTo(3000, 0.01));
   });
 
-  test('orientation-aware hints increase artificial-light priority deeper inside', () {
+  test(
+      'orientation-aware hints increase artificial-light priority deeper inside',
+      () {
     final room = EngineeringSpace(
       id: 'room-1',
       name: 'Room',
@@ -231,7 +234,8 @@ void main() {
     );
   });
 
-  test('daylight input rejects non-wall surfaces and invalid transmittance', () {
+  test('daylight input rejects non-wall surfaces and invalid transmittance',
+      () {
     expect(
       () => DaylightWindowInput(
         id: 'invalid-floor-window',

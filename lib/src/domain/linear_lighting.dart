@@ -276,7 +276,8 @@ abstract final class LinearLuminaireEngine {
         const LinearLuminaireValidationIssue(
           code: LinearLuminaireValidationCode.driverEvidenceMissing,
           severity: LinearLuminaireValidationSeverity.warning,
-          message: 'Для назначенного драйвера отсутствуют электрические параметры.',
+          message:
+              'Для назначенного драйвера отсутствуют электрические параметры.',
         ),
       );
     } else {
@@ -285,7 +286,8 @@ abstract final class LinearLuminaireEngine {
           const LinearLuminaireValidationIssue(
             code: LinearLuminaireValidationCode.driverReferenceMismatch,
             severity: LinearLuminaireValidationSeverity.error,
-            message: 'Проверяемый драйвер не совпадает с назначенным компонентом.',
+            message:
+                'Проверяемый драйвер не совпадает с назначенным компонентом.',
           ),
         );
       }

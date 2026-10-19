@@ -262,16 +262,14 @@ abstract final class DaylightAssistEngine {
         final depth = frame.depthMm(point);
         if (depth < 0) continue;
         final lateral = frame.lateralOffsetMm(point).abs();
-        final depthInfluence = depth >= effectiveDepth
-            ? 0.0
-            : 1.0 - depth / effectiveDepth;
+        final depthInfluence =
+            depth >= effectiveDepth ? 0.0 : 1.0 - depth / effectiveDepth;
         final lateralRatio = lateral / lateralScale;
         final lateralInfluence = 1.0 / (1.0 + lateralRatio * lateralRatio);
-        final daylightInfluence = (daylight.centerlineStrength *
-                depthInfluence *
-                lateralInfluence)
-            .clamp(0.0, 1.0)
-            .toDouble();
+        final daylightInfluence =
+            (daylight.centerlineStrength * depthInfluence * lateralInfluence)
+                .clamp(0.0, 1.0)
+                .toDouble();
         final priority = (0.45 + 0.55 * (1.0 - daylightInfluence))
             .clamp(0.0, 1.0)
             .toDouble();

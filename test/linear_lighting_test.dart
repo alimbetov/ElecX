@@ -15,7 +15,8 @@ void main() {
     cutStepMm: 50,
   );
 
-  test('distributed load derives power, current and light output from length', () {
+  test('distributed load derives power, current and light output from length',
+      () {
     final run = LinearLuminaireRun(
       id: 'strip-1',
       specId: spec.id,
@@ -60,7 +61,8 @@ void main() {
     );
   });
 
-  test('requested length snaps to strip cut step without collapsing to zero', () {
+  test('requested length snaps to strip cut step without collapsing to zero',
+      () {
     expect(
       LinearLuminaireEngine.snapLengthToCutStep(
         requestedLengthMm: 1032,
