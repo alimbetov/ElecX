@@ -1,4 +1,3 @@
-import 'electrical_placement.dart';
 import 'surfaces.dart';
 
 enum PlacementCursorSnapKind {
@@ -14,13 +13,13 @@ enum PlacementCursorSnapKind {
 /// Surface-local engineering placement cursor.
 ///
 /// The cursor is independent from mouse pixels: its persisted position is
-/// always expressed in millimetres on a concrete [RoomSurfaceRef]. This makes
-/// the same placement workflow usable from mouse, keyboard, stylus and touch.
+/// always expressed in millimetres on a concrete [RoomSurfaceRef]. Component
+/// identity is catalog-driven through [componentTypeId], never a UI enum.
 final class EngineeringPlacementCursorState {
   const EngineeringPlacementCursorState({
     required this.surface,
     required this.position,
-    required this.componentType,
+    required this.componentTypeId,
     this.snapKind = PlacementCursorSnapKind.none,
     this.snapLabel,
     this.isValid = true,
@@ -28,7 +27,7 @@ final class EngineeringPlacementCursorState {
 
   final RoomSurfaceRef surface;
   final SurfacePointMm position;
-  final ElectricalComponentType componentType;
+  final String componentTypeId;
   final PlacementCursorSnapKind snapKind;
   final String? snapLabel;
   final bool isValid;
@@ -36,7 +35,7 @@ final class EngineeringPlacementCursorState {
   EngineeringPlacementCursorState copyWith({
     RoomSurfaceRef? surface,
     SurfacePointMm? position,
-    ElectricalComponentType? componentType,
+    String? componentTypeId,
     PlacementCursorSnapKind? snapKind,
     String? snapLabel,
     bool clearSnapLabel = false,
@@ -45,7 +44,7 @@ final class EngineeringPlacementCursorState {
       EngineeringPlacementCursorState(
         surface: surface ?? this.surface,
         position: position ?? this.position,
-        componentType: componentType ?? this.componentType,
+        componentTypeId: componentTypeId ?? this.componentTypeId,
         snapKind: snapKind ?? this.snapKind,
         snapLabel: clearSnapLabel ? null : snapLabel ?? this.snapLabel,
         isValid: isValid ?? this.isValid,
