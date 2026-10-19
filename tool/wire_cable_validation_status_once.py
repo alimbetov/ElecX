@@ -34,4 +34,23 @@ new = """                child: CableRouteControls(
 count = text.count(old)
 if count != 1:
     raise SystemExit(f'Expected one CableRouteControls block, found {count}')
-path.write_text(text.replace(old, new, 1))
+text = text.replace(old, new, 1)
+
+old_vertex_guard = """        if (ui.mode == CableRoutingMode.auto ||
+            ui.isSegmentLocked(vertex.route.id, vertex.segmentIndex) ||
+            ui.isWaypoint(
+                vertex.route.id, vertex.segmentIndex, vertex.pointIndex)) {
+          return false;
+        }
+"""
+new_vertex_guard = """        if (ui.mode == CableRoutingMode.auto ||
+            ui.isSegmentLocked(vertex.route.id, vertex.segmentIndex) ||
+            ui.segmentHasWaypoints(vertex.route.id, vertex.segmentIndex)) {
+          return false;
+        }
+"""
+count = text.count(old_vertex_guard)
+if count != 1:
+    raise SystemExit(f'Expected one vertex waypoint guard, found {count}')
+text = text.replace(old_vertex_guard, new_vertex_guard, 1)
+path.write_text(text)
