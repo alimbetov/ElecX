@@ -1,0 +1,75 @@
+name: Targeted Hardening
+
+on:
+  push:
+    branches:
+      - feat/spatial-editor-foundation
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/spatial-editor-foundation
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - name: Apply targeted analyzer fixes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('lib/src/domain/installation_path.dart')
+          text = path.read_text()
+          old = """    if (channel.id == id) return channel;"""
+          new = """    if (channel.id == id) {
+              return channel;
+            }"""
+          if old not in text:
+              raise SystemExit('installation_path target not found')
+          path.write_text(text.replace(old, new, 1))
+
+          path = Path('lib/src/engine/cable_sizing_engine.dart')
+          text = path.read_text()
+          old = """    if (reasons.isEmpty) reasons.add('Cable satisfies current and voltage-drop checks.');"""
+          new = """    if (reasons.isEmpty) {
+              reasons.add('Cable satisfies current and voltage-drop checks.');
+            }"""
+          if old not in text:
+              raise SystemExit('cable_sizing target not found')
+          path.write_text(text.replace(old, new, 1))
+
+          path = Path('lib/src/features/editor/surface_canvas.dart')
+          text = path.read_text()
+          old = """  RouteMediumProfile _mediumForRoute(String routeId) {
+            for (final route in controller.p2.routes) {
+              if (route.id == routeId) return route.medium;
+            }
+            return RouteMediumProfile.generic;
+          }
+
+"""
+          if old not in text:
+              raise SystemExit('surface_canvas target not found')
+          path.write_text(text.replace(old, '', 1))
+          PY
+      - run: dart format lib test
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze
+      - run: flutter test
+      - name: Commit verified hardening fixes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib test
+          git commit -m "fix: clear analyzer hardening defects"
+          git push origin HEAD:feat/spatial-editor-foundation
