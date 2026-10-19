@@ -209,29 +209,35 @@ abstract final class ComponentCatalogV2 {
 
   static ComponentCatalogEntryV2 require(String id) {
     final entry = byId(id);
-    if (entry == null) throw ArgumentError.value(id, 'id', 'Unknown component.');
+    if (entry == null) {
+      throw ArgumentError.value(id, 'id', 'Unknown component.');
+    }
     return entry;
   }
 
   static List<ComponentCatalogEntryV2> forSystem(
     EngineeringSystemClass systemClass,
   ) =>
-      entries.where((entry) => entry.systemClass == systemClass).toList(
-            growable: false,
-          );
+      entries
+          .where((entry) => entry.systemClass == systemClass)
+          .toList(growable: false);
 
   static List<ComponentCatalogEntryV2> forSurface(
     SurfacePlaneType surfaceType,
   ) =>
-      entries.where((entry) => entry.mounting.allowedSurfaces.contains(surfaceType)).toList(
-            growable: false,
-          );
+      entries
+          .where(
+            (entry) => entry.mounting.allowedSurfaces.contains(surfaceType),
+          )
+          .toList(growable: false);
 
   static final List<ComponentCatalogEntryV2> _defaults = [
     _socket,
     _switch,
     _light,
+    _curtainMotor,
     _junctionBox,
+    _powerSource,
     _distributionBoard,
     _cctvCamera,
     _lanOutlet,
@@ -239,6 +245,7 @@ abstract final class ComponentCatalogV2 {
     _smokeDetector,
     _acsReader,
     _doorContact,
+    _custom,
   ];
 
   static final ComponentCatalogEntryV2 _socket = ComponentCatalogEntryV2(
@@ -335,6 +342,47 @@ abstract final class ComponentCatalogV2 {
     routePreferenceId: 'lighting.ceiling',
   );
 
+  static final ComponentCatalogEntryV2 _curtainMotor = ComponentCatalogEntryV2(
+    id: 'power.motor.curtain',
+    code: 'CURTAIN-MOTOR',
+    name: 'Привод штор',
+    discipline: EngineeringDiscipline.automation,
+    systemClass: EngineeringSystemClass.powerAc,
+    calculationKind: EngineeringCalculationKind.powerCableSizing,
+    mounting: ComponentMountingPolicy(
+      allowedSurfaces: const {
+        SurfacePlaneType.wall,
+        SurfacePlaneType.ceiling,
+      },
+    ),
+    environment: const ComponentEnvironmentConstraints(
+      minAmbientC: 0,
+      maxAmbientC: 45,
+      maxRelativeHumidityPercent: 80,
+      allowWetZone: false,
+    ),
+    ports: [
+      EngineeringPortSpec(
+        id: 'power-in',
+        direction: EngineeringPortDirection.input,
+        allowedConnections: const {EngineeringConnectionType.acSinglePhase},
+      ),
+      EngineeringPortSpec(
+        id: 'control',
+        direction: EngineeringPortDirection.input,
+        allowedConnections: const {
+          EngineeringConnectionType.dryContact,
+          EngineeringConnectionType.rs485,
+        },
+      ),
+    ],
+    loadDefaults: const ComponentLoadDefaults(
+      ratedPowerW: 150,
+      nominalVoltageV: 230,
+    ),
+    routePreferenceId: 'automation.curtain',
+  );
+
   static final ComponentCatalogEntryV2 _junctionBox = ComponentCatalogEntryV2(
     id: 'power.junction-box.general',
     code: 'JB-GENERAL',
@@ -364,7 +412,39 @@ abstract final class ComponentCatalogV2 {
     routePreferenceId: 'power.junction',
   );
 
-  static final ComponentCatalogEntryV2 _distributionBoard = ComponentCatalogEntryV2(
+  static final ComponentCatalogEntryV2 _powerSource = ComponentCatalogEntryV2(
+    id: 'power.source.general',
+    code: 'POWER-SOURCE',
+    name: 'Источник питания',
+    discipline: EngineeringDiscipline.power,
+    systemClass: EngineeringSystemClass.powerAc,
+    calculationKind: EngineeringCalculationKind.powerCableSizing,
+    mounting: ComponentMountingPolicy(
+      allowedSurfaces: const {
+        SurfacePlaneType.wall,
+        SurfacePlaneType.floor,
+      },
+    ),
+    environment: const ComponentEnvironmentConstraints(
+      allowWetZone: false,
+      allowCorrosive: false,
+    ),
+    ports: [
+      EngineeringPortSpec(
+        id: 'power-out',
+        direction: EngineeringPortDirection.output,
+        allowedConnections: const {
+          EngineeringConnectionType.acSinglePhase,
+          EngineeringConnectionType.acThreePhase,
+        },
+      ),
+    ],
+    loadDefaults: const ComponentLoadDefaults(nominalVoltageV: 230),
+    routePreferenceId: 'power.source',
+  );
+
+  static final ComponentCatalogEntryV2 _distributionBoard =
+      ComponentCatalogEntryV2(
     id: 'power.distribution-board.general',
     code: 'DB-GENERAL',
     name: 'Распределительный щит',
@@ -470,7 +550,8 @@ abstract final class ComponentCatalogV2 {
     routePreferenceId: 'data.copper',
   );
 
-  static final ComponentCatalogEntryV2 _wifiAccessPoint = ComponentCatalogEntryV2(
+  static final ComponentCatalogEntryV2 _wifiAccessPoint =
+      ComponentCatalogEntryV2(
     id: 'data.wifi-ap.poe',
     code: 'WIFI-AP-POE',
     name: 'Wi-Fi точка доступа PoE',
@@ -478,7 +559,10 @@ abstract final class ComponentCatalogV2 {
     systemClass: EngineeringSystemClass.poeNetwork,
     calculationKind: EngineeringCalculationKind.poePowerBudget,
     mounting: ComponentMountingPolicy(
-      allowedSurfaces: const {SurfacePlaneType.ceiling, SurfacePlaneType.wall},
+      allowedSurfaces: const {
+        SurfacePlaneType.ceiling,
+        SurfacePlaneType.wall,
+      },
     ),
     environment: const ComponentEnvironmentConstraints(
       minAmbientC: 0,
@@ -594,6 +678,31 @@ abstract final class ComponentCatalogV2 {
     ],
     routePreferenceId: 'acs.signal',
   );
+
+  static final ComponentCatalogEntryV2 _custom = ComponentCatalogEntryV2(
+    id: 'custom.component.general',
+    code: 'CUSTOM',
+    name: 'Компонент',
+    discipline: EngineeringDiscipline.automation,
+    systemClass: EngineeringSystemClass.custom,
+    calculationKind: EngineeringCalculationKind.connectivityOnly,
+    mounting: ComponentMountingPolicy(
+      allowedSurfaces: const {
+        SurfacePlaneType.wall,
+        SurfacePlaneType.ceiling,
+        SurfacePlaneType.floor,
+      },
+    ),
+    environment: const ComponentEnvironmentConstraints(),
+    ports: [
+      EngineeringPortSpec(
+        id: 'custom',
+        direction: EngineeringPortDirection.bidirectional,
+        allowedConnections: const {EngineeringConnectionType.custom},
+      ),
+    ],
+    routePreferenceId: 'custom',
+  );
 }
 
 abstract final class LegacyElectricalCatalogAdapter {
@@ -601,13 +710,12 @@ abstract final class LegacyElectricalCatalogAdapter {
         ElectricalComponentType.socketOutlet => 'power.socket.general',
         ElectricalComponentType.switchControl => 'lighting.switch.general',
         ElectricalComponentType.lightingPoint => 'lighting.luminaire.general',
+        ElectricalComponentType.curtainMotor => 'power.motor.curtain',
         ElectricalComponentType.junctionBox => 'power.junction-box.general',
+        ElectricalComponentType.powerSource => 'power.source.general',
         ElectricalComponentType.distributionBoard =>
           'power.distribution-board.general',
-        ElectricalComponentType.curtainMotor => 'power.junction-box.general',
-        ElectricalComponentType.powerSource =>
-          'power.distribution-board.general',
-        ElectricalComponentType.custom => 'power.junction-box.general',
+        ElectricalComponentType.custom => 'custom.component.general',
       };
 
   static ComponentCatalogEntryV2 entryFor(ElectricalComponentType type) =>
