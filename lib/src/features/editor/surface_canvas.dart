@@ -27,11 +27,14 @@ import 'boundary_bottom_editor.dart';
 import 'boundary_edit_panel.dart';
 import 'boundary_edit_session.dart';
 import 'cad_visual_tokens.dart';
+import 'canvas_component_controls.dart';
+import 'canvas_viewport_navigator.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 import 'editor_viewport_commands.dart';
 import 'hosted_route_session.dart';
 import 'route_selection_session.dart';
+import 'viewport_zoom_policy.dart';
 
 class SurfaceCanvas extends StatefulWidget {
   const SurfaceCanvas({
@@ -64,6 +67,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
   Offset? _marqueeCurrent;
   int _lastViewportRevision = 0;
   Size _size = Size.zero;
+  int _componentNudgeStepMm = 100;
   late final AnimationController _routeFlow;
 
   EditorController get controller => widget.controller;
@@ -155,23 +159,68 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
     _camera = _fittedCamera(extent);
   }
 
-  WorldCamera _zoomedCamera(Offset cursor, double factor) {
+  double _fitScale(_SurfaceExtent extent) {
+    if (_size.isEmpty) return 10;
+    final usableWidth = math.max(1.0, _size.width - 176);
+    final usableHeight = math.max(1.0, _size.height - 176);
+    final scaleX = math.max(1, extent.widthMm) / usableWidth;
+    final scaleY = math.max(1, extent.heightMm) / usableHeight;
+    return math.max(scaleX, scaleY);
+  }
+
+  WorldCamera _zoomedCamera(
+    Offset cursor,
+    double factor,
+    _SurfaceExtent extent,
+  ) {
     final camera = _camera;
     if (camera == null || _size.isEmpty) {
       return camera ??
           const WorldCamera(centerMm: MmPoint(0, 0), mmPerPixel: 10);
     }
+    final fitScale = _fitScale(extent);
     return camera.zoomAt(
       factor: factor,
       viewportWidthPx: _size.width,
       viewportHeightPx: _size.height,
       cursorXpx: cursor.dx,
       cursorYpx: cursor.dy,
+      minMmPerPixel: ViewportZoomPolicy.minMmPerPixel(fitScale),
+      maxMmPerPixel: ViewportZoomPolicy.maxMmPerPixel(fitScale),
     );
   }
 
-  void _zoomAt(Offset cursor, double factor) {
-    setState(() => _camera = _zoomedCamera(cursor, factor));
+  void _zoomAt(Offset cursor, double factor, _SurfaceExtent extent) {
+    setState(() => _camera = _zoomedCamera(cursor, factor, extent));
+  }
+
+  void _panViewport(int dxSteps, int dySteps) {
+    if (_camera == null || _size.isEmpty) return;
+    setState(() {
+      _camera = _camera!.panPixels(
+        -dxSteps * _size.width * 0.22,
+        dySteps * _size.height * 0.22,
+      );
+    });
+  }
+
+  void _nudgeSelectedComponent(
+    int dxSteps,
+    int dySteps,
+    _SurfaceProjection projection,
+  ) {
+    final component = controller.p2.selectedComponent;
+    if (component == null || component.surface != controller.activeSurface) {
+      return;
+    }
+    final next = SurfacePointMm(
+      component.position.xMm + dxSteps * _componentNudgeStepMm,
+      component.position.yMm + dySteps * _componentNudgeStepMm,
+    );
+    if (!_pointIsUsable(next, projection)) {
+      return;
+    }
+    controller.p2.moveSelectedComponent(next);
   }
 
   void _consumeViewportCommand(_SurfaceExtent extent) {
@@ -183,9 +232,9 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
     final center = _size.center(Offset.zero);
     switch (controller.viewportCommand) {
       case EditorViewportCommand.zoomIn:
-        _camera = _zoomedCamera(center, 1.25);
+        _camera = _zoomedCamera(center, 1.25, extent);
       case EditorViewportCommand.zoomOut:
-        _camera = _zoomedCamera(center, 0.8);
+        _camera = _zoomedCamera(center, 0.8, extent);
       case EditorViewportCommand.reset:
         _camera = _fittedCamera(extent);
       case null:
@@ -205,12 +254,16 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
     if (startCamera == null || startFocal == null) return;
     final delta = details.localFocalPoint - startFocal;
     var next = startCamera.panPixels(delta.dx, delta.dy);
+    final extent = _SurfaceExtent.fromController(controller);
+    final fitScale = _fitScale(extent);
     next = next.zoomAt(
       factor: details.scale,
       viewportWidthPx: _size.width,
       viewportHeightPx: _size.height,
       cursorXpx: details.localFocalPoint.dx,
       cursorYpx: details.localFocalPoint.dy,
+      minMmPerPixel: ViewportZoomPolicy.minMmPerPixel(fitScale),
+      maxMmPerPixel: ViewportZoomPolicy.maxMmPerPixel(fitScale),
     );
     setState(() => _camera = next);
   }
@@ -715,6 +768,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                     _zoomAt(
                       event.localPosition,
                       event.scrollDelta.dy < 0 ? 1.18 : 1 / 1.18,
+                      extent,
                     );
                   }
                 },
@@ -841,9 +895,41 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
             ),
             Positioned(
               right: compact ? 8 : 12,
+              top: compact ? 48 : 52,
+              child: CanvasViewportNavigator(
+                onPan: _panViewport,
+                onZoomIn: () => _zoomAt(
+                  _size.center(Offset.zero),
+                  1.25,
+                  extent,
+                ),
+                onZoomOut: () => _zoomAt(
+                  _size.center(Offset.zero),
+                  0.8,
+                  extent,
+                ),
+                onFit: () => setState(() => _camera = _fittedCamera(extent)),
+              ),
+            ),
+            Positioned(
+              right: compact ? 8 : 12,
               bottom: bottomEditorVisible ? 148 : (compact ? 8 : 12),
               child: _EdgeNavigationHint(surface: surface),
             ),
+            if (controller.p2.selectedComponent case final component?)
+              Positioned(
+                left: compact ? 8 : 12,
+                bottom: bottomEditorVisible ? 148 : (compact ? 8 : 12),
+                child: CanvasComponentControls(
+                  label: component.label,
+                  stepMm: _componentNudgeStepMm,
+                  onStepChanged: (value) =>
+                      setState(() => _componentNudgeStepMm = value),
+                  onMove: (dx, dy) =>
+                      _nudgeSelectedComponent(dx, dy, projection),
+                  onDelete: controller.p2.deleteSelection,
+                ),
+              ),
             if (controller.p2.placementType case final type?)
               Positioned(
                 left: 12,
