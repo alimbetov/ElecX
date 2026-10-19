@@ -2,7 +2,6 @@ import '../../domain/component_catalog_v2.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/command_history.dart';
-import '../../engine/selection_engine.dart';
 import 'editor_p2_session.dart';
 
 extension CatalogComponentPlacement on EditorP2Session {
@@ -31,16 +30,7 @@ extension CatalogComponentPlacement on EditorP2Session {
     );
 
     history.execute(_AddCatalogComponentCommand(component));
-    history.replaceState(
-      history.state.copyWith(
-        selection: SelectionState(
-          ids: {component.id},
-          primaryId: component.id,
-        ),
-      ),
-      clearHistory: false,
-    );
-    notifyListeners();
+    select(component.id);
     return component;
   }
 }
