@@ -6,6 +6,7 @@ on:
       - feat/spatial-editor-interaction-hardening
     paths:
       - tool/harden_interaction_once.py
+      - tool/run_harden_interaction_once.py
       - .github/workflows/harden-interaction-once.yml
 
 permissions:
@@ -23,7 +24,7 @@ jobs:
         with:
           channel: stable
       - name: Apply hardening patch
-        run: python3 tool/harden_interaction_once.py
+        run: python3 tool/run_harden_interaction_once.py
       - name: Format
         run: dart format lib test
       - name: Analyze
@@ -33,6 +34,7 @@ jobs:
       - name: Remove one-shot helper
         run: |
           rm -f tool/harden_interaction_once.py
+          rm -f tool/run_harden_interaction_once.py
           rm -f .github/workflows/harden-interaction-once.yml
       - name: Commit verified hardening
         run: |
