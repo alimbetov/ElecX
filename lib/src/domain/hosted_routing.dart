@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'electrical_routing.dart';
 import 'geometry.dart';
 import 'route_host.dart';
+import 'route_medium.dart';
 
 final class HostedRouteSegment {
   HostedRouteSegment({
@@ -35,6 +36,7 @@ final class HostedRoutePath {
     required this.routeId,
     required Iterable<HostedRouteSegment> segments,
     this.transitions = const [],
+    this.medium = RouteMediumProfile.generic,
   }) : segments = List.unmodifiable(segments) {
     if (routeId.isEmpty) throw ArgumentError('Route id must be non-empty.');
     if (this.segments.isEmpty) {
@@ -45,6 +47,7 @@ final class HostedRoutePath {
   final String routeId;
   final List<HostedRouteSegment> segments;
   final List<RouteHostTransition> transitions;
+  final RouteMediumProfile medium;
 
   double get lengthMm =>
       segments.fold(0.0, (sum, segment) => sum + segment.lengthMm);
@@ -69,6 +72,7 @@ abstract final class HostedRouteAdapter {
   static HostedRoutePath fromIndoor(ElectricalCableRoute route) =>
       HostedRoutePath(
         routeId: route.id,
+        medium: route.medium,
         segments: [
           for (final segment in route.segments)
             HostedRouteSegment(
