@@ -14,7 +14,8 @@ void main() {
 
     final initial = controller.placementCursor.ensure();
     expect(initial, isNotNull);
-    expect(initial!.position.xMm, 2100);
+    expect(initial!.componentTypeId, 'power.socket.general');
+    expect(initial.position.xMm, 2100);
     expect(initial.position.yMm, 300);
     expect(initial.snapKind, PlacementCursorSnapKind.installationGuide);
     expect(initial.snapLabel, 'SOCKET-GENERAL 300');
@@ -29,6 +30,7 @@ void main() {
 
     expect(controller.placementCursor.confirm(), isTrue);
     expect(controller.p2.components, hasLength(1));
+    expect(controller.p2.components.single.componentTypeId, 'power.socket.general');
     expect(controller.p2.components.single.position.xMm, 2200);
     expect(controller.p2.components.single.position.yMm, 200);
     expect(controller.p2.components.single.surface, controller.activeSurface);
@@ -59,6 +61,27 @@ void main() {
     expect(cursor, isNotNull);
     expect(cursor!.isValid, isTrue);
     expect(controller.placementCursor.confirm(), isTrue);
-    expect(controller.p2.components.single.type, ElectricalComponentType.lightingPoint);
+    expect(
+      controller.p2.components.single.componentTypeId,
+      'lighting.luminaire.general',
+    );
+  });
+
+  test('CCTV placement keeps canonical catalog componentTypeId', () {
+    final controller = EditorController.demo();
+    addTearDown(controller.dispose);
+    controller.showWall(0);
+
+    controller.placementCursor.beginCatalogPlacement('cctv.camera.poe');
+    final cursor = controller.placementCursor.ensure();
+    expect(cursor, isNotNull);
+    expect(cursor!.componentTypeId, 'cctv.camera.poe');
+    expect(cursor.isValid, isTrue);
+
+    expect(controller.placementCursor.confirm(), isTrue);
+    final camera = controller.p2.components.single;
+    expect(camera.componentTypeId, 'cctv.camera.poe');
+    expect(camera.type, ElectricalComponentType.custom);
+    expect(camera.label, contains('IP-камера PoE'));
   });
 }
