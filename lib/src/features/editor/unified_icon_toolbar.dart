@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/component_catalog_v2.dart';
 import '../../domain/engineering_graph.dart';
+import '../../domain/surfaces.dart';
 import '../../engine/editor_layers.dart';
 import '../../engine/route_engine.dart';
 import 'editor_controller.dart';
@@ -228,7 +229,8 @@ class _ComponentCatalogPaletteButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selectedId = controller.placementCursor.activeComponentTypeId;
-    final selected = selectedId == null ? null : ComponentCatalogV2.byId(selectedId);
+    final selected =
+        selectedId == null ? null : ComponentCatalogV2.byId(selectedId);
     final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 1),
