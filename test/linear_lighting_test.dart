@@ -15,8 +15,7 @@ void main() {
     cutStepMm: 50,
   );
 
-  test('distributed load derives power, current and light output from length',
-      () {
+  test('distributed load derives power, current and light output from length', () {
     final run = LinearLuminaireRun(
       id: 'strip-1',
       specId: spec.id,
@@ -33,6 +32,7 @@ void main() {
     expect(result.luminousFluxLm, closeTo(4800, 0.001));
     expect(result.requiredFeedSections, 1);
     expect(result.withinContinuousLength, isTrue);
+    expect(result.cutStepAligned, isTrue);
   });
 
   test('long run requests additional feed sections', () {
@@ -45,13 +45,22 @@ void main() {
     );
 
     final result = LinearLuminaireEngine.summarize(run: run, spec: spec);
+    final validation = LinearLuminaireEngine.validate(run: run, spec: spec);
 
     expect(result.requiredFeedSections, 3);
     expect(result.withinContinuousLength, isFalse);
+    expect(validation.isValid, isTrue);
+    expect(
+      validation.issues.any(
+        (issue) =>
+            issue.code ==
+            LinearLuminaireValidationCode.continuousLengthExceeded,
+      ),
+      isTrue,
+    );
   });
 
-  test('requested length snaps to strip cut step without collapsing to zero',
-      () {
+  test('requested length snaps to strip cut step without collapsing to zero', () {
     expect(
       LinearLuminaireEngine.snapLengthToCutStep(
         requestedLengthMm: 1032,
@@ -72,6 +81,110 @@ void main() {
         spec: spec,
       ),
       0,
+    );
+  });
+
+  test('actual run that misses a cut mark is non-committable', () {
+    final run = LinearLuminaireRun(
+      id: 'strip-cut-error',
+      specId: spec.id,
+      surface: surface,
+      points: const [SurfacePointMm(0, 0), SurfacePointMm(1032, 0)],
+      feedMode: LinearLuminaireFeedMode.start,
+    );
+
+    final validation = LinearLuminaireEngine.validate(run: run, spec: spec);
+
+    expect(validation.summary.cutStepAligned, isFalse);
+    expect(validation.isValid, isFalse);
+    expect(
+      validation.issues.any(
+        (issue) =>
+            issue.code == LinearLuminaireValidationCode.cutStepMismatch &&
+            issue.severity == LinearLuminaireValidationSeverity.error,
+      ),
+      isTrue,
+    );
+  });
+
+  test('matching driver validates voltage and design power headroom', () {
+    final run = LinearLuminaireRun(
+      id: 'strip-driver-ok',
+      specId: spec.id,
+      surface: surface,
+      points: const [SurfacePointMm(0, 0), SurfacePointMm(4000, 0)],
+      feedMode: LinearLuminaireFeedMode.start,
+      driverComponentId: 'driver-1',
+    );
+    final driver = LinearLuminaireDriverEvidence(
+      componentId: 'driver-1',
+      outputVoltageV: 24,
+      ratedPowerW: 100,
+      designLoadFraction: 0.8,
+    );
+
+    final validation = LinearLuminaireEngine.validate(
+      run: run,
+      spec: spec,
+      driver: driver,
+    );
+
+    expect(validation.isValid, isTrue);
+    expect(validation.hasWarnings, isFalse);
+  });
+
+  test('driver voltage mismatch and insufficient usable power are errors', () {
+    final run = LinearLuminaireRun(
+      id: 'strip-driver-bad',
+      specId: spec.id,
+      surface: surface,
+      points: const [SurfacePointMm(0, 0), SurfacePointMm(4000, 0)],
+      feedMode: LinearLuminaireFeedMode.start,
+      driverComponentId: 'driver-1',
+    );
+    final driver = LinearLuminaireDriverEvidence(
+      componentId: 'driver-1',
+      outputVoltageV: 12,
+      ratedPowerW: 60,
+      designLoadFraction: 0.8,
+    );
+
+    final validation = LinearLuminaireEngine.validate(
+      run: run,
+      spec: spec,
+      driver: driver,
+    );
+
+    expect(validation.isValid, isFalse);
+    expect(
+      validation.issues.map((issue) => issue.code),
+      containsAll([
+        LinearLuminaireValidationCode.driverVoltageMismatch,
+        LinearLuminaireValidationCode.driverPowerInsufficient,
+      ]),
+    );
+  });
+
+  test('assigned driver without evidence remains explicitly indeterminate', () {
+    final run = LinearLuminaireRun(
+      id: 'strip-driver-unknown',
+      specId: spec.id,
+      surface: surface,
+      points: const [SurfacePointMm(0, 0), SurfacePointMm(2000, 0)],
+      feedMode: LinearLuminaireFeedMode.start,
+      driverComponentId: 'driver-unknown',
+    );
+
+    final validation = LinearLuminaireEngine.validate(run: run, spec: spec);
+
+    expect(validation.isValid, isTrue);
+    expect(validation.hasWarnings, isTrue);
+    expect(
+      validation.issues.any(
+        (issue) =>
+            issue.code == LinearLuminaireValidationCode.driverEvidenceMissing,
+      ),
+      isTrue,
     );
   });
 
@@ -110,6 +223,18 @@ void main() {
       () => LinearLuminaireEngine.summarize(run: run, spec: oneEndOnly),
       throwsArgumentError,
     );
+    final validation = LinearLuminaireEngine.validate(
+      run: run,
+      spec: oneEndOnly,
+    );
+    expect(validation.isValid, isFalse);
+    expect(
+      validation.issues.any(
+        (issue) =>
+            issue.code == LinearLuminaireValidationCode.unsupportedFeedMode,
+      ),
+      isTrue,
+    );
   });
 
   test('run geometry is immutable after construction', () {
@@ -128,7 +253,9 @@ void main() {
     mutable[1] = const SurfacePointMm(5000, 0);
 
     expect(run.geometricLengthMm, 1000);
-    expect(() => run.points.add(const SurfacePointMm(2000, 0)),
-        throwsUnsupportedError);
+    expect(
+      () => run.points.add(const SurfacePointMm(2000, 0)),
+      throwsUnsupportedError,
+    );
   });
 }
