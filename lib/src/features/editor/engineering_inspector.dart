@@ -128,19 +128,49 @@ class EngineeringInspector extends StatelessWidget {
         FilledButton.tonalIcon(
           onPressed: () => _showWallProfileDialog(context, wall),
           icon: const Icon(Icons.account_tree_outlined, size: 17),
-          label: const Text('Балка / выемка'),
+          label: Text(notch == null ? 'Добавить балку / выемку' : 'Открыть редактор балки'),
         ),
         if (notch != null) ...[
           const SizedBox(height: 7),
           const _DirectionCaption(
             icon: Icons.open_with,
-            text: 'Балка: ←/→ вдоль стены, ↑/↓ по глубине',
+            text: 'Балка: параметры применяются по Enter или при выходе из поля',
+          ),
+          const SizedBox(height: 6),
+          _CommitIntField(
+            key: ValueKey('beam-x-${notch.startMm}'),
+            label: 'X от начала стены',
+            value: notch.startMm,
+            onCommit: (value) => controller.addActiveWallTopNotch(
+              startMm: value,
+              widthMm: notch.widthMm,
+              depthMm: notch.depthMm,
+            ),
+          ),
+          const SizedBox(height: 6),
+          _CommitIntField(
+            key: ValueKey('beam-width-${notch.widthMm}'),
+            label: 'Ширина балки',
+            value: notch.widthMm,
+            onCommit: (value) => controller.addActiveWallTopNotch(
+              startMm: notch.startMm,
+              widthMm: value,
+              depthMm: notch.depthMm,
+            ),
+          ),
+          const SizedBox(height: 6),
+          _CommitIntField(
+            key: ValueKey('beam-depth-${notch.depthMm}'),
+            label: 'Высота / глубина балки',
+            value: notch.depthMm,
+            onCommit: (value) => controller.addActiveWallTopNotch(
+              startMm: notch.startMm,
+              widthMm: notch.widthMm,
+              depthMm: value,
+            ),
           ),
           const SizedBox(height: 5),
-          _ValueRow(
-            'Балка',
-            'X ${notch.startMm} · ${notch.widthMm}×${notch.depthMm} mm',
-          ),
+          _ValueRow('Нижняя отметка', '${wall.heightMm - notch.depthMm} mm'),
           Row(
             children: [
               Expanded(
@@ -325,7 +355,7 @@ class EngineeringInspector extends StatelessWidget {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Балка / выемка'),
+          title: Text(current == null ? 'Добавить балку / выемку' : 'Редактировать балку / выемку'),
           content: SizedBox(
             width: 360,
             child: Column(
@@ -344,9 +374,17 @@ class EngineeringInspector extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 _IntEditor(
-                  label: 'Глубина вниз',
+                  label: 'Высота / глубина вниз',
                   value: depthMm,
                   onChanged: (value) => depthMm = value,
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Стена: ${wall.lengthMm.round()} × ${wall.heightMm} mm',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ),
                 if (error != null) ...[
                   const SizedBox(height: 8),
@@ -412,7 +450,7 @@ class _OpeningEditor extends StatelessWidget {
           children: [
             const _DirectionCaption(
               icon: Icons.swap_horiz,
-              text: 'Проём перемещается только вдоль стены',
+              text: 'Введите размер и нажмите Enter или перейдите в другое поле',
             ),
             const SizedBox(height: 5),
             Row(
@@ -455,34 +493,34 @@ class _OpeningEditor extends StatelessWidget {
               },
             ),
             const SizedBox(height: 6),
-            _SubmitIntField(
+            _CommitIntField(
               key: ValueKey('${opening.id}-offset-${opening.offsetFromStartMm}'),
-              label: 'Позиция',
+              label: 'Позиция от начала стены',
               value: opening.offsetFromStartMm,
-              onSubmit: (value) => controller.updateSelectedOpening(
+              onCommit: (value) => controller.updateSelectedOpening(
                 offsetFromStartMm: value,
               ),
             ),
             const SizedBox(height: 6),
-            _SubmitIntField(
+            _CommitIntField(
               key: ValueKey('${opening.id}-width-${opening.widthMm}'),
               label: 'Ширина',
               value: opening.widthMm,
-              onSubmit: (value) => controller.updateSelectedOpening(widthMm: value),
+              onCommit: (value) => controller.updateSelectedOpening(widthMm: value),
             ),
             const SizedBox(height: 6),
-            _SubmitIntField(
+            _CommitIntField(
               key: ValueKey('${opening.id}-height-${opening.heightMm}'),
               label: 'Высота',
               value: opening.heightMm,
-              onSubmit: (value) => controller.updateSelectedOpening(heightMm: value),
+              onCommit: (value) => controller.updateSelectedOpening(heightMm: value),
             ),
             const SizedBox(height: 6),
-            _SubmitIntField(
+            _CommitIntField(
               key: ValueKey('${opening.id}-sill-${opening.sillHeightMm}'),
-              label: 'От пола',
+              label: 'От пола / подоконник',
               value: opening.sillHeightMm,
-              onSubmit: (value) => controller.updateSelectedOpening(sillHeightMm: value),
+              onCommit: (value) => controller.updateSelectedOpening(sillHeightMm: value),
             ),
             TextButton.icon(
               onPressed: controller.deleteSelectedOpening,
@@ -517,29 +555,96 @@ class _DirectionCaption extends StatelessWidget {
       );
 }
 
-class _SubmitIntField extends StatelessWidget {
-  const _SubmitIntField({
+class _CommitIntField extends StatefulWidget {
+  const _CommitIntField({
     required this.label,
     required this.value,
-    required this.onSubmit,
+    required this.onCommit,
     super.key,
   });
 
   final String label;
   final int value;
-  final ValueChanged<int> onSubmit;
+  final bool Function(int) onCommit;
 
   @override
-  Widget build(BuildContext context) => TextFormField(
-        initialValue: '$value',
+  State<_CommitIntField> createState() => _CommitIntFieldState();
+}
+
+class _CommitIntFieldState extends State<_CommitIntField> {
+  late final TextEditingController _textController;
+  late final FocusNode _focusNode;
+  String? _error;
+  String? _lastAttemptedText;
+
+  @override
+  void initState() {
+    super.initState();
+    _textController = TextEditingController(text: '${widget.value}');
+    _focusNode = FocusNode()..addListener(_handleFocusChange);
+  }
+
+  @override
+  void didUpdateWidget(covariant _CommitIntField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_focusNode.hasFocus && oldWidget.value != widget.value) {
+      _textController.text = '${widget.value}';
+      _lastAttemptedText = null;
+      _error = null;
+    }
+  }
+
+  void _handleFocusChange() {
+    if (!_focusNode.hasFocus) {
+      _commit();
+    }
+  }
+
+  void _commit() {
+    final text = _textController.text.trim();
+    if (text == '${widget.value}' || text == _lastAttemptedText) {
+      return;
+    }
+    _lastAttemptedText = text;
+    final parsed = int.tryParse(text);
+    if (parsed == null) {
+      setState(() => _error = 'Введите целое число');
+      return;
+    }
+    final accepted = widget.onCommit(parsed);
+    if (!mounted) return;
+    setState(() {
+      _error = accepted ? null : 'Размер недопустим для текущей геометрии';
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode
+      ..removeListener(_handleFocusChange)
+      ..dispose();
+    _textController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => TextField(
+        controller: _textController,
+        focusNode: _focusNode,
         keyboardType: TextInputType.number,
         textInputAction: TextInputAction.done,
-        decoration: InputDecoration(labelText: label, suffixText: 'mm'),
-        onFieldSubmitted: (text) {
-          final parsed = int.tryParse(text);
-          if (parsed != null) {
-            onSubmit(parsed);
-          }
+        decoration: InputDecoration(
+          labelText: widget.label,
+          suffixText: 'mm',
+          errorText: _error,
+        ),
+        onChanged: (_) {
+          _lastAttemptedText = null;
+          if (_error != null) setState(() => _error = null);
+        },
+        onSubmitted: (_) {
+          _commit();
+          _focusNode.unfocus();
         },
       );
 }
