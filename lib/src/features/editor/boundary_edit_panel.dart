@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/boundary_editing.dart';
+import 'boundary_bottom_editor.dart';
 import 'boundary_edit_session.dart';
 import 'editor_controller.dart';
 
@@ -58,13 +59,22 @@ class BoundaryEditPanel extends StatelessWidget {
                     ),
                   ],
                   selected: selected,
-                  onSelectionChanged: (value) {
-                    if (value.isNotEmpty) session.setProfile(value.first);
+                  onSelectionChanged: (value) async {
+                    if (value.isEmpty || value.first == session.profile) return;
+                    final resolved = await resolveBoundaryDraft(
+                      context,
+                      controller,
+                    );
+                    if (!resolved || !context.mounted) return;
+                    session.setProfile(value.first);
                   },
                 ),
                 const SizedBox(width: 6),
                 IconButton(
-                  onPressed: session.exit,
+                  onPressed: () => requestBoundaryEditorExit(
+                    context,
+                    controller,
+                  ),
                   tooltip: 'Выйти из редактирования границ',
                   icon: const Icon(Icons.close, size: 18),
                 ),
