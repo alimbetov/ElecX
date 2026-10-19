@@ -161,7 +161,7 @@ class _UnifiedWorkspaceEditorScreenState
                         );
           final planContext =
               workspace.context == EditorWorkspaceContext.siteOutdoor ||
-              controller.viewMode == EditorViewMode.plan;
+                  controller.viewMode == EditorViewMode.plan;
           final canvas = Stack(
             children: [
               Positioned.fill(child: rawCanvas),

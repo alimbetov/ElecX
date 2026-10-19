@@ -12,6 +12,7 @@ import '../../engine/editor_layers.dart';
 import '../../engine/route_engine.dart';
 import '../../engine/selection_engine.dart';
 import '../../engine/snap_engine.dart';
+import 'cable_route_constraints.dart';
 import 'editor_controller.dart';
 
 final class EditorP2State {
@@ -19,27 +20,31 @@ final class EditorP2State {
     this.components = const [],
     this.routes = const [],
     this.selection = const SelectionState(),
+    this.routeConstraints = const {},
   });
 
   final List<ElectricalComponentPlacement> components;
   final List<ElectricalCableRoute> routes;
   final SelectionState selection;
+  final Map<String, CableRouteConstraints> routeConstraints;
 
   EditorP2State copyWith({
     List<ElectricalComponentPlacement>? components,
     List<ElectricalCableRoute>? routes,
     SelectionState? selection,
+    Map<String, CableRouteConstraints>? routeConstraints,
   }) =>
       EditorP2State(
         components: components ?? this.components,
         routes: routes ?? this.routes,
         selection: selection ?? this.selection,
+        routeConstraints: routeConstraints ?? this.routeConstraints,
       );
 }
 
 final class EditorP2Session extends ChangeNotifier {
-  EditorP2Session()
-      : history = CommandHistory<EditorP2State>(const EditorP2State());
+  EditorP2Session({EditorP2State initialState = const EditorP2State()})
+      : history = CommandHistory<EditorP2State>(initialState);
 
   final CommandHistory<EditorP2State> history;
   final EditorLayerRegistry layers = EditorLayerRegistry();
@@ -70,6 +75,9 @@ final class EditorP2Session extends ChangeNotifier {
   List<ElectricalComponentPlacement> get selectedComponents => components
       .where((component) => selection.ids.contains(component.id))
       .toList(growable: false);
+
+  CableRouteConstraints routeConstraintsFor(String routeId) =>
+      state.routeConstraints[routeId] ?? CableRouteConstraints.empty;
 
   void setPlacementType(ElectricalComponentType? type) {
     placementType = type;
@@ -194,6 +202,60 @@ final class EditorP2Session extends ChangeNotifier {
       return false;
     }
     history.execute(_ReplaceCableRouteCommand(before: before, after: after));
+    notifyListeners();
+    return true;
+  }
+
+  bool toggleRouteSegmentLock(String routeId, int segmentIndex) {
+    final route = _routeForId(routeId);
+    if (route == null ||
+        segmentIndex < 0 ||
+        segmentIndex >= route.segments.length) {
+      return false;
+    }
+    final before = routeConstraintsFor(routeId);
+    final after = before.toggleSegmentLock(segmentIndex);
+    history.execute(
+      _ReplaceRouteConstraintsCommand(
+        routeId: routeId,
+        before: before,
+        after: after,
+      ),
+    );
+    notifyListeners();
+    return true;
+  }
+
+  bool toggleRouteWaypoint({
+    required String routeId,
+    required int segmentIndex,
+    required int pointIndex,
+    required SurfacePointMm point,
+  }) {
+    final route = _routeForId(routeId);
+    if (route == null ||
+        segmentIndex < 0 ||
+        segmentIndex >= route.segments.length) {
+      return false;
+    }
+    final points = route.segments[segmentIndex].points;
+    if (pointIndex < 0 || pointIndex >= points.length) return false;
+    final actual = points[pointIndex];
+    if (actual.xMm != point.xMm || actual.yMm != point.yMm) return false;
+
+    final before = routeConstraintsFor(routeId);
+    final after = before.toggleWaypoint(
+      segmentIndex: segmentIndex,
+      pointIndex: pointIndex,
+      point: point,
+    );
+    history.execute(
+      _ReplaceRouteConstraintsCommand(
+        routeId: routeId,
+        before: before,
+        after: after,
+      ),
+    );
     notifyListeners();
     return true;
   }
@@ -376,6 +438,13 @@ final class EditorP2Session extends ChangeNotifier {
     if (notify) notifyListeners();
   }
 
+  ElectricalCableRoute? _routeForId(String routeId) {
+    for (final route in routes) {
+      if (route.id == routeId) return route;
+    }
+    return null;
+  }
+
   static bool _sameSnap(SnapCandidate? a, SnapCandidate? b) =>
       a?.kind == b?.kind &&
       a?.point.x == b?.point.x &&
@@ -430,6 +499,41 @@ final class EditorP2Session extends ChangeNotifier {
 
   static double _axisDistance(SurfacePointMm a, SurfacePointMm b) =>
       (a.xMm - b.xMm).abs().toDouble() + (a.yMm - b.yMm).abs().toDouble();
+}
+
+final class _ReplaceRouteConstraintsCommand
+    implements EditorCommand<EditorP2State> {
+  const _ReplaceRouteConstraintsCommand({
+    required this.routeId,
+    required this.before,
+    required this.after,
+  });
+
+  final String routeId;
+  final CableRouteConstraints before;
+  final CableRouteConstraints after;
+
+  @override
+  String get label => 'Edit cable route constraints';
+
+  @override
+  EditorP2State execute(EditorP2State state) => _replace(state, after);
+
+  @override
+  EditorP2State undo(EditorP2State state) => _replace(state, before);
+
+  EditorP2State _replace(
+    EditorP2State state,
+    CableRouteConstraints constraints,
+  ) {
+    final next = Map<String, CableRouteConstraints>.of(state.routeConstraints);
+    if (constraints.isEmpty) {
+      next.remove(routeId);
+    } else {
+      next[routeId] = constraints;
+    }
+    return state.copyWith(routeConstraints: Map.unmodifiable(next));
+  }
 }
 
 final class _ReplaceCableRouteCommand implements EditorCommand<EditorP2State> {

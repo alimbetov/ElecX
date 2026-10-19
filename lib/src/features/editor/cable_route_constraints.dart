@@ -62,7 +62,8 @@ final class CableRouteConstraints {
 
   bool get isEmpty => lockedSegments.isEmpty && mandatoryWaypoints.isEmpty;
 
-  bool isSegmentLocked(int segmentIndex) => lockedSegments.contains(segmentIndex);
+  bool isSegmentLocked(int segmentIndex) =>
+      lockedSegments.contains(segmentIndex);
 
   bool segmentHasWaypoints(int segmentIndex) => mandatoryWaypoints.any(
         (item) => item.segmentIndex == segmentIndex,

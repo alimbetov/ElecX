@@ -2,27 +2,20 @@ import 'package:flutter/foundation.dart';
 
 import '../../domain/surfaces.dart';
 import '../../engine/normative_route_engine.dart';
+import 'cable_route_constraints.dart';
 import 'editor_controller.dart';
+import 'editor_p2_session.dart';
 
-final class CableMandatoryWaypoint {
-  const CableMandatoryWaypoint({
-    required this.segmentIndex,
-    required this.pointIndex,
-    required this.point,
-  });
-
-  final int segmentIndex;
-  final int pointIndex;
-  final SurfacePointMm point;
-}
-
-/// Ephemeral editor state for cable manipulation. Geometry itself remains in
-/// EditorP2Session/history; this class only owns interaction mode and editing
-/// constraints that are not yet persisted in the project schema.
+/// Transient interaction focus/mode for cable editing.
+///
+/// Persistent lock and mandatory-waypoint state lives in EditorP2State. This
+/// session deliberately owns only interaction state that may disappear when a
+/// widget/controller is recreated.
 final class CableEditorUiSession extends ChangeNotifier {
+  CableEditorUiSession(this._controller);
+
+  final EditorController _controller;
   CableRoutingMode _mode = CableRoutingMode.auto;
-  final Map<String, Set<int>> _lockedSegments = {};
-  final Map<String, List<CableMandatoryWaypoint>> _waypoints = {};
   String? _activeRouteId;
   int? _activeSegmentIndex;
   int? _activePointIndex;
@@ -66,8 +59,11 @@ final class CableEditorUiSession extends ChangeNotifier {
     notifyListeners();
   }
 
+  CableRouteConstraints _constraints(String routeId) =>
+      _controller.p2.routeConstraintsFor(routeId);
+
   bool isSegmentLocked(String routeId, int segmentIndex) =>
-      _lockedSegments[routeId]?.contains(segmentIndex) ?? false;
+      _constraints(routeId).isSegmentLocked(segmentIndex);
 
   bool get activeSegmentLocked {
     final routeId = _activeRouteId;
@@ -81,29 +77,22 @@ final class CableEditorUiSession extends ChangeNotifier {
     final routeId = _activeRouteId;
     final segmentIndex = _activeSegmentIndex;
     if (routeId == null || segmentIndex == null) return;
-    final set = _lockedSegments.putIfAbsent(routeId, () => <int>{});
-    if (!set.add(segmentIndex)) set.remove(segmentIndex);
-    if (set.isEmpty) _lockedSegments.remove(routeId);
-    notifyListeners();
+    if (_controller.p2.toggleRouteSegmentLock(routeId, segmentIndex)) {
+      notifyListeners();
+    }
   }
 
   bool routeHasLockedSegments(String routeId) =>
-      _lockedSegments[routeId]?.isNotEmpty ?? false;
+      _constraints(routeId).lockedSegments.isNotEmpty;
 
   bool segmentHasWaypoints(String routeId, int segmentIndex) =>
-      (_waypoints[routeId] ?? const <CableMandatoryWaypoint>[]).any(
-        (item) => item.segmentIndex == segmentIndex,
-      );
+      _constraints(routeId).segmentHasWaypoints(segmentIndex);
 
   List<CableMandatoryWaypoint> waypointsFor(String routeId) =>
-      List.unmodifiable(
-          _waypoints[routeId] ?? const <CableMandatoryWaypoint>[]);
+      _constraints(routeId).mandatoryWaypoints;
 
   bool isWaypoint(String routeId, int segmentIndex, int pointIndex) =>
-      (_waypoints[routeId] ?? const <CableMandatoryWaypoint>[]).any(
-        (item) =>
-            item.segmentIndex == segmentIndex && item.pointIndex == pointIndex,
-      );
+      _constraints(routeId).isWaypoint(segmentIndex, pointIndex);
 
   bool get activePointIsWaypoint {
     final routeId = _activeRouteId;
@@ -120,56 +109,14 @@ final class CableEditorUiSession extends ChangeNotifier {
     final segmentIndex = _activeSegmentIndex;
     final pointIndex = _activePointIndex;
     if (routeId == null || segmentIndex == null || pointIndex == null) return;
-    final list = _waypoints.putIfAbsent(
-      routeId,
-      () => <CableMandatoryWaypoint>[],
-    );
-    final existing = list.indexWhere(
-      (item) =>
-          item.segmentIndex == segmentIndex && item.pointIndex == pointIndex,
-    );
-    if (existing >= 0) {
-      list.removeAt(existing);
-    } else {
-      list.add(
-        CableMandatoryWaypoint(
-          segmentIndex: segmentIndex,
-          pointIndex: pointIndex,
-          point: point,
-        ),
-      );
+    if (_controller.p2.toggleRouteWaypoint(
+      routeId: routeId,
+      segmentIndex: segmentIndex,
+      pointIndex: pointIndex,
+      point: point,
+    )) {
+      notifyListeners();
     }
-    if (list.isEmpty) _waypoints.remove(routeId);
-    notifyListeners();
-  }
-
-  /// Rebinds waypoint coordinates after an accepted route edit. A waypoint is
-  /// retained only while its referenced point still exists.
-  void reconcileRoutePoints(
-    String routeId,
-    List<List<SurfacePointMm>> segmentPoints,
-  ) {
-    final existing = _waypoints[routeId];
-    if (existing == null || existing.isEmpty) return;
-    final next = <CableMandatoryWaypoint>[];
-    for (final waypoint in existing) {
-      if (waypoint.segmentIndex >= segmentPoints.length) continue;
-      final points = segmentPoints[waypoint.segmentIndex];
-      if (waypoint.pointIndex >= points.length) continue;
-      next.add(
-        CableMandatoryWaypoint(
-          segmentIndex: waypoint.segmentIndex,
-          pointIndex: waypoint.pointIndex,
-          point: points[waypoint.pointIndex],
-        ),
-      );
-    }
-    if (next.isEmpty) {
-      _waypoints.remove(routeId);
-    } else {
-      _waypoints[routeId] = next;
-    }
-    notifyListeners();
   }
 }
 
@@ -178,5 +125,5 @@ final Expando<CableEditorUiSession> _cableUiSessions =
 
 extension CableEditorUiSessionAccess on EditorController {
   CableEditorUiSession get cableUi =>
-      _cableUiSessions[this] ??= CableEditorUiSession();
+      _cableUiSessions[this] ??= CableEditorUiSession(this);
 }

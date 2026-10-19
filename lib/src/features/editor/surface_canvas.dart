@@ -915,14 +915,6 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
       } else {
         if (cancelled || !controller.cableRouteEdit.commit()) {
           controller.cableRouteEdit.cancel();
-        } else {
-          final route = controller.routeSelection.selectedRoute;
-          if (route != null) {
-            controller.cableUi.reconcileRoutePoints(
-              route.id,
-              [for (final segment in route.segments) segment.points],
-            );
-          }
         }
       }
     }
@@ -1029,9 +1021,9 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                           : _selectionModeForKeyboard(),
                     );
                     if (!controller.p2.selection.contains(component.id)) return;
+                    if (!controller.componentTransform.begin()) return;
                     _dragComponentId = component.id;
                     _dragStartPosition = component.position;
-                    controller.componentTransform.begin();
                   } else {
                     _marqueeStart = event.localPosition;
                     _marqueeCurrent = event.localPosition;
