@@ -38,6 +38,11 @@ final class CableRouteEditSession extends ChangeNotifier
   EditorEditSessionPhase get phase => _phase;
 
   @override
+  bool get active =>
+      _phase == EditorEditSessionPhase.previewing ||
+      _phase == EditorEditSessionPhase.invalid;
+
+  @override
   CableRouteEditPreview? get previewState => _preview;
 
   CableRoutingMode get mode => _mode;
