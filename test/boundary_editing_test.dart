@@ -1,0 +1,44 @@
+import 'package:elecx/src/domain/boundary_editing.dart';
+import 'package:elecx/src/domain/wall_profile.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  test('rectangular wall has no structural profile segments', () {
+    final profile = WallProfile.rectangle(widthMm: 4200, heightMm: 3000);
+
+    final segments = BoundaryEditingResolver.structuralSegments(
+      profile: profile,
+      wallHeightMm: 3000,
+    );
+
+    expect(segments, isEmpty);
+  });
+
+  test('top notch exposes only beam/notch boundary segments', () {
+    final profile = WallProfile(
+      vertices: const [
+        WallProfilePoint(0, 0),
+        WallProfilePoint(4200, 0),
+        WallProfilePoint(4200, 3000),
+        WallProfilePoint(2800, 3000),
+        WallProfilePoint(2800, 2650),
+        WallProfilePoint(1800, 2650),
+        WallProfilePoint(1800, 3000),
+        WallProfilePoint(0, 3000),
+      ],
+    );
+
+    final segments = BoundaryEditingResolver.structuralSegments(
+      profile: profile,
+      wallHeightMm: 3000,
+    );
+
+    expect(segments, hasLength(3));
+    expect((segments[0].a.xMm, segments[0].a.yMm), (2800, 3000));
+    expect((segments[0].b.xMm, segments[0].b.yMm), (2800, 2650));
+    expect((segments[1].a.xMm, segments[1].a.yMm), (2800, 2650));
+    expect((segments[1].b.xMm, segments[1].b.yMm), (1800, 2650));
+    expect((segments[2].a.xMm, segments[2].a.yMm), (1800, 2650));
+    expect((segments[2].b.xMm, segments[2].b.yMm), (1800, 3000));
+  });
+}
