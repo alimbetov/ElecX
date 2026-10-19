@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 
-import '../../domain/electrical_placement.dart';
 import '../../domain/surfaces.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
