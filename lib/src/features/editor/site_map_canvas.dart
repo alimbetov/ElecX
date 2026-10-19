@@ -1,9 +1,18 @@
+import 'dart:math' as math;
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../domain/geometry.dart';
+import '../../domain/route_host.dart';
+import '../../domain/route_medium.dart';
+import '../../engine/route_flow_visualization.dart';
+import '../../engine/route_interaction_engine.dart';
 import '../../engine/world_camera.dart';
 import 'cad_visual_tokens.dart';
+import 'editor_controller.dart';
+import 'hosted_route_session.dart';
+import 'route_selection_session.dart';
 import 'site_map_interaction.dart';
 
 class SiteMapCanvas extends StatefulWidget {
@@ -13,6 +22,9 @@ class SiteMapCanvas extends StatefulWidget {
     required this.onEntityOpen,
     this.initialCamera,
     this.onCameraChanged,
+    this.routeController,
+    this.mediumResolver,
+    this.onRouteTransitionTap,
     super.key,
   });
 
@@ -22,23 +34,38 @@ class SiteMapCanvas extends StatefulWidget {
   final WorldCamera? initialCamera;
   final ValueChanged<WorldCamera>? onCameraChanged;
 
+  /// Optional shared editor controller. When supplied, hosted indoor/outdoor
+  /// routes participate in the same selection identity as SurfaceCanvas.
+  final EditorController? routeController;
+  final RouteMediumProfile Function(String routeId)? mediumResolver;
+  final ValueChanged<RouteHostTransition>? onRouteTransitionTap;
+
   @override
   State<SiteMapCanvas> createState() => _SiteMapCanvasState();
 }
 
-class _SiteMapCanvasState extends State<SiteMapCanvas> {
+class _SiteMapCanvasState extends State<SiteMapCanvas>
+    with SingleTickerProviderStateMixin {
   late WorldCamera _camera;
+  late final AnimationController _flow;
   Size _size = Size.zero;
   bool _fitted = false;
   Offset? _panStart;
   WorldCamera? _panCamera;
+
+  EditorController? get routeController => widget.routeController;
 
   @override
   void initState() {
     super.initState();
     _camera = widget.initialCamera ??
         const WorldCamera(centerMm: MmPoint(0, 0), mmPerPixel: 100);
+    _flow = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat();
     widget.interaction.addListener(_refresh);
+    _attachRouteListeners(routeController);
   }
 
   @override
@@ -48,6 +75,10 @@ class _SiteMapCanvasState extends State<SiteMapCanvas> {
       oldWidget.interaction.removeListener(_refresh);
       widget.interaction.addListener(_refresh);
     }
+    if (oldWidget.routeController != widget.routeController) {
+      _detachRouteListeners(oldWidget.routeController);
+      _attachRouteListeners(widget.routeController);
+    }
     if (oldWidget.entities != widget.entities) {
       _fitted = false;
     }
@@ -56,7 +87,21 @@ class _SiteMapCanvasState extends State<SiteMapCanvas> {
   @override
   void dispose() {
     widget.interaction.removeListener(_refresh);
+    _detachRouteListeners(routeController);
+    _flow.dispose();
     super.dispose();
+  }
+
+  void _attachRouteListeners(EditorController? controller) {
+    if (controller == null) return;
+    controller.hostedRoutes.addListener(_refresh);
+    controller.routeSelection.addListener(_refresh);
+  }
+
+  void _detachRouteListeners(EditorController? controller) {
+    if (controller == null) return;
+    controller.hostedRoutes.removeListener(_refresh);
+    controller.routeSelection.removeListener(_refresh);
   }
 
   void _refresh() {
@@ -108,15 +153,21 @@ class _SiteMapCanvasState extends State<SiteMapCanvas> {
                 _panStart = null;
                 _panCamera = null;
               },
-              child: CustomPaint(
-                painter: _SiteMapPainter(
-                  camera: _camera,
-                  entities: widget.entities,
-                  hoveredNodeId: widget.interaction.hoveredNodeId,
-                  selectedNodeId: widget.interaction.selectedNodeId,
-                  scheme: scheme,
+              child: AnimatedBuilder(
+                animation: _flow,
+                builder: (context, _) => CustomPaint(
+                  painter: _SiteMapPainter(
+                    camera: _camera,
+                    entities: widget.entities,
+                    hoveredNodeId: widget.interaction.hoveredNodeId,
+                    selectedNodeId: widget.interaction.selectedNodeId,
+                    scheme: scheme,
+                    routeController: routeController,
+                    phase: _flow.value,
+                    mediumResolver: widget.mediumResolver,
+                  ),
+                  child: const SizedBox.expand(),
                 ),
-                child: const SizedBox.expand(),
               ),
             ),
           ),
@@ -146,12 +197,45 @@ class _SiteMapCanvasState extends State<SiteMapCanvas> {
     widget.onCameraChanged?.call(camera);
   }
 
+  MmPoint _worldAt(Offset local) => _camera.screenToWorld(
+        viewportWidthPx: _size.width,
+        viewportHeightPx: _size.height,
+        xPx: local.dx,
+        yPx: local.dy,
+      );
+
   void _updateHover(Offset local) {
     final entity = _hit(local);
     widget.interaction.hover(entity?.navigatorNodeId);
   }
 
   void _selectAt(Offset local) {
+    final controller = routeController;
+    if (controller != null) {
+      final world = _worldAt(local);
+      final transition = _routeTransitionAt(controller, world);
+      if (transition != null) {
+        widget.onRouteTransitionTap?.call(transition);
+        return;
+      }
+      final zoneId = _outdoorZoneAt(world);
+      if (zoneId != null) {
+        final hit = RouteInteractionEngine.hitTestHosted(
+          routes: controller.hostedRoutes.paths,
+          host: RouteHostRef.outdoor(zoneId),
+          xMm: world.x.toDouble(),
+          yMm: world.y.toDouble(),
+          radiusMm: math.max(100.0, _camera.mmPerPixel * 12),
+        );
+        if (hit != null) {
+          controller.routeSelection.select(hit.routeId);
+          widget.interaction.select(null);
+          return;
+        }
+      }
+      controller.routeSelection.clear();
+    }
+
     final entity = _hit(local);
     widget.interaction.select(entity?.navigatorNodeId);
   }
@@ -165,16 +249,47 @@ class _SiteMapCanvasState extends State<SiteMapCanvas> {
 
   SiteMapEntity? _hit(Offset local) {
     if (_size.isEmpty) return null;
-    final point = _camera.screenToWorld(
-      viewportWidthPx: _size.width,
-      viewportHeightPx: _size.height,
-      xPx: local.dx,
-      yPx: local.dy,
-    );
+    final point = _worldAt(local);
     for (final entity in widget.entities.reversed) {
       if (entity.contains(point)) return entity;
     }
     return null;
+  }
+
+  String? _outdoorZoneAt(MmPoint point) {
+    for (final entity in widget.entities.reversed) {
+      if (entity.kind != SiteMapEntityKind.outdoorZone ||
+          entity.targetId == null) {
+        continue;
+      }
+      if (entity.contains(point)) return entity.targetId;
+    }
+    return null;
+  }
+
+  RouteHostTransition? _routeTransitionAt(
+    EditorController controller,
+    MmPoint point,
+  ) {
+    final selected = controller.routeSelection.selectedHostedRoute;
+    if (selected == null) return null;
+    final radius = math.max(120.0, _camera.mmPerPixel * 16);
+    RouteHostTransition? best;
+    var bestDistance = double.infinity;
+    for (final transition in selected.transitions) {
+      for (final candidate in <({RouteHostRef host, MmPoint point})>[
+        (host: transition.fromHost, point: transition.fromPoint),
+        (host: transition.toHost, point: transition.toPoint),
+      ]) {
+        if (candidate.host.kind != RouteHostKind.outdoorZone) continue;
+        final distance = candidate.point.distanceTo(point);
+        if (distance <= radius && distance < bestDistance) {
+          best = transition;
+          bestDistance = distance;
+        }
+      }
+    }
+    return best;
   }
 
   MmBounds? _allBounds() {
@@ -195,6 +310,9 @@ class _SiteMapPainter extends CustomPainter {
     required this.hoveredNodeId,
     required this.selectedNodeId,
     required this.scheme,
+    required this.routeController,
+    required this.phase,
+    required this.mediumResolver,
   });
 
   final WorldCamera camera;
@@ -202,6 +320,18 @@ class _SiteMapPainter extends CustomPainter {
   final String? hoveredNodeId;
   final String? selectedNodeId;
   final ColorScheme scheme;
+  final EditorController? routeController;
+  final double phase;
+  final RouteMediumProfile Function(String routeId)? mediumResolver;
+
+  Offset _screen(Size size, MmPoint point) {
+    final screen = camera.worldToScreen(
+      viewportWidthPx: size.width,
+      viewportHeightPx: size.height,
+      point: point,
+    );
+    return Offset(screen.x, screen.y);
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -212,12 +342,7 @@ class _SiteMapPainter extends CustomPainter {
       final path = Path();
       final screenPoints = <Offset>[];
       for (var i = 0; i < entity.boundary.vertices.length; i++) {
-        final screen = camera.worldToScreen(
-          viewportWidthPx: size.width,
-          viewportHeightPx: size.height,
-          point: entity.boundary.vertices[i],
-        );
-        final point = Offset(screen.x, screen.y);
+        final point = _screen(size, entity.boundary.vertices[i]);
         screenPoints.add(point);
         if (i == 0) {
           path.moveTo(point.dx, point.dy);
@@ -247,11 +372,7 @@ class _SiteMapPainter extends CustomPainter {
       canvas.drawPath(path, stroke);
 
       if (!_labelFits(screenPoints)) continue;
-      final center = camera.worldToScreen(
-        viewportWidthPx: size.width,
-        viewportHeightPx: size.height,
-        point: entity.boundary.bounds.center,
-      );
+      final center = _screen(size, entity.boundary.bounds.center);
       final painter = TextPainter(
         text: TextSpan(
           text: entity.label,
@@ -268,8 +389,117 @@ class _SiteMapPainter extends CustomPainter {
       )..layout(maxWidth: 180);
       painter.paint(
         canvas,
-        Offset(center.x - painter.width / 2, center.y - painter.height / 2),
+        Offset(center.dx - painter.width / 2, center.dy - painter.height / 2),
       );
+    }
+    _drawRoutes(canvas, size);
+  }
+
+  void _drawRoutes(Canvas canvas, Size size) {
+    final controller = routeController;
+    if (controller == null) return;
+    final selectedId = controller.routeSelection.selectedRouteId;
+    for (final route in controller.hostedRoutes.paths) {
+      final selected = route.routeId == selectedId;
+      final medium = mediumResolver?.call(route.routeId) ?? RouteMediumProfile.generic;
+      final frame = RouteFlowVisualizationPolicy.frame(
+        medium: medium,
+        phase: phase,
+      );
+      if (selected) {
+        final halo = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 10
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round
+          ..color = scheme.primary.withValues(alpha: 0.12 + frame.glow * 0.18);
+        _drawOutdoorRouteSegments(canvas, size, route, halo);
+      }
+      final line = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = selected ? 3.2 : 1.8
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..color = selected
+            ? scheme.primary
+            : scheme.onSurfaceVariant.withValues(alpha: 0.75);
+      _drawOutdoorRouteSegments(canvas, size, route, line);
+      if (selected) {
+        _drawFlow(canvas, size, route, medium);
+        _drawTransitions(canvas, size, route);
+      }
+    }
+  }
+
+  void _drawOutdoorRouteSegments(
+    Canvas canvas,
+    Size size,
+    dynamic route,
+    Paint paint,
+  ) {
+    for (final segment in route.segments) {
+      if (segment.host.kind != RouteHostKind.outdoorZone ||
+          segment.points.length < 2) {
+        continue;
+      }
+      var previous = _screen(size, segment.points.first);
+      for (final point in segment.points.skip(1)) {
+        final current = _screen(size, point);
+        canvas.drawLine(previous, current, paint);
+        previous = current;
+      }
+    }
+  }
+
+  void _drawFlow(
+    Canvas canvas,
+    Size size,
+    dynamic route,
+    RouteMediumProfile medium,
+  ) {
+    final samples = RouteInteractionEngine.flowSamples(
+      route: route,
+      medium: medium,
+      phase: phase,
+    );
+    for (final sample in samples) {
+      if (!sample.hostId.startsWith('outdoor:')) continue;
+      final center = _screen(
+        size,
+        MmPoint(sample.xMm.round(), sample.yMm.round()),
+      );
+      canvas.drawCircle(
+        center,
+        sample.reverse ? 3.2 : 4.2,
+        Paint()..color = scheme.primary,
+      );
+    }
+  }
+
+  void _drawTransitions(Canvas canvas, Size size, dynamic route) {
+    for (final transition in route.transitions) {
+      MmPoint? point;
+      if (transition.fromHost.kind == RouteHostKind.outdoorZone) {
+        point = transition.fromPoint;
+      } else if (transition.toHost.kind == RouteHostKind.outdoorZone) {
+        point = transition.toPoint;
+      }
+      if (point == null) continue;
+      final center = _screen(size, point);
+      canvas.drawCircle(
+        center,
+        8,
+        Paint()..color = scheme.tertiaryContainer,
+      );
+      canvas.drawCircle(
+        center,
+        8,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..color = scheme.tertiary,
+      );
+      canvas.drawCircle(center, 2.5, Paint()..color = scheme.tertiary);
     }
   }
 
@@ -280,17 +510,13 @@ class _SiteMapPainter extends CustomPainter {
     var minY = points.first.dy;
     var maxY = points.first.dy;
     for (final point in points.skip(1)) {
-      minX = mathMin(minX, point.dx);
-      maxX = mathMax(maxX, point.dx);
-      minY = mathMin(minY, point.dy);
-      maxY = mathMax(maxY, point.dy);
+      minX = math.min(minX, point.dx);
+      maxX = math.max(maxX, point.dx);
+      minY = math.min(minY, point.dy);
+      maxY = math.max(maxY, point.dy);
     }
     return maxX - minX >= 62 && maxY - minY >= 24;
   }
-
-  double mathMin(double a, double b) => a < b ? a : b;
-
-  double mathMax(double a, double b) => a > b ? a : b;
 
   @override
   bool shouldRepaint(covariant _SiteMapPainter oldDelegate) =>
@@ -298,5 +524,7 @@ class _SiteMapPainter extends CustomPainter {
       oldDelegate.hoveredNodeId != hoveredNodeId ||
       oldDelegate.selectedNodeId != selectedNodeId ||
       oldDelegate.entities != entities ||
-      oldDelegate.scheme != scheme;
+      oldDelegate.scheme != scheme ||
+      oldDelegate.routeController != routeController ||
+      oldDelegate.phase != phase;
 }
