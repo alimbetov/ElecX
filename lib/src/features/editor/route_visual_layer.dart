@@ -70,7 +70,7 @@ final class RouteVisualPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     for (final route in routes) {
       final selected = route.routeId == selectedRouteId;
-      final medium = mediumResolver?.call(route.routeId) ?? RouteMediumProfile.generic;
+      final medium = mediumResolver?.call(route.routeId) ?? route.medium;
       final frame = RouteFlowVisualizationPolicy.frame(
         medium: medium,
         phase: phase,
