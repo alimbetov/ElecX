@@ -44,12 +44,15 @@ final class CableElectricalEvidence {
   final String? sourceKey;
 }
 
-final class ThermalDeratingFactor {
-  const ThermalDeratingFactor({
+/// Named correction factor supplied by the normative/installation profile.
+/// A factor below 1 derates ampacity; a factor above 1 is allowed when the
+/// referenced profile explicitly permits an uplift relative to base conditions.
+final class ThermalCorrectionFactor {
+  const ThermalCorrectionFactor({
     required this.id,
     required this.factor,
     this.reason,
-  }) : assert(factor > 0 && factor <= 1);
+  }) : assert(factor > 0);
 
   final String id;
   final double factor;
@@ -59,11 +62,11 @@ final class ThermalDeratingFactor {
 final class ThermalSectionEvidence {
   ThermalSectionEvidence({
     required this.sectionId,
-    required Iterable<ThermalDeratingFactor> factors,
+    required Iterable<ThermalCorrectionFactor> factors,
   }) : factors = List.unmodifiable(factors);
 
   final String sectionId;
-  final List<ThermalDeratingFactor> factors;
+  final List<ThermalCorrectionFactor> factors;
 
   double get combinedFactor =>
       factors.fold<double>(1, (value, item) => value * item.factor);
