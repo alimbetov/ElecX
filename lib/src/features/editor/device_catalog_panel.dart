@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 
 import '../../app/alien_cockpit_tokens.dart';
 import '../../domain/component_catalog_v2.dart';
+import '../../domain/component_taxonomy.dart';
 import '../../domain/engineering_graph.dart';
 import '../../domain/surfaces.dart';
 import 'component_catalog_session.dart';
 import 'editor_controller.dart';
+import 'editor_p2_session.dart';
 import 'editor_ui_tokens.dart';
 import 'engineering_placement_cursor_session.dart';
+import 'engineering_selection_inspector.dart';
+import 'route_selection_session.dart';
 
 class DeviceCatalogPanel extends StatefulWidget {
   const DeviceCatalogPanel({required this.controller, super.key});
@@ -20,7 +24,7 @@ class DeviceCatalogPanel extends StatefulWidget {
 
 class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
   final TextEditingController _searchController = TextEditingController();
-  _CatalogFamily? _family;
+  ComponentCategory? _category;
   bool _compatibleOnly = false;
   bool _repeatPlacement = true;
 
@@ -35,103 +39,127 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
   @override
   Widget build(BuildContext context) {
     final catalog = controller.componentCatalog;
-    final scheme = Theme.of(context).colorScheme;
     return ListenableBuilder(
-      listenable: Listenable.merge([catalog, controller.placementCursor]),
+      listenable: Listenable.merge([
+        catalog,
+        controller.placementCursor,
+        controller.p2,
+        controller.routeSelection,
+      ]),
       builder: (context, _) {
-        final entries = _filteredEntries(catalog.entries);
-        return Column(
-          children: [
-            _CatalogHeader(
-              count: entries.length,
-              activeComponentTypeId:
-                  controller.placementCursor.activeComponentTypeId,
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search, size: 18),
-                  hintText: 'Поиск оборудования',
-                  suffixIcon: _searchController.text.isEmpty
-                      ? null
-                      : IconButton(
-                          tooltip: 'Очистить поиск',
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {});
-                          },
-                          icon: const Icon(Icons.close, size: 16),
-                        ),
-                ),
-                onChanged: (_) => setState(() {}),
-              ),
-            ),
-            SizedBox(
-              height: 36,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                children: [
-                  _FamilyChip(
-                    label: 'Все',
-                    selected: _family == null,
-                    onPressed: () => setState(() => _family = null),
-                  ),
-                  for (final family in _CatalogFamily.values)
-                    _FamilyChip(
-                      label: _familyLabel(family),
-                      selected: _family == family,
-                      onPressed: () => setState(() => _family = family),
-                    ),
-                ],
-              ),
-            ),
-            SizedBox(
-              height: 38,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
-                children: [
-                  FilterChip(
-                    selected: _compatibleOnly,
-                    avatar: const Icon(Icons.layers_outlined, size: 15),
-                    label: const Text('Плоскость'),
-                    onSelected: (value) =>
-                        setState(() => _compatibleOnly = value),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  const SizedBox(width: 6),
-                  FilterChip(
-                    selected: _repeatPlacement,
-                    avatar: const Icon(Icons.repeat, size: 15),
-                    label: const Text('Повтор'),
-                    onSelected: (value) =>
-                        setState(() => _repeatPlacement = value),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ],
-              ),
-            ),
-            Divider(
-              height: 1,
-              color: scheme.outlineVariant.withValues(alpha: 0.55),
-            ),
-            Expanded(
-              child: catalog.loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : entries.isEmpty
-                      ? const _EmptyCatalogState()
-                      : ListView(
-                          padding: const EdgeInsets.fromLTRB(8, 7, 8, 18),
-                          children: _buildGrouped(entries),
-                        ),
-            ),
-          ],
-        );
+        final placing = controller.placementCursor.active;
+        final hasEngineeringSelection =
+            controller.routeSelection.selectedRouteId != null ||
+            controller.p2.selectedComponent != null;
+        if (!placing && hasEngineeringSelection) {
+          return _InspectorMode(
+            controller: controller,
+            onBackToCatalog: _clearEngineeringSelection,
+          );
+        }
+        return _catalog(context, catalog);
       },
     );
+  }
+
+  Widget _catalog(BuildContext context, ComponentCatalogSession catalog) {
+    final scheme = Theme.of(context).colorScheme;
+    final entries = _filteredEntries(catalog.entries);
+    return Column(
+      children: [
+        _CatalogHeader(
+          count: entries.length,
+          activeComponentTypeId: controller.placementCursor.activeComponentTypeId,
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(10, 7, 10, 6),
+          child: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search, size: 18),
+              hintText: 'Поиск оборудования',
+              suffixIcon: _searchController.text.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Очистить поиск',
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() {});
+                      },
+                      icon: const Icon(Icons.close, size: 16),
+                    ),
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+        ),
+        SizedBox(
+          height: 36,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            children: [
+              _FilterChip(
+                label: 'Все',
+                selected: _category == null,
+                onPressed: () => setState(() => _category = null),
+              ),
+              for (final category in ComponentCategory.values)
+                if (category != ComponentCategory.custom)
+                  _FilterChip(
+                    label: _categoryLabel(category),
+                    selected: _category == category,
+                    onPressed: () => setState(() => _category = category),
+                  ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 38,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+            children: [
+              FilterChip(
+                selected: _compatibleOnly,
+                avatar: const Icon(Icons.layers_outlined, size: 15),
+                label: const Text('Плоскость'),
+                onSelected: (value) =>
+                    setState(() => _compatibleOnly = value),
+                visualDensity: VisualDensity.compact,
+              ),
+              const SizedBox(width: 6),
+              FilterChip(
+                selected: _repeatPlacement,
+                avatar: const Icon(Icons.repeat, size: 15),
+                label: const Text('Повтор'),
+                onSelected: (value) =>
+                    setState(() => _repeatPlacement = value),
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+          ),
+        ),
+        Divider(
+          height: 1,
+          color: scheme.outlineVariant.withValues(alpha: 0.55),
+        ),
+        Expanded(
+          child: catalog.loading
+              ? const Center(child: CircularProgressIndicator())
+              : entries.isEmpty
+                  ? const _EmptyCatalogState()
+                  : ListView(
+                      padding: const EdgeInsets.fromLTRB(8, 7, 8, 18),
+                      children: _buildGrouped(entries),
+                    ),
+        ),
+      ],
+    );
+  }
+
+  void _clearEngineeringSelection() {
+    controller.routeSelection.clear();
+    controller.p2.clearSelection();
   }
 
   List<ComponentCatalogEntryV2> _filteredEntries(
@@ -140,7 +168,8 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
     final query = _searchController.text.trim().toLowerCase();
     final activeSurface = controller.activeSurface;
     return source.where((entry) {
-      if (_family != null && _familyFor(entry) != _family) return false;
+      final taxonomy = ComponentTaxonomyResolver.resolve(entry);
+      if (_category != null && taxonomy.category != _category) return false;
       if (query.isNotEmpty &&
           !entry.name.toLowerCase().contains(query) &&
           !entry.code.toLowerCase().contains(query) &&
@@ -157,14 +186,18 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
   }
 
   List<Widget> _buildGrouped(List<ComponentCatalogEntryV2> entries) {
-    final groups = <String, List<ComponentCatalogEntryV2>>{};
+    final groups = <ComponentSubcategory, List<ComponentCatalogEntryV2>>{};
     for (final entry in entries) {
-      groups.putIfAbsent(_categoryLabel(entry), () => []).add(entry);
+      final taxonomy = ComponentTaxonomyResolver.resolve(entry);
+      groups.putIfAbsent(taxonomy.subcategory, () => []).add(entry);
     }
     final result = <Widget>[];
     for (final group in groups.entries) {
       result.add(
-        _SectionHeader(label: group.key, count: group.value.length),
+        _SectionHeader(
+          label: _subcategoryLabel(group.key),
+          count: group.value.length,
+        ),
       );
       for (final entry in group.value) {
         result.add(_entryTile(entry));
@@ -189,6 +222,8 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
   void _startPlacement(ComponentCatalogEntryV2 entry) {
     _ensureCompatibleSurface(entry);
     controller.setTool(EditorTool.select);
+    controller.routeSelection.clear();
+    controller.p2.clearSelection();
     controller.placementCursor.beginCatalogPlacement(
       entry.id,
       repeat: _repeatPlacement,
@@ -209,6 +244,63 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
     if (entry.mounting.allowedSurfaces.contains(SurfacePlaneType.floor)) {
       controller.showFloor();
     }
+  }
+}
+
+class _InspectorMode extends StatelessWidget {
+  const _InspectorMode({
+    required this.controller,
+    required this.onBackToCatalog,
+  });
+
+  final EditorController controller;
+  final VoidCallback onBackToCatalog;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      children: [
+        Container(
+          height: EditorUiTokens.panelHeaderHeight + 4,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerLow,
+            border: Border(
+              bottom: BorderSide(
+                color: AlienCockpitTokens.signalAqua.withValues(alpha: 0.22),
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.monitor_heart_outlined,
+                size: 17,
+                color: AlienCockpitTokens.signalAqua,
+              ),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  'ENGINEERING INSPECTOR',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        letterSpacing: 0.9,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Вернуться в каталог',
+                visualDensity: VisualDensity.compact,
+                onPressed: onBackToCatalog,
+                icon: const Icon(Icons.widgets_outlined, size: 17),
+              ),
+            ],
+          ),
+        ),
+        Expanded(child: EngineeringSelectionInspector(controller: controller)),
+      ],
+    );
   }
 }
 
@@ -455,45 +547,58 @@ class _EmptyCatalogState extends StatelessWidget {
       );
 }
 
-enum _CatalogFamily { power, lighting, lowCurrent, automation }
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onPressed,
+  });
 
-_CatalogFamily _familyFor(ComponentCatalogEntryV2 entry) =>
-    switch (entry.discipline) {
-      EngineeringDiscipline.power => _CatalogFamily.power,
-      EngineeringDiscipline.lighting => _CatalogFamily.lighting,
-      EngineeringDiscipline.automation => _CatalogFamily.automation,
-      EngineeringDiscipline.lowVoltage ||
-      EngineeringDiscipline.data ||
-      EngineeringDiscipline.cctv ||
-      EngineeringDiscipline.accessControl ||
-      EngineeringDiscipline.fireAlarm =>
-        _CatalogFamily.lowCurrent,
+  final String label;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(right: 4),
+        child: FilterChip(
+          selected: selected,
+          label: Text(label),
+          onSelected: (_) => onPressed(),
+          visualDensity: VisualDensity.compact,
+        ),
+      );
+}
+
+String _categoryLabel(ComponentCategory category) => switch (category) {
+      ComponentCategory.power => 'Силовые',
+      ComponentCategory.lighting => 'Освещение',
+      ComponentCategory.data => 'Данные',
+      ComponentCategory.cctv => 'CCTV',
+      ComponentCategory.accessControl => 'СКУД',
+      ComponentCategory.fireSafety => 'Пожарные',
+      ComponentCategory.automation => 'Автоматика',
+      ComponentCategory.infrastructure => 'Инфраструктура',
+      ComponentCategory.custom => 'Прочее',
     };
 
-String _familyLabel(_CatalogFamily family) => switch (family) {
-      _CatalogFamily.power => 'Силовые',
-      _CatalogFamily.lighting => 'Освещение',
-      _CatalogFamily.lowCurrent => 'Слаботочные',
-      _CatalogFamily.automation => 'Автоматика',
-    };
-
-// Transitional presentation mapping. The domain taxonomy should move into
-// ComponentCatalogEntryV2 so UI never infers categories from localized names.
-String _categoryLabel(ComponentCatalogEntryV2 entry) => switch (entry.systemClass) {
-      EngineeringSystemClass.powerAc || EngineeringSystemClass.powerDc =>
-        entry.name.toLowerCase().contains('щит') ? 'Щиты' : 'Розетки и питание',
-      EngineeringSystemClass.lighting =>
-        entry.name.toLowerCase().contains('выключ') ? 'Выключатели' : 'Свет',
-      EngineeringSystemClass.structuredCabling => 'LAN / СКС',
-      EngineeringSystemClass.poeNetwork => 'PoE / Wi-Fi',
-      EngineeringSystemClass.fiberOptic => 'Оптика',
-      EngineeringSystemClass.cctv => 'CCTV',
-      EngineeringSystemClass.accessControl => 'СКУД',
-      EngineeringSystemClass.fireAlarm => 'Пожарная сигнализация',
-      EngineeringSystemClass.automationBus ||
-      EngineeringSystemClass.dryContact =>
-        'Автоматика',
-      EngineeringSystemClass.custom => 'Прочее',
+String _subcategoryLabel(ComponentSubcategory category) => switch (category) {
+      ComponentSubcategory.socketOutlet => 'Розетки',
+      ComponentSubcategory.switchControl => 'Выключатели',
+      ComponentSubcategory.luminaire => 'Светильники',
+      ComponentSubcategory.distributionBoard => 'Щиты',
+      ComponentSubcategory.junctionBox => 'Распределительные коробки',
+      ComponentSubcategory.powerSource => 'Источники питания',
+      ComponentSubcategory.motorDrive => 'Приводы',
+      ComponentSubcategory.dataOutlet => 'LAN / СКС',
+      ComponentSubcategory.accessPoint => 'Wi-Fi / PoE',
+      ComponentSubcategory.camera => 'Камеры',
+      ComponentSubcategory.accessReader => 'Считыватели',
+      ComponentSubcategory.detector => 'Извещатели',
+      ComponentSubcategory.contactSensor => 'Контакты / датчики',
+      ComponentSubcategory.fiberTermination => 'Оптика',
+      ComponentSubcategory.controller => 'Контроллеры',
+      ComponentSubcategory.custom => 'Прочее',
     };
 
 String _mountingLabel(ComponentCatalogEntryV2 entry) {
@@ -524,26 +629,3 @@ IconData _iconFor(EngineeringSystemClass systemClass) => switch (systemClass) {
         Icons.memory_outlined,
       EngineeringSystemClass.custom => Icons.widgets_outlined,
     };
-
-class _FamilyChip extends StatelessWidget {
-  const _FamilyChip({
-    required this.label,
-    required this.selected,
-    required this.onPressed,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(right: 4),
-        child: FilterChip(
-          selected: selected,
-          label: Text(label),
-          onSelected: (_) => onPressed(),
-          visualDensity: VisualDensity.compact,
-        ),
-      );
-}
