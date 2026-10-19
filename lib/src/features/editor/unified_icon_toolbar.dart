@@ -5,6 +5,7 @@ import '../../domain/engineering_graph.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/editor_layers.dart';
 import '../../engine/route_engine.dart';
+import 'component_catalog_session.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 import 'editor_ui_tokens.dart';
@@ -228,55 +229,63 @@ class _ComponentCatalogPaletteButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selectedId = controller.placementCursor.activeComponentTypeId;
-    final selected =
-        selectedId == null ? null : ComponentCatalogV2.byId(selectedId);
-    final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 1),
-      child: PopupMenuButton<String>(
-        tooltip: selected == null
-            ? 'Добавить инженерный компонент'
-            : 'Размещение: ${selected.name}',
-        onSelected: (componentTypeId) {
-          final entry = ComponentCatalogV2.require(componentTypeId);
-          _ensureCompatibleSurface(entry);
-          controller.setTool(EditorTool.select);
-          controller.placementCursor.beginCatalogPlacement(componentTypeId);
-        },
-        itemBuilder: (context) => [
-          for (final entry in ComponentCatalogV2.entries)
-            PopupMenuItem(
-              value: entry.id,
-              child: ListTile(
-                dense: true,
-                leading: Icon(_catalogIcon(entry.systemClass)),
-                title: Text(entry.name),
-                subtitle: Text(
-                  '${entry.discipline.name} · ${entry.systemClass.name}',
+    final catalog = controller.componentCatalog;
+    return ListenableBuilder(
+      listenable: catalog,
+      builder: (context, _) {
+        final selectedId = controller.placementCursor.activeComponentTypeId;
+        final selected = selectedId == null ? null : catalog.byId(selectedId);
+        final scheme = Theme.of(context).colorScheme;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 1),
+          child: PopupMenuButton<String>(
+            enabled: catalog.loaded && catalog.entries.isNotEmpty,
+            tooltip: catalog.loading
+                ? 'Загрузка каталога…'
+                : selected == null
+                    ? 'Добавить инженерный компонент'
+                    : 'Размещение: ${selected.name}',
+            onSelected: (componentTypeId) {
+              final entry = catalog.require(componentTypeId);
+              _ensureCompatibleSurface(entry);
+              controller.setTool(EditorTool.select);
+              controller.placementCursor.beginCatalogPlacement(componentTypeId);
+            },
+            itemBuilder: (context) => [
+              for (final entry in catalog.entries)
+                PopupMenuItem(
+                  value: entry.id,
+                  child: ListTile(
+                    dense: true,
+                    leading: Icon(_catalogIcon(entry.systemClass)),
+                    title: Text(entry.name),
+                    subtitle: Text(
+                      '${entry.discipline.name} · ${entry.systemClass.name}',
+                    ),
+                  ),
+                ),
+            ],
+            child: SizedBox(
+              width: target,
+              height: target,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: selected == null
+                      ? scheme.surfaceContainerHigh
+                      : scheme.secondaryContainer,
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Icon(
+                  selected == null
+                      ? Icons.widgets_outlined
+                      : _catalogIcon(selected.systemClass),
+                  size: 20,
                 ),
               ),
             ),
-        ],
-        child: SizedBox(
-          width: target,
-          height: target,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: selected == null
-                  ? scheme.surfaceContainerHigh
-                  : scheme.secondaryContainer,
-              borderRadius: BorderRadius.circular(7),
-            ),
-            child: Icon(
-              selected == null
-                  ? Icons.widgets_outlined
-                  : _catalogIcon(selected.systemClass),
-              size: 20,
-            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
