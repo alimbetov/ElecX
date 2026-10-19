@@ -32,8 +32,10 @@ final class CircuitCableBundle {
 /// Referentially consistent engineering registry used by drawings, inspectors,
 /// labels, cable schedules and future single-line/cabinet projections.
 ///
-/// The registry deliberately never invents a board or protective device. An
-/// unassigned circuit remains explicit until engineering data is provided.
+/// Registration is idempotent but immutable by identity: re-registering the
+/// exact same engineering evidence is allowed, while silently changing an
+/// existing circuit/cable/protective-device under the same id is rejected.
+/// Explicit update commands can be added later with revision/audit semantics.
 final class CircuitCableRegistry {
   final Map<String, CircuitRef> _circuits = {};
   final Map<String, CableIdentity> _cables = {};
@@ -80,6 +82,12 @@ final class CircuitCableRegistry {
       cable: cable,
       protectiveDevice: protectiveDevice,
     );
+    _validateExistingIdentity(
+      circuit: circuit,
+      cable: cable,
+      protectiveDevice: protectiveDevice,
+    );
+
     final existingCableId = _cableIdByRouteId[route.id];
     if (existingCableId != null && existingCableId != cable.id) {
       throw StateError(
@@ -98,6 +106,36 @@ final class CircuitCableRegistry {
     _cableIdByRouteId[route.id] = cable.id;
     if (protectiveDevice != null) {
       _protectiveDevices[protectiveDevice.id] = protectiveDevice;
+    }
+  }
+
+  void _validateExistingIdentity({
+    required CircuitRef circuit,
+    required CableIdentity cable,
+    required ProtectiveDeviceRef? protectiveDevice,
+  }) {
+    final existingCircuit = _circuits[circuit.id];
+    if (existingCircuit != null && !_sameCircuit(existingCircuit, circuit)) {
+      throw StateError(
+        'Circuit ${circuit.id} already exists with different engineering data.',
+      );
+    }
+
+    final existingCable = _cables[cable.id];
+    if (existingCable != null && !_sameCable(existingCable, cable)) {
+      throw StateError(
+        'Cable ${cable.id} already exists with different engineering data.',
+      );
+    }
+
+    if (protectiveDevice != null) {
+      final existingDevice = _protectiveDevices[protectiveDevice.id];
+      if (existingDevice != null &&
+          !_sameProtectiveDevice(existingDevice, protectiveDevice)) {
+        throw StateError(
+          'Protective device ${protectiveDevice.id} already exists with different engineering data.',
+        );
+      }
     }
   }
 
@@ -153,4 +191,31 @@ final class CircuitCableRegistry {
       );
     }
   }
+
+  static bool _sameCircuit(CircuitRef a, CircuitRef b) =>
+      a.id == b.id &&
+      a.name == b.name &&
+      a.boardId == b.boardId &&
+      a.protectiveDeviceId == b.protectiveDeviceId;
+
+  static bool _sameCable(CableIdentity a, CableIdentity b) =>
+      a.id == b.id &&
+      a.routeId == b.routeId &&
+      a.circuitId == b.circuitId &&
+      a.designation == b.designation &&
+      a.cableSpecId == b.cableSpecId &&
+      _sameTermination(a.endA, b.endA) &&
+      _sameTermination(a.endB, b.endB);
+
+  static bool _sameTermination(CableTerminationRef a, CableTerminationRef b) =>
+      a.componentId == b.componentId &&
+      a.portId == b.portId &&
+      a.terminalId == b.terminalId;
+
+  static bool _sameProtectiveDevice(ProtectiveDeviceRef a, ProtectiveDeviceRef b) =>
+      a.id == b.id &&
+      a.boardId == b.boardId &&
+      a.designation == b.designation &&
+      a.poleCount == b.poleCount &&
+      a.ratedCurrentA == b.ratedCurrentA;
 }
