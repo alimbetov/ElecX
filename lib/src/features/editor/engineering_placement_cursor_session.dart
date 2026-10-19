@@ -4,8 +4,8 @@ import '../../domain/component_catalog_v2.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/engineering_placement_cursor.dart';
 import '../../domain/geometry.dart';
-import '../../domain/installation_guides.dart';
 import '../../domain/surfaces.dart';
+import 'catalog_component_placement.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 
@@ -14,23 +14,47 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
 
   final EditorController controller;
   EngineeringPlacementCursorState? _state;
+  String? _requestedComponentTypeId;
 
   EngineeringPlacementCursorState? get state => _state;
+
+  String? get activeComponentTypeId =>
+      _requestedComponentTypeId ??
+      (controller.p2.placementType == null
+          ? null
+          : legacyComponentTypeId(controller.p2.placementType!));
+
   bool get active =>
-      controller.p2.placementType != null && controller.activeSurface != null;
+      activeComponentTypeId != null && controller.activeSurface != null;
+
+  void beginCatalogPlacement(String componentTypeId) {
+    ComponentCatalogV2.require(componentTypeId);
+    _requestedComponentTypeId = componentTypeId;
+    controller.p2.setPlacementType(null);
+    _state = null;
+    ensure();
+    notifyListeners();
+  }
 
   EngineeringPlacementCursorState? ensure() {
-    final type = controller.p2.placementType;
+    final componentTypeId = activeComponentTypeId;
     final surface = controller.activeSurface;
     final space = controller.selectedSpace;
-    if (type == null || surface == null || space == null) {
+    if (componentTypeId == null || surface == null || space == null) {
       _state = null;
       return null;
     }
+
+    final entry = ComponentCatalogV2.byId(componentTypeId);
+    if (entry == null) {
+      _state = null;
+      return null;
+    }
+
     final current = _state;
     if (current != null &&
         current.surface == surface &&
-        current.componentType == type) {
+        current.componentTypeId == componentTypeId) {
       return current;
     }
 
@@ -39,32 +63,25 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
     var snapLabel = 'CENTER';
     if (surface.type == SurfacePlaneType.wall) {
       final wall = controller.activeWall!;
-      final profile = InstallationGuideProfile.residentialProjectDefault;
-      final catalog = _catalogEntry(type);
-      final yMm = catalog?.mounting.preferredHeightMm ??
-          switch (type) {
-            ElectricalComponentType.socketOutlet => profile.socketHeightMm,
-            ElectricalComponentType.switchControl => profile.switchHeightMm,
-            _ => wall.heightMm ~/ 2,
-          };
-      if (catalog?.mounting.preferredHeightMm != null ||
-          type == ElectricalComponentType.socketOutlet ||
-          type == ElectricalComponentType.switchControl) {
+      final preferredHeight = entry.mounting.preferredHeightMm;
+      final yMm = preferredHeight ?? wall.heightMm ~/ 2;
+      if (preferredHeight != null) {
         snapKind = PlacementCursorSnapKind.installationGuide;
-        snapLabel = '${catalog?.code ?? type.name} $yMm';
+        snapLabel = '${entry.code} $preferredHeight';
       }
       initial = SurfacePointMm(wall.lengthMm.round() ~/ 2, yMm);
     } else {
       final bounds = space.boundary.bounds;
       initial = SurfacePointMm(bounds.width ~/ 2, bounds.height ~/ 2);
     }
+
     _state = EngineeringPlacementCursorState(
       surface: surface,
       position: initial,
-      componentType: type,
+      componentTypeId: componentTypeId,
       snapKind: snapKind,
       snapLabel: snapLabel,
-      isValid: _isUsable(surface, initial, componentType: type),
+      isValid: _isUsable(entry, surface, initial),
     );
     return _state;
   }
@@ -76,16 +93,14 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
   }) {
     final current = ensure();
     if (current == null) return false;
+    final entry = ComponentCatalogV2.byId(current.componentTypeId);
+    if (entry == null) return false;
     final next = EngineeringPlacementCursor.moveTo(
       current,
       position,
       snapKind: snapKind,
       snapLabel: snapLabel,
-      isValid: _isUsable(
-        current.surface,
-        position,
-        componentType: current.componentType,
-      ),
+      isValid: _isUsable(entry, current.surface, position),
     );
     _state = next;
     notifyListeners();
@@ -122,38 +137,42 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
   bool confirm() {
     final current = ensure();
     if (current == null || !current.isValid) return false;
-    controller.p2.placeComponent(
-      type: current.componentType,
+    final entry = ComponentCatalogV2.byId(current.componentTypeId);
+    if (entry == null) return false;
+    controller.p2.placeCatalogComponent(
+      entry: entry,
       surface: current.surface,
       position: current.position,
     );
+    _requestedComponentTypeId = null;
+    controller.p2.setPlacementType(null);
     _state = null;
     notifyListeners();
     return true;
   }
 
   void cancel() {
+    _requestedComponentTypeId = null;
     controller.p2.setPlacementType(null);
     _state = null;
     notifyListeners();
   }
 
   bool _isUsable(
+    ComponentCatalogEntryV2 entry,
     RoomSurfaceRef surface,
-    SurfacePointMm point, {
-    required ElectricalComponentType componentType,
-  }) {
+    SurfacePointMm point,
+  ) {
     final space = controller.selectedSpace;
     if (space == null || point.xMm < 0 || point.yMm < 0) return false;
-
-    final catalog = _catalogEntry(componentType);
-    if (catalog != null && !catalog.mounting.allows(surface)) return false;
+    if (!entry.canPlaceOn(surface)) return false;
 
     if (surface.type == SurfacePlaneType.wall) {
       final wall = controller.activeWall;
       if (wall == null || wall.ref != surface) return false;
       return wall.profile.containsPoint(point.xMm, point.yMm);
     }
+
     final bounds = space.boundary.bounds;
     if (point.xMm > bounds.width || point.yMm > bounds.height) return false;
     return space.boundary.contains(
@@ -162,24 +181,6 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
         point.yMm + bounds.bottom,
       ),
     );
-  }
-
-  static ComponentCatalogEntryV2? _catalogEntry(
-    ElectricalComponentType type,
-  ) {
-    final id = switch (type) {
-      ElectricalComponentType.socketOutlet => 'power.socket.general',
-      ElectricalComponentType.switchControl => 'lighting.switch.general',
-      ElectricalComponentType.lightingPoint => 'lighting.luminaire.general',
-      ElectricalComponentType.junctionBox => 'power.junction-box.general',
-      ElectricalComponentType.distributionBoard =>
-        'power.distribution-board.general',
-      ElectricalComponentType.curtainMotor ||
-      ElectricalComponentType.powerSource ||
-      ElectricalComponentType.custom =>
-        null,
-    };
-    return id == null ? null : ComponentCatalogV2.byId(id);
   }
 }
 
