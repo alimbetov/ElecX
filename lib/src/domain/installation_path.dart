@@ -70,8 +70,9 @@ final class InstallationPathSpec {
     this.materialCostPerMeter,
     this.laborCostPerMeter,
   }) : channels = List.unmodifiable(channels) {
-    if (id.isEmpty)
+    if (id.isEmpty) {
       throw ArgumentError('Installation path id must be non-empty.');
+    }
     if (this.channels.isEmpty) {
       throw ArgumentError('Installation path requires at least one channel.');
     }
