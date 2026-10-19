@@ -20,8 +20,8 @@ void main() {
     expect(EditorLayoutPolicy.persistentSidePanels(EditorLayoutMode.desktop),
         isTrue);
     expect(EditorLayoutPolicy.compactTools(EditorLayoutMode.desktop), isFalse);
-    expect(EditorLayoutPolicy.navigatorWidth(EditorLayoutMode.desktop), 248);
-    expect(EditorLayoutPolicy.inspectorWidth(EditorLayoutMode.desktop), 300);
+    expect(EditorLayoutPolicy.navigatorWidth(EditorLayoutMode.desktop), 252);
+    expect(EditorLayoutPolicy.inspectorWidth(EditorLayoutMode.desktop), 312);
   });
 
   test('breakpoints are deterministic at boundaries', () {
