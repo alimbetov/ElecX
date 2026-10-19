@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import '../domain/electrical_routing.dart';
 import '../domain/hosted_routing.dart';
+import '../domain/route_host.dart';
 import '../domain/route_medium.dart';
 import '../domain/surfaces.dart';
 import 'route_flow_visualization.dart';
@@ -68,6 +69,55 @@ abstract final class RouteInteractionEngine {
     }
     return best;
   }
+
+  /// Host-agnostic hit test used by both room surfaces and outdoor/site maps.
+  static RouteHit? hitTestHosted({
+    required Iterable<HostedRoutePath> routes,
+    required RouteHostRef host,
+    required double xMm,
+    required double yMm,
+    required double radiusMm,
+  }) {
+    RouteHit? best;
+    for (final route in routes) {
+      for (var i = 0; i < route.segments.length; i++) {
+        final segment = route.segments[i];
+        if (segment.host != host || segment.points.length < 2) continue;
+        for (var p = 1; p < segment.points.length; p++) {
+          final a = segment.points[p - 1];
+          final b = segment.points[p];
+          final distance = _distanceToSegment(
+            xMm,
+            yMm,
+            a.x.toDouble(),
+            a.y.toDouble(),
+            b.x.toDouble(),
+            b.y.toDouble(),
+          );
+          if (distance <= radiusMm &&
+              (best == null || distance < best.distanceMm)) {
+            best = RouteHit(
+              routeId: route.routeId,
+              segmentIndex: i,
+              distanceMm: distance,
+            );
+          }
+        }
+      }
+    }
+    return best;
+  }
+
+  static List<RouteHostTransition> transitionsOnHost({
+    required HostedRoutePath route,
+    required RouteHostRef host,
+  }) =>
+      List.unmodifiable(
+        route.transitions.where(
+          (transition) =>
+              transition.fromHost == host || transition.toHost == host,
+        ),
+      );
 
   static List<RouteFlowSample> flowSamples({
     required HostedRoutePath route,
