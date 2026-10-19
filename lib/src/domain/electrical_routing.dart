@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'electrical_placement.dart';
+import 'route_medium.dart';
 import 'surfaces.dart';
 
 final class ElectricalEndpointRef {
@@ -29,9 +30,13 @@ final class ElectricalRouteSegment {
   }
 }
 
-/// A physical cable path from one component port to another.
-/// The route may span multiple wall/floor/ceiling surfaces, but endpoints stay
-/// bound to engineering components rather than anonymous drawing points.
+/// A physical routed media path from one engineering port to another.
+///
+/// Despite the historical class name, the path is not limited to mains power:
+/// it can represent AC, DC, Ethernet/PoE, optical fibre, coax, field buses,
+/// fire/security loops and project-specific wired media. [medium] carries the
+/// engineering/visual semantics while [cableType] keeps the exact conductor or
+/// cable specification.
 final class ElectricalCableRoute {
   ElectricalCableRoute({
     required this.id,
@@ -39,6 +44,7 @@ final class ElectricalCableRoute {
     required this.target,
     required this.segments,
     this.cableType,
+    this.medium = RouteMediumProfile.generic,
     this.reservePercent = 5,
   }) {
     if (id.isEmpty) throw ArgumentError('Route id must be non-empty.');
@@ -52,12 +58,14 @@ final class ElectricalCableRoute {
   final ElectricalEndpointRef target;
   final List<ElectricalRouteSegment> segments;
   final String? cableType;
+  final RouteMediumProfile medium;
   final int reservePercent;
 
   double get geometricLengthMm =>
       segments.fold(0.0, (sum, segment) => sum + segment.lengthMm);
 
-  double get installationLengthMm => geometricLengthMm * (1 + reservePercent / 100);
+  double get installationLengthMm =>
+      geometricLengthMm * (1 + reservePercent / 100);
 }
 
 abstract final class ElectricalConnectivityValidator {
