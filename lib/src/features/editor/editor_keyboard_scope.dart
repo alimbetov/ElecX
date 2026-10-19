@@ -135,7 +135,8 @@ class EditorKeyboardScope extends StatelessWidget {
             controller.setTool(EditorTool.cableRoute),
         const SingleActivator(LogicalKeyboardKey.escape): _cancelActiveEdit,
         const SingleActivator(LogicalKeyboardKey.enter): _commitActiveEdit,
-        const SingleActivator(LogicalKeyboardKey.numpadEnter): _commitActiveEdit,
+        const SingleActivator(LogicalKeyboardKey.numpadEnter):
+            _commitActiveEdit,
         const SingleActivator(LogicalKeyboardKey.keyZ, control: true): _undo,
         const SingleActivator(LogicalKeyboardKey.keyZ, meta: true): _undo,
         const SingleActivator(

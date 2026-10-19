@@ -7,7 +7,8 @@ void main() {
   Widget host({
     RouteConstraintResult? validation,
     bool previewInvalid = false,
-  }) => MaterialApp(
+  }) =>
+      MaterialApp(
         home: Scaffold(
           body: CableRouteControls(
             mode: CableRoutingMode.assisted,

@@ -626,8 +626,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
         );
         if (ui.mode == CableRoutingMode.auto ||
             ui.isSegmentLocked(vertex.route.id, vertex.segmentIndex) ||
-            ui.isWaypoint(
-                vertex.route.id, vertex.segmentIndex, vertex.pointIndex)) {
+            ui.segmentHasWaypoints(vertex.route.id, vertex.segmentIndex)) {
           return false;
         }
         if (!controller.cableRouteEdit.start(
@@ -1188,6 +1187,11 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                   pointFocused: controller.cableUi.activePointIndex != null,
                   pointIsWaypoint: controller.cableUi.activePointIsWaypoint,
                   onToggleWaypoint: _toggleActiveWaypoint,
+                  validation: controller
+                          .cableEndpointTransform.previewState?.validation ??
+                      controller.cableRouteEdit.previewState?.validation,
+                  previewInvalid: controller.cableEndpointTransform.active &&
+                      controller.cableEndpointTransform.previewState == null,
                 ),
               ),
             if (surface.type == SurfacePlaneType.wall)
