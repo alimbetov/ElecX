@@ -19,19 +19,24 @@ class ProjectCompassOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final compass = SizedBox.square(
-      dimension: size,
-      child: CustomPaint(
-        painter: _ProjectCompassPainter(
-          projectNorth: projectNorth,
-          scheme: scheme,
+    final label =
+        'Север проекта: ${projectNorth.northAzimuthDegrees.toStringAsFixed(1)}°';
+    final compass = Semantics(
+      label: label,
+      button: onTap != null,
+      child: SizedBox.square(
+        dimension: size,
+        child: CustomPaint(
+          painter: _ProjectCompassPainter(
+            projectNorth: projectNorth,
+            scheme: scheme,
+          ),
         ),
       ),
     );
     if (onTap == null) return IgnorePointer(child: compass);
     return Tooltip(
-      message:
-          'Север проекта: ${projectNorth.northAzimuthDegrees.toStringAsFixed(1)}°',
+      message: label,
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: onTap,
