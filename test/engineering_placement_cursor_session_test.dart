@@ -84,4 +84,36 @@ void main() {
     expect(camera.type, ElectricalComponentType.custom);
     expect(camera.label, contains('IP-камера PoE'));
   });
+
+  test('repeat placement keeps the catalog placement session active', () {
+    final controller = EditorController.demo();
+    addTearDown(controller.dispose);
+    controller.showWall(0);
+
+    controller.placementCursor.beginCatalogPlacement(
+      'power.socket.general',
+      repeat: true,
+    );
+    expect(controller.placementCursor.repeatPlacement, isTrue);
+    expect(controller.placementCursor.active, isTrue);
+
+    expect(controller.placementCursor.confirm(), isTrue);
+    expect(controller.p2.components, hasLength(1));
+    expect(controller.placementCursor.active, isTrue);
+    expect(controller.placementCursor.state, isNotNull);
+
+    expect(controller.placementCursor.nudge(dxMm: 500, dyMm: 0), isTrue);
+    expect(controller.placementCursor.confirm(), isTrue);
+    expect(controller.p2.components, hasLength(2));
+    expect(
+      controller.p2.components.every(
+        (component) => component.componentTypeId == 'power.socket.general',
+      ),
+      isTrue,
+    );
+
+    controller.placementCursor.cancel();
+    expect(controller.placementCursor.active, isFalse);
+    expect(controller.placementCursor.repeatPlacement, isFalse);
+  });
 }
