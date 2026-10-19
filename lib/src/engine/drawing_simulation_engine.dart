@@ -8,7 +8,13 @@ import '../domain/geometry.dart';
 import '../domain/project_model.dart';
 import '../domain/surfaces.dart';
 import 'auto_route_graph_builder.dart';
+import 'engineering_analysis_profile.dart';
 import 'route_engine.dart';
+import 'routing_constraints.dart';
+
+typedef ComponentCatalogResolver = ComponentCatalogEntryV2? Function(
+  String componentTypeId,
+);
 
 enum SimulationSeverity { info, warning, error }
 
@@ -18,13 +24,17 @@ enum DrawingDefectKind {
   componentSurfaceNotAllowed,
   componentOutsideGeometry,
   overlappingComponents,
+  componentClearanceViolation,
   routeDisconnected,
   routeEmpty,
+  routeKeepOutViolation,
   routeExcessiveTransitions,
   routeExcessiveBends,
   routeInefficient,
+  routeNoFeasibleAlternative,
   topologyMissingNode,
   topologyNoPathToBoard,
+  topologyWrongFlowDirection,
 }
 
 final class DrawingDefect {
@@ -33,12 +43,14 @@ final class DrawingDefect {
     required this.severity,
     required this.objectId,
     required this.message,
+    this.relatedObjectIds = const [],
   });
 
   final DrawingDefectKind kind;
   final SimulationSeverity severity;
   final String objectId;
   final String message;
+  final List<String> relatedObjectIds;
 }
 
 final class RouteOptimizationCandidate {
@@ -48,6 +60,8 @@ final class RouteOptimizationCandidate {
     required this.currentLengthMm,
     required this.optimizedLengthMm,
     required this.optimizedSegments,
+    required this.currentTransitionCount,
+    required this.optimizedTransitionCount,
   });
 
   final String routeId;
@@ -55,12 +69,13 @@ final class RouteOptimizationCandidate {
   final double currentLengthMm;
   final double optimizedLengthMm;
   final List<ElectricalRouteSegment> optimizedSegments;
+  final int currentTransitionCount;
+  final int optimizedTransitionCount;
 
   double get savingMm => math.max(0, currentLengthMm - optimizedLengthMm);
 
-  double get savingPercent => currentLengthMm <= 0
-      ? 0
-      : savingMm / currentLengthMm * 100;
+  double get savingPercent =>
+      currentLengthMm <= 0 ? 0 : savingMm / currentLengthMm * 100;
 }
 
 final class DrawingSimulationRequest {
@@ -72,9 +87,9 @@ final class DrawingSimulationRequest {
     this.boardNodeId,
     this.routePreference = RoutePreference.orthogonal,
     this.roomHeightMm = 3000,
-    this.routeImprovementThreshold = 0.10,
-    this.maxTransitions = 3,
-    this.maxBends = 6,
+    this.profile = EngineeringAnalysisProfile.standard,
+    this.keepOutZones = const [],
+    this.catalogResolver,
   });
 
   final EngineeringSpace space;
@@ -84,9 +99,14 @@ final class DrawingSimulationRequest {
   final String? boardNodeId;
   final RoutePreference routePreference;
   final int roomHeightMm;
-  final double routeImprovementThreshold;
-  final int maxTransitions;
-  final int maxBends;
+  final EngineeringAnalysisProfile profile;
+  final List<SurfaceKeepOutZone> keepOutZones;
+
+  /// Runtime catalog lookup. Falls back to built-in catalog only when omitted.
+  final ComponentCatalogResolver? catalogResolver;
+
+  ComponentCatalogEntryV2? resolveCatalog(String id) =>
+      catalogResolver?.call(id) ?? ComponentCatalogV2.byId(id);
 }
 
 final class DrawingSimulationResult {
@@ -102,17 +122,13 @@ final class DrawingSimulationResult {
 
   bool get hasErrors =>
       defects.any((item) => item.severity == SimulationSeverity.error);
+
+  int count(SimulationSeverity severity) =>
+      defects.where((item) => item.severity == severity).length;
 }
 
 abstract final class DrawingSimulationEngine {
   static DrawingSimulationResult run(DrawingSimulationRequest request) {
-    if (request.routeImprovementThreshold < 0) {
-      throw ArgumentError.value(
-        request.routeImprovementThreshold,
-        'routeImprovementThreshold',
-      );
-    }
-
     final defects = <DrawingDefect>[];
     final candidates = <RouteOptimizationCandidate>[];
     final byId = <String, ElectricalComponentPlacement>{
@@ -122,7 +138,7 @@ abstract final class DrawingSimulationEngine {
     for (final component in request.components) {
       _auditComponent(request, component, defects);
     }
-    _auditOverlaps(request.components, defects);
+    _auditComponentClearances(request, defects);
 
     for (final route in request.routes) {
       _auditRoute(request, route, byId, defects, candidates);
@@ -133,7 +149,7 @@ abstract final class DrawingSimulationEngine {
     return DrawingSimulationResult(
       defects: List.unmodifiable(defects),
       routeCandidates: List.unmodifiable(candidates),
-      score: _score(defects),
+      score: _score(defects, request.profile),
     );
   }
 
@@ -154,7 +170,7 @@ abstract final class DrawingSimulationEngine {
       return;
     }
 
-    final entry = ComponentCatalogV2.byId(component.componentTypeId);
+    final entry = request.resolveCatalog(component.componentTypeId);
     if (entry == null) {
       defects.add(
         DrawingDefect(
@@ -217,27 +233,40 @@ abstract final class DrawingSimulationEngine {
     }
   }
 
-  static void _auditOverlaps(
-    List<ElectricalComponentPlacement> components,
+  static void _auditComponentClearances(
+    DrawingSimulationRequest request,
     List<DrawingDefect> defects,
   ) {
-    for (var i = 0; i < components.length; i++) {
-      for (var j = i + 1; j < components.length; j++) {
-        final a = components[i];
-        final b = components[j];
-        if (a.surface != b.surface ||
-            a.position.xMm != b.position.xMm ||
-            a.position.yMm != b.position.yMm) {
-          continue;
+    final minimum = request.profile.componentClearanceMm.toDouble();
+    for (var i = 0; i < request.components.length; i++) {
+      for (var j = i + 1; j < request.components.length; j++) {
+        final a = request.components[i];
+        final b = request.components[j];
+        if (a.surface != b.surface) continue;
+        final dx = (a.position.xMm - b.position.xMm).toDouble();
+        final dy = (a.position.yMm - b.position.yMm).toDouble();
+        final distance = math.sqrt(dx * dx + dy * dy);
+        if (distance == 0) {
+          defects.add(
+            DrawingDefect(
+              kind: DrawingDefectKind.overlappingComponents,
+              severity: SimulationSeverity.warning,
+              objectId: a.id,
+              relatedObjectIds: [b.id],
+              message: 'Two components occupy the same surface coordinate.',
+            ),
+          );
+        } else if (minimum > 0 && distance < minimum) {
+          defects.add(
+            DrawingDefect(
+              kind: DrawingDefectKind.componentClearanceViolation,
+              severity: SimulationSeverity.warning,
+              objectId: a.id,
+              relatedObjectIds: [b.id],
+              message: 'Component clearance is ${distance.round()} mm; profile requires at least ${minimum.round()} mm.',
+            ),
+          );
         }
-        defects.add(
-          DrawingDefect(
-            kind: DrawingDefectKind.overlappingComponents,
-            severity: SimulationSeverity.warning,
-            objectId: '${a.id}|${b.id}',
-            message: 'Two components occupy the same surface coordinate.',
-          ),
-        );
       }
     }
   }
@@ -275,28 +304,47 @@ abstract final class DrawingSimulationEngine {
       return;
     }
 
-    final transitions = math.max(0, route.segments.length - 1);
-    if (transitions > request.maxTransitions) {
+    final currentTransitions = math.max(0, route.segments.length - 1);
+    if (currentTransitions > request.profile.maxSurfaceTransitions) {
       defects.add(
         DrawingDefect(
           kind: DrawingDefectKind.routeExcessiveTransitions,
           severity: SimulationSeverity.warning,
           objectId: route.id,
-          message: 'Route uses $transitions surface transitions; expected at most ${request.maxTransitions}.',
+          message: 'Route uses $currentTransitions surface transitions; profile allows ${request.profile.maxSurfaceTransitions}.',
         ),
       );
     }
 
     final bends = route.segments.fold<int>(0, (sum, item) => sum + _bendCount(item));
-    if (bends > request.maxBends) {
+    if (bends > request.profile.maxRouteBends) {
       defects.add(
         DrawingDefect(
           kind: DrawingDefectKind.routeExcessiveBends,
           severity: SimulationSeverity.warning,
           objectId: route.id,
-          message: 'Route uses $bends bends; expected at most ${request.maxBends}.',
+          message: 'Route uses $bends bends; profile allows ${request.profile.maxRouteBends}.',
         ),
       );
+    }
+
+    for (final segment in route.segments) {
+      final violations = RoutingConstraintEngine.routeViolations(
+        surface: segment.surface,
+        points: segment.points,
+        zones: request.keepOutZones,
+      );
+      for (final zone in violations) {
+        defects.add(
+          DrawingDefect(
+            kind: DrawingDefectKind.routeKeepOutViolation,
+            severity: SimulationSeverity.error,
+            objectId: route.id,
+            relatedObjectIds: [zone.id],
+            message: 'Route crosses keep-out zone ${zone.id}${zone.reason == null ? '' : ': ${zone.reason}'}.',
+          ),
+        );
+      }
     }
 
     final source = byId[route.source.componentId];
@@ -307,11 +355,15 @@ abstract final class DrawingSimulationEngine {
       return;
     }
 
-    final graph = AutoRouteGraphBuilder.build(
+    var graph = AutoRouteGraphBuilder.build(
       space: request.space,
       source: source,
       target: target,
       roomHeightMm: request.roomHeightMm,
+    );
+    graph = RoutingConstraintEngine.constrain(
+      graph: graph,
+      zones: request.keepOutZones,
     );
     final solution = RouteEngine.solve(
       graph: graph,
@@ -319,7 +371,18 @@ abstract final class DrawingSimulationEngine {
       endNodeId: 'target',
       preference: request.routePreference,
     );
-    if (solution == null) return;
+    if (solution == null) {
+      defects.add(
+        DrawingDefect(
+          kind: DrawingDefectKind.routeNoFeasibleAlternative,
+          severity: SimulationSeverity.warning,
+          objectId: route.id,
+          message: 'No feasible auto-route satisfies the current geometric constraints.',
+        ),
+      );
+      return;
+    }
+
     final optimizedSegments = RouteEngine.toSegments(graph, solution);
     final optimizedLength = optimizedSegments.fold<double>(
       0,
@@ -333,8 +396,11 @@ abstract final class DrawingSimulationEngine {
       currentLengthMm: route.geometricLengthMm,
       optimizedLengthMm: optimizedLength,
       optimizedSegments: optimizedSegments,
+      currentTransitionCount: currentTransitions,
+      optimizedTransitionCount: math.max(0, optimizedSegments.length - 1),
     );
-    final minimumSaving = route.geometricLengthMm * request.routeImprovementThreshold;
+    final minimumSaving = route.geometricLengthMm *
+        request.profile.routeImprovementThreshold;
     if (candidate.savingMm > minimumSaving) {
       candidates.add(candidate);
       defects.add(
@@ -403,20 +469,37 @@ abstract final class DrawingSimulationEngine {
             kind: DrawingDefectKind.topologyNoPathToBoard,
             severity: SimulationSeverity.error,
             objectId: component.id,
-            message: 'No engineering path exists from component to distribution board.',
+            message: 'No physical engineering path exists from component to distribution board.',
+          ),
+        );
+        continue;
+      }
+      if (!topology.hasDirectedPath(boardNodeId, component.id)) {
+        defects.add(
+          DrawingDefect(
+            kind: DrawingDefectKind.topologyWrongFlowDirection,
+            severity: SimulationSeverity.error,
+            objectId: component.id,
+            message: 'Topology is connected, but no directed supply path exists from distribution board to component.',
           ),
         );
       }
     }
   }
 
-  static int _score(List<DrawingDefect> defects) {
+  static int _score(
+    List<DrawingDefect> defects,
+    EngineeringAnalysisProfile profile,
+  ) {
     var score = 100;
     for (final defect in defects) {
       score -= switch (defect.severity) {
-        SimulationSeverity.error => 20,
-        SimulationSeverity.warning => 7,
-        SimulationSeverity.info => 2,
+        SimulationSeverity.error =>
+          profile.penaltyFor(AnalysisSeverityWeight.error),
+        SimulationSeverity.warning =>
+          profile.penaltyFor(AnalysisSeverityWeight.warning),
+        SimulationSeverity.info =>
+          profile.penaltyFor(AnalysisSeverityWeight.info),
       };
     }
     return score.clamp(0, 100);
