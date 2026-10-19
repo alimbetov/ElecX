@@ -3,8 +3,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../domain/geometry.dart';
 import '../../domain/surfaces.dart';
-import 'cable_endpoint_transform_session.dart';
-import 'cable_route_edit_session.dart';
+import 'cable_edit_access.dart';
 import 'component_transform_session.dart';
 import 'editor_controller.dart';
 import 'editor_interaction_policy.dart';
