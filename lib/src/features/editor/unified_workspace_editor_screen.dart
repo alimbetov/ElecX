@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/project_model.dart';
+import '../../domain/route_host.dart';
 import 'context_minimap.dart';
 import 'device_catalog_panel.dart';
 import 'editor_building_workspace.dart';
@@ -10,6 +11,7 @@ import 'editor_layout_policy.dart';
 import 'editor_shell_state.dart';
 import 'editor_ui_tokens.dart';
 import 'engineering_placement_cursor_hud.dart';
+import 'site_map_canvas.dart';
 import 'site_map_interaction.dart';
 import 'spatial_canvas.dart';
 import 'surface_canvas.dart';
@@ -54,6 +56,72 @@ class _UnifiedWorkspaceEditorScreenState
     );
   }
 
+  void _openSiteEntity(SiteMapEntity entity) {
+    switch (entity.kind) {
+      case SiteMapEntityKind.outdoorZone:
+        final id = entity.targetId;
+        if (id != null) workspace.selectOutdoorZone(id);
+      case SiteMapEntityKind.building:
+        workspace.selectLevel(1);
+      case SiteMapEntityKind.lot:
+      case SiteMapEntityKind.network:
+        break;
+    }
+  }
+
+  void _followOutdoorTransition(RouteHostTransition transition) {
+    final outdoor = transition.fromHost.kind == RouteHostKind.outdoorZone
+        ? transition.fromHost
+        : transition.toHost.kind == RouteHostKind.outdoorZone
+            ? transition.toHost
+            : null;
+    final zoneId = outdoor?.outdoorZoneId;
+    if (zoneId == null) return;
+    workspace.selectOutdoorZone(zoneId);
+    siteInteraction.select('outdoor:$zoneId');
+  }
+
+  void _followSiteTransition(RouteHostTransition transition) {
+    final indoor = transition.fromHost.kind == RouteHostKind.indoorSurface
+        ? transition.fromHost
+        : transition.toHost.kind == RouteHostKind.indoorSurface
+            ? transition.toHost
+            : null;
+    if (indoor == null) return;
+
+    final connectionId = transition.siteConnectionId;
+    final connection = connectionId == null
+        ? null
+        : workspace.site.connections
+            .where((item) => item.id == connectionId)
+            .firstOrNull;
+    if (connection != null) {
+      workspace.selectLevel(connection.levelNumber);
+    }
+
+    final surface = indoor.surface;
+    if (surface == null) return;
+    final preferredSpaceId = connection?.targetSpaceId ?? surface.spaceId;
+    if (controller.level.spaces.any((space) => space.id == preferredSpaceId)) {
+      controller.selectSpace(preferredSpaceId);
+    } else if (controller.level.spaces.any((space) => space.id == surface.spaceId)) {
+      controller.selectSpace(surface.spaceId);
+    }
+
+    switch (surface.type) {
+      case SurfacePlaneType.wall:
+        if (controller.selectedSpaceId == surface.spaceId) {
+          controller.showWall(surface.wallIndex!);
+        } else if (controller.selectedSpace != null) {
+          controller.showWall(surface.wallIndex ?? 0);
+        }
+      case SurfacePlaneType.floor:
+        controller.showFloor();
+      case SurfacePlaneType.ceiling:
+        controller.showCeiling();
+    }
+  }
+
   @override
   void dispose() {
     shell.removeListener(_refresh);
@@ -74,17 +142,29 @@ class _UnifiedWorkspaceEditorScreenState
         builder: (context, constraints) {
           final mode = EditorLayoutPolicy.forWidth(constraints.maxWidth);
           final desktop = mode == EditorLayoutMode.desktop;
-          final rawCanvas = controller.viewMode == EditorViewMode.plan
-              ? SpatialCanvas(controller: controller)
-              : SurfaceCanvas(controller: controller);
+          final rawCanvas = workspace.context == EditorWorkspaceContext.siteOutdoor
+              ? SiteMapCanvas(
+                  entities: SiteMapProjection.tower(workspace),
+                  interaction: siteInteraction,
+                  routeController: controller,
+                  onRouteTransitionTap: _followSiteTransition,
+                  onEntityOpen: _openSiteEntity,
+                )
+              : controller.viewMode == EditorViewMode.plan
+                  ? SpatialCanvas(controller: controller)
+                  : SurfaceCanvas(
+                      controller: controller,
+                      onOutdoorTransition: _followOutdoorTransition,
+                    );
           final canvas = Stack(
             children: [
               Positioned.fill(child: rawCanvas),
-              Positioned(
-                right: 12,
-                bottom: 52,
-                child: EngineeringPlacementCursorHud(controller: controller),
-              ),
+              if (workspace.context != EditorWorkspaceContext.siteOutdoor)
+                Positioned(
+                  right: 12,
+                  bottom: 52,
+                  child: EngineeringPlacementCursorHud(controller: controller),
+                ),
             ],
           );
 
