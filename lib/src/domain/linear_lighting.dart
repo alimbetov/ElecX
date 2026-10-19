@@ -105,6 +105,41 @@ final class LinearLuminaireRun {
   }
 }
 
+/// Electrical evidence for the driver actually assigned to a run.
+///
+/// [designLoadFraction] is project/product policy, not a hidden normative
+/// constant. 0.8 means the editor intentionally uses at most 80% of the
+/// driver's nameplate power for this design check.
+final class LinearLuminaireDriverEvidence {
+  LinearLuminaireDriverEvidence({
+    required this.componentId,
+    required this.outputVoltageV,
+    required this.ratedPowerW,
+    this.designLoadFraction = 0.8,
+  }) {
+    if (componentId.isEmpty) {
+      throw ArgumentError('Driver component id must be non-empty.');
+    }
+    if (outputVoltageV <= 0 || ratedPowerW <= 0) {
+      throw ArgumentError('Driver voltage and power must be positive.');
+    }
+    if (designLoadFraction <= 0 || designLoadFraction > 1) {
+      throw ArgumentError.value(
+        designLoadFraction,
+        'designLoadFraction',
+        'Must be in (0, 1].',
+      );
+    }
+  }
+
+  final String componentId;
+  final double outputVoltageV;
+  final double ratedPowerW;
+  final double designLoadFraction;
+
+  double get usablePowerW => ratedPowerW * designLoadFraction;
+}
+
 final class LinearLuminaireElectricalSummary {
   const LinearLuminaireElectricalSummary({
     required this.lengthMm,
@@ -113,6 +148,7 @@ final class LinearLuminaireElectricalSummary {
     required this.currentA,
     required this.requiredFeedSections,
     required this.withinContinuousLength,
+    required this.cutStepAligned,
   });
 
   final int lengthMm;
@@ -121,6 +157,49 @@ final class LinearLuminaireElectricalSummary {
   final double currentA;
   final int requiredFeedSections;
   final bool withinContinuousLength;
+  final bool cutStepAligned;
+}
+
+enum LinearLuminaireValidationSeverity { warning, error }
+
+enum LinearLuminaireValidationCode {
+  cutStepMismatch,
+  continuousLengthExceeded,
+  unsupportedFeedMode,
+  driverNotAssigned,
+  driverEvidenceMissing,
+  driverReferenceMismatch,
+  driverVoltageMismatch,
+  driverPowerInsufficient,
+}
+
+final class LinearLuminaireValidationIssue {
+  const LinearLuminaireValidationIssue({
+    required this.code,
+    required this.severity,
+    required this.message,
+  });
+
+  final LinearLuminaireValidationCode code;
+  final LinearLuminaireValidationSeverity severity;
+  final String message;
+}
+
+final class LinearLuminaireValidationResult {
+  const LinearLuminaireValidationResult({
+    required this.summary,
+    required this.issues,
+  });
+
+  final LinearLuminaireElectricalSummary summary;
+  final List<LinearLuminaireValidationIssue> issues;
+
+  bool get isValid => issues.every(
+        (issue) => issue.severity != LinearLuminaireValidationSeverity.error,
+      );
+  bool get hasWarnings => issues.any(
+        (issue) => issue.severity == LinearLuminaireValidationSeverity.warning,
+      );
 }
 
 abstract final class LinearLuminaireEngine {
@@ -128,16 +207,133 @@ abstract final class LinearLuminaireEngine {
     required LinearLuminaireRun run,
     required LinearLuminaireSpec spec,
   }) {
-    if (run.specId != spec.id) {
-      throw ArgumentError('Run specId does not match luminaire specification.');
-    }
+    _checkSpecIdentity(run, spec);
     if (run.feedMode == LinearLuminaireFeedMode.bothEnds &&
         !spec.feedFromBothEndsAllowed) {
       throw ArgumentError(
         'The selected linear luminaire does not allow feed from both ends.',
       );
     }
+    return _summarizeUnchecked(run: run, spec: spec);
+  }
 
+  /// Validates what is actually evidenced today. Voltage-drop and thermal
+  /// behaviour of long low-voltage feeds intentionally remain outside this
+  /// result until their inputs/calculation engine exist.
+  static LinearLuminaireValidationResult validate({
+    required LinearLuminaireRun run,
+    required LinearLuminaireSpec spec,
+    LinearLuminaireDriverEvidence? driver,
+  }) {
+    _checkSpecIdentity(run, spec);
+    final summary = _summarizeUnchecked(run: run, spec: spec);
+    final issues = <LinearLuminaireValidationIssue>[];
+
+    if (!summary.cutStepAligned) {
+      issues.add(
+        LinearLuminaireValidationIssue(
+          code: LinearLuminaireValidationCode.cutStepMismatch,
+          severity: LinearLuminaireValidationSeverity.error,
+          message:
+              'Длина ${summary.lengthMm} мм не кратна шагу резки ${spec.cutStepMm} мм.',
+        ),
+      );
+    }
+
+    if (!summary.withinContinuousLength) {
+      issues.add(
+        LinearLuminaireValidationIssue(
+          code: LinearLuminaireValidationCode.continuousLengthExceeded,
+          severity: LinearLuminaireValidationSeverity.warning,
+          message:
+              'Нужно минимум ${summary.requiredFeedSections} секции питания; одна непрерывная секция превышает ${spec.maxContinuousLengthMm} мм.',
+        ),
+      );
+    }
+
+    if (run.feedMode == LinearLuminaireFeedMode.bothEnds &&
+        !spec.feedFromBothEndsAllowed) {
+      issues.add(
+        const LinearLuminaireValidationIssue(
+          code: LinearLuminaireValidationCode.unsupportedFeedMode,
+          severity: LinearLuminaireValidationSeverity.error,
+          message: 'Эта лента не допускает питание с двух концов.',
+        ),
+      );
+    }
+
+    final driverId = run.driverComponentId;
+    if (driverId == null) {
+      issues.add(
+        const LinearLuminaireValidationIssue(
+          code: LinearLuminaireValidationCode.driverNotAssigned,
+          severity: LinearLuminaireValidationSeverity.warning,
+          message: 'Драйвер не назначен; проверка питания неполна.',
+        ),
+      );
+    } else if (driver == null) {
+      issues.add(
+        const LinearLuminaireValidationIssue(
+          code: LinearLuminaireValidationCode.driverEvidenceMissing,
+          severity: LinearLuminaireValidationSeverity.warning,
+          message: 'Для назначенного драйвера отсутствуют электрические параметры.',
+        ),
+      );
+    } else {
+      if (driver.componentId != driverId) {
+        issues.add(
+          const LinearLuminaireValidationIssue(
+            code: LinearLuminaireValidationCode.driverReferenceMismatch,
+            severity: LinearLuminaireValidationSeverity.error,
+            message: 'Проверяемый драйвер не совпадает с назначенным компонентом.',
+          ),
+        );
+      }
+      if ((driver.outputVoltageV - spec.nominalVoltageV).abs() > 0.01) {
+        issues.add(
+          LinearLuminaireValidationIssue(
+            code: LinearLuminaireValidationCode.driverVoltageMismatch,
+            severity: LinearLuminaireValidationSeverity.error,
+            message:
+                'Выход драйвера ${driver.outputVoltageV} V не соответствует ленте ${spec.nominalVoltageV} V.',
+          ),
+        );
+      }
+      if (summary.powerW > driver.usablePowerW + 0.001) {
+        issues.add(
+          LinearLuminaireValidationIssue(
+            code: LinearLuminaireValidationCode.driverPowerInsufficient,
+            severity: LinearLuminaireValidationSeverity.error,
+            message:
+                'Нагрузка ${summary.powerW.toStringAsFixed(1)} W превышает проектно допустимые ${driver.usablePowerW.toStringAsFixed(1)} W драйвера.',
+          ),
+        );
+      }
+    }
+
+    return LinearLuminaireValidationResult(
+      summary: summary,
+      issues: List.unmodifiable(issues),
+    );
+  }
+
+  static int snapLengthToCutStep({
+    required int requestedLengthMm,
+    required LinearLuminaireSpec spec,
+  }) {
+    if (requestedLengthMm < 0) {
+      throw ArgumentError.value(requestedLengthMm, 'requestedLengthMm');
+    }
+    if (requestedLengthMm == 0) return 0;
+    final snapped =
+        (requestedLengthMm / spec.cutStepMm).round() * spec.cutStepMm;
+    return math.max(spec.cutStepMm, snapped);
+  }
+
+  static LinearLuminaireElectricalSummary _summarizeUnchecked({
+    required LinearLuminaireRun run,
+    required LinearLuminaireSpec spec,
+  }) {
     final lengthMm = run.geometricLengthMm.round();
     final lengthM = lengthMm / 1000.0;
     final powerW = lengthM * spec.powerPerMeterW;
@@ -154,19 +350,16 @@ abstract final class LinearLuminaireEngine {
       currentA: currentA,
       requiredFeedSections: sections,
       withinContinuousLength: lengthMm <= spec.maxContinuousLengthMm,
+      cutStepAligned: lengthMm % spec.cutStepMm == 0,
     );
   }
 
-  static int snapLengthToCutStep({
-    required int requestedLengthMm,
-    required LinearLuminaireSpec spec,
-  }) {
-    if (requestedLengthMm < 0) {
-      throw ArgumentError.value(requestedLengthMm, 'requestedLengthMm');
+  static void _checkSpecIdentity(
+    LinearLuminaireRun run,
+    LinearLuminaireSpec spec,
+  ) {
+    if (run.specId != spec.id) {
+      throw ArgumentError('Run specId does not match luminaire specification.');
     }
-    if (requestedLengthMm == 0) return 0;
-    final snapped =
-        (requestedLengthMm / spec.cutStepMm).round() * spec.cutStepMm;
-    return math.max(spec.cutStepMm, snapped);
   }
 }
