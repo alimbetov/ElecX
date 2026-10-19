@@ -92,11 +92,11 @@ class _NavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => IconButton(
-        tooltip: tooltip,
-        visualDensity: VisualDensity.compact,
-        constraints: const BoxConstraints.tightFor(width: 34, height: 34),
-        padding: EdgeInsets.zero,
-        onPressed: onPressed,
-        icon: Icon(icon, size: 20),
-      );
+    tooltip: tooltip,
+    visualDensity: VisualDensity.compact,
+    constraints: const BoxConstraints.tightFor(width: 34, height: 34),
+    padding: EdgeInsets.zero,
+    onPressed: onPressed,
+    icon: Icon(icon, size: 20),
+  );
 }

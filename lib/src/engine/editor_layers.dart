@@ -19,17 +19,15 @@ final class EditorLayerState {
   final bool locked;
 
   EditorLayerState copyWith({bool? visible, bool? locked}) => EditorLayerState(
-        id: id,
-        visible: visible ?? this.visible,
-        locked: locked ?? this.locked,
-      );
+    id: id,
+    visible: visible ?? this.visible,
+    locked: locked ?? this.locked,
+  );
 }
 
 final class EditorLayerRegistry {
   EditorLayerRegistry({Iterable<EditorLayerState>? layers})
-      : _layers = {
-          for (final layer in layers ?? defaults) layer.id: layer,
-        };
+    : _layers = {for (final layer in layers ?? defaults) layer.id: layer};
 
   final Map<EditorLayerId, EditorLayerState> _layers;
 
@@ -39,11 +37,7 @@ final class EditorLayerRegistry {
       visible: true,
       locked: false,
     ),
-    EditorLayerState(
-      id: EditorLayerId.openings,
-      visible: true,
-      locked: false,
-    ),
+    EditorLayerState(id: EditorLayerId.openings, visible: true, locked: false),
     EditorLayerState(
       id: EditorLayerId.electrical,
       visible: true,
@@ -59,11 +53,7 @@ final class EditorLayerRegistry {
       visible: true,
       locked: false,
     ),
-    EditorLayerState(
-      id: EditorLayerId.guides,
-      visible: true,
-      locked: false,
-    ),
+    EditorLayerState(id: EditorLayerId.guides, visible: true, locked: false),
   ];
 
   List<EditorLayerState> get layers => List.unmodifiable(_layers.values);

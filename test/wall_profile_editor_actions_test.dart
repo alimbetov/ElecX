@@ -40,21 +40,23 @@ void main() {
     expect(controller.selectedSpace!.wallProfiles.containsKey(0), isFalse);
   });
 
-  test('notch that would intersect an existing door is rejected atomically',
-      () {
-    final controller = EditorController.demo();
-    addTearDown(controller.dispose);
+  test(
+    'notch that would intersect an existing door is rejected atomically',
+    () {
+      final controller = EditorController.demo();
+      addTearDown(controller.dispose);
 
-    controller.showWall(0);
+      controller.showWall(0);
 
-    final applied = controller.addActiveWallTopNotch(
-      startMm: 500,
-      widthMm: 1200,
-      depthMm: 1000,
-    );
+      final applied = controller.addActiveWallTopNotch(
+        startMm: 500,
+        widthMm: 1200,
+        depthMm: 1000,
+      );
 
-    expect(applied, isFalse);
-    expect(controller.selectedSpace!.wallProfiles.containsKey(0), isFalse);
-    expect(controller.activeWallOpenings, hasLength(1));
-  });
+      expect(applied, isFalse);
+      expect(controller.selectedSpace!.wallProfiles.containsKey(0), isFalse);
+      expect(controller.activeWallOpenings, hasLength(1));
+    },
+  );
 }

@@ -19,8 +19,10 @@ void main() {
     workspace.selectLevel(-1);
     expect(workspace.activeLevelNumber, -1);
     expect(editor.level.name, 'Подвал 1');
-    expect(editor.level.spaces.any((space) => space.type == SpaceType.corridor),
-        isTrue);
+    expect(
+      editor.level.spaces.any((space) => space.type == SpaceType.corridor),
+      isTrue,
+    );
 
     workspace.selectLevel(-30);
     expect(workspace.activeLevelNumber, -30);
@@ -42,8 +44,9 @@ void main() {
     );
     expect(common.spaceIds, hasLength(1));
     final corridorId = common.spaceIds.single;
-    final corridor =
-        level.level.spaces.singleWhere((space) => space.id == corridorId);
+    final corridor = level.level.spaces.singleWhere(
+      (space) => space.id == corridorId,
+    );
     expect(corridor.type, SpaceType.corridor);
 
     for (final apartment in level.apartments) {

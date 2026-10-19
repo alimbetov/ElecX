@@ -16,7 +16,8 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
     required this.site,
     int initialLevelNumber = 1,
   }) : _activeLevelNumber = initialLevelNumber {
-    final initial = building.levelByNumber(initialLevelNumber) ??
+    final initial =
+        building.levelByNumber(initialLevelNumber) ??
         building.orderedLevels.first;
     _activeLevelNumber = initial.levelNumber;
     _activateLevel(initial);
@@ -130,7 +131,10 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
     }
     if (zone == null) {
       throw ArgumentError.value(
-          zoneId, 'zoneId', 'Unknown zone on active level.');
+        zoneId,
+        'zoneId',
+        'Unknown zone on active level.',
+      );
     }
     _selectedZoneId = zone.id;
     final firstSpaceId = zone.spaceIds.first;
@@ -162,8 +166,9 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
           name: zone.name,
           type: SpaceType.outdoorArea,
           boundary: zone.boundary,
-          referenceFrame:
-              RoomReferenceFrame(origin: zone.boundary.bounds.center),
+          referenceFrame: RoomReferenceFrame(
+            origin: zone.boundary.bounds.center,
+          ),
           grid: zone.grid,
         ),
       ],
@@ -175,8 +180,9 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
   void nextLevel() {
     if (_context != EditorWorkspaceContext.buildingLevel) return;
     final levels = building.orderedLevels;
-    final index =
-        levels.indexWhere((level) => level.levelNumber == _activeLevelNumber);
+    final index = levels.indexWhere(
+      (level) => level.levelNumber == _activeLevelNumber,
+    );
     if (index >= 0 && index + 1 < levels.length) {
       selectLevel(levels[index + 1].levelNumber);
     }
@@ -185,8 +191,9 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
   void previousLevel() {
     if (_context != EditorWorkspaceContext.buildingLevel) return;
     final levels = building.orderedLevels;
-    final index =
-        levels.indexWhere((level) => level.levelNumber == _activeLevelNumber);
+    final index = levels.indexWhere(
+      (level) => level.levelNumber == _activeLevelNumber,
+    );
     if (index > 0) {
       selectLevel(levels[index - 1].levelNumber);
     }

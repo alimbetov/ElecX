@@ -29,17 +29,16 @@ final class EditorP2State {
     List<ElectricalComponentPlacement>? components,
     List<ElectricalCableRoute>? routes,
     SelectionState? selection,
-  }) =>
-      EditorP2State(
-        components: components ?? this.components,
-        routes: routes ?? this.routes,
-        selection: selection ?? this.selection,
-      );
+  }) => EditorP2State(
+    components: components ?? this.components,
+    routes: routes ?? this.routes,
+    selection: selection ?? this.selection,
+  );
 }
 
 final class EditorP2Session extends ChangeNotifier {
   EditorP2Session()
-      : history = CommandHistory<EditorP2State>(const EditorP2State());
+    : history = CommandHistory<EditorP2State>(const EditorP2State());
 
   final CommandHistory<EditorP2State> history;
   final EditorLayerRegistry layers = EditorLayerRegistry();
@@ -99,9 +98,7 @@ final class EditorP2Session extends ChangeNotifier {
 
   void select(String id, {SelectionMode mode = SelectionMode.replace}) {
     _replaceState(
-      state.copyWith(
-        selection: SelectionEngine.apply(selection, id, mode),
-      ),
+      state.copyWith(selection: SelectionEngine.apply(selection, id, mode)),
     );
   }
 
@@ -130,10 +127,7 @@ final class EditorP2Session extends ChangeNotifier {
     history.execute(_AddComponentCommand(component));
     _replaceState(
       history.state.copyWith(
-        selection: SelectionState(
-          ids: {component.id},
-          primaryId: component.id,
-        ),
+        selection: SelectionState(ids: {component.id}, primaryId: component.id),
       ),
       notify: false,
     );
@@ -157,12 +151,7 @@ final class EditorP2Session extends ChangeNotifier {
     if (origin == null || current == null || current.id != origin.id) {
       return false;
     }
-    _replaceState(
-      _replaceComponent(
-        state,
-        current.copyWith(position: point),
-      ),
-    );
+    _replaceState(_replaceComponent(state, current.copyWith(position: point)));
     return true;
   }
 
@@ -177,9 +166,7 @@ final class EditorP2Session extends ChangeNotifier {
         origin.position.yMm == current.position.yMm) {
       return false;
     }
-    history.execute(
-      _ReplaceComponentCommand(before: origin, after: current),
-    );
+    history.execute(_ReplaceComponentCommand(before: origin, after: current));
     notifyListeners();
     return true;
   }
@@ -256,15 +243,13 @@ final class EditorP2Session extends ChangeNotifier {
     return true;
   }
 
-  bool autoRouteSelectedPair({
-    EngineeringSpace? space,
-    String? cableType,
-  }) {
+  bool autoRouteSelectedPair({EngineeringSpace? space, String? cableType}) {
     final pair = selectedComponents;
     if (pair.length != 2) return false;
     final sourceComponent = _preferredSource(pair[0], pair[1]);
-    final targetComponent =
-        identical(sourceComponent, pair[0]) ? pair[1] : pair[0];
+    final targetComponent = identical(sourceComponent, pair[0])
+        ? pair[1]
+        : pair[0];
     final sourcePort = _portForSource(sourceComponent);
     final targetPort = _portForTarget(targetComponent);
     if (sourcePort == null || targetPort == null) return false;
@@ -359,8 +344,8 @@ final class EditorP2Session extends ChangeNotifier {
           primaryId: ids.contains(selection.primaryId)
               ? selection.primaryId
               : ids.isEmpty
-                  ? null
-                  : ids.first,
+              ? null
+              : ids.first,
         ),
       ),
       notify: false,
@@ -381,13 +366,12 @@ final class EditorP2Session extends ChangeNotifier {
   static EditorP2State _replaceComponent(
     EditorP2State state,
     ElectricalComponentPlacement replacement,
-  ) =>
-      state.copyWith(
-        components: [
-          for (final component in state.components)
-            if (component.id == replacement.id) replacement else component,
-        ],
-      );
+  ) => state.copyWith(
+    components: [
+      for (final component in state.components)
+        if (component.id == replacement.id) replacement else component,
+    ],
+  );
 
   static ElectricalComponentPlacement _preferredSource(
     ElectricalComponentPlacement first,
@@ -428,8 +412,9 @@ final class EditorP2Session extends ChangeNotifier {
       (a.xMm - b.xMm).abs().toDouble() + (a.yMm - b.yMm).abs().toDouble();
 }
 
-final Expando<EditorP2Session> _p2Sessions =
-    Expando<EditorP2Session>('ElecX P2 editor session');
+final Expando<EditorP2Session> _p2Sessions = Expando<EditorP2Session>(
+  'ElecX P2 editor session',
+);
 
 extension EditorP2SessionAccess on EditorController {
   EditorP2Session get p2 => _p2Sessions[this] ??= EditorP2Session();
@@ -443,16 +428,15 @@ final class _AddComponentCommand implements EditorCommand<EditorP2State> {
   String get label => 'Add ${component.label}';
 
   @override
-  EditorP2State execute(EditorP2State state) => state.copyWith(
-        components: [...state.components, component],
-      );
+  EditorP2State execute(EditorP2State state) =>
+      state.copyWith(components: [...state.components, component]);
 
   @override
   EditorP2State undo(EditorP2State state) => state.copyWith(
-        components: state.components
-            .where((item) => item.id != component.id)
-            .toList(growable: false),
-      );
+    components: state.components
+        .where((item) => item.id != component.id)
+        .toList(growable: false),
+  );
 }
 
 final class _ReplaceComponentCommand implements EditorCommand<EditorP2State> {
@@ -490,9 +474,8 @@ final class _DeleteComponentsCommand implements EditorCommand<EditorP2State> {
   }
 
   @override
-  EditorP2State undo(EditorP2State state) => state.copyWith(
-        components: [...state.components, ...deleted],
-      );
+  EditorP2State undo(EditorP2State state) =>
+      state.copyWith(components: [...state.components, ...deleted]);
 }
 
 final class _AddRouteCommand implements EditorCommand<EditorP2State> {
@@ -503,14 +486,13 @@ final class _AddRouteCommand implements EditorCommand<EditorP2State> {
   String get label => 'Add route';
 
   @override
-  EditorP2State execute(EditorP2State state) => state.copyWith(
-        routes: [...state.routes, route],
-      );
+  EditorP2State execute(EditorP2State state) =>
+      state.copyWith(routes: [...state.routes, route]);
 
   @override
   EditorP2State undo(EditorP2State state) => state.copyWith(
-        routes: state.routes
-            .where((item) => item.id != route.id)
-            .toList(growable: false),
-      );
+    routes: state.routes
+        .where((item) => item.id != route.id)
+        .toList(growable: false),
+  );
 }

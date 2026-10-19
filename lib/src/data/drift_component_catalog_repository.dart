@@ -76,9 +76,7 @@ final class DriftComponentCatalogRepository
   Future<void> seedDefaultsIfEmpty() async {
     await ensureSchema();
     final countRow = await _db
-        .customSelect(
-          'SELECT COUNT(*) AS c FROM component_type',
-        )
+        .customSelect('SELECT COUNT(*) AS c FROM component_type')
         .getSingle();
     if (countRow.read<int>('c') == 0) {
       await replaceAll(ComponentCatalogV2.entries);
@@ -89,9 +87,7 @@ final class DriftComponentCatalogRepository
   Future<List<ComponentCatalogEntryV2>> all() async {
     await ensureSchema();
     final rows = await _db
-        .customSelect(
-          'SELECT * FROM component_type ORDER BY discipline, name',
-        )
+        .customSelect('SELECT * FROM component_type ORDER BY discipline, name')
         .get();
     final result = <ComponentCatalogEntryV2>[];
     for (final row in rows) {
@@ -103,10 +99,12 @@ final class DriftComponentCatalogRepository
   @override
   Future<ComponentCatalogEntryV2?> byId(String id) async {
     await ensureSchema();
-    final rows = await _db.customSelect(
-      'SELECT * FROM component_type WHERE id = ? LIMIT 1',
-      variables: [Variable<String>(id)],
-    ).get();
+    final rows = await _db
+        .customSelect(
+          'SELECT * FROM component_type WHERE id = ? LIMIT 1',
+          variables: [Variable<String>(id)],
+        )
+        .get();
     if (rows.isEmpty) return null;
     return _mapEntry(rows.single);
   }
@@ -116,16 +114,18 @@ final class DriftComponentCatalogRepository
     SurfacePlaneType surface,
   ) async {
     await ensureSchema();
-    final rows = await _db.customSelect(
-      '''
+    final rows = await _db
+        .customSelect(
+          '''
       SELECT ct.*
       FROM component_type ct
       JOIN component_type_allowed_surface s ON s.component_type_id = ct.id
       WHERE s.surface_type = ?
       ORDER BY ct.discipline, ct.name
       ''',
-      variables: [Variable<String>(surface.name)],
-    ).get();
+          variables: [Variable<String>(surface.name)],
+        )
+        .get();
     final result = <ComponentCatalogEntryV2>[];
     for (final row in rows) {
       result.add(await _mapEntry(row));
@@ -138,10 +138,12 @@ final class DriftComponentCatalogRepository
     EngineeringSystemClass systemClass,
   ) async {
     await ensureSchema();
-    final rows = await _db.customSelect(
-      'SELECT * FROM component_type WHERE system_class = ? ORDER BY name',
-      variables: [Variable<String>(systemClass.name)],
-    ).get();
+    final rows = await _db
+        .customSelect(
+          'SELECT * FROM component_type WHERE system_class = ? ORDER BY name',
+          variables: [Variable<String>(systemClass.name)],
+        )
+        .get();
     final result = <ComponentCatalogEntryV2>[];
     for (final row in rows) {
       result.add(await _mapEntry(row));
@@ -155,8 +157,9 @@ final class DriftComponentCatalogRepository
     await _db.transaction(() async {
       await _db.customStatement('DELETE FROM component_port_connection_type');
       await _db.customStatement('DELETE FROM component_type_port');
-      await _db
-          .customStatement('DELETE FROM component_type_allowed_room_usage');
+      await _db.customStatement(
+        'DELETE FROM component_type_allowed_room_usage',
+      );
       await _db.customStatement('DELETE FROM component_type_allowed_surface');
       await _db.customStatement('DELETE FROM component_type');
 
@@ -231,26 +234,34 @@ final class DriftComponentCatalogRepository
 
   Future<ComponentCatalogEntryV2> _mapEntry(QueryRow row) async {
     final id = row.read<String>('id');
-    final surfaceRows = await _db.customSelect(
-      'SELECT surface_type FROM component_type_allowed_surface WHERE component_type_id = ?',
-      variables: [Variable<String>(id)],
-    ).get();
-    final usageRows = await _db.customSelect(
-      'SELECT room_usage_type FROM component_type_allowed_room_usage WHERE component_type_id = ?',
-      variables: [Variable<String>(id)],
-    ).get();
-    final portRows = await _db.customSelect(
-      'SELECT id, code, direction FROM component_type_port WHERE component_type_id = ? ORDER BY code',
-      variables: [Variable<String>(id)],
-    ).get();
+    final surfaceRows = await _db
+        .customSelect(
+          'SELECT surface_type FROM component_type_allowed_surface WHERE component_type_id = ?',
+          variables: [Variable<String>(id)],
+        )
+        .get();
+    final usageRows = await _db
+        .customSelect(
+          'SELECT room_usage_type FROM component_type_allowed_room_usage WHERE component_type_id = ?',
+          variables: [Variable<String>(id)],
+        )
+        .get();
+    final portRows = await _db
+        .customSelect(
+          'SELECT id, code, direction FROM component_type_port WHERE component_type_id = ? ORDER BY code',
+          variables: [Variable<String>(id)],
+        )
+        .get();
 
     final ports = <EngineeringPortSpec>[];
     for (final portRow in portRows) {
       final portRowId = portRow.read<String>('id');
-      final connectionRows = await _db.customSelect(
-        'SELECT connection_type FROM component_port_connection_type WHERE component_type_port_id = ?',
-        variables: [Variable<String>(portRowId)],
-      ).get();
+      final connectionRows = await _db
+          .customSelect(
+            'SELECT connection_type FROM component_port_connection_type WHERE component_type_port_id = ?',
+            variables: [Variable<String>(portRowId)],
+          )
+          .get();
       ports.add(
         EngineeringPortSpec(
           id: portRow.read<String>('code'),
@@ -305,14 +316,16 @@ final class DriftComponentCatalogRepository
             )
             .toSet(),
         preferredHeightMm: row.readNullable<int>('preferred_height_mm'),
-        preferredCeilingOffsetMm:
-            row.readNullable<int>('preferred_ceiling_offset_mm'),
+        preferredCeilingOffsetMm: row.readNullable<int>(
+          'preferred_ceiling_offset_mm',
+        ),
       ),
       environment: ComponentEnvironmentConstraints(
         minAmbientC: row.read<double>('min_ambient_c'),
         maxAmbientC: row.read<double>('max_ambient_c'),
-        maxRelativeHumidityPercent:
-            row.read<double>('max_relative_humidity_percent'),
+        maxRelativeHumidityPercent: row.read<double>(
+          'max_relative_humidity_percent',
+        ),
         allowWetZone: row.read<int>('allow_wet_zone') == 1,
         allowDusty: row.read<int>('allow_dusty') == 1,
         allowCorrosive: row.read<int>('allow_corrosive') == 1,
@@ -331,6 +344,6 @@ final class DriftComponentCatalogRepository
 }
 
 T _enumByName<T extends Enum>(List<T> values, String name) => values.firstWhere(
-      (value) => value.name == name,
-      orElse: () => throw StateError('Unknown enum value $name for $T'),
-    );
+  (value) => value.name == name,
+  orElse: () => throw StateError('Unknown enum value $name for $T'),
+);

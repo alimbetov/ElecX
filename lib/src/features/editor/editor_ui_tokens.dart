@@ -32,14 +32,11 @@ abstract final class EditorUiTokens {
   static const double gapLg = 16;
 
   static BorderSide divider(BuildContext context) => BorderSide(
-        color: Theme.of(context)
-            .colorScheme
-            .outlineVariant
-            .withValues(alpha: 0.72),
-      );
+    color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.72),
+  );
 
   static BorderSide activeBorder(BuildContext context) => BorderSide(
-        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.78),
-        width: activePanelBorder,
-      );
+    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.78),
+    width: activePanelBorder,
+  );
 }

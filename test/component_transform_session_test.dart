@@ -17,10 +17,7 @@ void main() {
     );
 
     expect(controller.componentTransform.begin(), isTrue);
-    expect(
-      controller.componentTransform.nudge(dxMm: 100, dyMm: 0),
-      isTrue,
-    );
+    expect(controller.componentTransform.nudge(dxMm: 100, dyMm: 0), isTrue);
     expect(controller.componentTransform.validate(), isTrue);
     expect(controller.componentTransform.commit(), isTrue);
     expect(controller.p2.selectedComponent!.position.xMm, 1100);

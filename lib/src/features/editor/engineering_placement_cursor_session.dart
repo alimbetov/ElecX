@@ -36,10 +36,7 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
     notifyListeners();
   }
 
-  void beginCatalogPlacement(
-    String componentTypeId, {
-    bool repeat = false,
-  }) {
+  void beginCatalogPlacement(String componentTypeId, {bool repeat = false}) {
     controller.componentCatalog.require(componentTypeId);
     _requestedComponentTypeId = componentTypeId;
     _repeatPlacement = repeat;
@@ -202,10 +199,7 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
     final bounds = space.boundary.bounds;
     if (point.xMm > bounds.width || point.yMm > bounds.height) return false;
     return space.boundary.contains(
-      MmPoint(
-        point.xMm + bounds.left,
-        point.yMm + bounds.bottom,
-      ),
+      MmPoint(point.xMm + bounds.left, point.yMm + bounds.bottom),
     );
   }
 }

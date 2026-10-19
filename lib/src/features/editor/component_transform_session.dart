@@ -67,10 +67,7 @@ final class ComponentTransformSession extends ChangeNotifier
     return true;
   }
 
-  bool preview(
-    SurfacePointMm position, {
-    required bool isValid,
-  }) {
+  bool preview(SurfacePointMm position, {required bool isValid}) {
     final current = _preview;
     if (current == null || !active) return false;
     _preview = ComponentTransformPreview(

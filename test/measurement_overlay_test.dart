@@ -38,20 +38,22 @@ void main() {
     expect(byRole[MeasurementRole.objectHeight], 1200);
   });
 
-  test('beam measurements expose wall offsets width depth and bottom level',
-      () {
-    final set = WallMeasurementResolver.forTopNotch(
-      startMm: 1000,
-      widthMm: 1200,
-      depthMm: 400,
-      wall: wall,
-    );
-    final byRole = {for (final span in set.spans) span.role: span.valueMm};
+  test(
+    'beam measurements expose wall offsets width depth and bottom level',
+    () {
+      final set = WallMeasurementResolver.forTopNotch(
+        startMm: 1000,
+        widthMm: 1200,
+        depthMm: 400,
+        wall: wall,
+      );
+      final byRole = {for (final span in set.spans) span.role: span.valueMm};
 
-    expect(byRole[MeasurementRole.clearanceLeft], 1000);
-    expect(byRole[MeasurementRole.clearanceRight], 2800);
-    expect(byRole[MeasurementRole.objectWidth], 1200);
-    expect(byRole[MeasurementRole.structuralDepth], 400);
-    expect(byRole[MeasurementRole.clearanceBottom], 2600);
-  });
+      expect(byRole[MeasurementRole.clearanceLeft], 1000);
+      expect(byRole[MeasurementRole.clearanceRight], 2800);
+      expect(byRole[MeasurementRole.objectWidth], 1200);
+      expect(byRole[MeasurementRole.structuralDepth], 400);
+      expect(byRole[MeasurementRole.clearanceBottom], 2600);
+    },
+  );
 }

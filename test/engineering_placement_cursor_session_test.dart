@@ -30,8 +30,10 @@ void main() {
 
     expect(controller.placementCursor.confirm(), isTrue);
     expect(controller.p2.components, hasLength(1));
-    expect(controller.p2.components.single.componentTypeId,
-        'power.socket.general');
+    expect(
+      controller.p2.components.single.componentTypeId,
+      'power.socket.general',
+    );
     expect(controller.p2.components.single.position.xMm, 2200);
     expect(controller.p2.components.single.position.yMm, 200);
     expect(controller.p2.components.single.surface, controller.activeSurface);

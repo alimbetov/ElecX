@@ -21,10 +21,10 @@ final class RouteHostRef {
   });
 
   factory RouteHostRef.indoor(RoomSurfaceRef surface) => RouteHostRef._(
-        kind: RouteHostKind.indoorSurface,
-        id: 'indoor:${surface.id}',
-        surface: surface,
-      );
+    kind: RouteHostKind.indoorSurface,
+    id: 'indoor:${surface.id}',
+    surface: surface,
+  );
 
   factory RouteHostRef.outdoor(String outdoorZoneId) {
     if (outdoorZoneId.isEmpty) {
@@ -90,7 +90,7 @@ abstract final class SiteRouteTransitionResolver {
   static List<RouteHostTransition> fromConnections({
     required ComposedProjectSite project,
     required RouteHostRef Function(SiteBuildingConnection connection)
-        resolveIndoorHost,
+    resolveIndoorHost,
   }) {
     final zoneIds = project.outdoorZones.map((zone) => zone.id).toSet();
     final result = <RouteHostTransition>[];

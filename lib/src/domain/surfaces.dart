@@ -20,20 +20,19 @@ final class RoomSurfaceRef {
     this.wallIndex,
   });
 
-  factory RoomSurfaceRef.floor(String spaceId) => RoomSurfaceRef._(
-        spaceId: spaceId,
-        type: SurfacePlaneType.floor,
-      );
+  factory RoomSurfaceRef.floor(String spaceId) =>
+      RoomSurfaceRef._(spaceId: spaceId, type: SurfacePlaneType.floor);
 
-  factory RoomSurfaceRef.ceiling(String spaceId) => RoomSurfaceRef._(
-        spaceId: spaceId,
-        type: SurfacePlaneType.ceiling,
-      );
+  factory RoomSurfaceRef.ceiling(String spaceId) =>
+      RoomSurfaceRef._(spaceId: spaceId, type: SurfacePlaneType.ceiling);
 
   factory RoomSurfaceRef.wall(String spaceId, int wallIndex) {
     if (wallIndex < 0) {
       throw ArgumentError.value(
-          wallIndex, 'wallIndex', 'Must be non-negative.');
+        wallIndex,
+        'wallIndex',
+        'Must be non-negative.',
+      );
     }
     return RoomSurfaceRef._(
       spaceId: spaceId,
@@ -47,10 +46,10 @@ final class RoomSurfaceRef {
   final int? wallIndex;
 
   String get id => switch (type) {
-        SurfacePlaneType.floor => '$spaceId:floor',
-        SurfacePlaneType.ceiling => '$spaceId:ceiling',
-        SurfacePlaneType.wall => '$spaceId:wall:$wallIndex',
-      };
+    SurfacePlaneType.floor => '$spaceId:floor',
+    SurfacePlaneType.ceiling => '$spaceId:ceiling',
+    SurfacePlaneType.wall => '$spaceId:wall:$wallIndex',
+  };
 
   @override
   bool operator ==(Object other) =>
@@ -125,16 +124,15 @@ final class ArchitecturalOpening {
     int? widthMm,
     int? heightMm,
     int? sillHeightMm,
-  }) =>
-      ArchitecturalOpening(
-        id: id,
-        hostWall: hostWall ?? this.hostWall,
-        type: type ?? this.type,
-        offsetFromStartMm: offsetFromStartMm ?? this.offsetFromStartMm,
-        widthMm: widthMm ?? this.widthMm,
-        heightMm: heightMm ?? this.heightMm,
-        sillHeightMm: sillHeightMm ?? this.sillHeightMm,
-      );
+  }) => ArchitecturalOpening(
+    id: id,
+    hostWall: hostWall ?? this.hostWall,
+    type: type ?? this.type,
+    offsetFromStartMm: offsetFromStartMm ?? this.offsetFromStartMm,
+    widthMm: widthMm ?? this.widthMm,
+    heightMm: heightMm ?? this.heightMm,
+    sillHeightMm: sillHeightMm ?? this.sillHeightMm,
+  );
 }
 
 /// A point in coordinates local to a physical surface.
@@ -184,7 +182,8 @@ abstract final class RoomSurfaceResolver {
     final start = vertices[wallIndex];
     final end = vertices[(wallIndex + 1) % vertices.length];
     final length = start.distanceTo(end).round();
-    final profile = space.wallProfiles[wallIndex] ??
+    final profile =
+        space.wallProfiles[wallIndex] ??
         WallProfile.rectangle(widthMm: length, heightMm: defaultHeightMm);
     return RoomWallSurface(
       ref: RoomSurfaceRef.wall(space.id, wallIndex),
@@ -231,8 +230,6 @@ abstract final class RoomSurfaceResolver {
     );
   }
 
-  static double wallAngleRadians(RoomWallSurface wall) => math.atan2(
-        wall.end.y - wall.start.y,
-        wall.end.x - wall.start.x,
-      );
+  static double wallAngleRadians(RoomWallSurface wall) =>
+      math.atan2(wall.end.y - wall.start.y, wall.end.x - wall.start.x);
 }

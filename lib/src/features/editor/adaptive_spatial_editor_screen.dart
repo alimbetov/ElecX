@@ -62,9 +62,7 @@ class _SpatialEditorScreenState extends State<SpatialEditorScreen> {
                 ? null
                 : Drawer(
                     width: EditorLayoutPolicy.inspectorWidth(mode),
-                    child: SafeArea(
-                      child: _Inspector(controller: controller),
-                    ),
+                    child: SafeArea(child: _Inspector(controller: controller)),
                   ),
             appBar: _EditorAppBar(controller: controller, mode: mode),
             body: Column(
@@ -100,8 +98,9 @@ class _SpatialEditorScreenState extends State<SpatialEditorScreen> {
                             Positioned(
                               left: 10,
                               bottom: 10,
-                              child:
-                                  _CanvasContextBadge(controller: controller),
+                              child: _CanvasContextBadge(
+                                controller: controller,
+                              ),
                             ),
                           ],
                         ),
@@ -298,14 +297,13 @@ class _SurfaceStrip extends StatelessWidget {
     IconData icon,
     bool selected,
     VoidCallback onTap,
-  ) =>
-      ChoiceChip(
-        selected: selected,
-        onSelected: (_) => onTap(),
-        avatar: Icon(icon, size: 16),
-        label: Text(label),
-        visualDensity: VisualDensity.compact,
-      );
+  ) => ChoiceChip(
+    selected: selected,
+    onSelected: (_) => onTap(),
+    avatar: Icon(icon, size: 16),
+    label: Text(label),
+    visualDensity: VisualDensity.compact,
+  );
 }
 
 class _ProjectNavigator extends StatelessWidget {
@@ -323,8 +321,10 @@ class _ProjectNavigator extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text('ПРОЕКТ',
-                    style: Theme.of(context).textTheme.labelLarge),
+                child: Text(
+                  'ПРОЕКТ',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
               ),
               Text(
                 '${controller.level.spaces.length} помещений',
@@ -356,8 +356,10 @@ class _ProjectNavigator extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text('ПОМЕЩЕНИЯ',
-                    style: Theme.of(context).textTheme.labelLarge),
+                child: Text(
+                  'ПОМЕЩЕНИЯ',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
               ),
               IconButton(
                 onPressed: () {
@@ -492,15 +494,17 @@ Future<void> _showAdjacentRoomDialog(
                   const SizedBox(height: 8),
                   Align(
                     alignment: Alignment.centerLeft,
-                    child:
-                        Text('Доступно по стене: ${wall.lengthMm.round()} mm'),
+                    child: Text(
+                      'Доступно по стене: ${wall.lengthMm.round()} mm',
+                    ),
                   ),
                   if (error != null) ...[
                     const SizedBox(height: 8),
                     Text(
                       error!,
-                      style:
-                          TextStyle(color: Theme.of(context).colorScheme.error),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                     ),
                   ],
                 ],
@@ -560,8 +564,10 @@ class _Inspector extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text('СВОЙСТВА',
-                    style: Theme.of(context).textTheme.labelLarge),
+                child: Text(
+                  'СВОЙСТВА',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
               ),
               if (surface != null)
                 Chip(
@@ -623,9 +629,8 @@ class _Inspector extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => controller.addOpening(
-                      ArchitecturalOpeningType.door,
-                    ),
+                    onPressed: () =>
+                        controller.addOpening(ArchitecturalOpeningType.door),
                     icon: const Icon(Icons.door_front_door_outlined),
                     label: const Text('Дверь'),
                   ),
@@ -633,9 +638,8 @@ class _Inspector extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => controller.addOpening(
-                      ArchitecturalOpeningType.window,
-                    ),
+                    onPressed: () =>
+                        controller.addOpening(ArchitecturalOpeningType.window),
                     icon: const Icon(Icons.window_outlined),
                     label: const Text('Окно'),
                   ),
@@ -682,8 +686,10 @@ class _Inspector extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text('ТРАССА',
-                      style: Theme.of(context).textTheme.labelLarge),
+                  child: Text(
+                    'ТРАССА',
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
                 ),
                 IconButton(
                   onPressed: controller.clearRouteDraft,
@@ -705,10 +711,8 @@ class _Inspector extends StatelessWidget {
             initialValue: space.grid.minorStepMm,
             items: const [50, 100, 250, 500]
                 .map(
-                  (value) => DropdownMenuItem(
-                    value: value,
-                    child: Text('$value mm'),
-                  ),
+                  (value) =>
+                      DropdownMenuItem(value: value, child: Text('$value mm')),
                 )
                 .toList(),
             onChanged: (value) {
@@ -742,8 +746,10 @@ class _InspectorEmptyState extends StatelessWidget {
               color: Theme.of(context).colorScheme.outline,
             ),
             const SizedBox(height: 12),
-            Text('Выберите помещение',
-                style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Выберите помещение',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 6),
             Text(
               'После выбора здесь появятся размеры, плоскости, проёмы и параметры сетки.',
@@ -776,7 +782,8 @@ class _InlineEmptyState extends StatelessWidget {
           Icon(icon, size: 18),
           const SizedBox(width: 8),
           Expanded(
-              child: Text(text, style: Theme.of(context).textTheme.bodySmall)),
+            child: Text(text, style: Theme.of(context).textTheme.bodySmall),
+          ),
         ],
       ),
     );
@@ -827,9 +834,8 @@ class _OpeningEditor extends StatelessWidget {
             key: ValueKey('${opening.id}-offset-${opening.offsetFromStartMm}'),
             label: 'Позиция от начала стены',
             value: opening.offsetFromStartMm,
-            onSubmit: (value) => controller.updateSelectedOpening(
-              offsetFromStartMm: value,
-            ),
+            onSubmit: (value) =>
+                controller.updateSelectedOpening(offsetFromStartMm: value),
           ),
           const SizedBox(height: 8),
           _SubmitIntField(
@@ -852,9 +858,8 @@ class _OpeningEditor extends StatelessWidget {
             key: ValueKey('${opening.id}-sill-${opening.sillHeightMm}'),
             label: 'Подоконник / от пола',
             value: opening.sillHeightMm,
-            onSubmit: (value) => controller.updateSelectedOpening(
-              sillHeightMm: value,
-            ),
+            onSubmit: (value) =>
+                controller.updateSelectedOpening(sillHeightMm: value),
           ),
           const SizedBox(height: 8),
           Text(
@@ -1027,28 +1032,28 @@ class _StatusBar extends StatelessWidget {
 }
 
 String _surfaceName(RoomSurfaceRef surface) => switch (surface.type) {
-      SurfacePlaneType.floor => 'Пол',
-      SurfacePlaneType.ceiling => 'Потолок',
-      SurfacePlaneType.wall => 'Стена ${(surface.wallIndex ?? 0) + 1}',
-    };
+  SurfacePlaneType.floor => 'Пол',
+  SurfacePlaneType.ceiling => 'Потолок',
+  SurfacePlaneType.wall => 'Стена ${(surface.wallIndex ?? 0) + 1}',
+};
 
 String _openingName(ArchitecturalOpening opening) => switch (opening.type) {
-      ArchitecturalOpeningType.door => 'Дверь',
-      ArchitecturalOpeningType.window => 'Окно',
-      ArchitecturalOpeningType.passage => 'Проход',
-      ArchitecturalOpeningType.technicalOpening => 'Тех. проём',
-    };
+  ArchitecturalOpeningType.door => 'Дверь',
+  ArchitecturalOpeningType.window => 'Окно',
+  ArchitecturalOpeningType.passage => 'Проход',
+  ArchitecturalOpeningType.technicalOpening => 'Тех. проём',
+};
 
 String _toolName(EditorTool tool) => switch (tool) {
-      EditorTool.select => 'Выбор',
-      EditorTool.roomRectangle => 'Комната',
-      EditorTool.guide => 'Направляющая',
-      EditorTool.cableRoute => 'Трасса',
-    };
+  EditorTool.select => 'Выбор',
+  EditorTool.roomRectangle => 'Комната',
+  EditorTool.guide => 'Направляющая',
+  EditorTool.cableRoute => 'Трасса',
+};
 
 IconData _toolIcon(EditorTool tool) => switch (tool) {
-      EditorTool.select => Icons.near_me_outlined,
-      EditorTool.roomRectangle => Icons.crop_square,
-      EditorTool.guide => Icons.straighten,
-      EditorTool.cableRoute => Icons.alt_route,
-    };
+  EditorTool.select => Icons.near_me_outlined,
+  EditorTool.roomRectangle => Icons.crop_square,
+  EditorTool.guide => Icons.straighten,
+  EditorTool.cableRoute => Icons.alt_route,
+};

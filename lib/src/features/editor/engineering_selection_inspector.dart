@@ -13,10 +13,7 @@ import 'editor_p2_session.dart';
 import 'route_selection_session.dart';
 
 class EngineeringSelectionInspector extends StatelessWidget {
-  const EngineeringSelectionInspector({
-    required this.controller,
-    super.key,
-  });
+  const EngineeringSelectionInspector({required this.controller, super.key});
 
   final EditorController controller;
 
@@ -39,8 +36,9 @@ class EngineeringSelectionInspector extends StatelessWidget {
           );
         }
         if (hostedRoute != null) {
-          final bundle = controller.circuitCableRegistry
-              .bundleByRouteId(hostedRoute.routeId);
+          final bundle = controller.circuitCableRegistry.bundleByRouteId(
+            hostedRoute.routeId,
+          );
           return _HostedRouteInspector(
             routeId: hostedRoute.routeId,
             medium: hostedRoute.medium,
@@ -75,8 +73,9 @@ class _ComponentInspector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final entry = controller.componentCatalog.byId(component.componentTypeId);
-    final taxonomy =
-        entry == null ? null : ComponentTaxonomyResolver.resolve(entry);
+    final taxonomy = entry == null
+        ? null
+        : ComponentTaxonomyResolver.resolve(entry);
     return _InspectorScaffold(
       title: component.label,
       subtitle: component.componentTypeId,
@@ -100,8 +99,10 @@ class _ComponentInspector extends StatelessWidget {
             'POWER',
             component.ratedPowerW == null ? '—' : '${component.ratedPowerW} W',
           ),
-          _row('PORTS',
-              component.ports.isEmpty ? '—' : '${component.ports.length}'),
+          _row(
+            'PORTS',
+            component.ports.isEmpty ? '—' : '${component.ports.length}',
+          ),
         ]),
       ],
     );
@@ -132,8 +133,10 @@ class _RouteInspector extends StatelessWidget {
         ]),
         _section('CABLE', [
           _row('MEDIUM', route.medium.displayName),
-          _row('SPEC',
-              route.cableType ?? bundle?.cable.cableSpecId ?? 'NOT ASSIGNED'),
+          _row(
+            'SPEC',
+            route.cableType ?? bundle?.cable.cableSpecId ?? 'NOT ASSIGNED',
+          ),
           _row('RESERVE', '${route.reservePercent}%'),
         ]),
         _section('ROUTE', [
@@ -208,10 +211,9 @@ Widget _registrySections(CircuitCableBundle bundle) {
         _row('CIRCUIT ID', circuit.id),
         _row('BOARD', circuit.boardId ?? 'UNASSIGNED'),
         _row(
-            'PROTECTION',
-            protective?.designation ??
-                circuit.protectiveDeviceId ??
-                'UNASSIGNED'),
+          'PROTECTION',
+          protective?.designation ?? circuit.protectiveDeviceId ?? 'UNASSIGNED',
+        ),
         if (protective?.ratedCurrentA != null)
           _row('RATING', '${protective!.ratedCurrentA} A'),
         if (protective?.poleCount != null)
@@ -241,33 +243,32 @@ class _EmptyInspector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.radar_outlined,
-                size: 30,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'SELECT ENGINEERING OBJECT',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      letterSpacing: 1.1,
-                    ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                'Компонент или трасса откроет инженерные параметры здесь.',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.radar_outlined,
+            size: 30,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
-        ),
-      );
+          const SizedBox(height: 10),
+          Text(
+            'SELECT ENGINEERING OBJECT',
+            style: Theme.of(context).textTheme.labelMedium
+                ?.copyWith(letterSpacing: 1.1),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            'Компонент или трасса откроет инженерные параметры здесь.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _InspectorScaffold extends StatelessWidget {
@@ -308,14 +309,15 @@ class _InspectorScaffold extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title,
-                          style: Theme.of(context).textTheme.titleSmall),
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            ),
+                        style: Theme.of(context).textTheme.labelSmall
+                            ?.copyWith(color: scheme.onSurfaceVariant),
                       ),
                     ],
                   ),
@@ -323,10 +325,10 @@ class _InspectorScaffold extends StatelessWidget {
                 Text(
                   status,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: signal,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.8,
-                      ),
+                    color: signal,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8,
+                  ),
                 ),
               ],
             ),
@@ -340,62 +342,57 @@ class _InspectorScaffold extends StatelessWidget {
 }
 
 Widget _section(String title, List<Widget> rows) => Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Builder(
-        builder: (context) => DecoratedBox(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(7),
-            border: Border.all(
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1,
-                      ),
-                ),
-                const SizedBox(height: 7),
-                ...rows,
-              ],
-            ),
-          ),
-        ),
+  padding: const EdgeInsets.only(top: 8),
+  child: Builder(
+    builder: (context) => DecoratedBox(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       ),
-    );
-
-Widget _row(String label, String value) => Builder(
-      builder: (context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2.5),
-        child: Row(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              width: 94,
-              child: Text(
-                label,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-              ),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.labelSmall
+                  ?.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1),
             ),
-            Expanded(
-              child: Text(
-                value,
-                textAlign: TextAlign.right,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-            ),
+            const SizedBox(height: 7),
+            ...rows,
           ],
         ),
       ),
-    );
+    ),
+  ),
+);
+
+Widget _row(String label, String value) => Builder(
+  builder: (context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 2.5),
+    child: Row(
+      children: [
+        SizedBox(
+          width: 94,
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall
+                ?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
+    ),
+  ),
+);

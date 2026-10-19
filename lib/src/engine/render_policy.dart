@@ -1,10 +1,4 @@
-enum RenderLod {
-  site,
-  building,
-  level,
-  room,
-  detail,
-}
+enum RenderLod { site, building, level, room, detail }
 
 final class RenderPolicy {
   const RenderPolicy._();

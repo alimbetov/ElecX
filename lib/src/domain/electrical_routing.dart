@@ -5,8 +5,10 @@ import 'route_medium.dart';
 import 'surfaces.dart';
 
 final class ElectricalEndpointRef {
-  const ElectricalEndpointRef(
-      {required this.componentId, required this.portId});
+  const ElectricalEndpointRef({
+    required this.componentId,
+    required this.portId,
+  });
 
   final String componentId;
   final String portId;

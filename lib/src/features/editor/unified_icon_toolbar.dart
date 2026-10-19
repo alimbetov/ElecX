@@ -68,8 +68,9 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
         context,
         selected: controller.snapEnabled,
         icon: controller.snapEnabled ? Icons.grid_4x4 : Icons.grid_off,
-        tooltip:
-            controller.snapEnabled ? 'Отключить привязку' : 'Включить привязку',
+        tooltip: controller.snapEnabled
+            ? 'Отключить привязку'
+            : 'Включить привязку',
         onPressed: () => controller.setSnapEnabled(!controller.snapEnabled),
       ),
       _toggleButton(
@@ -152,10 +153,7 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
     );
   }
 
-  ButtonStyle _commandStyle(
-    BuildContext context, {
-    bool selected = false,
-  }) =>
+  ButtonStyle _commandStyle(BuildContext context, {bool selected = false}) =>
       IconButton.styleFrom(
         minimumSize: Size(_target, _target),
         maximumSize: Size(_target, _target),
@@ -170,17 +168,16 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
     required EditorTool tool,
     required IconData icon,
     required String tooltip,
-  }) =>
-      _toggleButton(
-        context,
-        selected: controller.tool == tool,
-        icon: icon,
-        tooltip: tooltip,
-        onPressed: () {
-          controller.placementCursor.cancel();
-          controller.setTool(tool);
-        },
-      );
+  }) => _toggleButton(
+    context,
+    selected: controller.tool == tool,
+    icon: icon,
+    tooltip: tooltip,
+    onPressed: () {
+      controller.placementCursor.cancel();
+      controller.setTool(tool);
+    },
+  );
 
   Widget _toggleButton(
     BuildContext context, {
@@ -188,33 +185,31 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
     required IconData icon,
     required String tooltip,
     required VoidCallback onPressed,
-  }) =>
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 1),
-        child: IconButton.filledTonal(
-          onPressed: onPressed,
-          isSelected: selected,
-          tooltip: tooltip,
-          icon: Icon(icon, size: 20),
-          style: _commandStyle(context, selected: selected),
-        ),
-      );
+  }) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 1),
+    child: IconButton.filledTonal(
+      onPressed: onPressed,
+      isSelected: selected,
+      tooltip: tooltip,
+      icon: Icon(icon, size: 20),
+      style: _commandStyle(context, selected: selected),
+    ),
+  );
 
   Widget _iconButton(
     BuildContext context, {
     required IconData icon,
     required String tooltip,
     required VoidCallback? onPressed,
-  }) =>
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 1),
-        child: IconButton(
-          onPressed: onPressed,
-          tooltip: tooltip,
-          icon: Icon(icon, size: 20),
-          style: _commandStyle(context),
-        ),
-      );
+  }) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 1),
+    child: IconButton(
+      onPressed: onPressed,
+      tooltip: tooltip,
+      icon: Icon(icon, size: 20),
+      style: _commandStyle(context),
+    ),
+  );
 }
 
 class _ComponentCatalogPaletteButton extends StatelessWidget {
@@ -242,8 +237,8 @@ class _ComponentCatalogPaletteButton extends StatelessWidget {
             tooltip: catalog.loading
                 ? 'Загрузка каталога…'
                 : selected == null
-                    ? 'Добавить инженерный компонент'
-                    : 'Размещение: ${selected.name}',
+                ? 'Добавить инженерный компонент'
+                : 'Размещение: ${selected.name}',
             onSelected: (componentTypeId) {
               final entry = catalog.require(componentTypeId);
               _ensureCompatibleSurface(entry);
@@ -428,33 +423,32 @@ class _ToolbarDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-        child: VerticalDivider(width: 1),
-      );
+    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+    child: VerticalDivider(width: 1),
+  );
 }
 
 String _layerName(EditorLayerId layer) => switch (layer) {
-      EditorLayerId.architecture => 'Архитектура',
-      EditorLayerId.openings => 'Проёмы',
-      EditorLayerId.electrical => 'Электрика',
-      EditorLayerId.cableRoutes => 'Кабельные трассы',
-      EditorLayerId.dimensions => 'Размеры',
-      EditorLayerId.guides => 'Направляющие',
-    };
+  EditorLayerId.architecture => 'Архитектура',
+  EditorLayerId.openings => 'Проёмы',
+  EditorLayerId.electrical => 'Электрика',
+  EditorLayerId.cableRoutes => 'Кабельные трассы',
+  EditorLayerId.dimensions => 'Размеры',
+  EditorLayerId.guides => 'Направляющие',
+};
 
 String _routePreferenceName(RoutePreference preference) => switch (preference) {
-      RoutePreference.shortest => 'Кратчайший путь',
-      RoutePreference.orthogonal => 'Ортогонально',
-      RoutePreference.preferWall => 'Предпочитать стены',
-      RoutePreference.preferCeiling => 'Предпочитать потолок',
-      RoutePreference.preferFloor => 'Предпочитать пол',
-    };
+  RoutePreference.shortest => 'Кратчайший путь',
+  RoutePreference.orthogonal => 'Ортогонально',
+  RoutePreference.preferWall => 'Предпочитать стены',
+  RoutePreference.preferCeiling => 'Предпочитать потолок',
+  RoutePreference.preferFloor => 'Предпочитать пол',
+};
 
 IconData _catalogIcon(EngineeringSystemClass systemClass) =>
     switch (systemClass) {
       EngineeringSystemClass.powerAc ||
-      EngineeringSystemClass.powerDc =>
-        Icons.electrical_services,
+      EngineeringSystemClass.powerDc => Icons.electrical_services,
       EngineeringSystemClass.lighting => Icons.lightbulb_outline,
       EngineeringSystemClass.structuredCabling => Icons.lan_outlined,
       EngineeringSystemClass.poeNetwork => Icons.wifi_outlined,

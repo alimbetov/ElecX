@@ -14,13 +14,13 @@ final class EngineeringAnalysisProfile {
     this.errorPenalty = 20,
     this.warningPenalty = 7,
     this.infoPenalty = 2,
-  })  : assert(routeImprovementThreshold >= 0),
-        assert(maxSurfaceTransitions >= 0),
-        assert(maxRouteBends >= 0),
-        assert(componentClearanceMm >= 0),
-        assert(errorPenalty >= 0),
-        assert(warningPenalty >= 0),
-        assert(infoPenalty >= 0);
+  }) : assert(routeImprovementThreshold >= 0),
+       assert(maxSurfaceTransitions >= 0),
+       assert(maxRouteBends >= 0),
+       assert(componentClearanceMm >= 0),
+       assert(errorPenalty >= 0),
+       assert(warningPenalty >= 0),
+       assert(infoPenalty >= 0);
 
   final double routeImprovementThreshold;
   final int maxSurfaceTransitions;
@@ -35,10 +35,10 @@ final class EngineeringAnalysisProfile {
   final int infoPenalty;
 
   int penaltyFor(AnalysisSeverityWeight severity) => switch (severity) {
-        AnalysisSeverityWeight.error => errorPenalty,
-        AnalysisSeverityWeight.warning => warningPenalty,
-        AnalysisSeverityWeight.info => infoPenalty,
-      };
+    AnalysisSeverityWeight.error => errorPenalty,
+    AnalysisSeverityWeight.warning => warningPenalty,
+    AnalysisSeverityWeight.info => infoPenalty,
+  };
 
   static const standard = EngineeringAnalysisProfile();
 }

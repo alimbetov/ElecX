@@ -36,9 +36,7 @@ final class ComponentCatalogSession extends ChangeNotifier {
       .where((entry) => entry.mounting.allowedSurfaces.contains(type))
       .toList(growable: false);
 
-  List<ComponentCatalogEntryV2> forSystem(
-    EngineeringSystemClass systemClass,
-  ) =>
+  List<ComponentCatalogEntryV2> forSystem(EngineeringSystemClass systemClass) =>
       entries
           .where((entry) => entry.systemClass == systemClass)
           .toList(growable: false);
@@ -52,9 +50,7 @@ final class ComponentCatalogSession extends ChangeNotifier {
       final loadedEntries = await repository.all();
       _entries
         ..clear()
-        ..addEntries(
-          loadedEntries.map((entry) => MapEntry(entry.id, entry)),
-        );
+        ..addEntries(loadedEntries.map((entry) => MapEntry(entry.id, entry)));
       _loaded = true;
     } catch (error) {
       _loadError = error;

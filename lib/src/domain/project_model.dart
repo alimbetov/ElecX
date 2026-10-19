@@ -8,13 +8,13 @@ enum SpaceType {
   technicalRoom,
   stair,
   shaft,
-  outdoorArea
+  outdoorArea,
 }
 
 final class GridDefinition {
   const GridDefinition({this.minorStepMm = 100, this.majorEvery = 10})
-      : assert(minorStepMm > 0),
-        assert(majorEvery > 0);
+    : assert(minorStepMm > 0),
+      assert(majorEvery > 0);
 
   final int minorStepMm;
   final int majorEvery;
@@ -61,27 +61,21 @@ final class EngineeringSpace {
     MmPolygon? boundary,
     RoomReferenceFrame? referenceFrame,
     Map<int, WallProfile>? wallProfiles,
-  }) =>
-      EngineeringSpace(
-        id: id,
-        name: name,
-        type: type,
-        boundary: boundary ?? this.boundary,
-        referenceFrame: referenceFrame ?? this.referenceFrame,
-        grid: grid ?? this.grid,
-        wallProfiles: wallProfiles ?? this.wallProfiles,
-      );
+  }) => EngineeringSpace(
+    id: id,
+    name: name,
+    type: type,
+    boundary: boundary ?? this.boundary,
+    referenceFrame: referenceFrame ?? this.referenceFrame,
+    grid: grid ?? this.grid,
+    wallProfiles: wallProfiles ?? this.wallProfiles,
+  );
 
   EngineeringSpace withWallProfile(int wallIndex, WallProfile profile) {
     if (wallIndex < 0 || wallIndex >= boundary.vertices.length) {
       throw RangeError.index(wallIndex, boundary.vertices, 'wallIndex');
     }
-    return copyWith(
-      wallProfiles: {
-        ...wallProfiles,
-        wallIndex: profile,
-      },
-    );
+    return copyWith(wallProfiles: {...wallProfiles, wallIndex: profile});
   }
 
   EngineeringSpace withoutWallProfile(int wallIndex) {
@@ -92,11 +86,12 @@ final class EngineeringSpace {
 }
 
 final class BuildingLevel {
-  const BuildingLevel(
-      {required this.id,
-      required this.name,
-      required this.elevationMm,
-      required this.spaces});
+  const BuildingLevel({
+    required this.id,
+    required this.name,
+    required this.elevationMm,
+    required this.spaces,
+  });
 
   final String id;
   final String name;
@@ -104,11 +99,11 @@ final class BuildingLevel {
   final List<EngineeringSpace> spaces;
 
   BuildingLevel copyWith({List<EngineeringSpace>? spaces}) => BuildingLevel(
-        id: id,
-        name: name,
-        elevationMm: elevationMm,
-        spaces: spaces ?? this.spaces,
-      );
+    id: id,
+    name: name,
+    elevationMm: elevationMm,
+    spaces: spaces ?? this.spaces,
+  );
 }
 
 final class Building {
@@ -120,8 +115,11 @@ final class Building {
 }
 
 final class ProjectSite {
-  const ProjectSite(
-      {required this.id, required this.name, required this.buildings});
+  const ProjectSite({
+    required this.id,
+    required this.name,
+    required this.buildings,
+  });
 
   final String id;
   final String name;
@@ -129,8 +127,11 @@ final class ProjectSite {
 }
 
 final class EngineeringProject {
-  const EngineeringProject(
-      {required this.id, required this.name, required this.site});
+  const EngineeringProject({
+    required this.id,
+    required this.name,
+    required this.site,
+  });
 
   final String id;
   final String name;

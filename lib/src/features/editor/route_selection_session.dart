@@ -53,8 +53,9 @@ final class RouteSelectionSession extends ChangeNotifier {
   }
 }
 
-final Expando<RouteSelectionSession> _sessions =
-    Expando<RouteSelectionSession>('ElecX route selection session');
+final Expando<RouteSelectionSession> _sessions = Expando<RouteSelectionSession>(
+  'ElecX route selection session',
+);
 
 extension RouteSelectionSessionAccess on EditorController {
   RouteSelectionSession get routeSelection =>

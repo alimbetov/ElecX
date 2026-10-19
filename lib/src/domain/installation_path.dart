@@ -46,7 +46,8 @@ final class InstallationChannelSpec {
     if (capacityModel == ChannelCapacityModel.cableCount &&
         (maxCableCount == null || maxCableCount! <= 0)) {
       throw ArgumentError(
-          'Cable-count channel requires positive maxCableCount.');
+        'Cable-count channel requires positive maxCableCount.',
+      );
     }
   }
 

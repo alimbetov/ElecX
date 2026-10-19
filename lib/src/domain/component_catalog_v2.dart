@@ -217,19 +217,15 @@ abstract final class ComponentCatalogV2 {
 
   static List<ComponentCatalogEntryV2> forSystem(
     EngineeringSystemClass systemClass,
-  ) =>
-      entries
-          .where((entry) => entry.systemClass == systemClass)
-          .toList(growable: false);
+  ) => entries
+      .where((entry) => entry.systemClass == systemClass)
+      .toList(growable: false);
 
   static List<ComponentCatalogEntryV2> forSurface(
     SurfacePlaneType surfaceType,
-  ) =>
-      entries
-          .where(
-            (entry) => entry.mounting.allowedSurfaces.contains(surfaceType),
-          )
-          .toList(growable: false);
+  ) => entries
+      .where((entry) => entry.mounting.allowedSurfaces.contains(surfaceType))
+      .toList(growable: false);
 
   static final List<ComponentCatalogEntryV2> _defaults = [
     _socket,
@@ -318,10 +314,7 @@ abstract final class ComponentCatalogV2 {
     systemClass: EngineeringSystemClass.lighting,
     calculationKind: EngineeringCalculationKind.powerCableSizing,
     mounting: ComponentMountingPolicy(
-      allowedSurfaces: const {
-        SurfacePlaneType.ceiling,
-        SurfacePlaneType.wall,
-      },
+      allowedSurfaces: const {SurfacePlaneType.ceiling, SurfacePlaneType.wall},
     ),
     environment: const ComponentEnvironmentConstraints(
       minAmbientC: -20,
@@ -350,10 +343,7 @@ abstract final class ComponentCatalogV2 {
     systemClass: EngineeringSystemClass.powerAc,
     calculationKind: EngineeringCalculationKind.powerCableSizing,
     mounting: ComponentMountingPolicy(
-      allowedSurfaces: const {
-        SurfacePlaneType.wall,
-        SurfacePlaneType.ceiling,
-      },
+      allowedSurfaces: const {SurfacePlaneType.wall, SurfacePlaneType.ceiling},
     ),
     environment: const ComponentEnvironmentConstraints(
       minAmbientC: 0,
@@ -391,10 +381,7 @@ abstract final class ComponentCatalogV2 {
     systemClass: EngineeringSystemClass.powerAc,
     calculationKind: EngineeringCalculationKind.powerCableSizing,
     mounting: ComponentMountingPolicy(
-      allowedSurfaces: const {
-        SurfacePlaneType.wall,
-        SurfacePlaneType.ceiling,
-      },
+      allowedSurfaces: const {SurfacePlaneType.wall, SurfacePlaneType.ceiling},
     ),
     environment: const ComponentEnvironmentConstraints(),
     ports: [
@@ -420,10 +407,7 @@ abstract final class ComponentCatalogV2 {
     systemClass: EngineeringSystemClass.powerAc,
     calculationKind: EngineeringCalculationKind.powerCableSizing,
     mounting: ComponentMountingPolicy(
-      allowedSurfaces: const {
-        SurfacePlaneType.wall,
-        SurfacePlaneType.floor,
-      },
+      allowedSurfaces: const {SurfacePlaneType.wall, SurfacePlaneType.floor},
     ),
     environment: const ComponentEnvironmentConstraints(
       allowWetZone: false,
@@ -445,45 +429,45 @@ abstract final class ComponentCatalogV2 {
 
   static final ComponentCatalogEntryV2 _distributionBoard =
       ComponentCatalogEntryV2(
-    id: 'power.distribution-board.general',
-    code: 'DB-GENERAL',
-    name: 'Распределительный щит',
-    discipline: EngineeringDiscipline.power,
-    systemClass: EngineeringSystemClass.powerAc,
-    calculationKind: EngineeringCalculationKind.powerCableSizing,
-    mounting: ComponentMountingPolicy(
-      allowedSurfaces: const {
-        SurfacePlaneType.wall,
-        SurfacePlaneType.floor,
-      },
-    ),
-    environment: const ComponentEnvironmentConstraints(
-      minAmbientC: -10,
-      maxAmbientC: 40,
-      maxRelativeHumidityPercent: 80,
-      allowWetZone: false,
-      allowCorrosive: false,
-    ),
-    ports: [
-      EngineeringPortSpec(
-        id: 'incoming',
-        direction: EngineeringPortDirection.input,
-        allowedConnections: const {
-          EngineeringConnectionType.acSinglePhase,
-          EngineeringConnectionType.acThreePhase,
-        },
-      ),
-      EngineeringPortSpec(
-        id: 'outgoing',
-        direction: EngineeringPortDirection.output,
-        allowedConnections: const {
-          EngineeringConnectionType.acSinglePhase,
-          EngineeringConnectionType.acThreePhase,
-        },
-      ),
-    ],
-    routePreferenceId: 'power.board',
-  );
+        id: 'power.distribution-board.general',
+        code: 'DB-GENERAL',
+        name: 'Распределительный щит',
+        discipline: EngineeringDiscipline.power,
+        systemClass: EngineeringSystemClass.powerAc,
+        calculationKind: EngineeringCalculationKind.powerCableSizing,
+        mounting: ComponentMountingPolicy(
+          allowedSurfaces: const {
+            SurfacePlaneType.wall,
+            SurfacePlaneType.floor,
+          },
+        ),
+        environment: const ComponentEnvironmentConstraints(
+          minAmbientC: -10,
+          maxAmbientC: 40,
+          maxRelativeHumidityPercent: 80,
+          allowWetZone: false,
+          allowCorrosive: false,
+        ),
+        ports: [
+          EngineeringPortSpec(
+            id: 'incoming',
+            direction: EngineeringPortDirection.input,
+            allowedConnections: const {
+              EngineeringConnectionType.acSinglePhase,
+              EngineeringConnectionType.acThreePhase,
+            },
+          ),
+          EngineeringPortSpec(
+            id: 'outgoing',
+            direction: EngineeringPortDirection.output,
+            allowedConnections: const {
+              EngineeringConnectionType.acSinglePhase,
+              EngineeringConnectionType.acThreePhase,
+            },
+          ),
+        ],
+        routePreferenceId: 'power.board',
+      );
 
   static final ComponentCatalogEntryV2 _cctvCamera = ComponentCatalogEntryV2(
     id: 'cctv.camera.poe',
@@ -493,10 +477,7 @@ abstract final class ComponentCatalogV2 {
     systemClass: EngineeringSystemClass.cctv,
     calculationKind: EngineeringCalculationKind.poePowerBudget,
     mounting: ComponentMountingPolicy(
-      allowedSurfaces: const {
-        SurfacePlaneType.wall,
-        SurfacePlaneType.ceiling,
-      },
+      allowedSurfaces: const {SurfacePlaneType.wall, SurfacePlaneType.ceiling},
     ),
     environment: const ComponentEnvironmentConstraints(
       minAmbientC: -20,
@@ -552,37 +533,37 @@ abstract final class ComponentCatalogV2 {
 
   static final ComponentCatalogEntryV2 _wifiAccessPoint =
       ComponentCatalogEntryV2(
-    id: 'data.wifi-ap.poe',
-    code: 'WIFI-AP-POE',
-    name: 'Wi-Fi точка доступа PoE',
-    discipline: EngineeringDiscipline.data,
-    systemClass: EngineeringSystemClass.poeNetwork,
-    calculationKind: EngineeringCalculationKind.poePowerBudget,
-    mounting: ComponentMountingPolicy(
-      allowedSurfaces: const {
-        SurfacePlaneType.ceiling,
-        SurfacePlaneType.wall,
-      },
-    ),
-    environment: const ComponentEnvironmentConstraints(
-      minAmbientC: 0,
-      maxAmbientC: 45,
-      maxRelativeHumidityPercent: 90,
-      allowWetZone: false,
-    ),
-    ports: [
-      EngineeringPortSpec(
-        id: 'network-poe',
-        direction: EngineeringPortDirection.input,
-        allowedConnections: const {EngineeringConnectionType.poe},
-      ),
-    ],
-    loadDefaults: const ComponentLoadDefaults(
-      ratedPowerW: 20,
-      poeClass: 'PoE+',
-    ),
-    routePreferenceId: 'data.poe',
-  );
+        id: 'data.wifi-ap.poe',
+        code: 'WIFI-AP-POE',
+        name: 'Wi-Fi точка доступа PoE',
+        discipline: EngineeringDiscipline.data,
+        systemClass: EngineeringSystemClass.poeNetwork,
+        calculationKind: EngineeringCalculationKind.poePowerBudget,
+        mounting: ComponentMountingPolicy(
+          allowedSurfaces: const {
+            SurfacePlaneType.ceiling,
+            SurfacePlaneType.wall,
+          },
+        ),
+        environment: const ComponentEnvironmentConstraints(
+          minAmbientC: 0,
+          maxAmbientC: 45,
+          maxRelativeHumidityPercent: 90,
+          allowWetZone: false,
+        ),
+        ports: [
+          EngineeringPortSpec(
+            id: 'network-poe',
+            direction: EngineeringPortDirection.input,
+            allowedConnections: const {EngineeringConnectionType.poe},
+          ),
+        ],
+        loadDefaults: const ComponentLoadDefaults(
+          ratedPowerW: 20,
+          poeClass: 'PoE+',
+        ),
+        routePreferenceId: 'data.poe',
+      );
 
   static final ComponentCatalogEntryV2 _smokeDetector = ComponentCatalogEntryV2(
     id: 'fire.detector.smoke',
@@ -707,16 +688,16 @@ abstract final class ComponentCatalogV2 {
 
 abstract final class LegacyElectricalCatalogAdapter {
   static String componentIdFor(ElectricalComponentType type) => switch (type) {
-        ElectricalComponentType.socketOutlet => 'power.socket.general',
-        ElectricalComponentType.switchControl => 'lighting.switch.general',
-        ElectricalComponentType.lightingPoint => 'lighting.luminaire.general',
-        ElectricalComponentType.curtainMotor => 'power.motor.curtain',
-        ElectricalComponentType.junctionBox => 'power.junction-box.general',
-        ElectricalComponentType.powerSource => 'power.source.general',
-        ElectricalComponentType.distributionBoard =>
-          'power.distribution-board.general',
-        ElectricalComponentType.custom => 'custom.component.general',
-      };
+    ElectricalComponentType.socketOutlet => 'power.socket.general',
+    ElectricalComponentType.switchControl => 'lighting.switch.general',
+    ElectricalComponentType.lightingPoint => 'lighting.luminaire.general',
+    ElectricalComponentType.curtainMotor => 'power.motor.curtain',
+    ElectricalComponentType.junctionBox => 'power.junction-box.general',
+    ElectricalComponentType.powerSource => 'power.source.general',
+    ElectricalComponentType.distributionBoard =>
+      'power.distribution-board.general',
+    ElectricalComponentType.custom => 'custom.component.general',
+  };
 
   static ComponentCatalogEntryV2 entryFor(ElectricalComponentType type) =>
       ComponentCatalogV2.require(componentIdFor(type));

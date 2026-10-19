@@ -46,10 +46,7 @@ class EditorKeyboardScope extends StatelessWidget {
       return false;
     }
     return space.boundary.contains(
-      MmPoint(
-        point.xMm + bounds.left,
-        point.yMm + bounds.bottom,
-      ),
+      MmPoint(point.xMm + bounds.left, point.yMm + bounds.bottom),
     );
   }
 
@@ -59,10 +56,7 @@ class EditorKeyboardScope extends StatelessWidget {
     );
     final step = policy.nudgeStepMm(coarse: coarse);
     if (controller.placementCursor.active) {
-      controller.placementCursor.nudge(
-        dxMm: dx * step,
-        dyMm: dy * step,
-      );
+      controller.placementCursor.nudge(dxMm: dx * step, dyMm: dy * step);
       return;
     }
 

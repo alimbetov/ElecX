@@ -82,141 +82,124 @@ final class ElectricalComponentPlacement {
     int? rotationDegrees,
     int? ratedPowerW,
     int? voltageV,
-  }) =>
-      ElectricalComponentPlacement(
-        id: id,
-        type: type,
-        componentTypeId: componentTypeId ?? this.componentTypeId,
-        surface: surface ?? this.surface,
-        position: position ?? this.position,
-        label: label ?? this.label,
-        rotationDegrees: rotationDegrees ?? this.rotationDegrees,
-        ratedPowerW: ratedPowerW ?? this.ratedPowerW,
-        voltageV: voltageV ?? this.voltageV,
-        ports: ports,
-      );
+  }) => ElectricalComponentPlacement(
+    id: id,
+    type: type,
+    componentTypeId: componentTypeId ?? this.componentTypeId,
+    surface: surface ?? this.surface,
+    position: position ?? this.position,
+    label: label ?? this.label,
+    rotationDegrees: rotationDegrees ?? this.rotationDegrees,
+    ratedPowerW: ratedPowerW ?? this.ratedPowerW,
+    voltageV: voltageV ?? this.voltageV,
+    ports: ports,
+  );
 }
 
 String legacyComponentTypeId(ElectricalComponentType type) => switch (type) {
-      ElectricalComponentType.socketOutlet => 'power.socket.general',
-      ElectricalComponentType.switchControl => 'lighting.switch.general',
-      ElectricalComponentType.lightingPoint => 'lighting.luminaire.general',
-      ElectricalComponentType.curtainMotor => 'legacy.curtain-motor',
-      ElectricalComponentType.junctionBox => 'power.junction-box.general',
-      ElectricalComponentType.powerSource => 'legacy.power-source',
-      ElectricalComponentType.distributionBoard =>
-        'power.distribution-board.general',
-      ElectricalComponentType.custom => 'legacy.custom',
-    };
+  ElectricalComponentType.socketOutlet => 'power.socket.general',
+  ElectricalComponentType.switchControl => 'lighting.switch.general',
+  ElectricalComponentType.lightingPoint => 'lighting.luminaire.general',
+  ElectricalComponentType.curtainMotor => 'legacy.curtain-motor',
+  ElectricalComponentType.junctionBox => 'power.junction-box.general',
+  ElectricalComponentType.powerSource => 'legacy.power-source',
+  ElectricalComponentType.distributionBoard =>
+    'power.distribution-board.general',
+  ElectricalComponentType.custom => 'legacy.custom',
+};
 
 ElectricalComponentType legacyVisualTypeForComponentId(
-        String componentTypeId) =>
-    switch (componentTypeId) {
-      'power.socket.general' => ElectricalComponentType.socketOutlet,
-      'lighting.switch.general' => ElectricalComponentType.switchControl,
-      'lighting.luminaire.general' => ElectricalComponentType.lightingPoint,
-      'power.junction-box.general' => ElectricalComponentType.junctionBox,
-      'power.distribution-board.general' =>
-        ElectricalComponentType.distributionBoard,
-      'legacy.curtain-motor' => ElectricalComponentType.curtainMotor,
-      'legacy.power-source' => ElectricalComponentType.powerSource,
-      _ => ElectricalComponentType.custom,
-    };
+  String componentTypeId,
+) => switch (componentTypeId) {
+  'power.socket.general' => ElectricalComponentType.socketOutlet,
+  'lighting.switch.general' => ElectricalComponentType.switchControl,
+  'lighting.luminaire.general' => ElectricalComponentType.lightingPoint,
+  'power.junction-box.general' => ElectricalComponentType.junctionBox,
+  'power.distribution-board.general' =>
+    ElectricalComponentType.distributionBoard,
+  'legacy.curtain-motor' => ElectricalComponentType.curtainMotor,
+  'legacy.power-source' => ElectricalComponentType.powerSource,
+  _ => ElectricalComponentType.custom,
+};
 
 abstract final class ElectricalComponentDefaults {
   static List<ElectricalPortDefinition> portsFor(
     ElectricalComponentType type,
-  ) =>
-      switch (type) {
-        ElectricalComponentType.socketOutlet => const [
-            ElectricalPortDefinition(
-              id: 'power-in',
-              kind: ElectricalPortKind.powerIn,
-            ),
-            ElectricalPortDefinition(
-              id: 'earth',
-              kind: ElectricalPortKind.earth,
-            ),
-          ],
-        ElectricalComponentType.switchControl => const [
-            ElectricalPortDefinition(
-              id: 'power-in',
-              kind: ElectricalPortKind.powerIn,
-            ),
-            ElectricalPortDefinition(
-              id: 'control-out',
-              kind: ElectricalPortKind.controlOut,
-            ),
-          ],
-        ElectricalComponentType.lightingPoint => const [
-            ElectricalPortDefinition(
-              id: 'power-in',
-              kind: ElectricalPortKind.powerIn,
-            ),
-            ElectricalPortDefinition(
-              id: 'control-in',
-              kind: ElectricalPortKind.controlIn,
-            ),
-            ElectricalPortDefinition(
-              id: 'earth',
-              kind: ElectricalPortKind.earth,
-            ),
-          ],
-        ElectricalComponentType.curtainMotor => const [
-            ElectricalPortDefinition(
-              id: 'power-in',
-              kind: ElectricalPortKind.powerIn,
-            ),
-            ElectricalPortDefinition(
-              id: 'control-in',
-              kind: ElectricalPortKind.controlIn,
-            ),
-            ElectricalPortDefinition(
-              id: 'earth',
-              kind: ElectricalPortKind.earth,
-            ),
-          ],
-        ElectricalComponentType.junctionBox => const [
-            ElectricalPortDefinition(
-              id: 'power-in',
-              kind: ElectricalPortKind.powerIn,
-            ),
-            ElectricalPortDefinition(
-              id: 'power-out',
-              kind: ElectricalPortKind.powerOut,
-            ),
-          ],
-        ElectricalComponentType.powerSource => const [
-            ElectricalPortDefinition(
-              id: 'power-out',
-              kind: ElectricalPortKind.powerOut,
-            ),
-            ElectricalPortDefinition(
-              id: 'earth',
-              kind: ElectricalPortKind.earth,
-            ),
-          ],
-        ElectricalComponentType.distributionBoard => const [
-            ElectricalPortDefinition(
-              id: 'power-out',
-              kind: ElectricalPortKind.powerOut,
-            ),
-            ElectricalPortDefinition(
-              id: 'earth',
-              kind: ElectricalPortKind.earth,
-            ),
-          ],
-        ElectricalComponentType.custom => const [],
-      };
+  ) => switch (type) {
+    ElectricalComponentType.socketOutlet => const [
+      ElectricalPortDefinition(
+        id: 'power-in',
+        kind: ElectricalPortKind.powerIn,
+      ),
+      ElectricalPortDefinition(id: 'earth', kind: ElectricalPortKind.earth),
+    ],
+    ElectricalComponentType.switchControl => const [
+      ElectricalPortDefinition(
+        id: 'power-in',
+        kind: ElectricalPortKind.powerIn,
+      ),
+      ElectricalPortDefinition(
+        id: 'control-out',
+        kind: ElectricalPortKind.controlOut,
+      ),
+    ],
+    ElectricalComponentType.lightingPoint => const [
+      ElectricalPortDefinition(
+        id: 'power-in',
+        kind: ElectricalPortKind.powerIn,
+      ),
+      ElectricalPortDefinition(
+        id: 'control-in',
+        kind: ElectricalPortKind.controlIn,
+      ),
+      ElectricalPortDefinition(id: 'earth', kind: ElectricalPortKind.earth),
+    ],
+    ElectricalComponentType.curtainMotor => const [
+      ElectricalPortDefinition(
+        id: 'power-in',
+        kind: ElectricalPortKind.powerIn,
+      ),
+      ElectricalPortDefinition(
+        id: 'control-in',
+        kind: ElectricalPortKind.controlIn,
+      ),
+      ElectricalPortDefinition(id: 'earth', kind: ElectricalPortKind.earth),
+    ],
+    ElectricalComponentType.junctionBox => const [
+      ElectricalPortDefinition(
+        id: 'power-in',
+        kind: ElectricalPortKind.powerIn,
+      ),
+      ElectricalPortDefinition(
+        id: 'power-out',
+        kind: ElectricalPortKind.powerOut,
+      ),
+    ],
+    ElectricalComponentType.powerSource => const [
+      ElectricalPortDefinition(
+        id: 'power-out',
+        kind: ElectricalPortKind.powerOut,
+      ),
+      ElectricalPortDefinition(id: 'earth', kind: ElectricalPortKind.earth),
+    ],
+    ElectricalComponentType.distributionBoard => const [
+      ElectricalPortDefinition(
+        id: 'power-out',
+        kind: ElectricalPortKind.powerOut,
+      ),
+      ElectricalPortDefinition(id: 'earth', kind: ElectricalPortKind.earth),
+    ],
+    ElectricalComponentType.custom => const [],
+  };
 
   static String defaultLabel(ElectricalComponentType type) => switch (type) {
-        ElectricalComponentType.socketOutlet => 'Розетка',
-        ElectricalComponentType.switchControl => 'Выключатель',
-        ElectricalComponentType.lightingPoint => 'Точка освещения',
-        ElectricalComponentType.curtainMotor => 'Привод штор',
-        ElectricalComponentType.junctionBox => 'Распредкоробка',
-        ElectricalComponentType.powerSource => 'Источник питания',
-        ElectricalComponentType.distributionBoard => 'Щит',
-        ElectricalComponentType.custom => 'Компонент',
-      };
+    ElectricalComponentType.socketOutlet => 'Розетка',
+    ElectricalComponentType.switchControl => 'Выключатель',
+    ElectricalComponentType.lightingPoint => 'Точка освещения',
+    ElectricalComponentType.curtainMotor => 'Привод штор',
+    ElectricalComponentType.junctionBox => 'Распредкоробка',
+    ElectricalComponentType.powerSource => 'Источник питания',
+    ElectricalComponentType.distributionBoard => 'Щит',
+    ElectricalComponentType.custom => 'Компонент',
+  };
 }

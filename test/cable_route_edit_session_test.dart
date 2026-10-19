@@ -20,10 +20,7 @@ void main() {
       segments: [
         ElectricalRouteSegment(
           surface: surface,
-          points: const [
-            SurfacePointMm(200, 200),
-            SurfacePointMm(1800, 1400),
-          ],
+          points: const [SurfacePointMm(200, 200), SurfacePointMm(1800, 1400)],
         ),
       ],
     );

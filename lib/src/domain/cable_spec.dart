@@ -11,7 +11,7 @@ enum CableSegregationClass {
   safety,
   optical,
   coaxial,
-  other
+  other,
 }
 
 final class CableSpec {
@@ -29,12 +29,11 @@ final class CableSpec {
     this.shielding = CableShielding.none,
     this.ratedVoltageV,
     this.category,
-  })  : assert(outerDiameterMm > 0),
-        assert(conductorCount == null || conductorCount > 0),
-        assert(
-            conductorCrossSectionMm2 == null || conductorCrossSectionMm2 > 0),
-        assert(pairCount == null || pairCount > 0),
-        assert(fiberCount == null || fiberCount > 0);
+  }) : assert(outerDiameterMm > 0),
+       assert(conductorCount == null || conductorCount > 0),
+       assert(conductorCrossSectionMm2 == null || conductorCrossSectionMm2 > 0),
+       assert(pairCount == null || pairCount > 0),
+       assert(fiberCount == null || fiberCount > 0);
 
   final String id;
   final String name;

@@ -39,11 +39,11 @@ final class WallPlanBody {
   final int thicknessMm;
 
   List<MmPoint> get polygon => [
-        interiorStart,
-        interiorEnd,
-        exteriorEnd,
-        exteriorStart,
-      ];
+    interiorStart,
+    interiorEnd,
+    exteriorEnd,
+    exteriorStart,
+  ];
 }
 
 abstract final class WallPlanGeometry {
@@ -66,7 +66,10 @@ abstract final class WallPlanGeometry {
   }) {
     if (thicknessMm <= 0) {
       throw ArgumentError.value(
-          thicknessMm, 'thicknessMm', 'Must be positive.');
+        thicknessMm,
+        'thicknessMm',
+        'Must be positive.',
+      );
     }
     final vertices = roomBoundary.vertices;
     if (wallIndex < 0 || wallIndex >= vertices.length) {
@@ -89,10 +92,8 @@ abstract final class WallPlanGeometry {
     final ox = outwardX * thicknessMm;
     final oy = outwardY * thicknessMm;
 
-    MmPoint offset(MmPoint point) => MmPoint(
-          (point.x + ox).round(),
-          (point.y + oy).round(),
-        );
+    MmPoint offset(MmPoint point) =>
+        MmPoint((point.x + ox).round(), (point.y + oy).round());
 
     return WallPlanBody(
       surface: RoomSurfaceRef.wall(spaceId, wallIndex),

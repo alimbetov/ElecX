@@ -35,18 +35,18 @@ final class RouteVisualLayer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => IgnorePointer(
-        child: CustomPaint(
-          painter: RouteVisualPainter(
-            mapper: mapper,
-            routes: routes,
-            selectedRouteId: selectedRouteId,
-            phase: phase,
-            mediumResolver: mediumResolver,
-            colorScheme: Theme.of(context).colorScheme,
-          ),
-          size: Size.infinite,
-        ),
-      );
+    child: CustomPaint(
+      painter: RouteVisualPainter(
+        mapper: mapper,
+        routes: routes,
+        selectedRouteId: selectedRouteId,
+        phase: phase,
+        mediumResolver: mediumResolver,
+        colorScheme: Theme.of(context).colorScheme,
+      ),
+      size: Size.infinite,
+    ),
+  );
 }
 
 final class RouteVisualPainter extends CustomPainter {
@@ -104,8 +104,9 @@ final class RouteVisualPainter extends CustomPainter {
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
         ..strokeWidth = 9
-        ..color =
-            colorScheme.primary.withValues(alpha: 0.12 + frame.glow * 0.18);
+        ..color = colorScheme.primary.withValues(
+          alpha: 0.12 + frame.glow * 0.18,
+        );
       _drawHostedSegments(canvas, route, halo);
     }
     _drawHostedSegments(canvas, route, base);

@@ -40,15 +40,14 @@ final class OpeningEditDraft {
     int? widthMm,
     int? heightMm,
     int? sillHeightMm,
-  }) =>
-      OpeningEditDraft(
-        openingId: openingId,
-        type: type ?? this.type,
-        offsetFromStartMm: offsetFromStartMm ?? this.offsetFromStartMm,
-        widthMm: widthMm ?? this.widthMm,
-        heightMm: heightMm ?? this.heightMm,
-        sillHeightMm: sillHeightMm ?? this.sillHeightMm,
-      );
+  }) => OpeningEditDraft(
+    openingId: openingId,
+    type: type ?? this.type,
+    offsetFromStartMm: offsetFromStartMm ?? this.offsetFromStartMm,
+    widthMm: widthMm ?? this.widthMm,
+    heightMm: heightMm ?? this.heightMm,
+    sillHeightMm: sillHeightMm ?? this.sillHeightMm,
+  );
 
   ArchitecturalOpening toOpening(ArchitecturalOpening source) =>
       source.copyWith(
@@ -83,31 +82,29 @@ final class BeamEditDraft {
     required int startMm,
     required int widthMm,
     required int depthMm,
-  }) =>
-      BeamEditDraft(
-        startMm: startMm,
-        widthMm: widthMm,
-        depthMm: depthMm,
-        originalStartMm: startMm,
-        originalWidthMm: widthMm,
-        originalDepthMm: depthMm,
-        isNew: false,
-      );
+  }) => BeamEditDraft(
+    startMm: startMm,
+    widthMm: widthMm,
+    depthMm: depthMm,
+    originalStartMm: startMm,
+    originalWidthMm: widthMm,
+    originalDepthMm: depthMm,
+    isNew: false,
+  );
 
   factory BeamEditDraft.newDraft({
     required int startMm,
     required int widthMm,
     required int depthMm,
-  }) =>
-      BeamEditDraft(
-        startMm: startMm,
-        widthMm: widthMm,
-        depthMm: depthMm,
-        originalStartMm: startMm,
-        originalWidthMm: widthMm,
-        originalDepthMm: depthMm,
-        isNew: true,
-      );
+  }) => BeamEditDraft(
+    startMm: startMm,
+    widthMm: widthMm,
+    depthMm: depthMm,
+    originalStartMm: startMm,
+    originalWidthMm: widthMm,
+    originalDepthMm: depthMm,
+    isNew: true,
+  );
 
   final int startMm;
   final int widthMm;
@@ -177,10 +174,7 @@ final class BoundaryEditSession extends ChangeNotifier {
     notifyListeners();
   }
 
-  void beginOpeningDraft(
-    ArchitecturalOpening opening, {
-    bool force = false,
-  }) {
+  void beginOpeningDraft(ArchitecturalOpening opening, {bool force = false}) {
     if (!force && _openingDraft?.openingId == opening.id) return;
     _openingDraft = OpeningEditDraft.fromOpening(opening);
     _openingDraftDirty = false;

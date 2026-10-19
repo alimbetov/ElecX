@@ -9,15 +9,14 @@ void main() {
     String id, {
     required String channel,
     String node = 'n',
-  }) =>
-      ChannelRouteState(
-        id: id,
-        routeNodeId: node,
-        host: host,
-        installationPathSpecId: 'tray-1',
-        pathSectionId: 'section-1',
-        channelId: channel,
-      );
+  }) => ChannelRouteState(
+    id: id,
+    routeNodeId: node,
+    host: host,
+    installationPathSpecId: 'tray-1',
+    pathSectionId: 'section-1',
+    channelId: channel,
+  );
 
   test('hard feasibility removes cheaper but invalid channel path', () {
     final graph = ChannelRoutingGraph(
@@ -88,25 +87,27 @@ void main() {
     expect(solution?.cost.maintainabilityPenalty, 0);
   });
 
-  test('solver reports no solution when hard constraints close all channels',
-      () {
-    final graph = ChannelRoutingGraph(
-      states: {
-        'start': state('start', channel: 'power', node: 'start'),
-        'end': state('end', channel: 'power', node: 'end'),
-      },
-      edges: const [
-        ChannelRouteEdge(from: 'start', to: 'end', lengthMm: 1000),
-      ],
-    );
+  test(
+    'solver reports no solution when hard constraints close all channels',
+    () {
+      final graph = ChannelRoutingGraph(
+        states: {
+          'start': state('start', channel: 'power', node: 'start'),
+          'end': state('end', channel: 'power', node: 'end'),
+        },
+        edges: const [
+          ChannelRouteEdge(from: 'start', to: 'end', lengthMm: 1000),
+        ],
+      );
 
-    final solution = ChannelAwareRouteEngine.solve(
-      graph: graph,
-      startStateId: 'start',
-      endStateId: 'end',
-      isFeasible: (_, __, ___) => false,
-    );
+      final solution = ChannelAwareRouteEngine.solve(
+        graph: graph,
+        startStateId: 'start',
+        endStateId: 'end',
+        isFeasible: (_, __, ___) => false,
+      );
 
-    expect(solution, isNull);
-  });
+      expect(solution, isNull);
+    },
+  );
 }

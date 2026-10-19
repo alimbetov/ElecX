@@ -5,24 +5,26 @@ import 'package:elecx/src/domain/electrical_routing.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 
 void main() {
-  test('component stays bound to concrete room surface and millimetre point',
-      () {
-    final socket = ElectricalComponentPlacement(
-      id: 'socket-1',
-      type: ElectricalComponentType.socketOutlet,
-      surface: RoomSurfaceRef.wall('room-101', 0),
-      position: const SurfacePointMm(1200, 300),
-      label: 'Розетка 1',
-      ports: ElectricalComponentDefaults.portsFor(
-        ElectricalComponentType.socketOutlet,
-      ),
-    );
+  test(
+    'component stays bound to concrete room surface and millimetre point',
+    () {
+      final socket = ElectricalComponentPlacement(
+        id: 'socket-1',
+        type: ElectricalComponentType.socketOutlet,
+        surface: RoomSurfaceRef.wall('room-101', 0),
+        position: const SurfacePointMm(1200, 300),
+        label: 'Розетка 1',
+        ports: ElectricalComponentDefaults.portsFor(
+          ElectricalComponentType.socketOutlet,
+        ),
+      );
 
-    expect(socket.surface, RoomSurfaceRef.wall('room-101', 0));
-    expect(socket.position.xMm, 1200);
-    expect(socket.position.yMm, 300);
-    expect(socket.ports.any((port) => port.id == 'power-in'), isTrue);
-  });
+      expect(socket.surface, RoomSurfaceRef.wall('room-101', 0));
+      expect(socket.position.xMm, 1200);
+      expect(socket.position.yMm, 300);
+      expect(socket.ports.any((port) => port.id == 'power-in'), isTrue);
+    },
+  );
 
   test('connected cable route uses real source and target component ports', () {
     final board = ElectricalComponentPlacement(
@@ -59,17 +61,11 @@ void main() {
       segments: [
         ElectricalRouteSegment(
           surface: board.surface,
-          points: const [
-            SurfacePointMm(300, 1200),
-            SurfacePointMm(300, 3000),
-          ],
+          points: const [SurfacePointMm(300, 1200), SurfacePointMm(300, 3000)],
         ),
         ElectricalRouteSegment(
           surface: light.surface,
-          points: const [
-            SurfacePointMm(300, 300),
-            SurfacePointMm(2100, 1600),
-          ],
+          points: const [SurfacePointMm(300, 300), SurfacePointMm(2100, 1600)],
         ),
       ],
     );
@@ -110,10 +106,7 @@ void main() {
       segments: [
         ElectricalRouteSegment(
           surface: source.surface,
-          points: const [
-            SurfacePointMm(0, 1000),
-            SurfacePointMm(1000, 1000),
-          ],
+          points: const [SurfacePointMm(0, 1000), SurfacePointMm(1000, 1000)],
         ),
       ],
     );

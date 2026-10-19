@@ -44,10 +44,7 @@ void main() {
     );
 
     final result = NormativeRouteEngine.validate(
-      points: const [
-        SurfacePointMm(200, 200),
-        SurfacePointMm(1800, 1400),
-      ],
+      points: const [SurfacePointMm(200, 200), SurfacePointMm(1800, 1400)],
       context: context,
     );
 

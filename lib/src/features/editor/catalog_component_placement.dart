@@ -4,8 +4,9 @@ import '../../domain/surfaces.dart';
 import '../../engine/command_history.dart';
 import 'editor_p2_session.dart';
 
-final Expando<int> _catalogSequences =
-    Expando<int>('ElecX catalog component sequence');
+final Expando<int> _catalogSequences = Expando<int>(
+  'ElecX catalog component sequence',
+);
 
 extension CatalogComponentPlacement on EditorP2Session {
   ElectricalComponentPlacement placeCatalogComponent({
@@ -71,8 +72,9 @@ List<ElectricalPortDefinition> _legacyPortsFor(
     'lighting.switch.general' ||
     'lighting.luminaire.general' ||
     'power.junction-box.general' ||
-    'power.distribution-board.general' =>
-      ElectricalComponentDefaults.portsFor(visualType),
+    'power.distribution-board.general' => ElectricalComponentDefaults.portsFor(
+      visualType,
+    ),
     _ => const <ElectricalPortDefinition>[],
   };
 }
@@ -87,14 +89,13 @@ final class _AddCatalogComponentCommand
   String get label => 'Add ${component.label}';
 
   @override
-  EditorP2State execute(EditorP2State state) => state.copyWith(
-        components: [...state.components, component],
-      );
+  EditorP2State execute(EditorP2State state) =>
+      state.copyWith(components: [...state.components, component]);
 
   @override
   EditorP2State undo(EditorP2State state) => state.copyWith(
-        components: state.components
-            .where((item) => item.id != component.id)
-            .toList(growable: false),
-      );
+    components: state.components
+        .where((item) => item.id != component.id)
+        .toList(growable: false),
+  );
 }

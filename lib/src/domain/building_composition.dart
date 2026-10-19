@@ -1,12 +1,6 @@
 import 'project_model.dart';
 
-enum BuildingLevelKind {
-  basement,
-  ground,
-  residential,
-  technical,
-  roof,
-}
+enum BuildingLevelKind { basement, ground, residential, technical, roof }
 
 enum BuildingZoneKind {
   apartment,
@@ -268,8 +262,9 @@ abstract final class BuildingLevelRepeater {
 
     final level = BuildingLevel(
       id: '$prefix:${source.level.id}',
-      name:
-          levelNumber < 0 ? 'Подвал ${levelNumber.abs()}' : 'Этаж $levelNumber',
+      name: levelNumber < 0
+          ? 'Подвал ${levelNumber.abs()}'
+          : 'Этаж $levelNumber',
       elevationMm: elevationMm,
       spaces: spaces,
     );

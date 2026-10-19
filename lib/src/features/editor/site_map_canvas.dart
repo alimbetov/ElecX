@@ -56,7 +56,8 @@ class _SiteMapCanvasState extends State<SiteMapCanvas>
   @override
   void initState() {
     super.initState();
-    _camera = widget.initialCamera ??
+    _camera =
+        widget.initialCamera ??
         const WorldCamera(centerMm: MmPoint(0, 0), mmPerPixel: 100);
     _flow = AnimationController(
       vsync: this,
@@ -196,11 +197,11 @@ class _SiteMapCanvasState extends State<SiteMapCanvas>
   }
 
   MmPoint _worldAt(Offset local) => _camera.screenToWorld(
-        viewportWidthPx: _size.width,
-        viewportHeightPx: _size.height,
-        xPx: local.dx,
-        yPx: local.dy,
-      );
+    viewportWidthPx: _size.width,
+    viewportHeightPx: _size.height,
+    xPx: local.dx,
+    yPx: local.dy,
+  );
 
   void _updateHover(Offset local) {
     final entity = _hit(local);
@@ -355,15 +356,15 @@ class _SiteMapPainter extends CustomPainter {
         ..color = selected
             ? CadVisualTokens.selectedFill(scheme)
             : hovered
-                ? CadVisualTokens.hoverFill(scheme)
-                : CadVisualTokens.ghostFill(scheme);
+            ? CadVisualTokens.hoverFill(scheme)
+            : CadVisualTokens.ghostFill(scheme);
       final stroke = Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = selected
             ? CadVisualTokens.selectedGeometryStroke
             : hovered
-                ? 1.8
-                : CadVisualTokens.geometryStroke
+            ? 1.8
+            : CadVisualTokens.geometryStroke
         ..color = selected
             ? CadVisualTokens.selectedGeometry(scheme)
             : CadVisualTokens.geometry(scheme);
@@ -474,11 +475,7 @@ class _SiteMapPainter extends CustomPainter {
     }
   }
 
-  void _drawTransitions(
-    Canvas canvas,
-    Size size,
-    HostedRoutePath route,
-  ) {
+  void _drawTransitions(Canvas canvas, Size size, HostedRoutePath route) {
     for (final transition in route.transitions) {
       MmPoint? point;
       if (transition.fromHost.kind == RouteHostKind.outdoorZone) {
@@ -488,11 +485,7 @@ class _SiteMapPainter extends CustomPainter {
       }
       if (point == null) continue;
       final center = _screen(size, point);
-      canvas.drawCircle(
-        center,
-        8,
-        Paint()..color = scheme.tertiaryContainer,
-      );
+      canvas.drawCircle(center, 8, Paint()..color = scheme.tertiaryContainer);
       canvas.drawCircle(
         center,
         8,

@@ -1,12 +1,4 @@
-enum RouteMediumFamily {
-  power,
-  data,
-  control,
-  safety,
-  optical,
-  coaxial,
-  other,
-}
+enum RouteMediumFamily { power, data, control, safety, optical, coaxial, other }
 
 enum RouteFlowVisualKind {
   acOscillation,
@@ -33,16 +25,16 @@ final class RouteMediumProfile {
   final String? protocol;
 
   String get displayName => switch (id) {
-        'power.ac' => 'AC',
-        'power.dc' => 'DC',
-        'data.ethernet' => 'Ethernet',
-        'data.poe' => 'PoE',
-        'optical.fiber' => 'Fiber',
-        'control.rs485' => 'RS-485',
-        'safety.fire-alarm' => 'Fire Alarm',
-        'data.coax' => 'Coax',
-        _ => protocol ?? id,
-      };
+    'power.ac' => 'AC',
+    'power.dc' => 'DC',
+    'data.ethernet' => 'Ethernet',
+    'data.poe' => 'PoE',
+    'optical.fiber' => 'Fiber',
+    'control.rs485' => 'RS-485',
+    'safety.fire-alarm' => 'Fire Alarm',
+    'data.coax' => 'Coax',
+    _ => protocol ?? id,
+  };
 
   static const acPower = RouteMediumProfile(
     id: 'power.ac',

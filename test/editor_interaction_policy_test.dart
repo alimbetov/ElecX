@@ -19,9 +19,6 @@ void main() {
       EditorInputMode.mouseKeyboard,
     );
 
-    expect(
-      policy.nudgeStepMm(coarse: true),
-      greaterThan(policy.nudgeStepMm()),
-    );
+    expect(policy.nudgeStepMm(coarse: true), greaterThan(policy.nudgeStepMm()));
   });
 }

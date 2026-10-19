@@ -117,10 +117,7 @@ extension PlanGeometryEditorActions on EditorController {
     return index != null && isSelectedWallExternal(index);
   }
 
-  int? selectedWallIndexAtPlanPoint(
-    MmPoint point, {
-    required double radiusMm,
-  }) {
+  int? selectedWallIndexAtPlanPoint(MmPoint point, {required double radiusMm}) {
     final space = selectedSpace;
     if (space == null) return null;
     final vertices = space.boundary.vertices;
@@ -222,10 +219,7 @@ extension PlanGeometryEditorActions on EditorController {
     if (width < 300) {
       return false;
     }
-    return updateSelectedOpening(
-      offsetFromStartMm: newStartMm,
-      widthMm: width,
-    );
+    return updateSelectedOpening(offsetFromStartMm: newStartMm, widthMm: width);
   }
 
   bool resizeSelectedOpeningFromEnd(int newEndMm) {
@@ -360,8 +354,10 @@ double _distanceToSegment(MmPoint p, MmPoint a, MmPoint b) {
   if (dx == 0 && dy == 0) {
     return p.distanceTo(a);
   }
-  final t = (((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy))
-      .clamp(0.0, 1.0);
+  final t = (((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy)).clamp(
+    0.0,
+    1.0,
+  );
   final x = a.x + t * dx;
   final y = a.y + t * dy;
   final ex = p.x - x;

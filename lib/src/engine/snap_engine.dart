@@ -143,8 +143,11 @@ abstract final class SnapEngine {
         segment.midpoint,
         segment.id,
       );
-      final nearest =
-          _nearestPointOnSegment(request.rawPoint, segment.a, segment.b);
+      final nearest = _nearestPointOnSegment(
+        request.rawPoint,
+        segment.a,
+        segment.b,
+      );
       _addPoint(candidates, request, SnapKind.nearest, nearest, segment.id);
     }
 
@@ -216,8 +219,10 @@ abstract final class SnapEngine {
     final dy = (b.y - a.y).toDouble();
     final lengthSquared = dx * dx + dy * dy;
     if (lengthSquared == 0) return a;
-    final t =
-        (((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSquared).clamp(0.0, 1.0);
+    final t = (((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSquared).clamp(
+      0.0,
+      1.0,
+    );
     return MmPoint((a.x + dx * t).round(), (a.y + dy * t).round());
   }
 
@@ -235,10 +240,10 @@ abstract final class SnapEngine {
 
     final px =
         ((x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)) /
-            denominator;
+        denominator;
     final py =
         ((x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)) /
-            denominator;
+        denominator;
 
     bool inside(double value, double a, double b) =>
         value >= math.min(a, b) - 0.001 && value <= math.max(a, b) + 0.001;

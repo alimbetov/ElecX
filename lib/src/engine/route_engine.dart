@@ -6,12 +6,15 @@ enum RoutePreference {
   orthogonal,
   preferWall,
   preferCeiling,
-  preferFloor
+  preferFloor,
 }
 
 final class RouteNode {
-  const RouteNode(
-      {required this.id, required this.surface, required this.point});
+  const RouteNode({
+    required this.id,
+    required this.surface,
+    required this.point,
+  });
 
   final String id;
   final RoomSurfaceRef surface;
@@ -114,14 +117,16 @@ abstract final class RouteEngine {
       }
       if (points.isNotEmpty) {
         result.add(
-            ElectricalRouteSegment(surface: activeSurface, points: points));
+          ElectricalRouteSegment(surface: activeSurface, points: points),
+        );
       }
       activeSurface = node.surface;
       points = [node.point];
     }
     if (activeSurface != null && points.isNotEmpty) {
-      result
-          .add(ElectricalRouteSegment(surface: activeSurface, points: points));
+      result.add(
+        ElectricalRouteSegment(surface: activeSurface, points: points),
+      );
     }
     return result;
   }

@@ -71,10 +71,8 @@ class BoundaryEditPanel extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 IconButton(
-                  onPressed: () => requestBoundaryEditorExit(
-                    context,
-                    controller,
-                  ),
+                  onPressed: () =>
+                      requestBoundaryEditorExit(context, controller),
                   tooltip: 'Выйти из редактирования границ',
                   icon: const Icon(Icons.close, size: 18),
                 ),

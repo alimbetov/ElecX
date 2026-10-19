@@ -68,11 +68,7 @@ void main() {
       'room-a',
       SelectionMode.replace,
     );
-    selection = SelectionEngine.apply(
-      selection,
-      'room-b',
-      SelectionMode.add,
-    );
+    selection = SelectionEngine.apply(selection, 'room-b', SelectionMode.add);
     expect(selection.ids, containsAll(['room-a', 'room-b']));
 
     final boxed = SelectionEngine.boxSelect(

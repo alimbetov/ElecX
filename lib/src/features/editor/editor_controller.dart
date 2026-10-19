@@ -13,26 +13,26 @@ enum EditorViewMode { plan, roomWorld, surface }
 
 final class EditorController extends ChangeNotifier {
   EditorController.demo()
-      : level = BuildingLevel(
-          id: 'level-1',
-          name: 'Этаж 1',
-          elevationMm: 0,
-          spaces: [
-            _room(
-              'room-101',
-              'Комната 101',
-              const MmPoint(1000, 1200),
-              const MmPoint(5200, 4400),
-            ),
-            _room(
-              'corridor-1',
-              'Коридор',
-              const MmPoint(1000, 4600),
-              const MmPoint(9800, 5900),
-              type: SpaceType.corridor,
-            ),
-          ],
-        ) {
+    : level = BuildingLevel(
+        id: 'level-1',
+        name: 'Этаж 1',
+        elevationMm: 0,
+        spaces: [
+          _room(
+            'room-101',
+            'Комната 101',
+            const MmPoint(1000, 1200),
+            const MmPoint(5200, 4400),
+          ),
+          _room(
+            'corridor-1',
+            'Коридор',
+            const MmPoint(1000, 4600),
+            const MmPoint(9800, 5900),
+            type: SpaceType.corridor,
+          ),
+        ],
+      ) {
     selectedSpaceId = 'room-101';
     openings = [
       ArchitecturalOpening(
@@ -144,10 +144,8 @@ final class EditorController extends ChangeNotifier {
     return segment.points.last;
   }
 
-  double get routeLengthMm => routeSegments.fold(
-        0.0,
-        (sum, segment) => sum + segment.lengthMm,
-      );
+  double get routeLengthMm =>
+      routeSegments.fold(0.0, (sum, segment) => sum + segment.lengthMm);
 
   void setTool(EditorTool value) {
     tool = value;
@@ -243,8 +241,10 @@ final class EditorController extends ChangeNotifier {
     final sill = type == ArchitecturalOpeningType.window ? 900 : 0;
     final wallLength = wall.lengthMm.round();
     final width = defaultWidth.clamp(300, wallLength).toInt();
-    final offset =
-        ((wallLength - width) / 2).round().clamp(0, wallLength - width).toInt();
+    final offset = ((wallLength - width) / 2)
+        .round()
+        .clamp(0, wallLength - width)
+        .toInt();
     final maxHeight = wall.heightMm - sill;
     if (maxHeight <= 0) return;
 
@@ -285,8 +285,8 @@ final class EditorController extends ChangeNotifier {
     zoom = value < 0.35
         ? 0.35
         : value > 6.0
-            ? 6.0
-            : value;
+        ? 6.0
+        : value;
     notifyListeners();
   }
 
@@ -318,7 +318,8 @@ final class EditorController extends ChangeNotifier {
     final segments = <SnapSegment>[];
     for (final space in level.spaces) {
       final bounds = space.boundary.bounds;
-      final outside = bounds.right < left ||
+      final outside =
+          bounds.right < left ||
           bounds.left > right ||
           bounds.top < bottom ||
           bounds.bottom > top;
@@ -344,11 +345,7 @@ final class EditorController extends ChangeNotifier {
     );
   }
 
-  MmPoint snap(
-    MmPoint point, {
-    int? stepMm,
-    double acquisitionRadiusMm = 80,
-  }) {
+  MmPoint snap(MmPoint point, {int? stepMm, double acquisitionRadiusMm = 80}) {
     if (!snapEnabled) return point;
     return resolvePlanSnap(
           point,
@@ -410,10 +407,7 @@ final class EditorController extends ChangeNotifier {
     _switchSurface(target);
   }
 
-  void navigateHorizontalBoundary(
-    int boundaryEdgeIndex,
-    SurfacePointMm point,
-  ) {
+  void navigateHorizontalBoundary(int boundaryEdgeIndex, SurfacePointMm point) {
     final space = selectedSpace;
     final surface = activeSurface;
     if (space == null ||
@@ -479,10 +473,7 @@ final class EditorController extends ChangeNotifier {
   }
 
   void canvasTap(MmPoint rawPoint, {double? snapRadiusMm}) {
-    final point = snap(
-      rawPoint,
-      acquisitionRadiusMm: snapRadiusMm ?? 80,
-    );
+    final point = snap(rawPoint, acquisitionRadiusMm: snapRadiusMm ?? 80);
     switch (tool) {
       case EditorTool.select:
         selectAt(point);
@@ -520,8 +511,9 @@ final class EditorController extends ChangeNotifier {
         SurfaceRouteSegmentDraft(surface: surface, points: [point]),
       );
     } else {
-      routeSegments[routeSegments.length - 1] =
-          routeSegments.last.append(point);
+      routeSegments[routeSegments.length - 1] = routeSegments.last.append(
+        point,
+      );
     }
   }
 
@@ -563,9 +555,7 @@ final class EditorController extends ChangeNotifier {
       spaces: [
         for (final space in level.spaces)
           if (space.id == selected.id)
-            space.copyWith(
-              grid: space.grid.copyWith(minorStepMm: minorStepMm),
-            )
+            space.copyWith(grid: space.grid.copyWith(minorStepMm: minorStepMm))
           else
             space,
       ],

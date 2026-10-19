@@ -88,7 +88,7 @@ abstract final class SiteNavigationProjection {
 
   static NavigatorNode cottageSite(ComposedSite site) {
     final buildings = {
-      for (final building in site.site.buildings) building.id: building
+      for (final building in site.site.buildings) building.id: building,
     };
     return NavigatorNode(
       id: 'site:${site.id}',
@@ -160,8 +160,9 @@ abstract final class SiteNavigationProjection {
       );
     }
 
-    final ungrouped =
-        level.level.spaces.where((space) => !claimed.contains(space.id));
+    final ungrouped = level.level.spaces.where(
+      (space) => !claimed.contains(space.id),
+    );
     return NavigatorNode(
       id: 'level:${level.levelNumber}',
       label: level.displayName,
@@ -169,77 +170,74 @@ abstract final class SiteNavigationProjection {
       levelNumber: level.levelNumber,
       targetId: level.level.id,
       subtitle: '${level.level.elevationMm} mm',
-      children: [
-        ...zoneNodes,
-        for (final space in ungrouped) _roomNode(space),
-      ],
+      children: [...zoneNodes, for (final space in ungrouped) _roomNode(space)],
     );
   }
 
   static NavigatorNode _simpleBuildingNode(Building building) => NavigatorNode(
-        id: 'building:${building.id}',
-        label: building.name,
-        kind: NavigatorNodeKind.building,
-        targetId: building.id,
-        children: [
-          for (var i = 0; i < building.levels.length; i++)
-            NavigatorNode(
-              id: 'building:${building.id}:level:${building.levels[i].id}',
-              label: building.levels[i].name,
-              kind: NavigatorNodeKind.level,
-              targetId: building.levels[i].id,
-              subtitle: '${building.levels[i].elevationMm} mm',
-              children: [
-                for (final space in building.levels[i].spaces) _roomNode(space),
-              ],
-            ),
-        ],
-      );
+    id: 'building:${building.id}',
+    label: building.name,
+    kind: NavigatorNodeKind.building,
+    targetId: building.id,
+    children: [
+      for (var i = 0; i < building.levels.length; i++)
+        NavigatorNode(
+          id: 'building:${building.id}:level:${building.levels[i].id}',
+          label: building.levels[i].name,
+          kind: NavigatorNodeKind.level,
+          targetId: building.levels[i].id,
+          subtitle: '${building.levels[i].elevationMm} mm',
+          children: [
+            for (final space in building.levels[i].spaces) _roomNode(space),
+          ],
+        ),
+    ],
+  );
 
   static NavigatorNode _roomNode(EngineeringSpace space) => NavigatorNode(
-        id: 'room:${space.id}',
-        label: space.name,
-        kind: NavigatorNodeKind.room,
-        targetId: space.id,
-        subtitle: _spaceLabel(space.type),
-      );
+    id: 'room:${space.id}',
+    label: space.name,
+    kind: NavigatorNodeKind.room,
+    targetId: space.id,
+    subtitle: _spaceLabel(space.type),
+  );
 
   static String _zoneLabel(BuildingZoneKind kind) => switch (kind) {
-        BuildingZoneKind.apartment => 'Квартира',
-        BuildingZoneKind.common => 'Общая зона',
-        BuildingZoneKind.technical => 'Техническая зона',
-        BuildingZoneKind.parking => 'Паркинг',
-        BuildingZoneKind.storage => 'Кладовые',
-        BuildingZoneKind.utility => 'Сервисная зона',
-      };
+    BuildingZoneKind.apartment => 'Квартира',
+    BuildingZoneKind.common => 'Общая зона',
+    BuildingZoneKind.technical => 'Техническая зона',
+    BuildingZoneKind.parking => 'Паркинг',
+    BuildingZoneKind.storage => 'Кладовые',
+    BuildingZoneKind.utility => 'Сервисная зона',
+  };
 
   static String _spaceLabel(SpaceType type) => switch (type) {
-        SpaceType.room => 'Помещение',
-        SpaceType.corridor => 'Коридор',
-        SpaceType.hall => 'Холл',
-        SpaceType.technicalRoom => 'Техническое помещение',
-        SpaceType.stair => 'Лестница',
-        SpaceType.shaft => 'Шахта',
-        SpaceType.outdoorArea => 'Наружная зона',
-      };
+    SpaceType.room => 'Помещение',
+    SpaceType.corridor => 'Коридор',
+    SpaceType.hall => 'Холл',
+    SpaceType.technicalRoom => 'Техническое помещение',
+    SpaceType.stair => 'Лестница',
+    SpaceType.shaft => 'Шахта',
+    SpaceType.outdoorArea => 'Наружная зона',
+  };
 
   static String _outdoorLabel(OutdoorZoneKind kind) => switch (kind) {
-        OutdoorZoneKind.yard => 'Двор',
-        OutdoorZoneKind.driveway => 'Проезд',
-        OutdoorZoneKind.pedestrian => 'Пешеходная зона',
-        OutdoorZoneKind.parking => 'Парковка',
-        OutdoorZoneKind.playground => 'Площадка',
-        OutdoorZoneKind.landscape => 'Ландшафт',
-        OutdoorZoneKind.technical => 'Техническая зона',
-        OutdoorZoneKind.transformerArea => 'Трансформаторная зона',
-        OutdoorZoneKind.generatorArea => 'Генераторная зона',
-        OutdoorZoneKind.solarArea => 'Солнечная генерация',
-      };
+    OutdoorZoneKind.yard => 'Двор',
+    OutdoorZoneKind.driveway => 'Проезд',
+    OutdoorZoneKind.pedestrian => 'Пешеходная зона',
+    OutdoorZoneKind.parking => 'Парковка',
+    OutdoorZoneKind.playground => 'Площадка',
+    OutdoorZoneKind.landscape => 'Ландшафт',
+    OutdoorZoneKind.technical => 'Техническая зона',
+    OutdoorZoneKind.transformerArea => 'Трансформаторная зона',
+    OutdoorZoneKind.generatorArea => 'Генераторная зона',
+    OutdoorZoneKind.solarArea => 'Солнечная генерация',
+  };
 
   static String _lotLabel(PropertyLotKind kind) => switch (kind) {
-        PropertyLotKind.detachedHouse => 'Участок коттеджа',
-        PropertyLotKind.townhouseUnit => 'Секция таунхауса',
-        PropertyLotKind.commonFacility => 'Общий объект',
-        PropertyLotKind.technical => 'Технический участок',
-      };
+    PropertyLotKind.detachedHouse => 'Участок коттеджа',
+    PropertyLotKind.townhouseUnit => 'Секция таунхауса',
+    PropertyLotKind.commonFacility => 'Общий объект',
+    PropertyLotKind.technical => 'Технический участок',
+  };
 }

@@ -58,7 +58,8 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     final now = DateTime.now();
     final previousAt = _lastTapAt;
     final previousPosition = _lastTapPosition;
-    final isDoubleTap = previousAt != null &&
+    final isDoubleTap =
+        previousAt != null &&
         now.difference(previousAt) <= const Duration(milliseconds: 360) &&
         previousPosition != null &&
         (event.localPosition - previousPosition).distance <= 24;
@@ -77,7 +78,8 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
   @override
   Widget build(BuildContext context) {
     final space = controller.selectedSpace;
-    final profiles = space?.wallProfiles.entries
+    final profiles =
+        space?.wallProfiles.entries
             .where(
               (entry) =>
                   WallProfilePlanProjection.hasVerticalVariation(entry.value),
@@ -119,10 +121,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
 }
 
 class _ProfiledWallsStrip extends StatelessWidget {
-  const _ProfiledWallsStrip({
-    required this.controller,
-    required this.profiles,
-  });
+  const _ProfiledWallsStrip({required this.controller, required this.profiles});
 
   final EditorController controller;
   final List<MapEntry<int, WallProfile>> profiles;
@@ -155,9 +154,8 @@ class _ProfiledWallsStrip extends StatelessWidget {
                   const SizedBox(width: 5),
                   Text(
                     'ПРОФИЛИ',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                    style: Theme.of(context).textTheme.labelSmall
+                        ?.copyWith(fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -259,10 +257,7 @@ class _ProfileWallButton extends StatelessWidget {
 }
 
 class _ProfileSparklinePainter extends CustomPainter {
-  const _ProfileSparklinePainter({
-    required this.profile,
-    required this.color,
-  });
+  const _ProfileSparklinePainter({required this.profile, required this.color});
 
   final WallProfile profile;
   final Color color;

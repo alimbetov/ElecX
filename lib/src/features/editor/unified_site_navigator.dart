@@ -67,10 +67,10 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
   }
 
   NavigatorNode get _root => SiteNavigationProjection.apartmentTower(
-        siteName: workspace.site.site.name,
-        building: workspace.building,
-        outdoorZones: workspace.site.outdoorZones,
-      );
+    siteName: workspace.site.site.name,
+    building: workspace.building,
+    outdoorZones: workspace.site.outdoorZones,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -113,45 +113,43 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
   }
 
   Widget _header(BuildContext context) => SizedBox(
-        height: EditorUiTokens.panelHeaderHeight,
-        child: Row(
-          children: [
-            const SizedBox(width: 10),
-            const Icon(Icons.account_tree_outlined, size: 17),
-            const SizedBox(width: 7),
-            Expanded(
-              child: Text(
-                'НАВИГАТОР',
-                style: Theme.of(context).textTheme.labelMedium,
-              ),
-            ),
-            IconButton(
-              tooltip: 'Карта площадки',
-              visualDensity: VisualDensity.compact,
-              onPressed: widget.onOpenSiteMap,
-              icon: const Icon(Icons.map_outlined, size: 18),
-            ),
-            IconButton(
-              tooltip: 'Предыдущий уровень',
-              visualDensity: VisualDensity.compact,
-              onPressed:
-                  workspace.context == EditorWorkspaceContext.buildingLevel
-                      ? workspace.previousLevel
-                      : null,
-              icon: const Icon(Icons.keyboard_arrow_down, size: 18),
-            ),
-            IconButton(
-              tooltip: 'Следующий уровень',
-              visualDensity: VisualDensity.compact,
-              onPressed:
-                  workspace.context == EditorWorkspaceContext.buildingLevel
-                      ? workspace.nextLevel
-                      : null,
-              icon: const Icon(Icons.keyboard_arrow_up, size: 18),
-            ),
-          ],
+    height: EditorUiTokens.panelHeaderHeight,
+    child: Row(
+      children: [
+        const SizedBox(width: 10),
+        const Icon(Icons.account_tree_outlined, size: 17),
+        const SizedBox(width: 7),
+        Expanded(
+          child: Text(
+            'НАВИГАТОР',
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
         ),
-      );
+        IconButton(
+          tooltip: 'Карта площадки',
+          visualDensity: VisualDensity.compact,
+          onPressed: widget.onOpenSiteMap,
+          icon: const Icon(Icons.map_outlined, size: 18),
+        ),
+        IconButton(
+          tooltip: 'Предыдущий уровень',
+          visualDensity: VisualDensity.compact,
+          onPressed: workspace.context == EditorWorkspaceContext.buildingLevel
+              ? workspace.previousLevel
+              : null,
+          icon: const Icon(Icons.keyboard_arrow_down, size: 18),
+        ),
+        IconButton(
+          tooltip: 'Следующий уровень',
+          visualDensity: VisualDensity.compact,
+          onPressed: workspace.context == EditorWorkspaceContext.buildingLevel
+              ? workspace.nextLevel
+              : null,
+          icon: const Icon(Icons.keyboard_arrow_up, size: 18),
+        ),
+      ],
+    ),
+  );
 
   Widget _breadcrumb(BuildContext context, NavigatorNode root) {
     final activeNodeId = _activeNodeId();
@@ -175,10 +173,10 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
             child: Text(
               node.label,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontWeight: index == effective.length - 1
-                        ? FontWeight.w700
-                        : FontWeight.w400,
-                  ),
+                fontWeight: index == effective.length - 1
+                    ? FontWeight.w700
+                    : FontWeight.w400,
+              ),
             ),
           );
         },
@@ -187,31 +185,31 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
   }
 
   Widget _levelFilter(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
-        child: SegmentedButton<LevelNavigatorFilter>(
-          segments: const [
-            ButtonSegment(
-              value: LevelNavigatorFilter.all,
-              label: Text('Все'),
-              icon: Icon(Icons.layers_outlined, size: 14),
-            ),
-            ButtonSegment(
-              value: LevelNavigatorFilter.residential,
-              label: Text('Этажи'),
-              icon: Icon(Icons.apartment_outlined, size: 14),
-            ),
-            ButtonSegment(
-              value: LevelNavigatorFilter.basement,
-              label: Text('B'),
-              icon: Icon(Icons.foundation_outlined, size: 14),
-            ),
-          ],
-          selected: {_filter},
-          showSelectedIcon: false,
-          onSelectionChanged: (value) => setState(() => _filter = value.first),
-          style: const ButtonStyle(visualDensity: VisualDensity.compact),
+    padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+    child: SegmentedButton<LevelNavigatorFilter>(
+      segments: const [
+        ButtonSegment(
+          value: LevelNavigatorFilter.all,
+          label: Text('Все'),
+          icon: Icon(Icons.layers_outlined, size: 14),
         ),
-      );
+        ButtonSegment(
+          value: LevelNavigatorFilter.residential,
+          label: Text('Этажи'),
+          icon: Icon(Icons.apartment_outlined, size: 14),
+        ),
+        ButtonSegment(
+          value: LevelNavigatorFilter.basement,
+          label: Text('B'),
+          icon: Icon(Icons.foundation_outlined, size: 14),
+        ),
+      ],
+      selected: {_filter},
+      showSelectedIcon: false,
+      onSelectionChanged: (value) => setState(() => _filter = value.first),
+      style: const ButtonStyle(visualDensity: VisualDensity.compact),
+    ),
+  );
 
   Widget _nodeTile(
     BuildContext context,
@@ -253,15 +251,19 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
                 horizontalTitleGap: 4,
                 minTileHeight: 34,
                 selected: selected,
-                selectedTileColor:
-                    Theme.of(context).colorScheme.secondaryContainer,
+                selectedTileColor: Theme.of(context)
+                    .colorScheme
+                    .secondaryContainer,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(7)),
+                  borderRadius: BorderRadius.circular(7),
+                ),
                 leading: hasChildren
                     ? IconButton(
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints.tightFor(
-                            width: 26, height: 26),
+                          width: 26,
+                          height: 26,
+                        ),
                         onPressed: () => setState(() {
                           if (!_expanded.add(node.id)) {
                             _expanded.remove(node.id);
@@ -353,7 +355,8 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
         for (final child in node.children)
           if (filterNode(child) case final filtered?) filtered,
       ];
-      final ownMatch = query.isEmpty ||
+      final ownMatch =
+          query.isEmpty ||
           node.label.toLowerCase().contains(query) ||
           (node.subtitle?.toLowerCase().contains(query) ?? false);
       if (!ownMatch && children.isEmpty && query.isNotEmpty) {
@@ -410,14 +413,14 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
   }
 
   IconData _iconFor(NavigatorNodeKind kind) => switch (kind) {
-        NavigatorNodeKind.site => Icons.location_on_outlined,
-        NavigatorNodeKind.outdoorZone => Icons.park_outlined,
-        NavigatorNodeKind.lot => Icons.fence_outlined,
-        NavigatorNodeKind.building => Icons.apartment_outlined,
-        NavigatorNodeKind.level => Icons.layers_outlined,
-        NavigatorNodeKind.zone => Icons.home_work_outlined,
-        NavigatorNodeKind.room => Icons.crop_square,
-        NavigatorNodeKind.surface => Icons.crop_landscape,
-        NavigatorNodeKind.network => Icons.hub_outlined,
-      };
+    NavigatorNodeKind.site => Icons.location_on_outlined,
+    NavigatorNodeKind.outdoorZone => Icons.park_outlined,
+    NavigatorNodeKind.lot => Icons.fence_outlined,
+    NavigatorNodeKind.building => Icons.apartment_outlined,
+    NavigatorNodeKind.level => Icons.layers_outlined,
+    NavigatorNodeKind.zone => Icons.home_work_outlined,
+    NavigatorNodeKind.room => Icons.crop_square,
+    NavigatorNodeKind.surface => Icons.crop_landscape,
+    NavigatorNodeKind.network => Icons.hub_outlined,
+  };
 }

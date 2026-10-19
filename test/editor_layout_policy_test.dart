@@ -4,8 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('phone width selects mobile editor', () {
     expect(EditorLayoutPolicy.forWidth(430), EditorLayoutMode.mobile);
-    expect(EditorLayoutPolicy.persistentSidePanels(EditorLayoutMode.mobile),
-        isFalse);
+    expect(
+      EditorLayoutPolicy.persistentSidePanels(EditorLayoutMode.mobile),
+      isFalse,
+    );
   });
 
   test('tablet width selects touch-first tablet editor', () {
@@ -17,8 +19,10 @@ void main() {
 
   test('desktop width keeps compact persistent panel widths', () {
     expect(EditorLayoutPolicy.forWidth(1440), EditorLayoutMode.desktop);
-    expect(EditorLayoutPolicy.persistentSidePanels(EditorLayoutMode.desktop),
-        isTrue);
+    expect(
+      EditorLayoutPolicy.persistentSidePanels(EditorLayoutMode.desktop),
+      isTrue,
+    );
     expect(EditorLayoutPolicy.compactTools(EditorLayoutMode.desktop), isFalse);
     expect(EditorLayoutPolicy.navigatorWidth(EditorLayoutMode.desktop), 252);
     expect(EditorLayoutPolicy.inspectorWidth(EditorLayoutMode.desktop), 312);

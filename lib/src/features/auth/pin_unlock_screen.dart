@@ -78,19 +78,19 @@ class _PinUnlockScreenState extends State<PinUnlockScreen> {
                             : TextButton(
                                 onPressed: value == '⌫'
                                     ? () => setState(() {
-                                          if (_pin.isNotEmpty) {
-                                            _pin = _pin.substring(
-                                              0,
-                                              _pin.length - 1,
-                                            );
-                                          }
-                                        })
+                                        if (_pin.isNotEmpty) {
+                                          _pin = _pin.substring(
+                                            0,
+                                            _pin.length - 1,
+                                          );
+                                        }
+                                      })
                                     : () => _press(value),
                                 child: Text(
                                   value,
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.headlineSmall,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .headlineSmall,
                                 ),
                               ),
                       );

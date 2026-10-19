@@ -6,39 +6,30 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   ElectricalCableRoute route() => ElectricalCableRoute(
-        id: 'route-1',
-        source: const ElectricalEndpointRef(
-          componentId: 'DB-01',
-          portId: 'outgoing',
-        ),
-        target: const ElectricalEndpointRef(
-          componentId: 'LOAD-01',
-          portId: 'power-in',
-        ),
-        segments: [
-          ElectricalRouteSegment(
-            surface: RoomSurfaceRef.wall('room-1', 0),
-            points: const [
-              SurfacePointMm(0, 300),
-              SurfacePointMm(1000, 300),
-            ],
-          ),
-        ],
-      );
+    id: 'route-1',
+    source: const ElectricalEndpointRef(
+      componentId: 'DB-01',
+      portId: 'outgoing',
+    ),
+    target: const ElectricalEndpointRef(
+      componentId: 'LOAD-01',
+      portId: 'power-in',
+    ),
+    segments: [
+      ElectricalRouteSegment(
+        surface: RoomSurfaceRef.wall('room-1', 0),
+        points: const [SurfacePointMm(0, 300), SurfacePointMm(1000, 300)],
+      ),
+    ],
+  );
 
   const cable = CableIdentity(
     id: 'cable-1',
     routeId: 'route-1',
     circuitId: 'circuit-1',
     designation: 'W-001',
-    endA: CableTerminationRef(
-      componentId: 'DB-01',
-      portId: 'outgoing',
-    ),
-    endB: CableTerminationRef(
-      componentId: 'LOAD-01',
-      portId: 'power-in',
-    ),
+    endA: CableTerminationRef(componentId: 'DB-01', portId: 'outgoing'),
+    endB: CableTerminationRef(componentId: 'LOAD-01', portId: 'power-in'),
   );
 
   test('same bundle can be registered idempotently', () {

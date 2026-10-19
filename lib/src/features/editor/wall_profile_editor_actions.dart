@@ -151,7 +151,8 @@ WallTopNotchState? _topNotchFromProfile(WallProfile profile) {
   }
   final top = profile.maxY;
   final width = profile.maxX;
-  final looksLikeTopNotch = v[0].xMm == 0 &&
+  final looksLikeTopNotch =
+      v[0].xMm == 0 &&
       v[0].yMm == 0 &&
       v[1].xMm == width &&
       v[1].yMm == 0 &&

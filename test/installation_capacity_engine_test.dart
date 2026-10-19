@@ -29,12 +29,14 @@ void main() {
     category: 'Cat6A',
   );
 
-  test('power conductor cross-section stays independent from cable fill area',
-      () {
-    expect(powerCable.conductorCount, 3);
-    expect(powerCable.conductorCrossSectionMm2, 2.5);
-    expect(powerCable.occupiedCircularAreaMm2, closeTo(78.54, 0.02));
-  });
+  test(
+    'power conductor cross-section stays independent from cable fill area',
+    () {
+      expect(powerCable.conductorCount, 3);
+      expect(powerCable.conductorCrossSectionMm2, 2.5);
+      expect(powerCable.occupiedCircularAreaMm2, closeTo(78.54, 0.02));
+    },
+  );
 
   test('area-fill channel respects reserve and reports overfill', () {
     final path = InstallationPathSpec(
@@ -95,8 +97,9 @@ void main() {
     );
     expect(three.hasErrors, isTrue);
     expect(
-      three.defects
-          .any((item) => item.kind == InstallationDefectKind.areaOverfill),
+      three.defects.any(
+        (item) => item.kind == InstallationDefectKind.areaOverfill,
+      ),
       isTrue,
     );
   });

@@ -26,14 +26,13 @@ final class ComponentMoveState {
   ComponentMoveState copyWith({
     SurfacePointMm? previewPosition,
     bool? isValid,
-  }) =>
-      ComponentMoveState(
-        componentId: componentId,
-        surface: surface,
-        originalPosition: originalPosition,
-        previewPosition: previewPosition ?? this.previewPosition,
-        isValid: isValid ?? this.isValid,
-      );
+  }) => ComponentMoveState(
+    componentId: componentId,
+    surface: surface,
+    originalPosition: originalPosition,
+    previewPosition: previewPosition ?? this.previewPosition,
+    isValid: isValid ?? this.isValid,
+  );
 }
 
 /// Device-independent move transaction for an already placed engineering
@@ -64,16 +63,10 @@ final class ComponentMoveSession extends ChangeNotifier {
     return true;
   }
 
-  bool preview(
-    SurfacePointMm position, {
-    required bool isValid,
-  }) {
+  bool preview(SurfacePointMm position, {required bool isValid}) {
     final current = _state;
     if (current == null) return false;
-    _state = current.copyWith(
-      previewPosition: position,
-      isValid: isValid,
-    );
+    _state = current.copyWith(previewPosition: position, isValid: isValid);
     if (isValid) {
       controller.p2.previewMoveSelectedComponent(position);
     }

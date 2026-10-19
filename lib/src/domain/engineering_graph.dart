@@ -189,75 +189,67 @@ abstract final class EngineeringGraphValidator {
 abstract final class EngineeringSystemPolicy {
   static EngineeringCalculationKind calculationFor(
     EngineeringSystemClass systemClass,
-  ) =>
-      switch (systemClass) {
-        EngineeringSystemClass.powerAc ||
-        EngineeringSystemClass.lighting =>
-          EngineeringCalculationKind.powerCableSizing,
-        EngineeringSystemClass.powerDc ||
-        EngineeringSystemClass.accessControl =>
-          EngineeringCalculationKind.dcVoltageDrop,
-        EngineeringSystemClass.structuredCabling =>
-          EngineeringCalculationKind.copperLinkLength,
-        EngineeringSystemClass.poeNetwork ||
-        EngineeringSystemClass.cctv =>
-          EngineeringCalculationKind.poePowerBudget,
-        EngineeringSystemClass.fiberOptic =>
-          EngineeringCalculationKind.fiberOpticalBudget,
-        EngineeringSystemClass.fireAlarm =>
-          EngineeringCalculationKind.fireLoopElectrical,
-        EngineeringSystemClass.automationBus =>
-          EngineeringCalculationKind.busTopology,
-        EngineeringSystemClass.dryContact ||
-        EngineeringSystemClass.custom =>
-          EngineeringCalculationKind.connectivityOnly,
-      };
+  ) => switch (systemClass) {
+    EngineeringSystemClass.powerAc || EngineeringSystemClass.lighting =>
+      EngineeringCalculationKind.powerCableSizing,
+    EngineeringSystemClass.powerDc || EngineeringSystemClass.accessControl =>
+      EngineeringCalculationKind.dcVoltageDrop,
+    EngineeringSystemClass.structuredCabling =>
+      EngineeringCalculationKind.copperLinkLength,
+    EngineeringSystemClass.poeNetwork ||
+    EngineeringSystemClass.cctv => EngineeringCalculationKind.poePowerBudget,
+    EngineeringSystemClass.fiberOptic =>
+      EngineeringCalculationKind.fiberOpticalBudget,
+    EngineeringSystemClass.fireAlarm =>
+      EngineeringCalculationKind.fireLoopElectrical,
+    EngineeringSystemClass.automationBus =>
+      EngineeringCalculationKind.busTopology,
+    EngineeringSystemClass.dryContact || EngineeringSystemClass.custom =>
+      EngineeringCalculationKind.connectivityOnly,
+  };
 
   static Set<EngineeringConnectionType> preferredConnectionsFor(
     EngineeringSystemClass systemClass,
-  ) =>
-      switch (systemClass) {
-        EngineeringSystemClass.powerAc ||
-        EngineeringSystemClass.lighting =>
-          <EngineeringConnectionType>{
-            EngineeringConnectionType.acSinglePhase,
-            EngineeringConnectionType.acThreePhase,
-          },
-        EngineeringSystemClass.powerDc => <EngineeringConnectionType>{
-            EngineeringConnectionType.dcPower,
-          },
-        EngineeringSystemClass.structuredCabling => <EngineeringConnectionType>{
-            EngineeringConnectionType.ethernetCopper,
-          },
-        EngineeringSystemClass.poeNetwork ||
-        EngineeringSystemClass.cctv =>
-          <EngineeringConnectionType>{
-            EngineeringConnectionType.poe,
-            EngineeringConnectionType.ethernetCopper,
-          },
-        EngineeringSystemClass.fiberOptic => <EngineeringConnectionType>{
-            EngineeringConnectionType.fiber,
-          },
-        EngineeringSystemClass.accessControl => <EngineeringConnectionType>{
-            EngineeringConnectionType.dcPower,
-            EngineeringConnectionType.rs485,
-            EngineeringConnectionType.dryContact,
-          },
-        EngineeringSystemClass.fireAlarm => <EngineeringConnectionType>{
-            EngineeringConnectionType.fireLoop,
-            EngineeringConnectionType.dcPower,
-          },
-        EngineeringSystemClass.automationBus => <EngineeringConnectionType>{
-            EngineeringConnectionType.rs485,
-            EngineeringConnectionType.analogSignal,
-          },
-        EngineeringSystemClass.dryContact => <EngineeringConnectionType>{
-            EngineeringConnectionType.dryContact,
-          },
-        EngineeringSystemClass.custom => <EngineeringConnectionType>{
-            EngineeringConnectionType.custom,
-          },
-      };
+  ) => switch (systemClass) {
+    EngineeringSystemClass.powerAc ||
+    EngineeringSystemClass.lighting => <EngineeringConnectionType>{
+      EngineeringConnectionType.acSinglePhase,
+      EngineeringConnectionType.acThreePhase,
+    },
+    EngineeringSystemClass.powerDc => <EngineeringConnectionType>{
+      EngineeringConnectionType.dcPower,
+    },
+    EngineeringSystemClass.structuredCabling => <EngineeringConnectionType>{
+      EngineeringConnectionType.ethernetCopper,
+    },
+    EngineeringSystemClass.poeNetwork ||
+    EngineeringSystemClass.cctv => <EngineeringConnectionType>{
+      EngineeringConnectionType.poe,
+      EngineeringConnectionType.ethernetCopper,
+    },
+    EngineeringSystemClass.fiberOptic => <EngineeringConnectionType>{
+      EngineeringConnectionType.fiber,
+    },
+    EngineeringSystemClass.accessControl => <EngineeringConnectionType>{
+      EngineeringConnectionType.dcPower,
+      EngineeringConnectionType.rs485,
+      EngineeringConnectionType.dryContact,
+    },
+    EngineeringSystemClass.fireAlarm => <EngineeringConnectionType>{
+      EngineeringConnectionType.fireLoop,
+      EngineeringConnectionType.dcPower,
+    },
+    EngineeringSystemClass.automationBus => <EngineeringConnectionType>{
+      EngineeringConnectionType.rs485,
+      EngineeringConnectionType.analogSignal,
+    },
+    EngineeringSystemClass.dryContact => <EngineeringConnectionType>{
+      EngineeringConnectionType.dryContact,
+    },
+    EngineeringSystemClass.custom => <EngineeringConnectionType>{
+      EngineeringConnectionType.custom,
+    },
+  };
 }
 
 final class CircuitLoadInput {
@@ -319,10 +311,7 @@ final class CableSizingInput {
       );
     }
     if (maxVoltageDropPercent <= 0) {
-      throw ArgumentError.value(
-        maxVoltageDropPercent,
-        'maxVoltageDropPercent',
-      );
+      throw ArgumentError.value(maxVoltageDropPercent, 'maxVoltageDropPercent');
     }
   }
 

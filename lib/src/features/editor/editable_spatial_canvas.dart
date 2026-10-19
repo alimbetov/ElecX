@@ -67,8 +67,9 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
   void didUpdateWidget(covariant SpatialCanvas oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
-      oldWidget.controller.viewportCommandListenable
-          .removeListener(_onViewportCommand);
+      oldWidget.controller.viewportCommandListenable.removeListener(
+        _onViewportCommand,
+      );
       _lastViewportRevision = controller.viewportCommandRevision;
       controller.viewportCommandListenable.addListener(_onViewportCommand);
       _selectedExternalEdgeIndex = null;
@@ -91,18 +92,18 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
   }
 
   int _fingerprint() => Object.hashAll(
-        controller.level.spaces.map((space) {
-          final bounds = space.boundary.bounds;
-          return Object.hash(
-            space.id,
-            bounds.left,
-            bounds.bottom,
-            bounds.right,
-            bounds.top,
-            Object.hashAll(space.boundary.vertices),
-          );
-        }),
+    controller.level.spaces.map((space) {
+      final bounds = space.boundary.bounds;
+      return Object.hash(
+        space.id,
+        bounds.left,
+        bounds.bottom,
+        bounds.right,
+        bounds.top,
+        Object.hashAll(space.boundary.vertices),
       );
+    }),
+  );
 
   void _rebuildIndex({bool force = false}) {
     final next = _fingerprint();
@@ -114,11 +115,11 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
   }
 
   MmPoint _toWorld(Offset local) => _camera.screenToWorld(
-        viewportWidthPx: _size.width,
-        viewportHeightPx: _size.height,
-        xPx: local.dx,
-        yPx: local.dy,
-      );
+    viewportWidthPx: _size.width,
+    viewportHeightPx: _size.height,
+    xPx: local.dx,
+    yPx: local.dy,
+  );
 
   Offset _toScreen(MmPoint point) {
     final screen = _camera.worldToScreen(
@@ -132,12 +133,12 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
   double get _hitRadiusMm => math.max(60, _camera.mmPerPixel * 11);
 
   WorldCamera _zoomed(Offset cursor, double factor) => _camera.zoomAt(
-        factor: factor,
-        viewportWidthPx: _size.width,
-        viewportHeightPx: _size.height,
-        cursorXpx: cursor.dx,
-        cursorYpx: cursor.dy,
-      );
+    factor: factor,
+    viewportWidthPx: _size.width,
+    viewportHeightPx: _size.height,
+    cursorXpx: cursor.dx,
+    cursorYpx: cursor.dy,
+  );
 
   void _zoomAt(Offset cursor, double factor) {
     setState(() => _camera = _zoomed(cursor, factor));
@@ -448,10 +449,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
           if (width < 300) {
             return;
           }
-          candidate = base.copyWith(
-            offsetFromStartMm: offset,
-            widthMm: width,
-          );
+          candidate = base.copyWith(offsetFromStartMm: offset, widthMm: width);
         case _PlanDragKind.openingEnd:
           final width = offset - base.offsetFromStartMm;
           if (width < 300) {
@@ -528,8 +526,10 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
           if (external) {
             _selectedExternalEdgeIndex = wallIndex;
             _selectedExternalSpaceId = controller.selectedSpaceId;
-            _selectedExternalPullSign =
-                _pullSignForCursor(wallIndex, details.localPosition);
+            _selectedExternalPullSign = _pullSignForCursor(
+              wallIndex,
+              details.localPosition,
+            );
           } else {
             _clearExternalWallSelection();
           }
@@ -769,32 +769,30 @@ class _PlanPainter extends CustomPainter {
     required this.previewBoundary,
     required this.previewOpening,
     required this.scheme,
-  })  : selectedSpaceId = controller.selectedSpaceId,
-        selectedOpeningId = controller.selectedOpeningId,
-        dimensionsVisible = controller.dimensionsVisible,
-        tool = controller.tool,
-        openings = List.unmodifiable(controller.openings),
-        openingFingerprint = Object.hashAll(
-          controller.openings.map(
-            (opening) => Object.hash(
-              opening.id,
-              opening.hostWall.id,
-              opening.offsetFromStartMm,
-              opening.widthMm,
-              opening.heightMm,
-              opening.sillHeightMm,
-              opening.type,
-            ),
-          ),
-        ),
-        sceneFingerprint = Object.hashAll(
-          visibleSpaces.map(
-            (space) => Object.hash(
-              space.id,
-              Object.hashAll(space.boundary.vertices),
-            ),
-          ),
-        );
+  }) : selectedSpaceId = controller.selectedSpaceId,
+       selectedOpeningId = controller.selectedOpeningId,
+       dimensionsVisible = controller.dimensionsVisible,
+       tool = controller.tool,
+       openings = List.unmodifiable(controller.openings),
+       openingFingerprint = Object.hashAll(
+         controller.openings.map(
+           (opening) => Object.hash(
+             opening.id,
+             opening.hostWall.id,
+             opening.offsetFromStartMm,
+             opening.widthMm,
+             opening.heightMm,
+             opening.sillHeightMm,
+             opening.type,
+           ),
+         ),
+       ),
+       sceneFingerprint = Object.hashAll(
+         visibleSpaces.map(
+           (space) =>
+               Object.hash(space.id, Object.hashAll(space.boundary.vertices)),
+         ),
+       );
 
   final WorldCamera camera;
   final List<EngineeringSpace> visibleSpaces;
@@ -943,8 +941,9 @@ class _PlanPainter extends CustomPainter {
     EngineeringSpace space,
     MmPolygon boundary,
   ) {
-    final projectedSpace =
-        boundary == space.boundary ? space : space.copyWith(boundary: boundary);
+    final projectedSpace = boundary == space.boundary
+        ? space
+        : space.copyWith(boundary: boundary);
     final walls = RoomSurfaceResolver.walls(projectedSpace);
 
     for (final source in openings) {
@@ -956,8 +955,9 @@ class _PlanPainter extends CustomPainter {
       if (index < 0 || index >= walls.length) {
         continue;
       }
-      final opening =
-          previewOpening?.id == source.id ? previewOpening! : source;
+      final opening = previewOpening?.id == source.id
+          ? previewOpening!
+          : source;
       final wall = walls[index];
       final startWorld = RoomSurfaceResolver.wallLocalToPlan(
         wall,
@@ -1025,11 +1025,7 @@ class _PlanPainter extends CustomPainter {
       ..strokeWidth = 0.8;
 
     final y = math.max(bottomLeft.dy, bottomRight.dy) + 22;
-    canvas.drawLine(
-      Offset(bottomLeft.dx, y),
-      Offset(bottomRight.dx, y),
-      paint,
-    );
+    canvas.drawLine(Offset(bottomLeft.dx, y), Offset(bottomRight.dx, y), paint);
     _text(
       canvas,
       '${bounds.width} mm',
@@ -1037,11 +1033,7 @@ class _PlanPainter extends CustomPainter {
     );
 
     final x = topRight.dx + 24;
-    canvas.drawLine(
-      Offset(x, topRight.dy),
-      Offset(x, bottomRight.dy),
-      paint,
-    );
+    canvas.drawLine(Offset(x, topRight.dy), Offset(x, bottomRight.dy), paint);
     _text(
       canvas,
       '${bounds.height} mm',
@@ -1057,10 +1049,7 @@ class _PlanPainter extends CustomPainter {
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    painter.paint(
-      canvas,
-      at - Offset(painter.width / 2, painter.height / 2),
-    );
+    painter.paint(canvas, at - Offset(painter.width / 2, painter.height / 2));
   }
 
   @override
@@ -1124,10 +1113,7 @@ class _PullMeasurePainter extends CustomPainter {
       textDirection: TextDirection.ltr,
     )..layout();
     final labelAt = midpoint + normal * 12;
-    text.paint(
-      canvas,
-      labelAt - Offset(text.width / 2, text.height / 2),
-    );
+    text.paint(canvas, labelAt - Offset(text.width / 2, text.height / 2));
   }
 
   @override

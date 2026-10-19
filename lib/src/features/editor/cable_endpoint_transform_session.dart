@@ -27,7 +27,7 @@ final class CableEndpointTransformSession extends ChangeNotifier
   CableEndpointTransformSession({required this.onCommit});
 
   final bool Function(ElectricalCableRoute before, ElectricalCableRoute after)
-      onCommit;
+  onCommit;
 
   final SnapHysteresis _hysteresis = SnapHysteresis();
   ElectricalCableRoute? _origin;
@@ -103,7 +103,8 @@ final class CableEndpointTransformSession extends ChangeNotifier
         semanticAnchors: anchors,
       ),
     );
-    final semantic = resolved != null &&
+    final semantic =
+        resolved != null &&
             (resolved.kind == SnapKind.port ||
                 resolved.kind == SnapKind.componentAnchor)
         ? resolved
@@ -133,10 +134,12 @@ final class CableEndpointTransformSession extends ChangeNotifier
         ? segment.points.first
         : segment.points.last;
     final movedPoint = SurfacePointMm(snap.point.x, snap.point.y);
-    final sourcePoint =
-        role == CableEndpointRole.source ? movedPoint : fixedPoint;
-    final targetPoint =
-        role == CableEndpointRole.target ? movedPoint : fixedPoint;
+    final sourcePoint = role == CableEndpointRole.source
+        ? movedPoint
+        : fixedPoint;
+    final targetPoint = role == CableEndpointRole.target
+        ? movedPoint
+        : fixedPoint;
     final candidates = NormativeRouteEngine.buildCandidates(
       source: sourcePoint,
       target: targetPoint,
@@ -155,10 +158,7 @@ final class CableEndpointTransformSession extends ChangeNotifier
       source: role == CableEndpointRole.source ? endpoint : origin.source,
       target: role == CableEndpointRole.target ? endpoint : origin.target,
       segments: [
-        ElectricalRouteSegment(
-          surface: segment.surface,
-          points: best.points,
-        ),
+        ElectricalRouteSegment(surface: segment.surface, points: best.points),
       ],
       cableType: origin.cableType,
       medium: origin.medium,

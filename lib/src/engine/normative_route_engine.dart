@@ -1,16 +1,8 @@
 import '../domain/surfaces.dart';
 
-enum CableRoutingMode {
-  auto,
-  assisted,
-  manualGuardrails,
-}
+enum CableRoutingMode { auto, assisted, manualGuardrails }
 
-enum RouteConstraintSeverity {
-  info,
-  warning,
-  error,
-}
+enum RouteConstraintSeverity { info, warning, error }
 
 final class RouteConstraintIssue {
   const RouteConstraintIssue({
@@ -175,7 +167,8 @@ abstract final class NormativeRouteEngine {
           issues.add(
             RouteConstraintIssue(
               code: 'route.obstacle.${obstacle.id}',
-              message: 'Трасса пересекает архитектурное препятствие ${obstacle.id}.',
+              message:
+                  'Трасса пересекает архитектурное препятствие ${obstacle.id}.',
               severity: RouteConstraintSeverity.error,
             ),
           );
@@ -205,7 +198,8 @@ abstract final class NormativeRouteEngine {
     final validation = validate(points: compact, context: context);
     final length = _length(compact);
     final bends = compact.length <= 2 ? 0 : compact.length - 2;
-    final warningPenalty = validation.issues
+    final warningPenalty =
+        validation.issues
             .where((issue) => issue.severity == RouteConstraintSeverity.warning)
             .length *
         1000;

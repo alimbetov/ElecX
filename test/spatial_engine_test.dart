@@ -61,14 +61,18 @@ void main() {
   group('SpatialHashIndex', () {
     test('query returns only intersecting visible items', () {
       final index = SpatialHashIndex<_Item>(cellSizeMm: 1000);
-      index.upsert(const _Item(
-        'visible',
-        MmBounds(left: 100, bottom: 100, right: 300, top: 300),
-      ));
-      index.upsert(const _Item(
-        'hidden',
-        MmBounds(left: 5000, bottom: 5000, right: 5200, top: 5200),
-      ));
+      index.upsert(
+        const _Item(
+          'visible',
+          MmBounds(left: 100, bottom: 100, right: 300, top: 300),
+        ),
+      );
+      index.upsert(
+        const _Item(
+          'hidden',
+          MmBounds(left: 5000, bottom: 5000, right: 5200, top: 5200),
+        ),
+      );
       final result = index.query(
         const MmBounds(left: 0, bottom: 0, right: 1000, top: 1000),
       );
@@ -77,10 +81,12 @@ void main() {
 
     test('supports negative coordinates and removes stale cells', () {
       final index = SpatialHashIndex<_Item>(cellSizeMm: 1000);
-      index.upsert(const _Item(
-        'item',
-        MmBounds(left: -1500, bottom: -500, right: -100, top: 100),
-      ));
+      index.upsert(
+        const _Item(
+          'item',
+          MmBounds(left: -1500, bottom: -500, right: -100, top: 100),
+        ),
+      );
       expect(
         index.query(
           const MmBounds(left: -2000, bottom: -1000, right: 0, top: 500),
@@ -88,10 +94,12 @@ void main() {
         hasLength(1),
       );
 
-      index.upsert(const _Item(
-        'item',
-        MmBounds(left: 10000, bottom: 10000, right: 10100, top: 10100),
-      ));
+      index.upsert(
+        const _Item(
+          'item',
+          MmBounds(left: 10000, bottom: 10000, right: 10100, top: 10100),
+        ),
+      );
       expect(
         index.query(
           const MmBounds(left: -2000, bottom: -1000, right: 0, top: 500),

@@ -9,10 +9,7 @@ import 'engineering_placement_cursor_session.dart';
 import 'route_selection_session.dart';
 
 class EngineeringPlacementCursorHud extends StatelessWidget {
-  const EngineeringPlacementCursorHud({
-    required this.controller,
-    super.key,
-  });
+  const EngineeringPlacementCursorHud({required this.controller, super.key});
 
   final EditorController controller;
 
@@ -31,8 +28,8 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
             controller.placementCursor.activeComponentTypeId;
         final placement =
             componentTypeId == null || controller.activeSurface == null
-                ? null
-                : controller.placementCursor.ensure();
+            ? null
+            : controller.placementCursor.ensure();
         final entry = placement == null
             ? null
             : controller.componentCatalog.byId(placement.componentTypeId);
@@ -48,8 +45,8 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
         final commandColor = placement == null
             ? AlienCockpitTokens.signalCyan
             : placement.isValid
-                ? AlienCockpitTokens.signalAqua
-                : AlienCockpitTokens.signalFault;
+            ? AlienCockpitTokens.signalAqua
+            : AlienCockpitTokens.signalFault;
         final medium = selectedRoute?.medium ?? selectedHostedRoute?.medium;
 
         return ConstrainedBox(
@@ -87,9 +84,7 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
                           child: Text(
                             command,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelMedium
+                            style: Theme.of(context).textTheme.labelMedium
                                 ?.copyWith(
                                   letterSpacing: 0.75,
                                   fontWeight: FontWeight.w700,
@@ -111,10 +106,12 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
                       const SizedBox(height: 7),
                       Text(
                         placement.coordinateLabel,
-                        style:
-                            Theme.of(context).textTheme.labelMedium?.copyWith(
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
                       ),
                       const SizedBox(height: 3),
                       Text(
@@ -122,9 +119,9 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
                         '${placement.snapLabel ?? placement.snapKind.name.toUpperCase()}  ·  '
                         '${entry.systemClass.name.toUpperCase()}  ·  GRID $step mm',
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                              letterSpacing: 0.2,
-                            ),
+                          color: scheme.onSurfaceVariant,
+                          letterSpacing: 0.2,
+                        ),
                       ),
                       const SizedBox(height: 7),
                       Row(
@@ -133,38 +130,26 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
                           _NudgeButton(
                             icon: Icons.arrow_left,
                             tooltip: '← $step mm',
-                            onPressed: () =>
-                                controller.placementCursor.nudgeGrid(
-                              dxSteps: -1,
-                              dySteps: 0,
-                            ),
+                            onPressed: () => controller.placementCursor
+                                .nudgeGrid(dxSteps: -1, dySteps: 0),
                           ),
                           _NudgeButton(
                             icon: Icons.arrow_right,
                             tooltip: '→ $step mm',
-                            onPressed: () =>
-                                controller.placementCursor.nudgeGrid(
-                              dxSteps: 1,
-                              dySteps: 0,
-                            ),
+                            onPressed: () => controller.placementCursor
+                                .nudgeGrid(dxSteps: 1, dySteps: 0),
                           ),
                           _NudgeButton(
                             icon: Icons.arrow_upward,
                             tooltip: '↑ $step mm',
-                            onPressed: () =>
-                                controller.placementCursor.nudgeGrid(
-                              dxSteps: 0,
-                              dySteps: 1,
-                            ),
+                            onPressed: () => controller.placementCursor
+                                .nudgeGrid(dxSteps: 0, dySteps: 1),
                           ),
                           _NudgeButton(
                             icon: Icons.arrow_downward,
                             tooltip: '↓ $step mm',
-                            onPressed: () =>
-                                controller.placementCursor.nudgeGrid(
-                              dxSteps: 0,
-                              dySteps: -1,
-                            ),
+                            onPressed: () => controller.placementCursor
+                                .nudgeGrid(dxSteps: 0, dySteps: -1),
                           ),
                           const SizedBox(width: 5),
                           IconButton.filledTonal(
@@ -205,8 +190,9 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
                           icon: controller.snapEnabled
                               ? Icons.grid_4x4
                               : Icons.grid_off,
-                          label:
-                              controller.snapEnabled ? 'SNAP ON' : 'SNAP OFF',
+                          label: controller.snapEnabled
+                              ? 'SNAP ON'
+                              : 'SNAP OFF',
                           color: controller.snapEnabled
                               ? AlienCockpitTokens.signalAqua
                               : scheme.onSurfaceVariant,
@@ -295,20 +281,20 @@ class _SignalDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: 7,
-        height: 7,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: color,
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.6),
-              blurRadius: 7,
-              spreadRadius: 1,
-            ),
-          ],
+    width: 7,
+    height: 7,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: color,
+      boxShadow: [
+        BoxShadow(
+          color: color.withValues(alpha: 0.6),
+          blurRadius: 7,
+          spreadRadius: 1,
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _MicroBadge extends StatelessWidget {
@@ -324,31 +310,31 @@ class _MicroBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DecoratedBox(
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(5),
-          border: Border.all(color: color.withValues(alpha: 0.30)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 12, color: color),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: color,
-                      fontSize: 10,
-                      letterSpacing: 0.35,
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-            ],
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.07),
+      borderRadius: BorderRadius.circular(5),
+      border: Border.all(color: color.withValues(alpha: 0.30)),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color,
+              fontSize: 10,
+              letterSpacing: 0.35,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 }
 
 class _NudgeButton extends StatelessWidget {
@@ -364,22 +350,22 @@ class _NudgeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => IconButton(
-        visualDensity: VisualDensity.compact,
-        tooltip: tooltip,
-        onPressed: onPressed,
-        icon: Icon(icon, size: 18),
-      );
+    visualDensity: VisualDensity.compact,
+    tooltip: tooltip,
+    onPressed: onPressed,
+    icon: Icon(icon, size: 18),
+  );
 }
 
 String _surfaceLabel(RoomSurfaceRef surface) => switch (surface.type) {
-      SurfacePlaneType.wall => 'WALL ${(surface.wallIndex ?? 0) + 1}',
-      SurfacePlaneType.floor => 'FLOOR',
-      SurfacePlaneType.ceiling => 'CEILING',
-    };
+  SurfacePlaneType.wall => 'WALL ${(surface.wallIndex ?? 0) + 1}',
+  SurfacePlaneType.floor => 'FLOOR',
+  SurfacePlaneType.ceiling => 'CEILING',
+};
 
 IconData _surfaceIcon(SurfacePlaneType? type) => switch (type) {
-      SurfacePlaneType.wall => Icons.view_sidebar_outlined,
-      SurfacePlaneType.floor => Icons.grid_4x4,
-      SurfacePlaneType.ceiling => Icons.vertical_align_top,
-      null => Icons.space_dashboard_outlined,
-    };
+  SurfacePlaneType.wall => Icons.view_sidebar_outlined,
+  SurfacePlaneType.floor => Icons.grid_4x4,
+  SurfacePlaneType.ceiling => Icons.vertical_align_top,
+  null => Icons.space_dashboard_outlined,
+};
