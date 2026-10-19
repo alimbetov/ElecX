@@ -1,0 +1,35 @@
+name: Format spatial hardening once
+
+on:
+  push:
+    branches:
+      - feat/spatial-editor-interaction-hardening
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/spatial-editor-interaction-hardening
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Format Dart sources
+        run: dart format lib test
+      - name: Commit formatting
+        run: |
+          if git diff --quiet; then
+            echo "No formatting changes required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib test
+          git commit -m "style: format spatial hardening changes"
+          git push origin HEAD:feat/spatial-editor-interaction-hardening
