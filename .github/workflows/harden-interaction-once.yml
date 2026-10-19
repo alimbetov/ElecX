@@ -6,6 +6,7 @@ on:
       - feat/spatial-editor-interaction-hardening
     paths:
       - tool/harden_interaction_once.py
+      - .github/workflows/harden-interaction-once.yml
 
 permissions:
   contents: write
