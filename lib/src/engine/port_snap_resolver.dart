@@ -53,8 +53,6 @@ abstract final class PortSnapResolver {
               kind == ElectricalPortKind.controlOut,
         CableEndpointRole.target =>
           kind == ElectricalPortKind.powerIn ||
-              kind == ElectricalPortKind.controlIn ||
-              kind == ElectricalPortKind.neutral ||
-              kind == ElectricalPortKind.earth,
+              kind == ElectricalPortKind.controlIn,
       };
 }
