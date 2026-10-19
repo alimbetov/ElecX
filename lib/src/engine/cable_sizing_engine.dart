@@ -168,8 +168,9 @@ abstract final class CableSizingEngine {
         'Voltage drop ${(voltageDropRatio! * 100).toStringAsFixed(2)}% exceeds allowed ${(request.requirement.maxVoltageDropRatio * 100).toStringAsFixed(2)}%.',
       );
     }
-    if (reasons.isEmpty)
+    if (reasons.isEmpty) {
       reasons.add('Cable satisfies current and voltage-drop checks.');
+    }
 
     return CableSizingResult(
       currentStatus: currentStatus,
