@@ -29,6 +29,10 @@ final class ElectricalPortDefinition {
 
 /// An engineering component placed on one physical room surface.
 /// Coordinates are persisted in surface-local millimetres, never pixels.
+///
+/// [componentTypeId] is the canonical V2 catalog identity. [type] remains as a
+/// legacy rendering/routing fallback while the editor migrates away from the
+/// electrical-only enum.
 final class ElectricalComponentPlacement {
   ElectricalComponentPlacement({
     required this.id,
@@ -36,13 +40,17 @@ final class ElectricalComponentPlacement {
     required this.surface,
     required this.position,
     required this.label,
+    String? componentTypeId,
     this.rotationDegrees = 0,
     this.ratedPowerW,
     this.voltageV = 230,
     this.ports = const [],
-  }) {
+  }) : componentTypeId = componentTypeId ?? legacyComponentTypeId(type) {
     if (id.isEmpty) {
       throw ArgumentError('Component id must be non-empty.');
+    }
+    if (this.componentTypeId.isEmpty) {
+      throw ArgumentError('componentTypeId must be non-empty.');
     }
     if (label.isEmpty) {
       throw ArgumentError('Component label must be non-empty.');
@@ -57,6 +65,7 @@ final class ElectricalComponentPlacement {
 
   final String id;
   final ElectricalComponentType type;
+  final String componentTypeId;
   final RoomSurfaceRef surface;
   final SurfacePointMm position;
   final String label;
@@ -69,6 +78,7 @@ final class ElectricalComponentPlacement {
     RoomSurfaceRef? surface,
     SurfacePointMm? position,
     String? label,
+    String? componentTypeId,
     int? rotationDegrees,
     int? ratedPowerW,
     int? voltageV,
@@ -76,6 +86,7 @@ final class ElectricalComponentPlacement {
       ElectricalComponentPlacement(
         id: id,
         type: type,
+        componentTypeId: componentTypeId ?? this.componentTypeId,
         surface: surface ?? this.surface,
         position: position ?? this.position,
         label: label ?? this.label,
@@ -85,6 +96,31 @@ final class ElectricalComponentPlacement {
         ports: ports,
       );
 }
+
+String legacyComponentTypeId(ElectricalComponentType type) => switch (type) {
+      ElectricalComponentType.socketOutlet => 'power.socket.general',
+      ElectricalComponentType.switchControl => 'lighting.switch.general',
+      ElectricalComponentType.lightingPoint => 'lighting.luminaire.general',
+      ElectricalComponentType.curtainMotor => 'legacy.curtain-motor',
+      ElectricalComponentType.junctionBox => 'power.junction-box.general',
+      ElectricalComponentType.powerSource => 'legacy.power-source',
+      ElectricalComponentType.distributionBoard =>
+        'power.distribution-board.general',
+      ElectricalComponentType.custom => 'legacy.custom',
+    };
+
+ElectricalComponentType legacyVisualTypeForComponentId(String componentTypeId) =>
+    switch (componentTypeId) {
+      'power.socket.general' => ElectricalComponentType.socketOutlet,
+      'lighting.switch.general' => ElectricalComponentType.switchControl,
+      'lighting.luminaire.general' => ElectricalComponentType.lightingPoint,
+      'power.junction-box.general' => ElectricalComponentType.junctionBox,
+      'power.distribution-board.general' =>
+        ElectricalComponentType.distributionBoard,
+      'legacy.curtain-motor' => ElectricalComponentType.curtainMotor,
+      'legacy.power-source' => ElectricalComponentType.powerSource,
+      _ => ElectricalComponentType.custom,
+    };
 
 abstract final class ElectricalComponentDefaults {
   static List<ElectricalPortDefinition> portsFor(
