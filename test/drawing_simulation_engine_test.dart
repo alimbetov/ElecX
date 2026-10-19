@@ -2,15 +2,18 @@ import 'package:elecx/src/domain/component_catalog_v2.dart';
 import 'package:elecx/src/domain/electrical_routing.dart';
 import 'package:elecx/src/domain/engineering_graph.dart';
 import 'package:elecx/src/domain/engineering_topology.dart';
+import 'package:elecx/src/domain/geometry.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/engine/drawing_simulation_engine.dart';
+import 'package:elecx/src/engine/engineering_analysis_profile.dart';
+import 'package:elecx/src/engine/routing_constraints.dart';
 import 'package:elecx/src/features/editor/catalog_component_placement.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
 import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('simulation finds route waste and missing path to board', () {
+  test('simulation finds route waste and missing directed path to board', () {
     final controller = EditorController.demo();
     addTearDown(controller.dispose);
     final space = controller.selectedSpace!;
@@ -100,8 +103,11 @@ void main() {
         routes: [badRoute],
         topology: topology,
         boardNodeId: board.id,
-        routeImprovementThreshold: 0.05,
-        maxBends: 2,
+        profile: const EngineeringAnalysisProfile(
+          routeImprovementThreshold: 0.05,
+          maxRouteBends: 2,
+        ),
+        catalogResolver: controller.componentCatalog.byId,
       ),
     );
 
@@ -130,7 +136,7 @@ void main() {
     expect(result.score, lessThan(100));
   });
 
-  test('simulation detects overlapping components on the same surface', () {
+  test('simulation detects overlapping and clearance violations', () {
     final controller = EditorController.demo();
     addTearDown(controller.dispose);
     final space = controller.selectedSpace!;
@@ -147,18 +153,157 @@ void main() {
       surface: wall,
       position: const SurfacePointMm(1200, 900),
     );
+    controller.p2.placeCatalogComponent(
+      entry: ComponentCatalogV2.require('power.socket.general'),
+      surface: wall,
+      position: const SurfacePointMm(1250, 900),
+    );
 
     final result = DrawingSimulationEngine.run(
       DrawingSimulationRequest(
         space: space,
         components: controller.p2.components,
         routes: const [],
+        profile: const EngineeringAnalysisProfile(componentClearanceMm: 100),
       ),
     );
 
     expect(
       result.defects.any(
         (item) => item.kind == DrawingDefectKind.overlappingComponents,
+      ),
+      isTrue,
+    );
+    expect(
+      result.defects.any(
+        (item) => item.kind == DrawingDefectKind.componentClearanceViolation,
+      ),
+      isTrue,
+    );
+  });
+
+  test('simulation detects route crossing a keep-out zone', () {
+    final controller = EditorController.demo();
+    addTearDown(controller.dispose);
+    final space = controller.selectedSpace!;
+    controller.showWall(0);
+    final wall = controller.activeSurface!;
+
+    final board = controller.p2.placeCatalogComponent(
+      entry: ComponentCatalogV2.require('power.distribution-board.general'),
+      surface: wall,
+      position: const SurfacePointMm(300, 1500),
+    );
+    final socket = controller.p2.placeCatalogComponent(
+      entry: ComponentCatalogV2.require('power.socket.general'),
+      surface: wall,
+      position: const SurfacePointMm(3000, 300),
+    );
+
+    final route = ElectricalCableRoute(
+      id: 'route-through-door-zone',
+      source: ElectricalEndpointRef(
+        componentId: board.id,
+        portId: 'power-out',
+      ),
+      target: ElectricalEndpointRef(
+        componentId: socket.id,
+        portId: 'power-in',
+      ),
+      segments: [
+        ElectricalRouteSegment(
+          surface: wall,
+          points: const [
+            SurfacePointMm(300, 1500),
+            SurfacePointMm(3000, 1500),
+            SurfacePointMm(3000, 300),
+          ],
+        ),
+      ],
+    );
+
+    final result = DrawingSimulationEngine.run(
+      DrawingSimulationRequest(
+        space: space,
+        components: controller.p2.components,
+        routes: [route],
+        keepOutZones: [
+          SurfaceKeepOutZone(
+            id: 'door-clearance',
+            surface: wall,
+            bounds: const MmBounds(
+              left: 1200,
+              bottom: 0,
+              right: 2200,
+              top: 2200,
+            ),
+            reason: 'door opening/service clearance',
+          ),
+        ],
+      ),
+    );
+
+    expect(
+      result.defects.any(
+        (item) => item.kind == DrawingDefectKind.routeKeepOutViolation,
+      ),
+      isTrue,
+    );
+  });
+
+  test('simulation detects connected topology with wrong flow direction', () {
+    final controller = EditorController.demo();
+    addTearDown(controller.dispose);
+    final space = controller.selectedSpace!;
+    controller.showWall(0);
+    final wall = controller.activeSurface!;
+
+    final board = controller.p2.placeCatalogComponent(
+      entry: ComponentCatalogV2.require('power.distribution-board.general'),
+      surface: wall,
+      position: const SurfacePointMm(300, 1500),
+    );
+    final source = controller.p2.placeCatalogComponent(
+      entry: ComponentCatalogV2.require('power.source.general'),
+      surface: wall,
+      position: const SurfacePointMm(1000, 1500),
+    );
+
+    final topology = EngineeringTopology(nodes: [
+      EngineeringNodeFactory.fromPlacement(
+        placement: board,
+        entry: ComponentCatalogV2.require('power.distribution-board.general'),
+      ),
+      EngineeringNodeFactory.fromPlacement(
+        placement: source,
+        entry: ComponentCatalogV2.require('power.source.general'),
+      ),
+    ]);
+    topology.connect(
+      id: 'source-to-board',
+      fromNodeId: source.id,
+      fromPortId: 'power-out',
+      toNodeId: board.id,
+      toPortId: 'incoming',
+      connectionType: EngineeringConnectionType.acSinglePhase,
+      systemClass: EngineeringSystemClass.powerAc,
+    );
+
+    final result = DrawingSimulationEngine.run(
+      DrawingSimulationRequest(
+        space: space,
+        components: controller.p2.components,
+        routes: const [],
+        topology: topology,
+        boardNodeId: board.id,
+      ),
+    );
+
+    expect(topology.hasPath(board.id, source.id), isTrue);
+    expect(topology.hasDirectedPath(board.id, source.id), isFalse);
+    expect(
+      result.defects.any(
+        (item) => item.kind == DrawingDefectKind.topologyWrongFlowDirection,
       ),
       isTrue,
     );
