@@ -22,6 +22,7 @@ class EditorKeyboardScope extends StatelessWidget {
   });
 
   final EditorController controller;
+  final Widget child;
 
   bool _selectedPointIsUsable(SurfacePointMm point) {
     final component = controller.p2.selectedComponent;
@@ -40,7 +41,9 @@ class EditorKeyboardScope extends StatelessWidget {
       return wall != null && wall.profile.containsPoint(point.xMm, point.yMm);
     }
     final bounds = space.boundary.bounds;
-    if (point.xMm > bounds.width || point.yMm > bounds.height) return false;
+    if (point.xMm > bounds.width || point.yMm > bounds.height) {
+      return false;
+    }
     return space.boundary.contains(
       MmPoint(
         point.xMm + bounds.left,
@@ -63,7 +66,9 @@ class EditorKeyboardScope extends StatelessWidget {
     }
 
     final component = controller.p2.selectedComponent;
-    if (component == null) return;
+    if (component == null) {
+      return;
+    }
     final next = SurfacePointMm(
       component.position.xMm + dx * step,
       component.position.yMm + dy * step,
