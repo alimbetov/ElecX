@@ -1,0 +1,97 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:elecx/src/domain/electrical_routing.dart';
+import 'package:elecx/src/domain/surfaces.dart';
+import 'package:elecx/src/engine/port_snap_resolver.dart';
+import 'package:elecx/src/features/editor/cable_canvas_hit_testing.dart';
+
+void main() {
+  const surface = RoomSurfaceRef(
+    spaceId: 'room-1',
+    type: SurfacePlaneType.wall,
+    wallIndex: 0,
+  );
+
+  ElectricalCableRoute route(List<SurfacePointMm> points) => ElectricalCableRoute(
+    id: 'route-1',
+    source: const ElectricalEndpointRef(componentId: 'a', portId: 'out'),
+    target: const ElectricalEndpointRef(componentId: 'b', portId: 'in'),
+    segments: [ElectricalRouteSegment(surface: surface, points: points)],
+  );
+
+  test('endpoint handles outrank vertices and segments', () {
+    final cable = route(const [
+      SurfacePointMm(100, 100),
+      SurfacePointMm(500, 100),
+      SurfacePointMm(500, 500),
+    ]);
+
+    final hit = CableCanvasHitTesting.hitTest(
+      route: cable,
+      surface: surface,
+      point: const SurfacePointMm(105, 100),
+      radiusMm: 20,
+    );
+
+    expect(hit, isA<CableEndpointHit>());
+    expect((hit! as CableEndpointHit).role, CableEndpointRole.source);
+  });
+
+  test('interior vertex can be selected', () {
+    final cable = route(const [
+      SurfacePointMm(100, 100),
+      SurfacePointMm(500, 100),
+      SurfacePointMm(500, 500),
+    ]);
+
+    final hit = CableCanvasHitTesting.hitTest(
+      route: cable,
+      surface: surface,
+      point: const SurfacePointMm(500, 105),
+      radiusMm: 20,
+    );
+
+    expect(hit, isA<CableVertexHit>());
+    expect((hit! as CableVertexHit).pointIndex, 1);
+  });
+
+  test('only interior route runs expose segment drag handles', () {
+    final cable = route(const [
+      SurfacePointMm(100, 100),
+      SurfacePointMm(300, 100),
+      SurfacePointMm(300, 400),
+      SurfacePointMm(700, 400),
+      SurfacePointMm(700, 700),
+    ]);
+
+    final hit = CableCanvasHitTesting.hitTest(
+      route: cable,
+      surface: surface,
+      point: const SurfacePointMm(300, 250),
+      radiusMm: 30,
+    );
+
+    expect(hit, isA<CableSegmentHit>());
+    expect((hit! as CableSegmentHit).edgeIndex, 1);
+  });
+
+  test('segment drag keeps an orthogonal run parallel', () {
+    final points = const [
+      SurfacePointMm(100, 100),
+      SurfacePointMm(300, 100),
+      SurfacePointMm(300, 400),
+      SurfacePointMm(700, 400),
+      SurfacePointMm(700, 700),
+    ];
+
+    final moved = CableCanvasHitTesting.moveSegment(
+      points: points,
+      edgeIndex: 2,
+      target: const SurfacePointMm(450, 520),
+    );
+
+    expect(moved[2], const SurfacePointMm(300, 520));
+    expect(moved[3], const SurfacePointMm(700, 520));
+    expect(moved.first, points.first);
+    expect(moved.last, points.last);
+  });
+}
