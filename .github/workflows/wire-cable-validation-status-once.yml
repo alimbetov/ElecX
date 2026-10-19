@@ -1,0 +1,44 @@
+name: Wire cable validation status once
+
+on:
+  push:
+    branches:
+      - feat/spatial-editor-interaction-hardening
+    paths:
+      - tool/wire_cable_validation_status_once.py
+      - .github/workflows/wire-cable-validation-status-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/spatial-editor-interaction-hardening
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - name: Wire accessible validation status
+        run: python3 tool/wire_cable_validation_status_once.py
+      - name: Format
+        run: dart format lib test
+      - name: Analyze
+        run: flutter analyze
+      - name: Test
+        run: flutter test
+      - name: Remove one-shot helpers
+        run: |
+          rm -f tool/wire_cable_validation_status_once.py
+          rm -f .github/workflows/wire-cable-validation-status-once.yml
+      - name: Commit verified interaction hardening
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(editor): finalize accessible interaction hardening"
+          git push origin HEAD:feat/spatial-editor-interaction-hardening
