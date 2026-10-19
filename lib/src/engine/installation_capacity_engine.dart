@@ -1,4 +1,3 @@
-import '../domain/cable_spec.dart';
 import '../domain/installation_path.dart';
 
 enum InstallationDefectKind {
@@ -169,7 +168,8 @@ abstract final class InstallationCapacityEngine {
         case ChannelCapacityModel.areaFill:
           final area = channel.usableAreaMm2!;
           final fillRatio = occupiedArea / area;
-          final available = (channel.effectiveFillLimit - fillRatio).clamp(0.0, 1.0);
+          final available =
+              (channel.effectiveFillLimit - fillRatio).clamp(0.0, 1.0).toDouble();
           utilizations.add(
             ChannelUtilization(
               pathSectionId: sectionId,
@@ -204,7 +204,7 @@ abstract final class InstallationCapacityEngine {
               occupiedAreaMm2: occupiedArea,
               fillRatio: ratio,
               effectiveFillLimit: 1,
-              reserveAvailableRatio: (1 - ratio).clamp(0.0, 1.0),
+              reserveAvailableRatio: (1 - ratio).clamp(0.0, 1.0).toDouble(),
             ),
           );
           if (cableCount > maxCount) {
@@ -227,9 +227,9 @@ abstract final class InstallationCapacityEngine {
               channelId: channelId,
               cableCount: cableCount,
               occupiedAreaMm2: occupiedArea,
-              fillRatio: conflict ? 1 : 0,
+              fillRatio: conflict ? 1.0 : 0.0,
               effectiveFillLimit: 0,
-              reserveAvailableRatio: conflict ? 0 : 1,
+              reserveAvailableRatio: conflict ? 0.0 : 1.0,
             ),
           );
           if (conflict) {
