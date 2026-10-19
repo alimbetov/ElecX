@@ -1,0 +1,89 @@
+name: Apply Interaction Hardening
+
+on:
+  push:
+    branches: [feat/spatial-editor-interaction-hardening]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/spatial-editor-interaction-hardening
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - name: Patch SurfaceCanvas interaction UX
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('lib/src/features/editor/surface_canvas.dart')
+          s = p.read_text()
+
+          s = s.replace(
+              "import 'boundary_edit_session.dart';\nimport 'cad_visual_tokens.dart';",
+              "import 'boundary_edit_session.dart';\nimport 'cad_visual_tokens.dart';\nimport 'canvas_component_controls.dart';\nimport 'canvas_viewport_navigator.dart';"
+          )
+          s = s.replace(
+              "import 'route_selection_session.dart';",
+              "import 'route_selection_session.dart';\nimport 'viewport_zoom_policy.dart';"
+          )
+          s = s.replace(
+              "  Size _size = Size.zero;\n  late final AnimationController _routeFlow;",
+              "  Size _size = Size.zero;\n  int _componentNudgeStepMm = 100;\n  late final AnimationController _routeFlow;"
+          )
+
+          old = '''  WorldCamera _zoomedCamera(Offset cursor, double factor) {\n    final camera = _camera;\n    if (camera == null || _size.isEmpty) {\n      return camera ??\n          const WorldCamera(centerMm: MmPoint(0, 0), mmPerPixel: 10);\n    }\n    return camera.zoomAt(\n      factor: factor,\n      viewportWidthPx: _size.width,\n      viewportHeightPx: _size.height,\n      cursorXpx: cursor.dx,\n      cursorYpx: cursor.dy,\n    );\n  }\n\n  void _zoomAt(Offset cursor, double factor) {\n    setState(() => _camera = _zoomedCamera(cursor, factor));\n  }'''
+          new = '''  double _fitScale(_SurfaceExtent extent) {\n    if (_size.isEmpty) return 10;\n    final usableWidth = math.max(1.0, _size.width - 176);\n    final usableHeight = math.max(1.0, _size.height - 176);\n    final scaleX = math.max(1, extent.widthMm) / usableWidth;\n    final scaleY = math.max(1, extent.heightMm) / usableHeight;\n    return math.max(scaleX, scaleY);\n  }\n\n  WorldCamera _zoomedCamera(\n    Offset cursor,\n    double factor,\n    _SurfaceExtent extent,\n  ) {\n    final camera = _camera;\n    if (camera == null || _size.isEmpty) {\n      return camera ??\n          const WorldCamera(centerMm: MmPoint(0, 0), mmPerPixel: 10);\n    }\n    final fitScale = _fitScale(extent);\n    return camera.zoomAt(\n      factor: factor,\n      viewportWidthPx: _size.width,\n      viewportHeightPx: _size.height,\n      cursorXpx: cursor.dx,\n      cursorYpx: cursor.dy,\n      minMmPerPixel: ViewportZoomPolicy.minMmPerPixel(fitScale),\n      maxMmPerPixel: ViewportZoomPolicy.maxMmPerPixel(fitScale),\n    );\n  }\n\n  void _zoomAt(Offset cursor, double factor, _SurfaceExtent extent) {\n    setState(() => _camera = _zoomedCamera(cursor, factor, extent));\n  }\n\n  void _panViewport(int dxSteps, int dySteps) {\n    if (_camera == null || _size.isEmpty) return;\n    setState(() {\n      _camera = _camera!.panPixels(\n        -dxSteps * _size.width * 0.22,\n        dySteps * _size.height * 0.22,\n      );\n    });\n  }\n\n  void _nudgeSelectedComponent(\n    int dxSteps,\n    int dySteps,\n    _SurfaceProjection projection,\n  ) {\n    final component = controller.p2.selectedComponent;\n    if (component == null || component.surface != controller.activeSurface) return;\n    final next = SurfacePointMm(\n      component.position.xMm + dxSteps * _componentNudgeStepMm,\n      component.position.yMm + dySteps * _componentNudgeStepMm,\n    );\n    if (!_pointIsUsable(next, projection)) return;\n    controller.p2.moveSelectedComponent(next);\n  }'''
+          if old not in s:
+              raise SystemExit('zoom block not found')
+          s = s.replace(old, new)
+
+          s = s.replace("_zoomedCamera(center, 1.25);", "_zoomedCamera(center, 1.25, extent);")
+          s = s.replace("_zoomedCamera(center, 0.8);", "_zoomedCamera(center, 0.8, extent);")
+
+          old_touch = '''    next = next.zoomAt(\n      factor: details.scale,\n      viewportWidthPx: _size.width,\n      viewportHeightPx: _size.height,\n      cursorXpx: details.localFocalPoint.dx,\n      cursorYpx: details.localFocalPoint.dy,\n    );'''
+          new_touch = '''    final extent = _SurfaceExtent.fromController(controller);\n    final fitScale = _fitScale(extent);\n    next = next.zoomAt(\n      factor: details.scale,\n      viewportWidthPx: _size.width,\n      viewportHeightPx: _size.height,\n      cursorXpx: details.localFocalPoint.dx,\n      cursorYpx: details.localFocalPoint.dy,\n      minMmPerPixel: ViewportZoomPolicy.minMmPerPixel(fitScale),\n      maxMmPerPixel: ViewportZoomPolicy.maxMmPerPixel(fitScale),\n    );'''
+          if old_touch not in s:
+              raise SystemExit('touch zoom block not found')
+          s = s.replace(old_touch, new_touch)
+
+          s = s.replace(
+              '''                    _zoomAt(\n                      event.localPosition,\n                      event.scrollDelta.dy < 0 ? 1.18 : 1 / 1.18,\n                    );''',
+              '''                    _zoomAt(\n                      event.localPosition,\n                      event.scrollDelta.dy < 0 ? 1.18 : 1 / 1.18,\n                      extent,\n                    );'''
+          )
+
+          badge = '''            Positioned(\n              right: compact ? 8 : 12,\n              top: compact ? 8 : 12,\n              child: _ViewportBadge(lod: lod, mmPerPixel: camera.mmPerPixel),\n            ),'''
+          nav = badge + '''\n            Positioned(\n              right: compact ? 8 : 12,\n              top: compact ? 48 : 52,\n              child: CanvasViewportNavigator(\n                onPan: _panViewport,\n                onZoomIn: () => _zoomAt(\n                  _size.center(Offset.zero),\n                  1.25,\n                  extent,\n                ),\n                onZoomOut: () => _zoomAt(\n                  _size.center(Offset.zero),\n                  0.8,\n                  extent,\n                ),\n                onFit: () => setState(() => _camera = _fittedCamera(extent)),\n              ),\n            ),'''
+          if badge not in s:
+              raise SystemExit('viewport badge block not found')
+          s = s.replace(badge, nav)
+
+          edge = '''            Positioned(\n              right: compact ? 8 : 12,\n              bottom: bottomEditorVisible ? 148 : (compact ? 8 : 12),\n              child: _EdgeNavigationHint(surface: surface),\n            ),'''
+          controls = edge + '''\n            if (controller.p2.selectedComponent case final component?)\n              Positioned(\n                left: compact ? 8 : 12,\n                bottom: bottomEditorVisible ? 148 : (compact ? 8 : 12),\n                child: CanvasComponentControls(\n                  label: component.label,\n                  stepMm: _componentNudgeStepMm,\n                  onStepChanged: (value) =>\n                      setState(() => _componentNudgeStepMm = value),\n                  onMove: (dx, dy) =>\n                      _nudgeSelectedComponent(dx, dy, projection),\n                  onDelete: controller.p2.deleteSelection,\n                ),\n              ),'''
+          if edge not in s:
+              raise SystemExit('edge hint block not found')
+          s = s.replace(edge, controls)
+
+          p.write_text(s)
+          PY
+      - run: dart format lib/src/features/editor/surface_canvas.dart lib/src/features/editor/canvas_component_controls.dart lib/src/features/editor/canvas_viewport_navigator.dart lib/src/features/editor/viewport_zoom_policy.dart test/viewport_zoom_policy_test.dart
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze
+      - run: flutter test
+      - name: Commit verified interaction hardening
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/src/features/editor/surface_canvas.dart
+          git commit -m "feat: add component controls and bounded viewport navigator"
+          git push origin HEAD:feat/spatial-editor-interaction-hardening
