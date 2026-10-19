@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../domain/component_catalog_v2.dart';
+import 'component_catalog_session.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 import 'engineering_placement_cursor_session.dart';
@@ -16,7 +16,11 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: Listenable.merge([controller.p2, controller.placementCursor]),
+      animation: Listenable.merge([
+        controller.p2,
+        controller.placementCursor,
+        controller.componentCatalog,
+      ]),
       builder: (context, _) {
         final componentTypeId = controller.placementCursor.activeComponentTypeId;
         if (componentTypeId == null || controller.activeSurface == null) {
@@ -24,7 +28,7 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
         }
         final cursor = controller.placementCursor.ensure();
         if (cursor == null) return const SizedBox.shrink();
-        final entry = ComponentCatalogV2.byId(cursor.componentTypeId);
+        final entry = controller.componentCatalog.byId(cursor.componentTypeId);
         if (entry == null) return const SizedBox.shrink();
 
         final scheme = Theme.of(context).colorScheme;
@@ -53,6 +57,10 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
                       entry.name,
                       style: Theme.of(context).textTheme.labelMedium,
                     ),
+                    if (controller.placementCursor.repeatPlacement) ...[
+                      const SizedBox(width: 6),
+                      const Icon(Icons.repeat, size: 14),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -69,6 +77,15 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
                         color: scheme.onSurfaceVariant,
                       ),
                 ),
+                if (controller.placementCursor.repeatPlacement) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'Повтор: после установки режим останется активным',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                  ),
+                ],
                 const SizedBox(height: 5),
                 Row(
                   mainAxisSize: MainAxisSize.min,
