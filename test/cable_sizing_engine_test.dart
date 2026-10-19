@@ -15,7 +15,7 @@ void main() {
     conductorCrossSectionMm2: 2.5,
   );
 
-  test('missing electrical evidence is indeterminate, never implicit pass', () {
+  test('missing evidence is indeterminate, never implicit pass', () {
     final result = CableSizingEngine.evaluate(
       const CableSizingRequest(
         cable: cable,
@@ -26,7 +26,8 @@ void main() {
           routeLengthMm: 20000,
           maxVoltageDropRatio: 0.03,
         ),
-        electricalEvidence: null,
+        impedanceEvidence: null,
+        ampacitySections: [],
       ),
     );
 
@@ -34,7 +35,7 @@ void main() {
     expect(result.isPass, isFalse);
   });
 
-  test('worst thermal section governs ampacity', () {
+  test('worst real installation section governs ampacity', () {
     final result = CableSizingEngine.evaluate(
       CableSizingRequest(
         cable: cable,
@@ -45,20 +46,23 @@ void main() {
           routeLengthMm: 10000,
           maxVoltageDropRatio: 0.05,
         ),
-        electricalEvidence: const CableElectricalEvidence(
-          baseAmpacityA: 25,
+        impedanceEvidence: const CableImpedanceEvidence(
           resistanceOhmPerKm: 7.41,
-          sourceKey: 'test-table',
+          sourceKey: 'impedance-table',
         ),
-        thermalSections: [
-          ThermalSectionEvidence(
+        ampacitySections: [
+          SectionAmpacityEvidence(
             sectionId: 'tray',
+            baseAmpacityA: 27,
+            sourceKey: 'tray-table',
             factors: const [
               ThermalCorrectionFactor(id: 'ambient', factor: 0.95),
             ],
           ),
-          ThermalSectionEvidence(
+          SectionAmpacityEvidence(
             sectionId: 'riser-group',
+            baseAmpacityA: 25,
+            sourceKey: 'riser-table',
             factors: const [
               ThermalCorrectionFactor(id: 'grouping', factor: 0.70),
               ThermalCorrectionFactor(id: 'ambient', factor: 0.95),
@@ -70,6 +74,7 @@ void main() {
 
     expect(result.governingSectionId, 'riser-group');
     expect(result.governingAmpacityA, closeTo(16.625, 0.001));
+    expect(result.ampacitySourceKey, 'riser-table');
     expect(result.currentStatus, EngineeringCheckStatus.fail);
   });
 
@@ -84,13 +89,13 @@ void main() {
           routeLengthMm: 5000,
           maxVoltageDropRatio: 0.05,
         ),
-        electricalEvidence: const CableElectricalEvidence(
-          baseAmpacityA: 20,
+        impedanceEvidence: const CableImpedanceEvidence(
           resistanceOhmPerKm: 7.41,
         ),
-        thermalSections: [
-          ThermalSectionEvidence(
+        ampacitySections: [
+          SectionAmpacityEvidence(
             sectionId: 'cool-section',
+            baseAmpacityA: 20,
             factors: const [
               ThermalCorrectionFactor(id: 'ambient', factor: 1.05),
             ],
@@ -106,19 +111,25 @@ void main() {
 
   test('single phase voltage drop can reject otherwise adequate cable', () {
     final result = CableSizingEngine.evaluate(
-      const CableSizingRequest(
+      CableSizingRequest(
         cable: cable,
-        requirement: CircuitElectricalRequirement(
+        requirement: const CircuitElectricalRequirement(
           phaseSystem: CircuitPhaseSystem.singlePhaseAc,
           designCurrentA: 16,
           nominalVoltageV: 230,
           routeLengthMm: 100000,
           maxVoltageDropRatio: 0.03,
         ),
-        electricalEvidence: CableElectricalEvidence(
-          baseAmpacityA: 25,
+        impedanceEvidence: const CableImpedanceEvidence(
           resistanceOhmPerKm: 7.41,
         ),
+        ampacitySections: [
+          SectionAmpacityEvidence(
+            sectionId: 'wall',
+            baseAmpacityA: 25,
+            factors: const [],
+          ),
+        ],
       ),
     );
 
@@ -129,9 +140,9 @@ void main() {
 
   test('three phase equation uses sqrt(3) multiplier', () {
     final result = CableSizingEngine.evaluate(
-      const CableSizingRequest(
+      CableSizingRequest(
         cable: cable,
-        requirement: CircuitElectricalRequirement(
+        requirement: const CircuitElectricalRequirement(
           phaseSystem: CircuitPhaseSystem.threePhaseAc,
           designCurrentA: 10,
           nominalVoltageV: 400,
@@ -139,10 +150,16 @@ void main() {
           maxVoltageDropRatio: 0.05,
           powerFactor: 1,
         ),
-        electricalEvidence: CableElectricalEvidence(
-          baseAmpacityA: 25,
+        impedanceEvidence: const CableImpedanceEvidence(
           resistanceOhmPerKm: 1,
         ),
+        ampacitySections: [
+          SectionAmpacityEvidence(
+            sectionId: 'tray',
+            baseAmpacityA: 25,
+            factors: const [],
+          ),
+        ],
       ),
     );
 
