@@ -17,7 +17,7 @@ void main() {
     expect(initial!.position.xMm, 2100);
     expect(initial.position.yMm, 300);
     expect(initial.snapKind, PlacementCursorSnapKind.installationGuide);
-    expect(initial.snapLabel, 'SOCKET 300');
+    expect(initial.snapLabel, 'SOCKET-GENERAL 300');
 
     expect(
       controller.placementCursor.nudgeGrid(dxSteps: 1, dySteps: -1),
@@ -34,5 +34,31 @@ void main() {
     expect(controller.p2.components.single.surface, controller.activeSurface);
     expect(controller.p2.placementType, isNull);
     expect(controller.placementCursor.state, isNull);
+  });
+
+  test('catalog rejects socket placement on ceiling', () {
+    final controller = EditorController.demo();
+    addTearDown(controller.dispose);
+    controller.showCeiling();
+    controller.p2.setPlacementType(ElectricalComponentType.socketOutlet);
+
+    final cursor = controller.placementCursor.ensure();
+    expect(cursor, isNotNull);
+    expect(cursor!.isValid, isFalse);
+    expect(controller.placementCursor.confirm(), isFalse);
+    expect(controller.p2.components, isEmpty);
+  });
+
+  test('catalog allows lighting point on ceiling', () {
+    final controller = EditorController.demo();
+    addTearDown(controller.dispose);
+    controller.showCeiling();
+    controller.p2.setPlacementType(ElectricalComponentType.lightingPoint);
+
+    final cursor = controller.placementCursor.ensure();
+    expect(cursor, isNotNull);
+    expect(cursor!.isValid, isTrue);
+    expect(controller.placementCursor.confirm(), isTrue);
+    expect(controller.p2.components.single.type, ElectricalComponentType.lightingPoint);
   });
 }
