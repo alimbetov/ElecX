@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import '../../app/alien_cockpit_tokens.dart';
@@ -8,10 +10,6 @@ import 'editor_p2_session.dart';
 import 'engineering_placement_cursor_session.dart';
 import 'route_selection_session.dart';
 
-/// Shared cockpit HUD for current editor command and engineering status.
-///
-/// The widget deliberately reads existing controller/session state. It never
-/// owns editing state, so canvas, keyboard and HUD cannot diverge.
 class EngineeringPlacementCursorHud extends StatelessWidget {
   const EngineeringPlacementCursorHud({
     required this.controller,
@@ -39,6 +37,8 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
             ? null
             : controller.componentCatalog.byId(placement.componentTypeId);
         final scheme = Theme.of(context).colorScheme;
+        final selectedRoute = controller.routeSelection.selectedRoute;
+        final selectedHostedRoute = controller.routeSelection.selectedHostedRoute;
         final selectedRouteId = controller.routeSelection.selectedRouteId;
         final selectedComponents = controller.p2.selection.ids.length;
         final step = controller.selectedSpace?.grid.minorStepMm ?? 100;
@@ -49,17 +49,16 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
             : placement.isValid
                 ? AlienCockpitTokens.signalAqua
                 : AlienCockpitTokens.signalFault;
+        final medium = selectedRoute?.medium ?? selectedHostedRoute?.medium;
 
         return ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
+          constraints: const BoxConstraints(maxWidth: 560),
           child: Material(
             elevation: 0,
             color: scheme.surfaceContainerHigh.withValues(alpha: 0.965),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
-              side: BorderSide(
-                color: commandColor.withValues(alpha: 0.58),
-              ),
+              side: BorderSide(color: commandColor.withValues(alpha: 0.58)),
             ),
             child: DecoratedBox(
               decoration: BoxDecoration(
@@ -96,7 +95,7 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
                         ),
                         if (controller.placementCursor.repeatPlacement) ...[
                           const SizedBox(width: 8),
-                          _MicroBadge(
+                          const _MicroBadge(
                             icon: Icons.repeat,
                             label: 'REPEAT',
                             color: AlienCockpitTokens.signalViolet,
@@ -208,9 +207,15 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
                           color: scheme.onSurfaceVariant,
                         ),
                         if (selectedComponents > 0)
-                          _MicroBadge(
+                          const _MicroBadge(
                             icon: Icons.select_all,
-                            label: 'SELECT $selectedComponents',
+                            label: 'SELECTED',
+                            color: AlienCockpitTokens.signalCyan,
+                          ),
+                        if (selectedComponents > 1)
+                          _MicroBadge(
+                            icon: Icons.numbers,
+                            label: '$selectedComponents',
                             color: AlienCockpitTokens.signalCyan,
                           ),
                         if (selectedRouteId != null)
@@ -218,6 +223,18 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
                             icon: Icons.alt_route,
                             label: 'ROUTE $selectedRouteId',
                             color: AlienCockpitTokens.signalCyan,
+                          ),
+                        if (medium != null)
+                          _MicroBadge(
+                            icon: Icons.cable_outlined,
+                            label: 'MEDIUM ${medium.displayName.toUpperCase()}',
+                            color: AlienCockpitTokens.signalViolet,
+                          ),
+                        if (selectedRouteId != null)
+                          const _MicroBadge(
+                            icon: Icons.account_tree_outlined,
+                            label: 'CHANNEL —',
+                            color: AlienCockpitTokens.coolMuted,
                           ),
                         if (placement != null)
                           _MicroBadge(
@@ -228,6 +245,12 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
                             color: placement.isValid
                                 ? AlienCockpitTokens.signalAqua
                                 : AlienCockpitTokens.signalFault,
+                          )
+                        else if (selectedRouteId != null)
+                          const _MicroBadge(
+                            icon: Icons.help_outline,
+                            label: 'VALIDATION NO EVIDENCE',
+                            color: AlienCockpitTokens.signalWarning,
                           ),
                       ],
                     ),
