@@ -191,7 +191,10 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
             _ValidationBadge('Параметры выходят за профиль стены'),
           TextButton(
             onPressed: session.draftDirty
-                ? () => session.beginOpeningDraft(selected)
+                ? () {
+                    session.discardDraft();
+                    session.beginOpeningDraft(selected);
+                  }
                 : null,
             child: const Text('Отменить'),
           ),
@@ -420,7 +423,11 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
     );
     if (saved) {
       final current = controller.selectedOpening;
-      if (current != null) session.beginOpeningDraft(current);
+      if (current != null) {
+        session.beginOpeningDraft(current, force: true);
+      } else {
+        session.markSaved();
+      }
     }
   }
 
@@ -520,7 +527,11 @@ bool _commitBoundaryDraft(EditorController controller) {
     );
     if (!saved) return false;
     final current = controller.selectedOpening;
-    if (current != null) session.beginOpeningDraft(current);
+    if (current != null) {
+      session.beginOpeningDraft(current, force: true);
+    } else {
+      session.markSaved();
+    }
     return true;
   }
 
