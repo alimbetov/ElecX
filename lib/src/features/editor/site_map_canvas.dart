@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../domain/geometry.dart';
+import '../../domain/hosted_routing.dart';
 import '../../domain/route_host.dart';
 import '../../domain/route_medium.dart';
 import '../../engine/route_flow_visualization.dart';
@@ -33,9 +34,6 @@ class SiteMapCanvas extends StatefulWidget {
   final ValueChanged<SiteMapEntity> onEntityOpen;
   final WorldCamera? initialCamera;
   final ValueChanged<WorldCamera>? onCameraChanged;
-
-  /// Optional shared editor controller. When supplied, hosted indoor/outdoor
-  /// routes participate in the same selection identity as SurfaceCanvas.
   final EditorController? routeController;
   final RouteMediumProfile Function(String routeId)? mediumResolver;
   final ValueChanged<RouteHostTransition>? onRouteTransitionTap;
@@ -277,10 +275,11 @@ class _SiteMapCanvasState extends State<SiteMapCanvas>
     RouteHostTransition? best;
     var bestDistance = double.infinity;
     for (final transition in selected.transitions) {
-      for (final candidate in <({RouteHostRef host, MmPoint point})>[
+      final candidates = <({RouteHostRef host, MmPoint point})>[
         (host: transition.fromHost, point: transition.fromPoint),
         (host: transition.toHost, point: transition.toPoint),
-      ]) {
+      ];
+      for (final candidate in candidates) {
         if (candidate.host.kind != RouteHostKind.outdoorZone) continue;
         final distance = candidate.point.distanceTo(point);
         if (distance <= radius && distance < bestDistance) {
@@ -401,7 +400,7 @@ class _SiteMapPainter extends CustomPainter {
     final selectedId = controller.routeSelection.selectedRouteId;
     for (final route in controller.hostedRoutes.paths) {
       final selected = route.routeId == selectedId;
-      final medium = mediumResolver?.call(route.routeId) ?? RouteMediumProfile.generic;
+      final medium = mediumResolver?.call(route.routeId) ?? route.medium;
       final frame = RouteFlowVisualizationPolicy.frame(
         medium: medium,
         phase: phase,
@@ -434,7 +433,7 @@ class _SiteMapPainter extends CustomPainter {
   void _drawOutdoorRouteSegments(
     Canvas canvas,
     Size size,
-    dynamic route,
+    HostedRoutePath route,
     Paint paint,
   ) {
     for (final segment in route.segments) {
@@ -454,7 +453,7 @@ class _SiteMapPainter extends CustomPainter {
   void _drawFlow(
     Canvas canvas,
     Size size,
-    dynamic route,
+    HostedRoutePath route,
     RouteMediumProfile medium,
   ) {
     final samples = RouteInteractionEngine.flowSamples(
@@ -476,7 +475,11 @@ class _SiteMapPainter extends CustomPainter {
     }
   }
 
-  void _drawTransitions(Canvas canvas, Size size, dynamic route) {
+  void _drawTransitions(
+    Canvas canvas,
+    Size size,
+    HostedRoutePath route,
+  ) {
     for (final transition in route.transitions) {
       MmPoint? point;
       if (transition.fromHost.kind == RouteHostKind.outdoorZone) {
