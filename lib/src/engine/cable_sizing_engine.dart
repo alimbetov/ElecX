@@ -135,7 +135,9 @@ abstract final class CableSizingEngine {
       );
     }
 
-    var governingAmpacity = evidence.baseAmpacityA;
+    var governingAmpacity = request.thermalSections.isEmpty
+        ? evidence.baseAmpacityA
+        : double.infinity;
     String? governingSectionId;
     for (final section in request.thermalSections) {
       final adjusted = evidence.baseAmpacityA * section.combinedFactor;
