@@ -34,11 +34,11 @@ void main() {
     );
 
     expect(segments, hasLength(3));
-    expect(segments[0].a, const WallProfilePoint(2800, 3000));
-    expect(segments[0].b, const WallProfilePoint(2800, 2650));
-    expect(segments[1].a, const WallProfilePoint(2800, 2650));
-    expect(segments[1].b, const WallProfilePoint(1800, 2650));
-    expect(segments[2].a, const WallProfilePoint(1800, 2650));
-    expect(segments[2].b, const WallProfilePoint(1800, 3000));
+    expect((segments[0].a.xMm, segments[0].a.yMm), (2800, 3000));
+    expect((segments[0].b.xMm, segments[0].b.yMm), (2800, 2650));
+    expect((segments[1].a.xMm, segments[1].a.yMm), (2800, 2650));
+    expect((segments[1].b.xMm, segments[1].b.yMm), (1800, 2650));
+    expect((segments[2].a.xMm, segments[2].a.yMm), (1800, 2650));
+    expect((segments[2].b.xMm, segments[2].b.yMm), (1800, 3000));
   });
 }
