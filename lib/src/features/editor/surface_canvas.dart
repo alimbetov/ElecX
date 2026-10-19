@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../domain/boundary_editing.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/geometry.dart';
 import '../../domain/surface_navigation.dart';
@@ -16,6 +17,8 @@ import '../../engine/render_policy.dart';
 import '../../engine/selection_engine.dart';
 import '../../engine/snap_engine.dart';
 import '../../engine/world_camera.dart';
+import 'boundary_edit_panel.dart';
+import 'boundary_edit_session.dart';
 import 'cad_visual_tokens.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
@@ -52,6 +55,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
     _lastViewportRevision = controller.viewportCommandRevision;
     controller.viewportCommandListenable.addListener(_onViewportCommand);
     controller.p2.addListener(_onP2Changed);
+    controller.boundaryEditing.addListener(_onBoundaryEditChanged);
   }
 
   @override
@@ -61,9 +65,11 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
       oldWidget.controller.viewportCommandListenable
           .removeListener(_onViewportCommand);
       oldWidget.controller.p2.removeListener(_onP2Changed);
+      oldWidget.controller.boundaryEditing.removeListener(_onBoundaryEditChanged);
       _lastViewportRevision = controller.viewportCommandRevision;
       controller.viewportCommandListenable.addListener(_onViewportCommand);
       controller.p2.addListener(_onP2Changed);
+      controller.boundaryEditing.addListener(_onBoundaryEditChanged);
     }
   }
 
@@ -71,6 +77,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
   void dispose() {
     controller.viewportCommandListenable.removeListener(_onViewportCommand);
     controller.p2.removeListener(_onP2Changed);
+    controller.boundaryEditing.removeListener(_onBoundaryEditChanged);
     super.dispose();
   }
 
@@ -79,6 +86,10 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
   }
 
   void _onP2Changed() {
+    if (mounted) setState(() {});
+  }
+
+  void _onBoundaryEditChanged() {
     if (mounted) setState(() {});
   }
 
@@ -244,6 +255,32 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
     return controller.selectedSpace!.boundary.contains(planPoint);
   }
 
+  ArchitecturalOpening? _openingAt(SurfacePointMm point) {
+    for (final opening in controller.activeWallOpenings.reversed) {
+      if (point.xMm >= opening.offsetFromStartMm &&
+          point.xMm <= opening.endOffsetMm &&
+          point.yMm >= opening.sillHeightMm &&
+          point.yMm <= opening.topMm) {
+        return opening;
+      }
+    }
+    return null;
+  }
+
+  void _updateBoundaryHover(
+    Offset viewportPoint,
+    _SurfaceProjection projection,
+  ) {
+    final session = controller.boundaryEditing;
+    if (!session.active || session.profile != BoundaryEditProfile.openings) {
+      session.hoverOpening(null);
+      return;
+    }
+    final point = projection.viewportToSurface(viewportPoint);
+    final opening = point == null ? null : _openingAt(point);
+    session.hoverOpening(opening?.id);
+  }
+
   ElectricalComponentPlacement? _componentAt(
     SurfacePointMm point,
     _SurfaceProjection projection,
@@ -318,6 +355,16 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
     final point = _snapSurfacePoint(raw, projection);
     if (!_pointIsUsable(point, projection)) return;
 
+    final boundarySession = controller.boundaryEditing;
+    if (boundarySession.active) {
+      if (boundarySession.profile == BoundaryEditProfile.openings) {
+        controller.selectOpening(_openingAt(point)?.id);
+      } else {
+        controller.selectOpening(null);
+      }
+      return;
+    }
+
     final placementType = controller.p2.placementType;
     if (placementType != null) {
       controller.p2.placeComponent(
@@ -348,6 +395,10 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
     RoomSurfaceRef surface,
     List<MmPoint> roomVertices,
   ) {
+    if (controller.boundaryEditing.active) {
+      controller.boundaryEditing.exit();
+      return;
+    }
     if (controller.p2.placementType != null) return;
     if (surface.type == SurfacePlaneType.wall) {
       final hit = projection.wallEdgeHit(
@@ -485,6 +536,8 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
             Positioned.fill(
               child: Listener(
                 behavior: HitTestBehavior.opaque,
+                onPointerHover: (event) =>
+                    _updateBoundaryHover(event.localPosition, projection),
                 onPointerSignal: (event) {
                   if (event is PointerScrollEvent) {
                     _zoomAt(
@@ -500,7 +553,8 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
                   }
                   if (event.buttons != kPrimaryMouseButton ||
                       controller.tool != EditorTool.select ||
-                      controller.p2.placementType != null) {
+                      controller.p2.placementType != null ||
+                      controller.boundaryEditing.active) {
                     return;
                   }
                   final raw = projection.viewportToSurface(event.localPosition);
@@ -524,6 +578,9 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
                   }
                 },
                 onPointerMove: (event) {
+                  if (controller.boundaryEditing.active) {
+                    _updateBoundaryHover(event.localPosition, projection);
+                  }
                   final anchor = _panAnchor;
                   if (anchor != null) {
                     final delta = event.localPosition - anchor;
@@ -597,9 +654,19 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
               Positioned(
                 left: compact ? 8 : 12,
                 top: compact ? 8 : 12,
-                child: _WallProfileQuickEditor(
-                  controller: controller,
-                  compact: compact,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    BoundaryEditPanel(controller: controller, compact: compact),
+                    const SizedBox(height: 6),
+                    if (!controller.boundaryEditing.active ||
+                        controller.boundaryEditing.profile ==
+                            BoundaryEditProfile.structuralProfile)
+                      _WallProfileQuickEditor(
+                        controller: controller,
+                        compact: compact,
+                      ),
+                  ],
                 ),
               ),
             Positioned(
@@ -1045,6 +1112,9 @@ class _SurfacePainter extends CustomPainter {
             controller.p2.layers.isVisible(EditorLayerId.electrical),
         cableRoutesVisible =
             controller.p2.layers.isVisible(EditorLayerId.cableRoutes),
+        boundaryProfile = controller.boundaryEditing.profile,
+        hoveredOpeningId = controller.boundaryEditing.hoveredOpeningId,
+        selectedOpeningId = controller.selectedOpeningId,
         openingsFingerprint = Object.hashAll(
           controller.activeWallOpenings.map(
             (opening) => Object.hash(
@@ -1119,6 +1189,9 @@ class _SurfacePainter extends CustomPainter {
   final bool openingsVisible;
   final bool electricalVisible;
   final bool cableRoutesVisible;
+  final BoundaryEditProfile? boundaryProfile;
+  final String? hoveredOpeningId;
+  final String? selectedOpeningId;
   final int openingsFingerprint;
   final int routeFingerprint;
   final int componentsFingerprint;
@@ -1185,14 +1258,21 @@ class _SurfacePainter extends CustomPainter {
       wallPath,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = customProfile
-            ? CadVisualTokens.profileStroke
-            : CadVisualTokens.geometryStroke
+        ..strokeWidth = boundaryProfile == BoundaryEditProfile.wall
+            ? 4.0
+            : customProfile
+                ? CadVisualTokens.profileStroke
+                : CadVisualTokens.geometryStroke
         ..strokeJoin = StrokeJoin.miter
-        ..color = customProfile
-            ? CadVisualTokens.profile(scheme)
-            : CadVisualTokens.geometry(scheme),
+        ..color = boundaryProfile == BoundaryEditProfile.wall
+            ? CadVisualTokens.selectedGeometry(scheme)
+            : customProfile
+                ? CadVisualTokens.profile(scheme)
+                : CadVisualTokens.geometry(scheme),
     );
+    if (boundaryProfile == BoundaryEditProfile.structuralProfile) {
+      _drawStructuralProfile(canvas, wall);
+    }
     _drawNavigationEdges(canvas, rect);
     if (dimensionsVisible && RenderPolicy.showFineDimensions(lod)) {
       _horizontalDimension(
@@ -1218,6 +1298,30 @@ class _SurfacePainter extends CustomPainter {
       centered: true,
       bold: true,
     );
+  }
+
+  void _drawStructuralProfile(Canvas canvas, RoomWallSurface wall) {
+    final segments = BoundaryEditingResolver.structuralSegments(
+      profile: wall.profile,
+      wallHeightMm: wall.heightMm,
+    );
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..color = CadVisualTokens.selectedGeometry(scheme);
+    for (final segment in segments) {
+      final a = projection.surfaceToViewport(
+        SurfacePointMm(segment.a.xMm, segment.a.yMm),
+      );
+      final b = projection.surfaceToViewport(
+        SurfacePointMm(segment.b.xMm, segment.b.yMm),
+      );
+      canvas.drawLine(a, b, paint);
+      canvas.drawCircle(a, 4, Paint()..color = paint.color);
+      canvas.drawCircle(b, 4, Paint()..color = paint.color);
+    }
   }
 
   void _drawHorizontalSurface(Canvas canvas, SurfacePlaneType type) {
@@ -1316,16 +1420,27 @@ class _SurfacePainter extends CustomPainter {
       ),
     );
     final rect = Rect.fromPoints(a, b);
-    final fill = opening.type == ArchitecturalOpeningType.door
-        ? scheme.tertiaryContainer.withValues(alpha: 0.42)
-        : scheme.secondaryContainer.withValues(alpha: 0.42);
+    final selected = selectedOpeningId == opening.id;
+    final hovered = hoveredOpeningId == opening.id &&
+        boundaryProfile == BoundaryEditProfile.openings;
+    final fill = selected || hovered
+        ? CadVisualTokens.selectedFill(scheme)
+        : opening.type == ArchitecturalOpeningType.door
+            ? scheme.tertiaryContainer.withValues(alpha: 0.42)
+            : scheme.secondaryContainer.withValues(alpha: 0.42);
     canvas.drawRect(rect, Paint()..color = fill);
     canvas.drawRect(
       rect,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = CadVisualTokens.openingStroke
-        ..color = CadVisualTokens.opening(scheme),
+        ..strokeWidth = selected
+            ? 4
+            : hovered
+                ? 3
+                : CadVisualTokens.openingStroke
+        ..color = selected || hovered
+            ? CadVisualTokens.selectedGeometry(scheme)
+            : CadVisualTokens.opening(scheme),
     );
   }
 
@@ -1590,6 +1705,9 @@ class _SurfacePainter extends CustomPainter {
       oldDelegate.openingsVisible != openingsVisible ||
       oldDelegate.electricalVisible != electricalVisible ||
       oldDelegate.cableRoutesVisible != cableRoutesVisible ||
+      oldDelegate.boundaryProfile != boundaryProfile ||
+      oldDelegate.hoveredOpeningId != hoveredOpeningId ||
+      oldDelegate.selectedOpeningId != selectedOpeningId ||
       oldDelegate.openingsFingerprint != openingsFingerprint ||
       oldDelegate.routeFingerprint != routeFingerprint ||
       oldDelegate.componentsFingerprint != componentsFingerprint ||
