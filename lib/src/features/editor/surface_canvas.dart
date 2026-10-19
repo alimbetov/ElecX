@@ -7,7 +7,10 @@ import 'package:flutter/services.dart';
 import '../../domain/boundary_editing.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/geometry.dart';
+import '../../domain/hosted_routing.dart';
 import '../../domain/measurement_overlay.dart';
+import '../../domain/route_host.dart';
+import '../../domain/route_medium.dart';
 import '../../domain/surface_navigation.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/adaptive_grid.dart';
@@ -15,6 +18,8 @@ import '../../engine/constraint_engine.dart';
 import '../../engine/direct_manipulation.dart';
 import '../../engine/editor_layers.dart';
 import '../../engine/render_policy.dart';
+import '../../engine/route_flow_visualization.dart';
+import '../../engine/route_interaction_engine.dart';
 import '../../engine/selection_engine.dart';
 import '../../engine/snap_engine.dart';
 import '../../engine/world_camera.dart';
@@ -25,17 +30,29 @@ import 'cad_visual_tokens.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 import 'editor_viewport_commands.dart';
+import 'hosted_route_session.dart';
+import 'route_selection_session.dart';
 
 class SurfaceCanvas extends StatefulWidget {
-  const SurfaceCanvas({required this.controller, super.key});
+  const SurfaceCanvas({
+    required this.controller,
+    this.onOutdoorTransition,
+    super.key,
+  });
 
   final EditorController controller;
+
+  /// Called when a selected hosted route crosses from an indoor surface to an
+  /// outdoor/site host. The workspace can use it to switch to SiteMapCanvas
+  /// without SurfaceCanvas knowing about navigation shell details.
+  final ValueChanged<RouteHostTransition>? onOutdoorTransition;
 
   @override
   State<SurfaceCanvas> createState() => _SurfaceCanvasState();
 }
 
-class _SurfaceCanvasState extends State<SurfaceCanvas> {
+class _SurfaceCanvasState extends State<SurfaceCanvas>
+    with SingleTickerProviderStateMixin {
   WorldCamera? _camera;
   String? _surfaceId;
   Offset? _panAnchor;
@@ -47,16 +64,23 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
   Offset? _marqueeCurrent;
   int _lastViewportRevision = 0;
   Size _size = Size.zero;
+  late final AnimationController _routeFlow;
 
   EditorController get controller => widget.controller;
 
   @override
   void initState() {
     super.initState();
+    _routeFlow = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat();
     _lastViewportRevision = controller.viewportCommandRevision;
     controller.viewportCommandListenable.addListener(_onViewportCommand);
     controller.p2.addListener(_onP2Changed);
     controller.boundaryEditing.addListener(_onBoundaryEditChanged);
+    controller.hostedRoutes.addListener(_onRouteChanged);
+    controller.routeSelection.addListener(_onRouteChanged);
   }
 
   @override
@@ -67,10 +91,14 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
           .removeListener(_onViewportCommand);
       oldWidget.controller.p2.removeListener(_onP2Changed);
       oldWidget.controller.boundaryEditing.removeListener(_onBoundaryEditChanged);
+      oldWidget.controller.hostedRoutes.removeListener(_onRouteChanged);
+      oldWidget.controller.routeSelection.removeListener(_onRouteChanged);
       _lastViewportRevision = controller.viewportCommandRevision;
       controller.viewportCommandListenable.addListener(_onViewportCommand);
       controller.p2.addListener(_onP2Changed);
       controller.boundaryEditing.addListener(_onBoundaryEditChanged);
+      controller.hostedRoutes.addListener(_onRouteChanged);
+      controller.routeSelection.addListener(_onRouteChanged);
     }
   }
 
@@ -79,6 +107,9 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
     controller.viewportCommandListenable.removeListener(_onViewportCommand);
     controller.p2.removeListener(_onP2Changed);
     controller.boundaryEditing.removeListener(_onBoundaryEditChanged);
+    controller.hostedRoutes.removeListener(_onRouteChanged);
+    controller.routeSelection.removeListener(_onRouteChanged);
+    _routeFlow.dispose();
     super.dispose();
   }
 
@@ -91,6 +122,11 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
   }
 
   void _onBoundaryEditChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _onRouteChanged() {
+    controller.routeSelection.normalize();
     if (mounted) setState(() {});
   }
 
@@ -322,6 +358,110 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
     return null;
   }
 
+  List<HostedRoutePath> _allHostedRoutes() {
+    final byId = <String, HostedRoutePath>{
+      for (final route in controller.hostedRoutes.paths) route.routeId: route,
+    };
+    for (final route in controller.p2.routes) {
+      byId.putIfAbsent(route.id, () => HostedRouteAdapter.fromIndoor(route));
+    }
+    return List.unmodifiable(byId.values);
+  }
+
+  RouteMediumProfile _mediumForRoute(String routeId) {
+    for (final route in controller.p2.routes) {
+      if (route.id == routeId) return route.medium;
+    }
+    return RouteMediumProfile.generic;
+  }
+
+  RouteHostTransition? _explicitTransitionAt(
+    SurfacePointMm point,
+    _SurfaceProjection projection,
+  ) {
+    final selected = controller.routeSelection.selectedHostedRoute;
+    final surface = controller.activeSurface;
+    if (selected == null || surface == null) return null;
+    final host = RouteHostRef.indoor(surface);
+    final radius = math.max(80.0, projection.camera.mmPerPixel * 16);
+    RouteHostTransition? best;
+    var bestDistance = double.infinity;
+    for (final transition in RouteInteractionEngine.transitionsOnHost(
+      route: selected,
+      host: host,
+    )) {
+      final anchor = transition.fromHost == host
+          ? transition.fromPoint
+          : transition.toPoint;
+      final dx = point.xMm - anchor.x;
+      final dy = point.yMm - anchor.y;
+      final distance = math.sqrt((dx * dx + dy * dy).toDouble());
+      if (distance <= radius && distance < bestDistance) {
+        best = transition;
+        bestDistance = distance;
+      }
+    }
+    return best;
+  }
+
+  RoomSurfaceRef? _legacyTransitionTargetAt(
+    SurfacePointMm point,
+    _SurfaceProjection projection,
+  ) {
+    final selected = controller.routeSelection.selectedRoute;
+    final surface = controller.activeSurface;
+    if (selected == null || surface == null) return null;
+    final radius = math.max(80.0, projection.camera.mmPerPixel * 16);
+    for (var i = 0; i < selected.segments.length; i++) {
+      final segment = selected.segments[i];
+      if (segment.surface != surface || segment.points.isEmpty) continue;
+      final first = segment.points.first;
+      final last = segment.points.last;
+      double distance(SurfacePointMm a, SurfacePointMm b) {
+        final dx = a.xMm - b.xMm;
+        final dy = a.yMm - b.yMm;
+        return math.sqrt((dx * dx + dy * dy).toDouble());
+      }
+      if (i > 0 && distance(point, first) <= radius) {
+        return selected.segments[i - 1].surface;
+      }
+      if (i + 1 < selected.segments.length && distance(point, last) <= radius) {
+        return selected.segments[i + 1].surface;
+      }
+    }
+    return null;
+  }
+
+  void _navigateToSurface(RoomSurfaceRef target) {
+    if (controller.selectedSpaceId != target.spaceId) {
+      controller.selectSpace(target.spaceId);
+    }
+    switch (target.type) {
+      case SurfacePlaneType.wall:
+        controller.showWall(target.wallIndex!);
+      case SurfacePlaneType.floor:
+        controller.showFloor();
+      case SurfacePlaneType.ceiling:
+        controller.showCeiling();
+    }
+  }
+
+  void _followTransition(
+    RouteHostTransition transition,
+    RoomSurfaceRef currentSurface,
+  ) {
+    final currentHost = RouteHostRef.indoor(currentSurface);
+    final target = transition.fromHost == currentHost
+        ? transition.toHost
+        : transition.fromHost;
+    if (target.kind == RouteHostKind.outdoorZone) {
+      widget.onOutdoorTransition?.call(transition);
+      return;
+    }
+    final surface = target.surface;
+    if (surface != null) _navigateToSurface(surface);
+  }
+
   SelectionMode _selectionModeForKeyboard() {
     final keyboard = HardwareKeyboard.instance;
     if (keyboard.isControlPressed || keyboard.isMetaPressed) {
@@ -383,13 +523,39 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
     }
 
     if (controller.tool == EditorTool.select) {
-      final component = _componentAt(point, projection);
+      final component = _componentAt(raw, projection);
       if (component != null) {
+        controller.routeSelection.clear();
         if (!controller.p2.selection.contains(component.id)) {
           controller.p2.select(component.id);
         }
         return;
       }
+
+      final explicitTransition = _explicitTransitionAt(raw, projection);
+      if (explicitTransition != null) {
+        _followTransition(explicitTransition, surface);
+        return;
+      }
+      final legacyTarget = _legacyTransitionTargetAt(raw, projection);
+      if (legacyTarget != null) {
+        _navigateToSurface(legacyTarget);
+        return;
+      }
+
+      final hit = RouteInteractionEngine.hitTestHosted(
+        routes: _allHostedRoutes(),
+        host: RouteHostRef.indoor(surface),
+        xMm: raw.xMm.toDouble(),
+        yMm: raw.yMm.toDouble(),
+        radiusMm: math.max(70.0, projection.camera.mmPerPixel * 12),
+      );
+      if (hit != null) {
+        controller.routeSelection.select(hit.routeId);
+        return;
+      }
+
+      controller.routeSelection.clear();
       if (_marqueeStart == null) controller.p2.clearSelection();
     }
 
@@ -539,6 +705,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
                     projection,
                     lod,
                     scheme,
+                    flowAnimation: _routeFlow,
                   ),
                 ),
               ),
@@ -572,6 +739,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
                   final handleOwner = _componentForHandle(raw, projection);
                   final component = handleOwner ?? _componentAt(raw, projection);
                   if (component != null) {
+                    controller.routeSelection.clear();
                     controller.p2.select(
                       component.id,
                       mode: handleOwner != null
@@ -688,6 +856,15 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
                   label: Text(
                     'Размещение: ${ElectricalComponentDefaults.defaultLabel(type)}',
                   ),
+                ),
+              ),
+            if (controller.routeSelection.selectedRouteId case final routeId?)
+              Positioned(
+                left: 12,
+                bottom: bottomEditorVisible ? 188 : 52,
+                child: Chip(
+                  avatar: const Icon(Icons.alt_route, size: 18),
+                  label: Text('Трасса: $routeId · переходы активны'),
                 ),
               ),
             if (surface.type == SurfacePlaneType.wall)
@@ -936,8 +1113,10 @@ class _SurfacePainter extends CustomPainter {
     this.controller,
     this.projection,
     this.lod,
-    this.scheme,
-  )   : activeSurfaceId = controller.activeSurface?.id,
+    this.scheme, {
+    required Animation<double> flowAnimation,
+  })  : flowAnimation = flowAnimation,
+        activeSurfaceId = controller.activeSurface?.id,
         selectedSpaceId = controller.selectedSpaceId,
         dimensionsVisible = controller.dimensionsVisible &&
             controller.p2.layers.isVisible(EditorLayerId.dimensions),
@@ -949,6 +1128,7 @@ class _SurfacePainter extends CustomPainter {
         boundaryProfile = controller.boundaryEditing.profile,
         hoveredOpeningId = controller.boundaryEditing.hoveredOpeningId,
         selectedOpeningId = controller.selectedOpeningId,
+        selectedRouteId = controller.routeSelection.selectedRouteId,
         draftFingerprint = Object.hash(
           controller.boundaryEditing.openingDraft?.openingId,
           controller.boundaryEditing.openingDraft?.type,
@@ -982,14 +1162,38 @@ class _SurfacePainter extends CustomPainter {
             ],
           ),
           ...controller.p2.routes.expand(
-            (route) => route.segments.expand(
-              (segment) => <Object?>[
-                segment.surface.id,
-                ...segment.points.expand(
-                  (point) => <Object?>[point.xMm, point.yMm],
-                ),
-              ],
-            ),
+            (route) => <Object?>[
+              route.id,
+              route.medium.id,
+              ...route.segments.expand(
+                (segment) => <Object?>[
+                  segment.surface.id,
+                  ...segment.points.expand(
+                    (point) => <Object?>[point.xMm, point.yMm],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          ...controller.hostedRoutes.paths.expand(
+            (route) => <Object?>[
+              route.routeId,
+              ...route.segments.expand(
+                (segment) => <Object?>[
+                  segment.host.id,
+                  ...segment.points.expand(
+                    (point) => <Object?>[point.x, point.y],
+                  ),
+                ],
+              ),
+              ...route.transitions.expand(
+                (transition) => <Object?>[
+                  transition.id,
+                  transition.fromHost.id,
+                  transition.toHost.id,
+                ],
+              ),
+            ],
           ),
         ]),
         componentsFingerprint = Object.hashAll(
@@ -1022,12 +1226,14 @@ class _SurfacePainter extends CustomPainter {
                 ],
               ) ??
               const <Object?>[],
-        );
+        ),
+        super(repaint: flowAnimation);
 
   final EditorController controller;
   final _SurfaceProjection projection;
   final RenderLod lod;
   final ColorScheme scheme;
+  final Animation<double> flowAnimation;
   final String? activeSurfaceId;
   final String? selectedSpaceId;
   final bool dimensionsVisible;
@@ -1037,6 +1243,7 @@ class _SurfacePainter extends CustomPainter {
   final BoundaryEditProfile? boundaryProfile;
   final String? hoveredOpeningId;
   final String? selectedOpeningId;
+  final String? selectedRouteId;
   final int draftFingerprint;
   final int openingsFingerprint;
   final int routeFingerprint;
@@ -1495,23 +1702,183 @@ class _SurfacePainter extends CustomPainter {
     );
   }
 
+  List<HostedRoutePath> _allHostedRoutes() {
+    final byId = <String, HostedRoutePath>{
+      for (final route in controller.hostedRoutes.paths) route.routeId: route,
+    };
+    for (final route in controller.p2.routes) {
+      byId.putIfAbsent(route.id, () => HostedRouteAdapter.fromIndoor(route));
+    }
+    return List.unmodifiable(byId.values);
+  }
+
+  RouteMediumProfile _mediumForRoute(String routeId) {
+    for (final route in controller.p2.routes) {
+      if (route.id == routeId) return route.medium;
+    }
+    return RouteMediumProfile.generic;
+  }
+
   void _drawRoutes(Canvas canvas) {
     if (!cableRoutesVisible) return;
-    final paint = Paint()
+    final baseDraft = Paint()
       ..color = CadVisualTokens.route(scheme)
       ..strokeWidth = CadVisualTokens.routeStroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
     final draft = controller.activeRouteSegment;
-    if (draft != null) _drawRoutePoints(canvas, draft.points, paint);
+    if (draft != null) _drawRoutePoints(canvas, draft.points, baseDraft);
+
     final activeSurface = controller.activeSurface;
-    for (final route in controller.p2.routes) {
-      for (final segment in route.segments) {
-        if (segment.surface == activeSurface) {
-          _drawRoutePoints(canvas, segment.points, paint);
-        }
+    if (activeSurface == null) return;
+    final activeHost = RouteHostRef.indoor(activeSurface);
+    for (final route in _allHostedRoutes()) {
+      final selected = route.routeId == selectedRouteId;
+      final medium = _mediumForRoute(route.routeId);
+      final frame = RouteFlowVisualizationPolicy.frame(
+        medium: medium,
+        phase: flowAnimation.value,
+      );
+      if (selected) {
+        final halo = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 10
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round
+          ..color = scheme.primary.withValues(alpha: 0.12 + frame.glow * 0.18);
+        _drawHostedSegmentsOnHost(canvas, route, activeHost, halo);
+      }
+      final line = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = selected ? 3.2 : CadVisualTokens.routeStroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..color = selected ? scheme.primary : CadVisualTokens.route(scheme);
+      _drawHostedSegmentsOnHost(canvas, route, activeHost, line);
+      if (selected) {
+        _drawFlow(canvas, route, activeHost, medium);
+        _drawTransitionMarkers(canvas, route, activeHost);
+        _drawLegacyTransitionMarkers(canvas, route.routeId, activeSurface);
       }
     }
+  }
+
+  void _drawHostedSegmentsOnHost(
+    Canvas canvas,
+    HostedRoutePath route,
+    RouteHostRef host,
+    Paint paint,
+  ) {
+    for (final segment in route.segments) {
+      if (segment.host != host || segment.points.length < 2) continue;
+      Offset? previous;
+      for (final point in segment.points) {
+        final current = projection.surfaceToViewport(
+          SurfacePointMm(point.x, point.y),
+        );
+        if (previous != null) canvas.drawLine(previous, current, paint);
+        previous = current;
+      }
+    }
+  }
+
+  void _drawFlow(
+    Canvas canvas,
+    HostedRoutePath route,
+    RouteHostRef host,
+    RouteMediumProfile medium,
+  ) {
+    final samples = RouteInteractionEngine.flowSamples(
+      route: route,
+      medium: medium,
+      phase: flowAnimation.value,
+    );
+    for (final sample in samples) {
+      if (sample.hostId != host.id) continue;
+      final center = projection.surfaceToViewport(
+        SurfacePointMm(sample.xMm.round(), sample.yMm.round()),
+      );
+      canvas.drawCircle(
+        center,
+        sample.reverse ? 3.2 : 4.2,
+        Paint()..color = scheme.primary,
+      );
+      if (sample.reverse) {
+        canvas.drawCircle(
+          center,
+          6.5,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1
+            ..color = scheme.primary.withValues(alpha: 0.5),
+        );
+      }
+    }
+  }
+
+  void _drawTransitionMarkers(
+    Canvas canvas,
+    HostedRoutePath route,
+    RouteHostRef host,
+  ) {
+    for (final transition in RouteInteractionEngine.transitionsOnHost(
+      route: route,
+      host: host,
+    )) {
+      final point = transition.fromHost == host
+          ? transition.fromPoint
+          : transition.toPoint;
+      _drawTransitionMarker(
+        canvas,
+        SurfacePointMm(point.x, point.y),
+        outdoor: transition.fromHost.kind != transition.toHost.kind,
+      );
+    }
+  }
+
+  void _drawLegacyTransitionMarkers(
+    Canvas canvas,
+    String routeId,
+    RoomSurfaceRef activeSurface,
+  ) {
+    final selected = controller.routeSelection.selectedRoute;
+    if (selected == null || selected.id != routeId) return;
+    for (var i = 0; i < selected.segments.length; i++) {
+      final segment = selected.segments[i];
+      if (segment.surface != activeSurface || segment.points.isEmpty) continue;
+      if (i > 0 && selected.segments[i - 1].surface != activeSurface) {
+        _drawTransitionMarker(canvas, segment.points.first);
+      }
+      if (i + 1 < selected.segments.length &&
+          selected.segments[i + 1].surface != activeSurface) {
+        _drawTransitionMarker(canvas, segment.points.last);
+      }
+    }
+  }
+
+  void _drawTransitionMarker(
+    Canvas canvas,
+    SurfacePointMm point, {
+    bool outdoor = false,
+  }) {
+    final center = projection.surfaceToViewport(point);
+    final color = outdoor ? scheme.secondary : scheme.tertiary;
+    canvas.drawCircle(
+      center,
+      8,
+      Paint()
+        ..style = PaintingStyle.fill
+        ..color = color.withValues(alpha: 0.20),
+    );
+    canvas.drawCircle(
+      center,
+      8,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = color,
+    );
+    canvas.drawCircle(center, 2.5, Paint()..color = color);
   }
 
   void _drawRoutePoints(
@@ -1759,6 +2126,7 @@ class _SurfacePainter extends CustomPainter {
       oldDelegate.boundaryProfile != boundaryProfile ||
       oldDelegate.hoveredOpeningId != hoveredOpeningId ||
       oldDelegate.selectedOpeningId != selectedOpeningId ||
+      oldDelegate.selectedRouteId != selectedRouteId ||
       oldDelegate.draftFingerprint != draftFingerprint ||
       oldDelegate.openingsFingerprint != openingsFingerprint ||
       oldDelegate.routeFingerprint != routeFingerprint ||
