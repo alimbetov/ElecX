@@ -3,6 +3,8 @@ import 'package:flutter/widgets.dart';
 
 import '../../domain/geometry.dart';
 import '../../domain/surfaces.dart';
+import 'cable_endpoint_transform_session.dart';
+import 'cable_route_edit_session.dart';
 import 'component_transform_session.dart';
 import 'editor_controller.dart';
 import 'editor_interaction_policy.dart';
@@ -24,6 +26,12 @@ class EditorKeyboardScope extends StatelessWidget {
 
   final EditorController controller;
   final Widget child;
+
+  bool get _persistentEditActive =>
+      controller.cableEndpointTransform.active ||
+      controller.cableRouteEdit.active ||
+      controller.componentTransform.active ||
+      controller.placementCursor.active;
 
   bool _selectedPointIsUsable(SurfacePointMm point) {
     final component = controller.p2.selectedComponent;
@@ -75,6 +83,42 @@ class EditorKeyboardScope extends StatelessWidget {
     }
   }
 
+  void _cancelActiveEdit() {
+    if (controller.cableEndpointTransform.active) {
+      controller.cableEndpointTransform.cancel();
+    } else if (controller.cableRouteEdit.active) {
+      controller.cableRouteEdit.cancel();
+    } else if (controller.componentTransform.active) {
+      controller.componentTransform.cancel();
+    } else if (controller.placementCursor.active) {
+      controller.placementCursor.cancel();
+    } else {
+      controller.setTool(EditorTool.select);
+    }
+  }
+
+  void _commitActiveEdit() {
+    if (controller.cableEndpointTransform.active) {
+      controller.cableEndpointTransform.commit();
+    } else if (controller.cableRouteEdit.active) {
+      controller.cableRouteEdit.commit();
+    } else if (controller.componentTransform.active) {
+      controller.componentTransform.commit();
+    } else if (controller.placementCursor.active) {
+      controller.placementCursor.confirm();
+    }
+  }
+
+  void _undo() {
+    if (_persistentEditActive) return;
+    controller.p2.undo();
+  }
+
+  void _redo() {
+    if (_persistentEditActive) return;
+    controller.p2.redo();
+  }
+
   @override
   Widget build(BuildContext context) {
     return CallbackShortcuts(
@@ -90,29 +134,22 @@ class EditorKeyboardScope extends StatelessWidget {
             controller.setTool(EditorTool.guide),
         const SingleActivator(LogicalKeyboardKey.keyC): () =>
             controller.setTool(EditorTool.cableRoute),
-        const SingleActivator(LogicalKeyboardKey.escape): () {
-          if (controller.componentTransform.active) {
-            controller.componentTransform.cancel();
-          } else if (controller.placementCursor.active) {
-            controller.placementCursor.cancel();
-          } else {
-            controller.setTool(EditorTool.select);
-          }
-        },
-        const SingleActivator(LogicalKeyboardKey.enter): () {
-          if (controller.componentTransform.active) {
-            controller.componentTransform.commit();
-          } else if (controller.placementCursor.active) {
-            controller.placementCursor.confirm();
-          }
-        },
-        const SingleActivator(LogicalKeyboardKey.numpadEnter): () {
-          if (controller.componentTransform.active) {
-            controller.componentTransform.commit();
-          } else if (controller.placementCursor.active) {
-            controller.placementCursor.confirm();
-          }
-        },
+        const SingleActivator(LogicalKeyboardKey.escape): _cancelActiveEdit,
+        const SingleActivator(LogicalKeyboardKey.enter): _commitActiveEdit,
+        const SingleActivator(LogicalKeyboardKey.numpadEnter): _commitActiveEdit,
+        const SingleActivator(LogicalKeyboardKey.keyZ, control: true): _undo,
+        const SingleActivator(LogicalKeyboardKey.keyZ, meta: true): _undo,
+        const SingleActivator(
+          LogicalKeyboardKey.keyZ,
+          control: true,
+          shift: true,
+        ): _redo,
+        const SingleActivator(
+          LogicalKeyboardKey.keyZ,
+          meta: true,
+          shift: true,
+        ): _redo,
+        const SingleActivator(LogicalKeyboardKey.keyY, control: true): _redo,
         const SingleActivator(LogicalKeyboardKey.arrowLeft): () =>
             _nudgeActive(-1, 0),
         const SingleActivator(LogicalKeyboardKey.arrowRight): () =>
@@ -130,6 +167,7 @@ class EditorKeyboardScope extends StatelessWidget {
         const SingleActivator(LogicalKeyboardKey.arrowDown, shift: true): () =>
             _nudgeActive(0, -1, coarse: true),
         const SingleActivator(LogicalKeyboardKey.delete): () {
+          if (_persistentEditActive) return;
           if (controller.selectedOpening != null) {
             controller.deleteSelectedOpening();
           } else {
@@ -137,6 +175,7 @@ class EditorKeyboardScope extends StatelessWidget {
           }
         },
         const SingleActivator(LogicalKeyboardKey.backspace): () {
+          if (_persistentEditActive) return;
           if (controller.selectedOpening != null) {
             controller.deleteSelectedOpening();
           } else {
