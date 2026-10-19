@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../domain/electrical_placement.dart';
+import '../../domain/component_catalog_v2.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 import 'engineering_placement_cursor_session.dart';
@@ -18,12 +18,15 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
     return AnimatedBuilder(
       animation: Listenable.merge([controller.p2, controller.placementCursor]),
       builder: (context, _) {
-        final type = controller.p2.placementType;
-        if (type == null || controller.activeSurface == null) {
+        final componentTypeId = controller.placementCursor.activeComponentTypeId;
+        if (componentTypeId == null || controller.activeSurface == null) {
           return const SizedBox.shrink();
         }
         final cursor = controller.placementCursor.ensure();
         if (cursor == null) return const SizedBox.shrink();
+        final entry = ComponentCatalogV2.byId(cursor.componentTypeId);
+        if (entry == null) return const SizedBox.shrink();
+
         final scheme = Theme.of(context).colorScheme;
         final step = controller.selectedSpace?.grid.minorStepMm ?? 100;
         final validColor = cursor.isValid ? scheme.primary : scheme.error;
@@ -47,7 +50,7 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
                     Icon(Icons.my_location, size: 15, color: validColor),
                     const SizedBox(width: 5),
                     Text(
-                      ElectricalComponentDefaults.defaultLabel(type),
+                      entry.name,
                       style: Theme.of(context).textTheme.labelMedium,
                     ),
                   ],
@@ -61,7 +64,7 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
                 Text(
                   '${cursor.surface.type.name.toUpperCase()} · '
                   '${cursor.snapLabel ?? cursor.snapKind.name.toUpperCase()} · '
-                  'шаг $step mm',
+                  '${entry.systemClass.name} · шаг $step mm',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),
