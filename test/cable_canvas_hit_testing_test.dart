@@ -1,15 +1,11 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:elecx/src/domain/electrical_routing.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/engine/port_snap_resolver.dart';
 import 'package:elecx/src/features/editor/cable_canvas_hit_testing.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  const surface = RoomSurfaceRef(
-    spaceId: 'room-1',
-    type: SurfacePlaneType.wall,
-    wallIndex: 0,
-  );
+  final surface = RoomSurfaceRef.wall('room-1', 0);
 
   ElectricalCableRoute route(List<SurfacePointMm> points) => ElectricalCableRoute(
     id: 'route-1',
