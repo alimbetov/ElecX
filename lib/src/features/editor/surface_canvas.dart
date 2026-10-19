@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../../domain/boundary_editing.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/geometry.dart';
+import '../../domain/measurement_overlay.dart';
 import '../../domain/surface_navigation.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/adaptive_grid.dart';
@@ -17,13 +18,13 @@ import '../../engine/render_policy.dart';
 import '../../engine/selection_engine.dart';
 import '../../engine/snap_engine.dart';
 import '../../engine/world_camera.dart';
+import 'boundary_bottom_editor.dart';
 import 'boundary_edit_panel.dart';
 import 'boundary_edit_session.dart';
 import 'cad_visual_tokens.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 import 'editor_viewport_commands.dart';
-import 'wall_profile_editor_actions.dart';
 
 class SurfaceCanvas extends StatefulWidget {
   const SurfaceCanvas({required this.controller, super.key});
@@ -358,7 +359,13 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
     final boundarySession = controller.boundaryEditing;
     if (boundarySession.active) {
       if (boundarySession.profile == BoundaryEditProfile.openings) {
-        controller.selectOpening(_openingAt(point)?.id);
+        final next = _openingAt(point);
+        if (boundarySession.draftDirty &&
+            next?.id != controller.selectedOpeningId) {
+          return;
+        }
+        controller.selectOpening(next?.id);
+        if (next != null) boundarySession.beginOpeningDraft(next);
       } else {
         controller.selectOpening(null);
       }
@@ -389,14 +396,14 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
     controller.surfaceTap(point);
   }
 
-  void _handleDoubleTap(
+  Future<void> _handleDoubleTap(
     TapDownDetails details,
     _SurfaceProjection projection,
     RoomSurfaceRef surface,
     List<MmPoint> roomVertices,
-  ) {
+  ) async {
     if (controller.boundaryEditing.active) {
-      controller.boundaryEditing.exit();
+      await requestBoundaryEditorExit(context, controller);
       return;
     }
     if (controller.p2.placementType != null) return;
@@ -518,6 +525,9 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
         final lod = RenderPolicy.lodForWorldUnitsPerPixel(camera.mmPerPixel);
         final compact = MediaQuery.sizeOf(context).width < 700;
         final scheme = Theme.of(context).colorScheme;
+        final bottomEditorVisible = surface.type == SurfacePlaneType.wall &&
+            controller.boundaryEditing.active &&
+            controller.boundaryEditing.profile != BoundaryEditProfile.wall;
 
         return Stack(
           children: [
@@ -654,19 +664,9 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
               Positioned(
                 left: compact ? 8 : 12,
                 top: compact ? 8 : 12,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    BoundaryEditPanel(controller: controller, compact: compact),
-                    const SizedBox(height: 6),
-                    if (!controller.boundaryEditing.active ||
-                        controller.boundaryEditing.profile ==
-                            BoundaryEditProfile.structuralProfile)
-                      _WallProfileQuickEditor(
-                        controller: controller,
-                        compact: compact,
-                      ),
-                  ],
+                child: BoundaryEditPanel(
+                  controller: controller,
+                  compact: compact,
                 ),
               ),
             Positioned(
@@ -676,18 +676,28 @@ class _SurfaceCanvasState extends State<SurfaceCanvas> {
             ),
             Positioned(
               right: compact ? 8 : 12,
-              bottom: compact ? 8 : 12,
+              bottom: bottomEditorVisible ? 148 : (compact ? 8 : 12),
               child: _EdgeNavigationHint(surface: surface),
             ),
             if (controller.p2.placementType case final type?)
               Positioned(
                 left: 12,
-                bottom: 12,
+                bottom: bottomEditorVisible ? 148 : 12,
                 child: Chip(
                   avatar: const Icon(Icons.add_location_alt_outlined, size: 18),
                   label: Text(
                     'Размещение: ${ElectricalComponentDefaults.defaultLabel(type)}',
                   ),
+                ),
+              ),
+            if (surface.type == SurfacePlaneType.wall)
+              Positioned(
+                left: compact ? 8 : 12,
+                right: compact ? 8 : 12,
+                bottom: 0,
+                child: BoundaryBottomEditor(
+                  controller: controller,
+                  compact: compact,
                 ),
               ),
           ],
@@ -753,182 +763,6 @@ class _EdgeNavigationHint extends StatelessWidget {
             ],
           ),
         ),
-      );
-}
-
-class _WallProfileQuickEditor extends StatelessWidget {
-  const _WallProfileQuickEditor({
-    required this.controller,
-    required this.compact,
-  });
-
-  final EditorController controller;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHigh.withValues(alpha: 0.94),
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(
-          color: controller.activeWallHasCustomProfile
-              ? CadVisualTokens.profileGuide(scheme)
-              : scheme.outlineVariant,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(3),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Tooltip(
-              message: 'Добавить балку / верхнюю выемку',
-              child: compact
-                  ? IconButton(
-                      onPressed: () => _showNotchDialog(context),
-                      icon: Icon(
-                        Icons.architecture_outlined,
-                        color: controller.activeWallHasCustomProfile
-                            ? CadVisualTokens.profile(scheme)
-                            : null,
-                      ),
-                    )
-                  : FilledButton.tonalIcon(
-                      onPressed: () => _showNotchDialog(context),
-                      icon: Icon(
-                        Icons.architecture_outlined,
-                        size: 18,
-                        color: controller.activeWallHasCustomProfile
-                            ? CadVisualTokens.profile(scheme)
-                            : null,
-                      ),
-                      label: const Text('Балка / выемка'),
-                    ),
-            ),
-            if (controller.activeWallHasCustomProfile)
-              IconButton(
-                onPressed: controller.resetActiveWallProfile,
-                tooltip: 'Сбросить профиль стены',
-                icon: const Icon(Icons.restart_alt),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _showNotchDialog(BuildContext context) async {
-    final wall = controller.activeWall;
-    if (wall == null) return;
-    final wallLength = wall.lengthMm.round();
-    final wallHeight = wall.heightMm;
-    var widthMm = math.min(600, math.max(100, wallLength ~/ 3));
-    var startMm = math.max(0, (wallLength - widthMm) ~/ 2);
-    var depthMm = math.min(300, math.max(50, wallHeight ~/ 6));
-    String? error;
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Балка / верхняя выемка'),
-          content: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Стена: $wallLength × $wallHeight mm',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 12),
-                  _ProfileIntField(
-                    label: 'X от начала стены',
-                    value: startMm,
-                    onChanged: (value) => startMm = value,
-                  ),
-                  const SizedBox(height: 10),
-                  _ProfileIntField(
-                    label: 'Ширина балки / выемки',
-                    value: widthMm,
-                    onChanged: (value) => widthMm = value,
-                  ),
-                  const SizedBox(height: 10),
-                  _ProfileIntField(
-                    label: 'Глубина вниз от потолка',
-                    value: depthMm,
-                    onChanged: (value) => depthMm = value,
-                  ),
-                  if (error != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      error!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Отмена'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final applied = controller.addActiveWallTopNotch(
-                  startMm: startMm,
-                  widthMm: widthMm,
-                  depthMm: depthMm,
-                );
-                if (applied) {
-                  Navigator.pop(dialogContext);
-                } else {
-                  setDialogState(() {
-                    error = 'Параметры конфликтуют со стеной или проёмами.';
-                  });
-                }
-              },
-              child: const Text('Применить'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ProfileIntField extends StatelessWidget {
-  const _ProfileIntField({
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String label;
-  final int value;
-  final ValueChanged<int> onChanged;
-
-  @override
-  Widget build(BuildContext context) => TextFormField(
-        initialValue: '$value',
-        keyboardType: TextInputType.number,
-        decoration: InputDecoration(
-          labelText: label,
-          suffixText: 'mm',
-          border: const OutlineInputBorder(),
-        ),
-        onChanged: (text) {
-          final parsed = int.tryParse(text);
-          if (parsed != null) onChanged(parsed);
-        },
       );
 }
 
@@ -1115,6 +949,17 @@ class _SurfacePainter extends CustomPainter {
         boundaryProfile = controller.boundaryEditing.profile,
         hoveredOpeningId = controller.boundaryEditing.hoveredOpeningId,
         selectedOpeningId = controller.selectedOpeningId,
+        draftFingerprint = Object.hash(
+          controller.boundaryEditing.openingDraft?.openingId,
+          controller.boundaryEditing.openingDraft?.type,
+          controller.boundaryEditing.openingDraft?.offsetFromStartMm,
+          controller.boundaryEditing.openingDraft?.widthMm,
+          controller.boundaryEditing.openingDraft?.heightMm,
+          controller.boundaryEditing.openingDraft?.sillHeightMm,
+          controller.boundaryEditing.beamDraft?.startMm,
+          controller.boundaryEditing.beamDraft?.widthMm,
+          controller.boundaryEditing.beamDraft?.depthMm,
+        ),
         openingsFingerprint = Object.hashAll(
           controller.activeWallOpenings.map(
             (opening) => Object.hash(
@@ -1192,6 +1037,7 @@ class _SurfacePainter extends CustomPainter {
   final BoundaryEditProfile? boundaryProfile;
   final String? hoveredOpeningId;
   final String? selectedOpeningId;
+  final int draftFingerprint;
   final int openingsFingerprint;
   final int routeFingerprint;
   final int componentsFingerprint;
@@ -1272,6 +1118,10 @@ class _SurfacePainter extends CustomPainter {
     );
     if (boundaryProfile == BoundaryEditProfile.structuralProfile) {
       _drawStructuralProfile(canvas, wall);
+      _drawBeamPreviewAndMeasurements(canvas, wall);
+    }
+    if (boundaryProfile == BoundaryEditProfile.openings) {
+      _drawOpeningPreviewAndMeasurements(canvas, wall);
     }
     _drawNavigationEdges(canvas, rect);
     if (dimensionsVisible && RenderPolicy.showFineDimensions(lod)) {
@@ -1322,6 +1172,207 @@ class _SurfacePainter extends CustomPainter {
       canvas.drawCircle(a, 4, Paint()..color = paint.color);
       canvas.drawCircle(b, 4, Paint()..color = paint.color);
     }
+  }
+
+  void _drawOpeningPreviewAndMeasurements(
+    Canvas canvas,
+    RoomWallSurface wall,
+  ) {
+    final selected = controller.selectedOpening;
+    if (selected == null) return;
+    final draft = controller.boundaryEditing.openingDraft;
+    ArchitecturalOpening candidate = selected;
+    var valid = true;
+    if (draft != null && draft.openingId == selected.id) {
+      try {
+        candidate = draft.toOpening(selected);
+        valid = RoomSurfaceResolver.openingFitsWall(
+          opening: candidate,
+          wall: wall,
+        );
+      } on ArgumentError {
+        valid = false;
+      }
+    }
+
+    final active = draft != null && draft.openingId == selected.id;
+    if (active &&
+        draft.widthMm > 0 &&
+        draft.heightMm > 0 &&
+        draft.offsetFromStartMm >= 0 &&
+        draft.sillHeightMm >= 0) {
+      final top = draft.sillHeightMm + draft.heightMm;
+      final end = draft.offsetFromStartMm + draft.widthMm;
+      final a = projection.surfaceToViewport(
+        SurfacePointMm(draft.offsetFromStartMm, top),
+      );
+      final b = projection.surfaceToViewport(
+        SurfacePointMm(end, draft.sillHeightMm),
+      );
+      final rect = Rect.fromPoints(a, b);
+      final color = valid
+          ? CadVisualTokens.selectedGeometry(scheme)
+          : scheme.error;
+      canvas.drawRect(
+        rect,
+        Paint()..color = color.withValues(alpha: 0.10),
+      );
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5
+          ..color = color,
+      );
+    }
+
+    if (valid) {
+      _drawMeasurementSet(
+        canvas,
+        WallMeasurementResolver.forOpening(
+          opening: candidate,
+          wall: wall,
+        ),
+      );
+    }
+  }
+
+  void _drawBeamPreviewAndMeasurements(
+    Canvas canvas,
+    RoomWallSurface wall,
+  ) {
+    final draft = controller.boundaryEditing.beamDraft;
+    if (draft == null) return;
+    final end = draft.startMm + draft.widthMm;
+    final bottom = wall.heightMm - draft.depthMm;
+    var valid = draft.startMm >= 0 &&
+        draft.widthMm > 0 &&
+        draft.depthMm > 0 &&
+        end <= wall.lengthMm.round() &&
+        draft.depthMm < wall.heightMm;
+    if (valid) {
+      for (final opening in controller.activeWallOpenings) {
+        final overlapsX = opening.offsetFromStartMm < end &&
+            opening.endOffsetMm > draft.startMm;
+        if (overlapsX && opening.topMm > bottom) {
+          valid = false;
+          break;
+        }
+      }
+    }
+
+    final color = valid
+        ? CadVisualTokens.selectedGeometry(scheme)
+        : scheme.error;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..color = color;
+    final topLeft = projection.surfaceToViewport(
+      SurfacePointMm(draft.startMm, wall.heightMm),
+    );
+    final bottomLeft = projection.surfaceToViewport(
+      SurfacePointMm(draft.startMm, bottom),
+    );
+    final bottomRight = projection.surfaceToViewport(
+      SurfacePointMm(end, bottom),
+    );
+    final topRight = projection.surfaceToViewport(
+      SurfacePointMm(end, wall.heightMm),
+    );
+    canvas.drawLine(topLeft, bottomLeft, paint);
+    canvas.drawLine(bottomLeft, bottomRight, paint);
+    canvas.drawLine(bottomRight, topRight, paint);
+    canvas.drawPath(
+      Path()
+        ..moveTo(topLeft.dx, topLeft.dy)
+        ..lineTo(bottomLeft.dx, bottomLeft.dy)
+        ..lineTo(bottomRight.dx, bottomRight.dy)
+        ..lineTo(topRight.dx, topRight.dy),
+      paint,
+    );
+
+    if (valid) {
+      _drawMeasurementSet(
+        canvas,
+        WallMeasurementResolver.forTopNotch(
+          startMm: draft.startMm,
+          widthMm: draft.widthMm,
+          depthMm: draft.depthMm,
+          wall: wall,
+        ),
+      );
+    }
+  }
+
+  void _drawMeasurementSet(Canvas canvas, WallMeasurementSet set) {
+    for (final span in set.spans) {
+      final start = projection.surfaceToViewport(span.start);
+      final end = projection.surfaceToViewport(span.end);
+      final paint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.1
+        ..color = CadVisualTokens.selectedGeometry(scheme)
+            .withValues(alpha: 0.82);
+      canvas.drawLine(start, end, paint);
+      if (span.axis == MeasurementAxis.horizontal) {
+        canvas.drawLine(
+          start + const Offset(0, -4),
+          start + const Offset(0, 4),
+          paint,
+        );
+        canvas.drawLine(
+          end + const Offset(0, -4),
+          end + const Offset(0, 4),
+          paint,
+        );
+      } else {
+        canvas.drawLine(
+          start + const Offset(-4, 0),
+          start + const Offset(4, 0),
+          paint,
+        );
+        canvas.drawLine(
+          end + const Offset(-4, 0),
+          end + const Offset(4, 0),
+          paint,
+        );
+      }
+      final midpoint = Offset(
+        (start.dx + end.dx) / 2,
+        (start.dy + end.dy) / 2,
+      );
+      _dimensionLabel(canvas, '${span.valueMm} mm', midpoint);
+    }
+  }
+
+  void _dimensionLabel(Canvas canvas, String text, Offset center) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          color: scheme.onSurface,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final rect = Rect.fromCenter(
+      center: center,
+      width: painter.width + 8,
+      height: painter.height + 4,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(3)),
+      Paint()..color = scheme.surface.withValues(alpha: 0.92),
+    );
+    painter.paint(
+      canvas,
+      center - Offset(painter.width / 2, painter.height / 2),
+    );
   }
 
   void _drawHorizontalSurface(Canvas canvas, SurfacePlaneType type) {
@@ -1708,6 +1759,7 @@ class _SurfacePainter extends CustomPainter {
       oldDelegate.boundaryProfile != boundaryProfile ||
       oldDelegate.hoveredOpeningId != hoveredOpeningId ||
       oldDelegate.selectedOpeningId != selectedOpeningId ||
+      oldDelegate.draftFingerprint != draftFingerprint ||
       oldDelegate.openingsFingerprint != openingsFingerprint ||
       oldDelegate.routeFingerprint != routeFingerprint ||
       oldDelegate.componentsFingerprint != componentsFingerprint ||
