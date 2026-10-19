@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../domain/project_model.dart';
 import '../../domain/route_host.dart';
 import 'context_minimap.dart';
 import 'device_catalog_panel.dart';
