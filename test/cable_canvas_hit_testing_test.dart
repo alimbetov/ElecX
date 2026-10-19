@@ -50,6 +50,33 @@ void main() {
     expect((hit! as CableVertexHit).pointIndex, 1);
   });
 
+  test('vertex drag creates a movable orthogonal dogleg', () {
+    final moved = CableCanvasHitTesting.moveVertex(
+      points: const [
+        SurfacePointMm(100, 100),
+        SurfacePointMm(300, 100),
+        SurfacePointMm(300, 400),
+      ],
+      pointIndex: 1,
+      target: const SurfacePointMm(450, 250),
+    );
+
+    expect(moved, const [
+      SurfacePointMm(100, 100),
+      SurfacePointMm(450, 100),
+      SurfacePointMm(450, 250),
+      SurfacePointMm(300, 250),
+      SurfacePointMm(300, 400),
+    ]);
+    for (var i = 1; i < moved.length; i++) {
+      expect(
+        moved[i - 1].xMm == moved[i].xMm ||
+            moved[i - 1].yMm == moved[i].yMm,
+        isTrue,
+      );
+    }
+  });
+
   test('only interior route runs expose segment drag handles', () {
     final cable = route(const [
       SurfacePointMm(100, 100),
