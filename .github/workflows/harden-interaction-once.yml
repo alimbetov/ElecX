@@ -1,0 +1,42 @@
+name: Harden interaction once
+
+on:
+  push:
+    branches:
+      - feat/spatial-editor-interaction-hardening
+    paths:
+      - tool/harden_interaction_once.py
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/spatial-editor-interaction-hardening
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Apply hardening patch
+        run: python3 tool/harden_interaction_once.py
+      - name: Format
+        run: dart format lib test
+      - name: Analyze
+        run: flutter analyze
+      - name: Test
+        run: flutter test
+      - name: Remove one-shot helper
+        run: |
+          rm -f tool/harden_interaction_once.py
+          rm -f .github/workflows/harden-interaction-once.yml
+      - name: Commit verified hardening
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix(editor): integrate and harden spatial interactions"
+          git push origin HEAD:feat/spatial-editor-interaction-hardening
