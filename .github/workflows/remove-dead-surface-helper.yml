@@ -20,9 +20,13 @@ jobs:
         with:
           channel: stable
       - run: flutter pub get
-      - name: Remove unused helper
-        run: sed -i '/^  RouteMediumProfile _mediumForRoute/,/^  }$/d' lib/src/features/editor/surface_canvas.dart
+      - name: Remove unused helper and use hosted route medium
+        shell: bash
+        run: |
+          sed -i '/^  RouteMediumProfile _mediumForRoute/,/^  }$/d' lib/src/features/editor/surface_canvas.dart
+          sed -i 's/final medium = _mediumForRoute(route.routeId);/final medium = route.medium;/' lib/src/features/editor/surface_canvas.dart
       - run: dart format lib/src/features/editor/surface_canvas.dart
+      - run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter analyze
       - run: flutter test
       - name: Commit verified cleanup
