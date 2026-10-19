@@ -76,6 +76,7 @@ final class EngineeringTopology {
     return edge;
   }
 
+  /// Physical-connectivity query. Direction is intentionally ignored.
   bool hasPath(String startNodeId, String targetNodeId) {
     requireNode(startNodeId);
     requireNode(targetNodeId);
@@ -98,6 +99,46 @@ final class EngineeringTopology {
       }
     }
     return false;
+  }
+
+  /// Semantic flow query. Only follows fromNode -> toNode edges.
+  ///
+  /// For an electrical supply topology this lets validation prove that power
+  /// can flow from a distribution board to a load rather than merely proving
+  /// that the two nodes are present in the same undirected component.
+  bool hasDirectedPath(String startNodeId, String targetNodeId) {
+    requireNode(startNodeId);
+    requireNode(targetNodeId);
+    if (startNodeId == targetNodeId) return true;
+
+    final visited = <String>{startNodeId};
+    final queue = <String>[startNodeId];
+    while (queue.isNotEmpty) {
+      final current = queue.removeAt(0);
+      for (final edge in _edges) {
+        if (edge.fromNodeId != current) continue;
+        final next = edge.toNodeId;
+        if (!visited.add(next)) continue;
+        if (next == targetNodeId) return true;
+        queue.add(next);
+      }
+    }
+    return false;
+  }
+
+  List<String> downstreamNodeIds(String startNodeId) {
+    requireNode(startNodeId);
+    final visited = <String>{startNodeId};
+    final queue = <String>[startNodeId];
+    while (queue.isNotEmpty) {
+      final current = queue.removeAt(0);
+      for (final edge in _edges) {
+        if (edge.fromNodeId != current || !visited.add(edge.toNodeId)) continue;
+        queue.add(edge.toNodeId);
+      }
+    }
+    visited.remove(startNodeId);
+    return List.unmodifiable(visited);
   }
 }
 
