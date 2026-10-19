@@ -24,6 +24,15 @@ abstract final class AlienCockpitTokens {
   static const fault = Color(0xFFFF6B7A);
   static const valid = Color(0xFF64F5A8);
 
+  // Semantic signal aliases used by cockpit widgets. These names describe
+  // meaning rather than palette and can survive a future visual refresh.
+  static const signalCyan = cyan;
+  static const signalViolet = violet;
+  static const signalAqua = aqua;
+  static const signalWarning = warning;
+  static const signalFault = fault;
+  static const signalValid = valid;
+
   // Neutral drawing chrome.
   static const coolText = Color(0xFFD7E7EB);
   static const coolMuted = Color(0xFF8DA7AE);
