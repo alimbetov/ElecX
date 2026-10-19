@@ -219,29 +219,58 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
     final wall = controller.activeWall!;
     final model = controller.activeWallTopNotch;
     var draft = session.beamDraft;
-    if (draft == null) {
-      final width = model?.widthMm ??
-          math.min(600, math.max(100, wall.lengthMm.round() ~/ 3));
-      final start = model?.startMm ??
-          math.max(0, (wall.lengthMm.round() - width) ~/ 2);
-      final depth = model?.depthMm ??
-          math.min(300, math.max(50, wall.heightMm ~/ 6));
-      draft = model == null
-          ? BeamEditDraft.newDraft(
-              startMm: start,
-              widthMm: width,
-              depthMm: depth,
-            )
-          : BeamEditDraft.existing(
-              startMm: start,
-              widthMm: width,
-              depthMm: depth,
+
+    if (model == null && draft == null) {
+      return _shell(
+        context,
+        icon: Icons.architecture_outlined,
+        title: 'БАЛКА / ВЫЕМКА',
+        dirty: false,
+        child: FilledButton.tonalIcon(
+          onPressed: () {
+            final width = math.min(
+              600,
+              math.max(100, wall.lengthMm.round() ~/ 3),
             );
+            final start = math.max(
+              0,
+              (wall.lengthMm.round() - width) ~/ 2,
+            );
+            final depth = math.min(
+              300,
+              math.max(50, wall.heightMm ~/ 6),
+            );
+            session.beginBeamDraft(
+              BeamEditDraft.newDraft(
+                startMm: start,
+                widthMm: width,
+                depthMm: depth,
+              ),
+            );
+          },
+          icon: const Icon(Icons.add, size: 18),
+          label: const Text('Добавить балку / выемку'),
+        ),
+      );
+    }
+
+    if (draft == null && model != null) {
+      draft = BeamEditDraft.existing(
+        startMm: model.startMm,
+        widthMm: model.widthMm,
+        depthMm: model.depthMm,
+      );
       final next = draft;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && session.beamDraft == null) session.beginBeamDraft(next);
       });
     }
+
+    draft ??= BeamEditDraft.existing(
+      startMm: model!.startMm,
+      widthMm: model.widthMm,
+      depthMm: model.depthMm,
+    );
 
     final valid = _beamDraftValid(draft, wall);
     return _shell(
