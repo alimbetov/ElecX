@@ -217,9 +217,12 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
     final model = controller.activeWallTopNotch;
     var draft = session.beamDraft;
     if (draft == null) {
-      final width = model?.widthMm ?? math.min(600, math.max(100, wall.lengthMm.round() ~/ 3));
-      final start = model?.startMm ?? math.max(0, (wall.lengthMm.round() - width) ~/ 2);
-      final depth = model?.depthMm ?? math.min(300, math.max(50, wall.heightMm ~/ 6));
+      final width = model?.widthMm ??
+          math.min(600, math.max(100, wall.lengthMm.round() ~/ 3));
+      final start = model?.startMm ??
+          math.max(0, (wall.lengthMm.round() - width) ~/ 2);
+      final depth = model?.depthMm ??
+          math.min(300, math.max(50, wall.heightMm ~/ 6));
       draft = model == null
           ? BeamEditDraft.newDraft(
               startMm: start,
@@ -439,15 +442,12 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
   }
 }
 
-Future<bool> requestBoundaryEditorExit(
+Future<bool> resolveBoundaryDraft(
   BuildContext context,
   EditorController controller,
 ) async {
   final session = controller.boundaryEditing;
-  if (!session.draftDirty) {
-    session.exit(force: true);
-    return true;
-  }
+  if (!session.draftDirty) return true;
 
   final result = await showDialog<_DirtyDraftChoice>(
     context: context,
@@ -476,17 +476,73 @@ Future<bool> requestBoundaryEditorExit(
   switch (result) {
     case _DirtyDraftChoice.discard:
       session.discardDraft();
-      session.exit(force: true);
       return true;
     case _DirtyDraftChoice.save:
-      // Saving is intentionally performed by the visible editor because it owns
-      // validation and the typed draft-to-command mapping. Keep the editor open
-      // so the user cannot accidentally commit an invalid draft.
-      return false;
+      final saved = _commitBoundaryDraft(controller);
+      if (!saved && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Невозможно сохранить: параметры конфликтуют с геометрией стены.',
+            ),
+          ),
+        );
+      }
+      return saved;
     case _DirtyDraftChoice.cancel:
     case null:
       return false;
   }
+}
+
+Future<bool> requestBoundaryEditorExit(
+  BuildContext context,
+  EditorController controller,
+) async {
+  final resolved = await resolveBoundaryDraft(context, controller);
+  if (!resolved) return false;
+  controller.boundaryEditing.exit(force: true);
+  return true;
+}
+
+bool _commitBoundaryDraft(EditorController controller) {
+  final session = controller.boundaryEditing;
+  final openingDraft = session.openingDraft;
+  if (openingDraft != null) {
+    final selected = controller.selectedOpening;
+    if (selected == null || selected.id != openingDraft.openingId) return false;
+    final saved = controller.updateSelectedOpening(
+      type: openingDraft.type,
+      offsetFromStartMm: openingDraft.offsetFromStartMm,
+      widthMm: openingDraft.widthMm,
+      heightMm: openingDraft.heightMm,
+      sillHeightMm: openingDraft.sillHeightMm,
+    );
+    if (!saved) return false;
+    final current = controller.selectedOpening;
+    if (current != null) session.beginOpeningDraft(current);
+    return true;
+  }
+
+  final beamDraft = session.beamDraft;
+  if (beamDraft != null) {
+    final saved = controller.addActiveWallTopNotch(
+      startMm: beamDraft.startMm,
+      widthMm: beamDraft.widthMm,
+      depthMm: beamDraft.depthMm,
+    );
+    if (!saved) return false;
+    session.beginBeamDraft(
+      BeamEditDraft.existing(
+        startMm: beamDraft.startMm,
+        widthMm: beamDraft.widthMm,
+        depthMm: beamDraft.depthMm,
+      ),
+    );
+    return true;
+  }
+
+  return true;
 }
 
 enum _DirtyDraftChoice { save, discard, cancel }
