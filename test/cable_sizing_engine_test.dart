@@ -100,7 +100,8 @@ void main() {
     );
 
     expect(result.currentStatus, EngineeringCheckStatus.pass);
-    expect(result.governingAmpacityA, 20);
+    expect(result.governingSectionId, 'cool-section');
+    expect(result.governingAmpacityA, closeTo(21, 0.001));
   });
 
   test('single phase voltage drop can reject otherwise adequate cable', () {
