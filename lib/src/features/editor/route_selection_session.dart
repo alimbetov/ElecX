@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart';
 
 import '../../domain/electrical_routing.dart';
+import '../../domain/hosted_routing.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
+import 'hosted_route_session.dart';
 
 final class RouteSelectionSession extends ChangeNotifier {
   RouteSelectionSession(this.controller);
@@ -21,13 +23,20 @@ final class RouteSelectionSession extends ChangeNotifier {
     return null;
   }
 
+  HostedRoutePath? get selectedHostedRoute {
+    final id = _selectedRouteId;
+    if (id == null) return null;
+    return controller.hostedRoutes.byId(id);
+  }
+
   bool contains(String routeId) => _selectedRouteId == routeId;
 
+  bool _routeExists(String routeId) =>
+      controller.p2.routes.any((route) => route.id == routeId) ||
+      controller.hostedRoutes.byId(routeId) != null;
+
   void select(String? routeId) {
-    if (routeId != null &&
-        !controller.p2.routes.any((route) => route.id == routeId)) {
-      return;
-    }
+    if (routeId != null && !_routeExists(routeId)) return;
     if (_selectedRouteId == routeId) return;
     _selectedRouteId = routeId;
     if (routeId != null) controller.p2.clearSelection();
@@ -38,8 +47,7 @@ final class RouteSelectionSession extends ChangeNotifier {
 
   void normalize() {
     final id = _selectedRouteId;
-    if (id == null) return;
-    if (controller.p2.routes.any((route) => route.id == id)) return;
+    if (id == null || _routeExists(id)) return;
     _selectedRouteId = null;
     notifyListeners();
   }
