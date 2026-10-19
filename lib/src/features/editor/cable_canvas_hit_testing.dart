@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import '../../domain/electrical_routing.dart';
-import '../../domain/geometry.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/port_snap_resolver.dart';
 
