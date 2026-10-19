@@ -22,7 +22,7 @@ class BoundaryEditPanel extends StatelessWidget {
       builder: (context, _) {
         if (!session.active) {
           return FilledButton.tonalIcon(
-            onPressed: session.enter,
+            onPressed: () => session.enter(),
             icon: const Icon(Icons.border_style_outlined, size: 18),
             label: Text(compact ? 'Границы' : 'Редактировать границы'),
           );
