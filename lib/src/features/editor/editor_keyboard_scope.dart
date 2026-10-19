@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../domain/geometry.dart';
 import '../../domain/surfaces.dart';
+import 'component_transform_session.dart';
 import 'editor_controller.dart';
 import 'editor_interaction_policy.dart';
 import 'editor_p2_session.dart';
@@ -11,9 +12,9 @@ import 'engineering_placement_cursor_session.dart';
 
 /// Desktop-first keyboard layer for the spatial editor.
 ///
-/// Shortcuts invoke the same editor/controller operations as toolbar actions.
-/// Viewport shortcuts are emitted as camera commands and consumed by the
-/// active Plan/Surface canvas, so keyboard zoom controls the real WorldCamera.
+/// Shortcuts invoke the same transactional editor operations as pointer/touch
+/// adapters. Viewport shortcuts are emitted as camera commands and consumed by
+/// the active Plan/Surface canvas.
 class EditorKeyboardScope extends StatelessWidget {
   const EditorKeyboardScope({
     required this.controller,
@@ -65,16 +66,18 @@ class EditorKeyboardScope extends StatelessWidget {
       return;
     }
 
-    final component = controller.p2.selectedComponent;
-    if (component == null) {
-      return;
-    }
-    final next = SurfacePointMm(
-      component.position.xMm + dx * step,
-      component.position.yMm + dy * step,
+    if (controller.p2.selectedComponent == null) return;
+    final transform = controller.componentTransform;
+    if (!transform.begin()) return;
+    final valid = transform.nudge(
+      dxMm: dx * step,
+      dyMm: dy * step,
+      validator: (_, point) => _selectedPointIsUsable(point),
     );
-    if (_selectedPointIsUsable(next)) {
-      controller.p2.moveSelectedComponent(next);
+    if (valid) {
+      transform.commit();
+    } else {
+      transform.cancel();
     }
   }
 
@@ -94,19 +97,25 @@ class EditorKeyboardScope extends StatelessWidget {
         const SingleActivator(LogicalKeyboardKey.keyC): () =>
             controller.setTool(EditorTool.cableRoute),
         const SingleActivator(LogicalKeyboardKey.escape): () {
-          if (controller.placementCursor.active) {
+          if (controller.componentTransform.active) {
+            controller.componentTransform.cancel();
+          } else if (controller.placementCursor.active) {
             controller.placementCursor.cancel();
           } else {
             controller.setTool(EditorTool.select);
           }
         },
         const SingleActivator(LogicalKeyboardKey.enter): () {
-          if (controller.placementCursor.active) {
+          if (controller.componentTransform.active) {
+            controller.componentTransform.commit();
+          } else if (controller.placementCursor.active) {
             controller.placementCursor.confirm();
           }
         },
         const SingleActivator(LogicalKeyboardKey.numpadEnter): () {
-          if (controller.placementCursor.active) {
+          if (controller.componentTransform.active) {
+            controller.componentTransform.commit();
+          } else if (controller.placementCursor.active) {
             controller.placementCursor.confirm();
           }
         },
