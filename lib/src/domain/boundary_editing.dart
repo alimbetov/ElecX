@@ -43,18 +43,16 @@ abstract final class BoundaryEditingResolver {
     int wallHeightMm,
   ) {
     if (a.yMm == 0 && b.yMm == 0) return false;
-    final isOuterStart = a.xMm == 0 && b.xMm == 0;
-    final isOuterEnd = a.xMm == profileWidth(a, b) && b.xMm == profileWidth(a, b);
-    if (isOuterStart || isOuterEnd) return false;
+
+    // Exclude the two outer wall sides. Structural verticals (beam/notch
+    // sides) do not touch finished-floor level.
+    if (a.xMm == b.xMm && (a.yMm == 0 || b.yMm == 0)) return false;
+
+    // A rectangular wall has only floor, outer sides and a top edge exactly at
+    // wallHeightMm. Any remaining segment that drops below that top envelope
+    // belongs to the editable structural profile.
     return a.yMm < wallHeightMm || b.yMm < wallHeightMm;
   }
-
-  // Kept local to avoid requiring wall length in the resolver contract. Outer
-  // vertical edges are also naturally excluded by the y<height rule only when
-  // custom geometry exists, so this helper intentionally does not attempt to
-  // infer the full wall width from two points.
-  static int profileWidth(WallProfilePoint a, WallProfilePoint b) =>
-      a.xMm > b.xMm ? a.xMm : b.xMm;
 
   static bool openingBelongsToProfile(
     ArchitecturalOpening opening,
