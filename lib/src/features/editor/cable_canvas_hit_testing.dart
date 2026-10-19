@@ -174,32 +174,21 @@ abstract final class CableCanvasHitTesting {
     required SurfacePointMm target,
   }) {
     if (pointIndex <= 0 || pointIndex >= points.length - 1) return points;
+
     final before = points[pointIndex - 1];
     final after = points[pointIndex + 1];
-    final current = points[pointIndex];
-
-    SurfacePointMm next;
-    final beforeHorizontal = before.yMm == current.yMm;
-    final afterHorizontal = after.yMm == current.yMm;
-    if (beforeHorizontal != afterHorizontal) {
-      // Preserve the orientation of both neighboring orthogonal legs.
-      next = SurfacePointMm(
-        beforeHorizontal ? target.xMm : before.xMm,
-        beforeHorizontal ? before.yMm : target.yMm,
-      );
-      if (afterHorizontal) {
-        next = SurfacePointMm(next.xMm, after.yMm);
-      } else {
-        next = SurfacePointMm(after.xMm, next.yMm);
-      }
-    } else {
-      next = target;
-    }
-
-    return [
-      for (var i = 0; i < points.length; i++)
-        if (i == pointIndex) next else points[i],
+    final replacement = <SurfacePointMm>[
+      SurfacePointMm(target.xMm, before.yMm),
+      target,
+      SurfacePointMm(after.xMm, target.yMm),
     ];
+
+    final result = <SurfacePointMm>[
+      ...points.take(pointIndex),
+      ...replacement,
+      ...points.skip(pointIndex + 1),
+    ];
+    return _compactOrthogonal(result);
   }
 
   static List<SurfacePointMm> moveSegment({
@@ -220,7 +209,7 @@ abstract final class CableCanvasHitTesting {
     final movedB = horizontal
         ? SurfacePointMm(b.xMm, target.yMm)
         : SurfacePointMm(target.xMm, b.yMm);
-    return [
+    return _compactOrthogonal([
       for (var i = 0; i < points.length; i++)
         if (i == edgeIndex)
           movedA
@@ -228,7 +217,30 @@ abstract final class CableCanvasHitTesting {
           movedB
         else
           points[i],
-    ];
+    ]);
+  }
+
+  static List<SurfacePointMm> _compactOrthogonal(
+    List<SurfacePointMm> points,
+  ) {
+    final result = <SurfacePointMm>[];
+    for (final point in points) {
+      if (result.isNotEmpty &&
+          result.last.xMm == point.xMm &&
+          result.last.yMm == point.yMm) {
+        continue;
+      }
+      while (result.length >= 2) {
+        final a = result[result.length - 2];
+        final b = result.last;
+        final collinearX = a.xMm == b.xMm && b.xMm == point.xMm;
+        final collinearY = a.yMm == b.yMm && b.yMm == point.yMm;
+        if (!collinearX && !collinearY) break;
+        result.removeLast();
+      }
+      result.add(point);
+    }
+    return List.unmodifiable(result);
   }
 
   static SurfacePointMm _nearestPoint(
