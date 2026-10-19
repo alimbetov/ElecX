@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/electrical_routing.dart';
 import '../../domain/geometry.dart';
+import '../../domain/surfaces.dart';
 import '../../engine/normative_route_engine.dart';
 import '../../engine/port_snap_resolver.dart';
 import '../../engine/snap_engine.dart';
