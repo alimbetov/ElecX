@@ -84,27 +84,31 @@ abstract final class CableCanvasHitTesting {
     required SurfacePointMm point,
     required double radiusMm,
   }) {
-    if (route.segments.length != 1) return null;
-    final segment = route.segments.single;
-    if (segment.surface != surface || segment.points.length < 2) return null;
-
-    final source = segment.points.first;
-    if (_distance(point, source) <= radiusMm) {
-      return CableEndpointHit(
-        route: route,
-        segmentIndex: 0,
-        role: CableEndpointRole.source,
-        point: source,
-      );
+    if (route.segments.isEmpty) return null;
+    final first = route.segments.first;
+    if (first.surface == surface && first.points.length >= 2) {
+      final source = first.points.first;
+      if (_distance(point, source) <= radiusMm) {
+        return CableEndpointHit(
+          route: route,
+          segmentIndex: 0,
+          role: CableEndpointRole.source,
+          point: source,
+        );
+      }
     }
-    final target = segment.points.last;
-    if (_distance(point, target) <= radiusMm) {
-      return CableEndpointHit(
-        route: route,
-        segmentIndex: 0,
-        role: CableEndpointRole.target,
-        point: target,
-      );
+    final lastIndex = route.segments.length - 1;
+    final last = route.segments[lastIndex];
+    if (last.surface == surface && last.points.length >= 2) {
+      final target = last.points.last;
+      if (_distance(point, target) <= radiusMm) {
+        return CableEndpointHit(
+          route: route,
+          segmentIndex: lastIndex,
+          role: CableEndpointRole.target,
+          point: target,
+        );
+      }
     }
     return null;
   }

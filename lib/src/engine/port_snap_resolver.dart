@@ -48,11 +48,9 @@ abstract final class PortSnapResolver {
 
   static bool _compatible(ElectricalPortKind kind, CableEndpointRole role) =>
       switch (role) {
-        CableEndpointRole.source =>
-          kind == ElectricalPortKind.powerOut ||
-              kind == ElectricalPortKind.controlOut,
-        CableEndpointRole.target =>
-          kind == ElectricalPortKind.powerIn ||
-              kind == ElectricalPortKind.controlIn,
+        CableEndpointRole.source => kind == ElectricalPortKind.powerOut ||
+            kind == ElectricalPortKind.controlOut,
+        CableEndpointRole.target => kind == ElectricalPortKind.powerIn ||
+            kind == ElectricalPortKind.controlIn,
       };
 }

@@ -4,7 +4,7 @@ import '../domain/geometry.dart';
 
 final class WorldCamera {
   const WorldCamera({required this.centerMm, required this.mmPerPixel})
-    : assert(mmPerPixel > 0);
+      : assert(mmPerPixel > 0);
 
   final MmPoint centerMm;
   final double mmPerPixel;
@@ -46,31 +46,33 @@ final class WorldCamera {
   }
 
   WorldCamera panPixels(double dxPx, double dyPx) => WorldCamera(
-    centerMm: MmPoint(
-      centerMm.x - (dxPx * mmPerPixel).round(),
-      centerMm.y + (dyPx * mmPerPixel).round(),
-    ),
-    mmPerPixel: mmPerPixel,
-  );
+        centerMm: MmPoint(
+          centerMm.x - (dxPx * mmPerPixel).round(),
+          centerMm.y + (dyPx * mmPerPixel).round(),
+        ),
+        mmPerPixel: mmPerPixel,
+      );
 
   MmPoint screenToWorld({
     required double viewportWidthPx,
     required double viewportHeightPx,
     required double xPx,
     required double yPx,
-  }) => MmPoint(
-    (centerMm.x + (xPx - viewportWidthPx / 2) * mmPerPixel).round(),
-    (centerMm.y - (yPx - viewportHeightPx / 2) * mmPerPixel).round(),
-  );
+  }) =>
+      MmPoint(
+        (centerMm.x + (xPx - viewportWidthPx / 2) * mmPerPixel).round(),
+        (centerMm.y - (yPx - viewportHeightPx / 2) * mmPerPixel).round(),
+      );
 
   ({double x, double y}) worldToScreen({
     required double viewportWidthPx,
     required double viewportHeightPx,
     required MmPoint point,
-  }) => (
-    x: viewportWidthPx / 2 + (point.x - centerMm.x) / mmPerPixel,
-    y: viewportHeightPx / 2 - (point.y - centerMm.y) / mmPerPixel,
-  );
+  }) =>
+      (
+        x: viewportWidthPx / 2 + (point.x - centerMm.x) / mmPerPixel,
+        y: viewportHeightPx / 2 - (point.y - centerMm.y) / mmPerPixel,
+      );
 
   MmBounds visibleWorldBounds({
     required double viewportWidthPx,
@@ -78,8 +80,8 @@ final class WorldCamera {
     int overscanPx = 64,
   }) {
     final halfWidth = ((viewportWidthPx / 2 + overscanPx) * mmPerPixel).ceil();
-    final halfHeight = ((viewportHeightPx / 2 + overscanPx) * mmPerPixel)
-        .ceil();
+    final halfHeight =
+        ((viewportHeightPx / 2 + overscanPx) * mmPerPixel).ceil();
     return MmBounds(
       left: centerMm.x - halfWidth,
       bottom: centerMm.y - halfHeight,

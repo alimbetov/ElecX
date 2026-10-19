@@ -6,15 +6,16 @@ EngineeringNode node({
   required String id,
   required EngineeringSystemClass systemClass,
   required EngineeringPortSpec port,
-}) => EngineeringNode(
-  id: id,
-  componentTypeId: '$id-type',
-  discipline: EngineeringDiscipline.lowVoltage,
-  systemClass: systemClass,
-  surface: RoomSurfaceRef.wall('room-1', 0),
-  position: const SurfacePointMm(1000, 1000),
-  ports: [port],
-);
+}) =>
+    EngineeringNode(
+      id: id,
+      componentTypeId: '$id-type',
+      discipline: EngineeringDiscipline.lowVoltage,
+      systemClass: systemClass,
+      surface: RoomSurfaceRef.wall('room-1', 0),
+      position: const SurfacePointMm(1000, 1000),
+      ports: [port],
+    );
 
 void main() {
   test('system class dispatches to discipline-specific calculation kind', () {

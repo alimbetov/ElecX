@@ -78,9 +78,9 @@ class _MiniMapSheet extends StatelessWidget {
                         siteMode
                             ? 'Карта площадки'
                             : zone != null
-                            ? zone.name
-                            : workspace.activeLevel?.displayName ??
-                                  editor.level.name,
+                                ? zone.name
+                                : workspace.activeLevel?.displayName ??
+                                    editor.level.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleSmall,
@@ -89,8 +89,8 @@ class _MiniMapSheet extends StatelessWidget {
                         siteMode
                             ? 'Двор · здание · точки входа'
                             : selectedRoom == null
-                            ? 'Выберите помещение на микро-карте'
-                            : '${selectedRoom.name} · ${selectedRoom.type.name}',
+                                ? 'Выберите помещение на микро-карте'
+                                : '${selectedRoom.name} · ${selectedRoom.type.name}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall,
@@ -146,18 +146,18 @@ class _SheetHandle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    height: 24,
-    child: Center(
-      child: Container(
-        width: 38,
-        height: 3,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.outlineVariant,
-          borderRadius: BorderRadius.circular(99),
+        height: 24,
+        child: Center(
+          child: Container(
+            width: 38,
+            height: 3,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.outlineVariant,
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
         ),
-      ),
-    ),
-  );
+      );
 }
 
 class _SurfaceQuickNav extends StatelessWidget {
@@ -201,8 +201,7 @@ class _SurfaceQuickNav extends StatelessWidget {
               context,
               label: 'W${i + 1}',
               icon: Icons.crop_landscape,
-              selected:
-                  editor.activeSurface?.type == SurfacePlaneType.wall &&
+              selected: editor.activeSurface?.type == SurfacePlaneType.wall &&
                   editor.activeSurface?.wallIndex == i,
               onPressed: () => editor.showWall(i),
             ),
@@ -217,20 +216,21 @@ class _SurfaceQuickNav extends StatelessWidget {
     required IconData icon,
     required bool selected,
     required VoidCallback onPressed,
-  }) => Padding(
-    padding: const EdgeInsets.only(right: 5),
-    child: selected
-        ? FilledButton.tonalIcon(
-            onPressed: onPressed,
-            icon: Icon(icon, size: 15),
-            label: Text(label),
-          )
-        : OutlinedButton.icon(
-            onPressed: onPressed,
-            icon: Icon(icon, size: 15),
-            label: Text(label),
-          ),
-  );
+  }) =>
+      Padding(
+        padding: const EdgeInsets.only(right: 5),
+        child: selected
+            ? FilledButton.tonalIcon(
+                onPressed: onPressed,
+                icon: Icon(icon, size: 15),
+                label: Text(label),
+              )
+            : OutlinedButton.icon(
+                onPressed: onPressed,
+                icon: Icon(icon, size: 15),
+                label: Text(label),
+              ),
+      );
 }
 
 class _LevelMiniMap extends StatefulWidget {
@@ -376,8 +376,8 @@ class _LevelMiniMapPainter extends CustomPainter {
           ..color = selected
               ? CadVisualTokens.selectedFill(scheme)
               : hovered
-              ? CadVisualTokens.hoverFill(scheme)
-              : CadVisualTokens.ghostFill(scheme),
+                  ? CadVisualTokens.hoverFill(scheme)
+                  : CadVisualTokens.ghostFill(scheme),
       );
       canvas.drawPath(
         path,
@@ -386,8 +386,8 @@ class _LevelMiniMapPainter extends CustomPainter {
           ..strokeWidth = selected
               ? CadVisualTokens.selectedGeometryStroke
               : hovered
-              ? 1.8
-              : CadVisualTokens.geometryStroke
+                  ? 1.8
+                  : CadVisualTokens.geometryStroke
           ..color = selected
               ? CadVisualTokens.selectedGeometry(scheme)
               : CadVisualTokens.geometry(scheme),
@@ -401,9 +401,8 @@ class _LevelMiniMapPainter extends CustomPainter {
             style: TextStyle(
               color: scheme.onSurface,
               fontSize: selected || hovered ? 11.5 : 10,
-              fontWeight: selected || hovered
-                  ? FontWeight.w700
-                  : FontWeight.w500,
+              fontWeight:
+                  selected || hovered ? FontWeight.w700 : FontWeight.w500,
             ),
           ),
           maxLines: 1,
@@ -460,12 +459,12 @@ final class _MiniTransform {
   final MmBounds bounds;
 
   Offset toScreen(MmPoint point) => Offset(
-    offset.dx + (point.x - bounds.left) * scale,
-    offset.dy + (bounds.top - point.y) * scale,
-  );
+        offset.dx + (point.x - bounds.left) * scale,
+        offset.dy + (bounds.top - point.y) * scale,
+      );
 
   MmPoint toWorld(Offset point) => MmPoint(
-    (bounds.left + (point.dx - offset.dx) / scale).round(),
-    (bounds.top - (point.dy - offset.dy) / scale).round(),
-  );
+        (bounds.left + (point.dx - offset.dx) / scale).round(),
+        (bounds.top - (point.dy - offset.dy) / scale).round(),
+      );
 }

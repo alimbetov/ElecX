@@ -81,16 +81,16 @@ final class LinearLuminaireRun {
     LinearLuminaireFeedMode? feedMode,
     String? driverComponentId,
     bool clearDriver = false,
-  }) => LinearLuminaireRun(
-    id: id,
-    specId: specId,
-    surface: surface,
-    points: points ?? this.points,
-    feedMode: feedMode ?? this.feedMode,
-    driverComponentId: clearDriver
-        ? null
-        : driverComponentId ?? this.driverComponentId,
-  );
+  }) =>
+      LinearLuminaireRun(
+        id: id,
+        specId: specId,
+        surface: surface,
+        points: points ?? this.points,
+        feedMode: feedMode ?? this.feedMode,
+        driverComponentId:
+            clearDriver ? null : driverComponentId ?? this.driverComponentId,
+      );
 
   static double _lengthOf(List<SurfacePointMm> points) {
     var total = 0.0;

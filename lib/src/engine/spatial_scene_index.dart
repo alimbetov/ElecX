@@ -19,7 +19,7 @@ final class IndexedSpace implements SpatialIndexItem {
 /// independent indexes for openings, electrical devices, routes and guides.
 final class SpatialSceneIndex {
   SpatialSceneIndex({int cellSizeMm = 5000})
-    : spaces = SpatialHashIndex<IndexedSpace>(cellSizeMm: cellSizeMm);
+      : spaces = SpatialHashIndex<IndexedSpace>(cellSizeMm: cellSizeMm);
 
   final SpatialHashIndex<IndexedSpace> spaces;
   int _revision = 0;

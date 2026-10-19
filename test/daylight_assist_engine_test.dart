@@ -12,7 +12,9 @@ void main() {
     expect(north.toTrueAzimuth(350), 20);
   });
 
-  test('south-facing window receives stronger daylight assist than north-facing', () {
+  test(
+      'south-facing window receives stronger daylight assist than north-facing',
+      () {
     const north = ProjectNorth();
     final wall = RoomSurfaceRef.wall('room-1', 0);
     final common = DaylightWindowInput(
@@ -44,7 +46,8 @@ void main() {
     );
 
     expect(south.effectiveDepthMm, greaterThan(northReach.effectiveDepthMm));
-    expect(south.centerlineStrength, greaterThan(northReach.centerlineStrength));
+    expect(
+        south.centerlineStrength, greaterThan(northReach.centerlineStrength));
   });
 
   test('ceiling hints bias artificial lighting toward deeper room zone', () {
@@ -67,7 +70,8 @@ void main() {
     expect(hints.every((hint) => hint.position.yMm > 2200), isTrue);
   });
 
-  test('daylight input rejects non-wall surfaces and invalid transmittance', () {
+  test('daylight input rejects non-wall surfaces and invalid transmittance',
+      () {
     expect(
       () => DaylightWindowInput(
         id: 'invalid-floor-window',

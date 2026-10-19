@@ -35,8 +35,8 @@ final class RouteObstacleMm {
     required this.topMm,
     required this.rightMm,
     required this.bottomMm,
-  }) : assert(rightMm >= leftMm),
-       assert(bottomMm >= topMm);
+  })  : assert(rightMm >= leftMm),
+        assert(bottomMm >= topMm);
 
   final String id;
   final int leftMm;
@@ -58,9 +58,9 @@ final class RouteNormativeContext {
     required this.heightMm,
     this.edgeClearanceMm = 100,
     this.obstacles = const [],
-  }) : assert(widthMm > 0),
-       assert(heightMm > 0),
-       assert(edgeClearanceMm >= 0);
+  })  : assert(widthMm > 0),
+        assert(heightMm > 0),
+        assert(edgeClearanceMm >= 0);
 
   final RoomSurfaceRef surface;
   final int widthMm;
@@ -156,7 +156,8 @@ abstract final class NormativeRouteEngine {
         issues.add(
           const RouteConstraintIssue(
             code: 'route.non-orthogonal',
-            message: 'Автоматическая трасса должна идти по ортогональным направлениям.',
+            message:
+                'Автоматическая трасса должна идти по ортогональным направлениям.',
             severity: RouteConstraintSeverity.error,
           ),
         );
@@ -198,8 +199,7 @@ abstract final class NormativeRouteEngine {
     final validation = validate(points: compact, context: context);
     final length = _length(compact);
     final bends = compact.length <= 2 ? 0 : compact.length - 2;
-    final warningPenalty =
-        validation.issues
+    final warningPenalty = validation.issues
             .where((issue) => issue.severity == RouteConstraintSeverity.warning)
             .length *
         1000;

@@ -35,18 +35,18 @@ final class RouteVisualLayer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => IgnorePointer(
-    child: CustomPaint(
-      painter: RouteVisualPainter(
-        mapper: mapper,
-        routes: routes,
-        selectedRouteId: selectedRouteId,
-        phase: phase,
-        mediumResolver: mediumResolver,
-        colorScheme: Theme.of(context).colorScheme,
-      ),
-      size: Size.infinite,
-    ),
-  );
+        child: CustomPaint(
+          painter: RouteVisualPainter(
+            mapper: mapper,
+            routes: routes,
+            selectedRouteId: selectedRouteId,
+            phase: phase,
+            mediumResolver: mediumResolver,
+            colorScheme: Theme.of(context).colorScheme,
+          ),
+          size: Size.infinite,
+        ),
+      );
 }
 
 final class RouteVisualPainter extends CustomPainter {

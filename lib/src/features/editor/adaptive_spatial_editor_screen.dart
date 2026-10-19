@@ -297,13 +297,14 @@ class _SurfaceStrip extends StatelessWidget {
     IconData icon,
     bool selected,
     VoidCallback onTap,
-  ) => ChoiceChip(
-    selected: selected,
-    onSelected: (_) => onTap(),
-    avatar: Icon(icon, size: 16),
-    label: Text(label),
-    visualDensity: VisualDensity.compact,
-  );
+  ) =>
+      ChoiceChip(
+        selected: selected,
+        onSelected: (_) => onTap(),
+        avatar: Icon(icon, size: 16),
+        label: Text(label),
+        visualDensity: VisualDensity.compact,
+      );
 }
 
 class _ProjectNavigator extends StatelessWidget {
@@ -1032,28 +1033,28 @@ class _StatusBar extends StatelessWidget {
 }
 
 String _surfaceName(RoomSurfaceRef surface) => switch (surface.type) {
-  SurfacePlaneType.floor => 'Пол',
-  SurfacePlaneType.ceiling => 'Потолок',
-  SurfacePlaneType.wall => 'Стена ${(surface.wallIndex ?? 0) + 1}',
-};
+      SurfacePlaneType.floor => 'Пол',
+      SurfacePlaneType.ceiling => 'Потолок',
+      SurfacePlaneType.wall => 'Стена ${(surface.wallIndex ?? 0) + 1}',
+    };
 
 String _openingName(ArchitecturalOpening opening) => switch (opening.type) {
-  ArchitecturalOpeningType.door => 'Дверь',
-  ArchitecturalOpeningType.window => 'Окно',
-  ArchitecturalOpeningType.passage => 'Проход',
-  ArchitecturalOpeningType.technicalOpening => 'Тех. проём',
-};
+      ArchitecturalOpeningType.door => 'Дверь',
+      ArchitecturalOpeningType.window => 'Окно',
+      ArchitecturalOpeningType.passage => 'Проход',
+      ArchitecturalOpeningType.technicalOpening => 'Тех. проём',
+    };
 
 String _toolName(EditorTool tool) => switch (tool) {
-  EditorTool.select => 'Выбор',
-  EditorTool.roomRectangle => 'Комната',
-  EditorTool.guide => 'Направляющая',
-  EditorTool.cableRoute => 'Трасса',
-};
+      EditorTool.select => 'Выбор',
+      EditorTool.roomRectangle => 'Комната',
+      EditorTool.guide => 'Направляющая',
+      EditorTool.cableRoute => 'Трасса',
+    };
 
 IconData _toolIcon(EditorTool tool) => switch (tool) {
-  EditorTool.select => Icons.near_me_outlined,
-  EditorTool.roomRectangle => Icons.crop_square,
-  EditorTool.guide => Icons.straighten,
-  EditorTool.cableRoute => Icons.alt_route,
-};
+      EditorTool.select => Icons.near_me_outlined,
+      EditorTool.roomRectangle => Icons.crop_square,
+      EditorTool.guide => Icons.straighten,
+      EditorTool.cableRoute => Icons.alt_route,
+    };

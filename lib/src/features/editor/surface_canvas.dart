@@ -17,6 +17,8 @@ import '../../engine/adaptive_grid.dart';
 import '../../engine/constraint_engine.dart';
 import '../../engine/direct_manipulation.dart';
 import '../../engine/editor_layers.dart';
+import '../../engine/normative_route_engine.dart';
+import '../../engine/port_snap_resolver.dart';
 import '../../engine/render_policy.dart';
 import '../../engine/route_flow_visualization.dart';
 import '../../engine/route_interaction_engine.dart';
@@ -26,10 +28,16 @@ import '../../engine/world_camera.dart';
 import 'boundary_bottom_editor.dart';
 import 'boundary_edit_panel.dart';
 import 'boundary_edit_session.dart';
+import 'cable_canvas_hit_testing.dart';
+import 'cable_edit_access.dart';
+import 'cable_editor_ui_session.dart';
+import 'cable_route_controls.dart';
 import 'cad_visual_tokens.dart';
 import 'canvas_component_controls.dart';
 import 'canvas_viewport_navigator.dart';
+import 'component_transform_session.dart';
 import 'editor_controller.dart';
+import 'editor_interaction_policy.dart';
 import 'editor_p2_session.dart';
 import 'editor_viewport_commands.dart';
 import 'hosted_route_session.dart';
@@ -63,6 +71,8 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
   Offset? _touchStartFocal;
   String? _dragComponentId;
   SurfacePointMm? _dragStartPosition;
+  CableCanvasHit? _cableDragHit;
+  final Set<int> _activePointers = <int>{};
   Offset? _marqueeStart;
   Offset? _marqueeCurrent;
   int _lastViewportRevision = 0;
@@ -85,6 +95,10 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
     controller.boundaryEditing.addListener(_onBoundaryEditChanged);
     controller.hostedRoutes.addListener(_onRouteChanged);
     controller.routeSelection.addListener(_onRouteChanged);
+    controller.componentTransform.addListener(_onInteractionChanged);
+    controller.cableRouteEdit.addListener(_onInteractionChanged);
+    controller.cableEndpointTransform.addListener(_onInteractionChanged);
+    controller.cableUi.addListener(_onInteractionChanged);
   }
 
   @override
@@ -100,12 +114,22 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
       );
       oldWidget.controller.hostedRoutes.removeListener(_onRouteChanged);
       oldWidget.controller.routeSelection.removeListener(_onRouteChanged);
+      oldWidget.controller.componentTransform
+          .removeListener(_onInteractionChanged);
+      oldWidget.controller.cableRouteEdit.removeListener(_onInteractionChanged);
+      oldWidget.controller.cableEndpointTransform
+          .removeListener(_onInteractionChanged);
+      oldWidget.controller.cableUi.removeListener(_onInteractionChanged);
       _lastViewportRevision = controller.viewportCommandRevision;
       controller.viewportCommandListenable.addListener(_onViewportCommand);
       controller.p2.addListener(_onP2Changed);
       controller.boundaryEditing.addListener(_onBoundaryEditChanged);
       controller.hostedRoutes.addListener(_onRouteChanged);
       controller.routeSelection.addListener(_onRouteChanged);
+      controller.componentTransform.addListener(_onInteractionChanged);
+      controller.cableRouteEdit.addListener(_onInteractionChanged);
+      controller.cableEndpointTransform.addListener(_onInteractionChanged);
+      controller.cableUi.addListener(_onInteractionChanged);
     }
   }
 
@@ -116,6 +140,10 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
     controller.boundaryEditing.removeListener(_onBoundaryEditChanged);
     controller.hostedRoutes.removeListener(_onRouteChanged);
     controller.routeSelection.removeListener(_onRouteChanged);
+    controller.componentTransform.removeListener(_onInteractionChanged);
+    controller.cableRouteEdit.removeListener(_onInteractionChanged);
+    controller.cableEndpointTransform.removeListener(_onInteractionChanged);
+    controller.cableUi.removeListener(_onInteractionChanged);
     _routeFlow.dispose();
     super.dispose();
   }
@@ -134,6 +162,10 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
 
   void _onRouteChanged() {
     controller.routeSelection.normalize();
+    if (mounted) setState(() {});
+  }
+
+  void _onInteractionChanged() {
     if (mounted) setState(() {});
   }
 
@@ -215,14 +247,14 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
     if (component == null || component.surface != controller.activeSurface) {
       return;
     }
-    final next = SurfacePointMm(
-      component.position.xMm + dxSteps * _componentNudgeStepMm,
-      component.position.yMm + dySteps * _componentNudgeStepMm,
+    final session = controller.componentTransform;
+    if (!session.begin()) return;
+    final moved = session.nudge(
+      dxMm: dxSteps * _componentNudgeStepMm,
+      dyMm: dySteps * _componentNudgeStepMm,
+      validator: (_, point) => _pointIsUsable(point, projection),
     );
-    if (!_pointIsUsable(next, projection)) {
-      return;
-    }
-    controller.p2.moveSelectedComponent(next);
+    if (!moved || !session.commit()) session.cancel();
   }
 
   void _consumeViewportCommand(_SurfaceExtent extent) {
@@ -515,6 +547,181 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
     return SelectionMode.replace;
   }
 
+  EditorInteractionPolicy _policy(PointerDeviceKind kind) =>
+      EditorInteractionPolicy.forMode(switch (kind) {
+        PointerDeviceKind.touch => EditorInputMode.touch,
+        PointerDeviceKind.stylus ||
+        PointerDeviceKind.invertedStylus =>
+          EditorInputMode.stylus,
+        _ => EditorInputMode.mouseKeyboard,
+      });
+
+  RouteNormativeContext _routeContext(_SurfaceProjection projection) {
+    final surface = controller.activeSurface!;
+    return RouteNormativeContext(
+      surface: surface,
+      widthMm: projection.extent.widthMm,
+      heightMm: projection.extent.heightMm,
+      edgeClearanceMm: 0,
+      obstacles: surface.type == SurfacePlaneType.wall
+          ? [
+              for (final opening in controller.activeWallOpenings)
+                RouteObstacleMm(
+                  id: opening.id,
+                  leftMm: opening.offsetFromStartMm,
+                  topMm: opening.sillHeightMm,
+                  rightMm: opening.endOffsetMm,
+                  bottomMm: opening.topMm,
+                ),
+            ]
+          : const [],
+    );
+  }
+
+  CableCanvasHit? _cableHitAt(
+    SurfacePointMm point,
+    _SurfaceProjection projection,
+    PointerDeviceKind kind,
+  ) {
+    final route = controller.routeSelection.selectedRoute;
+    final surface = controller.activeSurface;
+    if (route == null || surface == null) return null;
+    return CableCanvasHitTesting.hitTest(
+      route: route,
+      surface: surface,
+      point: point,
+      radiusMm: _policy(kind).hitTargetPx * projection.camera.mmPerPixel,
+    );
+  }
+
+  bool _beginCableDrag(CableCanvasHit hit, _SurfaceProjection projection) {
+    final ui = controller.cableUi;
+    switch (hit) {
+      case final CableEndpointHit endpoint:
+        ui.focusGeometry(
+          routeId: endpoint.route.id,
+          segmentIndex: endpoint.segmentIndex,
+          pointIndex: endpoint.role == CableEndpointRole.source
+              ? 0
+              : endpoint.route.segments[endpoint.segmentIndex].points.length -
+                  1,
+        );
+        if (ui.isSegmentLocked(endpoint.route.id, endpoint.segmentIndex) ||
+            ui.segmentHasWaypoints(endpoint.route.id, endpoint.segmentIndex)) {
+          return false;
+        }
+        if (!controller.cableEndpointTransform.start(
+          route: endpoint.route,
+          role: endpoint.role,
+          components: controller.p2.components,
+          context: _routeContext(projection),
+        )) {
+          return false;
+        }
+      case final CableVertexHit vertex:
+        ui.focusGeometry(
+          routeId: vertex.route.id,
+          segmentIndex: vertex.segmentIndex,
+          pointIndex: vertex.pointIndex,
+        );
+        if (ui.mode == CableRoutingMode.auto ||
+            ui.isSegmentLocked(vertex.route.id, vertex.segmentIndex) ||
+            ui.isWaypoint(
+                vertex.route.id, vertex.segmentIndex, vertex.pointIndex)) {
+          return false;
+        }
+        if (!controller.cableRouteEdit.start(
+          route: vertex.route,
+          segmentIndex: vertex.segmentIndex,
+          context: _routeContext(projection),
+          mode: ui.mode,
+        )) {
+          return false;
+        }
+      case final CableSegmentHit segment:
+        ui.focusGeometry(
+            routeId: segment.route.id, segmentIndex: segment.segmentIndex);
+        if (ui.mode == CableRoutingMode.auto ||
+            ui.isSegmentLocked(segment.route.id, segment.segmentIndex) ||
+            ui.segmentHasWaypoints(segment.route.id, segment.segmentIndex)) {
+          return false;
+        }
+        if (!controller.cableRouteEdit.start(
+          route: segment.route,
+          segmentIndex: segment.segmentIndex,
+          context: _routeContext(projection),
+          mode: ui.mode,
+        )) {
+          return false;
+        }
+    }
+    _cableDragHit = hit;
+    return true;
+  }
+
+  void _previewCableDrag(
+    PointerMoveEvent event,
+    SurfacePointMm raw,
+    _SurfaceProjection projection,
+  ) {
+    final hit = _cableDragHit;
+    if (hit == null) return;
+    switch (hit) {
+      case CableEndpointHit _:
+        final acquisition = math.max(
+          20.0,
+          _policy(event.kind).snapRadiusPx * projection.camera.mmPerPixel,
+        );
+        controller.cableEndpointTransform.preview(
+          rawPoint: MmPoint(raw.xMm, raw.yMm),
+          acquisitionRadiusMm: acquisition,
+          releaseRadiusMm: acquisition * 1.65,
+          gridStepMm: controller.selectedSpace?.grid.minorStepMm ?? 100,
+        );
+        controller.p2
+            .updateSnap(controller.cableEndpointTransform.previewState?.snap);
+      case final CableVertexHit vertex:
+        final segment = vertex.route.segments[vertex.segmentIndex];
+        final target = controller.cableUi.mode == CableRoutingMode.assisted
+            ? _snapSurfacePoint(raw, projection)
+            : raw;
+        controller.cableRouteEdit.preview(
+          CableCanvasHitTesting.moveVertex(
+            points: segment.points,
+            pointIndex: vertex.pointIndex,
+            target: target,
+          ),
+        );
+      case final CableSegmentHit segment:
+        final routeSegment = segment.route.segments[segment.segmentIndex];
+        final target = controller.cableUi.mode == CableRoutingMode.assisted
+            ? _snapSurfacePoint(raw, projection)
+            : raw;
+        controller.cableRouteEdit.preview(
+          CableCanvasHitTesting.moveSegment(
+            points: routeSegment.points,
+            edgeIndex: segment.edgeIndex,
+            target: target,
+          ),
+        );
+    }
+  }
+
+  void _toggleActiveWaypoint() {
+    final ui = controller.cableUi;
+    final route = controller.routeSelection.selectedRoute;
+    final s = ui.activeSegmentIndex;
+    final p = ui.activePointIndex;
+    if (route == null ||
+        s == null ||
+        p == null ||
+        s >= route.segments.length ||
+        p >= route.segments[s].points.length) {
+      return;
+    }
+    ui.toggleWaypoint(point: route.segments[s].points[p]);
+  }
+
   SurfacePointMm _applyDragConstraint(SurfacePointMm point) {
     final start = _dragStartPosition;
     if (start == null || !HardwareKeyboard.instance.isShiftPressed) {
@@ -699,11 +906,30 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
         _marqueeCurrent = null;
       });
     }
-    if (_dragComponentId != null) {
-      if (cancelled) {
-        controller.p2.cancelMoveSelectedComponent();
+    final cableHit = _cableDragHit;
+    if (cableHit != null) {
+      if (cableHit is CableEndpointHit) {
+        if (cancelled || !controller.cableEndpointTransform.commit()) {
+          controller.cableEndpointTransform.cancel();
+        }
       } else {
-        controller.p2.commitMoveSelectedComponent();
+        if (cancelled || !controller.cableRouteEdit.commit()) {
+          controller.cableRouteEdit.cancel();
+        } else {
+          final route = controller.routeSelection.selectedRoute;
+          if (route != null) {
+            controller.cableUi.reconcileRoutePoints(
+              route.id,
+              [for (final segment in route.segments) segment.points],
+            );
+          }
+        }
+      }
+    }
+    _cableDragHit = null;
+    if (_dragComponentId != null) {
+      if (cancelled || !controller.componentTransform.commit()) {
+        controller.componentTransform.cancel();
       }
     }
     _dragComponentId = null;
@@ -735,8 +961,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
         final lod = RenderPolicy.lodForWorldUnitsPerPixel(camera.mmPerPixel);
         final compact = MediaQuery.sizeOf(context).width < 700;
         final scheme = Theme.of(context).colorScheme;
-        final bottomEditorVisible =
-            surface.type == SurfacePlaneType.wall &&
+        final bottomEditorVisible = surface.type == SurfacePlaneType.wall &&
             controller.boundaryEditing.active &&
             controller.boundaryEditing.profile != BoundaryEditProfile.wall;
 
@@ -770,6 +995,11 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                   }
                 },
                 onPointerDown: (event) {
+                  _activePointers.add(event.pointer);
+                  if (_activePointers.length > 1) {
+                    _finishPointer(projection, cancelled: true);
+                    return;
+                  }
                   if (event.buttons == kMiddleMouseButton) {
                     _panAnchor = event.localPosition;
                     return;
@@ -782,6 +1012,11 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                   }
                   final raw = projection.viewportToSurface(event.localPosition);
                   if (raw == null) return;
+                  final cableHit = _cableHitAt(raw, projection, event.kind);
+                  if (cableHit != null &&
+                      _beginCableDrag(cableHit, projection)) {
+                    return;
+                  }
                   final handleOwner = _componentForHandle(raw, projection);
                   final component =
                       handleOwner ?? _componentAt(raw, projection);
@@ -796,7 +1031,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                     if (!controller.p2.selection.contains(component.id)) return;
                     _dragComponentId = component.id;
                     _dragStartPosition = component.position;
-                    controller.p2.beginMoveSelectedComponent();
+                    controller.componentTransform.begin();
                   } else {
                     _marqueeStart = event.localPosition;
                     _marqueeCurrent = event.localPosition;
@@ -820,23 +1055,35 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                     setState(() => _marqueeCurrent = event.localPosition);
                     return;
                   }
-                  if (_dragComponentId != null &&
-                      event.buttons == kPrimaryMouseButton) {
-                    final raw = projection.viewportToSurface(
-                      event.localPosition,
-                    );
+                  final previewPosition = event.kind == PointerDeviceKind.touch
+                      ? event.localPosition -
+                          Offset(0, _policy(event.kind).pointerPreviewOffsetPx)
+                      : event.localPosition;
+                  if (_cableDragHit != null && event.buttons != 0) {
+                    final raw = projection.viewportToSurface(previewPosition);
+                    if (raw == null) return;
+                    _previewCableDrag(event, raw, projection);
+                    return;
+                  }
+                  if (_dragComponentId != null && event.buttons != 0) {
+                    final raw = projection.viewportToSurface(previewPosition);
                     if (raw == null) return;
                     var point = _snapSurfacePoint(raw, projection);
                     point = _applyDragConstraint(point);
-                    if (_pointIsUsable(point, projection)) {
-                      controller.p2.previewMoveSelectedComponent(point);
-                    }
+                    controller.componentTransform.preview(
+                      point,
+                      isValid: _pointIsUsable(point, projection),
+                    );
                   }
                 },
-                onPointerUp: (_) =>
-                    _finishPointer(projection, cancelled: false),
-                onPointerCancel: (_) =>
-                    _finishPointer(projection, cancelled: true),
+                onPointerUp: (event) {
+                  _activePointers.remove(event.pointer);
+                  _finishPointer(projection, cancelled: false);
+                },
+                onPointerCancel: (event) {
+                  _activePointers.remove(event.pointer);
+                  _finishPointer(projection, cancelled: true);
+                },
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTapUp: (details) =>
@@ -935,6 +1182,22 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                   label: Text('Трасса: $routeId · переходы активны'),
                 ),
               ),
+            if (controller.routeSelection.selectedRouteId != null)
+              Positioned(
+                left: compact ? 8 : 12,
+                top: compact ? 56 : 60,
+                child: CableRouteControls(
+                  mode: controller.cableUi.mode,
+                  onModeChanged: controller.cableUi.setMode,
+                  segmentFocused: controller.cableUi.activeSegmentIndex != null,
+                  segmentLocked: controller.cableUi.activeSegmentLocked,
+                  onToggleSegmentLock:
+                      controller.cableUi.toggleActiveSegmentLock,
+                  pointFocused: controller.cableUi.activePointIndex != null,
+                  pointIsWaypoint: controller.cableUi.activePointIsWaypoint,
+                  onToggleWaypoint: _toggleActiveWaypoint,
+                ),
+              ),
             if (surface.type == SurfacePlaneType.wall)
               Positioned(
                 left: compact ? 8 : 12,
@@ -960,19 +1223,20 @@ class _ViewportBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainerHigh,
-      borderRadius: BorderRadius.circular(7),
-      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
-      child: Text(
-        '${lod.name} · ${mmPerPixel.toStringAsFixed(1)} mm/px',
-        style: Theme.of(context).textTheme.labelSmall,
-      ),
-    ),
-  );
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(7),
+          border:
+              Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+          child: Text(
+            '${lod.name} · ${mmPerPixel.toStringAsFixed(1)} mm/px',
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+        ),
+      );
 }
 
 class _EdgeNavigationHint extends StatelessWidget {
@@ -982,29 +1246,32 @@ class _EdgeNavigationHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainerHigh
-          .withValues(alpha: 0.90),
-      borderRadius: BorderRadius.circular(7),
-      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.touch_app_outlined, size: 14),
-          const SizedBox(width: 4),
-          Text(
-            surface.type == SurfacePlaneType.wall
-                ? 'Double-click кромки → соседняя плоскость'
-                : 'Double-click границы → стена',
-            style: Theme.of(context).textTheme.labelSmall,
+        decoration: BoxDecoration(
+          color: Theme.of(context)
+              .colorScheme
+              .surfaceContainerHigh
+              .withValues(alpha: 0.90),
+          borderRadius: BorderRadius.circular(7),
+          border:
+              Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.touch_app_outlined, size: 14),
+              const SizedBox(width: 4),
+              Text(
+                surface.type == SurfacePlaneType.wall
+                    ? 'Double-click кромки → соседняя плоскость'
+                    : 'Double-click границы → стена',
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            ],
           ),
-        ],
-      ),
-    ),
-  );
+        ),
+      );
 }
 
 final class _SurfaceExtent {
@@ -1096,9 +1363,9 @@ final class _SurfaceProjection {
   }
 
   Rect get surfaceRect => Rect.fromPoints(
-    surfaceToViewport(SurfacePointMm(0, extent.heightMm)),
-    surfaceToViewport(SurfacePointMm(extent.widthMm, 0)),
-  );
+        surfaceToViewport(SurfacePointMm(0, extent.heightMm)),
+        surfaceToViewport(SurfacePointMm(extent.widthMm, 0)),
+      );
 
   _WallEdgeHit? wallEdgeHit(
     Offset viewportPoint, {
@@ -1155,11 +1422,11 @@ final class _SurfaceProjection {
   }
 
   Offset floorPointToViewport(MmPoint point) => surfaceToViewport(
-    SurfacePointMm(
-      point.x - extent.floorLeftMm,
-      point.y - extent.floorBottomMm,
-    ),
-  );
+        SurfacePointMm(
+          point.x - extent.floorLeftMm,
+          point.y - extent.floorBottomMm,
+        ),
+      );
 
   Offset _closestPointOnSegment(Offset point, Offset a, Offset b) {
     final ab = b - a;
@@ -1178,122 +1445,122 @@ class _SurfacePainter extends CustomPainter {
     this.lod,
     this.scheme, {
     required Animation<double> flowAnimation,
-  }) : flowAnimation = flowAnimation,
-       activeSurfaceId = controller.activeSurface?.id,
-       selectedSpaceId = controller.selectedSpaceId,
-       dimensionsVisible =
-           controller.dimensionsVisible &&
-           controller.p2.layers.isVisible(EditorLayerId.dimensions),
-       openingsVisible = controller.p2.layers.isVisible(EditorLayerId.openings),
-       electricalVisible = controller.p2.layers.isVisible(
-         EditorLayerId.electrical,
-       ),
-       cableRoutesVisible = controller.p2.layers.isVisible(
-         EditorLayerId.cableRoutes,
-       ),
-       boundaryProfile = controller.boundaryEditing.profile,
-       hoveredOpeningId = controller.boundaryEditing.hoveredOpeningId,
-       selectedOpeningId = controller.selectedOpeningId,
-       selectedRouteId = controller.routeSelection.selectedRouteId,
-       draftFingerprint = Object.hash(
-         controller.boundaryEditing.openingDraft?.openingId,
-         controller.boundaryEditing.openingDraft?.type,
-         controller.boundaryEditing.openingDraft?.offsetFromStartMm,
-         controller.boundaryEditing.openingDraft?.widthMm,
-         controller.boundaryEditing.openingDraft?.heightMm,
-         controller.boundaryEditing.openingDraft?.sillHeightMm,
-         controller.boundaryEditing.beamDraft?.startMm,
-         controller.boundaryEditing.beamDraft?.widthMm,
-         controller.boundaryEditing.beamDraft?.depthMm,
-       ),
-       openingsFingerprint = Object.hashAll(
-         controller.activeWallOpenings.map(
-           (opening) => Object.hash(
-             opening.id,
-             opening.type,
-             opening.offsetFromStartMm,
-             opening.widthMm,
-             opening.heightMm,
-             opening.sillHeightMm,
-           ),
-         ),
-       ),
-       routeFingerprint = Object.hashAll([
-         ...controller.routeSegments.expand(
-           (segment) => <Object?>[
-             segment.surface.id,
-             ...segment.points.expand(
-               (point) => <Object?>[point.xMm, point.yMm],
-             ),
-           ],
-         ),
-         ...controller.p2.routes.expand(
-           (route) => <Object?>[
-             route.id,
-             route.medium.id,
-             ...route.segments.expand(
-               (segment) => <Object?>[
-                 segment.surface.id,
-                 ...segment.points.expand(
-                   (point) => <Object?>[point.xMm, point.yMm],
-                 ),
-               ],
-             ),
-           ],
-         ),
-         ...controller.hostedRoutes.paths.expand(
-           (route) => <Object?>[
-             route.routeId,
-             ...route.segments.expand(
-               (segment) => <Object?>[
-                 segment.host.id,
-                 ...segment.points.expand(
-                   (point) => <Object?>[point.x, point.y],
-                 ),
-               ],
-             ),
-             ...route.transitions.expand(
-               (transition) => <Object?>[
-                 transition.id,
-                 transition.fromHost.id,
-                 transition.toHost.id,
-               ],
-             ),
-           ],
-         ),
-       ]),
-       componentsFingerprint = Object.hashAll(
-         controller.p2.components.expand(
-           (component) => <Object?>[
-             component.id,
-             component.type,
-             component.surface.id,
-             component.position.xMm,
-             component.position.yMm,
-             component.rotationDegrees,
-           ],
-         ),
-       ),
-       selectionFingerprint = Object.hashAll(controller.p2.selection.ids),
-       snapFingerprint = controller.p2.activeSnap == null
-           ? 0
-           : Object.hash(
-               controller.p2.activeSnap!.kind,
-               controller.p2.activeSnap!.point.x,
-               controller.p2.activeSnap!.point.y,
-             ),
-       profileFingerprint = Object.hashAll(
-         controller.selectedSpace?.wallProfiles.entries.expand(
-               (entry) => <Object?>[
-                 entry.key,
-                 ...entry.value.vertices.expand(
-                   (point) => <Object?>[point.xMm, point.yMm],
-                 ),
-               ],
-             ) ??
-             const <Object?>[],
-       ),
-       super(repaint: flowAnimation);
+  })  : flowAnimation = flowAnimation,
+        activeSurfaceId = controller.activeSurface?.id,
+        selectedSpaceId = controller.selectedSpaceId,
+        dimensionsVisible = controller.dimensionsVisible &&
+            controller.p2.layers.isVisible(EditorLayerId.dimensions),
+        openingsVisible =
+            controller.p2.layers.isVisible(EditorLayerId.openings),
+        electricalVisible = controller.p2.layers.isVisible(
+          EditorLayerId.electrical,
+        ),
+        cableRoutesVisible = controller.p2.layers.isVisible(
+          EditorLayerId.cableRoutes,
+        ),
+        boundaryProfile = controller.boundaryEditing.profile,
+        hoveredOpeningId = controller.boundaryEditing.hoveredOpeningId,
+        selectedOpeningId = controller.selectedOpeningId,
+        selectedRouteId = controller.routeSelection.selectedRouteId,
+        draftFingerprint = Object.hash(
+          controller.boundaryEditing.openingDraft?.openingId,
+          controller.boundaryEditing.openingDraft?.type,
+          controller.boundaryEditing.openingDraft?.offsetFromStartMm,
+          controller.boundaryEditing.openingDraft?.widthMm,
+          controller.boundaryEditing.openingDraft?.heightMm,
+          controller.boundaryEditing.openingDraft?.sillHeightMm,
+          controller.boundaryEditing.beamDraft?.startMm,
+          controller.boundaryEditing.beamDraft?.widthMm,
+          controller.boundaryEditing.beamDraft?.depthMm,
+        ),
+        openingsFingerprint = Object.hashAll(
+          controller.activeWallOpenings.map(
+            (opening) => Object.hash(
+              opening.id,
+              opening.type,
+              opening.offsetFromStartMm,
+              opening.widthMm,
+              opening.heightMm,
+              opening.sillHeightMm,
+            ),
+          ),
+        ),
+        routeFingerprint = Object.hashAll([
+          ...controller.routeSegments.expand(
+            (segment) => <Object?>[
+              segment.surface.id,
+              ...segment.points.expand(
+                (point) => <Object?>[point.xMm, point.yMm],
+              ),
+            ],
+          ),
+          ...controller.p2.routes.expand(
+            (route) => <Object?>[
+              route.id,
+              route.medium.id,
+              ...route.segments.expand(
+                (segment) => <Object?>[
+                  segment.surface.id,
+                  ...segment.points.expand(
+                    (point) => <Object?>[point.xMm, point.yMm],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          ...controller.hostedRoutes.paths.expand(
+            (route) => <Object?>[
+              route.routeId,
+              ...route.segments.expand(
+                (segment) => <Object?>[
+                  segment.host.id,
+                  ...segment.points.expand(
+                    (point) => <Object?>[point.x, point.y],
+                  ),
+                ],
+              ),
+              ...route.transitions.expand(
+                (transition) => <Object?>[
+                  transition.id,
+                  transition.fromHost.id,
+                  transition.toHost.id,
+                ],
+              ),
+            ],
+          ),
+        ]),
+        componentsFingerprint = Object.hashAll(
+          controller.p2.components.expand(
+            (component) => <Object?>[
+              component.id,
+              component.type,
+              component.surface.id,
+              component.position.xMm,
+              component.position.yMm,
+              component.rotationDegrees,
+            ],
+          ),
+        ),
+        selectionFingerprint = Object.hashAll(controller.p2.selection.ids),
+        snapFingerprint = controller.p2.activeSnap == null
+            ? 0
+            : Object.hash(
+                controller.p2.activeSnap!.kind,
+                controller.p2.activeSnap!.point.x,
+                controller.p2.activeSnap!.point.y,
+              ),
+        profileFingerprint = Object.hashAll(
+          controller.selectedSpace?.wallProfiles.entries.expand(
+                (entry) => <Object?>[
+                  entry.key,
+                  ...entry.value.vertices.expand(
+                    (point) => <Object?>[point.xMm, point.yMm],
+                  ),
+                ],
+              ) ??
+              const <Object?>[],
+        ),
+        super(repaint: flowAnimation);
 
   final EditorController controller;
   final _SurfaceProjection projection;
@@ -1375,14 +1642,14 @@ class _SurfacePainter extends CustomPainter {
         ..strokeWidth = boundaryProfile == BoundaryEditProfile.wall
             ? 4.0
             : customProfile
-            ? CadVisualTokens.profileStroke
-            : CadVisualTokens.geometryStroke
+                ? CadVisualTokens.profileStroke
+                : CadVisualTokens.geometryStroke
         ..strokeJoin = StrokeJoin.miter
         ..color = boundaryProfile == BoundaryEditProfile.wall
             ? CadVisualTokens.selectedGeometry(scheme)
             : customProfile
-            ? CadVisualTokens.profile(scheme)
-            : CadVisualTokens.geometry(scheme),
+                ? CadVisualTokens.profile(scheme)
+                : CadVisualTokens.geometry(scheme),
     );
     if (boundaryProfile == BoundaryEditProfile.structuralProfile) {
       _drawStructuralProfile(canvas, wall);
@@ -1475,9 +1742,8 @@ class _SurfacePainter extends CustomPainter {
         SurfacePointMm(end, draft.sillHeightMm),
       );
       final rect = Rect.fromPoints(a, b);
-      final color = valid
-          ? CadVisualTokens.selectedGeometry(scheme)
-          : scheme.error;
+      final color =
+          valid ? CadVisualTokens.selectedGeometry(scheme) : scheme.error;
       canvas.drawRect(rect, Paint()..color = color.withValues(alpha: 0.10));
       canvas.drawRect(
         rect,
@@ -1501,16 +1767,14 @@ class _SurfacePainter extends CustomPainter {
     if (draft == null) return;
     final end = draft.startMm + draft.widthMm;
     final bottom = wall.heightMm - draft.depthMm;
-    var valid =
-        draft.startMm >= 0 &&
+    var valid = draft.startMm >= 0 &&
         draft.widthMm > 0 &&
         draft.depthMm > 0 &&
         end <= wall.lengthMm.round() &&
         draft.depthMm < wall.heightMm;
     if (valid) {
       for (final opening in controller.activeWallOpenings) {
-        final overlapsX =
-            opening.offsetFromStartMm < end &&
+        final overlapsX = opening.offsetFromStartMm < end &&
             opening.endOffsetMm > draft.startMm;
         if (overlapsX && opening.topMm > bottom) {
           valid = false;
@@ -1519,9 +1783,8 @@ class _SurfacePainter extends CustomPainter {
       }
     }
 
-    final color = valid
-        ? CadVisualTokens.selectedGeometry(scheme)
-        : scheme.error;
+    final color =
+        valid ? CadVisualTokens.selectedGeometry(scheme) : scheme.error;
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5
@@ -1572,8 +1835,8 @@ class _SurfacePainter extends CustomPainter {
       final paint = Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.1
-        ..color = CadVisualTokens.selectedGeometry(scheme)
-            .withValues(alpha: 0.82);
+        ..color =
+            CadVisualTokens.selectedGeometry(scheme).withValues(alpha: 0.82);
       canvas.drawLine(start, end, paint);
       if (span.axis == MeasurementAxis.horizontal) {
         canvas.drawLine(
@@ -1720,14 +1983,13 @@ class _SurfacePainter extends CustomPainter {
     );
     final rect = Rect.fromPoints(a, b);
     final selected = selectedOpeningId == opening.id;
-    final hovered =
-        hoveredOpeningId == opening.id &&
+    final hovered = hoveredOpeningId == opening.id &&
         boundaryProfile == BoundaryEditProfile.openings;
     final fill = selected || hovered
         ? CadVisualTokens.selectedFill(scheme)
         : opening.type == ArchitecturalOpeningType.door
-        ? scheme.tertiaryContainer.withValues(alpha: 0.42)
-        : scheme.secondaryContainer.withValues(alpha: 0.42);
+            ? scheme.tertiaryContainer.withValues(alpha: 0.42)
+            : scheme.secondaryContainer.withValues(alpha: 0.42);
     canvas.drawRect(rect, Paint()..color = fill);
     canvas.drawRect(
       rect,
@@ -1736,8 +1998,8 @@ class _SurfacePainter extends CustomPainter {
         ..strokeWidth = selected
             ? 4
             : hovered
-            ? 3
-            : CadVisualTokens.openingStroke
+                ? 3
+                : CadVisualTokens.openingStroke
         ..color = selected || hovered
             ? CadVisualTokens.selectedGeometry(scheme)
             : CadVisualTokens.opening(scheme),
@@ -1794,6 +2056,65 @@ class _SurfacePainter extends CustomPainter {
         _drawFlow(canvas, route, activeHost, medium);
         _drawTransitionMarkers(canvas, route, activeHost);
         _drawLegacyTransitionMarkers(canvas, route.routeId, activeSurface);
+      }
+    }
+    _drawCableEditOverlay(canvas, activeSurface);
+  }
+
+  void _drawCableEditOverlay(Canvas canvas, RoomSurfaceRef activeSurface) {
+    final selected = controller.routeSelection.selectedRoute;
+    if (selected == null) return;
+    final endpointPreview = controller.cableEndpointTransform.previewState;
+    final routePreview = controller.cableRouteEdit.previewState;
+    final preview = endpointPreview?.route ?? routePreview?.route;
+    final validation = endpointPreview?.validation ?? routePreview?.validation;
+    if (preview != null) {
+      final color = validation == null || !validation.isValid
+          ? scheme.error
+          : validation.hasWarnings
+              ? Colors.amber.shade700
+              : Colors.green.shade600;
+      final paint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..color = color;
+      for (final segment in preview.segments) {
+        if (segment.surface == activeSurface) {
+          _drawRoutePoints(canvas, segment.points, paint);
+        }
+      }
+    }
+
+    for (var s = 0; s < selected.segments.length; s++) {
+      final segment = selected.segments[s];
+      if (segment.surface != activeSurface || segment.points.length < 2) {
+        continue;
+      }
+      for (var p = 0; p < segment.points.length; p++) {
+        final isEndpoint = (s == 0 && p == 0) ||
+            (s == selected.segments.length - 1 &&
+                p == segment.points.length - 1);
+        final isWaypoint = controller.cableUi.isWaypoint(selected.id, s, p);
+        final center = projection.surfaceToViewport(segment.points[p]);
+        canvas.drawCircle(
+          center,
+          isEndpoint ? 7 : 5,
+          Paint()
+            ..style = PaintingStyle.fill
+            ..color = isWaypoint ? scheme.tertiary : scheme.surface,
+        );
+        canvas.drawCircle(
+          center,
+          isEndpoint ? 7 : 5,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2
+            ..color = controller.cableUi.isSegmentLocked(selected.id, s)
+                ? scheme.outline
+                : scheme.primary,
+        );
       }
     }
   }

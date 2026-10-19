@@ -110,7 +110,14 @@ final class ComponentTransformSession extends ChangeNotifier
   @override
   bool commit() {
     final current = _preview;
-    if (current == null || !current.isValid || !current.dirty) return false;
+    if (current == null || !current.isValid) return false;
+    if (!current.dirty) {
+      controller.p2.cancelMoveSelectedComponent();
+      _preview = null;
+      _phase = EditorEditSessionPhase.cancelled;
+      notifyListeners();
+      return false;
+    }
     final committed = controller.p2.commitMoveSelectedComponent();
     if (!committed) return false;
     _preview = null;

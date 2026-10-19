@@ -90,8 +90,14 @@ final class CableEditorUiSession extends ChangeNotifier {
   bool routeHasLockedSegments(String routeId) =>
       _lockedSegments[routeId]?.isNotEmpty ?? false;
 
+  bool segmentHasWaypoints(String routeId, int segmentIndex) =>
+      (_waypoints[routeId] ?? const <CableMandatoryWaypoint>[]).any(
+        (item) => item.segmentIndex == segmentIndex,
+      );
+
   List<CableMandatoryWaypoint> waypointsFor(String routeId) =>
-      List.unmodifiable(_waypoints[routeId] ?? const <CableMandatoryWaypoint>[]);
+      List.unmodifiable(
+          _waypoints[routeId] ?? const <CableMandatoryWaypoint>[]);
 
   bool isWaypoint(String routeId, int segmentIndex, int pointIndex) =>
       (_waypoints[routeId] ?? const <CableMandatoryWaypoint>[]).any(

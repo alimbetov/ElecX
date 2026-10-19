@@ -73,8 +73,8 @@ class _UnifiedWorkspaceEditorScreenState
     final outdoor = transition.fromHost.kind == RouteHostKind.outdoorZone
         ? transition.fromHost
         : transition.toHost.kind == RouteHostKind.outdoorZone
-        ? transition.toHost
-        : null;
+            ? transition.toHost
+            : null;
     final zoneId = outdoor?.outdoorZoneId;
     if (zoneId == null) return;
     workspace.selectOutdoorZone(zoneId);
@@ -85,16 +85,16 @@ class _UnifiedWorkspaceEditorScreenState
     final indoor = transition.fromHost.kind == RouteHostKind.indoorSurface
         ? transition.fromHost
         : transition.toHost.kind == RouteHostKind.indoorSurface
-        ? transition.toHost
-        : null;
+            ? transition.toHost
+            : null;
     if (indoor == null) return;
 
     final connectionId = transition.siteConnectionId;
     final connection = connectionId == null
         ? null
         : workspace.site.connections
-              .where((item) => item.id == connectionId)
-              .firstOrNull;
+            .where((item) => item.id == connectionId)
+            .firstOrNull;
     if (connection != null) {
       workspace.selectLevel(connection.levelNumber);
     }
@@ -146,19 +146,19 @@ class _UnifiedWorkspaceEditorScreenState
           final desktop = mode == EditorLayoutMode.desktop;
           final rawCanvas =
               workspace.context == EditorWorkspaceContext.siteOutdoor
-              ? SiteMapCanvas(
-                  entities: SiteMapProjection.tower(workspace),
-                  interaction: siteInteraction,
-                  routeController: controller,
-                  onRouteTransitionTap: _followSiteTransition,
-                  onEntityOpen: _openSiteEntity,
-                )
-              : controller.viewMode == EditorViewMode.plan
-              ? SpatialCanvas(controller: controller)
-              : SurfaceCanvas(
-                  controller: controller,
-                  onOutdoorTransition: _followOutdoorTransition,
-                );
+                  ? SiteMapCanvas(
+                      entities: SiteMapProjection.tower(workspace),
+                      interaction: siteInteraction,
+                      routeController: controller,
+                      onRouteTransitionTap: _followSiteTransition,
+                      onEntityOpen: _openSiteEntity,
+                    )
+                  : controller.viewMode == EditorViewMode.plan
+                      ? SpatialCanvas(controller: controller)
+                      : SurfaceCanvas(
+                          controller: controller,
+                          onOutdoorTransition: _followOutdoorTransition,
+                        );
           final canvas = Stack(
             children: [
               Positioned.fill(child: rawCanvas),
@@ -456,8 +456,8 @@ class _ContextStrip extends StatelessWidget {
               onPressed: workspace.site.outdoorZones.isEmpty
                   ? null
                   : () => workspace.selectOutdoorZone(
-                      workspace.site.outdoorZones.first.id,
-                    ),
+                        workspace.site.outdoorZones.first.id,
+                      ),
             ),
             const SizedBox(width: 4),
             if (workspace.context == EditorWorkspaceContext.siteOutdoor)
@@ -497,24 +497,24 @@ class _ContextPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(left: 4),
-    child: DecoratedBox(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        child: Row(
-          children: [
-            Icon(icon, size: 13),
-            const SizedBox(width: 5),
-            Text(label, style: Theme.of(context).textTheme.labelSmall),
-          ],
+        padding: const EdgeInsets.only(left: 4),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            child: Row(
+              children: [
+                Icon(icon, size: 13),
+                const SizedBox(width: 5),
+                Text(label, style: Theme.of(context).textTheme.labelSmall),
+              ],
+            ),
+          ),
         ),
-      ),
-    ),
-  );
+      );
 }
 
 class _CatalogPanel extends StatelessWidget {
@@ -525,33 +525,33 @@ class _CatalogPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-    children: [
-      SizedBox(
-        height: EditorUiTokens.panelHeaderHeight,
-        child: Row(
-          children: [
-            const SizedBox(width: 12),
-            const Icon(Icons.widgets_outlined, size: 17),
-            const SizedBox(width: 7),
-            Expanded(
-              child: Text(
-                'КАТАЛОГ ОБОРУДОВАНИЯ',
-                style: Theme.of(context).textTheme.labelMedium,
-              ),
+        children: [
+          SizedBox(
+            height: EditorUiTokens.panelHeaderHeight,
+            child: Row(
+              children: [
+                const SizedBox(width: 12),
+                const Icon(Icons.widgets_outlined, size: 17),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    'КАТАЛОГ ОБОРУДОВАНИЯ',
+                    style: Theme.of(context).textTheme.labelMedium,
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Свернуть каталог',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: onCollapse,
+                  icon: const Icon(Icons.chevron_right, size: 18),
+                ),
+              ],
             ),
-            IconButton(
-              tooltip: 'Свернуть каталог',
-              visualDensity: VisualDensity.compact,
-              onPressed: onCollapse,
-              icon: const Icon(Icons.chevron_right, size: 18),
-            ),
-          ],
-        ),
-      ),
-      const Divider(height: 1),
-      Expanded(child: DeviceCatalogPanel(controller: controller)),
-    ],
-  );
+          ),
+          const Divider(height: 1),
+          Expanded(child: DeviceCatalogPanel(controller: controller)),
+        ],
+      );
 }
 
 class _SideRail extends StatelessWidget {
@@ -567,20 +567,20 @@ class _SideRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    width: EditorUiTokens.collapsedRailWidth,
-    child: Align(
-      alignment: Alignment.topCenter,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 6),
-        child: IconButton(
-          tooltip: tooltip,
-          onPressed: onPressed,
-          icon: Icon(icon, size: 19),
-          visualDensity: VisualDensity.compact,
+        width: EditorUiTokens.collapsedRailWidth,
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: IconButton(
+              tooltip: tooltip,
+              onPressed: onPressed,
+              icon: Icon(icon, size: 19),
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
         ),
-      ),
-    ),
-  );
+      );
 }
 
 class _ContextBadge extends StatelessWidget {
@@ -590,15 +590,15 @@ class _ContextBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-    elevation: 1,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      child: Text(
-        _contextPath(workspace),
-        style: Theme.of(context).textTheme.labelSmall,
-      ),
-    ),
-  );
+        elevation: 1,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+          child: Text(
+            _contextPath(workspace),
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+        ),
+      );
 }
 
 String _contextPath(EditorBuildingWorkspace workspace) {

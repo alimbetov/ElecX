@@ -25,7 +25,7 @@ final class CableRouteEditSession extends ChangeNotifier
   CableRouteEditSession({required this.onCommit});
 
   final bool Function(ElectricalCableRoute before, ElectricalCableRoute after)
-  onCommit;
+      onCommit;
 
   ElectricalCableRoute? _origin;
   CableRouteEditPreview? _preview;
@@ -105,9 +105,8 @@ final class CableRouteEditSession extends ChangeNotifier
       target: segment.points.last,
       context: context,
     );
-    final best = candidates
-        .where((item) => item.validation.isValid)
-        .firstOrNull;
+    final best =
+        candidates.where((item) => item.validation.isValid).firstOrNull;
     if (best == null) {
       _phase = EditorEditSessionPhase.invalid;
       notifyListeners();
@@ -186,18 +185,19 @@ final class CableRouteEditSession extends ChangeNotifier
     ElectricalCableRoute route,
     int index,
     ElectricalRouteSegment replacement,
-  ) => ElectricalCableRoute(
-    id: route.id,
-    source: route.source,
-    target: route.target,
-    segments: [
-      for (var i = 0; i < route.segments.length; i++)
-        if (i == index) replacement else route.segments[i],
-    ],
-    cableType: route.cableType,
-    medium: route.medium,
-    reservePercent: route.reservePercent,
-  );
+  ) =>
+      ElectricalCableRoute(
+        id: route.id,
+        source: route.source,
+        target: route.target,
+        segments: [
+          for (var i = 0; i < route.segments.length; i++)
+            if (i == index) replacement else route.segments[i],
+        ],
+        cableType: route.cableType,
+        medium: route.medium,
+        reservePercent: route.reservePercent,
+      );
 
   static bool _changed(
     ElectricalCableRoute before,

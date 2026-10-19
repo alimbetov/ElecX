@@ -7,16 +7,17 @@ import 'dart:math' as math;
 /// every room, wall and window derive a consistent world orientation.
 final class ProjectNorth {
   const ProjectNorth({this.northAzimuthDegrees = 0})
-    : assert(northAzimuthDegrees >= 0),
-      assert(northAzimuthDegrees < 360);
+      : assert(northAzimuthDegrees >= 0),
+        assert(northAzimuthDegrees < 360);
 
   final double northAzimuthDegrees;
 
   double get northAzimuthRadians => northAzimuthDegrees * math.pi / 180;
 
   ProjectNorth copyWith({double? northAzimuthDegrees}) => ProjectNorth(
-    northAzimuthDegrees: _normalize(northAzimuthDegrees ?? this.northAzimuthDegrees),
-  );
+        northAzimuthDegrees:
+            _normalize(northAzimuthDegrees ?? this.northAzimuthDegrees),
+      );
 
   /// Converts a plan-space clockwise azimuth (0 = plan-up) into true-world
   /// azimuth where 0 = north, 90 = east, 180 = south, 270 = west.
@@ -37,8 +38,8 @@ final class SolarSiteContext {
     required this.latitudeDegrees,
     required this.longitudeDegrees,
     required this.timeZoneOffsetMinutes,
-  }) : assert(latitudeDegrees >= -90 && latitudeDegrees <= 90),
-       assert(longitudeDegrees >= -180 && longitudeDegrees <= 180);
+  })  : assert(latitudeDegrees >= -90 && latitudeDegrees <= 90),
+        assert(longitudeDegrees >= -180 && longitudeDegrees <= 180);
 
   final double latitudeDegrees;
   final double longitudeDegrees;

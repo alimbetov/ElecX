@@ -26,15 +26,15 @@ final class MmBounds {
     required this.bottom,
     required this.right,
     required this.top,
-  }) : assert(right >= left),
-       assert(top >= bottom);
+  })  : assert(right >= left),
+        assert(top >= bottom);
 
   factory MmBounds.fromPoints(MmPoint a, MmPoint b) => MmBounds(
-    left: math.min(a.x, b.x),
-    bottom: math.min(a.y, b.y),
-    right: math.max(a.x, b.x),
-    top: math.max(a.y, b.y),
-  );
+        left: math.min(a.x, b.x),
+        bottom: math.min(a.y, b.y),
+        right: math.max(a.x, b.x),
+        top: math.max(a.y, b.y),
+      );
 
   final int left;
   final int bottom;
@@ -70,16 +70,16 @@ final class MmBounds {
   }
 
   MmBounds union(MmBounds other) => MmBounds(
-    left: math.min(left, other.left),
-    bottom: math.min(bottom, other.bottom),
-    right: math.max(right, other.right),
-    top: math.max(top, other.top),
-  );
+        left: math.min(left, other.left),
+        bottom: math.min(bottom, other.bottom),
+        right: math.max(right, other.right),
+        top: math.max(top, other.top),
+      );
 }
 
 final class MmPolygon {
   MmPolygon(Iterable<MmPoint> vertices)
-    : vertices = List.unmodifiable(vertices) {
+      : vertices = List.unmodifiable(vertices) {
     if (this.vertices.length < 3) {
       throw ArgumentError('A room boundary requires at least three vertices.');
     }

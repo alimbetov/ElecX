@@ -29,16 +29,17 @@ final class EditorP2State {
     List<ElectricalComponentPlacement>? components,
     List<ElectricalCableRoute>? routes,
     SelectionState? selection,
-  }) => EditorP2State(
-    components: components ?? this.components,
-    routes: routes ?? this.routes,
-    selection: selection ?? this.selection,
-  );
+  }) =>
+      EditorP2State(
+        components: components ?? this.components,
+        routes: routes ?? this.routes,
+        selection: selection ?? this.selection,
+      );
 }
 
 final class EditorP2Session extends ChangeNotifier {
   EditorP2Session()
-    : history = CommandHistory<EditorP2State>(const EditorP2State());
+      : history = CommandHistory<EditorP2State>(const EditorP2State());
 
   final CommandHistory<EditorP2State> history;
   final EditorLayerRegistry layers = EditorLayerRegistry();
@@ -178,6 +179,25 @@ final class EditorP2Session extends ChangeNotifier {
     _replaceState(_replaceComponent(state, origin));
   }
 
+  bool replaceCableRoute(
+    ElectricalCableRoute before,
+    ElectricalCableRoute after,
+  ) {
+    if (before.id != after.id || layers.isLocked(EditorLayerId.cableRoutes)) {
+      return false;
+    }
+    if (!routes.any((route) => route.id == before.id)) return false;
+    if (!ElectricalConnectivityValidator.routeIsConnected(
+      route: after,
+      components: components,
+    )) {
+      return false;
+    }
+    history.execute(_ReplaceCableRouteCommand(before: before, after: after));
+    notifyListeners();
+    return true;
+  }
+
   bool moveSelectedComponent(SurfacePointMm point) {
     final component = selectedComponent;
     if (component == null || layers.isLocked(EditorLayerId.electrical)) {
@@ -247,9 +267,8 @@ final class EditorP2Session extends ChangeNotifier {
     final pair = selectedComponents;
     if (pair.length != 2) return false;
     final sourceComponent = _preferredSource(pair[0], pair[1]);
-    final targetComponent = identical(sourceComponent, pair[0])
-        ? pair[1]
-        : pair[0];
+    final targetComponent =
+        identical(sourceComponent, pair[0]) ? pair[1] : pair[0];
     final sourcePort = _portForSource(sourceComponent);
     final targetPort = _portForTarget(targetComponent);
     if (sourcePort == null || targetPort == null) return false;
@@ -344,8 +363,8 @@ final class EditorP2Session extends ChangeNotifier {
           primaryId: ids.contains(selection.primaryId)
               ? selection.primaryId
               : ids.isEmpty
-              ? null
-              : ids.first,
+                  ? null
+                  : ids.first,
         ),
       ),
       notify: false,
@@ -366,12 +385,13 @@ final class EditorP2Session extends ChangeNotifier {
   static EditorP2State _replaceComponent(
     EditorP2State state,
     ElectricalComponentPlacement replacement,
-  ) => state.copyWith(
-    components: [
-      for (final component in state.components)
-        if (component.id == replacement.id) replacement else component,
-    ],
-  );
+  ) =>
+      state.copyWith(
+        components: [
+          for (final component in state.components)
+            if (component.id == replacement.id) replacement else component,
+        ],
+      );
 
   static ElectricalComponentPlacement _preferredSource(
     ElectricalComponentPlacement first,
@@ -412,6 +432,35 @@ final class EditorP2Session extends ChangeNotifier {
       (a.xMm - b.xMm).abs().toDouble() + (a.yMm - b.yMm).abs().toDouble();
 }
 
+final class _ReplaceCableRouteCommand implements EditorCommand<EditorP2State> {
+  const _ReplaceCableRouteCommand({required this.before, required this.after});
+
+  final ElectricalCableRoute before;
+  final ElectricalCableRoute after;
+
+  @override
+  String get label => 'Edit cable route';
+
+  @override
+  EditorP2State execute(EditorP2State state) =>
+      _replace(state, before.id, after);
+
+  @override
+  EditorP2State undo(EditorP2State state) => _replace(state, after.id, before);
+
+  static EditorP2State _replace(
+    EditorP2State state,
+    String routeId,
+    ElectricalCableRoute replacement,
+  ) =>
+      state.copyWith(
+        routes: [
+          for (final route in state.routes)
+            if (route.id == routeId) replacement else route,
+        ],
+      );
+}
+
 final Expando<EditorP2Session> _p2Sessions = Expando<EditorP2Session>(
   'ElecX P2 editor session',
 );
@@ -433,10 +482,10 @@ final class _AddComponentCommand implements EditorCommand<EditorP2State> {
 
   @override
   EditorP2State undo(EditorP2State state) => state.copyWith(
-    components: state.components
-        .where((item) => item.id != component.id)
-        .toList(growable: false),
-  );
+        components: state.components
+            .where((item) => item.id != component.id)
+            .toList(growable: false),
+      );
 }
 
 final class _ReplaceComponentCommand implements EditorCommand<EditorP2State> {
@@ -491,8 +540,8 @@ final class _AddRouteCommand implements EditorCommand<EditorP2State> {
 
   @override
   EditorP2State undo(EditorP2State state) => state.copyWith(
-    routes: state.routes
-        .where((item) => item.id != route.id)
-        .toList(growable: false),
-  );
+        routes: state.routes
+            .where((item) => item.id != route.id)
+            .toList(growable: false),
+      );
 }

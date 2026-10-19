@@ -46,10 +46,10 @@ final class RoomSurfaceRef {
   final int? wallIndex;
 
   String get id => switch (type) {
-    SurfacePlaneType.floor => '$spaceId:floor',
-    SurfacePlaneType.ceiling => '$spaceId:ceiling',
-    SurfacePlaneType.wall => '$spaceId:wall:$wallIndex',
-  };
+        SurfacePlaneType.floor => '$spaceId:floor',
+        SurfacePlaneType.ceiling => '$spaceId:ceiling',
+        SurfacePlaneType.wall => '$spaceId:wall:$wallIndex',
+      };
 
   @override
   bool operator ==(Object other) =>
@@ -124,15 +124,16 @@ final class ArchitecturalOpening {
     int? widthMm,
     int? heightMm,
     int? sillHeightMm,
-  }) => ArchitecturalOpening(
-    id: id,
-    hostWall: hostWall ?? this.hostWall,
-    type: type ?? this.type,
-    offsetFromStartMm: offsetFromStartMm ?? this.offsetFromStartMm,
-    widthMm: widthMm ?? this.widthMm,
-    heightMm: heightMm ?? this.heightMm,
-    sillHeightMm: sillHeightMm ?? this.sillHeightMm,
-  );
+  }) =>
+      ArchitecturalOpening(
+        id: id,
+        hostWall: hostWall ?? this.hostWall,
+        type: type ?? this.type,
+        offsetFromStartMm: offsetFromStartMm ?? this.offsetFromStartMm,
+        widthMm: widthMm ?? this.widthMm,
+        heightMm: heightMm ?? this.heightMm,
+        sillHeightMm: sillHeightMm ?? this.sillHeightMm,
+      );
 }
 
 /// A point in coordinates local to a physical surface.
@@ -144,6 +145,13 @@ final class SurfacePointMm {
 
   final int xMm;
   final int yMm;
+
+  @override
+  bool operator ==(Object other) =>
+      other is SurfacePointMm && other.xMm == xMm && other.yMm == yMm;
+
+  @override
+  int get hashCode => Object.hash(xMm, yMm);
 }
 
 final class SurfaceRouteDraft {
@@ -182,8 +190,7 @@ abstract final class RoomSurfaceResolver {
     final start = vertices[wallIndex];
     final end = vertices[(wallIndex + 1) % vertices.length];
     final length = start.distanceTo(end).round();
-    final profile =
-        space.wallProfiles[wallIndex] ??
+    final profile = space.wallProfiles[wallIndex] ??
         WallProfile.rectangle(widthMm: length, heightMm: defaultHeightMm);
     return RoomWallSurface(
       ref: RoomSurfaceRef.wall(space.id, wallIndex),

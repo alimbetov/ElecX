@@ -16,8 +16,7 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
     required this.site,
     int initialLevelNumber = 1,
   }) : _activeLevelNumber = initialLevelNumber {
-    final initial =
-        building.levelByNumber(initialLevelNumber) ??
+    final initial = building.levelByNumber(initialLevelNumber) ??
         building.orderedLevels.first;
     _activeLevelNumber = initial.levelNumber;
     _activateLevel(initial);

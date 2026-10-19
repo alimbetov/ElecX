@@ -45,10 +45,10 @@ void main() {
   test('sloped top keeps ordered plan projection', () {
     final profile = WallProfile.rectangle(widthMm: 3000, heightMm: 3000)
         .withTopPolyline(const [
-          WallProfilePoint(0, 3000),
-          WallProfilePoint(1500, 2700),
-          WallProfilePoint(3000, 2400),
-        ]);
+      WallProfilePoint(0, 3000),
+      WallProfilePoint(1500, 2700),
+      WallProfilePoint(3000, 2400),
+    ]);
 
     final contour = WallProfilePlanProjection.topContour(profile);
 

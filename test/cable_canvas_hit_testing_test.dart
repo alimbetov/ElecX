@@ -7,12 +7,13 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   final surface = RoomSurfaceRef.wall('room-1', 0);
 
-  ElectricalCableRoute route(List<SurfacePointMm> points) => ElectricalCableRoute(
-    id: 'route-1',
-    source: const ElectricalEndpointRef(componentId: 'a', portId: 'out'),
-    target: const ElectricalEndpointRef(componentId: 'b', portId: 'in'),
-    segments: [ElectricalRouteSegment(surface: surface, points: points)],
-  );
+  ElectricalCableRoute route(List<SurfacePointMm> points) =>
+      ElectricalCableRoute(
+        id: 'route-1',
+        source: const ElectricalEndpointRef(componentId: 'a', portId: 'out'),
+        target: const ElectricalEndpointRef(componentId: 'b', portId: 'in'),
+        segments: [ElectricalRouteSegment(surface: surface, points: points)],
+      );
 
   test('endpoint handles outrank vertices and segments', () {
     final cable = route(const [
@@ -70,8 +71,7 @@ void main() {
     ]);
     for (var i = 1; i < moved.length; i++) {
       expect(
-        moved[i - 1].xMm == moved[i].xMm ||
-            moved[i - 1].yMm == moved[i].yMm,
+        moved[i - 1].xMm == moved[i].xMm || moved[i - 1].yMm == moved[i].yMm,
         isTrue,
       );
     }

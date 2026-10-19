@@ -37,7 +37,8 @@ class CableRouteControls extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Редактор трассы', style: Theme.of(context).textTheme.labelLarge),
+            Text('Редактор трассы',
+                style: Theme.of(context).textTheme.labelLarge),
             const SizedBox(height: 6),
             SegmentedButton<CableRoutingMode>(
               segments: const [

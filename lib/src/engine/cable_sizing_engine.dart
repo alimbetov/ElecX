@@ -14,11 +14,11 @@ final class CircuitElectricalRequirement {
     required this.routeLengthMm,
     required this.maxVoltageDropRatio,
     this.powerFactor = 1.0,
-  }) : assert(designCurrentA > 0),
-       assert(nominalVoltageV > 0),
-       assert(routeLengthMm >= 0),
-       assert(maxVoltageDropRatio > 0 && maxVoltageDropRatio < 1),
-       assert(powerFactor > 0 && powerFactor <= 1);
+  })  : assert(designCurrentA > 0),
+        assert(nominalVoltageV > 0),
+        assert(routeLengthMm >= 0),
+        assert(maxVoltageDropRatio > 0 && maxVoltageDropRatio < 1),
+        assert(powerFactor > 0 && powerFactor <= 1);
 
   final CircuitPhaseSystem phaseSystem;
   final double designCurrentA;
@@ -36,8 +36,8 @@ final class CableImpedanceEvidence {
     required this.resistanceOhmPerKm,
     this.reactanceOhmPerKm = 0,
     this.sourceKey,
-  }) : assert(resistanceOhmPerKm >= 0),
-       assert(reactanceOhmPerKm >= 0);
+  })  : assert(resistanceOhmPerKm >= 0),
+        assert(reactanceOhmPerKm >= 0);
 
   final double resistanceOhmPerKm;
   final double reactanceOhmPerKm;
@@ -68,8 +68,8 @@ final class SectionAmpacityEvidence {
     required this.baseAmpacityA,
     required Iterable<ThermalCorrectionFactor> factors,
     this.sourceKey,
-  }) : assert(baseAmpacityA > 0),
-       factors = List.unmodifiable(factors);
+  })  : assert(baseAmpacityA > 0),
+        factors = List.unmodifiable(factors);
 
   final String sectionId;
   final double baseAmpacityA;
@@ -147,8 +147,8 @@ abstract final class CableSizingEngine {
     final voltageDropStatus = voltageDropRatio == null
         ? EngineeringCheckStatus.indeterminate
         : voltageDropRatio <= request.requirement.maxVoltageDropRatio
-        ? EngineeringCheckStatus.pass
-        : EngineeringCheckStatus.fail;
+            ? EngineeringCheckStatus.pass
+            : EngineeringCheckStatus.fail;
 
     final reasons = <String>[];
     if (ampacitySections.isEmpty) {
@@ -212,14 +212,14 @@ abstract final class CableSizingEngine {
     final lengthKm = requirement.routeLengthMm / 1000000.0;
     final cosPhi = requirement.powerFactor;
     final sinPhi = math.sqrt(math.max(0, 1 - cosPhi * cosPhi));
-    final impedanceTerm =
-        evidence.resistanceOhmPerKm * cosPhi +
+    final impedanceTerm = evidence.resistanceOhmPerKm * cosPhi +
         evidence.reactanceOhmPerKm * sinPhi;
 
     return switch (requirement.phaseSystem) {
       CircuitPhaseSystem.threePhaseAc =>
         math.sqrt(3) * requirement.designCurrentA * lengthKm * impedanceTerm,
-      CircuitPhaseSystem.dc || CircuitPhaseSystem.singlePhaseAc =>
+      CircuitPhaseSystem.dc ||
+      CircuitPhaseSystem.singlePhaseAc =>
         2 * requirement.designCurrentA * lengthKm * impedanceTerm,
     };
   }

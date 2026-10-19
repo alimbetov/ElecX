@@ -94,50 +94,51 @@ abstract final class ComponentTaxonomyResolver {
     }
     return switch (entry.systemClass) {
       EngineeringSystemClass.structuredCabling => const ComponentTaxonomyRef(
-        category: ComponentCategory.data,
-        subcategory: ComponentSubcategory.dataOutlet,
-      ),
+          category: ComponentCategory.data,
+          subcategory: ComponentSubcategory.dataOutlet,
+        ),
       EngineeringSystemClass.poeNetwork => const ComponentTaxonomyRef(
-        category: ComponentCategory.data,
-        subcategory: ComponentSubcategory.accessPoint,
-      ),
+          category: ComponentCategory.data,
+          subcategory: ComponentSubcategory.accessPoint,
+        ),
       EngineeringSystemClass.fiberOptic => const ComponentTaxonomyRef(
-        category: ComponentCategory.data,
-        subcategory: ComponentSubcategory.fiberTermination,
-      ),
+          category: ComponentCategory.data,
+          subcategory: ComponentSubcategory.fiberTermination,
+        ),
       EngineeringSystemClass.cctv => const ComponentTaxonomyRef(
-        category: ComponentCategory.cctv,
-        subcategory: ComponentSubcategory.camera,
-      ),
+          category: ComponentCategory.cctv,
+          subcategory: ComponentSubcategory.camera,
+        ),
       EngineeringSystemClass.accessControl => const ComponentTaxonomyRef(
-        category: ComponentCategory.accessControl,
-        subcategory: ComponentSubcategory.accessReader,
-      ),
+          category: ComponentCategory.accessControl,
+          subcategory: ComponentSubcategory.accessReader,
+        ),
       EngineeringSystemClass.fireAlarm => const ComponentTaxonomyRef(
-        category: ComponentCategory.fireSafety,
-        subcategory: ComponentSubcategory.detector,
-      ),
+          category: ComponentCategory.fireSafety,
+          subcategory: ComponentSubcategory.detector,
+        ),
       EngineeringSystemClass.automationBus => const ComponentTaxonomyRef(
-        category: ComponentCategory.automation,
-        subcategory: ComponentSubcategory.controller,
-      ),
+          category: ComponentCategory.automation,
+          subcategory: ComponentSubcategory.controller,
+        ),
       EngineeringSystemClass.dryContact => const ComponentTaxonomyRef(
-        category: ComponentCategory.automation,
-        subcategory: ComponentSubcategory.contactSensor,
-      ),
+          category: ComponentCategory.automation,
+          subcategory: ComponentSubcategory.contactSensor,
+        ),
       EngineeringSystemClass.lighting => const ComponentTaxonomyRef(
-        category: ComponentCategory.lighting,
-        subcategory: ComponentSubcategory.luminaire,
-      ),
+          category: ComponentCategory.lighting,
+          subcategory: ComponentSubcategory.luminaire,
+        ),
       EngineeringSystemClass.powerAc ||
-      EngineeringSystemClass.powerDc => const ComponentTaxonomyRef(
-        category: ComponentCategory.power,
-        subcategory: ComponentSubcategory.custom,
-      ),
+      EngineeringSystemClass.powerDc =>
+        const ComponentTaxonomyRef(
+          category: ComponentCategory.power,
+          subcategory: ComponentSubcategory.custom,
+        ),
       EngineeringSystemClass.custom => const ComponentTaxonomyRef(
-        category: ComponentCategory.custom,
-        subcategory: ComponentSubcategory.custom,
-      ),
+          category: ComponentCategory.custom,
+          subcategory: ComponentSubcategory.custom,
+        ),
     };
   }
 }

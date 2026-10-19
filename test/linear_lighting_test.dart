@@ -15,7 +15,8 @@ void main() {
     cutStepMm: 50,
   );
 
-  test('distributed load derives power, current and light output from length', () {
+  test('distributed load derives power, current and light output from length',
+      () {
     final run = LinearLuminaireRun(
       id: 'strip-1',
       specId: spec.id,
@@ -49,7 +50,8 @@ void main() {
     expect(result.withinContinuousLength, isFalse);
   });
 
-  test('requested length snaps to strip cut step without collapsing to zero', () {
+  test('requested length snaps to strip cut step without collapsing to zero',
+      () {
     expect(
       LinearLuminaireEngine.snapLengthToCutStep(
         requestedLengthMm: 1032,
@@ -126,6 +128,7 @@ void main() {
     mutable[1] = const SurfacePointMm(5000, 0);
 
     expect(run.geometricLengthMm, 1000);
-    expect(() => run.points.add(const SurfacePointMm(2000, 0)), throwsUnsupportedError);
+    expect(() => run.points.add(const SurfacePointMm(2000, 0)),
+        throwsUnsupportedError);
   });
 }

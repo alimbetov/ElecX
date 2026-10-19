@@ -112,8 +112,8 @@ abstract final class DaylightAssistEngine {
     final nominalDepth = (heightAboveWorkPlane * 1.75).round();
 
     final orientationWeight = _orientationWeight(facadeAzimuth);
-    final strength = (window.visibleLightTransmittance * orientationWeight)
-        .clamp(0.15, 1.0);
+    final strength =
+        (window.visibleLightTransmittance * orientationWeight).clamp(0.15, 1.0);
     final effectiveDepth = (nominalDepth * strength).round();
 
     return DaylightReachZone(
