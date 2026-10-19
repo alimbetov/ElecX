@@ -49,7 +49,7 @@ void main() {
     expect(result.withinContinuousLength, isFalse);
   });
 
-  test('requested length snaps to strip cut step', () {
+  test('requested length snaps to strip cut step without collapsing to zero', () {
     expect(
       LinearLuminaireEngine.snapLengthToCutStep(
         requestedLengthMm: 1032,
@@ -57,5 +57,75 @@ void main() {
       ),
       1050,
     );
+    expect(
+      LinearLuminaireEngine.snapLengthToCutStep(
+        requestedLengthMm: 1,
+        spec: spec,
+      ),
+      50,
+    );
+    expect(
+      LinearLuminaireEngine.snapLengthToCutStep(
+        requestedLengthMm: 0,
+        spec: spec,
+      ),
+      0,
+    );
+  });
+
+  test('run rejects zero-length geometry', () {
+    expect(
+      () => LinearLuminaireRun(
+        id: 'strip-zero',
+        specId: spec.id,
+        surface: surface,
+        points: const [SurfacePointMm(100, 100), SurfacePointMm(100, 100)],
+        feedMode: LinearLuminaireFeedMode.start,
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test('both-end feed is rejected when the product forbids it', () {
+    final oneEndOnly = LinearLuminaireSpec(
+      id: 'one-end-only',
+      name: 'One-end LED strip',
+      nominalVoltageV: 24,
+      powerPerMeterW: 10,
+      luminousFluxPerMeterLm: 900,
+      maxContinuousLengthMm: 5000,
+      feedFromBothEndsAllowed: false,
+    );
+    final run = LinearLuminaireRun(
+      id: 'strip-both-ends',
+      specId: oneEndOnly.id,
+      surface: surface,
+      points: const [SurfacePointMm(0, 0), SurfacePointMm(3000, 0)],
+      feedMode: LinearLuminaireFeedMode.bothEnds,
+    );
+
+    expect(
+      () => LinearLuminaireEngine.summarize(run: run, spec: oneEndOnly),
+      throwsArgumentError,
+    );
+  });
+
+  test('run geometry is immutable after construction', () {
+    final mutable = <SurfacePointMm>[
+      const SurfacePointMm(0, 0),
+      const SurfacePointMm(1000, 0),
+    ];
+    final run = LinearLuminaireRun(
+      id: 'strip-immutable',
+      specId: spec.id,
+      surface: surface,
+      points: mutable,
+      feedMode: LinearLuminaireFeedMode.start,
+    );
+
+    mutable[1] = const SurfacePointMm(5000, 0);
+
+    expect(run.geometricLengthMm, 1000);
+    expect(() => run.points.add(const SurfacePointMm(2000, 0)), throwsUnsupportedError);
   });
 }
