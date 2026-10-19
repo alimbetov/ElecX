@@ -9,32 +9,14 @@ enum RouteMediumFamily {
 }
 
 enum RouteFlowVisualKind {
-  /// Alternating-current energy transfer. Visuals should oscillate/pulse rather
-  /// than imply electrons travelling continuously in one direction.
   acOscillation,
-
-  /// Directional DC/energy/control flow from source to target.
   directionalPulse,
-
-  /// Duplex packet traffic such as Ethernet/LAN.
   bidirectionalPackets,
-
-  /// Optical transport represented by a moving light pulse.
   opticalPulse,
-
-  /// A low-rate logical/control pulse (RS-485, alarm loops, dry-contact buses).
   controlPulse,
-
-  /// Unknown/custom medium. Highlight the route without asserting flow physics.
   neutralPulse,
 }
 
-/// Engineering meaning of a routed conductor/media path.
-///
-/// [id] is deliberately open-ended so manufacturer/project-specific media can
-/// participate without adding another enum. [cableType] on a route remains the
-/// exact cable/conductor specification (for example `VVGng-LS 3x2.5` or
-/// `Cat6A F/UTP`).
 final class RouteMediumProfile {
   const RouteMediumProfile({
     required this.id,
@@ -49,6 +31,18 @@ final class RouteMediumProfile {
   final RouteFlowVisualKind flowVisual;
   final bool bidirectional;
   final String? protocol;
+
+  String get displayName => switch (id) {
+        'power.ac' => 'AC',
+        'power.dc' => 'DC',
+        'data.ethernet' => 'Ethernet',
+        'data.poe' => 'PoE',
+        'optical.fiber' => 'Fiber',
+        'control.rs485' => 'RS-485',
+        'safety.fire-alarm' => 'Fire Alarm',
+        'data.coax' => 'Coax',
+        _ => protocol ?? id,
+      };
 
   static const acPower = RouteMediumProfile(
     id: 'power.ac',
