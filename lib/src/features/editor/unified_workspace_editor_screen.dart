@@ -11,6 +11,7 @@ import 'editor_layout_policy.dart';
 import 'editor_shell_state.dart';
 import 'editor_ui_tokens.dart';
 import 'engineering_placement_cursor_hud.dart';
+import 'project_compass_overlay.dart';
 import 'site_map_canvas.dart';
 import 'site_map_interaction.dart';
 import 'spatial_canvas.dart';
@@ -159,9 +160,20 @@ class _UnifiedWorkspaceEditorScreenState
                           controller: controller,
                           onOutdoorTransition: _followOutdoorTransition,
                         );
+          final planContext =
+              workspace.context == EditorWorkspaceContext.siteOutdoor ||
+              controller.viewMode == EditorViewMode.plan;
           final canvas = Stack(
             children: [
               Positioned.fill(child: rawCanvas),
+              if (planContext)
+                Positioned(
+                  right: 12,
+                  top: 12,
+                  child: ProjectCompassOverlay(
+                    projectNorth: workspace.site.site.projectNorth,
+                  ),
+                ),
               if (workspace.context != EditorWorkspaceContext.siteOutdoor)
                 Positioned(
                   right: 12,
@@ -324,110 +336,36 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onOpenMiniMap;
 
   @override
-  Size get preferredSize => const Size.fromHeight(EditorUiTokens.appBarHeight);
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   @override
   Widget build(BuildContext context) {
-    final editor = workspace.editor;
     return AppBar(
-      toolbarHeight: EditorUiTokens.appBarHeight,
-      titleSpacing: compact ? 6 : 12,
-      title: Row(
-        children: [
-          const Icon(Icons.electric_bolt_outlined, size: 19),
-          const SizedBox(width: 7),
-          Flexible(
-            child: Text(
-              compact ? 'ElecX' : _contextPath(workspace),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
+      titleSpacing: compact ? 4 : 12,
+      title: Text(
+        workspace.context == EditorWorkspaceContext.siteOutdoor
+            ? 'ElecX · ${workspace.site.site.name}'
+            : 'ElecX · ${workspace.activeLevel?.displayName ?? ''}',
       ),
       actions: [
+        IconButton(
+          tooltip: 'Контекстная карта',
+          onPressed: onOpenMiniMap,
+          icon: const Icon(Icons.map_outlined),
+        ),
+        IconButton(
+          tooltip: shell.focusMode ? 'Выйти из Focus' : 'Focus mode',
+          onPressed: shell.toggleFocusMode,
+          icon: Icon(
+            shell.focusMode ? Icons.fullscreen_exit : Icons.fullscreen,
+          ),
+        ),
         if (!compact)
           IconButton(
-            tooltip: shell.navigatorVisible
-                ? 'Свернуть навигатор'
-                : 'Показать навигатор',
-            onPressed: shell.toggleNavigator,
-            icon: Icon(
-              shell.navigatorVisible
-                  ? Icons.keyboard_double_arrow_left
-                  : Icons.keyboard_double_arrow_right,
-              size: 19,
-            ),
+            tooltip: 'Показать / скрыть контекст',
+            onPressed: shell.toggleContextBar,
+            icon: const Icon(Icons.info_outline),
           ),
-        IconButton(
-          tooltip: 'Микро-карта',
-          onPressed: onOpenMiniMap,
-          icon: const Icon(Icons.map_outlined, size: 19),
-        ),
-        if (workspace.context == EditorWorkspaceContext.buildingLevel) ...[
-          IconButton(
-            tooltip: 'Предыдущий уровень',
-            onPressed: workspace.previousLevel,
-            icon: const Icon(Icons.keyboard_arrow_down, size: 19),
-          ),
-          if (!compact)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.secondaryContainer,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 9,
-                    vertical: 3,
-                  ),
-                  child: Text(
-                    workspace.activeLevel?.displayName ?? editor.level.name,
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
-                ),
-              ),
-            ),
-          IconButton(
-            tooltip: 'Следующий уровень',
-            onPressed: workspace.nextLevel,
-            icon: const Icon(Icons.keyboard_arrow_up, size: 19),
-          ),
-        ],
-        if (!compact) ...[
-          IconButton(
-            tooltip: shell.inspectorVisible
-                ? 'Свернуть каталог'
-                : 'Показать каталог',
-            onPressed: shell.toggleInspector,
-            icon: Icon(
-              shell.inspectorVisible
-                  ? Icons.keyboard_double_arrow_right
-                  : Icons.keyboard_double_arrow_left,
-              size: 19,
-            ),
-          ),
-          IconButton(
-            tooltip: shell.focusMode ? 'Выйти из Focus mode' : 'Focus mode',
-            onPressed: shell.toggleFocusMode,
-            icon: Icon(
-              shell.focusMode ? Icons.fullscreen_exit : Icons.fullscreen,
-              size: 20,
-            ),
-          ),
-        ],
-        if (compact)
-          Builder(
-            builder: (context) => IconButton(
-              tooltip: 'Каталог оборудования',
-              onPressed: Scaffold.of(context).openEndDrawer,
-              icon: const Icon(Icons.widgets_outlined, size: 19),
-            ),
-          ),
-        const SizedBox(width: 2),
       ],
     );
   }
@@ -440,118 +378,40 @@ class _ContextStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final editor = workspace.editor;
-    return Material(
-      color: Theme.of(context).colorScheme.surfaceContainerLow,
-      child: SizedBox(
-        height: EditorUiTokens.contextBarHeight,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-          children: [
-            ActionChip(
-              avatar: const Icon(Icons.park_outlined, size: 14),
-              label: const Text('Двор'),
-              visualDensity: VisualDensity.compact,
-              onPressed: workspace.site.outdoorZones.isEmpty
-                  ? null
-                  : () => workspace.selectOutdoorZone(
-                        workspace.site.outdoorZones.first.id,
-                      ),
-            ),
-            const SizedBox(width: 4),
-            if (workspace.context == EditorWorkspaceContext.siteOutdoor)
-              ActionChip(
-                avatar: const Icon(Icons.apartment_outlined, size: 14),
-                label: const Text('Building A'),
-                visualDensity: VisualDensity.compact,
-                onPressed: () => workspace.selectLevel(1),
-              )
-            else ...[
-              _ContextPill(
-                icon: Icons.layers_outlined,
-                label: workspace.activeLevel?.displayName ?? editor.level.name,
-              ),
-              if (workspace.selectedZone case final zone?)
-                _ContextPill(icon: Icons.home_work_outlined, label: zone.name),
-              if (editor.selectedSpace case final room?)
-                _ContextPill(
-                  icon: room.type == SpaceType.corridor
-                      ? Icons.linear_scale
-                      : Icons.crop_square,
-                  label: room.name,
-                ),
-            ],
-          ],
-        ),
-      ),
+    final label = workspace.context == EditorWorkspaceContext.siteOutdoor
+        ? 'Площадка · ${workspace.site.site.name}'
+        : 'Уровень ${workspace.activeLevel?.displayName ?? ''} · '
+            '${workspace.selectedZone?.name ?? workspace.editor.selectedSpace?.name ?? 'без выбора'}';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Text(label, style: Theme.of(context).textTheme.labelMedium),
     );
   }
 }
 
-class _ContextPill extends StatelessWidget {
-  const _ContextPill({required this.icon, required this.label});
+class _ContextBadge extends StatelessWidget {
+  const _ContextBadge({required this.workspace});
 
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(left: 4),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            child: Row(
-              children: [
-                Icon(icon, size: 13),
-                const SizedBox(width: 5),
-                Text(label, style: Theme.of(context).textTheme.labelSmall),
-              ],
-            ),
-          ),
-        ),
-      );
-}
-
-class _CatalogPanel extends StatelessWidget {
-  const _CatalogPanel({required this.controller, required this.onCollapse});
-
-  final EditorController controller;
-  final VoidCallback onCollapse;
+  final EditorBuildingWorkspace workspace;
 
   @override
-  Widget build(BuildContext context) => Column(
-        children: [
-          SizedBox(
-            height: EditorUiTokens.panelHeaderHeight,
-            child: Row(
-              children: [
-                const SizedBox(width: 12),
-                const Icon(Icons.widgets_outlined, size: 17),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: Text(
-                    'КАТАЛОГ ОБОРУДОВАНИЯ',
-                    style: Theme.of(context).textTheme.labelMedium,
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Свернуть каталог',
-                  visualDensity: VisualDensity.compact,
-                  onPressed: onCollapse,
-                  icon: const Icon(Icons.chevron_right, size: 18),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          Expanded(child: DeviceCatalogPanel(controller: controller)),
-        ],
-      );
+  Widget build(BuildContext context) {
+    final label = workspace.context == EditorWorkspaceContext.siteOutdoor
+        ? workspace.site.site.name
+        : '${workspace.activeLevel?.displayName ?? ''} · '
+            '${workspace.editor.selectedSpace?.name ?? 'без помещения'}';
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainerHigh,
+      elevation: 2,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+        child: Text(label, style: Theme.of(context).textTheme.labelSmall),
+      ),
+    );
+  }
 }
 
 class _SideRail extends StatelessWidget {
@@ -567,67 +427,41 @@ class _SideRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        width: EditorUiTokens.collapsedRailWidth,
+        width: 38,
         child: Align(
           alignment: Alignment.topCenter,
           child: Padding(
-            padding: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.only(top: 8),
             child: IconButton(
               tooltip: tooltip,
               onPressed: onPressed,
-              icon: Icon(icon, size: 19),
-              visualDensity: VisualDensity.compact,
+              icon: Icon(icon),
             ),
           ),
         ),
       );
 }
 
-class _ContextBadge extends StatelessWidget {
-  const _ContextBadge({required this.workspace});
+class _CatalogPanel extends StatelessWidget {
+  const _CatalogPanel({required this.controller, required this.onCollapse});
 
-  final EditorBuildingWorkspace workspace;
+  final EditorController controller;
+  final VoidCallback onCollapse;
 
   @override
-  Widget build(BuildContext context) => Card(
-        elevation: 1,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-          child: Text(
-            _contextPath(workspace),
-            style: Theme.of(context).textTheme.labelSmall,
+  Widget build(BuildContext context) => Column(
+        children: [
+          ListTile(
+            dense: true,
+            title: const Text('Компоненты'),
+            trailing: IconButton(
+              tooltip: 'Свернуть каталог',
+              onPressed: onCollapse,
+              icon: const Icon(Icons.chevron_right),
+            ),
           ),
-        ),
+          const Divider(height: 1),
+          Expanded(child: DeviceCatalogPanel(controller: controller)),
+        ],
       );
-}
-
-String _contextPath(EditorBuildingWorkspace workspace) {
-  if (workspace.context == EditorWorkspaceContext.siteOutdoor) {
-    final outdoorId = workspace.activeOutdoorZoneId;
-    final outdoor = workspace.site.outdoorZones
-        .where((zone) => zone.id == outdoorId)
-        .firstOrNull;
-    return '${workspace.site.site.name} > ${outdoor?.name ?? 'Двор'}';
-  }
-  final level = workspace.activeLevel;
-  final zone = workspace.selectedZone;
-  final room = workspace.editor.selectedSpace;
-  final parts = <String>[
-    workspace.site.site.name,
-    workspace.building.building.name,
-    level?.displayName ?? workspace.editor.level.name,
-    if (zone != null) zone.name,
-    if (room != null) room.name,
-  ];
-  return parts.join(' > ');
-}
-
-extension _FirstOrNull<T> on Iterable<T> {
-  T? get firstOrNull {
-    final iterator = this.iterator;
-    if (!iterator.moveNext()) {
-      return null;
-    }
-    return iterator.current;
-  }
 }
