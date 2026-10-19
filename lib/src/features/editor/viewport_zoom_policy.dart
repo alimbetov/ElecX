@@ -8,9 +8,7 @@ abstract final class ViewportZoomPolicy {
       throw ArgumentError.value(fitMmPerPixel, 'fitMmPerPixel');
     }
     final relative = fitMmPerPixel / maxZoomInFromFit;
-    return relative < absoluteMinMmPerPixel
-        ? absoluteMinMmPerPixel
-        : relative;
+    return relative < absoluteMinMmPerPixel ? absoluteMinMmPerPixel : relative;
   }
 
   static double maxMmPerPixel(double fitMmPerPixel) {
