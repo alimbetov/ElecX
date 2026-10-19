@@ -139,6 +139,7 @@ final class BoundaryEditSession extends ChangeNotifier {
   String? _hoveredOpeningId;
   OpeningEditDraft? _openingDraft;
   BeamEditDraft? _beamDraft;
+  bool _openingDraftDirty = false;
 
   bool get active => _profile != null;
   BoundaryEditProfile? get profile => _profile;
@@ -151,8 +152,6 @@ final class BoundaryEditSession extends ChangeNotifier {
     final beam = _beamDraft;
     return (opening != null && _openingDraftDirty) || (beam?.dirty ?? false);
   }
-
-  bool _openingDraftDirty = false;
 
   void enter([BoundaryEditProfile profile = BoundaryEditProfile.wall]) {
     _profile = profile;
@@ -177,8 +176,11 @@ final class BoundaryEditSession extends ChangeNotifier {
     notifyListeners();
   }
 
-  void beginOpeningDraft(ArchitecturalOpening opening) {
-    if (_openingDraft?.openingId == opening.id) return;
+  void beginOpeningDraft(
+    ArchitecturalOpening opening, {
+    bool force = false,
+  }) {
+    if (!force && _openingDraft?.openingId == opening.id) return;
     _openingDraft = OpeningEditDraft.fromOpening(opening);
     _openingDraftDirty = false;
     _beamDraft = null;
