@@ -6,6 +6,7 @@ import '../../domain/engineering_placement_cursor.dart';
 import '../../domain/geometry.dart';
 import '../../domain/surfaces.dart';
 import 'catalog_component_placement.dart';
+import 'component_catalog_session.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 
@@ -28,7 +29,7 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
       activeComponentTypeId != null && controller.activeSurface != null;
 
   void beginCatalogPlacement(String componentTypeId) {
-    ComponentCatalogV2.require(componentTypeId);
+    controller.componentCatalog.require(componentTypeId);
     _requestedComponentTypeId = componentTypeId;
     controller.p2.setPlacementType(null);
     _state = null;
@@ -45,7 +46,7 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
       return null;
     }
 
-    final entry = ComponentCatalogV2.byId(componentTypeId);
+    final entry = controller.componentCatalog.byId(componentTypeId);
     if (entry == null) {
       _state = null;
       return null;
@@ -93,7 +94,7 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
   }) {
     final current = ensure();
     if (current == null) return false;
-    final entry = ComponentCatalogV2.byId(current.componentTypeId);
+    final entry = controller.componentCatalog.byId(current.componentTypeId);
     if (entry == null) return false;
     final next = EngineeringPlacementCursor.moveTo(
       current,
@@ -137,7 +138,7 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
   bool confirm() {
     final current = ensure();
     if (current == null || !current.isValid) return false;
-    final entry = ComponentCatalogV2.byId(current.componentTypeId);
+    final entry = controller.componentCatalog.byId(current.componentTypeId);
     if (entry == null) return false;
     controller.p2.placeCatalogComponent(
       entry: entry,
