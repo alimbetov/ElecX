@@ -1,4 +1,3 @@
-import 'package:elecx/src/domain/electrical_placement.dart';
 import 'package:elecx/src/domain/engineering_placement_cursor.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,7 +9,7 @@ void main() {
       final state = EngineeringPlacementCursorState(
         surface: surface,
         position: const SurfacePointMm(1200, 900),
-        componentType: ElectricalComponentType.socketOutlet,
+        componentTypeId: 'power.socket.general',
       );
 
       final moved = EngineeringPlacementCursor.nudge(
@@ -25,11 +24,11 @@ void main() {
       expect(moved.snapKind, PlacementCursorSnapKind.grid);
     });
 
-    test('moveTo preserves component and reports snap source', () {
+    test('moveTo preserves catalog identity and reports snap source', () {
       final state = EngineeringPlacementCursorState(
         surface: RoomSurfaceRef.wall('room-1', 2),
         position: const SurfacePointMm(0, 0),
-        componentType: ElectricalComponentType.switchControl,
+        componentTypeId: 'lighting.switch.general',
       );
 
       final moved = EngineeringPlacementCursor.moveTo(
@@ -41,7 +40,7 @@ void main() {
 
       expect(moved.position.xMm, 900);
       expect(moved.position.yMm, 900);
-      expect(moved.componentType, ElectricalComponentType.switchControl);
+      expect(moved.componentTypeId, 'lighting.switch.general');
       expect(moved.snapKind, PlacementCursorSnapKind.installationGuide);
       expect(moved.snapLabel, 'SWITCH 900');
       expect(moved.coordinateLabel, 'X 900 · Y 900 mm');
