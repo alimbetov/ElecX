@@ -3,7 +3,7 @@ import 'package:elecx/src/domain/surfaces.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  const surface = RoomSurfaceRef.wall('room-1', 0);
+  final surface = RoomSurfaceRef.wall('room-1', 0);
 
   final spec = LinearLuminaireSpec(
     id: 'led-24v-14w',
