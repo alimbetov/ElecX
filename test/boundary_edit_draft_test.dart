@@ -28,6 +28,28 @@ void main() {
     expect(opening.offsetFromStartMm, 700);
   });
 
+  test('force reset restores opening draft from model', () {
+    final opening = ArchitecturalOpening(
+      id: 'window',
+      hostWall: RoomSurfaceRef.wall('room', 1),
+      type: ArchitecturalOpeningType.window,
+      offsetFromStartMm: 1000,
+      widthMm: 1400,
+      heightMm: 1200,
+      sillHeightMm: 900,
+    );
+    final session = BoundaryEditSession()..enter(BoundaryEditProfile.openings);
+
+    session.beginOpeningDraft(opening);
+    session.updateOpeningDraft(session.openingDraft!.copyWith(widthMm: 1800));
+    expect(session.draftDirty, isTrue);
+
+    session.beginOpeningDraft(opening, force: true);
+
+    expect(session.draftDirty, isFalse);
+    expect(session.openingDraft!.widthMm, 1400);
+  });
+
   test('beam draft tracks dirty state and can be discarded', () {
     final session = BoundaryEditSession()
       ..enter(BoundaryEditProfile.structuralProfile)
