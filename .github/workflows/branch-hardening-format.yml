@@ -1,0 +1,39 @@
+name: Branch Hardening Format
+
+on:
+  push:
+    branches:
+      - feat/spatial-editor-foundation
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/spatial-editor-foundation
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - name: Apply safe Dart fixes
+        run: dart fix --apply
+      - name: Format Dart sources
+        run: dart format lib test
+      - name: Commit normalized sources
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No hardening changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib test
+          git commit -m "chore: normalize Dart sources"
+          git push origin HEAD:feat/spatial-editor-foundation
