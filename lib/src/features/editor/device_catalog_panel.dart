@@ -19,6 +19,8 @@ class DeviceCatalogPanel extends StatefulWidget {
 class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
   final TextEditingController _searchController = TextEditingController();
   _CatalogFamily? _family;
+  bool _compatibleOnly = false;
+  bool _repeatPlacement = true;
 
   EditorController get controller => widget.controller;
 
@@ -69,6 +71,32 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
                 ],
               ),
             ),
+            SizedBox(
+              height: 38,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+                children: [
+                  FilterChip(
+                    selected: _compatibleOnly,
+                    avatar: const Icon(Icons.layers_outlined, size: 16),
+                    label: const Text('Текущая плоскость'),
+                    onSelected: (value) =>
+                        setState(() => _compatibleOnly = value),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  const SizedBox(width: 6),
+                  FilterChip(
+                    selected: _repeatPlacement,
+                    avatar: const Icon(Icons.repeat, size: 16),
+                    label: const Text('Повтор'),
+                    onSelected: (value) =>
+                        setState(() => _repeatPlacement = value),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
+              ),
+            ),
             const Divider(height: 1),
             Expanded(
               child: catalog.loading
@@ -98,7 +126,7 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
     List<ComponentCatalogEntryV2> source,
   ) {
     final query = _searchController.text.trim().toLowerCase();
-    final activeSurface = controller.activeSurface?.type;
+    final activeSurface = controller.activeSurface;
     return source.where((entry) {
       if (_family != null && _familyFor(entry) != _family) return false;
       if (query.isNotEmpty &&
@@ -107,9 +135,10 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
           !entry.id.toLowerCase().contains(query)) {
         return false;
       }
-      if (activeSurface != null &&
-          !entry.mounting.allowedSurfaces.contains(activeSurface)) {
-        return true;
+      if (_compatibleOnly &&
+          activeSurface != null &&
+          !entry.mounting.allows(activeSurface)) {
+        return false;
       }
       return true;
     }).toList(growable: false);
@@ -164,7 +193,10 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
   void _startPlacement(ComponentCatalogEntryV2 entry) {
     _ensureCompatibleSurface(entry);
     controller.setTool(EditorTool.select);
-    controller.placementCursor.beginCatalogPlacement(entry.id);
+    controller.placementCursor.beginCatalogPlacement(
+      entry.id,
+      repeat: _repeatPlacement,
+    );
   }
 
   void _ensureCompatibleSurface(ComponentCatalogEntryV2 entry) {
