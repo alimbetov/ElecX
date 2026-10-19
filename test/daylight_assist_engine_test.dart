@@ -66,4 +66,33 @@ void main() {
     expect(hints, isNotEmpty);
     expect(hints.every((hint) => hint.position.yMm > 2200), isTrue);
   });
+
+  test('daylight input rejects non-wall surfaces and invalid transmittance', () {
+    expect(
+      () => DaylightWindowInput(
+        id: 'invalid-floor-window',
+        wall: RoomSurfaceRef.floor('room-1'),
+        centerOffsetMm: 1000,
+        sillHeightMm: 900,
+        widthMm: 1200,
+        heightMm: 1400,
+        wallPlanAzimuthDegrees: 180,
+      ),
+      throwsArgumentError,
+    );
+
+    expect(
+      () => DaylightWindowInput(
+        id: 'invalid-vlt',
+        wall: RoomSurfaceRef.wall('room-1', 0),
+        centerOffsetMm: 1000,
+        sillHeightMm: 900,
+        widthMm: 1200,
+        heightMm: 1400,
+        wallPlanAzimuthDegrees: 180,
+        visibleLightTransmittance: 1.2,
+      ),
+      throwsArgumentError,
+    );
+  });
 }
