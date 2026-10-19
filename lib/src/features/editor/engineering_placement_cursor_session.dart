@@ -16,8 +16,10 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
   final EditorController controller;
   EngineeringPlacementCursorState? _state;
   String? _requestedComponentTypeId;
+  bool _repeatPlacement = false;
 
   EngineeringPlacementCursorState? get state => _state;
+  bool get repeatPlacement => _repeatPlacement;
 
   String? get activeComponentTypeId =>
       _requestedComponentTypeId ??
@@ -28,9 +30,19 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
   bool get active =>
       activeComponentTypeId != null && controller.activeSurface != null;
 
-  void beginCatalogPlacement(String componentTypeId) {
+  void setRepeatPlacement(bool value) {
+    if (_repeatPlacement == value) return;
+    _repeatPlacement = value;
+    notifyListeners();
+  }
+
+  void beginCatalogPlacement(
+    String componentTypeId, {
+    bool repeat = false,
+  }) {
     controller.componentCatalog.require(componentTypeId);
     _requestedComponentTypeId = componentTypeId;
+    _repeatPlacement = repeat;
     controller.p2.setPlacementType(null);
     _state = null;
     ensure();
@@ -145,15 +157,28 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
       surface: current.surface,
       position: current.position,
     );
-    _requestedComponentTypeId = null;
-    controller.p2.setPlacementType(null);
-    _state = null;
+
+    if (_repeatPlacement) {
+      _state = EngineeringPlacementCursorState(
+        surface: current.surface,
+        position: current.position,
+        componentTypeId: current.componentTypeId,
+        snapKind: current.snapKind,
+        snapLabel: current.snapLabel,
+        isValid: current.isValid,
+      );
+    } else {
+      _requestedComponentTypeId = null;
+      controller.p2.setPlacementType(null);
+      _state = null;
+    }
     notifyListeners();
     return true;
   }
 
   void cancel() {
     _requestedComponentTypeId = null;
+    _repeatPlacement = false;
     controller.p2.setPlacementType(null);
     _state = null;
     notifyListeners();
