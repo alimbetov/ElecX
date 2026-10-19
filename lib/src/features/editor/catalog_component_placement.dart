@@ -4,6 +4,9 @@ import '../../domain/surfaces.dart';
 import '../../engine/command_history.dart';
 import 'editor_p2_session.dart';
 
+final Expando<int> _catalogSequences =
+    Expando<int>('ElecX catalog component sequence');
+
 extension CatalogComponentPlacement on EditorP2Session {
   ElectricalComponentPlacement placeCatalogComponent({
     required ComponentCatalogEntryV2 entry,
@@ -15,7 +18,7 @@ extension CatalogComponentPlacement on EditorP2Session {
         'Component ${entry.id} is not allowed on ${surface.type.name}.',
       );
     }
-    final sequence = components.length + 1;
+    final sequence = _nextCatalogSequence(this);
     final visualType = legacyVisualTypeForComponentId(entry.id);
     final component = ElectricalComponentPlacement(
       id: 'component-$sequence-${entry.code.toLowerCase()}',
@@ -33,6 +36,27 @@ extension CatalogComponentPlacement on EditorP2Session {
     select(component.id);
     return component;
   }
+}
+
+int _nextCatalogSequence(EditorP2Session session) {
+  final stored = _catalogSequences[session];
+  if (stored != null) {
+    _catalogSequences[session] = stored + 1;
+    return stored;
+  }
+
+  final pattern = RegExp(r'^component-(\d+)(?:-|$)');
+  var maxSequence = 0;
+  for (final component in session.components) {
+    final match = pattern.firstMatch(component.id);
+    if (match == null) continue;
+    final value = int.tryParse(match.group(1)!);
+    if (value != null && value > maxSequence) maxSequence = value;
+  }
+
+  final next = maxSequence + 1;
+  _catalogSequences[session] = next + 1;
+  return next;
 }
 
 List<ElectricalPortDefinition> _legacyPortsFor(
