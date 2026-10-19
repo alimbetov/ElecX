@@ -1,0 +1,42 @@
+name: Format lighting hardening once
+
+on:
+  push:
+    branches:
+      - feat/spatial-editor-interaction-hardening
+    paths:
+      - .github/workflows/format-lighting-hardening-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/spatial-editor-interaction-hardening
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - name: Format changed lighting files
+        run: |
+          dart format \
+            lib/src/domain/linear_lighting.dart \
+            lib/src/engine/daylight_assist_engine.dart \
+            test/daylight_assist_engine_test.dart \
+            test/linear_lighting_test.dart
+      - run: flutter analyze
+      - run: flutter test
+      - name: Remove one-shot workflow
+        run: rm -f .github/workflows/format-lighting-hardening-once.yml
+      - name: Commit verified formatting
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "style: format verified lighting hardening"
+          git push origin HEAD:feat/spatial-editor-interaction-hardening
