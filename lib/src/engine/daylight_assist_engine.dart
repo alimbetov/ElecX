@@ -4,7 +4,7 @@ import '../domain/site_orientation.dart';
 import '../domain/surfaces.dart';
 
 final class DaylightWindowInput {
-  const DaylightWindowInput({
+  DaylightWindowInput({
     required this.id,
     required this.wall,
     required this.centerOffsetMm,
@@ -13,11 +13,32 @@ final class DaylightWindowInput {
     required this.heightMm,
     required this.wallPlanAzimuthDegrees,
     this.visibleLightTransmittance = 0.7,
-  }) : assert(centerOffsetMm >= 0),
-       assert(sillHeightMm >= 0),
-       assert(widthMm > 0),
-       assert(heightMm > 0),
-       assert(visibleLightTransmittance > 0 && visibleLightTransmittance <= 1);
+  }) {
+    if (id.isEmpty) {
+      throw ArgumentError('Daylight window id must be non-empty.');
+    }
+    if (wall.type != SurfacePlaneType.wall) {
+      throw ArgumentError('Daylight input must reference a wall surface.');
+    }
+    if (centerOffsetMm < 0 ||
+        sillHeightMm < 0 ||
+        widthMm <= 0 ||
+        heightMm <= 0) {
+      throw ArgumentError('Daylight window geometry is invalid.');
+    }
+    if (visibleLightTransmittance <= 0 || visibleLightTransmittance > 1) {
+      throw ArgumentError.value(
+        visibleLightTransmittance,
+        'visibleLightTransmittance',
+      );
+    }
+    if (!wallPlanAzimuthDegrees.isFinite) {
+      throw ArgumentError.value(
+        wallPlanAzimuthDegrees,
+        'wallPlanAzimuthDegrees',
+      );
+    }
+  }
 
   final String id;
   final RoomSurfaceRef wall;
@@ -125,7 +146,8 @@ abstract final class DaylightAssistEngine {
       return [
         LightingPlacementHint(
           position: SurfacePointMm(roomWidthMm ~/ 2, roomDepthMm ~/ 2),
-          reason: 'Контрольная точка: помещение в зоне сильного естественного света.',
+          reason:
+              'Контрольная точка: помещение в зоне сильного естественного света.',
           priority: 0.35,
         ),
       ];
@@ -141,7 +163,7 @@ abstract final class DaylightAssistEngine {
       final y = (firstArtificialBand + rowStep * (row + 0.5)).round();
       for (var column = 0; column < columns; column++) {
         final x = (columnStep * (column + 0.5)).round();
-        final depthFactor = roomDepthMm == 0 ? 0.0 : y / roomDepthMm;
+        final depthFactor = y / roomDepthMm;
         hints.add(
           LightingPlacementHint(
             position: SurfacePointMm(x, y),
