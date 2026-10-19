@@ -8,6 +8,7 @@ import 'package:elecx/src/engine/drawing_simulation_engine.dart';
 import 'package:elecx/src/engine/engineering_analysis_profile.dart';
 import 'package:elecx/src/engine/routing_constraints.dart';
 import 'package:elecx/src/features/editor/catalog_component_placement.dart';
+import 'package:elecx/src/features/editor/component_catalog_session.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
 import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:flutter_test/flutter_test.dart';
