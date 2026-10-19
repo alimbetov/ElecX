@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import 'editor_controller.dart';
+import 'editor_interaction_policy.dart';
 import 'editor_p2_session.dart';
 import 'editor_viewport_commands.dart';
 import 'engineering_placement_cursor_session.dart';
@@ -21,12 +22,15 @@ class EditorKeyboardScope extends StatelessWidget {
   final EditorController controller;
   final Widget child;
 
-  void _nudgeCursor(int dx, int dy, {int multiplier = 1}) {
-    if (controller.p2.placementType == null) return;
-    controller.placementCursor.nudgeGrid(
-      dxSteps: dx,
-      dySteps: dy,
-      multiplier: multiplier,
+  void _nudgeCursor(int dx, int dy, {bool coarse = false}) {
+    if (!controller.placementCursor.active) return;
+    final policy = EditorInteractionPolicy.forMode(
+      EditorInputMode.mouseKeyboard,
+    );
+    final step = policy.nudgeStepMm(coarse: coarse);
+    controller.placementCursor.nudge(
+      dxMm: dx * step,
+      dyMm: dy * step,
     );
   }
 
@@ -46,19 +50,19 @@ class EditorKeyboardScope extends StatelessWidget {
         const SingleActivator(LogicalKeyboardKey.keyC): () =>
             controller.setTool(EditorTool.cableRoute),
         const SingleActivator(LogicalKeyboardKey.escape): () {
-          if (controller.p2.placementType != null) {
+          if (controller.placementCursor.active) {
             controller.placementCursor.cancel();
           } else {
             controller.setTool(EditorTool.select);
           }
         },
         const SingleActivator(LogicalKeyboardKey.enter): () {
-          if (controller.p2.placementType != null) {
+          if (controller.placementCursor.active) {
             controller.placementCursor.confirm();
           }
         },
         const SingleActivator(LogicalKeyboardKey.numpadEnter): () {
-          if (controller.p2.placementType != null) {
+          if (controller.placementCursor.active) {
             controller.placementCursor.confirm();
           }
         },
@@ -71,21 +75,25 @@ class EditorKeyboardScope extends StatelessWidget {
         const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
             _nudgeCursor(0, -1),
         const SingleActivator(LogicalKeyboardKey.arrowLeft, shift: true): () =>
-            _nudgeCursor(-1, 0, multiplier: 10),
+            _nudgeCursor(-1, 0, coarse: true),
         const SingleActivator(LogicalKeyboardKey.arrowRight, shift: true): () =>
-            _nudgeCursor(1, 0, multiplier: 10),
+            _nudgeCursor(1, 0, coarse: true),
         const SingleActivator(LogicalKeyboardKey.arrowUp, shift: true): () =>
-            _nudgeCursor(0, 1, multiplier: 10),
+            _nudgeCursor(0, 1, coarse: true),
         const SingleActivator(LogicalKeyboardKey.arrowDown, shift: true): () =>
-            _nudgeCursor(0, -1, multiplier: 10),
+            _nudgeCursor(0, -1, coarse: true),
         const SingleActivator(LogicalKeyboardKey.delete): () {
           if (controller.selectedOpening != null) {
             controller.deleteSelectedOpening();
+          } else {
+            controller.p2.deleteSelection();
           }
         },
         const SingleActivator(LogicalKeyboardKey.backspace): () {
           if (controller.selectedOpening != null) {
             controller.deleteSelectedOpening();
+          } else {
+            controller.p2.deleteSelection();
           }
         },
         const SingleActivator(LogicalKeyboardKey.equal): () =>
