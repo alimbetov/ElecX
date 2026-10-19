@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
-import '../../domain/electrical_placement.dart';
+import '../../domain/component_catalog_v2.dart';
+import '../../domain/engineering_graph.dart';
 import '../../engine/editor_layers.dart';
 import '../../engine/route_engine.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 import 'editor_ui_tokens.dart';
 import 'editor_viewport_commands.dart';
+import 'engineering_placement_cursor_session.dart';
 
 class UnifiedEditorIconToolbar extends StatelessWidget {
   const UnifiedEditorIconToolbar({
@@ -59,7 +61,7 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
         tooltip: 'Ручная кабельная трасса (C)',
       ),
       const _ToolbarDivider(),
-      _ElectricalPaletteButton(controller: controller, target: _target),
+      _ComponentCatalogPaletteButton(controller: controller, target: _target),
       _toggleButton(
         context,
         selected: controller.snapEnabled,
@@ -174,7 +176,7 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
         icon: icon,
         tooltip: tooltip,
         onPressed: () {
-          controller.p2.setPlacementType(null);
+          controller.placementCursor.cancel();
           controller.setTool(tool);
         },
       );
@@ -214,8 +216,8 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
       );
 }
 
-class _ElectricalPaletteButton extends StatelessWidget {
-  const _ElectricalPaletteButton({
+class _ComponentCatalogPaletteButton extends StatelessWidget {
+  const _ComponentCatalogPaletteButton({
     required this.controller,
     required this.target,
   });
@@ -225,33 +227,34 @@ class _ElectricalPaletteButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selected = controller.p2.placementType;
+    final selectedId = controller.placementCursor.activeComponentTypeId;
+    final selected = selectedId == null ? null : ComponentCatalogV2.byId(selectedId);
     final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 1),
-      child: PopupMenuButton<ElectricalComponentType>(
+      child: PopupMenuButton<String>(
         tooltip: selected == null
-            ? 'Добавить электрический компонент'
-            : 'Размещение: ${ElectricalComponentDefaults.defaultLabel(selected)}',
-        onSelected: (type) {
-          if (controller.activeSurface == null) {
-            final space = controller.selectedSpace;
-            if (space != null) controller.showWall(0);
-          }
+            ? 'Добавить инженерный компонент'
+            : 'Размещение: ${selected.name}',
+        onSelected: (componentTypeId) {
+          final entry = ComponentCatalogV2.require(componentTypeId);
+          _ensureCompatibleSurface(entry);
           controller.setTool(EditorTool.select);
-          controller.p2.setPlacementType(type);
+          controller.placementCursor.beginCatalogPlacement(componentTypeId);
         },
         itemBuilder: (context) => [
-          for (final type in ElectricalComponentType.values)
-            if (type != ElectricalComponentType.custom)
-              PopupMenuItem(
-                value: type,
-                child: ListTile(
-                  dense: true,
-                  leading: Icon(_componentIcon(type)),
-                  title: Text(ElectricalComponentDefaults.defaultLabel(type)),
+          for (final entry in ComponentCatalogV2.entries)
+            PopupMenuItem(
+              value: entry.id,
+              child: ListTile(
+                dense: true,
+                leading: Icon(_catalogIcon(entry.systemClass)),
+                title: Text(entry.name),
+                subtitle: Text(
+                  '${entry.discipline.name} · ${entry.systemClass.name}',
                 ),
               ),
+            ),
         ],
         child: SizedBox(
           width: target,
@@ -265,14 +268,30 @@ class _ElectricalPaletteButton extends StatelessWidget {
             ),
             child: Icon(
               selected == null
-                  ? Icons.electrical_services
-                  : _componentIcon(selected),
+                  ? Icons.widgets_outlined
+                  : _catalogIcon(selected.systemClass),
               size: 20,
             ),
           ),
         ),
       ),
     );
+  }
+
+  void _ensureCompatibleSurface(ComponentCatalogEntryV2 entry) {
+    final active = controller.activeSurface;
+    if (active != null && entry.mounting.allows(active)) return;
+    if (entry.mounting.allowedSurfaces.contains(SurfacePlaneType.wall)) {
+      controller.showWall(0);
+      return;
+    }
+    if (entry.mounting.allowedSurfaces.contains(SurfacePlaneType.ceiling)) {
+      controller.showCeiling();
+      return;
+    }
+    if (entry.mounting.allowedSurfaces.contains(SurfacePlaneType.floor)) {
+      controller.showFloor();
+    }
   }
 }
 
@@ -421,13 +440,17 @@ String _routePreferenceName(RoutePreference preference) => switch (preference) {
       RoutePreference.preferFloor => 'Предпочитать пол',
     };
 
-IconData _componentIcon(ElectricalComponentType type) => switch (type) {
-      ElectricalComponentType.socketOutlet => Icons.power_outlined,
-      ElectricalComponentType.switchControl => Icons.toggle_on_outlined,
-      ElectricalComponentType.lightingPoint => Icons.lightbulb_outline,
-      ElectricalComponentType.curtainMotor => Icons.curtains_outlined,
-      ElectricalComponentType.junctionBox => Icons.hub_outlined,
-      ElectricalComponentType.powerSource => Icons.bolt_outlined,
-      ElectricalComponentType.distributionBoard => Icons.electrical_services,
-      ElectricalComponentType.custom => Icons.add_box_outlined,
+IconData _catalogIcon(EngineeringSystemClass systemClass) => switch (systemClass) {
+      EngineeringSystemClass.powerAc || EngineeringSystemClass.powerDc =>
+        Icons.electrical_services,
+      EngineeringSystemClass.lighting => Icons.lightbulb_outline,
+      EngineeringSystemClass.structuredCabling => Icons.lan_outlined,
+      EngineeringSystemClass.poeNetwork => Icons.wifi_outlined,
+      EngineeringSystemClass.fiberOptic => Icons.cable_outlined,
+      EngineeringSystemClass.cctv => Icons.videocam_outlined,
+      EngineeringSystemClass.accessControl => Icons.badge_outlined,
+      EngineeringSystemClass.fireAlarm => Icons.local_fire_department_outlined,
+      EngineeringSystemClass.automationBus => Icons.account_tree_outlined,
+      EngineeringSystemClass.dryContact => Icons.sensors_outlined,
+      EngineeringSystemClass.custom => Icons.add_box_outlined,
     };
