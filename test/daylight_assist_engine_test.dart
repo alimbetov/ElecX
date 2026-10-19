@@ -14,8 +14,8 @@ void main() {
 
   test('south-facing window receives stronger daylight assist than north-facing', () {
     const north = ProjectNorth();
-    const wall = RoomSurfaceRef.wall('room-1', 0);
-    const common = DaylightWindowInput(
+    final wall = RoomSurfaceRef.wall('room-1', 0);
+    final common = DaylightWindowInput(
       id: 'south',
       wall: wall,
       centerOffsetMm: 1500,
@@ -24,7 +24,7 @@ void main() {
       heightMm: 1500,
       wallPlanAzimuthDegrees: 180,
     );
-    const northWindow = DaylightWindowInput(
+    final northWindow = DaylightWindowInput(
       id: 'north',
       wall: wall,
       centerOffsetMm: 1500,
