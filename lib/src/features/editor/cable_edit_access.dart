@@ -19,6 +19,9 @@ extension UndoableCableRouteEditing on EditorP2Session {
       return false;
     }
     history.execute(_ReplaceCableRouteCommand(before: before, after: after));
+    // This extension mutates the session's history atomically and must publish
+    // the resulting state through the owning ChangeNotifier.
+    // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
     notifyListeners();
     return true;
   }
