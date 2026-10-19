@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../domain/project_model.dart';
 import 'context_minimap.dart';
+import 'device_catalog_panel.dart';
 import 'editor_building_workspace.dart';
 import 'editor_controller.dart';
 import 'editor_keyboard_scope.dart';
 import 'editor_layout_policy.dart';
 import 'editor_shell_state.dart';
 import 'editor_ui_tokens.dart';
-import 'engineering_inspector.dart';
 import 'engineering_placement_cursor_hud.dart';
 import 'site_map_interaction.dart';
 import 'spatial_canvas.dart';
@@ -107,7 +107,7 @@ class _UnifiedWorkspaceEditorScreenState
                 : Drawer(
                     width: EditorLayoutPolicy.inspectorWidth(mode),
                     child: SafeArea(
-                      child: EngineeringInspector(workspace: workspace),
+                      child: DeviceCatalogPanel(controller: controller),
                     ),
                   ),
             appBar: _WorkspaceAppBar(
@@ -211,15 +211,15 @@ class _DesktopWorkspace extends StatelessWidget {
         if (shell.inspectorVisible)
           SizedBox(
             width: EditorUiTokens.desktopInspectorWidth,
-            child: _InspectorPanel(
-              workspace: workspace,
+            child: _CatalogPanel(
+              controller: workspace.editor,
               onCollapse: shell.toggleInspector,
             ),
           )
         else
           _SideRail(
-            icon: Icons.tune,
-            tooltip: 'Показать свойства',
+            icon: Icons.widgets_outlined,
+            tooltip: 'Показать каталог оборудования',
             onPressed: shell.toggleInspector,
           ),
       ],
@@ -314,8 +314,8 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
         if (!compact) ...[
           IconButton(
             tooltip: shell.inspectorVisible
-                ? 'Свернуть свойства'
-                : 'Показать свойства',
+                ? 'Свернуть каталог'
+                : 'Показать каталог',
             onPressed: shell.toggleInspector,
             icon: Icon(
               shell.inspectorVisible
@@ -336,9 +336,9 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
         if (compact)
           Builder(
             builder: (context) => IconButton(
-              tooltip: 'Свойства',
+              tooltip: 'Каталог оборудования',
               onPressed: Scaffold.of(context).openEndDrawer,
-              icon: const Icon(Icons.tune, size: 19),
+              icon: const Icon(Icons.widgets_outlined, size: 19),
             ),
           ),
         const SizedBox(width: 2),
@@ -431,10 +431,10 @@ class _ContextPill extends StatelessWidget {
       );
 }
 
-class _InspectorPanel extends StatelessWidget {
-  const _InspectorPanel({required this.workspace, required this.onCollapse});
+class _CatalogPanel extends StatelessWidget {
+  const _CatalogPanel({required this.controller, required this.onCollapse});
 
-  final EditorBuildingWorkspace workspace;
+  final EditorController controller;
   final VoidCallback onCollapse;
 
   @override
@@ -445,16 +445,16 @@ class _InspectorPanel extends StatelessWidget {
             child: Row(
               children: [
                 const SizedBox(width: 12),
-                const Icon(Icons.tune, size: 17),
+                const Icon(Icons.widgets_outlined, size: 17),
                 const SizedBox(width: 7),
                 Expanded(
                   child: Text(
-                    'СВОЙСТВА',
+                    'КАТАЛОГ ОБОРУДОВАНИЯ',
                     style: Theme.of(context).textTheme.labelMedium,
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Свернуть свойства',
+                  tooltip: 'Свернуть каталог',
                   visualDensity: VisualDensity.compact,
                   onPressed: onCollapse,
                   icon: const Icon(Icons.chevron_right, size: 18),
@@ -463,7 +463,7 @@ class _InspectorPanel extends StatelessWidget {
             ),
           ),
           const Divider(height: 1),
-          Expanded(child: EngineeringInspector(workspace: workspace)),
+          Expanded(child: DeviceCatalogPanel(controller: controller)),
         ],
       );
 }
