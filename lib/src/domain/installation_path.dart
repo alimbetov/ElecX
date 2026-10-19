@@ -90,7 +90,9 @@ final class InstallationPathSpec {
 
   InstallationChannelSpec? channelById(String id) {
     for (final channel in channels) {
-      if (channel.id == id) return channel;
+      if (channel.id == id) {
+        return channel;
+      }
     }
     return null;
   }
