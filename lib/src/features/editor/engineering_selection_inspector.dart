@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../app/alien_cockpit_tokens.dart';
+import '../../domain/circuit_cable_registry.dart';
 import '../../domain/component_taxonomy.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/electrical_routing.dart';
 import '../../domain/route_medium.dart';
+import 'circuit_cable_registry_session.dart';
 import 'component_catalog_session.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
@@ -25,18 +27,27 @@ class EngineeringSelectionInspector extends StatelessWidget {
         controller.p2,
         controller.routeSelection,
         controller.componentCatalog,
+        controller.circuitCableRegistry,
       ]),
       builder: (context, _) {
         final route = controller.routeSelection.selectedRoute;
         final hostedRoute = controller.routeSelection.selectedHostedRoute;
-        if (route != null) return _RouteInspector(route: route);
+        if (route != null) {
+          return _RouteInspector(
+            route: route,
+            bundle: controller.circuitCableRegistry.bundleByRouteId(route.id),
+          );
+        }
         if (hostedRoute != null) {
+          final bundle =
+              controller.circuitCableRegistry.bundleByRouteId(hostedRoute.routeId);
           return _HostedRouteInspector(
             routeId: hostedRoute.routeId,
             medium: hostedRoute.medium,
             lengthMm: hostedRoute.lengthMm,
             hostCount: hostedRoute.hosts.length,
             transitionCount: hostedRoute.transitions.length,
+            bundle: bundle,
           );
         }
         final component = controller.p2.selectedComponent;
@@ -64,7 +75,8 @@ class _ComponentInspector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final entry = controller.componentCatalog.byId(component.componentTypeId);
-    final taxonomy = entry == null ? null : ComponentTaxonomyResolver.resolve(entry);
+    final taxonomy =
+        entry == null ? null : ComponentTaxonomyResolver.resolve(entry);
     return _InspectorScaffold(
       title: component.label,
       subtitle: component.componentTypeId,
@@ -84,7 +96,10 @@ class _ComponentInspector extends StatelessWidget {
         ]),
         _section('ELECTRICAL', [
           _row('VOLTAGE', '${component.voltageV} V'),
-          _row('POWER', component.ratedPowerW == null ? '—' : '${component.ratedPowerW} W'),
+          _row(
+            'POWER',
+            component.ratedPowerW == null ? '—' : '${component.ratedPowerW} W',
+          ),
           _row('PORTS', component.ports.isEmpty ? '—' : '${component.ports.length}'),
         ]),
       ],
@@ -93,37 +108,46 @@ class _ComponentInspector extends StatelessWidget {
 }
 
 class _RouteInspector extends StatelessWidget {
-  const _RouteInspector({required this.route});
+  const _RouteInspector({required this.route, required this.bundle});
 
   final ElectricalCableRoute route;
+  final CircuitCableBundle? bundle;
 
   @override
-  Widget build(BuildContext context) => _InspectorScaffold(
-        title: route.id,
-        subtitle: route.medium.displayName,
-        status: 'ROUTE',
-        children: [
-          _section('CONNECTION', [
-            _row('FROM', '${route.source.componentId}:${route.source.portId}'),
-            _row('TO', '${route.target.componentId}:${route.target.portId}'),
-          ]),
-          _section('CABLE', [
-            _row('MEDIUM', route.medium.displayName),
-            _row('SPEC', route.cableType ?? 'NOT ASSIGNED'),
-            _row('RESERVE', '${route.reservePercent}%'),
-          ]),
-          _section('ROUTE', [
-            _row('GEOMETRY', '${route.geometricLengthMm.round()} mm'),
-            _row('INSTALL', '${route.installationLengthMm.round()} mm'),
-            _row('SEGMENTS', '${route.segments.length}'),
-          ]),
-          _section('ENGINEERING', [
-            _row('CHANNEL', 'NOT ASSIGNED'),
-            _row('FILL', 'NO EVIDENCE'),
-            _row('VOLTAGE DROP', 'NO EVIDENCE'),
-          ]),
-        ],
-      );
+  Widget build(BuildContext context) {
+    final assigned = bundle != null;
+    return _InspectorScaffold(
+      title: bundle?.cable.designation ?? route.id,
+      subtitle: route.medium.displayName,
+      status: assigned ? 'REGISTERED' : 'UNASSIGNED',
+      statusColor: assigned
+          ? AlienCockpitTokens.signalAqua
+          : AlienCockpitTokens.signalWarning,
+      children: [
+        if (bundle case final registry?) _registrySections(registry),
+        _section('CONNECTION', [
+          _row('FROM', '${route.source.componentId}:${route.source.portId}'),
+          _row('TO', '${route.target.componentId}:${route.target.portId}'),
+        ]),
+        _section('CABLE', [
+          _row('MEDIUM', route.medium.displayName),
+          _row('SPEC', route.cableType ?? bundle?.cable.cableSpecId ?? 'NOT ASSIGNED'),
+          _row('RESERVE', '${route.reservePercent}%'),
+        ]),
+        _section('ROUTE', [
+          _row('ROUTE ID', route.id),
+          _row('GEOMETRY', '${route.geometricLengthMm.round()} mm'),
+          _row('INSTALL', '${route.installationLengthMm.round()} mm'),
+          _row('SEGMENTS', '${route.segments.length}'),
+        ]),
+        _section('ENGINEERING', [
+          _row('CHANNEL', 'NOT ASSIGNED'),
+          _row('FILL', 'NO EVIDENCE'),
+          _row('VOLTAGE DROP', 'NO EVIDENCE'),
+        ]),
+      ],
+    );
+  }
 }
 
 class _HostedRouteInspector extends StatelessWidget {
@@ -133,6 +157,7 @@ class _HostedRouteInspector extends StatelessWidget {
     required this.lengthMm,
     required this.hostCount,
     required this.transitionCount,
+    required this.bundle,
   });
 
   final String routeId;
@@ -140,26 +165,69 @@ class _HostedRouteInspector extends StatelessWidget {
   final double lengthMm;
   final int hostCount;
   final int transitionCount;
+  final CircuitCableBundle? bundle;
 
   @override
-  Widget build(BuildContext context) => _InspectorScaffold(
-        title: routeId,
-        subtitle: medium.displayName,
-        status: 'HOSTED ROUTE',
-        children: [
-          _section('ROUTE', [
-            _row('MEDIUM', medium.displayName),
-            _row('LENGTH', '${lengthMm.round()} mm'),
-            _row('HOSTS', '$hostCount'),
-            _row('TRANSITIONS', '$transitionCount'),
-          ]),
-          _section('ENGINEERING', [
-            _row('CABLE', 'NOT ASSIGNED'),
-            _row('CHANNEL', 'NOT ASSIGNED'),
-            _row('VALIDATION', 'PENDING EVIDENCE'),
-          ]),
-        ],
-      );
+  Widget build(BuildContext context) {
+    final assigned = bundle != null;
+    return _InspectorScaffold(
+      title: bundle?.cable.designation ?? routeId,
+      subtitle: medium.displayName,
+      status: assigned ? 'REGISTERED' : 'HOSTED ROUTE',
+      statusColor: assigned
+          ? AlienCockpitTokens.signalAqua
+          : AlienCockpitTokens.signalCyan,
+      children: [
+        if (bundle case final registry?) _registrySections(registry),
+        _section('ROUTE', [
+          _row('ROUTE ID', routeId),
+          _row('MEDIUM', medium.displayName),
+          _row('LENGTH', '${lengthMm.round()} mm'),
+          _row('HOSTS', '$hostCount'),
+          _row('TRANSITIONS', '$transitionCount'),
+        ]),
+        _section('ENGINEERING', [
+          _row('CHANNEL', 'NOT ASSIGNED'),
+          _row('VALIDATION', 'PENDING EVIDENCE'),
+        ]),
+      ],
+    );
+  }
+}
+
+Widget _registrySections(CircuitCableBundle bundle) {
+  final circuit = bundle.circuit;
+  final cable = bundle.cable;
+  final protective = bundle.protectiveDevice;
+  return Column(
+    children: [
+      _section('CIRCUIT', [
+        _row('CIRCUIT', circuit.name),
+        _row('CIRCUIT ID', circuit.id),
+        _row('BOARD', circuit.boardId ?? 'UNASSIGNED'),
+        _row('PROTECTION', protective?.designation ?? circuit.protectiveDeviceId ?? 'UNASSIGNED'),
+        if (protective?.ratedCurrentA != null)
+          _row('RATING', '${protective!.ratedCurrentA} A'),
+        if (protective?.poleCount != null)
+          _row('POLES', '${protective!.poleCount}'),
+      ]),
+      _section('CABLE IDENTITY', [
+        _row('CABLE', cable.designation),
+        _row('CABLE ID', cable.id),
+        _row('SPEC ID', cable.cableSpecId ?? 'UNASSIGNED'),
+        _row(
+          'END A',
+          '${cable.endA.componentId}:${cable.endA.portId}'
+          '${cable.endA.terminalId == null ? '' : ' / ${cable.endA.terminalId}'}',
+        ),
+        _row(
+          'END B',
+          '${cable.endB.componentId}:${cable.endB.portId}'
+          '${cable.endB.terminalId == null ? '' : ' / ${cable.endB.terminalId}'}',
+        ),
+      ]),
+    ],
+  );
 }
 
 class _EmptyInspector extends StatelessWidget {
@@ -202,32 +270,33 @@ class _InspectorScaffold extends StatelessWidget {
     required this.subtitle,
     required this.status,
     required this.children,
+    this.statusColor,
   });
 
   final String title;
   final String subtitle;
   final String status;
+  final Color? statusColor;
   final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final signal = statusColor ?? AlienCockpitTokens.signalCyan;
     return ListView(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 20),
       children: [
         DecoratedBox(
           decoration: BoxDecoration(
-            color: scheme.primary.withValues(alpha: 0.07),
+            color: signal.withValues(alpha: 0.07),
             borderRadius: BorderRadius.circular(7),
-            border: Border.all(
-              color: AlienCockpitTokens.signalCyan.withValues(alpha: 0.55),
-            ),
+            border: Border.all(color: signal.withValues(alpha: 0.55)),
           ),
           child: Padding(
             padding: const EdgeInsets.all(10),
             child: Row(
               children: [
-                Icon(Icons.hub_outlined, color: scheme.primary, size: 21),
+                Icon(Icons.hub_outlined, color: signal, size: 21),
                 const SizedBox(width: 9),
                 Expanded(
                   child: Column(
@@ -247,7 +316,7 @@ class _InspectorScaffold extends StatelessWidget {
                 Text(
                   status,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AlienCockpitTokens.signalCyan,
+                        color: signal,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.8,
                       ),
