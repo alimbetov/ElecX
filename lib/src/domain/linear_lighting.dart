@@ -26,7 +26,9 @@ final class LinearLuminaireSpec {
         maxContinuousLengthMm <= 0 ||
         cutStepMm <= 0 ||
         profileWidthMm <= 0) {
-      throw ArgumentError('Linear luminaire electrical/geometry values must be positive.');
+      throw ArgumentError(
+        'Linear luminaire electrical/geometry values must be positive.',
+      );
     }
   }
 
@@ -48,15 +50,18 @@ final class LinearLuminaireRun {
     required this.id,
     required this.specId,
     required this.surface,
-    required this.points,
+    required List<SurfacePointMm> points,
     required this.feedMode,
     this.driverComponentId,
-  }) {
+  }) : points = List.unmodifiable(points) {
     if (id.isEmpty || specId.isEmpty) {
       throw ArgumentError('Linear luminaire run identity must be non-empty.');
     }
     if (points.length < 2) {
       throw ArgumentError('Linear luminaire run needs at least two points.');
+    }
+    if (_lengthOf(points) <= 0) {
+      throw ArgumentError('Linear luminaire run must have positive length.');
     }
   }
 
@@ -69,17 +74,7 @@ final class LinearLuminaireRun {
   /// Optional reference to a 12/24/48 V LED driver or other supply component.
   final String? driverComponentId;
 
-  double get geometricLengthMm {
-    var total = 0.0;
-    for (var i = 1; i < points.length; i++) {
-      final a = points[i - 1];
-      final b = points[i];
-      final dx = (b.xMm - a.xMm).toDouble();
-      final dy = (b.yMm - a.yMm).toDouble();
-      total += math.sqrt(dx * dx + dy * dy);
-    }
-    return total;
-  }
+  double get geometricLengthMm => _lengthOf(points);
 
   LinearLuminaireRun copyWith({
     List<SurfacePointMm>? points,
@@ -96,6 +91,18 @@ final class LinearLuminaireRun {
         ? null
         : driverComponentId ?? this.driverComponentId,
   );
+
+  static double _lengthOf(List<SurfacePointMm> points) {
+    var total = 0.0;
+    for (var i = 1; i < points.length; i++) {
+      final a = points[i - 1];
+      final b = points[i];
+      final dx = (b.xMm - a.xMm).toDouble();
+      final dy = (b.yMm - a.yMm).toDouble();
+      total += math.sqrt(dx * dx + dy * dy);
+    }
+    return total;
+  }
 }
 
 final class LinearLuminaireElectricalSummary {
@@ -124,6 +131,13 @@ abstract final class LinearLuminaireEngine {
     if (run.specId != spec.id) {
       throw ArgumentError('Run specId does not match luminaire specification.');
     }
+    if (run.feedMode == LinearLuminaireFeedMode.bothEnds &&
+        !spec.feedFromBothEndsAllowed) {
+      throw ArgumentError(
+        'The selected linear luminaire does not allow feed from both ends.',
+      );
+    }
+
     final lengthMm = run.geometricLengthMm.round();
     final lengthM = lengthMm / 1000.0;
     final powerW = lengthM * spec.powerPerMeterW;
@@ -150,6 +164,9 @@ abstract final class LinearLuminaireEngine {
     if (requestedLengthMm < 0) {
       throw ArgumentError.value(requestedLengthMm, 'requestedLengthMm');
     }
-    return (requestedLengthMm / spec.cutStepMm).round() * spec.cutStepMm;
+    if (requestedLengthMm == 0) return 0;
+    final snapped =
+        (requestedLengthMm / spec.cutStepMm).round() * spec.cutStepMm;
+    return math.max(spec.cutStepMm, snapped);
   }
 }
