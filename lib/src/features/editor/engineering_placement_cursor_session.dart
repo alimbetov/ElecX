@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../domain/component_catalog_v2.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/engineering_placement_cursor.dart';
 import '../../domain/geometry.dart';
@@ -39,17 +40,18 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
     if (surface.type == SurfacePlaneType.wall) {
       final wall = controller.activeWall!;
       final profile = InstallationGuideProfile.residentialProjectDefault;
-      final yMm = switch (type) {
-        ElectricalComponentType.socketOutlet => profile.socketHeightMm,
-        ElectricalComponentType.switchControl => profile.switchHeightMm,
-        _ => wall.heightMm ~/ 2,
-      };
-      if (type == ElectricalComponentType.socketOutlet ||
+      final catalog = _catalogEntry(type);
+      final yMm = catalog?.mounting.preferredHeightMm ??
+          switch (type) {
+            ElectricalComponentType.socketOutlet => profile.socketHeightMm,
+            ElectricalComponentType.switchControl => profile.switchHeightMm,
+            _ => wall.heightMm ~/ 2,
+          };
+      if (catalog?.mounting.preferredHeightMm != null ||
+          type == ElectricalComponentType.socketOutlet ||
           type == ElectricalComponentType.switchControl) {
         snapKind = PlacementCursorSnapKind.installationGuide;
-        snapLabel = type == ElectricalComponentType.socketOutlet
-            ? 'SOCKET ${profile.socketHeightMm}'
-            : 'SWITCH ${profile.switchHeightMm}';
+        snapLabel = '${catalog?.code ?? type.name} $yMm';
       }
       initial = SurfacePointMm(wall.lengthMm.round() ~/ 2, yMm);
     } else {
@@ -62,7 +64,7 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
       componentType: type,
       snapKind: snapKind,
       snapLabel: snapLabel,
-      isValid: _isUsable(surface, initial),
+      isValid: _isUsable(surface, initial, componentType: type),
     );
     return _state;
   }
@@ -79,7 +81,11 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
       position,
       snapKind: snapKind,
       snapLabel: snapLabel,
-      isValid: _isUsable(current.surface, position),
+      isValid: _isUsable(
+        current.surface,
+        position,
+        componentType: current.componentType,
+      ),
     );
     _state = next;
     notifyListeners();
@@ -132,9 +138,17 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool _isUsable(RoomSurfaceRef surface, SurfacePointMm point) {
+  bool _isUsable(
+    RoomSurfaceRef surface,
+    SurfacePointMm point, {
+    required ElectricalComponentType componentType,
+  }) {
     final space = controller.selectedSpace;
     if (space == null || point.xMm < 0 || point.yMm < 0) return false;
+
+    final catalog = _catalogEntry(componentType);
+    if (catalog != null && !catalog.mounting.allows(surface)) return false;
+
     if (surface.type == SurfacePlaneType.wall) {
       final wall = controller.activeWall;
       if (wall == null || wall.ref != surface) return false;
@@ -148,6 +162,24 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
         point.yMm + bounds.bottom,
       ),
     );
+  }
+
+  static ComponentCatalogEntryV2? _catalogEntry(
+    ElectricalComponentType type,
+  ) {
+    final id = switch (type) {
+      ElectricalComponentType.socketOutlet => 'power.socket.general',
+      ElectricalComponentType.switchControl => 'lighting.switch.general',
+      ElectricalComponentType.lightingPoint => 'lighting.luminaire.general',
+      ElectricalComponentType.junctionBox => 'power.junction-box.general',
+      ElectricalComponentType.distributionBoard =>
+        'power.distribution-board.general',
+      ElectricalComponentType.curtainMotor ||
+      ElectricalComponentType.powerSource ||
+      ElectricalComponentType.custom =>
+        null,
+    };
+    return id == null ? null : ComponentCatalogV2.byId(id);
   }
 }
 
