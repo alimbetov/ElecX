@@ -2,6 +2,8 @@ import 'geometry.dart';
 import 'site_outdoor_model.dart';
 import 'surfaces.dart';
 
+export 'surfaces.dart' show RoomSurfaceRef, SurfacePlaneType;
+
 enum RouteHostKind { indoorSurface, outdoorZone }
 
 /// Stable reference to any 2D host on which a wired route may be drawn.
