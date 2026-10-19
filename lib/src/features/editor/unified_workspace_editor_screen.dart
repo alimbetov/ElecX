@@ -104,7 +104,8 @@ class _UnifiedWorkspaceEditorScreenState
     final preferredSpaceId = connection?.targetSpaceId ?? surface.spaceId;
     if (controller.level.spaces.any((space) => space.id == preferredSpaceId)) {
       controller.selectSpace(preferredSpaceId);
-    } else if (controller.level.spaces.any((space) => space.id == surface.spaceId)) {
+    } else if (controller.level.spaces
+        .any((space) => space.id == surface.spaceId)) {
       controller.selectSpace(surface.spaceId);
     }
 
@@ -142,20 +143,21 @@ class _UnifiedWorkspaceEditorScreenState
         builder: (context, constraints) {
           final mode = EditorLayoutPolicy.forWidth(constraints.maxWidth);
           final desktop = mode == EditorLayoutMode.desktop;
-          final rawCanvas = workspace.context == EditorWorkspaceContext.siteOutdoor
-              ? SiteMapCanvas(
-                  entities: SiteMapProjection.tower(workspace),
-                  interaction: siteInteraction,
-                  routeController: controller,
-                  onRouteTransitionTap: _followSiteTransition,
-                  onEntityOpen: _openSiteEntity,
-                )
-              : controller.viewMode == EditorViewMode.plan
-                  ? SpatialCanvas(controller: controller)
-                  : SurfaceCanvas(
-                      controller: controller,
-                      onOutdoorTransition: _followOutdoorTransition,
-                    );
+          final rawCanvas =
+              workspace.context == EditorWorkspaceContext.siteOutdoor
+                  ? SiteMapCanvas(
+                      entities: SiteMapProjection.tower(workspace),
+                      interaction: siteInteraction,
+                      routeController: controller,
+                      onRouteTransitionTap: _followSiteTransition,
+                      onEntityOpen: _openSiteEntity,
+                    )
+                  : controller.viewMode == EditorViewMode.plan
+                      ? SpatialCanvas(controller: controller)
+                      : SurfaceCanvas(
+                          controller: controller,
+                          onOutdoorTransition: _followOutdoorTransition,
+                        );
           final canvas = Stack(
             children: [
               Positioned.fill(child: rawCanvas),
@@ -377,7 +379,8 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                   child: Text(
                     workspace.activeLevel?.displayName ?? editor.level.name,
                     style: Theme.of(context).textTheme.labelMedium,

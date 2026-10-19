@@ -74,7 +74,8 @@ abstract final class SurfaceTransitionGraph {
     }
 
     if (fromSurface.type == SurfacePlaneType.wall) {
-      addSameRoom(RoomSurfaceRef.floor(fromSpace.id), SurfaceTransitionKind.wallToFloor);
+      addSameRoom(RoomSurfaceRef.floor(fromSpace.id),
+          SurfaceTransitionKind.wallToFloor);
       addSameRoom(
         RoomSurfaceRef.ceiling(fromSpace.id),
         SurfaceTransitionKind.wallToCeiling,
@@ -117,7 +118,8 @@ abstract final class SurfaceTransitionGraph {
     required SurfacePointMm point,
     required int toleranceMm,
   }) {
-    final fromWall = RoomSurfaceResolver.wall(fromSpace, fromSurface.wallIndex!);
+    final fromWall =
+        RoomSurfaceResolver.wall(fromSpace, fromSurface.wallIndex!);
     final worldPoint = RoomSurfaceResolver.wallLocalToPlan(fromWall, point.xMm);
     final result = <SurfaceTransitionCandidate>[];
 

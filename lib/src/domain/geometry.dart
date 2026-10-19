@@ -78,7 +78,8 @@ final class MmBounds {
 }
 
 final class MmPolygon {
-  MmPolygon(Iterable<MmPoint> vertices) : vertices = List.unmodifiable(vertices) {
+  MmPolygon(Iterable<MmPoint> vertices)
+      : vertices = List.unmodifiable(vertices) {
     if (this.vertices.length < 3) {
       throw ArgumentError('A room boundary requires at least three vertices.');
     }
@@ -90,7 +91,8 @@ final class MmPolygon {
     final bottom = math.min(a.y, b.y);
     final top = math.max(a.y, b.y);
     if (left == right || bottom == top) {
-      throw ArgumentError('A room rectangle must have non-zero width and height.');
+      throw ArgumentError(
+          'A room rectangle must have non-zero width and height.');
     }
     return MmPolygon([
       MmPoint(left, bottom),
@@ -120,8 +122,7 @@ final class MmPolygon {
       final b = vertices[j];
       final crosses = (a.y > point.y) != (b.y > point.y);
       if (!crosses) continue;
-      final crossingX =
-          (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x;
+      final crossingX = (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x;
       if (point.x < crossingX) inside = !inside;
     }
     return inside;

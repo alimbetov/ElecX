@@ -263,7 +263,8 @@ final class EditorP2Session extends ChangeNotifier {
     final pair = selectedComponents;
     if (pair.length != 2) return false;
     final sourceComponent = _preferredSource(pair[0], pair[1]);
-    final targetComponent = identical(sourceComponent, pair[0]) ? pair[1] : pair[0];
+    final targetComponent =
+        identical(sourceComponent, pair[0]) ? pair[1] : pair[0];
     final sourcePort = _portForSource(sourceComponent);
     final targetPort = _portForTarget(targetComponent);
     if (sourcePort == null || targetPort == null) return false;
@@ -392,8 +393,8 @@ final class EditorP2Session extends ChangeNotifier {
     ElectricalComponentPlacement first,
     ElectricalComponentPlacement second,
   ) {
-    bool hasPowerOut(ElectricalComponentPlacement component) => component.ports
-        .any((port) => port.kind == ElectricalPortKind.powerOut);
+    bool hasPowerOut(ElectricalComponentPlacement component) =>
+        component.ports.any((port) => port.kind == ElectricalPortKind.powerOut);
     if (hasPowerOut(first) && !hasPowerOut(second)) return first;
     if (hasPowerOut(second) && !hasPowerOut(first)) return second;
     return first;
@@ -424,8 +425,7 @@ final class EditorP2Session extends ChangeNotifier {
   }
 
   static double _axisDistance(SurfacePointMm a, SurfacePointMm b) =>
-      (a.xMm - b.xMm).abs().toDouble() +
-      (a.yMm - b.yMm).abs().toDouble();
+      (a.xMm - b.xMm).abs().toDouble() + (a.yMm - b.yMm).abs().toDouble();
 }
 
 final Expando<EditorP2Session> _p2Sessions =

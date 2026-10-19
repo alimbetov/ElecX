@@ -65,7 +65,8 @@ abstract final class WallPlanGeometry {
     required int thicknessMm,
   }) {
     if (thicknessMm <= 0) {
-      throw ArgumentError.value(thicknessMm, 'thicknessMm', 'Must be positive.');
+      throw ArgumentError.value(
+          thicknessMm, 'thicknessMm', 'Must be positive.');
     }
     final vertices = roomBoundary.vertices;
     if (wallIndex < 0 || wallIndex >= vertices.length) {

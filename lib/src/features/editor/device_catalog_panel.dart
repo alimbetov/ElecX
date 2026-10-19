@@ -50,7 +50,7 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
         final placing = controller.placementCursor.active;
         final hasEngineeringSelection =
             controller.routeSelection.selectedRouteId != null ||
-            controller.p2.selectedComponent != null;
+                controller.p2.selectedComponent != null;
         if (!placing && hasEngineeringSelection) {
           return _InspectorMode(
             controller: controller,
@@ -69,7 +69,8 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
       children: [
         _CatalogHeader(
           count: entries.length,
-          activeComponentTypeId: controller.placementCursor.activeComponentTypeId,
+          activeComponentTypeId:
+              controller.placementCursor.activeComponentTypeId,
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(10, 7, 10, 6),
@@ -123,8 +124,7 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
                 selected: _compatibleOnly,
                 avatar: const Icon(Icons.layers_outlined, size: 15),
                 label: const Text('Плоскость'),
-                onSelected: (value) =>
-                    setState(() => _compatibleOnly = value),
+                onSelected: (value) => setState(() => _compatibleOnly = value),
                 visualDensity: VisualDensity.compact,
               ),
               const SizedBox(width: 6),
@@ -132,8 +132,7 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
                 selected: _repeatPlacement,
                 avatar: const Icon(Icons.repeat, size: 15),
                 label: const Text('Повтор'),
-                onSelected: (value) =>
-                    setState(() => _repeatPlacement = value),
+                onSelected: (value) => setState(() => _repeatPlacement = value),
                 visualDensity: VisualDensity.compact,
               ),
             ],
@@ -209,7 +208,8 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
   Widget _entryTile(ComponentCatalogEntryV2 entry) {
     final active = controller.activeSurface;
     final compatible = active == null || entry.mounting.allows(active);
-    final placing = controller.placementCursor.activeComponentTypeId == entry.id;
+    final placing =
+        controller.placementCursor.activeComponentTypeId == entry.id;
     return _EquipmentCard(
       entry: entry,
       compatible: compatible,
@@ -462,7 +462,8 @@ class _EquipmentCard extends StatelessWidget {
                       color: signal.withValues(alpha: 0.28),
                     ),
                   ),
-                  child: Icon(_iconFor(entry.systemClass), size: 18, color: signal),
+                  child: Icon(_iconFor(entry.systemClass),
+                      size: 18, color: signal),
                 ),
                 const SizedBox(width: 9),
                 Expanded(
@@ -473,9 +474,10 @@ class _EquipmentCard extends StatelessWidget {
                         entry.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                        style:
+                            Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
                       ),
                       const SizedBox(height: 2),
                       Text(
@@ -614,7 +616,8 @@ String _mountingLabel(ComponentCatalogEntryV2 entry) {
 }
 
 IconData _iconFor(EngineeringSystemClass systemClass) => switch (systemClass) {
-      EngineeringSystemClass.powerAc || EngineeringSystemClass.powerDc =>
+      EngineeringSystemClass.powerAc ||
+      EngineeringSystemClass.powerDc =>
         Icons.power_outlined,
       EngineeringSystemClass.lighting => Icons.lightbulb_outline,
       EngineeringSystemClass.structuredCabling ||

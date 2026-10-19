@@ -32,10 +32,9 @@ final class ComponentCatalogSession extends ChangeNotifier {
     return entry;
   }
 
-  List<ComponentCatalogEntryV2> forSurface(SurfacePlaneType type) =>
-      entries
-          .where((entry) => entry.mounting.allowedSurfaces.contains(type))
-          .toList(growable: false);
+  List<ComponentCatalogEntryV2> forSurface(SurfacePlaneType type) => entries
+      .where((entry) => entry.mounting.allowedSurfaces.contains(type))
+      .toList(growable: false);
 
   List<ComponentCatalogEntryV2> forSystem(
     EngineeringSystemClass systemClass,

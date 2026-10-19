@@ -4,7 +4,15 @@ enum ConductorMaterial { copper, aluminum, optical, other }
 
 enum CableShielding { none, foil, braid, foilAndBraid, armor, other }
 
-enum CableSegregationClass { power, data, control, safety, optical, coaxial, other }
+enum CableSegregationClass {
+  power,
+  data,
+  control,
+  safety,
+  optical,
+  coaxial,
+  other
+}
 
 final class CableSpec {
   const CableSpec({
@@ -23,7 +31,8 @@ final class CableSpec {
     this.category,
   })  : assert(outerDiameterMm > 0),
         assert(conductorCount == null || conductorCount > 0),
-        assert(conductorCrossSectionMm2 == null || conductorCrossSectionMm2 > 0),
+        assert(
+            conductorCrossSectionMm2 == null || conductorCrossSectionMm2 > 0),
         assert(pairCount == null || pairCount > 0),
         assert(fiberCount == null || fiberCount > 0);
 

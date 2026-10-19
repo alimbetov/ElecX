@@ -53,8 +53,7 @@ final class HostedRoutePath {
       segments.fold(0.0, (sum, segment) => sum + segment.lengthMm);
 
   bool get crossesBuildingEnvelope => transitions.any(
-        (transition) =>
-            transition.fromHost.kind != transition.toHost.kind,
+        (transition) => transition.fromHost.kind != transition.toHost.kind,
       );
 
   Iterable<RouteHostRef> get hosts sync* {

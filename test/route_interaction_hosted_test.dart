@@ -1,4 +1,3 @@
-import 'package:elecx/src/domain/electrical_placement.dart';
 import 'package:elecx/src/domain/electrical_routing.dart';
 import 'package:elecx/src/domain/geometry.dart';
 import 'package:elecx/src/domain/hosted_routing.dart';

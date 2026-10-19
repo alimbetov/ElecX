@@ -41,7 +41,8 @@ void main() {
     expect(root.find('level:16'), isNotNull);
     expect(root.find('level:-30'), isNotNull);
     final level7 = root.find('level:7')!;
-    expect(level7.children.any((node) => node.label.contains('Квартира')), isTrue);
+    expect(
+        level7.children.any((node) => node.label.contains('Квартира')), isTrue);
     expect(level7.children.any((node) => node.label == 'МОП'), isTrue);
     expect(root.pathTo('room:L7:apt01-room').map((node) => node.kind), [
       NavigatorNodeKind.site,
@@ -52,7 +53,9 @@ void main() {
     ]);
   });
 
-  test('cottage village projection exposes lots houses levels rooms and networks', () {
+  test(
+      'cottage village projection exposes lots houses levels rooms and networks',
+      () {
     final house = Building(
       id: 'template-house',
       name: 'Дом',

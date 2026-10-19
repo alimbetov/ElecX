@@ -113,11 +113,13 @@ final class ComposedSite {
     }
     for (final network in networks) {
       if (!network.servedBuildingIds.every(buildingIds.contains)) {
-        throw ArgumentError('Network ${network.id} references unknown building.');
+        throw ArgumentError(
+            'Network ${network.id} references unknown building.');
       }
       final source = network.sourceOutdoorZoneId;
       if (source != null && !zoneIds.contains(source)) {
-        throw ArgumentError('Network ${network.id} references unknown source zone.');
+        throw ArgumentError(
+            'Network ${network.id} references unknown source zone.');
       }
     }
   }

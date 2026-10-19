@@ -10,7 +10,9 @@ abstract final class AdjacentRoomCommand {
     required int sharedLengthMm,
   }) {
     final host = controller.selectedSpace;
-    if (host == null || wallIndex < 0 || wallIndex >= controller.selectedWalls.length) {
+    if (host == null ||
+        wallIndex < 0 ||
+        wallIndex >= controller.selectedWalls.length) {
       return false;
     }
 

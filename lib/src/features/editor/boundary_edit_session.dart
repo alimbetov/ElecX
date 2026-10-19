@@ -50,7 +50,8 @@ final class OpeningEditDraft {
         sillHeightMm: sillHeightMm ?? this.sillHeightMm,
       );
 
-  ArchitecturalOpening toOpening(ArchitecturalOpening source) => source.copyWith(
+  ArchitecturalOpening toOpening(ArchitecturalOpening source) =>
+      source.copyWith(
         type: type,
         offsetFromStartMm: offsetFromStartMm,
         widthMm: widthMm,

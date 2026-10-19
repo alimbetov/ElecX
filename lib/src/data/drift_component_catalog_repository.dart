@@ -75,9 +75,11 @@ final class DriftComponentCatalogRepository
 
   Future<void> seedDefaultsIfEmpty() async {
     await ensureSchema();
-    final countRow = await _db.customSelect(
-      'SELECT COUNT(*) AS c FROM component_type',
-    ).getSingle();
+    final countRow = await _db
+        .customSelect(
+          'SELECT COUNT(*) AS c FROM component_type',
+        )
+        .getSingle();
     if (countRow.read<int>('c') == 0) {
       await replaceAll(ComponentCatalogV2.entries);
     }
@@ -86,9 +88,11 @@ final class DriftComponentCatalogRepository
   @override
   Future<List<ComponentCatalogEntryV2>> all() async {
     await ensureSchema();
-    final rows = await _db.customSelect(
-      'SELECT * FROM component_type ORDER BY discipline, name',
-    ).get();
+    final rows = await _db
+        .customSelect(
+          'SELECT * FROM component_type ORDER BY discipline, name',
+        )
+        .get();
     final result = <ComponentCatalogEntryV2>[];
     for (final row in rows) {
       result.add(await _mapEntry(row));
@@ -151,7 +155,8 @@ final class DriftComponentCatalogRepository
     await _db.transaction(() async {
       await _db.customStatement('DELETE FROM component_port_connection_type');
       await _db.customStatement('DELETE FROM component_type_port');
-      await _db.customStatement('DELETE FROM component_type_allowed_room_usage');
+      await _db
+          .customStatement('DELETE FROM component_type_allowed_room_usage');
       await _db.customStatement('DELETE FROM component_type_allowed_surface');
       await _db.customStatement('DELETE FROM component_type');
 
@@ -325,8 +330,7 @@ final class DriftComponentCatalogRepository
   }
 }
 
-T _enumByName<T extends Enum>(List<T> values, String name) =>
-    values.firstWhere(
+T _enumByName<T extends Enum>(List<T> values, String name) => values.firstWhere(
       (value) => value.name == name,
       orElse: () => throw StateError('Unknown enum value $name for $T'),
     );

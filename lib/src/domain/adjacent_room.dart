@@ -26,7 +26,8 @@ abstract final class AdjacentRoomBuilder {
     }
 
     final wallLength = hostWall.lengthMm;
-    final length = sharedLengthMm ?? (wallLength - offsetFromWallStartMm).round();
+    final length =
+        sharedLengthMm ?? (wallLength - offsetFromWallStartMm).round();
     if (offsetFromWallStartMm < 0 || length < 300) {
       throw ArgumentError('Shared wall offset/length is invalid.');
     }
@@ -51,8 +52,10 @@ abstract final class AdjacentRoomBuilder {
       throw ArgumentError('Host wall segment must have non-zero length.');
     }
 
-    final normalA = _normalPoint(a, dx, dy, depthMm, clockwise: false, length: segmentLength);
-    final normalB = _normalPoint(b, dx, dy, depthMm, clockwise: false, length: segmentLength);
+    final normalA = _normalPoint(a, dx, dy, depthMm,
+        clockwise: false, length: segmentLength);
+    final normalB = _normalPoint(b, dx, dy, depthMm,
+        clockwise: false, length: segmentLength);
     final candidateCenter = MmPoint(
       (normalA.x + normalB.x + a.x + b.x) ~/ 4,
       (normalA.y + normalB.y + a.y + b.y) ~/ 4,

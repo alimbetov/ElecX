@@ -177,7 +177,8 @@ class _ProfiledWallsStrip extends StatelessWidget {
                       _ProfileWallButton(
                         wallIndex: entry.key,
                         profile: entry.value,
-                        selected: controller.activeSurface?.wallIndex == entry.key,
+                        selected:
+                            controller.activeSurface?.wallIndex == entry.key,
                         onPressed: () => controller.showWall(entry.key),
                       ),
                       const SizedBox(width: 4),

@@ -5,7 +5,8 @@ import 'package:elecx/src/engine/routing_constraints.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('keep-out zone removes crossing edge but preserves alternative path', () {
+  test('keep-out zone removes crossing edge but preserves alternative path',
+      () {
     final surface = RoomSurfaceRef.wall('room', 0);
     final graph = RoutingGraph(
       nodes: {

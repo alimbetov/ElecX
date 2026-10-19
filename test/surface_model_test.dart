@@ -107,7 +107,9 @@ void main() {
     expect(invalid, isNull);
   });
 
-  test('controller creates a new route segment when surface transition is valid', () {
+  test(
+      'controller creates a new route segment when surface transition is valid',
+      () {
     final controller = EditorController.demo();
     controller.setTool(EditorTool.cableRoute);
     controller.showWall(0);

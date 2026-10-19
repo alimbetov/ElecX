@@ -1,5 +1,4 @@
 import 'package:elecx/src/domain/route_host.dart';
-import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/engine/channel_aware_route_engine.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -89,7 +88,8 @@ void main() {
     expect(solution?.cost.maintainabilityPenalty, 0);
   });
 
-  test('solver reports no solution when hard constraints close all channels', () {
+  test('solver reports no solution when hard constraints close all channels',
+      () {
     final graph = ChannelRoutingGraph(
       states: {
         'start': state('start', channel: 'power', node: 'start'),

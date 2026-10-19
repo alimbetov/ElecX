@@ -23,7 +23,8 @@ final class SiteMapEntity {
   final MmPolygon boundary;
   final String? targetId;
 
-  bool contains(MmPoint point) => boundary.contains(point) || boundary.bounds.contains(point);
+  bool contains(MmPoint point) =>
+      boundary.contains(point) || boundary.bounds.contains(point);
 }
 
 /// Shared transient interaction state between the hierarchical navigator and
@@ -103,7 +104,9 @@ abstract final class SiteMapProjection {
     if (representative == null) return null;
     MmBounds? bounds;
     for (final space in representative.spaces) {
-      bounds = bounds == null ? space.boundary.bounds : bounds.union(space.boundary.bounds);
+      bounds = bounds == null
+          ? space.boundary.bounds
+          : bounds.union(space.boundary.bounds);
     }
     final b = bounds;
     if (b == null || b.width == 0 || b.height == 0) return null;

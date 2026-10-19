@@ -29,7 +29,9 @@ void main() {
         ],
       );
 
-  test('registers board protection circuit cable and terminations as one bundle', () {
+  test(
+      'registers board protection circuit cable and terminations as one bundle',
+      () {
     final registry = CircuitCableRegistry();
     final electricalRoute = route();
     const circuit = CircuitRef(
@@ -79,7 +81,8 @@ void main() {
     expect(bundle.cable.endB.terminalId, 'L');
   });
 
-  test('rejects cable termination which does not match physical route endpoint', () {
+  test('rejects cable termination which does not match physical route endpoint',
+      () {
     final registry = CircuitCableRegistry();
     final electricalRoute = route();
     const circuit = CircuitRef(

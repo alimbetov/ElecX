@@ -3,7 +3,8 @@ import 'package:elecx/src/features/editor/wall_profile_editor_actions.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('existing top notch is replaced by new X width and depth parameters', () {
+  test('existing top notch is replaced by new X width and depth parameters',
+      () {
     final controller = EditorController.demo();
     controller.showWall(1);
 

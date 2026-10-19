@@ -10,9 +10,8 @@ abstract final class ElecXTheme {
   static ThemeData _theme(Brightness brightness) {
     final dark = brightness == Brightness.dark;
     final base = ColorScheme.fromSeed(
-      seedColor: dark
-          ? AlienCockpitTokens.darkSeed
-          : AlienCockpitTokens.lightSeed,
+      seedColor:
+          dark ? AlienCockpitTokens.darkSeed : AlienCockpitTokens.lightSeed,
       brightness: brightness,
     );
     final scheme = dark
@@ -112,7 +111,8 @@ abstract final class ElecXTheme {
         labelPadding: const EdgeInsets.symmetric(horizontal: 4),
         labelStyle: const TextStyle(fontSize: 11.5),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
-        selectedColor: scheme.primaryContainer.withValues(alpha: dark ? 0.82 : 0.55),
+        selectedColor:
+            scheme.primaryContainer.withValues(alpha: dark ? 0.82 : 0.55),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
@@ -120,7 +120,8 @@ abstract final class ElecXTheme {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
-          side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.72)),
+          side:
+              BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.72)),
         ),
       ),
       iconButtonTheme: IconButtonThemeData(

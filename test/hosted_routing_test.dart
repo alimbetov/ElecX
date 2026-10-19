@@ -3,7 +3,6 @@ import 'package:elecx/src/domain/hosted_routing.dart';
 import 'package:elecx/src/domain/project_model.dart';
 import 'package:elecx/src/domain/route_host.dart';
 import 'package:elecx/src/domain/site_outdoor_model.dart';
-import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/engine/route_interaction_engine.dart';
 import 'package:elecx/src/domain/route_medium.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,7 +13,8 @@ void main() {
       id: 'room-1',
       name: 'Electrical room',
       type: SpaceType.technicalRoom,
-      boundary: MmPolygon.rectangle(const MmPoint(0, 0), const MmPoint(4000, 3000)),
+      boundary:
+          MmPolygon.rectangle(const MmPoint(0, 0), const MmPoint(4000, 3000)),
       referenceFrame: const RoomReferenceFrame(origin: MmPoint(2000, 1500)),
     );
     final level = BuildingLevel(
@@ -92,7 +92,8 @@ void main() {
       medium: RouteMediumProfile.acPower,
       phase: 0.25,
     );
-    expect(samples, isEmpty); // AC uses oscillating glow rather than fake particles.
+    expect(samples,
+        isEmpty); // AC uses oscillating glow rather than fake particles.
 
     final dcSamples = RouteInteractionEngine.flowSamples(
       route: route,

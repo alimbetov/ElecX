@@ -12,7 +12,8 @@ final class EditorInteractionPolicy {
     required this.edgeAutoPanInsetPx,
   });
 
-  factory EditorInteractionPolicy.forMode(EditorInputMode mode) => switch (mode) {
+  factory EditorInteractionPolicy.forMode(EditorInputMode mode) =>
+      switch (mode) {
         EditorInputMode.mouseKeyboard => const EditorInteractionPolicy(
             inputMode: EditorInputMode.mouseKeyboard,
             hitTargetPx: 18,

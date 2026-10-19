@@ -89,8 +89,7 @@ final class ChannelRouteCostVector {
         bendCount: bendCount + edge.bendCount,
         maintainabilityPenalty:
             maintainabilityPenalty + edge.maintainabilityPenalty,
-        normativeRiskPenalty:
-            normativeRiskPenalty + edge.normativeRiskPenalty,
+        normativeRiskPenalty: normativeRiskPenalty + edge.normativeRiskPenalty,
       );
 
   double score(ChannelRouteCostWeights weights) =>

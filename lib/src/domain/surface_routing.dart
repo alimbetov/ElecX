@@ -48,7 +48,8 @@ abstract final class SurfaceTransitionResolver {
 
     if (from.type == SurfacePlaneType.wall) {
       final fromWall = RoomSurfaceResolver.wall(space, from.wallIndex!);
-      final planPoint = RoomSurfaceResolver.wallLocalToPlan(fromWall, point.xMm);
+      final planPoint =
+          RoomSurfaceResolver.wallLocalToPlan(fromWall, point.xMm);
 
       if (to.type == SurfacePlaneType.floor && point.yMm.abs() <= toleranceMm) {
         return _planToHorizontal(space, planPoint);

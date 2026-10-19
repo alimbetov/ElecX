@@ -64,8 +64,7 @@ final class CircuitCableRegistry {
     return CircuitCableBundle(
       circuit: circuit,
       cable: cable,
-      protectiveDevice:
-          deviceId == null ? null : _protectiveDevices[deviceId],
+      protectiveDevice: deviceId == null ? null : _protectiveDevices[deviceId],
     );
   }
 
@@ -128,7 +127,8 @@ final class CircuitCableRegistry {
           'Circuit ${circuit.id} references protective device $deviceId but matching evidence was not supplied.',
         );
       }
-      if (circuit.boardId == null || protectiveDevice.boardId != circuit.boardId) {
+      if (circuit.boardId == null ||
+          protectiveDevice.boardId != circuit.boardId) {
         throw ArgumentError(
           'Protective device ${protectiveDevice.id} must belong to circuit board ${circuit.boardId}.',
         );

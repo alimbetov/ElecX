@@ -13,7 +13,8 @@ abstract final class AutoRouteGraphBuilder {
     required ElectricalComponentPlacement target,
     int roomHeightMm = 3000,
   }) {
-    if (source.surface.spaceId != space.id || target.surface.spaceId != space.id) {
+    if (source.surface.spaceId != space.id ||
+        target.surface.spaceId != space.id) {
       throw ArgumentError('Components must belong to the supplied room.');
     }
     final builder = _GraphBuilder();
@@ -43,8 +44,10 @@ abstract final class AutoRouteGraphBuilder {
     _connectHorizontalTransitionNodes(builder, SurfacePlaneType.floor);
     _connectHorizontalTransitionNodes(builder, SurfacePlaneType.ceiling);
 
-    if ({source.surface.type, target.surface.type}.contains(SurfacePlaneType.floor) &&
-        {source.surface.type, target.surface.type}.contains(SurfacePlaneType.ceiling)) {
+    if ({source.surface.type, target.surface.type}
+            .contains(SurfacePlaneType.floor) &&
+        {source.surface.type, target.surface.type}
+            .contains(SurfacePlaneType.ceiling)) {
       _addFloorCeilingBridges(
         builder: builder,
         space: space,
@@ -66,7 +69,8 @@ abstract final class AutoRouteGraphBuilder {
   }) {
     switch (component.surface.type) {
       case SurfacePlaneType.wall:
-        final wall = RoomSurfaceResolver.wall(space, component.surface.wallIndex!);
+        final wall =
+            RoomSurfaceResolver.wall(space, component.surface.wallIndex!);
         final x = component.position.xMm.clamp(0, wall.lengthMm.round());
         final bottomId = '$componentId:wall-bottom';
         builder.addNode(
@@ -238,7 +242,8 @@ final class _GraphBuilder {
   int _elbowSequence = 0;
 
   void addNode(String id, RoomSurfaceRef surface, SurfacePointMm point) {
-    nodes.putIfAbsent(id, () => RouteNode(id: id, surface: surface, point: point));
+    nodes.putIfAbsent(
+        id, () => RouteNode(id: id, surface: surface, point: point));
   }
 
   void connectTransition(String a, String b) {
@@ -289,7 +294,8 @@ final class _GraphBuilder {
     final normalized = math.max(cost, 0.001).toDouble();
     edges
       ..add(RouteEdge(from: a, to: b, cost: normalized, transition: transition))
-      ..add(RouteEdge(from: b, to: a, cost: normalized, transition: transition));
+      ..add(
+          RouteEdge(from: b, to: a, cost: normalized, transition: transition));
   }
 
   RoutingGraph build() => RoutingGraph(

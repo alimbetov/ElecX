@@ -38,7 +38,8 @@ void main() {
     expect(byRole[MeasurementRole.objectHeight], 1200);
   });
 
-  test('beam measurements expose wall offsets width depth and bottom level', () {
+  test('beam measurements expose wall offsets width depth and bottom level',
+      () {
     final set = WallMeasurementResolver.forTopNotch(
       startMm: 1000,
       widthMm: 1200,

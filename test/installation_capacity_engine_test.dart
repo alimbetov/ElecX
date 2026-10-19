@@ -1,5 +1,4 @@
 import 'package:elecx/src/domain/cable_spec.dart';
-import 'package:elecx/src/domain/geometry.dart';
 import 'package:elecx/src/domain/installation_path.dart';
 import 'package:elecx/src/domain/route_host.dart';
 import 'package:elecx/src/domain/route_medium.dart';
@@ -30,7 +29,8 @@ void main() {
     category: 'Cat6A',
   );
 
-  test('power conductor cross-section stays independent from cable fill area', () {
+  test('power conductor cross-section stays independent from cable fill area',
+      () {
     expect(powerCable.conductorCount, 3);
     expect(powerCable.conductorCrossSectionMm2, 2.5);
     expect(powerCable.occupiedCircularAreaMm2, closeTo(78.54, 0.02));
@@ -95,7 +95,8 @@ void main() {
     );
     expect(three.hasErrors, isTrue);
     expect(
-      three.defects.any((item) => item.kind == InstallationDefectKind.areaOverfill),
+      three.defects
+          .any((item) => item.kind == InstallationDefectKind.areaOverfill),
       isTrue,
     );
   });

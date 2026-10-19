@@ -129,8 +129,7 @@ abstract final class RoutingConstraintEngine {
   }
 
   static int _orientation(MmPoint a, MmPoint b, MmPoint c) {
-    final value = (b.y - a.y) * (c.x - b.x) -
-        (b.x - a.x) * (c.y - b.y);
+    final value = (b.y - a.y) * (c.x - b.x) - (b.x - a.x) * (c.y - b.y);
     if (value == 0) return 0;
     return value > 0 ? 1 : 2;
   }

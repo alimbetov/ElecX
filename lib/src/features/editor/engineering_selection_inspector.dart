@@ -39,8 +39,8 @@ class EngineeringSelectionInspector extends StatelessWidget {
           );
         }
         if (hostedRoute != null) {
-          final bundle =
-              controller.circuitCableRegistry.bundleByRouteId(hostedRoute.routeId);
+          final bundle = controller.circuitCableRegistry
+              .bundleByRouteId(hostedRoute.routeId);
           return _HostedRouteInspector(
             routeId: hostedRoute.routeId,
             medium: hostedRoute.medium,
@@ -100,7 +100,8 @@ class _ComponentInspector extends StatelessWidget {
             'POWER',
             component.ratedPowerW == null ? '—' : '${component.ratedPowerW} W',
           ),
-          _row('PORTS', component.ports.isEmpty ? '—' : '${component.ports.length}'),
+          _row('PORTS',
+              component.ports.isEmpty ? '—' : '${component.ports.length}'),
         ]),
       ],
     );
@@ -131,7 +132,8 @@ class _RouteInspector extends StatelessWidget {
         ]),
         _section('CABLE', [
           _row('MEDIUM', route.medium.displayName),
-          _row('SPEC', route.cableType ?? bundle?.cable.cableSpecId ?? 'NOT ASSIGNED'),
+          _row('SPEC',
+              route.cableType ?? bundle?.cable.cableSpecId ?? 'NOT ASSIGNED'),
           _row('RESERVE', '${route.reservePercent}%'),
         ]),
         _section('ROUTE', [
@@ -205,7 +207,11 @@ Widget _registrySections(CircuitCableBundle bundle) {
         _row('CIRCUIT', circuit.name),
         _row('CIRCUIT ID', circuit.id),
         _row('BOARD', circuit.boardId ?? 'UNASSIGNED'),
-        _row('PROTECTION', protective?.designation ?? circuit.protectiveDeviceId ?? 'UNASSIGNED'),
+        _row(
+            'PROTECTION',
+            protective?.designation ??
+                circuit.protectiveDeviceId ??
+                'UNASSIGNED'),
         if (protective?.ratedCurrentA != null)
           _row('RATING', '${protective!.ratedCurrentA} A'),
         if (protective?.poleCount != null)
@@ -218,12 +224,12 @@ Widget _registrySections(CircuitCableBundle bundle) {
         _row(
           'END A',
           '${cable.endA.componentId}:${cable.endA.portId}'
-          '${cable.endA.terminalId == null ? '' : ' / ${cable.endA.terminalId}'}',
+              '${cable.endA.terminalId == null ? '' : ' / ${cable.endA.terminalId}'}',
         ),
         _row(
           'END B',
           '${cable.endB.componentId}:${cable.endB.portId}'
-          '${cable.endB.terminalId == null ? '' : ' / ${cable.endB.terminalId}'}',
+              '${cable.endB.terminalId == null ? '' : ' / ${cable.endB.terminalId}'}',
         ),
       ]),
     ],
@@ -302,7 +308,8 @@ class _InspectorScaffold extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: Theme.of(context).textTheme.titleSmall),
+                      Text(title,
+                          style: Theme.of(context).textTheme.titleSmall),
                       const SizedBox(height: 2),
                       Text(
                         subtitle,

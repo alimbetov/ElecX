@@ -243,10 +243,8 @@ final class EditorController extends ChangeNotifier {
     final sill = type == ArchitecturalOpeningType.window ? 900 : 0;
     final wallLength = wall.lengthMm.round();
     final width = defaultWidth.clamp(300, wallLength).toInt();
-    final offset = ((wallLength - width) / 2)
-        .round()
-        .clamp(0, wallLength - width)
-        .toInt();
+    final offset =
+        ((wallLength - width) / 2).round().clamp(0, wallLength - width).toInt();
     final maxHeight = wall.heightMm - sill;
     if (maxHeight <= 0) return;
 
@@ -443,7 +441,8 @@ final class EditorController extends ChangeNotifier {
         activeSurface != null &&
         routeSegments.isNotEmpty) {
       final lastSegment = routeSegments.last;
-      if (lastSegment.surface == activeSurface && lastSegment.points.isNotEmpty) {
+      if (lastSegment.surface == activeSurface &&
+          lastSegment.points.isNotEmpty) {
         final mapped = SurfaceTransitionResolver.mapPoint(
           space: space,
           from: activeSurface!,
@@ -521,7 +520,8 @@ final class EditorController extends ChangeNotifier {
         SurfaceRouteSegmentDraft(surface: surface, points: [point]),
       );
     } else {
-      routeSegments[routeSegments.length - 1] = routeSegments.last.append(point);
+      routeSegments[routeSegments.length - 1] =
+          routeSegments.last.append(point);
     }
   }
 

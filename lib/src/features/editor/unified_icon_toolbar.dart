@@ -68,9 +68,8 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
         context,
         selected: controller.snapEnabled,
         icon: controller.snapEnabled ? Icons.grid_4x4 : Icons.grid_off,
-        tooltip: controller.snapEnabled
-            ? 'Отключить привязку'
-            : 'Включить привязку',
+        tooltip:
+            controller.snapEnabled ? 'Отключить привязку' : 'Включить привязку',
         onPressed: () => controller.setSnapEnabled(!controller.snapEnabled),
       ),
       _toggleButton(
@@ -451,8 +450,10 @@ String _routePreferenceName(RoutePreference preference) => switch (preference) {
       RoutePreference.preferFloor => 'Предпочитать пол',
     };
 
-IconData _catalogIcon(EngineeringSystemClass systemClass) => switch (systemClass) {
-      EngineeringSystemClass.powerAc || EngineeringSystemClass.powerDc =>
+IconData _catalogIcon(EngineeringSystemClass systemClass) =>
+    switch (systemClass) {
+      EngineeringSystemClass.powerAc ||
+      EngineeringSystemClass.powerDc =>
         Icons.electrical_services,
       EngineeringSystemClass.lighting => Icons.lightbulb_outline,
       EngineeringSystemClass.structuredCabling => Icons.lan_outlined,

@@ -9,14 +9,16 @@ Building _typicalHouse() {
     id: 'living-room',
     name: 'Гостиная',
     type: SpaceType.room,
-    boundary: MmPolygon.rectangle(const MmPoint(0, 0), const MmPoint(6000, 5000)),
+    boundary:
+        MmPolygon.rectangle(const MmPoint(0, 0), const MmPoint(6000, 5000)),
     referenceFrame: const RoomReferenceFrame(origin: MmPoint(3000, 2500)),
   );
   final corridor = EngineeringSpace(
     id: 'corridor',
     name: 'Коридор',
     type: SpaceType.corridor,
-    boundary: MmPolygon.rectangle(const MmPoint(6000, 0), const MmPoint(8000, 5000)),
+    boundary:
+        MmPolygon.rectangle(const MmPoint(6000, 0), const MmPoint(8000, 5000)),
     referenceFrame: const RoomReferenceFrame(origin: MmPoint(7000, 2500)),
   );
   return Building(

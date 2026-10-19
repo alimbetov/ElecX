@@ -21,7 +21,8 @@ void main() {
 
     final contour = WallProfilePlanProjection.topContour(profile);
 
-    expect(contour.map((point) => point.xMm), [0, 1200, 1200, 2000, 2000, 4000]);
+    expect(
+        contour.map((point) => point.xMm), [0, 1200, 1200, 2000, 2000, 4000]);
     expect(
       contour.map((point) => point.depthFromTopMm),
       [0, 0, 450, 450, 0, 0],

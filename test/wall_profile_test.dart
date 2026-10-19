@@ -14,7 +14,8 @@ void main() {
     expect(profile.containsPoint(1500, 2400), isTrue);
   });
 
-  test('sloped top profile accepts points below slope and rejects above it', () {
+  test('sloped top profile accepts points below slope and rejects above it',
+      () {
     final profile = WallProfile.rectangle(widthMm: 4000, heightMm: 3000)
         .withTopPolyline(const [
       WallProfilePoint(0, 3000),
@@ -62,7 +63,10 @@ void main() {
       sillHeightMm: 1900,
     );
 
-    expect(RoomSurfaceResolver.openingFitsWall(opening: lowDoor, wall: wall), isTrue);
-    expect(RoomSurfaceResolver.openingFitsWall(opening: tallOpening, wall: wall), isFalse);
+    expect(RoomSurfaceResolver.openingFitsWall(opening: lowDoor, wall: wall),
+        isTrue);
+    expect(
+        RoomSurfaceResolver.openingFitsWall(opening: tallOpening, wall: wall),
+        isFalse);
   });
 }

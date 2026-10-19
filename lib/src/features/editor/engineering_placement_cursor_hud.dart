@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import '../../app/alien_cockpit_tokens.dart';
@@ -29,16 +27,19 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
         controller.routeSelection,
       ]),
       builder: (context, _) {
-        final componentTypeId = controller.placementCursor.activeComponentTypeId;
-        final placement = componentTypeId == null || controller.activeSurface == null
-            ? null
-            : controller.placementCursor.ensure();
+        final componentTypeId =
+            controller.placementCursor.activeComponentTypeId;
+        final placement =
+            componentTypeId == null || controller.activeSurface == null
+                ? null
+                : controller.placementCursor.ensure();
         final entry = placement == null
             ? null
             : controller.componentCatalog.byId(placement.componentTypeId);
         final scheme = Theme.of(context).colorScheme;
         final selectedRoute = controller.routeSelection.selectedRoute;
-        final selectedHostedRoute = controller.routeSelection.selectedHostedRoute;
+        final selectedHostedRoute =
+            controller.routeSelection.selectedHostedRoute;
         final selectedRouteId = controller.routeSelection.selectedRouteId;
         final selectedComponents = controller.p2.selection.ids.length;
         final step = controller.selectedSpace?.grid.minorStepMm ?? 100;
@@ -86,7 +87,10 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
                           child: Text(
                             command,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelMedium
+                                ?.copyWith(
                                   letterSpacing: 0.75,
                                   fontWeight: FontWeight.w700,
                                   color: commandColor,
@@ -107,9 +111,10 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
                       const SizedBox(height: 7),
                       Text(
                         placement.coordinateLabel,
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              fontFeatures: const [FontFeature.tabularFigures()],
-                            ),
+                        style:
+                            Theme.of(context).textTheme.labelMedium?.copyWith(
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
                       ),
                       const SizedBox(height: 3),
                       Text(
@@ -128,7 +133,8 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
                           _NudgeButton(
                             icon: Icons.arrow_left,
                             tooltip: '← $step mm',
-                            onPressed: () => controller.placementCursor.nudgeGrid(
+                            onPressed: () =>
+                                controller.placementCursor.nudgeGrid(
                               dxSteps: -1,
                               dySteps: 0,
                             ),
@@ -136,7 +142,8 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
                           _NudgeButton(
                             icon: Icons.arrow_right,
                             tooltip: '→ $step mm',
-                            onPressed: () => controller.placementCursor.nudgeGrid(
+                            onPressed: () =>
+                                controller.placementCursor.nudgeGrid(
                               dxSteps: 1,
                               dySteps: 0,
                             ),
@@ -144,7 +151,8 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
                           _NudgeButton(
                             icon: Icons.arrow_upward,
                             tooltip: '↑ $step mm',
-                            onPressed: () => controller.placementCursor.nudgeGrid(
+                            onPressed: () =>
+                                controller.placementCursor.nudgeGrid(
                               dxSteps: 0,
                               dySteps: 1,
                             ),
@@ -152,7 +160,8 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
                           _NudgeButton(
                             icon: Icons.arrow_downward,
                             tooltip: '↓ $step mm',
-                            onPressed: () => controller.placementCursor.nudgeGrid(
+                            onPressed: () =>
+                                controller.placementCursor.nudgeGrid(
                               dxSteps: 0,
                               dySteps: -1,
                             ),
@@ -196,7 +205,8 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
                           icon: controller.snapEnabled
                               ? Icons.grid_4x4
                               : Icons.grid_off,
-                          label: controller.snapEnabled ? 'SNAP ON' : 'SNAP OFF',
+                          label:
+                              controller.snapEnabled ? 'SNAP ON' : 'SNAP OFF',
                           color: controller.snapEnabled
                               ? AlienCockpitTokens.signalAqua
                               : scheme.onSurfaceVariant,

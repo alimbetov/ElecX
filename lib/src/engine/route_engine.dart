@@ -1,10 +1,17 @@
 import '../domain/electrical_routing.dart';
 import '../domain/surfaces.dart';
 
-enum RoutePreference { shortest, orthogonal, preferWall, preferCeiling, preferFloor }
+enum RoutePreference {
+  shortest,
+  orthogonal,
+  preferWall,
+  preferCeiling,
+  preferFloor
+}
 
 final class RouteNode {
-  const RouteNode({required this.id, required this.surface, required this.point});
+  const RouteNode(
+      {required this.id, required this.surface, required this.point});
 
   final String id;
   final RoomSurfaceRef surface;
@@ -106,13 +113,15 @@ abstract final class RouteEngine {
         continue;
       }
       if (points.isNotEmpty) {
-        result.add(ElectricalRouteSegment(surface: activeSurface, points: points));
+        result.add(
+            ElectricalRouteSegment(surface: activeSurface, points: points));
       }
       activeSurface = node.surface;
       points = [node.point];
     }
     if (activeSurface != null && points.isNotEmpty) {
-      result.add(ElectricalRouteSegment(surface: activeSurface, points: points));
+      result
+          .add(ElectricalRouteSegment(surface: activeSurface, points: points));
     }
     return result;
   }

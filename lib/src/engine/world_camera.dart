@@ -85,7 +85,8 @@ final class WorldCamera {
     int overscanPx = 64,
   }) {
     final halfWidth = ((viewportWidthPx / 2 + overscanPx) * mmPerPixel).ceil();
-    final halfHeight = ((viewportHeightPx / 2 + overscanPx) * mmPerPixel).ceil();
+    final halfHeight =
+        ((viewportHeightPx / 2 + overscanPx) * mmPerPixel).ceil();
     return MmBounds(
       left: centerMm.x - halfWidth,
       bottom: centerMm.y - halfHeight,

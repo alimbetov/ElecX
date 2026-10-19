@@ -40,8 +40,10 @@ final class WallProfile {
 
   final List<WallProfilePoint> vertices;
 
-  int get maxX => vertices.fold(0, (value, point) => point.xMm > value ? point.xMm : value);
-  int get maxY => vertices.fold(0, (value, point) => point.yMm > value ? point.yMm : value);
+  int get maxX =>
+      vertices.fold(0, (value, point) => point.xMm > value ? point.xMm : value);
+  int get maxY =>
+      vertices.fold(0, (value, point) => point.yMm > value ? point.yMm : value);
 
   /// Creates a rectangular downward notch from the top boundary.
   /// Useful for beams and boxed structural elements.
@@ -89,7 +91,8 @@ final class WallProfile {
       previousX = point.xMm;
     }
     if (topPoints.first.xMm != 0 || topPoints.last.xMm != maxX) {
-      throw ArgumentError('Top polyline must start at X=0 and end at wall width.');
+      throw ArgumentError(
+          'Top polyline must start at X=0 and end at wall width.');
     }
 
     return WallProfile(
@@ -107,8 +110,7 @@ final class WallProfile {
       final a = vertices[i];
       final b = vertices[j];
       final intersects = ((a.yMm > yMm) != (b.yMm > yMm)) &&
-          (xMm <
-              (b.xMm - a.xMm) * (yMm - a.yMm) / (b.yMm - a.yMm) + a.xMm);
+          (xMm < (b.xMm - a.xMm) * (yMm - a.yMm) / (b.yMm - a.yMm) + a.xMm);
       if (intersects) inside = !inside;
     }
     return inside || _onBoundary(xMm, yMm);
@@ -132,8 +134,8 @@ final class WallProfile {
     for (var i = 0; i < vertices.length; i++) {
       final a = vertices[i];
       final b = vertices[(i + 1) % vertices.length];
-      final cross = (xMm - a.xMm) * (b.yMm - a.yMm) -
-          (yMm - a.yMm) * (b.xMm - a.xMm);
+      final cross =
+          (xMm - a.xMm) * (b.yMm - a.yMm) - (yMm - a.yMm) * (b.xMm - a.xMm);
       if (cross != 0) continue;
       final minX = a.xMm < b.xMm ? a.xMm : b.xMm;
       final maxX = a.xMm > b.xMm ? a.xMm : b.xMm;

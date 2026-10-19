@@ -378,8 +378,7 @@ class _SiteMapPainter extends CustomPainter {
           style: TextStyle(
             color: scheme.onSurface,
             fontSize: selected || hovered ? 12 : 11,
-            fontWeight:
-                selected || hovered ? FontWeight.w700 : FontWeight.w500,
+            fontWeight: selected || hovered ? FontWeight.w700 : FontWeight.w500,
           ),
         ),
         textDirection: TextDirection.ltr,

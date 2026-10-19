@@ -129,7 +129,8 @@ abstract final class ComponentTaxonomyResolver {
           category: ComponentCategory.lighting,
           subcategory: ComponentSubcategory.luminaire,
         ),
-      EngineeringSystemClass.powerAc || EngineeringSystemClass.powerDc =>
+      EngineeringSystemClass.powerAc ||
+      EngineeringSystemClass.powerDc =>
         const ComponentTaxonomyRef(
           category: ComponentCategory.power,
           subcategory: ComponentSubcategory.custom,

@@ -168,7 +168,8 @@ abstract final class CableSizingEngine {
         'Voltage drop ${(voltageDropRatio! * 100).toStringAsFixed(2)}% exceeds allowed ${(request.requirement.maxVoltageDropRatio * 100).toStringAsFixed(2)}%.',
       );
     }
-    if (reasons.isEmpty) reasons.add('Cable satisfies current and voltage-drop checks.');
+    if (reasons.isEmpty)
+      reasons.add('Cable satisfies current and voltage-drop checks.');
 
     return CableSizingResult(
       currentStatus: currentStatus,
@@ -213,13 +214,14 @@ abstract final class CableSizingEngine {
     final lengthKm = requirement.routeLengthMm / 1000000.0;
     final cosPhi = requirement.powerFactor;
     final sinPhi = math.sqrt(math.max(0, 1 - cosPhi * cosPhi));
-    final impedanceTerm =
-        evidence.resistanceOhmPerKm * cosPhi + evidence.reactanceOhmPerKm * sinPhi;
+    final impedanceTerm = evidence.resistanceOhmPerKm * cosPhi +
+        evidence.reactanceOhmPerKm * sinPhi;
 
     return switch (requirement.phaseSystem) {
       CircuitPhaseSystem.threePhaseAc =>
         math.sqrt(3) * requirement.designCurrentA * lengthKm * impedanceTerm,
-      CircuitPhaseSystem.dc || CircuitPhaseSystem.singlePhaseAc =>
+      CircuitPhaseSystem.dc ||
+      CircuitPhaseSystem.singlePhaseAc =>
         2 * requirement.designCurrentA * lengthKm * impedanceTerm,
     };
   }

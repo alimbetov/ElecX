@@ -27,8 +27,10 @@ abstract final class CadDimensionPainter {
     canvas.drawLine(geometryEnd, dimensionEnd, paint);
     canvas.drawLine(dimensionStart, dimensionEnd, paint);
 
-    _arrowHead(canvas, from: dimensionStart, toward: dimensionEnd, paint: paint);
-    _arrowHead(canvas, from: dimensionEnd, toward: dimensionStart, paint: paint);
+    _arrowHead(canvas,
+        from: dimensionStart, toward: dimensionEnd, paint: paint);
+    _arrowHead(canvas,
+        from: dimensionEnd, toward: dimensionStart, paint: paint);
 
     final midpoint = Offset(
       (dimensionStart.dx + dimensionEnd.dx) / 2,

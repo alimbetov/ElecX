@@ -72,7 +72,8 @@ class RoomWorldCanvas extends StatelessWidget {
                       space: space,
                       surface: wallTiles[index].surface,
                       title: 'СТЕНА ${index + 1}',
-                      subtitle: 'L ${wall.lengthMm.round()} · H ${wall.heightMm} mm',
+                      subtitle:
+                          'L ${wall.lengthMm.round()} · H ${wall.heightMm} mm',
                       role: _SurfaceRole.wall,
                     ),
                   );
@@ -120,7 +121,8 @@ class _RoomWorldStatus extends StatelessWidget {
           Text('пол ↓', style: Theme.of(context).textTheme.labelSmall),
           const Spacer(),
           if (route.isNotEmpty) ...[
-            Icon(Icons.alt_route, size: 15, color: CadVisualTokens.route(scheme)),
+            Icon(Icons.alt_route,
+                size: 15, color: CadVisualTokens.route(scheme)),
             const SizedBox(width: 5),
             Flexible(
               child: Text(
@@ -203,7 +205,8 @@ class _SurfaceTile extends StatelessWidget {
 
     return Material(
       color: switch (role) {
-        _SurfaceRole.ceiling => scheme.surfaceContainerLow.withValues(alpha: 0.72),
+        _SurfaceRole.ceiling =>
+          scheme.surfaceContainerLow.withValues(alpha: 0.72),
         _SurfaceRole.wall => scheme.surfaceContainerLow,
         _SurfaceRole.floor => scheme.surfaceContainerLowest,
       },

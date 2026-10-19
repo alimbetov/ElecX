@@ -360,8 +360,7 @@ double _distanceToSegment(MmPoint p, MmPoint a, MmPoint b) {
   if (dx == 0 && dy == 0) {
     return p.distanceTo(a);
   }
-  final t = (((p.x - a.x) * dx + (p.y - a.y) * dy) /
-          (dx * dx + dy * dy))
+  final t = (((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy))
       .clamp(0.0, 1.0);
   final x = a.x + t * dx;
   final y = a.y + t * dy;

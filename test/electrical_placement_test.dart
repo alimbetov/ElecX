@@ -5,7 +5,8 @@ import 'package:elecx/src/domain/electrical_routing.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 
 void main() {
-  test('component stays bound to concrete room surface and millimetre point', () {
+  test('component stays bound to concrete room surface and millimetre point',
+      () {
     final socket = ElectricalComponentPlacement(
       id: 'socket-1',
       type: ElectricalComponentType.socketOutlet,

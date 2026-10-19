@@ -128,13 +128,16 @@ class EngineeringInspector extends StatelessWidget {
         FilledButton.tonalIcon(
           onPressed: () => _showWallProfileDialog(context, wall),
           icon: const Icon(Icons.account_tree_outlined, size: 17),
-          label: Text(notch == null ? 'Добавить балку / выемку' : 'Открыть редактор балки'),
+          label: Text(notch == null
+              ? 'Добавить балку / выемку'
+              : 'Открыть редактор балки'),
         ),
         if (notch != null) ...[
           const SizedBox(height: 7),
           const _DirectionCaption(
             icon: Icons.open_with,
-            text: 'Балка: параметры применяются по Enter или при выходе из поля',
+            text:
+                'Балка: параметры применяются по Enter или при выходе из поля',
           ),
           const SizedBox(height: 6),
           _CommitIntField(
@@ -176,7 +179,8 @@ class EngineeringInspector extends StatelessWidget {
               Expanded(
                 child: IconButton.outlined(
                   tooltip: 'Балка влево',
-                  onPressed: () => controller.nudgeActiveWallTopNotchX(-_stepMm),
+                  onPressed: () =>
+                      controller.nudgeActiveWallTopNotchX(-_stepMm),
                   icon: const Icon(Icons.arrow_back, size: 18),
                 ),
               ),
@@ -192,7 +196,8 @@ class EngineeringInspector extends StatelessWidget {
               Expanded(
                 child: IconButton.outlined(
                   tooltip: 'Уменьшить глубину балки',
-                  onPressed: () => controller.nudgeActiveWallTopNotchDepth(-_stepMm),
+                  onPressed: () =>
+                      controller.nudgeActiveWallTopNotchDepth(-_stepMm),
                   icon: const Icon(Icons.arrow_upward, size: 18),
                 ),
               ),
@@ -200,7 +205,8 @@ class EngineeringInspector extends StatelessWidget {
               Expanded(
                 child: IconButton.outlined(
                   tooltip: 'Увеличить глубину балки',
-                  onPressed: () => controller.nudgeActiveWallTopNotchDepth(_stepMm),
+                  onPressed: () =>
+                      controller.nudgeActiveWallTopNotchDepth(_stepMm),
                   icon: const Icon(Icons.arrow_downward, size: 18),
                 ),
               ),
@@ -227,7 +233,8 @@ class EngineeringInspector extends StatelessWidget {
         Row(
           children: [
             const Expanded(child: _SectionLabel('ДВЕРИ И ОКНА')),
-            Text('${openings.length}', style: Theme.of(context).textTheme.labelSmall),
+            Text('${openings.length}',
+                style: Theme.of(context).textTheme.labelSmall),
           ],
         ),
         const SizedBox(height: 6),
@@ -235,7 +242,8 @@ class EngineeringInspector extends StatelessWidget {
           children: [
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () => controller.addOpening(ArchitecturalOpeningType.door),
+                onPressed: () =>
+                    controller.addOpening(ArchitecturalOpeningType.door),
                 icon: const Icon(Icons.door_front_door_outlined, size: 17),
                 label: const Text('Дверь'),
               ),
@@ -243,7 +251,8 @@ class EngineeringInspector extends StatelessWidget {
             const SizedBox(width: 6),
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () => controller.addOpening(ArchitecturalOpeningType.window),
+                onPressed: () =>
+                    controller.addOpening(ArchitecturalOpeningType.window),
                 icon: const Icon(Icons.window_outlined, size: 17),
                 label: const Text('Окно'),
               ),
@@ -261,8 +270,10 @@ class EngineeringInspector extends StatelessWidget {
               visualDensity: VisualDensity.compact,
               minTileHeight: 38,
               selected: controller.selectedOpeningId == opening.id,
-              selectedTileColor: Theme.of(context).colorScheme.secondaryContainer,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+              selectedTileColor:
+                  Theme.of(context).colorScheme.secondaryContainer,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(7)),
               leading: Icon(
                 opening.type == ArchitecturalOpeningType.window
                     ? Icons.window_outlined
@@ -355,7 +366,9 @@ class EngineeringInspector extends StatelessWidget {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text(current == null ? 'Добавить балку / выемку' : 'Редактировать балку / выемку'),
+          title: Text(current == null
+              ? 'Добавить балку / выемку'
+              : 'Редактировать балку / выемку'),
           content: SizedBox(
             width: 360,
             child: Column(
@@ -390,7 +403,8 @@ class EngineeringInspector extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     error!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error),
                   ),
                 ],
               ],
@@ -412,7 +426,8 @@ class EngineeringInspector extends StatelessWidget {
                   Navigator.pop(dialogContext);
                 } else {
                   setDialogState(() {
-                    error = 'Профиль недопустим или пересекает существующий проём.';
+                    error =
+                        'Профиль недопустим или пересекает существующий проём.';
                   });
                 }
               },
@@ -450,7 +465,8 @@ class _OpeningEditor extends StatelessWidget {
           children: [
             const _DirectionCaption(
               icon: Icons.swap_horiz,
-              text: 'Введите размер и нажмите Enter или перейдите в другое поле',
+              text:
+                  'Введите размер и нажмите Enter или перейдите в другое поле',
             ),
             const SizedBox(height: 5),
             Row(
@@ -494,7 +510,8 @@ class _OpeningEditor extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             _CommitIntField(
-              key: ValueKey('${opening.id}-offset-${opening.offsetFromStartMm}'),
+              key:
+                  ValueKey('${opening.id}-offset-${opening.offsetFromStartMm}'),
               label: 'Позиция от начала стены',
               value: opening.offsetFromStartMm,
               onCommit: (value) => controller.updateSelectedOpening(
@@ -506,21 +523,24 @@ class _OpeningEditor extends StatelessWidget {
               key: ValueKey('${opening.id}-width-${opening.widthMm}'),
               label: 'Ширина',
               value: opening.widthMm,
-              onCommit: (value) => controller.updateSelectedOpening(widthMm: value),
+              onCommit: (value) =>
+                  controller.updateSelectedOpening(widthMm: value),
             ),
             const SizedBox(height: 6),
             _CommitIntField(
               key: ValueKey('${opening.id}-height-${opening.heightMm}'),
               label: 'Высота',
               value: opening.heightMm,
-              onCommit: (value) => controller.updateSelectedOpening(heightMm: value),
+              onCommit: (value) =>
+                  controller.updateSelectedOpening(heightMm: value),
             ),
             const SizedBox(height: 6),
             _CommitIntField(
               key: ValueKey('${opening.id}-sill-${opening.sillHeightMm}'),
               label: 'От пола / подоконник',
               value: opening.sillHeightMm,
-              onCommit: (value) => controller.updateSelectedOpening(sillHeightMm: value),
+              onCommit: (value) =>
+                  controller.updateSelectedOpening(sillHeightMm: value),
             ),
             TextButton.icon(
               onPressed: controller.deleteSelectedOpening,
@@ -704,7 +724,8 @@ class _ValueRow extends StatelessWidget {
               child: Text(
                 value,
                 textAlign: TextAlign.right,
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                style:
+                    const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
               ),
             ),
           ],

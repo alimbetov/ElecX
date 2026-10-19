@@ -3,8 +3,10 @@ import 'package:elecx/src/domain/component_taxonomy.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('distribution board resolves by stable identity, not localized name', () {
-    final entry = ComponentCatalogV2.require('power.distribution-board.general');
+  test('distribution board resolves by stable identity, not localized name',
+      () {
+    final entry =
+        ComponentCatalogV2.require('power.distribution-board.general');
     final taxonomy = ComponentTaxonomyResolver.resolve(entry);
 
     expect(taxonomy.category, ComponentCategory.power);

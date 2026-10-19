@@ -268,7 +268,9 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
   _PlanDragKind? _openingHandleAt(Offset local) {
     final opening = controller.selectedOpening;
     final wall = controller.activeWall;
-    if (opening == null || wall == null || controller.tool != EditorTool.select) {
+    if (opening == null ||
+        wall == null ||
+        controller.tool != EditorTool.select) {
       return null;
     }
     final start = RoomSurfaceResolver.wallLocalToPlan(
@@ -836,8 +838,7 @@ class _PlanPainter extends CustomPainter {
       overscanPx: 0,
     );
     final grid = AdaptiveGridPolicy.forScale(camera.mmPerPixel);
-    final startX =
-        (visible.left / grid.minorStepMm).floor() * grid.minorStepMm;
+    final startX = (visible.left / grid.minorStepMm).floor() * grid.minorStepMm;
     final startY =
         (visible.bottom / grid.minorStepMm).floor() * grid.minorStepMm;
     final minor = Paint()
@@ -906,9 +907,7 @@ class _PlanPainter extends CustomPainter {
     if (RenderPolicy.showRoomLabels(lod)) {
       _drawLabel(canvas, size, space, boundary);
     }
-    if (selected &&
-        dimensionsVisible &&
-        RenderPolicy.showFineDimensions(lod)) {
+    if (selected && dimensionsVisible && RenderPolicy.showFineDimensions(lod)) {
       _drawDimensions(canvas, size, boundary);
     }
     if (selected && tool == EditorTool.select) {
@@ -944,9 +943,8 @@ class _PlanPainter extends CustomPainter {
     EngineeringSpace space,
     MmPolygon boundary,
   ) {
-    final projectedSpace = boundary == space.boundary
-        ? space
-        : space.copyWith(boundary: boundary);
+    final projectedSpace =
+        boundary == space.boundary ? space : space.copyWith(boundary: boundary);
     final walls = RoomSurfaceResolver.walls(projectedSpace);
 
     for (final source in openings) {
@@ -958,7 +956,8 @@ class _PlanPainter extends CustomPainter {
       if (index < 0 || index >= walls.length) {
         continue;
       }
-      final opening = previewOpening?.id == source.id ? previewOpening! : source;
+      final opening =
+          previewOpening?.id == source.id ? previewOpening! : source;
       final wall = walls[index];
       final startWorld = RoomSurfaceResolver.wallLocalToPlan(
         wall,

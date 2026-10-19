@@ -88,9 +88,7 @@ abstract final class PlanGeometryEditing {
       final a1 = vertices[i];
       final a2 = vertices[(i + 1) % count];
       for (var j = i + 1; j < count; j++) {
-        if (j == i ||
-            (j + 1) % count == i ||
-            (i + 1) % count == j) {
+        if (j == i || (j + 1) % count == i || (i + 1) % count == j) {
           continue;
         }
         final b1 = vertices[j];
@@ -103,8 +101,7 @@ abstract final class PlanGeometryEditing {
 
   static bool _segmentsIntersect(MmPoint a, MmPoint b, MmPoint c, MmPoint d) {
     int orientation(MmPoint p, MmPoint q, MmPoint r) {
-      final value =
-          (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
+      final value = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
       if (value == 0) return 0;
       return value > 0 ? 1 : 2;
     }

@@ -90,7 +90,8 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
       oldWidget.controller.viewportCommandListenable
           .removeListener(_onViewportCommand);
       oldWidget.controller.p2.removeListener(_onP2Changed);
-      oldWidget.controller.boundaryEditing.removeListener(_onBoundaryEditChanged);
+      oldWidget.controller.boundaryEditing
+          .removeListener(_onBoundaryEditChanged);
       oldWidget.controller.hostedRoutes.removeListener(_onRouteChanged);
       oldWidget.controller.routeSelection.removeListener(_onRouteChanged);
       _lastViewportRevision = controller.viewportCommandRevision;
@@ -131,8 +132,8 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
   }
 
   WorldCamera _fittedCamera(_SurfaceExtent extent) {
-    final base = _camera ??
-        const WorldCamera(centerMm: MmPoint(0, 0), mmPerPixel: 10);
+    final base =
+        _camera ?? const WorldCamera(centerMm: MmPoint(0, 0), mmPerPixel: 10);
     if (_size.isEmpty) return base;
     return base.fitBounds(
       bounds: MmBounds(
@@ -422,6 +423,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
         final dy = a.yMm - b.yMm;
         return math.sqrt((dx * dx + dy * dy).toDouble());
       }
+
       if (i > 0 && distance(point, first) <= radius) {
         return selected.segments[i - 1].surface;
       }
@@ -737,7 +739,8 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                   final raw = projection.viewportToSurface(event.localPosition);
                   if (raw == null) return;
                   final handleOwner = _componentForHandle(raw, projection);
-                  final component = handleOwner ?? _componentAt(raw, projection);
+                  final component =
+                      handleOwner ?? _componentAt(raw, projection);
                   if (component != null) {
                     controller.routeSelection.clear();
                     controller.p2.select(
@@ -775,7 +778,8 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                   }
                   if (_dragComponentId != null &&
                       event.buttons == kPrimaryMouseButton) {
-                    final raw = projection.viewportToSurface(event.localPosition);
+                    final raw =
+                        projection.viewportToSurface(event.localPosition);
                     if (raw == null) return;
                     var point = _snapSurfacePoint(raw, projection);
                     point = _applyDragConstraint(point);
@@ -917,7 +921,9 @@ class _EdgeNavigationHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) => DecoratedBox(
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHigh
+          color: Theme.of(context)
+              .colorScheme
+              .surfaceContainerHigh
               .withValues(alpha: 0.90),
           borderRadius: BorderRadius.circular(7),
           border: Border.all(
@@ -1056,8 +1062,7 @@ final class _SurfaceProjection {
       WallNavigationEdge.start => SurfacePointMm(0, local.yMm),
       WallNavigationEdge.end => SurfacePointMm(extent.widthMm, local.yMm),
       WallNavigationEdge.floor => SurfacePointMm(local.xMm, 0),
-      WallNavigationEdge.ceiling =>
-        SurfacePointMm(local.xMm, extent.heightMm),
+      WallNavigationEdge.ceiling => SurfacePointMm(local.xMm, extent.heightMm),
     };
     return _WallEdgeHit(entry.key, point);
   }
@@ -1102,8 +1107,7 @@ final class _SurfaceProjection {
     final lengthSquared = ab.dx * ab.dx + ab.dy * ab.dy;
     if (lengthSquared == 0) return a;
     final ap = point - a;
-    final t = ((ap.dx * ab.dx + ap.dy * ab.dy) / lengthSquared)
-        .clamp(0.0, 1.0);
+    final t = ((ap.dx * ab.dx + ap.dy * ab.dy) / lengthSquared).clamp(0.0, 1.0);
     return a + ab * t;
   }
 }
@@ -1120,7 +1124,8 @@ class _SurfacePainter extends CustomPainter {
         selectedSpaceId = controller.selectedSpaceId,
         dimensionsVisible = controller.dimensionsVisible &&
             controller.p2.layers.isVisible(EditorLayerId.dimensions),
-        openingsVisible = controller.p2.layers.isVisible(EditorLayerId.openings),
+        openingsVisible =
+            controller.p2.layers.isVisible(EditorLayerId.openings),
         electricalVisible =
             controller.p2.layers.isVisible(EditorLayerId.electrical),
         cableRoutesVisible =
@@ -1417,9 +1422,8 @@ class _SurfacePainter extends CustomPainter {
         SurfacePointMm(end, draft.sillHeightMm),
       );
       final rect = Rect.fromPoints(a, b);
-      final color = valid
-          ? CadVisualTokens.selectedGeometry(scheme)
-          : scheme.error;
+      final color =
+          valid ? CadVisualTokens.selectedGeometry(scheme) : scheme.error;
       canvas.drawRect(
         rect,
         Paint()..color = color.withValues(alpha: 0.10),
@@ -1468,9 +1472,8 @@ class _SurfacePainter extends CustomPainter {
       }
     }
 
-    final color = valid
-        ? CadVisualTokens.selectedGeometry(scheme)
-        : scheme.error;
+    final color =
+        valid ? CadVisualTokens.selectedGeometry(scheme) : scheme.error;
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5
@@ -1521,8 +1524,8 @@ class _SurfacePainter extends CustomPainter {
       final paint = Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.1
-        ..color = CadVisualTokens.selectedGeometry(scheme)
-            .withValues(alpha: 0.82);
+        ..color =
+            CadVisualTokens.selectedGeometry(scheme).withValues(alpha: 0.82);
       canvas.drawLine(start, end, paint);
       if (span.axis == MeasurementAxis.horizontal) {
         canvas.drawLine(
@@ -1585,7 +1588,8 @@ class _SurfacePainter extends CustomPainter {
   void _drawHorizontalSurface(Canvas canvas, SurfacePlaneType type) {
     final space = controller.selectedSpace!;
     final path = Path();
-    final first = projection.floorPointToViewport(space.boundary.vertices.first);
+    final first =
+        projection.floorPointToViewport(space.boundary.vertices.first);
     path.moveTo(first.dx, first.dy);
     for (final vertex in space.boundary.vertices.skip(1)) {
       final point = projection.floorPointToViewport(vertex);
@@ -1635,12 +1639,9 @@ class _SurfacePainter extends CustomPainter {
     final major = Paint()
       ..color = CadVisualTokens.gridMajor(scheme)
       ..strokeWidth = 1.0;
-    for (var x = 0;
-        x <= projection.extent.widthMm;
-        x += spec.minorStepMm) {
+    for (var x = 0; x <= projection.extent.widthMm; x += spec.minorStepMm) {
       final isMajor = x % spec.majorStepMm == 0;
-      if (!isMajor &&
-          (!spec.showMinor || lod.index < RenderLod.room.index)) {
+      if (!isMajor && (!spec.showMinor || lod.index < RenderLod.room.index)) {
         continue;
       }
       final point = projection.surfaceToViewport(SurfacePointMm(x, 0));
@@ -1650,12 +1651,9 @@ class _SurfacePainter extends CustomPainter {
         isMajor ? major : minor,
       );
     }
-    for (var y = 0;
-        y <= projection.extent.heightMm;
-        y += spec.minorStepMm) {
+    for (var y = 0; y <= projection.extent.heightMm; y += spec.minorStepMm) {
       final isMajor = y % spec.majorStepMm == 0;
-      if (!isMajor &&
-          (!spec.showMinor || lod.index < RenderLod.room.index)) {
+      if (!isMajor && (!spec.showMinor || lod.index < RenderLod.room.index)) {
         continue;
       }
       final point = projection.surfaceToViewport(SurfacePointMm(0, y));
@@ -2106,9 +2104,7 @@ class _SurfacePainter extends CustomPainter {
     )..layout();
     painter.paint(
       canvas,
-      centered
-          ? point - Offset(painter.width / 2, painter.height / 2)
-          : point,
+      centered ? point - Offset(painter.width / 2, painter.height / 2) : point,
     );
   }
 

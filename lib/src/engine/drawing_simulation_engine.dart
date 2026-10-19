@@ -186,7 +186,8 @@ abstract final class DrawingSimulationEngine {
           kind: DrawingDefectKind.componentSurfaceNotAllowed,
           severity: SimulationSeverity.error,
           objectId: component.id,
-          message: '${entry.name} is not allowed on ${component.surface.type.name}.',
+          message:
+              '${entry.name} is not allowed on ${component.surface.type.name}.',
         ),
       );
     }
@@ -263,7 +264,8 @@ abstract final class DrawingSimulationEngine {
               severity: SimulationSeverity.warning,
               objectId: a.id,
               relatedObjectIds: [b.id],
-              message: 'Component clearance is ${distance.round()} mm; profile requires at least ${minimum.round()} mm.',
+              message:
+                  'Component clearance is ${distance.round()} mm; profile requires at least ${minimum.round()} mm.',
             ),
           );
         }
@@ -311,19 +313,22 @@ abstract final class DrawingSimulationEngine {
           kind: DrawingDefectKind.routeExcessiveTransitions,
           severity: SimulationSeverity.warning,
           objectId: route.id,
-          message: 'Route uses $currentTransitions surface transitions; profile allows ${request.profile.maxSurfaceTransitions}.',
+          message:
+              'Route uses $currentTransitions surface transitions; profile allows ${request.profile.maxSurfaceTransitions}.',
         ),
       );
     }
 
-    final bends = route.segments.fold<int>(0, (sum, item) => sum + _bendCount(item));
+    final bends =
+        route.segments.fold<int>(0, (sum, item) => sum + _bendCount(item));
     if (bends > request.profile.maxRouteBends) {
       defects.add(
         DrawingDefect(
           kind: DrawingDefectKind.routeExcessiveBends,
           severity: SimulationSeverity.warning,
           objectId: route.id,
-          message: 'Route uses $bends bends; profile allows ${request.profile.maxRouteBends}.',
+          message:
+              'Route uses $bends bends; profile allows ${request.profile.maxRouteBends}.',
         ),
       );
     }
@@ -341,7 +346,8 @@ abstract final class DrawingSimulationEngine {
             severity: SimulationSeverity.error,
             objectId: route.id,
             relatedObjectIds: [zone.id],
-            message: 'Route crosses keep-out zone ${zone.id}${zone.reason == null ? '' : ': ${zone.reason}'}.',
+            message:
+                'Route crosses keep-out zone ${zone.id}${zone.reason == null ? '' : ': ${zone.reason}'}.',
           ),
         );
       }
@@ -377,7 +383,8 @@ abstract final class DrawingSimulationEngine {
           kind: DrawingDefectKind.routeNoFeasibleAlternative,
           severity: SimulationSeverity.warning,
           objectId: route.id,
-          message: 'No feasible auto-route satisfies the current geometric constraints.',
+          message:
+              'No feasible auto-route satisfies the current geometric constraints.',
         ),
       );
       return;
@@ -399,8 +406,8 @@ abstract final class DrawingSimulationEngine {
       currentTransitionCount: currentTransitions,
       optimizedTransitionCount: math.max(0, optimizedSegments.length - 1),
     );
-    final minimumSaving = route.geometricLengthMm *
-        request.profile.routeImprovementThreshold;
+    final minimumSaving =
+        route.geometricLengthMm * request.profile.routeImprovementThreshold;
     if (candidate.savingMm > minimumSaving) {
       candidates.add(candidate);
       defects.add(
@@ -408,7 +415,8 @@ abstract final class DrawingSimulationEngine {
           kind: DrawingDefectKind.routeInefficient,
           severity: SimulationSeverity.warning,
           objectId: route.id,
-          message: 'A shorter route can save ${candidate.savingMm.round()} mm (${candidate.savingPercent.toStringAsFixed(1)}%).',
+          message:
+              'A shorter route can save ${candidate.savingMm.round()} mm (${candidate.savingPercent.toStringAsFixed(1)}%).',
         ),
       );
     }
@@ -444,7 +452,8 @@ abstract final class DrawingSimulationEngine {
           kind: DrawingDefectKind.topologyMissingNode,
           severity: SimulationSeverity.error,
           objectId: boardNodeId,
-          message: 'Configured distribution board node is missing from topology.',
+          message:
+              'Configured distribution board node is missing from topology.',
         ),
       );
       return;
@@ -469,7 +478,8 @@ abstract final class DrawingSimulationEngine {
             kind: DrawingDefectKind.topologyNoPathToBoard,
             severity: SimulationSeverity.error,
             objectId: component.id,
-            message: 'No physical engineering path exists from component to distribution board.',
+            message:
+                'No physical engineering path exists from component to distribution board.',
           ),
         );
         continue;
@@ -480,7 +490,8 @@ abstract final class DrawingSimulationEngine {
             kind: DrawingDefectKind.topologyWrongFlowDirection,
             severity: SimulationSeverity.error,
             objectId: component.id,
-            message: 'Topology is connected, but no directed supply path exists from distribution board to component.',
+            message:
+                'Topology is connected, but no directed supply path exists from distribution board to component.',
           ),
         );
       }

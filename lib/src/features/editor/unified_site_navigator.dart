@@ -134,17 +134,19 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
             IconButton(
               tooltip: 'Предыдущий уровень',
               visualDensity: VisualDensity.compact,
-              onPressed: workspace.context == EditorWorkspaceContext.buildingLevel
-                  ? workspace.previousLevel
-                  : null,
+              onPressed:
+                  workspace.context == EditorWorkspaceContext.buildingLevel
+                      ? workspace.previousLevel
+                      : null,
               icon: const Icon(Icons.keyboard_arrow_down, size: 18),
             ),
             IconButton(
               tooltip: 'Следующий уровень',
               visualDensity: VisualDensity.compact,
-              onPressed: workspace.context == EditorWorkspaceContext.buildingLevel
-                  ? workspace.nextLevel
-                  : null,
+              onPressed:
+                  workspace.context == EditorWorkspaceContext.buildingLevel
+                      ? workspace.nextLevel
+                      : null,
               icon: const Icon(Icons.keyboard_arrow_up, size: 18),
             ),
           ],
@@ -153,7 +155,9 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
 
   Widget _breadcrumb(BuildContext context, NavigatorNode root) {
     final activeNodeId = _activeNodeId();
-    final path = activeNodeId == null ? <NavigatorNode>[root] : root.pathTo(activeNodeId);
+    final path = activeNodeId == null
+        ? <NavigatorNode>[root]
+        : root.pathTo(activeNodeId);
     final effective = path.isEmpty ? <NavigatorNode>[root] : path;
     return SizedBox(
       height: 28,
@@ -216,7 +220,8 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
   }) {
     final hasChildren = node.children.isNotEmpty;
     final expanded = _expanded.contains(node.id) || _forceExpanded(node);
-    final selected = _isSelected(node) || widget.interaction?.selectedNodeId == node.id;
+    final selected =
+        _isSelected(node) || widget.interaction?.selectedNodeId == node.id;
     final hovered = widget.interaction?.hoveredNodeId == node.id;
     final indent = 5.0 + depth * 12;
 
@@ -248,12 +253,15 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
                 horizontalTitleGap: 4,
                 minTileHeight: 34,
                 selected: selected,
-                selectedTileColor: Theme.of(context).colorScheme.secondaryContainer,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+                selectedTileColor:
+                    Theme.of(context).colorScheme.secondaryContainer,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(7)),
                 leading: hasChildren
                     ? IconButton(
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints.tightFor(width: 26, height: 26),
+                        constraints: const BoxConstraints.tightFor(
+                            width: 26, height: 26),
                         onPressed: () => setState(() {
                           if (!_expanded.add(node.id)) {
                             _expanded.remove(node.id);

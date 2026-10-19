@@ -109,7 +109,8 @@ String legacyComponentTypeId(ElectricalComponentType type) => switch (type) {
       ElectricalComponentType.custom => 'legacy.custom',
     };
 
-ElectricalComponentType legacyVisualTypeForComponentId(String componentTypeId) =>
+ElectricalComponentType legacyVisualTypeForComponentId(
+        String componentTypeId) =>
     switch (componentTypeId) {
       'power.socket.general' => ElectricalComponentType.socketOutlet,
       'lighting.switch.general' => ElectricalComponentType.switchControl,

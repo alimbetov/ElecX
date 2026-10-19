@@ -1,7 +1,15 @@
 import 'geometry.dart';
 import 'wall_profile.dart';
 
-enum SpaceType { room, corridor, hall, technicalRoom, stair, shaft, outdoorArea }
+enum SpaceType {
+  room,
+  corridor,
+  hall,
+  technicalRoom,
+  stair,
+  shaft,
+  outdoorArea
+}
 
 final class GridDefinition {
   const GridDefinition({this.minorStepMm = 100, this.majorEvery = 10})
@@ -12,7 +20,8 @@ final class GridDefinition {
   final int majorEvery;
   int get majorStepMm => minorStepMm * majorEvery;
 
-  GridDefinition copyWith({int? minorStepMm, int? majorEvery}) => GridDefinition(
+  GridDefinition copyWith({int? minorStepMm, int? majorEvery}) =>
+      GridDefinition(
         minorStepMm: minorStepMm ?? this.minorStepMm,
         majorEvery: majorEvery ?? this.majorEvery,
       );
@@ -83,7 +92,11 @@ final class EngineeringSpace {
 }
 
 final class BuildingLevel {
-  const BuildingLevel({required this.id, required this.name, required this.elevationMm, required this.spaces});
+  const BuildingLevel(
+      {required this.id,
+      required this.name,
+      required this.elevationMm,
+      required this.spaces});
 
   final String id;
   final String name;
@@ -107,7 +120,8 @@ final class Building {
 }
 
 final class ProjectSite {
-  const ProjectSite({required this.id, required this.name, required this.buildings});
+  const ProjectSite(
+      {required this.id, required this.name, required this.buildings});
 
   final String id;
   final String name;
@@ -115,7 +129,8 @@ final class ProjectSite {
 }
 
 final class EngineeringProject {
-  const EngineeringProject({required this.id, required this.name, required this.site});
+  const EngineeringProject(
+      {required this.id, required this.name, required this.site});
 
   final String id;
   final String name;

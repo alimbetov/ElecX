@@ -32,7 +32,8 @@ final class RoomSurfaceRef {
 
   factory RoomSurfaceRef.wall(String spaceId, int wallIndex) {
     if (wallIndex < 0) {
-      throw ArgumentError.value(wallIndex, 'wallIndex', 'Must be non-negative.');
+      throw ArgumentError.value(
+          wallIndex, 'wallIndex', 'Must be non-negative.');
     }
     return RoomSurfaceRef._(
       spaceId: spaceId,

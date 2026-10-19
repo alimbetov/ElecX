@@ -23,8 +23,7 @@ final class RenderPolicy {
   static bool showRoomLabels(RenderLod lod) =>
       lod.index >= RenderLod.level.index;
 
-  static bool showOpenings(RenderLod lod) =>
-      lod.index >= RenderLod.room.index;
+  static bool showOpenings(RenderLod lod) => lod.index >= RenderLod.room.index;
 
   static bool showElectricalSymbols(RenderLod lod) =>
       lod.index >= RenderLod.room.index;

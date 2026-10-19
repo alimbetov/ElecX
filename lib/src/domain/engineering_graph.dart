@@ -189,7 +189,8 @@ abstract final class EngineeringGraphValidator {
 abstract final class EngineeringSystemPolicy {
   static EngineeringCalculationKind calculationFor(
     EngineeringSystemClass systemClass,
-  ) => switch (systemClass) {
+  ) =>
+      switch (systemClass) {
         EngineeringSystemClass.powerAc ||
         EngineeringSystemClass.lighting =>
           EngineeringCalculationKind.powerCableSizing,
@@ -214,7 +215,8 @@ abstract final class EngineeringSystemPolicy {
 
   static Set<EngineeringConnectionType> preferredConnectionsFor(
     EngineeringSystemClass systemClass,
-  ) => switch (systemClass) {
+  ) =>
+      switch (systemClass) {
         EngineeringSystemClass.powerAc ||
         EngineeringSystemClass.lighting =>
           <EngineeringConnectionType>{
@@ -224,8 +226,7 @@ abstract final class EngineeringSystemPolicy {
         EngineeringSystemClass.powerDc => <EngineeringConnectionType>{
             EngineeringConnectionType.dcPower,
           },
-        EngineeringSystemClass.structuredCabling =>
-          <EngineeringConnectionType>{
+        EngineeringSystemClass.structuredCabling => <EngineeringConnectionType>{
             EngineeringConnectionType.ethernetCopper,
           },
         EngineeringSystemClass.poeNetwork ||
@@ -289,8 +290,7 @@ final class CircuitLoadInput {
   final int voltageV;
   final double powerFactor;
 
-  double get designLoadW =>
-      connectedLoadW * demandFactor * simultaneityFactor;
+  double get designLoadW => connectedLoadW * demandFactor * simultaneityFactor;
 
   double get designCurrentA => designLoadW / (voltageV * powerFactor);
 }

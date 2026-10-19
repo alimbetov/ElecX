@@ -20,7 +20,8 @@ final class InMemoryComponentCatalogRepository
     implements ComponentCatalogRepository {
   InMemoryComponentCatalogRepository([Iterable<ComponentCatalogEntryV2>? seed])
       : _entries = {
-          for (final entry in seed ?? ComponentCatalogV2.entries) entry.id: entry,
+          for (final entry in seed ?? ComponentCatalogV2.entries)
+            entry.id: entry,
         };
 
   final Map<String, ComponentCatalogEntryV2> _entries;

@@ -100,7 +100,8 @@ class _SpatialEditorScreenState extends State<SpatialEditorScreen> {
                             Positioned(
                               left: 10,
                               bottom: 10,
-                              child: _CanvasContextBadge(controller: controller),
+                              child:
+                                  _CanvasContextBadge(controller: controller),
                             ),
                           ],
                         ),
@@ -322,7 +323,8 @@ class _ProjectNavigator extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text('ПРОЕКТ', style: Theme.of(context).textTheme.labelLarge),
+                child: Text('ПРОЕКТ',
+                    style: Theme.of(context).textTheme.labelLarge),
               ),
               Text(
                 '${controller.level.spaces.length} помещений',
@@ -354,7 +356,8 @@ class _ProjectNavigator extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text('ПОМЕЩЕНИЯ', style: Theme.of(context).textTheme.labelLarge),
+                child: Text('ПОМЕЩЕНИЯ',
+                    style: Theme.of(context).textTheme.labelLarge),
               ),
               IconButton(
                 onPressed: () {
@@ -489,13 +492,15 @@ Future<void> _showAdjacentRoomDialog(
                   const SizedBox(height: 8),
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: Text('Доступно по стене: ${wall.lengthMm.round()} mm'),
+                    child:
+                        Text('Доступно по стене: ${wall.lengthMm.round()} mm'),
                   ),
                   if (error != null) ...[
                     const SizedBox(height: 8),
                     Text(
                       error!,
-                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      style:
+                          TextStyle(color: Theme.of(context).colorScheme.error),
                     ),
                   ],
                 ],
@@ -555,7 +560,8 @@ class _Inspector extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text('СВОЙСТВА', style: Theme.of(context).textTheme.labelLarge),
+                child: Text('СВОЙСТВА',
+                    style: Theme.of(context).textTheme.labelLarge),
               ),
               if (surface != null)
                 Chip(
@@ -676,7 +682,8 @@ class _Inspector extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text('ТРАССА', style: Theme.of(context).textTheme.labelLarge),
+                  child: Text('ТРАССА',
+                      style: Theme.of(context).textTheme.labelLarge),
                 ),
                 IconButton(
                   onPressed: controller.clearRouteDraft,
@@ -735,7 +742,8 @@ class _InspectorEmptyState extends StatelessWidget {
               color: Theme.of(context).colorScheme.outline,
             ),
             const SizedBox(height: 12),
-            Text('Выберите помещение', style: Theme.of(context).textTheme.titleMedium),
+            Text('Выберите помещение',
+                style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 6),
             Text(
               'После выбора здесь появятся размеры, плоскости, проёмы и параметры сетки.',
@@ -767,7 +775,8 @@ class _InlineEmptyState extends StatelessWidget {
         children: [
           Icon(icon, size: 18),
           const SizedBox(width: 8),
-          Expanded(child: Text(text, style: Theme.of(context).textTheme.bodySmall)),
+          Expanded(
+              child: Text(text, style: Theme.of(context).textTheme.bodySmall)),
         ],
       ),
     );
@@ -827,14 +836,16 @@ class _OpeningEditor extends StatelessWidget {
             key: ValueKey('${opening.id}-width-${opening.widthMm}'),
             label: 'Ширина',
             value: opening.widthMm,
-            onSubmit: (value) => controller.updateSelectedOpening(widthMm: value),
+            onSubmit: (value) =>
+                controller.updateSelectedOpening(widthMm: value),
           ),
           const SizedBox(height: 8),
           _SubmitIntField(
             key: ValueKey('${opening.id}-height-${opening.heightMm}'),
             label: 'Высота',
             value: opening.heightMm,
-            onSubmit: (value) => controller.updateSelectedOpening(heightMm: value),
+            onSubmit: (value) =>
+                controller.updateSelectedOpening(heightMm: value),
           ),
           const SizedBox(height: 8),
           _SubmitIntField(

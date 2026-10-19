@@ -6,7 +6,9 @@ import 'package:elecx/src/engine/installation_option_optimizer.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('optimizer rejects infeasible cheap path before ranking feasible options', () {
+  test(
+      'optimizer rejects infeasible cheap path before ranking feasible options',
+      () {
     final cable = CableSpec(
       id: 'power-5x6',
       name: 'Power 5x6',

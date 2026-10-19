@@ -56,7 +56,8 @@ abstract final class AlienCockpitTokens {
         ? scheme.primary.withValues(alpha: 0.78)
         : scheme.outlineVariant.withValues(alpha: 0.78);
     return BoxDecoration(
-      color: elevated ? scheme.surfaceContainerHigh : scheme.surfaceContainerLow,
+      color:
+          elevated ? scheme.surfaceContainerHigh : scheme.surfaceContainerLow,
       borderRadius: BorderRadius.circular(radius),
       border: Border.all(color: borderColor),
       boxShadow: active

@@ -49,7 +49,8 @@ void main() {
     expect(b.qrPayload, 'elecx://cable/cable-0017?end=b');
   });
 
-  test('label preserves termination identity for installation traceability', () {
+  test('label preserves termination identity for installation traceability',
+      () {
     final label = CableLabelComposer.compose(
       cable: cable,
       circuit: circuit,

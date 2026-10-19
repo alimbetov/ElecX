@@ -113,7 +113,8 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
         }
       });
     }
-    final draft = session.openingDraft ?? OpeningEditDraft.fromOpening(selected);
+    final draft =
+        session.openingDraft ?? OpeningEditDraft.fromOpening(selected);
     final valid = _openingDraftValid(selected, draft);
 
     return _shell(
@@ -187,8 +188,7 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
               draft.copyWith(sillHeightMm: value),
             ),
           ),
-          if (!valid)
-            _ValidationBadge('Параметры выходят за профиль стены'),
+          if (!valid) _ValidationBadge('Параметры выходят за профиль стены'),
           TextButton(
             onPressed: session.draftDirty
                 ? () {
@@ -388,7 +388,8 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
                 IconButton(
                   tooltip: 'Закрыть редактор',
                   visualDensity: VisualDensity.compact,
-                  onPressed: () => requestBoundaryEditorExit(context, controller),
+                  onPressed: () =>
+                      requestBoundaryEditorExit(context, controller),
                   icon: const Icon(Icons.close, size: 18),
                 ),
               ],
@@ -415,7 +416,8 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
     }
     try {
       final candidate = draft.toOpening(source);
-      return RoomSurfaceResolver.openingFitsWall(opening: candidate, wall: wall);
+      return RoomSurfaceResolver.openingFitsWall(
+          opening: candidate, wall: wall);
     } on ArgumentError {
       return false;
     }

@@ -77,7 +77,8 @@ final class InstallationCapacityResult {
 }
 
 abstract final class InstallationCapacityEngine {
-  static InstallationCapacityResult evaluate(InstallationCapacityRequest request) {
+  static InstallationCapacityResult evaluate(
+      InstallationCapacityRequest request) {
     final defects = <InstallationDefect>[];
     final utilizations = <ChannelUtilization>[];
     final specById = <String, InstallationPathSpec>{
@@ -168,8 +169,9 @@ abstract final class InstallationCapacityEngine {
         case ChannelCapacityModel.areaFill:
           final area = channel.usableAreaMm2!;
           final fillRatio = occupiedArea / area;
-          final available =
-              (channel.effectiveFillLimit - fillRatio).clamp(0.0, 1.0).toDouble();
+          final available = (channel.effectiveFillLimit - fillRatio)
+              .clamp(0.0, 1.0)
+              .toDouble();
           utilizations.add(
             ChannelUtilization(
               pathSectionId: sectionId,
@@ -213,7 +215,8 @@ abstract final class InstallationCapacityEngine {
                 kind: InstallationDefectKind.cableCountExceeded,
                 severity: InstallationDefectSeverity.error,
                 objectId: channelId,
-                message: 'Channel contains $cableCount cables; maximum is $maxCount.',
+                message:
+                    'Channel contains $cableCount cables; maximum is $maxCount.',
                 relatedRouteIds: [for (final item in occupancies) item.routeId],
               ),
             );
@@ -238,7 +241,8 @@ abstract final class InstallationCapacityEngine {
                 kind: InstallationDefectKind.dedicatedChannelConflict,
                 severity: InstallationDefectSeverity.error,
                 objectId: channelId,
-                message: 'Dedicated channel must contain exactly one cable route.',
+                message:
+                    'Dedicated channel must contain exactly one cable route.',
                 relatedRouteIds: uniqueRoutes.toList(growable: false),
               ),
             );

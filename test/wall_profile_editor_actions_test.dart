@@ -40,7 +40,8 @@ void main() {
     expect(controller.selectedSpace!.wallProfiles.containsKey(0), isFalse);
   });
 
-  test('notch that would intersect an existing door is rejected atomically', () {
+  test('notch that would intersect an existing door is rejected atomically',
+      () {
     final controller = EditorController.demo();
     addTearDown(controller.dispose);
 
