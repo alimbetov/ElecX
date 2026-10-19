@@ -369,13 +369,6 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
     return List.unmodifiable(byId.values);
   }
 
-  RouteMediumProfile _mediumForRoute(String routeId) {
-    for (final route in controller.p2.routes) {
-      if (route.id == routeId) return route.medium;
-    }
-    return RouteMediumProfile.generic;
-  }
-
   RouteHostTransition? _explicitTransitionAt(
     SurfacePointMm point,
     _SurfaceProjection projection,
@@ -1710,13 +1703,6 @@ class _SurfacePainter extends CustomPainter {
     return List.unmodifiable(byId.values);
   }
 
-  RouteMediumProfile _mediumForRoute(String routeId) {
-    for (final route in controller.p2.routes) {
-      if (route.id == routeId) return route.medium;
-    }
-    return RouteMediumProfile.generic;
-  }
-
   void _drawRoutes(Canvas canvas) {
     if (!cableRoutesVisible) return;
     final baseDraft = Paint()
@@ -1732,7 +1718,7 @@ class _SurfacePainter extends CustomPainter {
     final activeHost = RouteHostRef.indoor(activeSurface);
     for (final route in _allHostedRoutes()) {
       final selected = route.routeId == selectedRouteId;
-      final medium = _mediumForRoute(route.routeId);
+      final medium = route.medium;
       final frame = RouteFlowVisualizationPolicy.frame(
         medium: medium,
         phase: flowAnimation.value,
