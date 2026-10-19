@@ -1,6 +1,8 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../domain/geometry.dart';
+import '../../domain/surfaces.dart';
 import 'editor_controller.dart';
 import 'editor_interaction_policy.dart';
 import 'editor_p2_session.dart';
@@ -20,18 +22,55 @@ class EditorKeyboardScope extends StatelessWidget {
   });
 
   final EditorController controller;
-  final Widget child;
 
-  void _nudgeCursor(int dx, int dy, {bool coarse = false}) {
-    if (!controller.placementCursor.active) return;
+  bool _selectedPointIsUsable(SurfacePointMm point) {
+    final component = controller.p2.selectedComponent;
+    final surface = controller.activeSurface;
+    final space = controller.selectedSpace;
+    if (component == null ||
+        surface == null ||
+        space == null ||
+        component.surface != surface ||
+        point.xMm < 0 ||
+        point.yMm < 0) {
+      return false;
+    }
+    if (surface.type == SurfacePlaneType.wall) {
+      final wall = controller.activeWall;
+      return wall != null && wall.profile.containsPoint(point.xMm, point.yMm);
+    }
+    final bounds = space.boundary.bounds;
+    if (point.xMm > bounds.width || point.yMm > bounds.height) return false;
+    return space.boundary.contains(
+      MmPoint(
+        point.xMm + bounds.left,
+        point.yMm + bounds.bottom,
+      ),
+    );
+  }
+
+  void _nudgeActive(int dx, int dy, {bool coarse = false}) {
     final policy = EditorInteractionPolicy.forMode(
       EditorInputMode.mouseKeyboard,
     );
     final step = policy.nudgeStepMm(coarse: coarse);
-    controller.placementCursor.nudge(
-      dxMm: dx * step,
-      dyMm: dy * step,
+    if (controller.placementCursor.active) {
+      controller.placementCursor.nudge(
+        dxMm: dx * step,
+        dyMm: dy * step,
+      );
+      return;
+    }
+
+    final component = controller.p2.selectedComponent;
+    if (component == null) return;
+    final next = SurfacePointMm(
+      component.position.xMm + dx * step,
+      component.position.yMm + dy * step,
     );
+    if (_selectedPointIsUsable(next)) {
+      controller.p2.moveSelectedComponent(next);
+    }
   }
 
   @override
@@ -67,21 +106,21 @@ class EditorKeyboardScope extends StatelessWidget {
           }
         },
         const SingleActivator(LogicalKeyboardKey.arrowLeft): () =>
-            _nudgeCursor(-1, 0),
+            _nudgeActive(-1, 0),
         const SingleActivator(LogicalKeyboardKey.arrowRight): () =>
-            _nudgeCursor(1, 0),
+            _nudgeActive(1, 0),
         const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
-            _nudgeCursor(0, 1),
+            _nudgeActive(0, 1),
         const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
-            _nudgeCursor(0, -1),
+            _nudgeActive(0, -1),
         const SingleActivator(LogicalKeyboardKey.arrowLeft, shift: true): () =>
-            _nudgeCursor(-1, 0, coarse: true),
+            _nudgeActive(-1, 0, coarse: true),
         const SingleActivator(LogicalKeyboardKey.arrowRight, shift: true): () =>
-            _nudgeCursor(1, 0, coarse: true),
+            _nudgeActive(1, 0, coarse: true),
         const SingleActivator(LogicalKeyboardKey.arrowUp, shift: true): () =>
-            _nudgeCursor(0, 1, coarse: true),
+            _nudgeActive(0, 1, coarse: true),
         const SingleActivator(LogicalKeyboardKey.arrowDown, shift: true): () =>
-            _nudgeCursor(0, -1, coarse: true),
+            _nudgeActive(0, -1, coarse: true),
         const SingleActivator(LogicalKeyboardKey.delete): () {
           if (controller.selectedOpening != null) {
             controller.deleteSelectedOpening();
