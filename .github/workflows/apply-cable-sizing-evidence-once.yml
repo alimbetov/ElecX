@@ -36,6 +36,9 @@ jobs:
       - name: Apply cable sizing evidence patch
         run: python3 tool/apply_cable_sizing_evidence_once.py
 
+      - name: Fix cable sizing analyzer contract
+        run: python3 tool/fix_cable_sizing_gate.py
+
       - name: Format
         run: dart format lib test
 
@@ -52,6 +55,7 @@ jobs:
         run: |
           rm -f tool/apply_cable_sizing_evidence_once.py
           rm -f tool/fix_cable_sizing_generator.py
+          rm -f tool/fix_cable_sizing_gate.py
           rm -f .github/workflows/apply-cable-sizing-evidence-once.yml
 
       - name: Commit verified production changes
