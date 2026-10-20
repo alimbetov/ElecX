@@ -9,242 +9,18 @@ Got dependencies!
 Try `flutter pub outdated` for more information.
 
 ::group::✅ Passing tests
+✅ /home/runner/work/ElecX/ElecX/test/interaction_hardening_regression_test.dart: multi-surface route exposes source and target endpoint handles
+✅ /home/runner/work/ElecX/ElecX/test/surface_navigation_test.dart: floor boundary resolves to the corresponding wall surface
+✅ /home/runner/work/ElecX/ElecX/test/surface_navigation_test.dart: cable route can continue from floor boundary onto wall
+✅ /home/runner/work/ElecX/ElecX/test/interaction_hardening_regression_test.dart: multi-surface endpoint transform preserves unrelated segments
+✅ /home/runner/work/ElecX/ElecX/test/interaction_hardening_regression_test.dart: multi-surface endpoint reroute preserves target-segment waypoint and transition
 ✅ /home/runner/work/ElecX/ElecX/test/wall_profile_parameter_editing_regression_test.dart: existing top notch is replaced by new X width and depth parameters
 ✅ /home/runner/work/ElecX/ElecX/test/wall_profile_parameter_editing_regression_test.dart: invalid beam parameters leave existing notch unchanged
-✅ /home/runner/work/ElecX/ElecX/test/residential_tower_builder_test.dart: tower supports B30 through residential floor 16
-✅ /home/runner/work/ElecX/ElecX/test/residential_tower_builder_test.dart: every residential floor owns independent apartments and room ids
-✅ /home/runner/work/ElecX/ElecX/test/residential_tower_builder_test.dart: vertical cores span every level from B30 to 16
-✅ /home/runner/work/ElecX/ElecX/test/residential_tower_builder_test.dart: one space cannot belong to two apartment/common zones
-✅ /home/runner/work/ElecX/ElecX/test/component_catalog_session_test.dart: editor catalog can be replaced by repository data
-✅ /home/runner/work/ElecX/ElecX/test/route_flow_visualization_test.dart: AC uses non-directional oscillating glow
-✅ /home/runner/work/ElecX/ElecX/test/route_flow_visualization_test.dart: DC uses source-to-target directional pulses
-✅ /home/runner/work/ElecX/ElecX/test/route_flow_visualization_test.dart: Ethernet uses bidirectional packet pulses
-✅ /home/runner/work/ElecX/ElecX/test/route_flow_visualization_test.dart: custom media stays extensible without enum growth
-✅ /home/runner/work/ElecX/ElecX/test/editor_viewport_commands_test.dart: viewport command revision advances and stores latest command
-✅ /home/runner/work/ElecX/ElecX/test/circuit_cable_registry_conflict_test.dart: same bundle can be registered idempotently
-✅ /home/runner/work/ElecX/ElecX/test/circuit_cable_registry_conflict_test.dart: same circuit id cannot silently change engineering identity
-✅ /home/runner/work/ElecX/ElecX/test/surface_canvas_waypoint_interaction_test.dart: mandatory waypoint stays fixed while an unrelated segment is dragged
-✅ /home/runner/work/ElecX/ElecX/test/project_hub_persistence_test.dart: project hub discovers persisted project and reopens editor
-✅ /home/runner/work/ElecX/ElecX/test/editor_interaction_policy_test.dart: touch policy uses larger hit and snap targets than mouse
-✅ /home/runner/work/ElecX/ElecX/test/editor_interaction_policy_test.dart: desktop coarse nudge is larger than normal nudge
-✅ /home/runner/work/ElecX/ElecX/test/room_circuit_workflow_test.dart: selected load connects to board as one engineering transaction
-✅ /home/runner/work/ElecX/ElecX/test/room_circuit_workflow_test.dart: circuit bundle survives canonical save and reopen
-✅ /home/runner/work/ElecX/ElecX/test/room_circuit_workflow_test.dart: deleting a connected load removes route and circuit atomically
-✅ /home/runner/work/ElecX/ElecX/test/room_circuit_workflow_test.dart: schema v2 migrates with empty circuit bundle list
-✅ /home/runner/work/ElecX/ElecX/test/room_circuit_workflow_test.dart: circuit panel connects selected load and exposes incomplete protection
-✅ /home/runner/work/ElecX/ElecX/test/room_circuit_workflow_test.dart: manual protective device assignment is undoable engineering evidence
-✅ /home/runner/work/ElecX/ElecX/test/room_circuit_workflow_test.dart: load data and cable specification edits are undoable and persisted
-✅ /home/runner/work/ElecX/ElecX/test/room_circuit_workflow_test.dart: sizing evidence is undoable and survives project reopen
-✅ /home/runner/work/ElecX/ElecX/test/project_hub_persistence_test.dart: hub creates independent project identities
-✅ /home/runner/work/ElecX/ElecX/test/site_outdoor_model_test.dart: yard zone uses project millimetre geometry
-✅ /home/runner/work/ElecX/ElecX/test/site_outdoor_model_test.dart: site connection may bridge yard cable entry to basement level
-✅ /home/runner/work/ElecX/ElecX/test/site_outdoor_model_test.dart: site connection rejects unknown outdoor zone
-✅ /home/runner/work/ElecX/ElecX/test/plan_pull_measure_test.dart: horizontal boundary measures to opposite horizontal wall
-✅ /home/runner/work/ElecX/ElecX/test/plan_pull_measure_test.dart: vertical boundary measures to opposite vertical wall
-✅ /home/runner/work/ElecX/ElecX/test/plan_pull_measure_test.dart: irregular room selects nearest parallel boundary
-✅ /home/runner/work/ElecX/ElecX/test/engineering_placement_cursor_test.dart: EngineeringPlacementCursor nudges in surface-local millimetres
-✅ /home/runner/work/ElecX/ElecX/test/engineering_placement_cursor_test.dart: EngineeringPlacementCursor moveTo preserves catalog identity and reports snap source
-✅ /home/runner/work/ElecX/ElecX/test/editor_project_persistence_test.dart: save close open restores canonical engineering state and continues edit
-✅ /home/runner/work/ElecX/ElecX/test/editor_project_persistence_test.dart: workspace level switch persists edited geometry and openings
-✅ /home/runner/work/ElecX/ElecX/test/editor_project_persistence_test.dart: capture rejects active transform and unfinished route draft
-✅ /home/runner/work/ElecX/ElecX/test/editor_project_persistence_test.dart: file store lists saved projects for application restart
-✅ /home/runner/work/ElecX/ElecX/test/editor_project_persistence_test.dart: project identity is independent from physical site identity
-✅ /home/runner/work/ElecX/ElecX/test/editor_project_persistence_test.dart: schema v1 migrates through v4 without losing project identity
-✅ /home/runner/work/ElecX/ElecX/test/editor_project_persistence_test.dart: unsupported schema is rejected explicitly
-✅ /home/runner/work/ElecX/ElecX/test/alien_cockpit_theme_test.dart: dark theme exposes the cockpit semantic palette
-✅ /home/runner/work/ElecX/ElecX/test/alien_cockpit_theme_test.dart: light theme keeps semantic accents without dark-only surfaces
-✅ /home/runner/work/ElecX/ElecX/test/alien_cockpit_theme_test.dart: compact editor target meets the explicit touch ergonomics floor
-✅ /home/runner/work/ElecX/ElecX/test/cottage_site_builder_test.dart: detached house is represented as one lot and one building
-✅ /home/runner/work/ElecX/ElecX/test/cottage_site_builder_test.dart: village clones houses with unique building level and room ids
-✅ /home/runner/work/ElecX/ElecX/test/cottage_site_builder_test.dart: shared networks serve every cottage in the village
-✅ /home/runner/work/ElecX/ElecX/test/alien_cockpit_theme_test.dart: semantic CAD states remain distinct in dark mode
-✅ /home/runner/work/ElecX/ElecX/test/opening_parameter_editing_test.dart: door parameters mutate selected opening and preserve selection
-✅ /home/runner/work/ElecX/ElecX/test/opening_parameter_editing_test.dart: window sill and dimensions mutate selected opening
-✅ /home/runner/work/ElecX/ElecX/test/opening_parameter_editing_test.dart: invalid opening dimensions are rejected without mutating model
-✅ /home/runner/work/ElecX/ElecX/test/room_circuit_overview_test.dart: overview aggregates PASS FAIL and incomplete room circuits
-✅ /home/runner/work/ElecX/ElecX/test/editor_shell_state_test.dart: side panels collapse independently
-✅ /home/runner/work/ElecX/ElecX/test/editor_shell_state_test.dart: focus mode hides chrome without losing saved panel choices
-✅ /home/runner/work/ElecX/ElecX/test/channel_aware_route_engine_test.dart: hard feasibility removes cheaper but invalid channel path
-✅ /home/runner/work/ElecX/ElecX/test/channel_aware_route_engine_test.dart: cost vector preserves engineering reasons behind ranking
-✅ /home/runner/work/ElecX/ElecX/test/channel_aware_route_engine_test.dart: solver reports no solution when hard constraints close all channels
-✅ /home/runner/work/ElecX/ElecX/test/room_circuit_overview_test.dart: overview entry selects load for detailed engineering workflow
+✅ /home/runner/work/ElecX/ElecX/test/boundary_editing_test.dart: rectangular wall has no structural profile segments
+✅ /home/runner/work/ElecX/ElecX/test/boundary_editing_test.dart: top notch exposes only beam/notch boundary segments
 ✅ /home/runner/work/ElecX/ElecX/test/installation_guides_test.dart: residential project preset creates wall socket/switch lines and ceiling axes
 ✅ /home/runner/work/ElecX/ElecX/test/installation_guides_test.dart: 300/900 residential values are explicitly project presets, not normative rules
 ✅ /home/runner/work/ElecX/ElecX/test/installation_guides_test.dart: custom project profile changes mounting lines without changing normative semantics
-✅ /home/runner/work/ElecX/ElecX/test/plan_geometry_editing_test.dart: vertex handle moves one boundary vertex
-✅ /home/runner/work/ElecX/ElecX/test/plan_geometry_editing_test.dart: edge handle moves wall parallel to itself
-✅ /home/runner/work/ElecX/ElecX/test/plan_geometry_editing_test.dart: invalid short edge is rejected
-✅ /home/runner/work/ElecX/ElecX/test/plan_geometry_editing_test.dart: self-intersecting polygon is rejected
-✅ /home/runner/work/ElecX/ElecX/test/plan_geometry_editing_test.dart: controller commits valid selected boundary atomically
-✅ /home/runner/work/ElecX/ElecX/test/plan_geometry_editing_test.dart: shared wall move propagates atomically to adjacent room
-✅ /home/runner/work/ElecX/ElecX/test/plan_geometry_editing_test.dart: controller rejects boundary that invalidates hosted opening
-✅ /home/runner/work/ElecX/ElecX/test/plan_geometry_editing_test.dart: opening remains selected while direct editing stays on plan
-✅ /home/runner/work/ElecX/ElecX/test/plan_geometry_editing_test.dart: opening center drag moves opening along host wall
-✅ /home/runner/work/ElecX/ElecX/test/plan_geometry_editing_test.dart: opening edge drag resizes width and rejects invalid geometry
-✅ /home/runner/work/ElecX/ElecX/test/editor_controller_test.dart: plan snap prefers nearby endpoint over grid
-✅ /home/runner/work/ElecX/ElecX/test/editor_controller_test.dart: plan snap uses grid when no higher-priority geometry is in range
-✅ /home/runner/work/ElecX/ElecX/test/editor_controller_test.dart: rectangle room gets a centered local reference frame
-✅ /home/runner/work/ElecX/ElecX/test/cable_route_constraints_test.dart: constraint payload round-trips for project persistence
-✅ /home/runner/work/ElecX/ElecX/test/cable_route_constraints_test.dart: lock and waypoint mutations are undoable editor state
-✅ /home/runner/work/ElecX/ElecX/test/cable_route_constraints_test.dart: constraint state survives session reopen from canonical snapshot
-✅ /home/runner/work/ElecX/ElecX/test/cable_route_constraints_test.dart: constraint mutation rejects stale geometry references
-✅ /home/runner/work/ElecX/ElecX/test/cable_route_constraints_test.dart: reconcile tracks physical waypoint when its vertex index shifts
-✅ /home/runner/work/ElecX/ElecX/test/cable_route_constraints_test.dart: route replacement reconciles constraints in the same undo command
-✅ /home/runner/work/ElecX/ElecX/test/cable_route_edit_session_test.dart: auto route previews valid geometry and commits once
-✅ /home/runner/work/ElecX/ElecX/test/cable_route_edit_session_test.dart: manual guardrails expose invalid preview but block commit
-✅ /home/runner/work/ElecX/ElecX/test/cable_route_edit_session_test.dart: locked segment cannot start an edit session
-✅ /home/runner/work/ElecX/ElecX/test/cable_route_edit_session_test.dart: segment edit cannot silently move connected endpoints
-✅ /home/runner/work/ElecX/ElecX/test/cable_route_edit_session_test.dart: mandatory waypoint is a hard preview constraint
-✅ /home/runner/work/ElecX/ElecX/test/cable_route_edit_session_test.dart: auto route preserves mandatory waypoint as an intermediate anchor
-✅ /home/runner/work/ElecX/ElecX/test/semantic_snap_test.dart: port snap wins over grid and centers on component anchor
-✅ /home/runner/work/ElecX/ElecX/test/semantic_snap_test.dart: captured port remains sticky until release radius is exceeded
-✅ /home/runner/work/ElecX/ElecX/test/unified_workspace_persistence_ui_test.dart: desktop Save and Open use canonical project store
-✅ /home/runner/work/ElecX/ElecX/test/component_catalog_v2_test.dart: ComponentCatalogV2 socket is wall-only and uses power cable sizing
-✅ /home/runner/work/ElecX/ElecX/test/component_catalog_v2_test.dart: ComponentCatalogV2 PoE camera exposes network port and PoE budget calculation
-✅ /home/runner/work/ElecX/ElecX/test/component_catalog_v2_test.dart: ComponentCatalogV2 smoke detector is ceiling-only and uses fire loop topology
-✅ /home/runner/work/ElecX/ElecX/test/component_catalog_v2_test.dart: ComponentCatalogV2 room environment can reject an otherwise valid surface
-✅ /home/runner/work/ElecX/ElecX/test/component_catalog_v2_test.dart: ComponentCatalogV2 catalog can be filtered by system and surface
-✅ /home/runner/work/ElecX/ElecX/test/hosted_routing_test.dart: site connection bridges indoor route to outdoor lighting feed
-✅ /home/runner/work/ElecX/ElecX/test/unified_workspace_persistence_ui_test.dart: unsaved new project blocks back until discard is explicit
-✅ /home/runner/work/ElecX/ElecX/test/viewport_zoom_policy_test.dart: zoom range stays proportional to fitted drawing scale
-✅ /home/runner/work/ElecX/ElecX/test/viewport_zoom_policy_test.dart: zoom in never goes below absolute engineering floor
-✅ /home/runner/work/ElecX/ElecX/test/viewport_zoom_policy_test.dart: invalid fit scale is rejected
-✅ /home/runner/work/ElecX/ElecX/test/room_world_layout_test.dart: ceiling is always above walls and floor is always below
-✅ /home/runner/work/ElecX/ElecX/test/room_world_layout_test.dart: wall order follows physical room boundary order
-✅ /home/runner/work/ElecX/ElecX/test/room_world_layout_test.dart: all room world tiles preserve selected room identity
-✅ /home/runner/work/ElecX/ElecX/test/boundary_edit_draft_test.dart: opening draft becomes dirty without changing source opening
-✅ /home/runner/work/ElecX/ElecX/test/boundary_edit_draft_test.dart: force reset restores opening draft from model
-✅ /home/runner/work/ElecX/ElecX/test/boundary_edit_draft_test.dart: beam draft tracks dirty state and can be discarded
-✅ /home/runner/work/ElecX/ElecX/test/wall_dimension_set_test.dart: wall dimensions resolve L D H without inventing thickness
-✅ /home/runner/work/ElecX/ElecX/test/spatial_engine_test.dart: WorldCamera cursor anchored zoom preserves world point under cursor
-✅ /home/runner/work/ElecX/ElecX/test/spatial_engine_test.dart: WorldCamera visible bounds include overscan
-✅ /home/runner/work/ElecX/ElecX/test/spatial_engine_test.dart: SpatialHashIndex query returns only intersecting visible items
-✅ /home/runner/work/ElecX/ElecX/test/spatial_engine_test.dart: SpatialHashIndex supports negative coordinates and removes stale cells
-✅ /home/runner/work/ElecX/ElecX/test/spatial_engine_test.dart: LOD becomes progressively richer as scale gets closer
-✅ /home/runner/work/ElecX/ElecX/test/electrical_placement_test.dart: component stays bound to concrete room surface and millimetre point
-✅ /home/runner/work/ElecX/ElecX/test/electrical_placement_test.dart: connected cable route uses real source and target component ports
-✅ /home/runner/work/ElecX/ElecX/test/electrical_placement_test.dart: route with unknown target port is rejected
-✅ /home/runner/work/ElecX/ElecX/test/installation_option_optimizer_test.dart: optimizer rejects infeasible cheap path before ranking feasible options
-✅ /home/runner/work/ElecX/ElecX/test/directional_manipulation_test.dart: active wall nudges only along its normal
-✅ /home/runner/work/ElecX/ElecX/test/directional_manipulation_test.dart: external boundary is movable but shared boundary hides movement
-✅ /home/runner/work/ElecX/ElecX/test/directional_manipulation_test.dart: partial collinear overlap is treated as shared wall
-✅ /home/runner/work/ElecX/ElecX/test/directional_manipulation_test.dart: opening nudges along host wall and rejects outside position
-✅ /home/runner/work/ElecX/ElecX/test/directional_manipulation_test.dart: beam notch nudges horizontally and by depth
-✅ /home/runner/work/ElecX/ElecX/test/directional_manipulation_test.dart: beam notch cannot leave wall bounds
-✅ /home/runner/work/ElecX/ElecX/test/boundary_editing_test.dart: rectangular wall has no structural profile segments
-✅ /home/runner/work/ElecX/ElecX/test/boundary_editing_test.dart: top notch exposes only beam/notch boundary segments
-✅ /home/runner/work/ElecX/ElecX/test/daylight_assist_engine_test.dart: project north converts plan azimuth to true azimuth
-✅ /home/runner/work/ElecX/ElecX/test/daylight_assist_engine_test.dart: hemisphere-aware orientation weighting requires physical site context
-✅ /home/runner/work/ElecX/ElecX/test/daylight_assist_engine_test.dart: compass alone does not fabricate facade daylight advantage
-✅ /home/runner/work/ElecX/ElecX/test/daylight_assist_engine_test.dart: ceiling hints bias artificial lighting toward deeper room zone
-✅ /home/runner/work/ElecX/ElecX/test/daylight_assist_engine_test.dart: room geometry derives inward vector and facade azimuth from host wall
-✅ /home/runner/work/ElecX/ElecX/test/daylight_assist_engine_test.dart: orientation-aware hints increase artificial-light priority deeper inside
-✅ /home/runner/work/ElecX/ElecX/test/daylight_assist_engine_test.dart: room-aware daylight rejects window geometry outside host wall
-✅ /home/runner/work/ElecX/ElecX/test/daylight_assist_engine_test.dart: daylight input rejects non-wall surfaces and invalid transmittance
-✅ /home/runner/work/ElecX/ElecX/test/measurement_overlay_test.dart: opening measurements expose clearances and object size
-✅ /home/runner/work/ElecX/ElecX/test/measurement_overlay_test.dart: beam measurements expose wall offsets width depth and bottom level
-✅ /home/runner/work/ElecX/ElecX/test/engineering_placement_cursor_session_test.dart: placement cursor nudges and confirms a component on active wall
-✅ /home/runner/work/ElecX/ElecX/test/engineering_placement_cursor_session_test.dart: catalog rejects socket placement on ceiling
-✅ /home/runner/work/ElecX/ElecX/test/engineering_placement_cursor_session_test.dart: catalog allows lighting point on ceiling
-✅ /home/runner/work/ElecX/ElecX/test/engineering_placement_cursor_session_test.dart: CCTV placement keeps canonical catalog componentTypeId
-✅ /home/runner/work/ElecX/ElecX/test/engineering_placement_cursor_session_test.dart: repeat placement keeps the catalog placement session active
-✅ /home/runner/work/ElecX/ElecX/test/cable_endpoint_transform_session_test.dart: target endpoint snaps to compatible port and autoroutes before commit
-✅ /home/runner/work/ElecX/ElecX/test/cable_endpoint_transform_session_test.dart: endpoint cannot commit while no compatible port is captured
-✅ /home/runner/work/ElecX/ElecX/test/cable_endpoint_transform_session_test.dart: endpoint reroute preserves mandatory waypoints in segment order
-✅ /home/runner/work/ElecX/ElecX/test/cable_endpoint_transform_session_test.dart: locked endpoint segment cannot start endpoint transform
-✅ /home/runner/work/ElecX/ElecX/test/cable_endpoint_transform_session_test.dart: stale mandatory waypoint prevents endpoint transform start
-✅ /home/runner/work/ElecX/ElecX/test/normative_route_engine_test.dart: auto route prefers valid orthogonal candidate around obstacle
-✅ /home/runner/work/ElecX/ElecX/test/normative_route_engine_test.dart: manual diagonal preview is rejected by guardrails
-✅ /home/runner/work/ElecX/ElecX/test/editor_layout_policy_test.dart: phone width selects mobile editor
-✅ /home/runner/work/ElecX/ElecX/test/editor_layout_policy_test.dart: tablet width selects touch-first tablet editor
-✅ /home/runner/work/ElecX/ElecX/test/editor_layout_policy_test.dart: desktop width keeps compact persistent panel widths
-✅ /home/runner/work/ElecX/ElecX/test/editor_layout_policy_test.dart: breakpoints are deterministic at boundaries
-✅ /home/runner/work/ElecX/ElecX/test/component_taxonomy_test.dart: distribution board resolves by stable identity, not localized name
-✅ /home/runner/work/ElecX/ElecX/test/component_taxonomy_test.dart: lighting switch and luminaire resolve to different subcategories
-✅ /home/runner/work/ElecX/ElecX/test/kz_installation_rules_test.dart: residential socket height allows values up to 1000 mm
-✅ /home/runner/work/ElecX/ElecX/test/kz_installation_rules_test.dart: general lighting switch height is 800 to 1700 mm
-✅ /home/runner/work/ElecX/ElecX/test/kz_installation_rules_test.dart: gas pipe distance requires at least 500 mm
-✅ /home/runner/work/ElecX/ElecX/test/kz_installation_rules_test.dart: child occupancy special profile requires 1800 mm
-✅ /home/runner/work/ElecX/ElecX/test/p2_engine_test.dart: P2 SnapEngine endpoint wins over grid and midpoint
-✅ /home/runner/work/ElecX/ElecX/test/p2_engine_test.dart: P2 SnapEngine intersection is resolved before grid
-✅ /home/runner/work/ElecX/ElecX/test/p2_engine_test.dart: SelectionEngine supports additive and box selection
-✅ /home/runner/work/ElecX/ElecX/test/p2_engine_test.dart: CommandHistory executes undo and redo deterministically
-✅ /home/runner/work/ElecX/ElecX/test/p2_engine_test.dart: ConstraintEngine keeps horizontal and exact distance constraints
-✅ /home/runner/work/ElecX/ElecX/test/p2_engine_test.dart: Direct manipulation hit test picks nearest handle
-✅ /home/runner/work/ElecX/ElecX/test/p2_engine_test.dart: layers preserve stable visibility and locking state
-✅ /home/runner/work/ElecX/ElecX/test/p2_engine_test.dart: electrical SVG catalog covers every component type
-✅ /home/runner/work/ElecX/ElecX/test/p2_engine_test.dart: RouteEngine chooses lower-cost path and emits surface segments
-✅ /home/runner/work/ElecX/ElecX/test/wall_profile_test.dart: beam notch reduces usable wall area
-✅ /home/runner/work/ElecX/ElecX/test/wall_profile_test.dart: sloped top profile accepts points below slope and rejects above it
-✅ /home/runner/work/ElecX/ElecX/test/wall_profile_test.dart: opening validation respects custom wall profile
-✅ /home/runner/work/ElecX/ElecX/test/project_hub_recovery_test.dart: hub exposes orphan recovery and opens it as Modified until explicit Save
-✅ /home/runner/work/ElecX/ElecX/test/project_hub_recovery_test.dart: hub can discard orphan recovery without creating a project
-✅ /home/runner/work/ElecX/ElecX/test/editor_building_workspace_test.dart: workspace switches deterministically between floor 7 B1 and B30
-✅ /home/runner/work/ElecX/ElecX/test/editor_building_workspace_test.dart: residential level keeps apartments and common corridor separate
-✅ /home/runner/work/ElecX/ElecX/test/editor_building_workspace_test.dart: selecting an apartment selects one of its rooms in editor
-✅ /home/runner/work/ElecX/ElecX/test/editor_building_workspace_test.dart: yard context projects site geometry into the shared plan editor
-✅ /home/runner/work/ElecX/ElecX/test/editor_building_workspace_test.dart: project north updates site state and survives level switches
-✅ /home/runner/work/ElecX/ElecX/test/editor_building_workspace_test.dart: next and previous level traverse physical level order
-✅ /home/runner/work/ElecX/ElecX/test/engineering_graph_test.dart: system class dispatches to discipline-specific calculation kind
-✅ /home/runner/work/ElecX/ElecX/test/engineering_graph_test.dart: compatible PoE ports can be connected
-✅ /home/runner/work/ElecX/ElecX/test/engineering_graph_test.dart: incompatible power and fiber ports are rejected
-✅ /home/runner/work/ElecX/ElecX/test/circuit_sizing_evidence_test.dart: complete evidence produces actual CableSizingEngine PASS
-✅ /home/runner/work/ElecX/ElecX/test/circuit_sizing_evidence_test.dart: missing impedance remains INDETERMINATE, never implicit PASS
-✅ /home/runner/work/ElecX/ElecX/test/circuit_sizing_evidence_test.dart: route geometry mutation makes saved sizing evidence stale
-✅ /home/runner/work/ElecX/ElecX/test/circuit_sizing_evidence_test.dart: evidence JSON round-trip preserves sources and cable spec
-✅ /home/runner/work/ElecX/ElecX/test/circuit_engineering_status_test.dart: status exposes route length and preliminary P/U current
-✅ /home/runner/work/ElecX/ElecX/test/circuit_engineering_status_test.dart: status never fabricates current when load power is missing
-✅ /home/runner/work/ElecX/ElecX/test/installation_capacity_engine_test.dart: power conductor cross-section stays independent from cable fill area
-✅ /home/runner/work/ElecX/ElecX/test/installation_capacity_engine_test.dart: area-fill channel respects reserve and reports overfill
-✅ /home/runner/work/ElecX/ElecX/test/installation_capacity_engine_test.dart: segregation rejects LAN cable from power-only channel
-✅ /home/runner/work/ElecX/ElecX/test/installation_capacity_engine_test.dart: dedicated channel rejects multiple cable routes
-✅ /home/runner/work/ElecX/ElecX/test/surface_canvas_interaction_test.dart: component mouse drag commits one transactional history entry
-✅ /home/runner/work/ElecX/ElecX/test/surface_canvas_interaction_test.dart: component stylus drag uses the same transform transaction
-✅ /home/runner/work/ElecX/ElecX/test/component_transform_session_test.dart: transform commit records one accepted preview
-✅ /home/runner/work/ElecX/ElecX/test/component_transform_session_test.dart: invalid transform preview can be cancelled exactly
-✅ /home/runner/work/ElecX/ElecX/test/component_transform_session_test.dart: connected route previews and commits atomically with component move
-✅ /home/runner/work/ElecX/ElecX/test/component_transform_session_test.dart: cancel restores component routes and constraints exactly
-✅ /home/runner/work/ElecX/ElecX/test/component_transform_session_test.dart: locked connected endpoint segment blocks component move commit
-✅ /home/runner/work/ElecX/ElecX/test/surface_canvas_interaction_test.dart: escape cancels active pointer transform without history
-✅ /home/runner/work/ElecX/ElecX/test/surface_canvas_interaction_test.dart: second pointer cancels active component transform exactly
-✅ /home/runner/work/ElecX/ElecX/test/surface_canvas_interaction_test.dart: endpoint drag snaps to compatible port and is one undo step
-✅ /home/runner/work/ElecX/ElecX/test/surface_canvas_interaction_test.dart: assisted first segment drag keeps endpoints and is undoable
-✅ /home/runner/work/ElecX/ElecX/test/component_move_session_test.dart: cancel restores original component position exactly
-✅ /home/runner/work/ElecX/ElecX/test/component_move_session_test.dart: commit stores preview as one completed move
-✅ /home/runner/work/ElecX/ElecX/test/component_move_session_test.dart: invalid preview is exposed but cannot be committed
-✅ /home/runner/work/ElecX/ElecX/test/surface_canvas_interaction_test.dart: endpoint outside compatible ports is invalid and not committed
-✅ /home/runner/work/ElecX/ElecX/test/wall_profile_editor_actions_test.dart: active wall notch can be applied and reset from editor actions
-✅ /home/runner/work/ElecX/ElecX/test/wall_profile_editor_actions_test.dart: invalid notch does not mutate wall profile
-✅ /home/runner/work/ElecX/ElecX/test/wall_profile_editor_actions_test.dart: notch that would intersect an existing door is rejected atomically
-✅ /home/runner/work/ElecX/ElecX/test/wall_construction_test.dart: rectangle boundary is counter-clockwise
-✅ /home/runner/work/ElecX/ElecX/test/wall_construction_test.dart: bottom external wall projects thickness outside room
-✅ /home/runner/work/ElecX/ElecX/test/wall_construction_test.dart: right external wall projects thickness to the right
-✅ /home/runner/work/ElecX/ElecX/test/wall_construction_test.dart: wall thickness must be positive
-✅ /home/runner/work/ElecX/ElecX/test/engineering_topology_acceptance_test.dart: two different components connect through junction node to distribution board
-✅ /home/runner/work/ElecX/ElecX/test/engineering_topology_acceptance_test.dart: topology rejects incompatible connection direction
-✅ /home/runner/work/ElecX/ElecX/test/surface_model_test.dart: rectangle room exposes four stable wall surfaces
-✅ /home/runner/work/ElecX/ElecX/test/surface_model_test.dart: wall opening is validated against width and height
-✅ /home/runner/work/ElecX/ElecX/test/surface_model_test.dart: surface navigator preserves selected room and switches wall
-✅ /home/runner/work/ElecX/ElecX/test/surface_model_test.dart: wall-local coordinate maps back to plan edge
-✅ /home/runner/work/ElecX/ElecX/test/surface_model_test.dart: route point transfers from wall base to the same floor point
-✅ /home/runner/work/ElecX/ElecX/test/surface_model_test.dart: route point transfers between adjacent walls only at shared edge
-✅ /home/runner/work/ElecX/ElecX/test/surface_model_test.dart: controller creates a new route segment when surface transition is valid
-✅ /home/runner/work/ElecX/ElecX/test/surface_model_test.dart: wall edges resolve to floor ceiling and adjacent walls
-✅ /home/runner/work/ElecX/ElecX/test/surface_model_test.dart: edge navigation carries active cable route to adjacent wall
-✅ /home/runner/work/ElecX/ElecX/test/surface_model_test.dart: edge navigation carries cable route from wall to floor
-✅ /home/runner/work/ElecX/ElecX/test/editor_p2_session_test.dart: component placement is undoable and redoable
-✅ /home/runner/work/ElecX/ElecX/test/editor_p2_session_test.dart: locked electrical layer rejects component placement
-✅ /home/runner/work/ElecX/ElecX/test/editor_p2_session_test.dart: drag preview creates one history entry on commit
-✅ /home/runner/work/ElecX/ElecX/test/editor_p2_session_test.dart: two selected components on same surface can be auto-routed
-✅ /home/runner/work/ElecX/ElecX/test/editor_p2_session_test.dart: same-surface AUTO uses project context to detour around opening
-✅ /home/runner/work/ElecX/ElecX/test/editor_p2_session_test.dart: wall source can auto-route to ceiling load through topology
-✅ /home/runner/work/ElecX/ElecX/test/editor_p2_session_test.dart: cross-surface auto route requires room topology context
-✅ /home/runner/work/ElecX/ElecX/test/adjacent_room_test.dart: adjacent room shares requested host-wall segment
-✅ /home/runner/work/ElecX/ElecX/test/adjacent_room_test.dart: adjacent room command appends and selects created room
-✅ /home/runner/work/ElecX/ElecX/test/adjacent_room_test.dart: adjacent room command rejects segment beyond wall
-✅ /home/runner/work/ElecX/ElecX/test/interaction_hardening_regression_test.dart: multi-surface route exposes source and target endpoint handles
-✅ /home/runner/work/ElecX/ElecX/test/interaction_hardening_regression_test.dart: multi-surface endpoint transform preserves unrelated segments
-✅ /home/runner/work/ElecX/ElecX/test/interaction_hardening_regression_test.dart: multi-surface endpoint reroute preserves target-segment waypoint and transition
 ✅ /home/runner/work/ElecX/ElecX/test/linear_lighting_test.dart: distributed load derives power, current and light output from length
 ✅ /home/runner/work/ElecX/ElecX/test/linear_lighting_test.dart: long run requests additional feed sections
 ✅ /home/runner/work/ElecX/ElecX/test/linear_lighting_test.dart: requested length snaps to strip cut step without collapsing to zero
@@ -255,27 +31,255 @@ Try `flutter pub outdated` for more information.
 ✅ /home/runner/work/ElecX/ElecX/test/linear_lighting_test.dart: run rejects zero-length geometry
 ✅ /home/runner/work/ElecX/ElecX/test/linear_lighting_test.dart: both-end feed is rejected when the product forbids it
 ✅ /home/runner/work/ElecX/ElecX/test/linear_lighting_test.dart: run geometry is immutable after construction
-✅ /home/runner/work/ElecX/ElecX/test/p1_integrity_hardening_test.dart: concave boundary rejects segment that exits through polygon vertices
-✅ /home/runner/work/ElecX/ElecX/test/p1_integrity_hardening_test.dart: assigned cable route rebind updates engineering identity atomically
-✅ /home/runner/work/ElecX/ElecX/test/p1_integrity_hardening_test.dart: recovery load falls back to backup after interrupted publication
+✅ /home/runner/work/ElecX/ElecX/test/project_recovery_and_save_diagnostics_test.dart: save diagnostics explain incompatible cable ports
+✅ /home/runner/work/ElecX/ElecX/test/project_recovery_and_save_diagnostics_test.dart: recovery snapshot round-trips separately from project save
+✅ /home/runner/work/ElecX/ElecX/test/unified_workspace_persistence_ui_test.dart: desktop Save and Open use canonical project store
+✅ /home/runner/work/ElecX/ElecX/test/project_recovery_and_save_diagnostics_test.dart: autosave writes recovery but never marks project Saved
+✅ /home/runner/work/ElecX/ElecX/test/unified_workspace_persistence_ui_test.dart: unsaved new project blocks back until discard is explicit
+✅ /home/runner/work/ElecX/ElecX/test/project_recovery_and_save_diagnostics_test.dart: Save failed shows actionable incompatible cable hint
+✅ /home/runner/work/ElecX/ElecX/test/room_circuit_workflow_test.dart: selected load connects to board as one engineering transaction
+✅ /home/runner/work/ElecX/ElecX/test/room_circuit_workflow_test.dart: circuit bundle survives canonical save and reopen
+✅ /home/runner/work/ElecX/ElecX/test/room_circuit_workflow_test.dart: deleting a connected load removes route and circuit atomically
+✅ /home/runner/work/ElecX/ElecX/test/room_circuit_workflow_test.dart: schema v2 migrates with empty circuit bundle list
+✅ /home/runner/work/ElecX/ElecX/test/viewport_zoom_policy_test.dart: zoom range stays proportional to fitted drawing scale
+✅ /home/runner/work/ElecX/ElecX/test/viewport_zoom_policy_test.dart: zoom in never goes below absolute engineering floor
+✅ /home/runner/work/ElecX/ElecX/test/viewport_zoom_policy_test.dart: invalid fit scale is rejected
+✅ /home/runner/work/ElecX/ElecX/test/opening_editor_test.dart: opening position and dimensions update when they fit wall
+✅ /home/runner/work/ElecX/ElecX/test/opening_editor_test.dart: opening edit is rejected when opening exceeds wall
+✅ /home/runner/work/ElecX/ElecX/test/opening_editor_test.dart: window sill plus height cannot exceed wall height
+✅ /home/runner/work/ElecX/ElecX/test/room_circuit_workflow_test.dart: circuit panel connects selected load and exposes incomplete protection
+✅ /home/runner/work/ElecX/ElecX/test/room_circuit_workflow_test.dart: manual protective device assignment is undoable engineering evidence
+✅ /home/runner/work/ElecX/ElecX/test/room_circuit_workflow_test.dart: load data and cable specification edits are undoable and persisted
+✅ /home/runner/work/ElecX/ElecX/test/room_circuit_workflow_test.dart: sizing evidence is undoable and survives project reopen
+✅ /home/runner/work/ElecX/ElecX/test/surface_model_test.dart: rectangle room exposes four stable wall surfaces
+✅ /home/runner/work/ElecX/ElecX/test/surface_model_test.dart: wall opening is validated against width and height
+✅ /home/runner/work/ElecX/ElecX/test/surface_model_test.dart: surface navigator preserves selected room and switches wall
+✅ /home/runner/work/ElecX/ElecX/test/surface_model_test.dart: wall-local coordinate maps back to plan edge
+✅ /home/runner/work/ElecX/ElecX/test/surface_model_test.dart: route point transfers from wall base to the same floor point
+✅ /home/runner/work/ElecX/ElecX/test/surface_model_test.dart: route point transfers between adjacent walls only at shared edge
+✅ /home/runner/work/ElecX/ElecX/test/surface_model_test.dart: controller creates a new route segment when surface transition is valid
+✅ /home/runner/work/ElecX/ElecX/test/surface_model_test.dart: wall edges resolve to floor ceiling and adjacent walls
+✅ /home/runner/work/ElecX/ElecX/test/surface_model_test.dart: edge navigation carries active cable route to adjacent wall
+✅ /home/runner/work/ElecX/ElecX/test/surface_model_test.dart: edge navigation carries cable route from wall to floor
+✅ /home/runner/work/ElecX/ElecX/test/cable_route_edit_session_test.dart: auto route previews valid geometry and commits once
+✅ /home/runner/work/ElecX/ElecX/test/cable_route_edit_session_test.dart: manual guardrails expose invalid preview but block commit
+✅ /home/runner/work/ElecX/ElecX/test/cable_route_edit_session_test.dart: locked segment cannot start an edit session
+✅ /home/runner/work/ElecX/ElecX/test/cable_route_edit_session_test.dart: segment edit cannot silently move connected endpoints
+✅ /home/runner/work/ElecX/ElecX/test/cable_route_edit_session_test.dart: mandatory waypoint is a hard preview constraint
+✅ /home/runner/work/ElecX/ElecX/test/cable_route_edit_session_test.dart: auto route preserves mandatory waypoint as an intermediate anchor
+✅ /home/runner/work/ElecX/ElecX/test/plan_geometry_editing_test.dart: vertex handle moves one boundary vertex
+✅ /home/runner/work/ElecX/ElecX/test/plan_geometry_editing_test.dart: edge handle moves wall parallel to itself
+✅ /home/runner/work/ElecX/ElecX/test/plan_geometry_editing_test.dart: invalid short edge is rejected
+✅ /home/runner/work/ElecX/ElecX/test/plan_geometry_editing_test.dart: self-intersecting polygon is rejected
+✅ /home/runner/work/ElecX/ElecX/test/plan_geometry_editing_test.dart: controller commits valid selected boundary atomically
+✅ /home/runner/work/ElecX/ElecX/test/plan_geometry_editing_test.dart: shared wall move propagates atomically to adjacent room
+✅ /home/runner/work/ElecX/ElecX/test/plan_geometry_editing_test.dart: controller rejects boundary that invalidates hosted opening
+✅ /home/runner/work/ElecX/ElecX/test/plan_geometry_editing_test.dart: opening remains selected while direct editing stays on plan
+✅ /home/runner/work/ElecX/ElecX/test/plan_geometry_editing_test.dart: opening center drag moves opening along host wall
+✅ /home/runner/work/ElecX/ElecX/test/plan_geometry_editing_test.dart: opening edge drag resizes width and rejects invalid geometry
+✅ /home/runner/work/ElecX/ElecX/test/editor_layout_policy_test.dart: phone width selects mobile editor
+✅ /home/runner/work/ElecX/ElecX/test/editor_layout_policy_test.dart: tablet width selects touch-first tablet editor
+✅ /home/runner/work/ElecX/ElecX/test/editor_layout_policy_test.dart: desktop width keeps compact persistent panel widths
+✅ /home/runner/work/ElecX/ElecX/test/editor_layout_policy_test.dart: breakpoints are deterministic at boundaries
+✅ /home/runner/work/ElecX/ElecX/test/circuit_sizing_evidence_test.dart: complete evidence produces actual CableSizingEngine PASS
+✅ /home/runner/work/ElecX/ElecX/test/circuit_sizing_evidence_test.dart: missing impedance remains INDETERMINATE, never implicit PASS
+✅ /home/runner/work/ElecX/ElecX/test/circuit_sizing_evidence_test.dart: route geometry mutation makes saved sizing evidence stale
+✅ /home/runner/work/ElecX/ElecX/test/circuit_sizing_evidence_test.dart: evidence JSON round-trip preserves sources and cable spec
+✅ /home/runner/work/ElecX/ElecX/test/editor_viewport_commands_test.dart: viewport command revision advances and stores latest command
+✅ /home/runner/work/ElecX/ElecX/test/installation_capacity_engine_test.dart: power conductor cross-section stays independent from cable fill area
+✅ /home/runner/work/ElecX/ElecX/test/installation_capacity_engine_test.dart: area-fill channel respects reserve and reports overfill
+✅ /home/runner/work/ElecX/ElecX/test/installation_capacity_engine_test.dart: segregation rejects LAN cable from power-only channel
+✅ /home/runner/work/ElecX/ElecX/test/installation_capacity_engine_test.dart: dedicated channel rejects multiple cable routes
+✅ /home/runner/work/ElecX/ElecX/test/alien_cockpit_theme_test.dart: dark theme exposes the cockpit semantic palette
+✅ /home/runner/work/ElecX/ElecX/test/alien_cockpit_theme_test.dart: light theme keeps semantic accents without dark-only surfaces
+✅ /home/runner/work/ElecX/ElecX/test/alien_cockpit_theme_test.dart: compact editor target meets the explicit touch ergonomics floor
+✅ /home/runner/work/ElecX/ElecX/test/editor_p2_session_test.dart: component placement is undoable and redoable
+✅ /home/runner/work/ElecX/ElecX/test/editor_p2_session_test.dart: locked electrical layer rejects component placement
+✅ /home/runner/work/ElecX/ElecX/test/editor_p2_session_test.dart: drag preview creates one history entry on commit
+✅ /home/runner/work/ElecX/ElecX/test/editor_p2_session_test.dart: two selected components on same surface can be auto-routed
+✅ /home/runner/work/ElecX/ElecX/test/editor_p2_session_test.dart: same-surface AUTO uses project context to detour around opening
+✅ /home/runner/work/ElecX/ElecX/test/editor_p2_session_test.dart: wall source can auto-route to ceiling load through topology
+✅ /home/runner/work/ElecX/ElecX/test/editor_p2_session_test.dart: cross-surface auto route requires room topology context
+✅ /home/runner/work/ElecX/ElecX/test/alien_cockpit_theme_test.dart: semantic CAD states remain distinct in dark mode
+✅ /home/runner/work/ElecX/ElecX/test/p2_engine_test.dart: P2 SnapEngine endpoint wins over grid and midpoint
+✅ /home/runner/work/ElecX/ElecX/test/p2_engine_test.dart: P2 SnapEngine intersection is resolved before grid
+✅ /home/runner/work/ElecX/ElecX/test/p2_engine_test.dart: SelectionEngine supports additive and box selection
+✅ /home/runner/work/ElecX/ElecX/test/p2_engine_test.dart: CommandHistory executes undo and redo deterministically
+✅ /home/runner/work/ElecX/ElecX/test/p2_engine_test.dart: ConstraintEngine keeps horizontal and exact distance constraints
+✅ /home/runner/work/ElecX/ElecX/test/p2_engine_test.dart: Direct manipulation hit test picks nearest handle
+✅ /home/runner/work/ElecX/ElecX/test/p2_engine_test.dart: layers preserve stable visibility and locking state
+✅ /home/runner/work/ElecX/ElecX/test/p2_engine_test.dart: electrical SVG catalog covers every component type
+✅ /home/runner/work/ElecX/ElecX/test/p2_engine_test.dart: RouteEngine chooses lower-cost path and emits surface segments
+✅ /home/runner/work/ElecX/ElecX/test/plan_pull_measure_test.dart: horizontal boundary measures to opposite horizontal wall
+✅ /home/runner/work/ElecX/ElecX/test/plan_pull_measure_test.dart: vertical boundary measures to opposite vertical wall
+✅ /home/runner/work/ElecX/ElecX/test/plan_pull_measure_test.dart: irregular room selects nearest parallel boundary
+✅ /home/runner/work/ElecX/ElecX/test/component_transform_session_test.dart: transform commit records one accepted preview
+✅ /home/runner/work/ElecX/ElecX/test/component_transform_session_test.dart: invalid transform preview can be cancelled exactly
+✅ /home/runner/work/ElecX/ElecX/test/component_transform_session_test.dart: connected route previews and commits atomically with component move
+✅ /home/runner/work/ElecX/ElecX/test/component_transform_session_test.dart: cancel restores component routes and constraints exactly
+✅ /home/runner/work/ElecX/ElecX/test/component_transform_session_test.dart: locked connected endpoint segment blocks component move commit
+✅ /home/runner/work/ElecX/ElecX/test/circuit_cable_registry_test.dart: registers board protection circuit cable and terminations as one bundle
+✅ /home/runner/work/ElecX/ElecX/test/circuit_cable_registry_test.dart: rejects cable termination which does not match physical route endpoint
+✅ /home/runner/work/ElecX/ElecX/test/circuit_cable_registry_test.dart: rejects protective device from another board
+✅ /home/runner/work/ElecX/ElecX/test/component_catalog_v2_test.dart: ComponentCatalogV2 socket is wall-only and uses power cable sizing
+✅ /home/runner/work/ElecX/ElecX/test/component_catalog_v2_test.dart: ComponentCatalogV2 PoE camera exposes network port and PoE budget calculation
+✅ /home/runner/work/ElecX/ElecX/test/component_catalog_v2_test.dart: ComponentCatalogV2 smoke detector is ceiling-only and uses fire loop topology
+✅ /home/runner/work/ElecX/ElecX/test/component_catalog_v2_test.dart: ComponentCatalogV2 room environment can reject an otherwise valid surface
+✅ /home/runner/work/ElecX/ElecX/test/component_catalog_v2_test.dart: ComponentCatalogV2 catalog can be filtered by system and surface
+✅ /home/runner/work/ElecX/ElecX/test/surface_canvas_waypoint_interaction_test.dart: mandatory waypoint stays fixed while an unrelated segment is dragged
+✅ /home/runner/work/ElecX/ElecX/test/component_move_session_test.dart: cancel restores original component position exactly
+✅ /home/runner/work/ElecX/ElecX/test/component_move_session_test.dart: commit stores preview as one completed move
+✅ /home/runner/work/ElecX/ElecX/test/component_move_session_test.dart: invalid preview is exposed but cannot be committed
+✅ /home/runner/work/ElecX/ElecX/test/project_hub_recovery_test.dart: hub exposes orphan recovery and opens it as Modified until explicit Save
+✅ /home/runner/work/ElecX/ElecX/test/project_hub_recovery_test.dart: hub can discard orphan recovery without creating a project
+✅ /home/runner/work/ElecX/ElecX/test/editor_project_persistence_test.dart: save close open restores canonical engineering state and continues edit
+✅ /home/runner/work/ElecX/ElecX/test/editor_project_persistence_test.dart: workspace level switch persists edited geometry and openings
+✅ /home/runner/work/ElecX/ElecX/test/editor_project_persistence_test.dart: capture rejects active transform and unfinished route draft
+✅ /home/runner/work/ElecX/ElecX/test/editor_project_persistence_test.dart: file store lists saved projects for application restart
+✅ /home/runner/work/ElecX/ElecX/test/editor_project_persistence_test.dart: project identity is independent from physical site identity
+✅ /home/runner/work/ElecX/ElecX/test/editor_project_persistence_test.dart: schema v1 migrates through v4 without losing project identity
+✅ /home/runner/work/ElecX/ElecX/test/editor_project_persistence_test.dart: unsupported schema is rejected explicitly
+✅ /home/runner/work/ElecX/ElecX/test/measurement_overlay_test.dart: opening measurements expose clearances and object size
+✅ /home/runner/work/ElecX/ElecX/test/measurement_overlay_test.dart: beam measurements expose wall offsets width depth and bottom level
+✅ /home/runner/work/ElecX/ElecX/test/cable_route_constraints_test.dart: constraint payload round-trips for project persistence
+✅ /home/runner/work/ElecX/ElecX/test/cable_route_constraints_test.dart: lock and waypoint mutations are undoable editor state
+✅ /home/runner/work/ElecX/ElecX/test/cable_route_constraints_test.dart: constraint state survives session reopen from canonical snapshot
+✅ /home/runner/work/ElecX/ElecX/test/cable_route_constraints_test.dart: constraint mutation rejects stale geometry references
+✅ /home/runner/work/ElecX/ElecX/test/cable_route_constraints_test.dart: reconcile tracks physical waypoint when its vertex index shifts
+✅ /home/runner/work/ElecX/ElecX/test/cable_route_constraints_test.dart: route replacement reconciles constraints in the same undo command
+✅ /home/runner/work/ElecX/ElecX/test/daylight_assist_engine_test.dart: project north converts plan azimuth to true azimuth
+✅ /home/runner/work/ElecX/ElecX/test/daylight_assist_engine_test.dart: hemisphere-aware orientation weighting requires physical site context
+✅ /home/runner/work/ElecX/ElecX/test/daylight_assist_engine_test.dart: compass alone does not fabricate facade daylight advantage
+✅ /home/runner/work/ElecX/ElecX/test/daylight_assist_engine_test.dart: ceiling hints bias artificial lighting toward deeper room zone
+✅ /home/runner/work/ElecX/ElecX/test/daylight_assist_engine_test.dart: room geometry derives inward vector and facade azimuth from host wall
+✅ /home/runner/work/ElecX/ElecX/test/daylight_assist_engine_test.dart: orientation-aware hints increase artificial-light priority deeper inside
+✅ /home/runner/work/ElecX/ElecX/test/daylight_assist_engine_test.dart: room-aware daylight rejects window geometry outside host wall
+✅ /home/runner/work/ElecX/ElecX/test/daylight_assist_engine_test.dart: daylight input rejects non-wall surfaces and invalid transmittance
+✅ /home/runner/work/ElecX/ElecX/test/cable_identity_test.dart: both cable ends keep the same stable cable designation
+✅ /home/runner/work/ElecX/ElecX/test/cable_identity_test.dart: label preserves termination identity for installation traceability
+✅ /home/runner/work/ElecX/ElecX/test/component_taxonomy_test.dart: distribution board resolves by stable identity, not localized name
+✅ /home/runner/work/ElecX/ElecX/test/component_taxonomy_test.dart: lighting switch and luminaire resolve to different subcategories
+✅ /home/runner/work/ElecX/ElecX/test/cable_sizing_engine_test.dart: missing evidence is indeterminate, never implicit pass
+✅ /home/runner/work/ElecX/ElecX/test/cable_sizing_engine_test.dart: worst real installation section governs ampacity
+✅ /home/runner/work/ElecX/ElecX/test/cable_sizing_engine_test.dart: correction factor above one is supported when evidence permits it
+✅ /home/runner/work/ElecX/ElecX/test/cable_sizing_engine_test.dart: single phase voltage drop can reject otherwise adequate cable
+✅ /home/runner/work/ElecX/ElecX/test/cable_sizing_engine_test.dart: three phase equation uses sqrt(3) multiplier
+✅ /home/runner/work/ElecX/ElecX/test/editor_shell_state_test.dart: side panels collapse independently
+✅ /home/runner/work/ElecX/ElecX/test/editor_shell_state_test.dart: focus mode hides chrome without losing saved panel choices
 ✅ /home/runner/work/ElecX/ElecX/test/cable_route_controls_test.dart: invalid semantic preview is exposed as text, not color only
 ✅ /home/runner/work/ElecX/ElecX/test/cable_route_controls_test.dart: warning preview exposes engineering reason
+✅ /home/runner/work/ElecX/ElecX/test/opening_parameter_editing_test.dart: door parameters mutate selected opening and preserve selection
+✅ /home/runner/work/ElecX/ElecX/test/opening_parameter_editing_test.dart: window sill and dimensions mutate selected opening
+✅ /home/runner/work/ElecX/ElecX/test/opening_parameter_editing_test.dart: invalid opening dimensions are rejected without mutating model
 ✅ /home/runner/work/ElecX/ElecX/test/cable_route_controls_test.dart: valid preview announces that commit is allowed
-✅ /home/runner/work/ElecX/ElecX/test/route_interaction_hosted_test.dart: hosted route hit test selects only segments on requested host
-✅ /home/runner/work/ElecX/ElecX/test/route_interaction_hosted_test.dart: route selection accepts hosted-only route identity
-✅ /home/runner/work/ElecX/ElecX/test/route_interaction_hosted_test.dart: indoor adapter preserves route medium semantics
-✅ /home/runner/work/ElecX/ElecX/test/route_interaction_hosted_test.dart: selected hosted route keeps transition visible from both hosts
-✅ /home/runner/work/ElecX/ElecX/test/routing_constraints_test.dart: keep-out zone removes crossing edge but preserves alternative path
-✅ /home/runner/work/ElecX/ElecX/test/routing_constraints_test.dart: route violations return each keep-out zone once
-✅ /home/runner/work/ElecX/ElecX/test/wall_profile_plan_projection_test.dart: rectangular wall projects as a flat upper contour
-✅ /home/runner/work/ElecX/ElecX/test/wall_profile_plan_projection_test.dart: beam notch projects as a stepped upper contour
-✅ /home/runner/work/ElecX/ElecX/test/wall_profile_plan_projection_test.dart: sloped top keeps ordered plan projection
-✅ /home/runner/work/ElecX/ElecX/test/spatial_performance_test.dart: 10k-room benchmark culls to local viewport candidates
-✅ /home/runner/work/ElecX/ElecX/test/spatial_performance_test.dart: adaptive grid keeps useful screen spacing across scales
+✅ /home/runner/work/ElecX/ElecX/test/adjacent_room_test.dart: adjacent room shares requested host-wall segment
+✅ /home/runner/work/ElecX/ElecX/test/adjacent_room_test.dart: adjacent room command appends and selects created room
+✅ /home/runner/work/ElecX/ElecX/test/adjacent_room_test.dart: adjacent room command rejects segment beyond wall
+✅ /home/runner/work/ElecX/ElecX/test/editor_integrity_hardening_test.dart: route connectivity rejects powerOut to controlIn
+✅ /home/runner/work/ElecX/ElecX/test/editor_integrity_hardening_test.dart: restored state advances generated component and route ids
+✅ /home/runner/work/ElecX/ElecX/test/editor_integrity_hardening_test.dart: restored state rejects duplicate ids immediately
+✅ /home/runner/work/ElecX/ElecX/test/editor_integrity_hardening_test.dart: write API cannot mutate a locked segment or drop waypoint
+✅ /home/runner/work/ElecX/ElecX/test/editor_integrity_hardening_test.dart: concave surface boundary rejects route that exits and re-enters
+✅ /home/runner/work/ElecX/ElecX/test/editor_integrity_hardening_test.dart: auto route finds an orthogonal detour around centered obstacle
 ✅ /home/runner/work/ElecX/ElecX/test/drawing_simulation_engine_test.dart: simulation finds route waste and missing directed path to board
 ✅ /home/runner/work/ElecX/ElecX/test/drawing_simulation_engine_test.dart: simulation detects overlapping and clearance violations
 ✅ /home/runner/work/ElecX/ElecX/test/drawing_simulation_engine_test.dart: simulation detects route crossing a keep-out zone
 ✅ /home/runner/work/ElecX/ElecX/test/drawing_simulation_engine_test.dart: simulation detects connected topology with wrong flow direction
+✅ /home/runner/work/ElecX/ElecX/test/kz_installation_rules_test.dart: residential socket height allows values up to 1000 mm
+✅ /home/runner/work/ElecX/ElecX/test/kz_installation_rules_test.dart: general lighting switch height is 800 to 1700 mm
+✅ /home/runner/work/ElecX/ElecX/test/kz_installation_rules_test.dart: gas pipe distance requires at least 500 mm
+✅ /home/runner/work/ElecX/ElecX/test/kz_installation_rules_test.dart: child occupancy special profile requires 1800 mm
+✅ /home/runner/work/ElecX/ElecX/test/engineering_placement_cursor_session_test.dart: placement cursor nudges and confirms a component on active wall
+✅ /home/runner/work/ElecX/ElecX/test/engineering_placement_cursor_session_test.dart: catalog rejects socket placement on ceiling
+✅ /home/runner/work/ElecX/ElecX/test/engineering_placement_cursor_session_test.dart: catalog allows lighting point on ceiling
+✅ /home/runner/work/ElecX/ElecX/test/engineering_placement_cursor_session_test.dart: CCTV placement keeps canonical catalog componentTypeId
+✅ /home/runner/work/ElecX/ElecX/test/engineering_placement_cursor_session_test.dart: repeat placement keeps the catalog placement session active
+✅ /home/runner/work/ElecX/ElecX/test/p1_lifecycle_acceptance_test.dart: F01 electrical mutation changes Saved to Modified and autosaves recovery
+✅ /home/runner/work/ElecX/ElecX/test/p1_lifecycle_acceptance_test.dart: F03 shrinking room around electrical component is rejected atomically
+✅ /home/runner/work/ElecX/ElecX/test/p1_lifecycle_acceptance_test.dart: F05 second pointer cancels plan boundary drag without commit
+✅ /home/runner/work/ElecX/ElecX/test/project_hub_persistence_test.dart: project hub discovers persisted project and reopens editor
+✅ /home/runner/work/ElecX/ElecX/test/p1_lifecycle_acceptance_test.dart: F06 tool switch cancels active surface component preview
+✅ /home/runner/work/ElecX/ElecX/test/room_world_layout_test.dart: ceiling is always above walls and floor is always below
+✅ /home/runner/work/ElecX/ElecX/test/room_world_layout_test.dart: wall order follows physical room boundary order
+✅ /home/runner/work/ElecX/ElecX/test/room_world_layout_test.dart: all room world tiles preserve selected room identity
+✅ /home/runner/work/ElecX/ElecX/test/cable_endpoint_transform_session_test.dart: target endpoint snaps to compatible port and autoroutes before commit
+✅ /home/runner/work/ElecX/ElecX/test/cable_endpoint_transform_session_test.dart: endpoint cannot commit while no compatible port is captured
+✅ /home/runner/work/ElecX/ElecX/test/cable_endpoint_transform_session_test.dart: endpoint reroute preserves mandatory waypoints in segment order
+✅ /home/runner/work/ElecX/ElecX/test/cable_endpoint_transform_session_test.dart: locked endpoint segment cannot start endpoint transform
+✅ /home/runner/work/ElecX/ElecX/test/cable_endpoint_transform_session_test.dart: stale mandatory waypoint prevents endpoint transform start
+✅ /home/runner/work/ElecX/ElecX/test/editor_building_workspace_test.dart: workspace switches deterministically between floor 7 B1 and B30
+✅ /home/runner/work/ElecX/ElecX/test/editor_building_workspace_test.dart: residential level keeps apartments and common corridor separate
+✅ /home/runner/work/ElecX/ElecX/test/editor_building_workspace_test.dart: selecting an apartment selects one of its rooms in editor
+✅ /home/runner/work/ElecX/ElecX/test/editor_building_workspace_test.dart: yard context projects site geometry into the shared plan editor
+✅ /home/runner/work/ElecX/ElecX/test/editor_building_workspace_test.dart: project north updates site state and survives level switches
+✅ /home/runner/work/ElecX/ElecX/test/editor_building_workspace_test.dart: next and previous level traverse physical level order
+✅ /home/runner/work/ElecX/ElecX/test/project_hub_persistence_test.dart: hub creates independent project identities
+✅ /home/runner/work/ElecX/ElecX/test/wall_dimension_set_test.dart: wall dimensions resolve L D H without inventing thickness
+✅ /home/runner/work/ElecX/ElecX/test/boundary_edit_draft_test.dart: opening draft becomes dirty without changing source opening
+✅ /home/runner/work/ElecX/ElecX/test/boundary_edit_draft_test.dart: force reset restores opening draft from model
+✅ /home/runner/work/ElecX/ElecX/test/boundary_edit_draft_test.dart: beam draft tracks dirty state and can be discarded
+✅ /home/runner/work/ElecX/ElecX/test/cottage_site_builder_test.dart: detached house is represented as one lot and one building
+✅ /home/runner/work/ElecX/ElecX/test/cottage_site_builder_test.dart: village clones houses with unique building level and room ids
+✅ /home/runner/work/ElecX/ElecX/test/cottage_site_builder_test.dart: shared networks serve every cottage in the village
+✅ /home/runner/work/ElecX/ElecX/test/route_interaction_hosted_test.dart: hosted route hit test selects only segments on requested host
+✅ /home/runner/work/ElecX/ElecX/test/route_interaction_hosted_test.dart: route selection accepts hosted-only route identity
+✅ /home/runner/work/ElecX/ElecX/test/route_interaction_hosted_test.dart: indoor adapter preserves route medium semantics
+✅ /home/runner/work/ElecX/ElecX/test/route_interaction_hosted_test.dart: selected hosted route keeps transition visible from both hosts
+✅ /home/runner/work/ElecX/ElecX/test/surface_canvas_interaction_test.dart: component mouse drag commits one transactional history entry
+✅ /home/runner/work/ElecX/ElecX/test/surface_canvas_interaction_test.dart: component stylus drag uses the same transform transaction
+✅ /home/runner/work/ElecX/ElecX/test/electrical_placement_test.dart: component stays bound to concrete room surface and millimetre point
+✅ /home/runner/work/ElecX/ElecX/test/electrical_placement_test.dart: connected cable route uses real source and target component ports
+✅ /home/runner/work/ElecX/ElecX/test/electrical_placement_test.dart: route with unknown target port is rejected
+✅ /home/runner/work/ElecX/ElecX/test/surface_canvas_interaction_test.dart: escape cancels active pointer transform without history
+✅ /home/runner/work/ElecX/ElecX/test/surface_canvas_interaction_test.dart: second pointer cancels active component transform exactly
+✅ /home/runner/work/ElecX/ElecX/test/surface_canvas_interaction_test.dart: endpoint drag snaps to compatible port and is one undo step
+✅ /home/runner/work/ElecX/ElecX/test/wall_profile_plan_projection_test.dart: rectangular wall projects as a flat upper contour
+✅ /home/runner/work/ElecX/ElecX/test/wall_profile_plan_projection_test.dart: beam notch projects as a stepped upper contour
+✅ /home/runner/work/ElecX/ElecX/test/wall_profile_plan_projection_test.dart: sloped top keeps ordered plan projection
+✅ /home/runner/work/ElecX/ElecX/test/surface_canvas_interaction_test.dart: assisted first segment drag keeps endpoints and is undoable
+✅ /home/runner/work/ElecX/ElecX/test/surface_canvas_interaction_test.dart: endpoint outside compatible ports is invalid and not committed
+✅ /home/runner/work/ElecX/ElecX/test/engineering_placement_cursor_test.dart: EngineeringPlacementCursor nudges in surface-local millimetres
+✅ /home/runner/work/ElecX/ElecX/test/engineering_placement_cursor_test.dart: EngineeringPlacementCursor moveTo preserves catalog identity and reports snap source
+✅ /home/runner/work/ElecX/ElecX/test/hosted_routing_test.dart: site connection bridges indoor route to outdoor lighting feed
+✅ /home/runner/work/ElecX/ElecX/test/component_catalog_session_test.dart: editor catalog can be replaced by repository data
+✅ /home/runner/work/ElecX/ElecX/test/channel_aware_route_engine_test.dart: hard feasibility removes cheaper but invalid channel path
+✅ /home/runner/work/ElecX/ElecX/test/channel_aware_route_engine_test.dart: cost vector preserves engineering reasons behind ranking
+✅ /home/runner/work/ElecX/ElecX/test/channel_aware_route_engine_test.dart: solver reports no solution when hard constraints close all channels
+✅ /home/runner/work/ElecX/ElecX/test/room_circuit_overview_test.dart: overview aggregates PASS FAIL and incomplete room circuits
+✅ /home/runner/work/ElecX/ElecX/test/surface_canvas_lifecycle_hardening_test.dart: disposing canvas cancels active component preview exactly
+✅ /home/runner/work/ElecX/ElecX/test/room_circuit_overview_test.dart: overview entry selects load for detailed engineering workflow
+✅ /home/runner/work/ElecX/ElecX/test/spatial_engine_test.dart: WorldCamera cursor anchored zoom preserves world point under cursor
+✅ /home/runner/work/ElecX/ElecX/test/spatial_engine_test.dart: WorldCamera visible bounds include overscan
+✅ /home/runner/work/ElecX/ElecX/test/spatial_engine_test.dart: SpatialHashIndex query returns only intersecting visible items
+✅ /home/runner/work/ElecX/ElecX/test/spatial_engine_test.dart: SpatialHashIndex supports negative coordinates and removes stale cells
+✅ /home/runner/work/ElecX/ElecX/test/spatial_engine_test.dart: LOD becomes progressively richer as scale gets closer
+✅ /home/runner/work/ElecX/ElecX/test/catalog_component_identity_test.dart: catalog component ids remain monotonic after delete and re-add
+✅ /home/runner/work/ElecX/ElecX/test/directional_manipulation_test.dart: active wall nudges only along its normal
+✅ /home/runner/work/ElecX/ElecX/test/directional_manipulation_test.dart: external boundary is movable but shared boundary hides movement
+✅ /home/runner/work/ElecX/ElecX/test/directional_manipulation_test.dart: partial collinear overlap is treated as shared wall
+✅ /home/runner/work/ElecX/ElecX/test/directional_manipulation_test.dart: opening nudges along host wall and rejects outside position
+✅ /home/runner/work/ElecX/ElecX/test/directional_manipulation_test.dart: beam notch nudges horizontally and by depth
+✅ /home/runner/work/ElecX/ElecX/test/directional_manipulation_test.dart: beam notch cannot leave wall bounds
+✅ /home/runner/work/ElecX/ElecX/test/site_navigation_model_test.dart: tower projection exposes yard levels apartments common and rooms
+✅ /home/runner/work/ElecX/ElecX/test/site_navigation_model_test.dart: cottage village projection exposes lots houses levels rooms and networks
+✅ /home/runner/work/ElecX/ElecX/test/boundary_edit_session_test.dart: boundary edit session enters, switches profiles and exits cleanly
+✅ /home/runner/work/ElecX/ElecX/test/wall_profile_editor_actions_test.dart: active wall notch can be applied and reset from editor actions
+✅ /home/runner/work/ElecX/ElecX/test/wall_profile_editor_actions_test.dart: invalid notch does not mutate wall profile
+✅ /home/runner/work/ElecX/ElecX/test/wall_profile_editor_actions_test.dart: notch that would intersect an existing door is rejected atomically
+✅ /home/runner/work/ElecX/ElecX/test/routing_constraints_test.dart: keep-out zone removes crossing edge but preserves alternative path
+✅ /home/runner/work/ElecX/ElecX/test/routing_constraints_test.dart: route violations return each keep-out zone once
+✅ /home/runner/work/ElecX/ElecX/test/wall_construction_test.dart: rectangle boundary is counter-clockwise
+✅ /home/runner/work/ElecX/ElecX/test/wall_construction_test.dart: bottom external wall projects thickness outside room
+✅ /home/runner/work/ElecX/ElecX/test/wall_construction_test.dart: right external wall projects thickness to the right
+✅ /home/runner/work/ElecX/ElecX/test/wall_construction_test.dart: wall thickness must be positive
+✅ /home/runner/work/ElecX/ElecX/test/semantic_snap_test.dart: port snap wins over grid and centers on component anchor
+✅ /home/runner/work/ElecX/ElecX/test/semantic_snap_test.dart: captured port remains sticky until release radius is exceeded
+✅ /home/runner/work/ElecX/ElecX/test/editor_controller_test.dart: plan snap prefers nearby endpoint over grid
+✅ /home/runner/work/ElecX/ElecX/test/editor_controller_test.dart: plan snap uses grid when no higher-priority geometry is in range
+✅ /home/runner/work/ElecX/ElecX/test/editor_controller_test.dart: rectangle room gets a centered local reference frame
+✅ /home/runner/work/ElecX/ElecX/test/wall_profile_test.dart: beam notch reduces usable wall area
+✅ /home/runner/work/ElecX/ElecX/test/wall_profile_test.dart: sloped top profile accepts points below slope and rejects above it
+✅ /home/runner/work/ElecX/ElecX/test/wall_profile_test.dart: opening validation respects custom wall profile
 ✅ /home/runner/work/ElecX/ElecX/test/cable_canvas_hit_testing_test.dart: endpoint handles outrank vertices and segments
 ✅ /home/runner/work/ElecX/ElecX/test/cable_canvas_hit_testing_test.dart: interior vertex can be selected
 ✅ /home/runner/work/ElecX/ElecX/test/cable_canvas_hit_testing_test.dart: vertex drag creates a movable orthogonal dogleg
@@ -283,39 +287,39 @@ Try `flutter pub outdated` for more information.
 ✅ /home/runner/work/ElecX/ElecX/test/cable_canvas_hit_testing_test.dart: first segment drag inserts dogleg and keeps source endpoint fixed
 ✅ /home/runner/work/ElecX/ElecX/test/cable_canvas_hit_testing_test.dart: last segment drag inserts dogleg and keeps target endpoint fixed
 ✅ /home/runner/work/ElecX/ElecX/test/cable_canvas_hit_testing_test.dart: interior segment drag keeps orthogonal run parallel
-✅ /home/runner/work/ElecX/ElecX/test/surface_navigation_test.dart: floor boundary resolves to the corresponding wall surface
-✅ /home/runner/work/ElecX/ElecX/test/surface_navigation_test.dart: cable route can continue from floor boundary onto wall
-✅ /home/runner/work/ElecX/ElecX/test/project_recovery_and_save_diagnostics_test.dart: save diagnostics explain incompatible cable ports
+✅ /home/runner/work/ElecX/ElecX/test/engineering_topology_acceptance_test.dart: two different components connect through junction node to distribution board
+✅ /home/runner/work/ElecX/ElecX/test/engineering_topology_acceptance_test.dart: topology rejects incompatible connection direction
+✅ /home/runner/work/ElecX/ElecX/test/editor_interaction_policy_test.dart: touch policy uses larger hit and snap targets than mouse
+✅ /home/runner/work/ElecX/ElecX/test/editor_interaction_policy_test.dart: desktop coarse nudge is larger than normal nudge
+✅ /home/runner/work/ElecX/ElecX/test/p1_integrity_hardening_test.dart: concave boundary rejects segment that exits through polygon vertices
+✅ /home/runner/work/ElecX/ElecX/test/p1_integrity_hardening_test.dart: assigned cable route rebind updates engineering identity atomically
+✅ /home/runner/work/ElecX/ElecX/test/p1_integrity_hardening_test.dart: recovery load falls back to backup after interrupted publication
+✅ /home/runner/work/ElecX/ElecX/test/spatial_performance_test.dart: 10k-room benchmark culls to local viewport candidates
+✅ /home/runner/work/ElecX/ElecX/test/spatial_performance_test.dart: adaptive grid keeps useful screen spacing across scales
+✅ /home/runner/work/ElecX/ElecX/test/residential_tower_builder_test.dart: tower supports B30 through residential floor 16
+✅ /home/runner/work/ElecX/ElecX/test/residential_tower_builder_test.dart: every residential floor owns independent apartments and room ids
+✅ /home/runner/work/ElecX/ElecX/test/residential_tower_builder_test.dart: vertical cores span every level from B30 to 16
+✅ /home/runner/work/ElecX/ElecX/test/residential_tower_builder_test.dart: one space cannot belong to two apartment/common zones
+✅ /home/runner/work/ElecX/ElecX/test/engineering_graph_test.dart: system class dispatches to discipline-specific calculation kind
+✅ /home/runner/work/ElecX/ElecX/test/engineering_graph_test.dart: compatible PoE ports can be connected
+✅ /home/runner/work/ElecX/ElecX/test/engineering_graph_test.dart: incompatible power and fiber ports are rejected
+✅ /home/runner/work/ElecX/ElecX/test/route_flow_visualization_test.dart: AC uses non-directional oscillating glow
+✅ /home/runner/work/ElecX/ElecX/test/route_flow_visualization_test.dart: DC uses source-to-target directional pulses
+✅ /home/runner/work/ElecX/ElecX/test/route_flow_visualization_test.dart: Ethernet uses bidirectional packet pulses
+✅ /home/runner/work/ElecX/ElecX/test/route_flow_visualization_test.dart: custom media stays extensible without enum growth
+✅ /home/runner/work/ElecX/ElecX/test/normative_route_engine_test.dart: auto route prefers valid orthogonal candidate around obstacle
+✅ /home/runner/work/ElecX/ElecX/test/normative_route_engine_test.dart: manual diagonal preview is rejected by guardrails
+✅ /home/runner/work/ElecX/ElecX/test/circuit_engineering_status_test.dart: status exposes route length and preliminary P/U current
+✅ /home/runner/work/ElecX/ElecX/test/circuit_engineering_status_test.dart: status never fabricates current when load power is missing
 ✅ /home/runner/work/ElecX/ElecX/test/surface_transition_graph_test.dart: wall route point exposes floor continuation at wall/floor edge
 ✅ /home/runner/work/ElecX/ElecX/test/surface_transition_graph_test.dart: wall corner exposes adjacent wall continuation at same height
 ✅ /home/runner/work/ElecX/ElecX/test/surface_transition_graph_test.dart: shared wall exposes cross-room penetration continuation
-✅ /home/runner/work/ElecX/ElecX/test/project_recovery_and_save_diagnostics_test.dart: recovery snapshot round-trips separately from project save
-✅ /home/runner/work/ElecX/ElecX/test/surface_canvas_lifecycle_hardening_test.dart: disposing canvas cancels active component preview exactly
-✅ /home/runner/work/ElecX/ElecX/test/cable_sizing_engine_test.dart: missing evidence is indeterminate, never implicit pass
-✅ /home/runner/work/ElecX/ElecX/test/cable_sizing_engine_test.dart: worst real installation section governs ampacity
-✅ /home/runner/work/ElecX/ElecX/test/cable_sizing_engine_test.dart: correction factor above one is supported when evidence permits it
-✅ /home/runner/work/ElecX/ElecX/test/cable_sizing_engine_test.dart: single phase voltage drop can reject otherwise adequate cable
-✅ /home/runner/work/ElecX/ElecX/test/cable_sizing_engine_test.dart: three phase equation uses sqrt(3) multiplier
-✅ /home/runner/work/ElecX/ElecX/test/project_recovery_and_save_diagnostics_test.dart: autosave writes recovery but never marks project Saved
-✅ /home/runner/work/ElecX/ElecX/test/boundary_edit_session_test.dart: boundary edit session enters, switches profiles and exits cleanly
-✅ /home/runner/work/ElecX/ElecX/test/site_navigation_model_test.dart: tower projection exposes yard levels apartments common and rooms
-✅ /home/runner/work/ElecX/ElecX/test/site_navigation_model_test.dart: cottage village projection exposes lots houses levels rooms and networks
-✅ /home/runner/work/ElecX/ElecX/test/project_recovery_and_save_diagnostics_test.dart: Save failed shows actionable incompatible cable hint
-✅ /home/runner/work/ElecX/ElecX/test/opening_editor_test.dart: opening position and dimensions update when they fit wall
-✅ /home/runner/work/ElecX/ElecX/test/opening_editor_test.dart: opening edit is rejected when opening exceeds wall
-✅ /home/runner/work/ElecX/ElecX/test/opening_editor_test.dart: window sill plus height cannot exceed wall height
-✅ /home/runner/work/ElecX/ElecX/test/cable_identity_test.dart: both cable ends keep the same stable cable designation
-✅ /home/runner/work/ElecX/ElecX/test/cable_identity_test.dart: label preserves termination identity for installation traceability
-✅ /home/runner/work/ElecX/ElecX/test/circuit_cable_registry_test.dart: registers board protection circuit cable and terminations as one bundle
-✅ /home/runner/work/ElecX/ElecX/test/circuit_cable_registry_test.dart: rejects cable termination which does not match physical route endpoint
-✅ /home/runner/work/ElecX/ElecX/test/circuit_cable_registry_test.dart: rejects protective device from another board
-✅ /home/runner/work/ElecX/ElecX/test/editor_integrity_hardening_test.dart: route connectivity rejects powerOut to controlIn
-✅ /home/runner/work/ElecX/ElecX/test/editor_integrity_hardening_test.dart: restored state advances generated component and route ids
-✅ /home/runner/work/ElecX/ElecX/test/editor_integrity_hardening_test.dart: restored state rejects duplicate ids immediately
-✅ /home/runner/work/ElecX/ElecX/test/editor_integrity_hardening_test.dart: write API cannot mutate a locked segment or drop waypoint
-✅ /home/runner/work/ElecX/ElecX/test/editor_integrity_hardening_test.dart: concave surface boundary rejects route that exits and re-enters
-✅ /home/runner/work/ElecX/ElecX/test/editor_integrity_hardening_test.dart: auto route finds an orthogonal detour around centered obstacle
-✅ /home/runner/work/ElecX/ElecX/test/catalog_component_identity_test.dart: catalog component ids remain monotonic after delete and re-add
+✅ /home/runner/work/ElecX/ElecX/test/installation_option_optimizer_test.dart: optimizer rejects infeasible cheap path before ranking feasible options
+✅ /home/runner/work/ElecX/ElecX/test/circuit_cable_registry_conflict_test.dart: same bundle can be registered idempotently
+✅ /home/runner/work/ElecX/ElecX/test/circuit_cable_registry_conflict_test.dart: same circuit id cannot silently change engineering identity
+✅ /home/runner/work/ElecX/ElecX/test/site_outdoor_model_test.dart: yard zone uses project millimetre geometry
+✅ /home/runner/work/ElecX/ElecX/test/site_outdoor_model_test.dart: site connection may bridge yard cable entry to basement level
+✅ /home/runner/work/ElecX/ElecX/test/site_outdoor_model_test.dart: site connection rejects unknown outdoor zone
 ::endgroup::
 
-🎉 307 tests passed.
+🎉 311 tests passed.

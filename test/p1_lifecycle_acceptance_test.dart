@@ -2,6 +2,7 @@ import 'package:elecx/src/domain/electrical_placement.dart';
 import 'package:elecx/src/domain/geometry.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/engine/world_camera.dart';
+import 'package:elecx/src/features/editor/component_transform_session.dart';
 import 'package:elecx/src/features/editor/editor_building_workspace.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
 import 'package:elecx/src/features/editor/editor_p2_session.dart';
@@ -70,7 +71,8 @@ EditorProjectDocument _savedDocument() {
 }
 
 void main() {
-  testWidgets('F01 electrical mutation changes Saved to Modified and autosaves recovery',
+  testWidgets(
+      'F01 electrical mutation changes Saved to Modified and autosaves recovery',
       (tester) async {
     final projects = _MemoryProjectStore();
     final recovery = _MemoryRecoveryStore();
@@ -92,11 +94,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Saved'), findsOneWidget);
 
-    final surfaceCanvas = tester.widget<SurfaceCanvas>(find.byType(SurfaceCanvas));
-    final controller = surfaceCanvas.controller;
+    final spatialCanvas =
+        tester.widget<SpatialCanvas>(find.byType(SpatialCanvas));
+    final controller = spatialCanvas.controller;
     controller.p2.placeComponent(
       type: ElectricalComponentType.socketOutlet,
-      surface: controller.activeSurface!,
+      surface: RoomSurfaceRef.floor(controller.selectedSpace!.id),
       position: const SurfacePointMm(1000, 500),
     );
     await tester.pump();
@@ -108,7 +111,8 @@ void main() {
     expect(recovery.snapshots[document.projectId], isNotNull);
   });
 
-  test('F03 shrinking room around electrical component is rejected atomically', () {
+  test('F03 shrinking room around electrical component is rejected atomically',
+      () {
     final controller = EditorController.demo();
     addTearDown(() {
       controller.disposeP2State();
@@ -127,8 +131,12 @@ void main() {
     );
 
     expect(controller.commitSelectedBoundary(candidate), isFalse);
-    expect(controller.selectedSpace!.boundary.vertices, originalBoundary.vertices);
-    expect(controller.p2.components.singleWhere((item) => item.id == component.id).position,
+    expect(
+        controller.selectedSpace!.boundary.vertices, originalBoundary.vertices);
+    expect(
+        controller.p2.components
+            .singleWhere((item) => item.id == component.id)
+            .position,
         component.position);
   });
 
@@ -146,7 +154,9 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: SizedBox.expand(child: SpatialCanvas(controller: controller))),
+        home: Scaffold(
+            body:
+                SizedBox.expand(child: SpatialCanvas(controller: controller))),
       ),
     );
     await tester.pump();
@@ -208,7 +218,7 @@ void main() {
     );
     expect(controller.p2.selectedComponent!.position.xMm, 2200);
 
-    controller.setTool(EditorTool.cable);
+    controller.setTool(EditorTool.cableRoute);
     await tester.pump();
 
     expect(controller.componentTransform.active, isFalse);
