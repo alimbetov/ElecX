@@ -1,4 +1,5 @@
 import '../domain/electrical_placement.dart';
+import '../domain/electrical_routing.dart';
 import '../domain/geometry.dart';
 import '../domain/surfaces.dart';
 import 'snap_engine.dart';
@@ -17,6 +18,7 @@ abstract final class PortSnapResolver {
     required RoomSurfaceRef surface,
     required CableEndpointRole role,
     String? excludeComponentId,
+    ElectricalPortKind? counterpartKind,
   }) {
     final anchors = <SemanticSnapAnchor>[];
     for (final component in components) {
@@ -25,6 +27,18 @@ abstract final class PortSnapResolver {
       }
       for (final port in component.ports) {
         if (!_compatible(port.kind, role)) continue;
+        if (counterpartKind != null) {
+          final pairCompatible = role == CableEndpointRole.source
+              ? ElectricalPortCompatibility.areCompatible(
+                  port.kind,
+                  counterpartKind,
+                )
+              : ElectricalPortCompatibility.areCompatible(
+                  counterpartKind,
+                  port.kind,
+                );
+          if (!pairCompatible) continue;
+        }
         anchors.add(
           SemanticSnapAnchor(
             kind: SnapKind.port,

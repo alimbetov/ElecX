@@ -121,6 +121,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
       oldWidget.controller.cableEndpointTransform
           .removeListener(_onInteractionChanged);
       oldWidget.controller.cableUi.removeListener(_onInteractionChanged);
+      _cancelActiveInteractions(oldWidget.controller);
       _lastViewportRevision = controller.viewportCommandRevision;
       controller.viewportCommandListenable.addListener(_onViewportCommand);
       controller.p2.addListener(_onP2Changed);
@@ -146,8 +147,22 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
     controller.cableRouteEdit.removeListener(_onInteractionChanged);
     controller.cableEndpointTransform.removeListener(_onInteractionChanged);
     controller.cableUi.removeListener(_onInteractionChanged);
+    _cancelActiveInteractions(controller);
     _routeFlow.dispose();
     super.dispose();
+  }
+
+  void _cancelActiveInteractions(EditorController target) {
+    if (target.componentTransform.active) target.componentTransform.cancel();
+    if (target.cableEndpointTransform.active) {
+      target.cableEndpointTransform.cancel();
+    }
+    if (target.cableRouteEdit.active) target.cableRouteEdit.cancel();
+    if (target.p2.isManipulating) target.p2.cancelMoveSelectedComponent();
+    _dragComponentId = null;
+    _dragStartPosition = null;
+    _cableDragHit = null;
+    _activePointers.clear();
   }
 
   void _syncRouteFlowAnimation() {
@@ -573,24 +588,11 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
 
   RouteNormativeContext _routeContext(_SurfaceProjection projection) {
     final surface = controller.activeSurface!;
-    return RouteNormativeContext(
-      surface: surface,
-      widthMm: projection.extent.widthMm,
-      heightMm: projection.extent.heightMm,
-      edgeClearanceMm: 0,
-      obstacles: surface.type == SurfacePlaneType.wall
-          ? [
-              for (final opening in controller.activeWallOpenings)
-                RouteObstacleMm(
-                  id: opening.id,
-                  leftMm: opening.offsetFromStartMm,
-                  topMm: opening.sillHeightMm,
-                  rightMm: opening.endOffsetMm,
-                  bottomMm: opening.topMm,
-                ),
-            ]
-          : const [],
-    );
+    final context = controller.routeNormativeContextFor(surface);
+    if (context == null) {
+      throw StateError('No normative route context for ${surface.id}.');
+    }
+    return context;
   }
 
   CableCanvasHit? _cableHitAt(

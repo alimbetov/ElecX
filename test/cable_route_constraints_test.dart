@@ -173,7 +173,6 @@ void main() {
         routes: [route],
         routeConstraints: {
           route.id: CableRouteConstraints(
-            lockedSegments: {0},
             mandatoryWaypoints: const [
               CableMandatoryWaypoint(
                 segmentIndex: 0,
@@ -207,7 +206,7 @@ void main() {
 
     expect(session.replaceCableRoute(route, replacement), isTrue);
     expect(session.routes.single.segments.single.points, hasLength(4));
-    expect(session.routeConstraintsFor(route.id).isSegmentLocked(0), isTrue);
+    expect(session.routeConstraintsFor(route.id).isSegmentLocked(0), isFalse);
     expect(
       session
           .routeConstraintsFor(route.id)

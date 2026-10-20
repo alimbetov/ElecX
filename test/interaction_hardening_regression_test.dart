@@ -258,7 +258,8 @@ void main() {
       expect(committed!.segments.first.points, route.segments.first.points);
       expect(committed!.segments[1].points.first, transition);
       expect(committed!.segments[1].points, contains(waypoint));
-      expect(committed!.segments[1].points.last, const SurfacePointMm(800, 200));
+      expect(
+          committed!.segments[1].points.last, const SurfacePointMm(800, 200));
       expect(committed!.target.componentId, 'new');
     },
   );

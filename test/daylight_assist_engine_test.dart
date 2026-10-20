@@ -9,9 +9,11 @@ void main() {
   test('project north converts plan azimuth to true azimuth', () {
     const north = ProjectNorth(northAzimuthDegrees: 30);
 
-    expect(north.toTrueAzimuth(0), 30);
-    expect(north.toTrueAzimuth(90), 120);
-    expect(north.toTrueAzimuth(350), 20);
+    expect(north.toTrueAzimuth(0), 330);
+    expect(north.toTrueAzimuth(90), 60);
+    expect(north.toTrueAzimuth(350), 320);
+    const eastNorth = ProjectNorth(northAzimuthDegrees: 90);
+    expect(eastNorth.toTrueAzimuth(90), 0);
   });
 
   test(

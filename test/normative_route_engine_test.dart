@@ -28,11 +28,18 @@ void main() {
       context: context,
     );
 
-    expect(candidates, hasLength(2));
+    expect(candidates.length, greaterThanOrEqualTo(2));
     expect(candidates.first.validation.isValid, isTrue);
-    expect(candidates.last.validation.isValid, isFalse);
-    expect(candidates.first.points[1].xMm, 200);
-    expect(candidates.first.points[1].yMm, 1400);
+    expect(
+      candidates.any((candidate) => !candidate.validation.isValid),
+      isTrue,
+    );
+    expect(
+      candidates.first.points.every(
+        (point) => !context.obstacles.single.contains(point),
+      ),
+      isTrue,
+    );
   });
 
   test('manual diagonal preview is rejected by guardrails', () {

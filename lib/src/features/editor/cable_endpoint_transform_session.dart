@@ -106,14 +106,20 @@ final class CableEndpointTransformSession extends ChangeNotifier
       return false;
     }
 
-    final fixedComponentId = role == CableEndpointRole.target
-        ? origin.source.componentId
-        : origin.target.componentId;
+    final fixedEndpoint =
+        role == CableEndpointRole.target ? origin.source : origin.target;
+    final fixedComponentId = fixedEndpoint.componentId;
+    final counterpartKind = _portKindForEndpoint(fixedEndpoint);
+    if (counterpartKind == null) {
+      _invalidate();
+      return false;
+    }
     final anchors = PortSnapResolver.anchorsFor(
       components: _components,
       surface: context.surface,
       role: role,
       excludeComponentId: fixedComponentId,
+      counterpartKind: counterpartKind,
     );
     final resolved = SnapEngine.resolve(
       SnapRequest(
@@ -272,6 +278,13 @@ final class CableEndpointTransformSession extends ChangeNotifier
       points: List.unmodifiable(combined),
       validation: validation,
     );
+  }
+
+  ElectricalPortKind? _portKindForEndpoint(ElectricalEndpointRef endpoint) {
+    return ElectricalPortCompatibility.portForEndpoint(
+      endpoint: endpoint,
+      components: _components,
+    )?.kind;
   }
 
   ElectricalEndpointRef? _endpointForSourceId(String sourceId) {

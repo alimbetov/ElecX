@@ -9,6 +9,7 @@ import '../../engine/auto_route_graph_builder.dart';
 import '../../engine/command_history.dart';
 import '../../engine/direct_manipulation.dart';
 import '../../engine/editor_layers.dart';
+import '../../engine/normative_route_engine.dart';
 import '../../engine/route_engine.dart';
 import '../../engine/selection_engine.dart';
 import '../../engine/snap_engine.dart';
@@ -43,17 +44,33 @@ final class EditorP2State {
 }
 
 final class EditorP2Session extends ChangeNotifier {
-  EditorP2Session({EditorP2State initialState = const EditorP2State()})
-      : history = CommandHistory<EditorP2State>(initialState);
+  EditorP2Session({
+    EditorP2State initialState = const EditorP2State(),
+    RouteNormativeContext? Function(RoomSurfaceRef surface)?
+        routeContextResolver,
+  })  : _routeContextResolver = routeContextResolver,
+        _componentSequence = _nextSequence(
+          prefix: 'component-',
+          ids: initialState.components.map((item) => item.id),
+        ),
+        _routeSequence = _nextSequence(
+          prefix: 'route-',
+          ids: initialState.routes.map((item) => item.id),
+        ),
+        history = CommandHistory<EditorP2State>(initialState) {
+    _validateUniqueIds(initialState);
+  }
 
   final CommandHistory<EditorP2State> history;
+  final RouteNormativeContext? Function(RoomSurfaceRef surface)?
+      _routeContextResolver;
   final EditorLayerRegistry layers = EditorLayerRegistry();
   SnapCandidate? activeSnap;
   ElectricalComponentType? placementType;
   RoutePreference routePreference = RoutePreference.shortest;
   ElectricalComponentPlacement? _moveOrigin;
-  int _componentSequence = 1;
-  int _routeSequence = 1;
+  int _componentSequence;
+  int _routeSequence;
 
   EditorP2State get state => history.state;
   List<ElectricalComponentPlacement> get components => state.components;
@@ -125,12 +142,19 @@ final class EditorP2Session extends ChangeNotifier {
       throw StateError('Electrical layer is locked.');
     }
     final sequence = _componentSequence++;
+    final componentId = _nextAvailableId(
+      prefix: 'component-',
+      initialSequence: sequence,
+      existingIds: components.map((item) => item.id).toSet(),
+    );
+    _componentSequence = componentId.$2;
     final component = ElectricalComponentPlacement(
-      id: 'component-$sequence',
+      id: componentId.$1,
       type: type,
       surface: surface,
       position: position,
-      label: '${ElectricalComponentDefaults.defaultLabel(type)} $sequence',
+      label:
+          '${ElectricalComponentDefaults.defaultLabel(type)} ${componentId.$2 - 1}',
       ports: ElectricalComponentDefaults.portsFor(type),
     );
     history.execute(_AddComponentCommand(component));
@@ -194,20 +218,30 @@ final class EditorP2Session extends ChangeNotifier {
     if (before.id != after.id || layers.isLocked(EditorLayerId.cableRoutes)) {
       return false;
     }
-    if (!routes.any((route) => route.id == before.id)) return false;
+    final current = _routeForId(before.id);
+    if (current == null || !_sameRoute(current, before)) return false;
     if (!ElectricalConnectivityValidator.routeIsConnected(
       route: after,
       components: components,
     )) {
       return false;
     }
+    if (!_routeGeometryIsValid(after)) return false;
+
     final beforeConstraints = routeConstraintsFor(before.id);
+    if (!_constraintsAllowReplacement(
+      before: current,
+      after: after,
+      constraints: beforeConstraints,
+    )) {
+      return false;
+    }
     final afterConstraints = beforeConstraints.reconcile([
       for (final segment in after.segments) segment.points,
     ]);
     history.execute(
       _ReplaceCableRouteCommand(
-        before: before,
+        before: current,
         after: after,
         beforeConstraints: beforeConstraints,
         afterConstraints: afterConstraints,
@@ -318,17 +352,24 @@ final class EditorP2Session extends ChangeNotifier {
       preference: routePreference,
     );
     if (solution == null) return false;
+    final routeId = _nextAvailableId(
+      prefix: 'route-',
+      initialSequence: _routeSequence,
+      existingIds: routes.map((item) => item.id).toSet(),
+    );
+    _routeSequence = routeId.$2;
     final route = ElectricalCableRoute(
-      id: 'route-${_routeSequence++}',
+      id: routeId.$1,
       source: source,
       target: target,
       segments: RouteEngine.toSegments(graph, solution),
       cableType: cableType,
     );
     if (!ElectricalConnectivityValidator.routeIsConnected(
-      route: route,
-      components: components,
-    )) {
+          route: route,
+          components: components,
+        ) ||
+        !_routeGeometryIsValid(route)) {
       return false;
     }
     history.execute(_AddRouteCommand(route));
@@ -339,12 +380,14 @@ final class EditorP2Session extends ChangeNotifier {
   bool autoRouteSelectedPair({EngineeringSpace? space, String? cableType}) {
     final pair = selectedComponents;
     if (pair.length != 2) return false;
-    final sourceComponent = _preferredSource(pair[0], pair[1]);
-    final targetComponent =
-        identical(sourceComponent, pair[0]) ? pair[1] : pair[0];
-    final sourcePort = _portForSource(sourceComponent);
-    final targetPort = _portForTarget(targetComponent);
-    if (sourcePort == null || targetPort == null) return false;
+    final forward = _resolvePortPair(pair[0], pair[1]);
+    final reverse = forward == null ? _resolvePortPair(pair[1], pair[0]) : null;
+    final portPair = forward ?? reverse;
+    if (portPair == null) return false;
+    final sourceComponent = portPair.sourceComponent;
+    final targetComponent = portPair.targetComponent;
+    final sourcePort = portPair.sourcePort;
+    final targetPort = portPair.targetPort;
 
     late final RoutingGraph graph;
     late final String startNodeId;
@@ -473,43 +516,156 @@ final class EditorP2Session extends ChangeNotifier {
         ],
       );
 
-  static ElectricalComponentPlacement _preferredSource(
-    ElectricalComponentPlacement first,
-    ElectricalComponentPlacement second,
+  static _ResolvedPortPair? _resolvePortPair(
+    ElectricalComponentPlacement source,
+    ElectricalComponentPlacement target,
   ) {
-    bool hasPowerOut(ElectricalComponentPlacement component) =>
-        component.ports.any((port) => port.kind == ElectricalPortKind.powerOut);
-    if (hasPowerOut(first) && !hasPowerOut(second)) return first;
-    if (hasPowerOut(second) && !hasPowerOut(first)) return second;
-    return first;
-  }
-
-  static ElectricalPortDefinition? _portForSource(
-    ElectricalComponentPlacement component,
-  ) {
-    for (final port in component.ports) {
-      if (port.kind == ElectricalPortKind.powerOut ||
-          port.kind == ElectricalPortKind.controlOut) {
-        return port;
+    for (final sourcePort in source.ports) {
+      for (final targetPort in target.ports) {
+        if (ElectricalPortCompatibility.areCompatible(
+          sourcePort.kind,
+          targetPort.kind,
+        )) {
+          return _ResolvedPortPair(
+            sourceComponent: source,
+            targetComponent: target,
+            sourcePort: sourcePort,
+            targetPort: targetPort,
+          );
+        }
       }
     }
-    return component.ports.isEmpty ? null : component.ports.first;
+    return null;
   }
 
-  static ElectricalPortDefinition? _portForTarget(
-    ElectricalComponentPlacement component,
-  ) {
-    for (final port in component.ports) {
-      if (port.kind == ElectricalPortKind.powerIn ||
-          port.kind == ElectricalPortKind.controlIn) {
-        return port;
+  bool _routeGeometryIsValid(ElectricalCableRoute route) {
+    final resolver = _routeContextResolver;
+    if (resolver == null) return true;
+    for (final segment in route.segments) {
+      final context = resolver(segment.surface);
+      if (context == null ||
+          !NormativeRouteEngine.validate(
+            points: segment.points,
+            context: context,
+          ).isValid) {
+        return false;
       }
     }
-    return component.ports.isEmpty ? null : component.ports.first;
+    return true;
+  }
+
+  static bool _constraintsAllowReplacement({
+    required ElectricalCableRoute before,
+    required ElectricalCableRoute after,
+    required CableRouteConstraints constraints,
+  }) {
+    for (final segmentIndex in constraints.lockedSegments) {
+      if (segmentIndex >= before.segments.length ||
+          segmentIndex >= after.segments.length ||
+          !_sameSegment(
+            before.segments[segmentIndex],
+            after.segments[segmentIndex],
+          )) {
+        return false;
+      }
+    }
+    for (final waypoint in constraints.mandatoryWaypoints) {
+      if (waypoint.segmentIndex >= after.segments.length ||
+          !after.segments[waypoint.segmentIndex].points
+              .contains(waypoint.point)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static bool _sameRoute(ElectricalCableRoute a, ElectricalCableRoute b) {
+    if (a.id != b.id ||
+        a.source.componentId != b.source.componentId ||
+        a.source.portId != b.source.portId ||
+        a.target.componentId != b.target.componentId ||
+        a.target.portId != b.target.portId ||
+        a.segments.length != b.segments.length) {
+      return false;
+    }
+    for (var i = 0; i < a.segments.length; i++) {
+      if (!_sameSegment(a.segments[i], b.segments[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static bool _sameSegment(ElectricalRouteSegment a, ElectricalRouteSegment b) {
+    if (a.surface != b.surface || a.points.length != b.points.length) {
+      return false;
+    }
+    for (var i = 0; i < a.points.length; i++) {
+      if (a.points[i] != b.points[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static int _nextSequence({
+    required String prefix,
+    required Iterable<String> ids,
+  }) {
+    var next = 1;
+    for (final id in ids) {
+      if (!id.startsWith(prefix)) continue;
+      final parsed = int.tryParse(id.substring(prefix.length));
+      if (parsed != null && parsed >= next) {
+        next = parsed + 1;
+      }
+    }
+    return next;
+  }
+
+  static (String, int) _nextAvailableId({
+    required String prefix,
+    required int initialSequence,
+    required Set<String> existingIds,
+  }) {
+    var sequence = initialSequence;
+    while (existingIds.contains('$prefix$sequence')) {
+      sequence++;
+    }
+    return ('$prefix$sequence', sequence + 1);
+  }
+
+  static void _validateUniqueIds(EditorP2State state) {
+    final componentIds = <String>{};
+    for (final component in state.components) {
+      if (!componentIds.add(component.id)) {
+        throw ArgumentError('Duplicate component id: ${component.id}');
+      }
+    }
+    final routeIds = <String>{};
+    for (final route in state.routes) {
+      if (!routeIds.add(route.id)) {
+        throw ArgumentError('Duplicate route id: ${route.id}');
+      }
+    }
   }
 
   static double _axisDistance(SurfacePointMm a, SurfacePointMm b) =>
       (a.xMm - b.xMm).abs().toDouble() + (a.yMm - b.yMm).abs().toDouble();
+}
+
+final class _ResolvedPortPair {
+  const _ResolvedPortPair({
+    required this.sourceComponent,
+    required this.targetComponent,
+    required this.sourcePort,
+    required this.targetPort,
+  });
+
+  final ElectricalComponentPlacement sourceComponent;
+  final ElectricalComponentPlacement targetComponent;
+  final ElectricalPortDefinition sourcePort;
+  final ElectricalPortDefinition targetPort;
 }
 
 final class _ReplaceRouteConstraintsCommand
@@ -608,7 +764,9 @@ final Expando<EditorP2Session> _p2Sessions = Expando<EditorP2Session>(
 );
 
 extension EditorP2SessionAccess on EditorController {
-  EditorP2Session get p2 => _p2Sessions[this] ??= EditorP2Session();
+  EditorP2Session get p2 => _p2Sessions[this] ??= EditorP2Session(
+        routeContextResolver: routeNormativeContextFor,
+      );
 }
 
 final class _AddComponentCommand implements EditorCommand<EditorP2State> {

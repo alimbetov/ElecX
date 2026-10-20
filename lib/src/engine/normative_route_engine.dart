@@ -57,16 +57,21 @@ final class RouteNormativeContext {
     required this.widthMm,
     required this.heightMm,
     this.edgeClearanceMm = 100,
+    this.detourClearanceMm = 50,
     this.obstacles = const [],
+    this.boundary = const [],
   })  : assert(widthMm > 0),
         assert(heightMm > 0),
-        assert(edgeClearanceMm >= 0);
+        assert(edgeClearanceMm >= 0),
+        assert(detourClearanceMm > 0);
 
   final RoomSurfaceRef surface;
   final int widthMm;
   final int heightMm;
   final int edgeClearanceMm;
+  final int detourClearanceMm;
   final List<RouteObstacleMm> obstacles;
+  final List<SurfacePointMm> boundary;
 }
 
 final class RouteCandidate {
@@ -81,33 +86,67 @@ final class RouteCandidate {
   final double score;
 }
 
-/// First-stage deterministic normative router.
-///
-/// The engine intentionally separates geometry from the future ELV7 normative
-/// registry. It currently enforces orthogonal routing, surface bounds and
-/// declared architectural obstacles. ELV7 can contribute additional rule
-/// evaluators without changing the editor transaction model.
 abstract final class NormativeRouteEngine {
   static List<RouteCandidate> buildCandidates({
     required SurfacePointMm source,
     required SurfacePointMm target,
     required RouteNormativeContext context,
   }) {
-    final horizontalFirst = <SurfacePointMm>[
-      source,
-      SurfacePointMm(target.xMm, source.yMm),
-      target,
-    ];
-    final verticalFirst = <SurfacePointMm>[
-      source,
-      SurfacePointMm(source.xMm, target.yMm),
-      target,
+    final paths = <List<SurfacePointMm>>[
+      [source, SurfacePointMm(target.xMm, source.yMm), target],
+      [source, SurfacePointMm(source.xMm, target.yMm), target],
     ];
 
-    final candidates = <RouteCandidate>[
-      _candidate(horizontalFirst, context),
-      _candidate(verticalFirst, context),
-    ];
+    final clearance = context.detourClearanceMm > context.edgeClearanceMm
+        ? context.detourClearanceMm
+        : context.edgeClearanceMm + 1;
+    for (final obstacle in context.obstacles) {
+      final above = obstacle.topMm - clearance;
+      final below = obstacle.bottomMm + clearance;
+      final left = obstacle.leftMm - clearance;
+      final right = obstacle.rightMm + clearance;
+      if (above >= 0) {
+        paths.add([
+          source,
+          SurfacePointMm(source.xMm, above),
+          SurfacePointMm(target.xMm, above),
+          target,
+        ]);
+      }
+      if (below <= context.heightMm) {
+        paths.add([
+          source,
+          SurfacePointMm(source.xMm, below),
+          SurfacePointMm(target.xMm, below),
+          target,
+        ]);
+      }
+      if (left >= 0) {
+        paths.add([
+          source,
+          SurfacePointMm(left, source.yMm),
+          SurfacePointMm(left, target.yMm),
+          target,
+        ]);
+      }
+      if (right <= context.widthMm) {
+        paths.add([
+          source,
+          SurfacePointMm(right, source.yMm),
+          SurfacePointMm(right, target.yMm),
+          target,
+        ]);
+      }
+    }
+
+    final seen = <String>{};
+    final candidates = <RouteCandidate>[];
+    for (final path in paths) {
+      final compact = _compact(path);
+      final key = compact.map((p) => '${p.xMm},${p.yMm}').join(';');
+      if (!seen.add(key)) continue;
+      candidates.add(_candidate(compact, context));
+    }
     candidates.sort((a, b) {
       if (a.validation.isValid != b.validation.isValid) {
         return a.validation.isValid ? -1 : 1;
@@ -123,14 +162,13 @@ abstract final class NormativeRouteEngine {
   }) {
     final issues = <RouteConstraintIssue>[];
     if (points.length < 2) {
-      issues.add(
-        const RouteConstraintIssue(
+      return const RouteConstraintResult([
+        RouteConstraintIssue(
           code: 'route.too-short',
           message: 'Маршрут должен содержать минимум две точки.',
           severity: RouteConstraintSeverity.error,
         ),
-      );
-      return RouteConstraintResult(List.unmodifiable(issues));
+      ]);
     }
 
     for (final point in points) {
@@ -158,6 +196,17 @@ abstract final class NormativeRouteEngine {
             code: 'route.non-orthogonal',
             message:
                 'Автоматическая трасса должна идти по ортогональным направлениям.',
+            severity: RouteConstraintSeverity.error,
+          ),
+        );
+        break;
+      }
+      if (context.boundary.length >= 3 &&
+          !_segmentInsideBoundary(a, b, context.boundary)) {
+        issues.add(
+          const RouteConstraintIssue(
+            code: 'route.outside-surface-boundary',
+            message: 'Трасса выходит за фактический контур поверхности.',
             severity: RouteConstraintSeverity.error,
           ),
         );
@@ -195,17 +244,16 @@ abstract final class NormativeRouteEngine {
     List<SurfacePointMm> points,
     RouteNormativeContext context,
   ) {
-    final compact = _compact(points);
-    final validation = validate(points: compact, context: context);
-    final length = _length(compact);
-    final bends = compact.length <= 2 ? 0 : compact.length - 2;
+    final validation = validate(points: points, context: context);
+    final length = _length(points);
+    final bends = points.length <= 2 ? 0 : points.length - 2;
     final warningPenalty = validation.issues
             .where((issue) => issue.severity == RouteConstraintSeverity.warning)
             .length *
         1000;
     final errorPenalty = validation.isValid ? 0 : 1000000;
     return RouteCandidate(
-      points: List.unmodifiable(compact),
+      points: List.unmodifiable(points),
       validation: validation,
       score: length + bends * 250 + warningPenalty + errorPenalty,
     );
@@ -214,11 +262,7 @@ abstract final class NormativeRouteEngine {
   static List<SurfacePointMm> _compact(List<SurfacePointMm> points) {
     final result = <SurfacePointMm>[];
     for (final point in points) {
-      if (result.isNotEmpty &&
-          result.last.xMm == point.xMm &&
-          result.last.yMm == point.yMm) {
-        continue;
-      }
+      if (result.isNotEmpty && result.last == point) continue;
       result.add(point);
     }
     return result;
@@ -231,6 +275,70 @@ abstract final class NormativeRouteEngine {
       value += (points[i].yMm - points[i - 1].yMm).abs();
     }
     return value;
+  }
+
+  static bool _segmentInsideBoundary(
+    SurfacePointMm a,
+    SurfacePointMm b,
+    List<SurfacePointMm> boundary,
+  ) {
+    if (!_insideOrBoundary(a, boundary) || !_insideOrBoundary(b, boundary)) {
+      return false;
+    }
+    for (var i = 0; i < boundary.length; i++) {
+      final c = boundary[i];
+      final d = boundary[(i + 1) % boundary.length];
+      if (_properlyIntersects(a, b, c, d)) return false;
+    }
+    return true;
+  }
+
+  static bool _insideOrBoundary(
+    SurfacePointMm point,
+    List<SurfacePointMm> polygon,
+  ) {
+    var inside = false;
+    for (var i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      final a = polygon[i];
+      final b = polygon[j];
+      if (_onSegment(a, point, b)) return true;
+      final crosses = (a.yMm > point.yMm) != (b.yMm > point.yMm);
+      if (!crosses) continue;
+      final crossingX =
+          (b.xMm - a.xMm) * (point.yMm - a.yMm) / (b.yMm - a.yMm) + a.xMm;
+      if (point.xMm < crossingX) inside = !inside;
+    }
+    return inside;
+  }
+
+  static bool _properlyIntersects(
+    SurfacePointMm a,
+    SurfacePointMm b,
+    SurfacePointMm c,
+    SurfacePointMm d,
+  ) {
+    final abC = _cross(a, b, c);
+    final abD = _cross(a, b, d);
+    final cdA = _cross(c, d, a);
+    final cdB = _cross(c, d, b);
+    return ((abC > 0 && abD < 0) || (abC < 0 && abD > 0)) &&
+        ((cdA > 0 && cdB < 0) || (cdA < 0 && cdB > 0));
+  }
+
+  static int _cross(SurfacePointMm a, SurfacePointMm b, SurfacePointMm p) =>
+      (b.xMm - a.xMm) * (p.yMm - a.yMm) - (b.yMm - a.yMm) * (p.xMm - a.xMm);
+
+  static bool _onSegment(
+    SurfacePointMm a,
+    SurfacePointMm p,
+    SurfacePointMm b,
+  ) {
+    if (_cross(a, b, p) != 0) return false;
+    final minX = a.xMm < b.xMm ? a.xMm : b.xMm;
+    final maxX = a.xMm > b.xMm ? a.xMm : b.xMm;
+    final minY = a.yMm < b.yMm ? a.yMm : b.yMm;
+    final maxY = a.yMm > b.yMm ? a.yMm : b.yMm;
+    return p.xMm >= minX && p.xMm <= maxX && p.yMm >= minY && p.yMm <= maxY;
   }
 
   static bool _segmentIntersectsObstacle(

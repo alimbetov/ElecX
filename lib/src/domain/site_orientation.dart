@@ -22,7 +22,7 @@ final class ProjectNorth {
   /// Converts a plan-space clockwise azimuth (0 = plan-up) into true-world
   /// azimuth where 0 = north, 90 = east, 180 = south, 270 = west.
   double toTrueAzimuth(double planAzimuthDegrees) =>
-      _normalize(planAzimuthDegrees + northAzimuthDegrees);
+      _normalize(planAzimuthDegrees - northAzimuthDegrees);
 
   static double _normalize(double value) {
     var result = value % 360;

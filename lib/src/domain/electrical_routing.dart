@@ -71,23 +71,58 @@ final class ElectricalCableRoute {
       geometricLengthMm * (1 + reservePercent / 100);
 }
 
-abstract final class ElectricalConnectivityValidator {
-  static bool endpointExists({
+abstract final class ElectricalPortCompatibility {
+  static bool areCompatible(
+    ElectricalPortKind source,
+    ElectricalPortKind target,
+  ) =>
+      switch (source) {
+        ElectricalPortKind.powerOut => target == ElectricalPortKind.powerIn,
+        ElectricalPortKind.controlOut => target == ElectricalPortKind.controlIn,
+        _ => false,
+      };
+
+  static ElectricalPortDefinition? portForEndpoint({
     required ElectricalEndpointRef endpoint,
     required Iterable<ElectricalComponentPlacement> components,
   }) {
     for (final component in components) {
       if (component.id != endpoint.componentId) continue;
-      return component.ports.any((port) => port.id == endpoint.portId);
+      for (final port in component.ports) {
+        if (port.id == endpoint.portId) return port;
+      }
+      return null;
     }
-    return false;
+    return null;
   }
+}
+
+abstract final class ElectricalConnectivityValidator {
+  static bool endpointExists({
+    required ElectricalEndpointRef endpoint,
+    required Iterable<ElectricalComponentPlacement> components,
+  }) =>
+      ElectricalPortCompatibility.portForEndpoint(
+        endpoint: endpoint,
+        components: components,
+      ) !=
+      null;
 
   static bool routeIsConnected({
     required ElectricalCableRoute route,
     required Iterable<ElectricalComponentPlacement> components,
-  }) =>
-      route.segments.isNotEmpty &&
-      endpointExists(endpoint: route.source, components: components) &&
-      endpointExists(endpoint: route.target, components: components);
+  }) {
+    if (route.segments.isEmpty) return false;
+    final source = ElectricalPortCompatibility.portForEndpoint(
+      endpoint: route.source,
+      components: components,
+    );
+    final target = ElectricalPortCompatibility.portForEndpoint(
+      endpoint: route.target,
+      components: components,
+    );
+    return source != null &&
+        target != null &&
+        ElectricalPortCompatibility.areCompatible(source.kind, target.kind);
+  }
 }
