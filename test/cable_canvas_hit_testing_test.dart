@@ -77,27 +77,71 @@ void main() {
     }
   });
 
-  test('only interior route runs expose segment drag handles', () {
+  test('three-point auto route exposes endpoint-adjacent segment handles', () {
     final cable = route(const [
       SurfacePointMm(100, 100),
-      SurfacePointMm(300, 100),
-      SurfacePointMm(300, 400),
-      SurfacePointMm(700, 400),
-      SurfacePointMm(700, 700),
+      SurfacePointMm(500, 100),
+      SurfacePointMm(500, 500),
     ]);
 
     final hit = CableCanvasHitTesting.hitTest(
       route: cable,
       surface: surface,
-      point: const SurfacePointMm(300, 250),
-      radiusMm: 30,
+      point: const SurfacePointMm(300, 100),
+      radiusMm: 20,
     );
 
     expect(hit, isA<CableSegmentHit>());
-    expect((hit! as CableSegmentHit).edgeIndex, 1);
+    expect((hit! as CableSegmentHit).edgeIndex, 0);
   });
 
-  test('segment drag keeps an orthogonal run parallel', () {
+  test('first segment drag inserts dogleg and keeps source endpoint fixed', () {
+    final points = const [
+      SurfacePointMm(100, 100),
+      SurfacePointMm(500, 100),
+      SurfacePointMm(500, 500),
+    ];
+
+    final moved = CableCanvasHitTesting.moveSegment(
+      points: points,
+      edgeIndex: 0,
+      target: const SurfacePointMm(300, 220),
+    );
+
+    expect(moved, const [
+      SurfacePointMm(100, 100),
+      SurfacePointMm(100, 220),
+      SurfacePointMm(500, 220),
+      SurfacePointMm(500, 500),
+    ]);
+    expect(moved.first, points.first);
+    expect(moved.last, points.last);
+  });
+
+  test('last segment drag inserts dogleg and keeps target endpoint fixed', () {
+    final points = const [
+      SurfacePointMm(100, 100),
+      SurfacePointMm(500, 100),
+      SurfacePointMm(500, 500),
+    ];
+
+    final moved = CableCanvasHitTesting.moveSegment(
+      points: points,
+      edgeIndex: 1,
+      target: const SurfacePointMm(650, 300),
+    );
+
+    expect(moved, const [
+      SurfacePointMm(100, 100),
+      SurfacePointMm(650, 100),
+      SurfacePointMm(650, 500),
+      SurfacePointMm(500, 500),
+    ]);
+    expect(moved.first, points.first);
+    expect(moved.last, points.last);
+  });
+
+  test('interior segment drag keeps orthogonal run parallel', () {
     final points = const [
       SurfacePointMm(100, 100),
       SurfacePointMm(300, 100),
