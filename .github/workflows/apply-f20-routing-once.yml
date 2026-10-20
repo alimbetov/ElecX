@@ -25,6 +25,20 @@ jobs:
       - run: flutter pub get
       - name: Apply F20 routing
         run: python3 tool/apply_f20_multi_obstacle_routing_once.py
+      - name: Fix F20 test const hygiene
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('test/f20_multi_obstacle_routing_test.dart')
+          text = p.read_text()
+          text = text.replace(
+              "  const surface = RoomSurfaceRef.wall('room-f20', 0);",
+              "  final surface = RoomSurfaceRef.wall('room-f20', 0);",
+              1,
+          )
+          text = text.replace('    const context = RouteNormativeContext(', '    final context = RouteNormativeContext(')
+          p.write_text(text)
+          PY
       - name: Format
         run: dart format lib test
       - name: Verify format
