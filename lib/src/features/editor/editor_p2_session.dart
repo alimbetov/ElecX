@@ -83,6 +83,7 @@ final class EditorP2Session extends ChangeNotifier {
   RoutePreference routePreference = RoutePreference.shortest;
   EditorP2State? _moveOriginState;
   String? _moveComponentId;
+  Set<String> _moveComponentIds = const <String>{};
   bool _movePreviewValid = false;
   int _componentSequence;
   int _routeSequence;
@@ -387,79 +388,122 @@ final class EditorP2Session extends ChangeNotifier {
 
   bool beginMoveSelectedComponent() {
     final component = selectedComponent;
+    final selected = selectedComponents;
     if (component == null ||
+        selected.isEmpty ||
+        selected.any((item) => item.surface != component.surface) ||
         layers.isLocked(EditorLayerId.electrical) ||
         (layers.isLocked(EditorLayerId.cableRoutes) &&
-            _componentHasConnectedRoutes(component.id)) ||
+            selected.any((item) => _componentHasConnectedRoutes(item.id))) ||
         _moveOriginState != null) {
       return false;
     }
     _moveOriginState = state;
     _moveComponentId = component.id;
+    _moveComponentIds = Set.unmodifiable(selected.map((item) => item.id));
     _movePreviewValid = true;
     return true;
   }
 
   bool previewMoveSelectedComponent(SurfacePointMm point) {
     final originState = _moveOriginState;
-    final componentId = _moveComponentId;
-    if (originState == null || componentId == null) return false;
-
-    ElectricalComponentPlacement? originComponent;
-    for (final component in originState.components) {
-      if (component.id == componentId) {
-        originComponent = component;
-        break;
-      }
+    final primaryId = _moveComponentId;
+    final selectedIds = _moveComponentIds;
+    if (originState == null || primaryId == null || selectedIds.isEmpty) {
+      return false;
     }
-    if (originComponent == null) return false;
 
-    final moved = originComponent.copyWith(position: point);
-    var preview = _replaceComponent(originState, moved);
+    final originPrimary = _componentForId(originState, primaryId);
+    if (originPrimary == null) return false;
+    final dxMm = point.xMm - originPrimary.position.xMm;
+    final dyMm = point.yMm - originPrimary.position.yMm;
+
+    var preview = originState;
+    final movedById = <String, ElectricalComponentPlacement>{};
+    for (final component in originState.components) {
+      if (!selectedIds.contains(component.id)) continue;
+      final moved = component.copyWith(
+        position: SurfacePointMm(
+          component.position.xMm + dxMm,
+          component.position.yMm + dyMm,
+        ),
+      );
+      movedById[component.id] = moved;
+      preview = _replaceComponent(preview, moved);
+    }
+    if (movedById.length != selectedIds.length) {
+      _movePreviewValid = false;
+      return false;
+    }
+
     final nextRoutes = <ElectricalCableRoute>[];
     final nextConstraints = Map<String, CableRouteConstraints>.of(
       originState.routeConstraints,
     );
 
     for (final route in originState.routes) {
-      final isSource = route.source.componentId == componentId;
-      final isTarget = route.target.componentId == componentId;
-      if (!isSource && !isTarget) {
+      final sourceSelected = selectedIds.contains(route.source.componentId);
+      final targetSelected = selectedIds.contains(route.target.componentId);
+      if (!sourceSelected && !targetSelected) {
         nextRoutes.add(route);
         continue;
       }
-      if (isSource && isTarget) {
-        _movePreviewValid = false;
-        return false;
-      }
-      final rerouted = _rerouteForMovedComponent(
-        route: route,
-        movedComponent: moved,
-        isSource: isSource,
-        constraints: originState.routeConstraints[route.id] ??
-            CableRouteConstraints.empty,
-      );
-      if (rerouted == null) {
-        _movePreviewValid = false;
-        return false;
-      }
-      nextRoutes.add(rerouted);
-      final reconciled = (originState.routeConstraints[route.id] ??
-              CableRouteConstraints.empty)
-          .reconcile([
-        for (final segment in rerouted.segments) segment.points,
-      ]);
-      if (reconciled.isEmpty) {
-        nextConstraints.remove(route.id);
+
+      final constraints =
+          originState.routeConstraints[route.id] ?? CableRouteConstraints.empty;
+      ElectricalCableRoute? transformed;
+      if (sourceSelected && targetSelected) {
+        // Internal group wiring belongs to the transform. Explicitly locked
+        // geometry/waypoints are absolute authoring constraints, so the whole
+        // transaction must fail rather than silently breaking them.
+        if (!constraints.isEmpty) {
+          _movePreviewValid = false;
+          return false;
+        }
+        transformed = _translateRoute(route, dxMm: dxMm, dyMm: dyMm);
+        if (!_routeGeometryIsValid(transformed)) {
+          _movePreviewValid = false;
+          return false;
+        }
       } else {
-        nextConstraints[route.id] = reconciled;
+        final movedComponent = movedById[sourceSelected
+            ? route.source.componentId
+            : route.target.componentId];
+        if (movedComponent == null) {
+          _movePreviewValid = false;
+          return false;
+        }
+        transformed = _rerouteForMovedComponent(
+          route: route,
+          movedComponent: movedComponent,
+          isSource: sourceSelected,
+          constraints: constraints,
+        );
+        if (transformed == null) {
+          _movePreviewValid = false;
+          return false;
+        }
+        final reconciled = constraints.reconcile([
+          for (final segment in transformed.segments) segment.points,
+        ]);
+        if (reconciled.isEmpty) {
+          nextConstraints.remove(route.id);
+        } else {
+          nextConstraints[route.id] = reconciled;
+        }
       }
+      nextRoutes.add(transformed);
     }
 
     preview = preview.copyWith(
       routes: List.unmodifiable(nextRoutes),
       routeConstraints: Map.unmodifiable(nextConstraints),
     );
+    final valid = _movePreviewValidState(preview, selectedIds);
+    if (!valid) {
+      _movePreviewValid = false;
+      return false;
+    }
     _replaceState(preview);
     _movePreviewValid = true;
     return true;
@@ -467,24 +511,25 @@ final class EditorP2Session extends ChangeNotifier {
 
   bool commitMoveSelectedComponent() {
     final origin = _moveOriginState;
-    final componentId = _moveComponentId;
+    final componentIds = _moveComponentIds;
     final after = state;
     final previewValid = _movePreviewValid &&
-        componentId != null &&
-        _movePreviewValidState(after, componentId);
+        componentIds.isNotEmpty &&
+        _movePreviewValidState(after, componentIds);
     _clearMoveTransaction();
-    if (origin == null || componentId == null || !previewValid) {
+    if (origin == null || componentIds.isEmpty || !previewValid) {
       if (origin != null) _replaceState(origin);
       return false;
     }
 
-    final beforeComponent = _componentForId(origin, componentId);
-    final afterComponent = _componentForId(after, componentId);
-    if (beforeComponent == null || afterComponent == null) {
-      _replaceState(origin);
-      return false;
-    }
-    if (beforeComponent.position == afterComponent.position) {
+    final dirty = componentIds.any((componentId) {
+      final beforeComponent = _componentForId(origin, componentId);
+      final afterComponent = _componentForId(after, componentId);
+      return beforeComponent == null ||
+          afterComponent == null ||
+          beforeComponent.position != afterComponent.position;
+    });
+    if (!dirty) {
       _replaceState(origin);
       return false;
     }
@@ -493,7 +538,9 @@ final class EditorP2Session extends ChangeNotifier {
       _ReplaceEditorStateCommand(
         before: origin,
         after: after,
-        label: 'Move component with connected routes',
+        label: componentIds.length == 1
+            ? 'Move component with connected routes'
+            : 'Move component group with connected routes',
       ),
     );
     notifyListeners();
@@ -1186,6 +1233,30 @@ final class EditorP2Session extends ChangeNotifier {
     return List.unmodifiable(result);
   }
 
+  static ElectricalCableRoute _translateRoute(
+    ElectricalCableRoute route, {
+    required int dxMm,
+    required int dyMm,
+  }) =>
+      ElectricalCableRoute(
+        id: route.id,
+        source: route.source,
+        target: route.target,
+        segments: [
+          for (final segment in route.segments)
+            ElectricalRouteSegment(
+              surface: segment.surface,
+              points: List.unmodifiable([
+                for (final point in segment.points)
+                  SurfacePointMm(point.xMm + dxMm, point.yMm + dyMm),
+              ]),
+            ),
+        ],
+        cableType: route.cableType,
+        medium: route.medium,
+        reservePercent: route.reservePercent,
+      );
+
   static ElectricalCableRoute _routeWithSegment(
     ElectricalCableRoute route,
     int segmentIndex,
@@ -1220,10 +1291,13 @@ final class EditorP2Session extends ChangeNotifier {
     return null;
   }
 
-  bool _movePreviewValidState(EditorP2State preview, String componentId) {
+  bool _movePreviewValidState(
+    EditorP2State preview,
+    Set<String> componentIds,
+  ) {
     for (final route in preview.routes) {
-      if (route.source.componentId != componentId &&
-          route.target.componentId != componentId) {
+      if (!componentIds.contains(route.source.componentId) &&
+          !componentIds.contains(route.target.componentId)) {
         continue;
       }
       if (!ElectricalConnectivityValidator.routeIsConnected(
@@ -1244,6 +1318,7 @@ final class EditorP2Session extends ChangeNotifier {
   void _clearMoveTransaction() {
     _moveOriginState = null;
     _moveComponentId = null;
+    _moveComponentIds = const <String>{};
     _movePreviewValid = false;
   }
 
