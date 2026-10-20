@@ -22,7 +22,7 @@ replace_once(
 replace_once(
     p,
     '''  File _target(String projectId) {\n''',
-    '''  @override\n  Future<List<EditorProjectDocument>> list() async {\n    if (!await rootDirectory.exists()) return const [];\n    final result = <EditorProjectDocument>[];\n    await for (final entity in rootDirectory.list(followLinks: false)) {\n      if (entity is! File || !entity.path.endsWith('.elecx.json')) continue;\n      final raw = jsonDecode(await entity.readAsString());\n      if (raw is! Map) {\n        throw FormatException(\n          'ElecX project ${path.basename(entity.path)} must be a JSON object.',\n        );\n      }\n      result.add(\n        EditorProjectDocument.fromJson(\n          raw.map((key, value) => MapEntry(key.toString(), value)),\n        ),\n      );\n    }\n    result.sort((a, b) => a.projectName.compareTo(b.projectName));\n    return List.unmodifiable(result);\n  }\n\n  File _target(String projectId) {\n''',
+    '''  @override\n  Future<List<EditorProjectDocument>> list() async {\n    if (!await rootDirectory.exists()) return const [];\n    final result = <EditorProjectDocument>[];\n    await for (final entity in rootDirectory.list(followLinks: false)) {\n      if (entity is! File || !entity.path.endsWith('.elecx.json')) continue;\n      final raw = jsonDecode(await entity.readAsString());\n      if (raw is! Map) {\n        throw FormatException(\n          'ElecX project ${path.basename(entity.path)} must be a JSON object.',\n        );\n      }\n      result.add(\n        EditorProjectDocument.fromJson(\n          raw.map((key, value) => MapEntry(key.toString(), value)),\n        ),\n      );\n    }\n    result.sort((a, b) => a.projectName.compareTo(b.projectName));\n    return List<EditorProjectDocument>.unmodifiable(result);\n  }\n\n  File _target(String projectId) {\n''',
     'file store list implementation',
 )
 
@@ -48,7 +48,7 @@ p = 'test/unified_workspace_persistence_ui_test.dart'
 replace_once(
     p,
     '''  @override\n  Future<EditorProjectDocument?> load(String projectId) async {\n    loadCount++;\n    return documents[projectId];\n  }\n}\n''',
-    '''  @override\n  Future<EditorProjectDocument?> load(String projectId) async {\n    loadCount++;\n    return documents[projectId];\n  }\n\n  @override\n  Future<List<EditorProjectDocument>> list() async =>\n      List.unmodifiable(documents.values);\n}\n''',
+    '''  @override\n  Future<EditorProjectDocument?> load(String projectId) async {\n    loadCount++;\n    return documents[projectId];\n  }\n\n  @override\n  Future<List<EditorProjectDocument>> list() async =>\n      List<EditorProjectDocument>.unmodifiable(documents.values);\n}\n''',
     'memory store list contract',
 )
 
@@ -204,7 +204,9 @@ class _ProjectCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-        key: ValueKey('saved-project-${document.projectId}'),
+        key: ValueKey(
+          '${prominent ? 'continue-project' : 'saved-project'}-${document.projectId}',
+        ),
         child: ListTile(
           leading: Icon(prominent ? Icons.play_circle_outline : Icons.apartment),
           title: Text(document.projectName),
@@ -312,7 +314,8 @@ final class _HubMemoryStore implements EditorProjectStore {
   }
 
   @override
-  Future<List<EditorProjectDocument>> list() async => List.unmodifiable(documents);
+  Future<List<EditorProjectDocument>> list() async =>
+      List<EditorProjectDocument>.unmodifiable(documents);
 
   @override
   Future<void> save(EditorProjectDocument document) async {
@@ -345,12 +348,16 @@ void main() {
 
     expect(find.text(document.projectName), findsNWidgets(2));
     expect(
+      find.byKey(ValueKey('continue-project-${document.projectId}')),
+      findsOneWidget,
+    );
+    expect(
       find.byKey(ValueKey('saved-project-${document.projectId}')),
-      findsNWidgets(2),
+      findsOneWidget,
     );
 
     await tester.tap(
-      find.byKey(ValueKey('saved-project-${document.projectId}')).first,
+      find.byKey(ValueKey('continue-project-${document.projectId}')),
     );
     await tester.pumpAndSettle();
 
