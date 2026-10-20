@@ -21,152 +21,25 @@ jobs:
           channel: stable
       - name: Resolve dependencies
         run: flutter pub get
-      - name: Restore canonical canvas and apply minimal hardening
-        run: |
-          git fetch origin 252f814a5f4ace569c934366f9bcf1413039982b --depth=1
-          git show 252f814a5f4ace569c934366f9bcf1413039982b:lib/src/features/editor/surface_canvas.dart > lib/src/features/editor/surface_canvas.dart
-          python3 - <<'PY'
-          from pathlib import Path
-
-          def replace_once(text: str, old: str, new: str, label: str) -> str:
-            count = text.count(old)
-            if count != 1:
-              raise SystemExit(f'{label}: expected one match, got {count}')
-            return text.replace(old, new, 1)
-
-          canvas = Path('lib/src/features/editor/surface_canvas.dart')
-          text = canvas.read_text()
-
-          text = replace_once(
-            text,
-            """    _routeFlow = AnimationController(
-              vsync: this,
-              duration: const Duration(milliseconds: 1800),
-            )..repeat();
-""",
-            """    _routeFlow = AnimationController(
-              vsync: this,
-              duration: const Duration(milliseconds: 1800),
-            );
-""",
-            'route flow init',
-          )
-
-          text = replace_once(
-            text,
-            """    controller.cableUi.addListener(_onInteractionChanged);
-          }
-
-          @override
-          void didUpdateWidget""",
-            """    controller.cableUi.addListener(_onInteractionChanged);
-            _syncRouteFlowAnimation();
-          }
-
-          @override
-          void didUpdateWidget""",
-            'init sync',
-          )
-
-          text = replace_once(
-            text,
-            """      controller.cableUi.addListener(_onInteractionChanged);
-            }
-          }
-
-          @override
-          void dispose""",
-            """      controller.cableUi.addListener(_onInteractionChanged);
-              _syncRouteFlowAnimation();
-            }
-          }
-
-          @override
-          void dispose""",
-            'controller replacement sync',
-          )
-
-          text = replace_once(
-            text,
-            """  void _onViewportCommand() {
-""",
-            """  void _syncRouteFlowAnimation() {
-            final shouldAnimate = controller.routeSelection.selectedRouteId != null;
-            if (shouldAnimate) {
-              if (!_routeFlow.isAnimating) _routeFlow.repeat();
-              return;
-            }
-            if (_routeFlow.isAnimating) _routeFlow.stop();
-            if (_routeFlow.value != 0) _routeFlow.value = 0;
-          }
-
-          void _onViewportCommand() {
-""",
-            'flow sync helper',
-          )
-
-          text = replace_once(
-            text,
-            """  void _onP2Changed() {
-            if (mounted) setState(() {});
-          }
-""",
-            """  void _onP2Changed() {
-            controller.routeSelection.normalize();
-            _syncRouteFlowAnimation();
-            if (mounted) setState(() {});
-          }
-""",
-            'p2 sync',
-          )
-
-          text = replace_once(
-            text,
-            """  void _onRouteChanged() {
-            controller.routeSelection.normalize();
-            if (mounted) setState(() {});
-          }
-""",
-            """  void _onRouteChanged() {
-            controller.routeSelection.normalize();
-            _syncRouteFlowAnimation();
-            if (mounted) setState(() {});
-          }
-""",
-            'route sync',
-          )
-
-          text = replace_once(
-            text,
-            '      for (var edge = 1; edge < segment.points.length - 2; edge++) {\n',
-            '      for (var edge = 0; edge < segment.points.length - 1; edge++) {\n',
-            'segment handle visibility',
-          )
-          canvas.write_text(text)
-
-          test = Path('test/surface_canvas_interaction_test.dart')
-          test_text = test.read_text()
-          import_line = "import 'package:elecx/src/features/editor/cable_edit_access.dart';\n"
-          if import_line not in test_text:
-            anchor = "import 'package:elecx/src/features/editor/editor_controller.dart';\n"
-            if anchor not in test_text:
-              raise SystemExit('test import anchor missing')
-            test_text = test_text.replace(anchor, import_line + anchor, 1)
-          test.write_text(test_text)
-          PY
+      - name: Fetch canonical canvas baseline
+        run: git fetch origin 252f814a5f4ace569c934366f9bcf1413039982b --depth=1
+      - name: Apply runtime hardening patch
+        run: python3 tool/finalize_runtime_hardening_once.py
       - name: Format
         run: dart format lib test
       - name: Analyze
         run: flutter analyze
       - name: Test
         run: flutter test
-      - name: Remove one-shot workflow
-        run: rm .github/workflows/finalize-runtime-hardening-once.yml
+      - name: Remove one-shot helpers
+        run: |
+          rm .github/workflows/finalize-runtime-hardening-once.yml
+          rm tool/finalize_runtime_hardening_once.py
       - name: Commit verified hardening
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add lib test .github/workflows/finalize-runtime-hardening-once.yml
+          git add -A
           if git diff --cached --quiet; then
             exit 0
           fi
