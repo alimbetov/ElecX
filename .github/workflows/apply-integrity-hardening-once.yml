@@ -21,6 +21,7 @@ jobs:
           channel: stable
       - run: flutter pub get
       - run: python3 tool/apply_integrity_hardening_once.py
+      - run: python3 tool/align_integrity_tests_once.py
       - run: dart fix --apply
       - run: dart format lib test
       - run: dart format --output=none --set-exit-if-changed lib test
@@ -29,6 +30,7 @@ jobs:
       - name: Remove one-shot helpers
         run: |
           rm tool/apply_integrity_hardening_once.py
+          rm tool/align_integrity_tests_once.py
           rm .github/workflows/apply-integrity-hardening-once.yml
       - name: Commit verified hardening
         run: |
