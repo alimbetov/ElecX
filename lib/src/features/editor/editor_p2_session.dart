@@ -119,6 +119,93 @@ final class EditorP2Session extends ChangeNotifier {
     return null;
   }
 
+  bool updateLoadElectricalData({
+    required String componentId,
+    required int ratedPowerW,
+    required int voltageV,
+  }) {
+    if (ratedPowerW <= 0 || voltageV <= 0) return false;
+    final component = _componentForId(state, componentId);
+    if (component == null ||
+        component.type == ElectricalComponentType.distributionBoard ||
+        layers.isLocked(EditorLayerId.electrical)) {
+      return false;
+    }
+    final replacement = component.copyWith(
+      ratedPowerW: ratedPowerW,
+      voltageV: voltageV,
+    );
+    history.execute(
+      _ReplaceComponentCommand(before: component, after: replacement),
+    );
+    notifyListeners();
+    return true;
+  }
+
+  bool assignCableSpecificationToLoad({
+    required String loadComponentId,
+    required String cableSpecId,
+  }) {
+    final normalized = cableSpecId.trim();
+    if (normalized.isEmpty || layers.isLocked(EditorLayerId.cableRoutes)) {
+      return false;
+    }
+    final bundle = circuitBundleForLoad(loadComponentId);
+    if (bundle == null) return false;
+    final route = _routeForId(bundle.cable.routeId);
+    if (route == null) return false;
+    final replacementRoute = ElectricalCableRoute(
+      id: route.id,
+      source: route.source,
+      target: route.target,
+      segments: route.segments,
+      cableType: normalized,
+      medium: route.medium,
+      reservePercent: route.reservePercent,
+    );
+    final replacementCable = CableIdentity(
+      id: bundle.cable.id,
+      routeId: bundle.cable.routeId,
+      circuitId: bundle.cable.circuitId,
+      designation: bundle.cable.designation,
+      endA: bundle.cable.endA,
+      endB: bundle.cable.endB,
+      cableSpecId: normalized,
+    );
+    final replacementBundle = CircuitCableBundle(
+      circuit: bundle.circuit,
+      cable: replacementCable,
+      protectiveDevice: bundle.protectiveDevice,
+    );
+    final registry = CircuitCableRegistry()
+      ..registerBundle(
+        route: replacementRoute,
+        circuit: replacementBundle.circuit,
+        cable: replacementBundle.cable,
+        protectiveDevice: replacementBundle.protectiveDevice,
+      );
+    if (registry.bundleByRouteId(route.id) == null) return false;
+    final after = state.copyWith(
+      routes: [
+        for (final item in routes)
+          if (item.id == route.id) replacementRoute else item,
+      ],
+      circuitBundles: [
+        for (final item in state.circuitBundles)
+          if (item.cable.routeId == route.id) replacementBundle else item,
+      ],
+    );
+    history.execute(
+      _ReplaceEditorStateCommand(
+        before: state,
+        after: after,
+        label: 'Assign circuit cable specification',
+      ),
+    );
+    notifyListeners();
+    return true;
+  }
+
   bool assignProtectiveDeviceToLoad({
     required String loadComponentId,
     required String designation,

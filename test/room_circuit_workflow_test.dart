@@ -241,4 +241,69 @@ void main() {
     expect(
         editor.p2.circuitBundleForLoad(load.id)!.protectiveDevice, isNotNull);
   });
+
+  test('load data and cable specification edits are undoable and persisted',
+      () {
+    final editor = EditorController.demo();
+    final workspace = EditorBuildingWorkspace.demo(editor);
+    addTearDown(() {
+      editor.disposeP2State();
+      workspace.dispose();
+      editor.dispose();
+    });
+    final surface = RoomSurfaceRef.wall(editor.selectedSpace!.id, 1);
+    final board = editor.p2.placeComponent(
+      type: ElectricalComponentType.distributionBoard,
+      surface: surface,
+      position: const SurfacePointMm(300, 2200),
+    );
+    final load = editor.p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: surface,
+      position: const SurfacePointMm(1400, 2200),
+    );
+    expect(
+      editor.p2.connectLoadToBoard(
+        loadComponentId: load.id,
+        boardComponentId: board.id,
+        space: editor.selectedSpace,
+      ),
+      isNotNull,
+    );
+    expect(
+      editor.p2.updateLoadElectricalData(
+        componentId: load.id,
+        ratedPowerW: 2300,
+        voltageV: 230,
+      ),
+      isTrue,
+    );
+    expect(
+      editor.p2.assignCableSpecificationToLoad(
+        loadComponentId: load.id,
+        cableSpecId: 'VVGng-LS-3x2.5',
+      ),
+      isTrue,
+    );
+    final currentLoad =
+        editor.p2.components.singleWhere((item) => item.id == load.id);
+    expect(currentLoad.ratedPowerW, 2300);
+    expect(editor.p2.circuitBundleForLoad(load.id)!.cable.cableSpecId,
+        'VVGng-LS-3x2.5');
+    expect(editor.p2.routes.single.cableType, 'VVGng-LS-3x2.5');
+
+    final restored = EditorProjectDocument.fromJson(
+      EditorProjectDocument.capture(workspace).toJson(),
+    ).restore();
+    addTearDown(() {
+      restored.editor.disposeP2State();
+      restored.workspace.dispose();
+      restored.editor.dispose();
+    });
+    final restoredLoad =
+        restored.editor.p2.components.singleWhere((item) => item.id == load.id);
+    expect(restoredLoad.ratedPowerW, 2300);
+    expect(restored.editor.p2.circuitBundleForLoad(load.id)!.cable.cableSpecId,
+        'VVGng-LS-3x2.5');
+  });
 }
