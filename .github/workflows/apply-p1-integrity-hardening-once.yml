@@ -36,6 +36,9 @@ jobs:
       - name: Fix P1 analyzer contract
         run: python3 tool/fix_p1_integrity_analyzer_once.py
 
+      - name: Fix F02 regression fixture
+        run: python3 tool/fix_p1_integrity_test_once.py
+
       - name: Format
         run: dart format lib test
 
@@ -70,6 +73,7 @@ jobs:
         run: |
           rm -f tool/apply_p1_integrity_hardening_once.py
           rm -f tool/fix_p1_integrity_analyzer_once.py
+          rm -f tool/fix_p1_integrity_test_once.py
           rm -f .github/workflows/apply-p1-integrity-hardening-once.yml
 
       - name: Commit verified hardening
@@ -84,4 +88,4 @@ jobs:
           git commit -m "fix(editor): close P1 document integrity gaps"
           git push origin HEAD:feat/spatial-editor-interaction-hardening
 
-# rerun: boundary nullability correction
+# rerun: corrected F02 counterexample
