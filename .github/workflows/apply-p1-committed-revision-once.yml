@@ -52,4 +52,4 @@ jobs:
           git commit -m "fix(editor): track dirty state by committed revision"
           git push origin HEAD:feat/spatial-editor-interaction-hardening
 
-# rerun: acceptance anchor aligned with formatted test
+# rerun: idempotent screen patch
