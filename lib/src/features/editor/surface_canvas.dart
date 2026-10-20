@@ -641,7 +641,11 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
         );
         if (ui.mode == CableRoutingMode.auto ||
             ui.isSegmentLocked(vertex.route.id, vertex.segmentIndex) ||
-            ui.segmentHasWaypoints(vertex.route.id, vertex.segmentIndex)) {
+            ui.isWaypoint(
+              vertex.route.id,
+              vertex.segmentIndex,
+              vertex.pointIndex,
+            )) {
           return false;
         }
         if (!controller.cableRouteEdit.start(
@@ -649,6 +653,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
           segmentIndex: vertex.segmentIndex,
           context: _routeContext(projection),
           mode: ui.mode,
+          constraints: controller.p2.routeConstraintsFor(vertex.route.id),
         )) {
           return false;
         }
@@ -656,8 +661,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
         ui.focusGeometry(
             routeId: segment.route.id, segmentIndex: segment.segmentIndex);
         if (ui.mode == CableRoutingMode.auto ||
-            ui.isSegmentLocked(segment.route.id, segment.segmentIndex) ||
-            ui.segmentHasWaypoints(segment.route.id, segment.segmentIndex)) {
+            ui.isSegmentLocked(segment.route.id, segment.segmentIndex)) {
           return false;
         }
         if (!controller.cableRouteEdit.start(
@@ -665,6 +669,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
           segmentIndex: segment.segmentIndex,
           context: _routeContext(projection),
           mode: ui.mode,
+          constraints: controller.p2.routeConstraintsFor(segment.route.id),
         )) {
           return false;
         }

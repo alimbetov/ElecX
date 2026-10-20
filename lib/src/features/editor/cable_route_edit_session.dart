@@ -120,7 +120,8 @@ final class CableRouteEditSession extends ChangeNotifier
         target: anchors[i],
         context: context,
       );
-      final best = candidates.where((item) => item.validation.isValid).firstOrNull;
+      final best =
+          candidates.where((item) => item.validation.isValid).firstOrNull;
       if (best == null) {
         _phase = EditorEditSessionPhase.invalid;
         notifyListeners();
@@ -189,7 +190,8 @@ final class CableRouteEditSession extends ChangeNotifier
       }
     }
     for (final waypoint in _mandatoryWaypoints) {
-      final preserved = points.any((point) => _samePoint(point, waypoint.point));
+      final preserved =
+          points.any((point) => _samePoint(point, waypoint.point));
       if (!preserved) {
         issues.add(
           RouteConstraintIssue(
