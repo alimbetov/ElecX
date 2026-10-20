@@ -87,7 +87,7 @@ void main() {
       );
 
       final generated = controller.p2.routes.single;
-      const waypoint = SurfacePointMm(1400, 1000);
+      const waypoint = SurfacePointMm(1800, 1400);
       final engineered = ElectricalCableRoute(
         id: generated.id,
         source: generated.source,
@@ -97,9 +97,11 @@ void main() {
             surface: surface,
             points: const [
               SurfacePointMm(600, 400),
-              SurfacePointMm(600, 1000),
+              SurfacePointMm(600, 800),
+              SurfacePointMm(1200, 800),
+              SurfacePointMm(1200, 1400),
               waypoint,
-              SurfacePointMm(1400, 2200),
+              SurfacePointMm(1800, 2200),
               SurfacePointMm(2600, 2200),
             ],
           ),
@@ -113,7 +115,7 @@ void main() {
         controller.p2.toggleRouteWaypoint(
           routeId: engineered.id,
           segmentIndex: 0,
-          pointIndex: 2,
+          pointIndex: 4,
           point: waypoint,
         ),
         isTrue,
@@ -124,8 +126,8 @@ void main() {
 
       await pumpCanvas(tester, controller);
       final origin = tester.getTopLeft(find.byType(SurfaceCanvas));
-      const edgeMidpoint = SurfacePointMm(2000, 2200);
-      const dragTarget = SurfacePointMm(2000, 2500);
+      const edgeMidpoint = SurfacePointMm(600, 600);
+      const dragTarget = SurfacePointMm(900, 600);
 
       final gesture = await tester.startGesture(
         origin + viewportPoint(controller, edgeMidpoint),
@@ -168,8 +170,10 @@ void main() {
       );
 
       controller.p2.undo();
-      expect(controller.p2.routes.single.segments.single.points,
-          engineered.segments.single.points);
+      expect(
+        controller.p2.routes.single.segments.single.points,
+        engineered.segments.single.points,
+      );
       expect(
         controller.p2.routeConstraintsFor(engineered.id).mandatoryWaypoints.single.point,
         waypoint,
