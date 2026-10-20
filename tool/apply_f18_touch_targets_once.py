@@ -31,8 +31,8 @@ replace_once(
 )
 replace_once(
     'lib/src/features/editor/canvas_viewport_navigator.dart',
-    "        constraints: const BoxConstraints.tightFor(width: 34, height: 34),\n",
-    "        constraints: const BoxConstraints.tightFor(\n          width: EditorUiTokens.minimumTouchTarget,\n          height: EditorUiTokens.minimumTouchTarget,\n        ),\n",
+    "        visualDensity: VisualDensity.compact,\n        constraints: const BoxConstraints.tightFor(width: 34, height: 34),\n",
+    "        visualDensity: VisualDensity.standard,\n        constraints: const BoxConstraints.tightFor(\n          width: EditorUiTokens.minimumTouchTarget,\n          height: EditorUiTokens.minimumTouchTarget,\n        ),\n",
 )
 
 replace_once(
@@ -57,8 +57,8 @@ replace_once(
 )
 replace_once(
     'lib/src/features/editor/canvas_component_controls.dart',
-    "        constraints: const BoxConstraints.tightFor(width: 34, height: 34),\n",
-    "        constraints: const BoxConstraints.tightFor(\n          width: EditorUiTokens.minimumTouchTarget,\n          height: EditorUiTokens.minimumTouchTarget,\n        ),\n",
+    "        visualDensity: VisualDensity.compact,\n        constraints: const BoxConstraints.tightFor(width: 34, height: 34),\n",
+    "        visualDensity: VisualDensity.standard,\n        constraints: const BoxConstraints.tightFor(\n          width: EditorUiTokens.minimumTouchTarget,\n          height: EditorUiTokens.minimumTouchTarget,\n        ),\n",
 )
 
 Path('test/f18_touch_target_acceptance_test.dart').write_text(r'''import 'package:elecx/src/features/editor/canvas_component_controls.dart';
@@ -149,4 +149,4 @@ void main() {
     );
   });
 }
-''')
+''' )
