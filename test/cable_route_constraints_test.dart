@@ -209,21 +209,33 @@ void main() {
     expect(session.routes.single.segments.single.points, hasLength(4));
     expect(session.routeConstraintsFor(route.id).isSegmentLocked(0), isTrue);
     expect(
-      session.routeConstraintsFor(route.id).mandatoryWaypoints.single.pointIndex,
+      session
+          .routeConstraintsFor(route.id)
+          .mandatoryWaypoints
+          .single
+          .pointIndex,
       2,
     );
 
     session.undo();
     expect(session.routes.single.segments.single.points, hasLength(3));
     expect(
-      session.routeConstraintsFor(route.id).mandatoryWaypoints.single.pointIndex,
+      session
+          .routeConstraintsFor(route.id)
+          .mandatoryWaypoints
+          .single
+          .pointIndex,
       1,
     );
 
     session.redo();
     expect(session.routes.single.segments.single.points, hasLength(4));
     expect(
-      session.routeConstraintsFor(route.id).mandatoryWaypoints.single.pointIndex,
+      session
+          .routeConstraintsFor(route.id)
+          .mandatoryWaypoints
+          .single
+          .pointIndex,
       2,
     );
   });

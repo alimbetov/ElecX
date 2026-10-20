@@ -201,7 +201,18 @@ final class EditorP2Session extends ChangeNotifier {
     )) {
       return false;
     }
-    history.execute(_ReplaceCableRouteCommand(before: before, after: after));
+    final beforeConstraints = routeConstraintsFor(before.id);
+    final afterConstraints = beforeConstraints.reconcile([
+      for (final segment in after.segments) segment.points,
+    ]);
+    history.execute(
+      _ReplaceCableRouteCommand(
+        before: before,
+        after: after,
+        beforeConstraints: beforeConstraints,
+        afterConstraints: afterConstraints,
+      ),
+    );
     notifyListeners();
     return true;
   }
@@ -537,32 +548,59 @@ final class _ReplaceRouteConstraintsCommand
 }
 
 final class _ReplaceCableRouteCommand implements EditorCommand<EditorP2State> {
-  const _ReplaceCableRouteCommand({required this.before, required this.after});
+  const _ReplaceCableRouteCommand({
+    required this.before,
+    required this.after,
+    required this.beforeConstraints,
+    required this.afterConstraints,
+  });
 
   final ElectricalCableRoute before;
   final ElectricalCableRoute after;
+  final CableRouteConstraints beforeConstraints;
+  final CableRouteConstraints afterConstraints;
 
   @override
   String get label => 'Edit cable route';
 
   @override
-  EditorP2State execute(EditorP2State state) =>
-      _replace(state, before.id, after);
+  EditorP2State execute(EditorP2State state) => _replace(
+        state,
+        before.id,
+        after,
+        afterConstraints,
+      );
 
   @override
-  EditorP2State undo(EditorP2State state) => _replace(state, after.id, before);
+  EditorP2State undo(EditorP2State state) => _replace(
+        state,
+        after.id,
+        before,
+        beforeConstraints,
+      );
 
   static EditorP2State _replace(
     EditorP2State state,
     String routeId,
     ElectricalCableRoute replacement,
-  ) =>
-      state.copyWith(
-        routes: [
-          for (final route in state.routes)
-            if (route.id == routeId) replacement else route,
-        ],
-      );
+    CableRouteConstraints constraints,
+  ) {
+    final nextConstraints = Map<String, CableRouteConstraints>.of(
+      state.routeConstraints,
+    );
+    if (constraints.isEmpty) {
+      nextConstraints.remove(routeId);
+    } else {
+      nextConstraints[routeId] = constraints;
+    }
+    return state.copyWith(
+      routes: [
+        for (final route in state.routes)
+          if (route.id == routeId) replacement else route,
+      ],
+      routeConstraints: Map.unmodifiable(nextConstraints),
+    );
+  }
 }
 
 final Expando<EditorP2Session> _p2Sessions = Expando<EditorP2Session>(

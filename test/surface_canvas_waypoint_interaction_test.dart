@@ -165,7 +165,11 @@ void main() {
         hasLength(1),
       );
       expect(
-        controller.p2.routeConstraintsFor(committed.id).mandatoryWaypoints.single.point,
+        controller.p2
+            .routeConstraintsFor(committed.id)
+            .mandatoryWaypoints
+            .single
+            .point,
         waypoint,
       );
 
@@ -175,7 +179,11 @@ void main() {
         engineered.segments.single.points,
       );
       expect(
-        controller.p2.routeConstraintsFor(engineered.id).mandatoryWaypoints.single.point,
+        controller.p2
+            .routeConstraintsFor(engineered.id)
+            .mandatoryWaypoints
+            .single
+            .point,
         waypoint,
       );
     },
