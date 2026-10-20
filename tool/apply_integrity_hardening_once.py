@@ -360,15 +360,21 @@ replacement = r'''  static _ResolvedPortPair? _resolvePortPair(
       return false;
     }
     for (var i = 0; i < a.segments.length; i++) {
-      if (!_sameSegment(a.segments[i], b.segments[i])) return false;
+      if (!_sameSegment(a.segments[i], b.segments[i])) {
+        return false;
+      }
     }
     return true;
   }
 
   static bool _sameSegment(ElectricalRouteSegment a, ElectricalRouteSegment b) {
-    if (a.surface != b.surface || a.points.length != b.points.length) return false;
+    if (a.surface != b.surface || a.points.length != b.points.length) {
+      return false;
+    }
     for (var i = 0; i < a.points.length; i++) {
-      if (a.points[i] != b.points[i]) return false;
+      if (a.points[i] != b.points[i]) {
+        return false;
+      }
     }
     return true;
   }
@@ -381,7 +387,9 @@ replacement = r'''  static _ResolvedPortPair? _resolvePortPair(
     for (final id in ids) {
       if (!id.startsWith(prefix)) continue;
       final parsed = int.tryParse(id.substring(prefix.length));
-      if (parsed != null && parsed >= next) next = parsed + 1;
+      if (parsed != null && parsed >= next) {
+        next = parsed + 1;
+      }
     }
     return next;
   }
@@ -418,7 +426,6 @@ text, n = pattern.subn(replacement, text)
 if n != 1:
     raise RuntimeError(f'p2 helper replacement: expected one match, got {n}')
 
-# Add private resolved pair class before commands.
 text = replace_once(
     text,
     '''final class _ReplaceRouteConstraintsCommand''',
@@ -433,7 +440,6 @@ text = replace_once(
 )
 write(p, text)
 
-# 1/6. Stronger normative geometry: real boundary + obstacle detours.
 p = 'lib/src/engine/normative_route_engine.dart'
 write(p, r'''import '../domain/surfaces.dart';
 
@@ -508,9 +514,6 @@ final class RouteNormativeContext {
   final int edgeClearanceMm;
   final int detourClearanceMm;
   final List<RouteObstacleMm> obstacles;
-
-  /// Usable surface polygon in surface-local millimetres. Empty preserves the
-  /// rectangular width/height fallback used by low-level tests.
   final List<SurfacePointMm> boundary;
 }
 
@@ -526,11 +529,6 @@ final class RouteCandidate {
   final double score;
 }
 
-/// Deterministic geometric guardrail router.
-///
-/// This remains deliberately separate from the future normative registry. It
-/// enforces orthogonality, the real usable surface polygon and declared
-/// architectural obstacles, and produces simple obstacle-detour alternatives.
 abstract final class NormativeRouteEngine {
   static List<RouteCandidate> buildCandidates({
     required SurfacePointMm source,
@@ -814,7 +812,6 @@ abstract final class NormativeRouteEngine {
 }
 ''')
 
-# 4. Canvas teardown always rolls back active preview transactions.
 p = 'lib/src/features/editor/surface_canvas.dart'
 text = read(p)
 text = replace_once(
@@ -850,7 +847,6 @@ text = replace_once(
     helper + '''  void _syncRouteFlowAnimation() {''',
     'canvas cancel helper',
 )
-# Route context now comes from the controller's project geometry.
 pattern = re.compile(r"  RouteNormativeContext _routeContext\(_SurfaceProjection projection\) \{.*?\n  \}\n\n  CableCanvasHit\? _cableHitAt", re.S)
 replacement = r'''  RouteNormativeContext _routeContext(_SurfaceProjection projection) {
     final surface = controller.activeSurface!;
@@ -867,7 +863,6 @@ if n != 1:
     raise RuntimeError(f'canvas route context: expected one match, got {n}')
 write(p, text)
 
-# 7. Compass definition: true azimuth is plan direction relative to shown north.
 p = 'lib/src/domain/site_orientation.dart'
 text = read(p)
 text = replace_once(
@@ -888,7 +883,6 @@ text = replace_once(
 )
 write(p, text)
 
-# Permanent diagnostic regressions for the seven reported integrity defects.
 p = 'test/editor_integrity_hardening_test.dart'
 write(p, r'''import 'package:elecx/src/domain/electrical_placement.dart';
 import 'package:elecx/src/domain/electrical_routing.dart';
@@ -1078,7 +1072,10 @@ void main() {
       ],
     );
     expect(session.replaceCableRoute(before, after), isFalse);
-    expect(session.routes.single.segments.single.points, before.segments.single.points);
+    expect(
+      session.routes.single.segments.single.points,
+      before.segments.single.points,
+    );
   });
 
   test('concave surface boundary rejects route that exits and re-enters', () {
@@ -1106,7 +1103,9 @@ void main() {
     );
     expect(result.isValid, isFalse);
     expect(
-      result.issues.any((issue) => issue.code == 'route.outside-surface-boundary'),
+      result.issues.any(
+        (issue) => issue.code == 'route.outside-surface-boundary',
+      ),
       isTrue,
     );
   });
