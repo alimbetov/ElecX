@@ -101,9 +101,14 @@ class _UnifiedWorkspaceEditorScreenState
       _saveStatus = EditorProjectSaveStatus.modified;
       _projectRevision = 1;
       _savedRevision = 0;
-      controller = EditorController.demo()..addListener(_onProjectChanged);
-      workspace = EditorBuildingWorkspace.demo(controller)
-        ..addListener(_onProjectChanged);
+      controller = EditorController.blank(
+        levelId: 'level-${_projectMetadata.projectId}-1',
+      )..addListener(_onProjectChanged);
+      workspace = EditorBuildingWorkspace.blank(
+        controller,
+        projectId: _projectMetadata.projectId,
+        projectName: _projectMetadata.projectName,
+      )..addListener(_onProjectChanged);
     } else {
       _projectMetadata = initialDocument.metadata;
       if (initialRecovery == null) {

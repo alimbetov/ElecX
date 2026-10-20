@@ -57,6 +57,25 @@ final class EditorController extends ChangeNotifier {
     ];
   }
 
+  EditorController.blank({
+    String levelId = 'level-1',
+    String levelName = 'Этаж 1',
+  }) : level = BuildingLevel(
+          id: levelId,
+          name: levelName,
+          elevationMm: 0,
+          spaces: const [],
+        ) {
+    openings = <ArchitecturalOpening>[];
+    roomSequence = 1;
+    openingSequence = 1;
+    selectedSpaceId = null;
+    selectedOpeningId = null;
+    activeSurface = null;
+    viewMode = EditorViewMode.plan;
+    tool = EditorTool.select;
+  }
+
   EditorController.restored({
     required this.level,
     required List<ArchitecturalOpening> openings,

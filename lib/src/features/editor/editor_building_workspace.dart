@@ -29,6 +29,43 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
     _activateLevel(initial);
   }
 
+  factory EditorBuildingWorkspace.blank(
+    EditorController editor, {
+    required String projectId,
+    required String projectName,
+  }) {
+    final level = ComposedBuildingLevel(
+      level: editor.level,
+      levelNumber: 1,
+      kind: BuildingLevelKind.residential,
+      zones: const [],
+    );
+    final buildingGeometry = Building(
+      id: 'building-$projectId',
+      name: projectName,
+      levels: [level.level],
+    );
+    final building = ComposedBuilding(
+      building: buildingGeometry,
+      levels: [level],
+    );
+    final site = ComposedProjectSite(
+      site: ProjectSite(
+        id: 'site-$projectId',
+        name: projectName,
+        buildings: [buildingGeometry],
+      ),
+      outdoorZones: const [],
+      connections: const [],
+    );
+    return EditorBuildingWorkspace(
+      editor: editor,
+      building: building,
+      site: site,
+      initialLevelNumber: 1,
+    );
+  }
+
   factory EditorBuildingWorkspace.demo(EditorController editor) {
     final residential = _residentialTemplate();
     final basement = _basementTemplate();
