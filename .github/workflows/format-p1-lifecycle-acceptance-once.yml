@@ -24,14 +24,44 @@ jobs:
           flutter-version: 3.47.7
           cache: true
       - run: flutter pub get
+      - name: Fix acceptance imports
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('test/p1_lifecycle_acceptance_test.dart')
+          text = path.read_text()
+          anchor = "import 'package:elecx/src/features/editor/editor_building_workspace.dart';\n"
+          addition = "import 'package:elecx/src/features/editor/component_transform_session.dart';\n"
+          if addition not in text:
+              if anchor not in text:
+                  raise SystemExit('import anchor missing')
+              text = text.replace(anchor, addition + anchor, 1)
+          path.write_text(text)
+          PY
       - name: Format acceptance test
         run: dart format test/p1_lifecycle_acceptance_test.dart
       - name: Verify format
         run: dart format --output=none --set-exit-if-changed lib test
       - name: Analyze
-        run: flutter analyze
+        shell: bash
+        run: flutter analyze 2>&1 | tee analyze.log
+      - name: Upload analyzer diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p1-lifecycle-analyzer
+          path: analyze.log
+          if-no-files-found: ignore
       - name: Full tests
-        run: flutter test
+        shell: bash
+        run: flutter test 2>&1 | tee test.log
+      - name: Upload test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p1-lifecycle-tests
+          path: test.log
+          if-no-files-found: ignore
       - name: Remove one-shot workflow
         run: rm -f .github/workflows/format-p1-lifecycle-acceptance-once.yml
       - name: Commit verified acceptance tests
@@ -39,5 +69,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
           git commit -m "test(editor): verify P1 lifecycle acceptance"
           git push origin HEAD:feat/spatial-editor-interaction-hardening
