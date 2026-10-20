@@ -1,3 +1,5 @@
+enum CommandHistoryMutationKind { execute, undo, redo }
+
 abstract interface class EditorCommand<T> {
   String get label;
 
@@ -18,6 +20,7 @@ final class CommandHistory<T> {
   final List<EditorCommand<T>> _undo = [];
   final List<EditorCommand<T>> _redo = [];
   int _mutationRevision = 0;
+  CommandHistoryMutationKind? _lastMutationKind;
 
   T get state => _state;
   bool get canUndo => _undo.isNotEmpty;
@@ -25,6 +28,9 @@ final class CommandHistory<T> {
   int get undoDepth => _undo.length;
   int get redoDepth => _redo.length;
   int get mutationRevision => _mutationRevision;
+  CommandHistoryMutationKind? get lastMutationKind => _lastMutationKind;
+  String? get undoLabel => _undo.isEmpty ? null : _undo.last.label;
+  String? get redoLabel => _redo.isEmpty ? null : _redo.last.label;
 
   T execute(EditorCommand<T> command) {
     _state = command.execute(_state);
@@ -34,6 +40,7 @@ final class CommandHistory<T> {
     }
     _redo.clear();
     _mutationRevision++;
+    _lastMutationKind = CommandHistoryMutationKind.execute;
     return _state;
   }
 
@@ -43,6 +50,7 @@ final class CommandHistory<T> {
     _state = command.undo(_state);
     _redo.add(command);
     _mutationRevision++;
+    _lastMutationKind = CommandHistoryMutationKind.undo;
     return _state;
   }
 
@@ -52,6 +60,7 @@ final class CommandHistory<T> {
     _state = command.execute(_state);
     _undo.add(command);
     _mutationRevision++;
+    _lastMutationKind = CommandHistoryMutationKind.redo;
     return _state;
   }
 

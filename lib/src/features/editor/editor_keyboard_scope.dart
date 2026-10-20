@@ -7,6 +7,7 @@ import '../../engine/editor_layers.dart';
 import 'cable_edit_access.dart';
 import 'component_transform_session.dart';
 import 'editor_controller.dart';
+import 'editor_document_history.dart';
 import 'editor_interaction_policy.dart';
 import 'editor_p2_session.dart';
 import 'editor_viewport_commands.dart';
@@ -167,12 +168,12 @@ class EditorKeyboardScope extends StatelessWidget {
 
   void _undo() {
     if (_persistentEditActive) return;
-    controller.p2.undo();
+    controller.documentHistory.undo();
   }
 
   void _redo() {
     if (_persistentEditActive) return;
-    controller.p2.redo();
+    controller.documentHistory.redo();
   }
 
   @override

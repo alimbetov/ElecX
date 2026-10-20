@@ -668,6 +668,35 @@ final class EditorController extends ChangeNotifier {
     selectedSpaceId = id;
   }
 
+  void restoreDocumentArchitecture({
+    required BuildingLevel level,
+    required List<ArchitecturalOpening> openings,
+    required int roomSequence,
+    required int openingSequence,
+    String? selectedSpaceId,
+    String? selectedOpeningId,
+  }) {
+    requestEditCancellation();
+    this.level = level;
+    this.openings = List<ArchitecturalOpening>.of(openings);
+    this.roomSequence = roomSequence;
+    this.openingSequence = openingSequence;
+    this.selectedSpaceId = selectedSpaceId != null &&
+            level.spaces.any((space) => space.id == selectedSpaceId)
+        ? selectedSpaceId
+        : null;
+    this.selectedOpeningId = selectedOpeningId != null &&
+            this.openings.any((opening) => opening.id == selectedOpeningId)
+        ? selectedOpeningId
+        : null;
+    activeSurface = null;
+    viewMode = EditorViewMode.plan;
+    tool = EditorTool.select;
+    draftStart = null;
+    routeSegments.clear();
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _editCancellationRevision.dispose();
