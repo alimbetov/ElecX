@@ -44,3 +44,5 @@ jobs:
           git add lib test
           git commit -m 'fix(editor): enforce accessible touch targets'
           git push origin HEAD:feat/spatial-editor-interaction-hardening
+
+# rerun after removing compact visual density from 48dp targets
