@@ -28,7 +28,9 @@ replace_once(
     final items = <({String id, bool route})>[];
     if (controller.p2.layers.isVisible(EditorLayerId.electrical)) {
       for (final component in controller.p2.components) {
-        if (component.surface == surface) items.add((id: component.id, route: false));
+        if (component.surface == surface) {
+          items.add((id: component.id, route: false));
+        }
       }
     }
     if (controller.p2.layers.isVisible(EditorLayerId.cableRoutes)) {
@@ -44,8 +46,13 @@ replace_once(
     var currentIndex = -1;
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
-      final selected = item.route ? item.id == selectedRouteId : item.id == selectedComponentId;
-      if (selected) { currentIndex = index; break; }
+      final selected = item.route
+          ? item.id == selectedRouteId
+          : item.id == selectedComponentId;
+      if (selected) {
+        currentIndex = index;
+        break;
+      }
     }
     final nextIndex = currentIndex < 0
         ? (reverse ? items.length - 1 : 0)
@@ -67,7 +74,7 @@ replace_once(
 replace_once(
     'lib/src/features/editor/editor_keyboard_scope.dart',
     "        const SingleActivator(LogicalKeyboardKey.escape): _cancelActiveEdit,\n",
-    "        const SingleActivator(LogicalKeyboardKey.escape): _cancelActiveEdit,\n        const SingleActivator(LogicalKeyboardKey.tab): () => _cycleSceneSelection(reverse: false),\n        const SingleActivator(LogicalKeyboardKey.tab, shift: true): () => _cycleSceneSelection(reverse: true),\n",
+    "        const SingleActivator(LogicalKeyboardKey.escape): _cancelActiveEdit,\n        const SingleActivator(LogicalKeyboardKey.tab): () =>\n            _cycleSceneSelection(reverse: false),\n        const SingleActivator(LogicalKeyboardKey.tab, shift: true): () =>\n            _cycleSceneSelection(reverse: true),\n",
 )
 replace_once(
     'lib/src/features/editor/surface_canvas.dart',
@@ -86,22 +93,25 @@ replace_once(
           for (final component in controller.p2.components) {
             if (component.surface != surface) continue;
             final center = projection.surfaceToViewport(component.position);
-            nodes.add(CustomPainterSemantics(
-              key: ValueKey<String>('component-semantics-${component.id}'),
-              rect: Rect.fromCenter(center: center, width: 48, height: 48),
-              properties: SemanticsProperties(
-                label: '${component.label}, электрический компонент',
-                value: '${component.position.xMm} на ${component.position.yMm} мм',
-                hint: 'Двойное касание выбирает компонент',
-                textDirection: TextDirection.ltr,
-                button: true,
-                selected: controller.p2.selection.contains(component.id),
-                onTap: () {
-                  controller.routeSelection.clear();
-                  controller.p2.select(component.id);
-                },
+            nodes.add(
+              CustomPainterSemantics(
+                key: ValueKey<String>('component-semantics-${component.id}'),
+                rect: Rect.fromCenter(center: center, width: 48, height: 48),
+                properties: SemanticsProperties(
+                  label: '${component.label}, электрический компонент',
+                  value:
+                      '${component.position.xMm} на ${component.position.yMm} мм',
+                  hint: 'Двойное касание выбирает компонент',
+                  textDirection: TextDirection.ltr,
+                  button: true,
+                  selected: controller.p2.selection.contains(component.id),
+                  onTap: () {
+                    controller.routeSelection.clear();
+                    controller.p2.select(component.id);
+                  },
+                ),
               ),
-            ));
+            );
           }
         }
         if (cableRoutesVisible) {
@@ -125,26 +135,28 @@ replace_once(
               bottom = math.max(bottom, point.dy);
             }
             final raw = Rect.fromLTRB(left, top, right, bottom);
-            nodes.add(CustomPainterSemantics(
-              key: ValueKey<String>('route-semantics-${route.id}'),
-              rect: Rect.fromCenter(
-                center: raw.center,
-                width: math.max(48, raw.width + 24),
-                height: math.max(48, raw.height + 24),
+            nodes.add(
+              CustomPainterSemantics(
+                key: ValueKey<String>('route-semantics-${route.id}'),
+                rect: Rect.fromCenter(
+                  center: raw.center,
+                  width: math.max(48, raw.width + 24),
+                  height: math.max(48, raw.height + 24),
+                ),
+                properties: SemanticsProperties(
+                  label: 'Кабельная трасса ${route.id}',
+                  value: route.medium.id,
+                  hint: 'Двойное касание выбирает трассу',
+                  textDirection: TextDirection.ltr,
+                  button: true,
+                  selected: selectedRouteId == route.id,
+                  onTap: () {
+                    controller.p2.clearSelection();
+                    controller.routeSelection.select(route.id);
+                  },
+                ),
               ),
-              properties: SemanticsProperties(
-                label: 'Кабельная трасса ${route.id}',
-                value: route.medium.id,
-                hint: 'Двойное касание выбирает трассу',
-                textDirection: TextDirection.ltr,
-                button: true,
-                selected: selectedRouteId == route.id,
-                onTap: () {
-                  controller.p2.clearSelection();
-                  controller.routeSelection.select(route.id);
-                },
-              ),
-            ));
+            );
           }
         }
         return nodes;
@@ -169,9 +181,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('F17 canvas publishes component and route semantics', (tester) async {
+  testWidgets('F17 canvas publishes component and route semantics',
+      (tester) async {
     final controller = EditorController.demo();
-    addTearDown(() { controller.disposeP2State(); controller.dispose(); });
+    addTearDown(() {
+      controller.disposeP2State();
+      controller.dispose();
+    });
     controller.showWall(1);
     final surface = controller.activeSurface!;
     final source = controller.p2.placeComponent(
@@ -186,20 +202,39 @@ void main() {
     );
     controller.p2.select(source.id);
     controller.p2.select(target.id, mode: SelectionMode.add);
-    expect(controller.p2.autoRouteSelectedPair(space: controller.selectedSpace), isTrue);
+    expect(
+      controller.p2.autoRouteSelectedPair(space: controller.selectedSpace),
+      isTrue,
+    );
     controller.p2.clearSelection();
     controller.routeSelection.clear();
     final semantics = tester.ensureSemantics();
     addTearDown(semantics.dispose);
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: SurfaceCanvas(controller: controller))));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: SurfaceCanvas(controller: controller)),
+      ),
+    );
     await tester.pump();
-    expect(find.bySemanticsLabel('${source.label}, электрический компонент'), findsOneWidget);
-    expect(find.bySemanticsLabel('Кабельная трасса ${controller.p2.routes.single.id}'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel('${source.label}, электрический компонент'),
+      findsOneWidget,
+    );
+    expect(
+      find.bySemanticsLabel(
+        'Кабельная трасса ${controller.p2.routes.single.id}',
+      ),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('F17 Tab and Shift Tab traverse visible scene objects', (tester) async {
+  testWidgets('F17 Tab and Shift Tab traverse visible scene objects',
+      (tester) async {
     final controller = EditorController.demo();
-    addTearDown(() { controller.disposeP2State(); controller.dispose(); });
+    addTearDown(() {
+      controller.disposeP2State();
+      controller.dispose();
+    });
     controller.showWall(1);
     final surface = controller.activeSurface!;
     final first = controller.p2.placeComponent(
@@ -214,20 +249,30 @@ void main() {
     );
     controller.p2.select(first.id);
     controller.p2.select(second.id, mode: SelectionMode.add);
-    expect(controller.p2.autoRouteSelectedPair(space: controller.selectedSpace), isTrue);
+    expect(
+      controller.p2.autoRouteSelectedPair(space: controller.selectedSpace),
+      isTrue,
+    );
     final routeId = controller.p2.routes.single.id;
     controller.p2.clearSelection();
     controller.routeSelection.clear();
-    await tester.pumpWidget(MaterialApp(home: EditorKeyboardScope(
-      controller: controller,
-      child: const Scaffold(body: SizedBox.expand()),
-    )));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EditorKeyboardScope(
+          controller: controller,
+          child: const Scaffold(body: SizedBox.expand()),
+        ),
+      ),
+    );
     await tester.pump();
-    await tester.sendKeyEvent(LogicalKeyboardKey.tab); await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
     expect(controller.p2.selection.primaryId, first.id);
-    await tester.sendKeyEvent(LogicalKeyboardKey.tab); await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
     expect(controller.p2.selection.primaryId, second.id);
-    await tester.sendKeyEvent(LogicalKeyboardKey.tab); await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
     expect(controller.routeSelection.selectedRouteId, routeId);
     expect(controller.p2.selection.ids, isEmpty);
     await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
@@ -238,9 +283,13 @@ void main() {
     expect(controller.routeSelection.selectedRouteId, isNull);
   });
 
-  testWidgets('F17 hidden layers are omitted from keyboard traversal', (tester) async {
+  testWidgets('F17 hidden layers are omitted from keyboard traversal',
+      (tester) async {
     final controller = EditorController.demo();
-    addTearDown(() { controller.disposeP2State(); controller.dispose(); });
+    addTearDown(() {
+      controller.disposeP2State();
+      controller.dispose();
+    });
     controller.showWall(1);
     final component = controller.p2.placeComponent(
       type: ElectricalComponentType.socketOutlet,
@@ -249,12 +298,17 @@ void main() {
     );
     controller.p2.clearSelection();
     controller.p2.setLayerVisible(EditorLayerId.electrical, false);
-    await tester.pumpWidget(MaterialApp(home: EditorKeyboardScope(
-      controller: controller,
-      child: const Scaffold(body: SizedBox.expand()),
-    )));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EditorKeyboardScope(
+          controller: controller,
+          child: const Scaffold(body: SizedBox.expand()),
+        ),
+      ),
+    );
     await tester.pump();
-    await tester.sendKeyEvent(LogicalKeyboardKey.tab); await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
     expect(controller.p2.selection.contains(component.id), isFalse);
   });
 }
