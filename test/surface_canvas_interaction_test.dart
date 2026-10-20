@@ -344,7 +344,8 @@ void main() {
     await drainGestureTimers(tester);
 
     final committed = controller.p2.routes.single;
-    expect(committed.segments.single.points, isNot(original.segments.single.points));
+    expect(committed.segments.single.points,
+        isNot(original.segments.single.points));
     expect(committed.segments.single.points.first, points.first);
     expect(committed.segments.single.points.last, points.last);
     expect(controller.p2.history.undoDepth, depthBefore + 1);
@@ -353,7 +354,8 @@ void main() {
     expect(controller.p2.routes.single.segments.single.points, points);
   });
 
-  testWidgets('endpoint outside compatible ports is invalid and not committed', (
+  testWidgets('endpoint outside compatible ports is invalid and not committed',
+      (
     tester,
   ) async {
     final controller = controllerWithClearWall();
