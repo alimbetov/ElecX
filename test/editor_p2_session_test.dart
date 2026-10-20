@@ -3,6 +3,7 @@ import 'package:elecx/src/domain/geometry.dart';
 import 'package:elecx/src/domain/project_model.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/engine/editor_layers.dart';
+import 'package:elecx/src/engine/normative_route_engine.dart';
 import 'package:elecx/src/engine/selection_engine.dart';
 import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -105,6 +106,51 @@ void main() {
     expect(session.routes.single.segments, isNotEmpty);
     expect(session.routes.single.source.componentId, board.id);
     expect(session.routes.single.target.componentId, socket.id);
+  });
+
+  test('same-surface AUTO uses project context to detour around opening', () {
+    final context = RouteNormativeContext(
+      surface: wall,
+      widthMm: 3500,
+      heightMm: 2500,
+      edgeClearanceMm: 0,
+      obstacles: const [
+        RouteObstacleMm(
+          id: 'window',
+          leftMm: 1400,
+          topMm: 700,
+          rightMm: 2100,
+          bottomMm: 1300,
+        ),
+      ],
+    );
+    final session = EditorP2Session(
+      routeContextResolver: (_) => context,
+    );
+    addTearDown(session.dispose);
+
+    final source = session.placeComponent(
+      type: ElectricalComponentType.powerSource,
+      surface: wall,
+      position: const SurfacePointMm(500, 1000),
+    );
+    final target = session.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: wall,
+      position: const SurfacePointMm(3000, 1000),
+    );
+    session.select(source.id, mode: SelectionMode.replace);
+    session.select(target.id, mode: SelectionMode.add);
+
+    expect(session.autoRouteSelectedPair(), isTrue);
+    final route = session.routes.single;
+    final points = route.segments.single.points;
+    expect(points.length, greaterThanOrEqualTo(4));
+    expect(
+      NormativeRouteEngine.validate(points: points, context: context).isValid,
+      isTrue,
+    );
+    expect(points.any((point) => point.yMm != 1000), isTrue);
   });
 
   test('wall source can auto-route to ceiling load through topology', () {

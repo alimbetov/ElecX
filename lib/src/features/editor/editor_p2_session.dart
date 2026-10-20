@@ -352,29 +352,12 @@ final class EditorP2Session extends ChangeNotifier {
       preference: routePreference,
     );
     if (solution == null) return false;
-    final routeId = _nextAvailableId(
-      prefix: 'route-',
-      initialSequence: _routeSequence,
-      existingIds: routes.map((item) => item.id).toSet(),
-    );
-    _routeSequence = routeId.$2;
-    final route = ElectricalCableRoute(
-      id: routeId.$1,
+    return _addRouteSegments(
       source: source,
       target: target,
       segments: RouteEngine.toSegments(graph, solution),
       cableType: cableType,
     );
-    if (!ElectricalConnectivityValidator.routeIsConnected(
-          route: route,
-          components: components,
-        ) ||
-        !_routeGeometryIsValid(route)) {
-      return false;
-    }
-    history.execute(_AddRouteCommand(route));
-    notifyListeners();
-    return true;
   }
 
   bool autoRouteSelectedPair({EngineeringSpace? space, String? cableType}) {
@@ -394,6 +377,40 @@ final class EditorP2Session extends ChangeNotifier {
     late final String endNodeId;
     if (sourceComponent.surface == targetComponent.surface) {
       final surface = sourceComponent.surface;
+      final context = _routeContextResolver?.call(surface);
+      if (context != null) {
+        final candidates = NormativeRouteEngine.buildCandidates(
+          source: sourceComponent.position,
+          target: targetComponent.position,
+          context: context,
+        );
+        RouteCandidate? best;
+        for (final candidate in candidates) {
+          if (candidate.validation.isValid) {
+            best = candidate;
+            break;
+          }
+        }
+        if (best == null) return false;
+        return _addRouteSegments(
+          source: ElectricalEndpointRef(
+            componentId: sourceComponent.id,
+            portId: sourcePort.id,
+          ),
+          target: ElectricalEndpointRef(
+            componentId: targetComponent.id,
+            portId: targetPort.id,
+          ),
+          segments: [
+            ElectricalRouteSegment(surface: surface, points: best.points),
+          ],
+          cableType: cableType,
+        );
+      }
+
+      // Context-free sessions retain the deterministic two-elbow fallback used
+      // by low-level engine tests. Production EditorController sessions always
+      // provide routeContextResolver and therefore use the guarded router above.
       final a = sourceComponent.position;
       final d = targetComponent.position;
       final elbowX = SurfacePointMm(d.xMm, a.yMm);
@@ -439,6 +456,38 @@ final class EditorP2Session extends ChangeNotifier {
       ),
       cableType: cableType,
     );
+  }
+
+  bool _addRouteSegments({
+    required ElectricalEndpointRef source,
+    required ElectricalEndpointRef target,
+    required List<ElectricalRouteSegment> segments,
+    String? cableType,
+  }) {
+    if (layers.isLocked(EditorLayerId.cableRoutes)) return false;
+    final routeId = _nextAvailableId(
+      prefix: 'route-',
+      initialSequence: _routeSequence,
+      existingIds: routes.map((item) => item.id).toSet(),
+    );
+    final route = ElectricalCableRoute(
+      id: routeId.$1,
+      source: source,
+      target: target,
+      segments: segments,
+      cableType: cableType,
+    );
+    if (!ElectricalConnectivityValidator.routeIsConnected(
+          route: route,
+          components: components,
+        ) ||
+        !_routeGeometryIsValid(route)) {
+      return false;
+    }
+    _routeSequence = routeId.$2;
+    history.execute(_AddRouteCommand(route));
+    notifyListeners();
+    return true;
   }
 
   List<ManipulationHandle> handlesForSelection() {
