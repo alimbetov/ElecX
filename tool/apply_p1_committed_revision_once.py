@@ -1,5 +1,4 @@
 from pathlib import Path
-import re
 
 screen = Path('lib/src/features/editor/unified_workspace_editor_screen.dart')
 text = screen.read_text()
@@ -38,8 +37,7 @@ text = text.replace(
     '    _projectMetadata = metadata;\n',
 )
 text = text.replace(
-    '    controller.removeListener(_onProjectChanged);\n    controller.disposeP2State();\n',
-    '    controller.removeListener(_onProjectChanged);\n'
+    '    controller.p2.removeListener(_onProjectChanged);\n    controller.disposeP2State();\n',
     '    controller.p2.removeListener(_onP2Changed);\n'
     '    controller.disposeP2State();\n',
 )
