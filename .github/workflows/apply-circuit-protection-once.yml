@@ -33,6 +33,9 @@ jobs:
       - name: Apply circuit protection patch
         run: python3 tool/apply_circuit_protection_once.py
 
+      - name: Fix circuit protection lint
+        run: python3 tool/fix_circuit_protection_gate.py
+
       - name: Format
         run: dart format lib test
 
@@ -48,6 +51,7 @@ jobs:
       - name: Remove one-shot helpers
         run: |
           rm -f tool/apply_circuit_protection_once.py
+          rm -f tool/fix_circuit_protection_gate.py
           rm -f .github/workflows/apply-circuit-protection-once.yml
 
       - name: Commit verified production changes
