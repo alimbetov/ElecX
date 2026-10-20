@@ -7,6 +7,8 @@ import 'editor_building_workspace.dart';
 import 'editor_controller.dart';
 import 'editor_keyboard_scope.dart';
 import 'editor_layout_policy.dart';
+import 'editor_p2_session.dart';
+import 'editor_project_document.dart';
 import 'editor_shell_state.dart';
 import 'editor_ui_tokens.dart';
 import 'engineering_placement_cursor_hud.dart';
@@ -19,7 +21,14 @@ import 'unified_icon_toolbar.dart';
 import 'unified_site_navigator.dart';
 
 class UnifiedWorkspaceEditorScreen extends StatefulWidget {
-  const UnifiedWorkspaceEditorScreen({super.key});
+  const UnifiedWorkspaceEditorScreen({
+    super.key,
+    this.projectStore,
+  });
+
+  /// Optional injection point used by tests and future project-hub routing.
+  /// Production lazily opens the application documents project store.
+  final EditorProjectStore? projectStore;
 
   @override
   State<UnifiedWorkspaceEditorScreen> createState() =>
@@ -28,10 +37,12 @@ class UnifiedWorkspaceEditorScreen extends StatefulWidget {
 
 class _UnifiedWorkspaceEditorScreenState
     extends State<UnifiedWorkspaceEditorScreen> {
-  late final EditorController controller;
-  late final EditorBuildingWorkspace workspace;
+  late EditorController controller;
+  late EditorBuildingWorkspace workspace;
   late final SiteMapInteractionController siteInteraction;
   late final EditorShellState shell;
+  Future<EditorProjectStore>? _projectStoreFuture;
+  bool _projectIoBusy = false;
 
   @override
   void initState() {
@@ -40,12 +51,88 @@ class _UnifiedWorkspaceEditorScreenState
     workspace = EditorBuildingWorkspace.demo(controller)..addListener(_refresh);
     siteInteraction = SiteMapInteractionController();
     shell = EditorShellState()..addListener(_refresh);
+    final injectedStore = widget.projectStore;
+    if (injectedStore != null) {
+      _projectStoreFuture = Future<EditorProjectStore>.value(injectedStore);
+    }
   }
+
+  Future<EditorProjectStore> _projectStore() =>
+      _projectStoreFuture ??= JsonFileEditorProjectStore.openDefault();
 
   void _refresh() {
     if (mounted) {
       setState(() {});
     }
+  }
+
+  Future<void> _saveProject() async {
+    if (_projectIoBusy) return;
+    setState(() => _projectIoBusy = true);
+    try {
+      final document = EditorProjectDocument.capture(workspace);
+      final store = await _projectStore();
+      await store.save(document);
+      if (!mounted) return;
+      _showProjectMessage('Проект сохранён');
+    } catch (error) {
+      if (!mounted) return;
+      _showProjectMessage('Не удалось сохранить проект: $error', isError: true);
+    } finally {
+      if (mounted) setState(() => _projectIoBusy = false);
+    }
+  }
+
+  Future<void> _openSavedProject() async {
+    if (_projectIoBusy) return;
+    setState(() => _projectIoBusy = true);
+    try {
+      final projectId = workspace.site.site.id;
+      final store = await _projectStore();
+      final document = await store.load(projectId);
+      if (!mounted) return;
+      if (document == null) {
+        _showProjectMessage('Сохранённая версия проекта не найдена');
+        return;
+      }
+      final restored = document.restore();
+      _replaceProject(restored);
+      _showProjectMessage('Проект открыт из сохранённой версии');
+    } catch (error) {
+      if (!mounted) return;
+      _showProjectMessage('Не удалось открыть проект: $error', isError: true);
+    } finally {
+      if (mounted) setState(() => _projectIoBusy = false);
+    }
+  }
+
+  void _replaceProject(RestoredEditorProject restored) {
+    final previousController = controller;
+    final previousWorkspace = workspace;
+
+    previousWorkspace.removeListener(_refresh);
+    previousController.removeListener(_refresh);
+    previousController.disposeP2State();
+    previousWorkspace.dispose();
+    previousController.dispose();
+
+    controller = restored.editor..addListener(_refresh);
+    workspace = restored.workspace..addListener(_refresh);
+    siteInteraction.clear();
+    setState(() {});
+  }
+
+  void _showProjectMessage(String message, {bool isError = false}) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor:
+              isError ? Theme.of(context).colorScheme.errorContainer : null,
+        ),
+      );
   }
 
   Future<void> _editProjectNorth() async {
@@ -180,6 +267,7 @@ class _UnifiedWorkspaceEditorScreenState
     workspace.removeListener(_refresh);
     workspace.dispose();
     controller.removeListener(_refresh);
+    controller.disposeP2State();
     controller.dispose();
     super.dispose();
   }
@@ -257,6 +345,9 @@ class _UnifiedWorkspaceEditorScreenState
               workspace: workspace,
               shell: shell,
               compact: !desktop,
+              projectIoBusy: _projectIoBusy,
+              onSaveProject: _saveProject,
+              onOpenProject: _openSavedProject,
               onOpenMiniMap: _openMiniMap,
             ),
             body: Column(
@@ -375,12 +466,18 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.workspace,
     required this.shell,
     required this.compact,
+    required this.projectIoBusy,
+    required this.onSaveProject,
+    required this.onOpenProject,
     required this.onOpenMiniMap,
   });
 
   final EditorBuildingWorkspace workspace;
   final EditorShellState shell;
   final bool compact;
+  final bool projectIoBusy;
+  final VoidCallback onSaveProject;
+  final VoidCallback onOpenProject;
   final VoidCallback onOpenMiniMap;
 
   @override
@@ -396,6 +493,23 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
             : 'ElecX · ${workspace.activeLevel?.displayName ?? ''}',
       ),
       actions: [
+        IconButton(
+          key: const ValueKey('project-open'),
+          tooltip: 'Открыть сохранённую версию',
+          onPressed: projectIoBusy ? null : onOpenProject,
+          icon: const Icon(Icons.folder_open_outlined),
+        ),
+        IconButton(
+          key: const ValueKey('project-save'),
+          tooltip: 'Сохранить проект',
+          onPressed: projectIoBusy ? null : onSaveProject,
+          icon: projectIoBusy
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.save_outlined),
+        ),
         IconButton(
           tooltip: 'Контекстная карта',
           onPressed: onOpenMiniMap,
