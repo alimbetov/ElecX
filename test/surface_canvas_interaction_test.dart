@@ -2,11 +2,13 @@ import 'package:elecx/src/domain/electrical_placement.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/engine/selection_engine.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
+import 'package:elecx/src/features/editor/editor_keyboard_scope.dart';
 import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:elecx/src/features/editor/route_selection_session.dart';
 import 'package:elecx/src/features/editor/surface_canvas.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -41,7 +43,12 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: SurfaceCanvas(controller: controller)),
+        home: Scaffold(
+          body: EditorKeyboardScope(
+            controller: controller,
+            child: SurfaceCanvas(controller: controller),
+          ),
+        ),
       ),
     );
     await tester.pump();
@@ -69,9 +76,13 @@ void main() {
     await pumpCanvas(tester, controller);
     final canvasOrigin = tester.getTopLeft(find.byType(SurfaceCanvas));
     final start = canvasOrigin + viewportPoint(component.position);
-    final target = canvasOrigin + viewportPoint(const SurfacePointMm(2500, 1500));
+    final target =
+        canvasOrigin + viewportPoint(const SurfacePointMm(2500, 1500));
 
-    final gesture = await tester.startGesture(start, kind: PointerDeviceKind.mouse);
+    final gesture = await tester.startGesture(
+      start,
+      kind: PointerDeviceKind.mouse,
+    );
     await gesture.moveTo(target);
     await tester.pump();
     await gesture.up();
@@ -83,6 +94,42 @@ void main() {
 
     controller.p2.undo();
     expect(controller.p2.selectedComponent?.position, component.position);
+  });
+
+  testWidgets('escape cancels active pointer transform without history', (
+    tester,
+  ) async {
+    final controller = controllerWithWall();
+    addTearDown(controller.dispose);
+    final component = controller.p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: controller.activeSurface!,
+      position: const SurfacePointMm(2100, 1500),
+    );
+    final depthBefore = controller.p2.history.undoDepth;
+
+    await pumpCanvas(tester, controller);
+    final origin = tester.getTopLeft(find.byType(SurfaceCanvas));
+    final start = origin + viewportPoint(component.position);
+    final moved = origin + viewportPoint(const SurfacePointMm(2500, 1500));
+
+    final gesture = await tester.startGesture(
+      start,
+      kind: PointerDeviceKind.mouse,
+    );
+    await gesture.moveTo(moved);
+    await tester.pump();
+    expect(controller.p2.selectedComponent?.position, isNot(component.position));
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(controller.p2.selectedComponent?.position, component.position);
+    expect(controller.p2.history.undoDepth, depthBefore);
+
+    await gesture.up();
+    await tester.pump();
+    expect(controller.p2.selectedComponent?.position, component.position);
+    expect(controller.p2.history.undoDepth, depthBefore);
   });
 
   testWidgets('second pointer cancels active component transform exactly', (
@@ -159,7 +206,10 @@ void main() {
     final start = origin + viewportPoint(originalRoute.segments.last.points.last);
     final target = origin + viewportPoint(newTarget.position);
 
-    final gesture = await tester.startGesture(start, kind: PointerDeviceKind.mouse);
+    final gesture = await tester.startGesture(
+      start,
+      kind: PointerDeviceKind.mouse,
+    );
     await gesture.moveTo(target);
     await tester.pump();
     await gesture.up();
@@ -173,6 +223,61 @@ void main() {
     controller.p2.undo();
     final restored = controller.p2.routes.single;
     expect(restored.target.componentId, oldTarget.id);
-    expect(restored.segments.last.points.last, originalRoute.segments.last.points.last);
+    expect(
+      restored.segments.last.points.last,
+      originalRoute.segments.last.points.last,
+    );
+  });
+
+  testWidgets('endpoint outside compatible ports is invalid and not committed', (
+    tester,
+  ) async {
+    final controller = controllerWithWall();
+    addTearDown(controller.dispose);
+    final surface = controller.activeSurface!;
+    final source = controller.p2.placeComponent(
+      type: ElectricalComponentType.powerSource,
+      surface: surface,
+      position: const SurfacePointMm(1000, 1500),
+    );
+    final oldTarget = controller.p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: surface,
+      position: const SurfacePointMm(3000, 1500),
+    );
+    controller.p2.select(source.id);
+    controller.p2.select(oldTarget.id, mode: SelectionMode.add);
+    expect(
+      controller.p2.autoRouteSelectedPair(space: controller.selectedSpace),
+      isTrue,
+    );
+    final originalRoute = controller.p2.routes.single;
+    controller.routeSelection.select(originalRoute.id);
+    final depthBefore = controller.p2.history.undoDepth;
+
+    await pumpCanvas(tester, controller);
+    final origin = tester.getTopLeft(find.byType(SurfaceCanvas));
+    final start = origin + viewportPoint(originalRoute.segments.last.points.last);
+    final emptyPoint = origin + viewportPoint(const SurfacePointMm(2100, 2200));
+
+    final gesture = await tester.startGesture(
+      start,
+      kind: PointerDeviceKind.mouse,
+    );
+    await gesture.moveTo(emptyPoint);
+    await tester.pump();
+
+    expect(find.textContaining('Недопустимый preview'), findsOneWidget);
+    expect(controller.p2.routes.single.target, originalRoute.target);
+
+    await gesture.up();
+    await tester.pump();
+
+    expect(controller.p2.routes.single.target, originalRoute.target);
+    expect(
+      controller.p2.routes.single.segments.last.points.last,
+      originalRoute.segments.last.points.last,
+    );
+    expect(controller.p2.history.undoDepth, depthBefore);
   });
 }
