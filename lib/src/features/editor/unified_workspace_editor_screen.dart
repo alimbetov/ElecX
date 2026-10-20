@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../domain/route_host.dart';
@@ -9,7 +11,9 @@ import 'editor_keyboard_scope.dart';
 import 'editor_layout_policy.dart';
 import 'editor_p2_session.dart';
 import 'editor_project_document.dart';
+import 'editor_project_recovery.dart';
 import 'project_persistence_metadata.dart';
+import 'project_save_diagnostics.dart';
 import 'editor_shell_state.dart';
 import 'editor_ui_tokens.dart';
 import 'engineering_placement_cursor_hud.dart';
@@ -25,6 +29,8 @@ class UnifiedWorkspaceEditorScreen extends StatefulWidget {
   const UnifiedWorkspaceEditorScreen({
     super.key,
     this.projectStore,
+    this.recoveryStore,
+    this.autosaveDelay = const Duration(seconds: 2),
     this.initialDocument,
     this.initialMetadata,
   });
@@ -32,6 +38,12 @@ class UnifiedWorkspaceEditorScreen extends StatefulWidget {
   /// Optional injection point used by tests and project-hub routing.
   /// Production lazily opens the application documents project store.
   final EditorProjectStore? projectStore;
+
+  /// Recovery storage is intentionally separate from explicit project files.
+  final EditorProjectRecoveryStore? recoveryStore;
+
+  /// Debounce used by recovery autosave. Exposed for deterministic tests.
+  final Duration autosaveDelay;
 
   /// When provided, the screen starts from the persisted canonical document
   /// instead of constructing the demo workspace.
@@ -53,6 +65,11 @@ class _UnifiedWorkspaceEditorScreenState
   late final SiteMapInteractionController siteInteraction;
   late final EditorShellState shell;
   Future<EditorProjectStore>? _projectStoreFuture;
+  Future<EditorProjectRecoveryStore>? _recoveryStoreFuture;
+  Timer? _autosaveTimer;
+  bool _autosaveInFlight = false;
+  int _lastAutosavedRevision = -1;
+  String? _saveFailureHint;
   bool _projectIoBusy = false;
   late EditorProjectMetadata _projectMetadata;
   late EditorProjectSaveStatus _saveStatus;
@@ -90,10 +107,29 @@ class _UnifiedWorkspaceEditorScreenState
     if (injectedStore != null) {
       _projectStoreFuture = Future<EditorProjectStore>.value(injectedStore);
     }
+    final injectedRecoveryStore = widget.recoveryStore;
+    if (injectedRecoveryStore != null) {
+      _recoveryStoreFuture =
+          Future<EditorProjectRecoveryStore>.value(injectedRecoveryStore);
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _scheduleAutosave();
+      _offerRecoveryIfNewer();
+    });
   }
 
   Future<EditorProjectStore> _projectStore() =>
       _projectStoreFuture ??= JsonFileEditorProjectStore.openDefault();
+
+  bool get _recoveryEnabled =>
+      widget.recoveryStore != null || widget.projectStore == null;
+
+  Future<EditorProjectRecoveryStore?> _recoveryStoreOrNull() async {
+    if (!_recoveryEnabled) return null;
+    return _recoveryStoreFuture ??=
+        JsonFileEditorProjectRecoveryStore.openDefault();
+  }
 
   void _refresh() {
     if (mounted) {
@@ -108,10 +144,150 @@ class _UnifiedWorkspaceEditorScreenState
       _saveStatus = EditorProjectSaveStatus.modified;
     }
     _refresh();
+    _scheduleAutosave();
+  }
+
+  void _scheduleAutosave() {
+    _autosaveTimer?.cancel();
+    if (!_recoveryEnabled || !_hasUnsavedChanges) return;
+    _autosaveTimer = Timer(widget.autosaveDelay, _writeRecoverySnapshot);
+  }
+
+  Future<void> _writeRecoverySnapshot() async {
+    if (!mounted ||
+        _autosaveInFlight ||
+        _projectIoBusy ||
+        !_hasUnsavedChanges ||
+        _lastAutosavedRevision == _projectRevision) {
+      return;
+    }
+    final issue = EditorProjectSaveDiagnostics.firstBlocking(workspace);
+    if (issue != null) return;
+    final revision = _projectRevision;
+    _autosaveInFlight = true;
+    try {
+      final document = EditorProjectDocument.capture(
+        workspace,
+        metadata: _projectMetadata,
+      );
+      final store = await _recoveryStoreOrNull();
+      if (store == null) return;
+      await store.save(
+        EditorProjectRecoverySnapshot(
+          capturedAt: DateTime.now().toUtc(),
+          revision: revision,
+          document: document,
+        ),
+      );
+      _lastAutosavedRevision = revision;
+    } catch (error) {
+      debugPrint('ElecX recovery autosave skipped: $error');
+    } finally {
+      _autosaveInFlight = false;
+    }
+  }
+
+  Future<void> _offerRecoveryIfNewer() async {
+    if (!_recoveryEnabled) return;
+    try {
+      final store = await _recoveryStoreOrNull();
+      if (store == null) return;
+      final snapshot = await store.load(_projectMetadata.projectId);
+      if (!mounted || snapshot == null) return;
+      if (!snapshot.capturedAt.isAfter(_projectMetadata.updatedAt)) {
+        await store.discard(_projectMetadata.projectId);
+        return;
+      }
+      final restore = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          key: const ValueKey('project-recovery-dialog'),
+          title: const Text('Найдена аварийная копия'),
+          content: Text(
+            'Есть более свежая автокопия от ${snapshot.capturedAt.toLocal()}. '
+            'Восстановить несохранённые изменения?',
+          ),
+          actions: [
+            TextButton(
+              key: const ValueKey('discard-project-recovery'),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Удалить копию'),
+            ),
+            FilledButton(
+              key: const ValueKey('restore-project-recovery'),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Восстановить'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted) return;
+      if (restore == true) {
+        final restored = snapshot.document.restore();
+        _replaceProject(
+          restored,
+          snapshot.document.metadata,
+          markSaved: false,
+          recoveryRevision: snapshot.revision,
+        );
+        _lastAutosavedRevision = snapshot.revision;
+        _showProjectMessage('Восстановлена аварийная копия');
+      } else if (restore == false) {
+        await store.discard(snapshot.projectId);
+      }
+    } catch (error) {
+      debugPrint('ElecX recovery lookup skipped: $error');
+    }
+  }
+
+  Future<void> _discardRecoveryBestEffort() async {
+    _autosaveTimer?.cancel();
+    if (!_recoveryEnabled) return;
+    try {
+      final store = await _recoveryStoreOrNull();
+      if (store == null) return;
+      await store.discard(_projectMetadata.projectId);
+      _lastAutosavedRevision = -1;
+    } catch (error) {
+      debugPrint('ElecX recovery cleanup skipped: $error');
+    }
+  }
+
+  Future<void> _showSaveFailure({
+    required String title,
+    required String detail,
+  }) async {
+    if (!mounted) return;
+    setState(() {
+      _saveStatus = EditorProjectSaveStatus.saveFailed;
+      _saveFailureHint = detail;
+    });
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        key: const ValueKey('save-failure-dialog'),
+        title: Text(title),
+        content: Text(detail),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Понятно'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _saveProject() async {
     if (_projectIoBusy) return;
+    final blockingIssue = EditorProjectSaveDiagnostics.firstBlocking(workspace);
+    if (blockingIssue != null) {
+      await _showSaveFailure(
+        title: blockingIssue.title,
+        detail: blockingIssue.detail,
+      );
+      return;
+    }
     final revisionAtCapture = _projectRevision;
     final touchedMetadata = _projectMetadata.touch();
     setState(() {
@@ -128,14 +304,30 @@ class _UnifiedWorkspaceEditorScreenState
       if (!mounted) return;
       _projectMetadata = touchedMetadata;
       _savedRevision = revisionAtCapture;
+      _saveFailureHint = null;
       _saveStatus = _projectRevision == revisionAtCapture
           ? EditorProjectSaveStatus.saved
           : EditorProjectSaveStatus.modified;
+      if (_projectRevision == revisionAtCapture) {
+        await _discardRecoveryBestEffort();
+      } else {
+        _scheduleAutosave();
+      }
       _showProjectMessage('Проект сохранён');
+    } on EditorProjectSaveBlockedException catch (error) {
+      if (!mounted) return;
+      await _showSaveFailure(
+        title: error.issue.title,
+        detail: error.issue.detail,
+      );
     } catch (error) {
       if (!mounted) return;
-      _saveStatus = EditorProjectSaveStatus.saveFailed;
-      _showProjectMessage('Не удалось сохранить проект: $error', isError: true);
+      final detail =
+          EditorProjectSaveDiagnostics.unexpectedPersistenceMessage(error);
+      await _showSaveFailure(
+        title: 'Не удалось сохранить проект',
+        detail: detail,
+      );
     } finally {
       if (mounted) {
         setState(() => _projectIoBusy = false);
@@ -152,6 +344,7 @@ class _UnifiedWorkspaceEditorScreenState
         )) {
       return;
     }
+    await _discardRecoveryBestEffort();
     setState(() => _projectIoBusy = true);
     try {
       final projectId = _projectMetadata.projectId;
@@ -175,8 +368,10 @@ class _UnifiedWorkspaceEditorScreenState
 
   void _replaceProject(
     RestoredEditorProject restored,
-    EditorProjectMetadata metadata,
-  ) {
+    EditorProjectMetadata metadata, {
+    bool markSaved = true,
+    int recoveryRevision = 1,
+  }) {
     final previousController = controller;
     final previousWorkspace = workspace;
 
@@ -189,9 +384,13 @@ class _UnifiedWorkspaceEditorScreenState
     controller = restored.editor..addListener(_onProjectChanged);
     workspace = restored.workspace..addListener(_onProjectChanged);
     _projectMetadata = metadata;
-    _projectRevision = 0;
+    _projectRevision =
+        markSaved ? 0 : (recoveryRevision <= 0 ? 1 : recoveryRevision);
     _savedRevision = 0;
-    _saveStatus = EditorProjectSaveStatus.saved;
+    _saveStatus = markSaved
+        ? EditorProjectSaveStatus.saved
+        : EditorProjectSaveStatus.modified;
+    _saveFailureHint = null;
     siteInteraction.clear();
     setState(() {});
   }
@@ -229,6 +428,8 @@ class _UnifiedWorkspaceEditorScreenState
       message: 'Есть несохранённые изменения.',
     );
     if (!discard || !mounted) return;
+    await _discardRecoveryBestEffort();
+    if (!mounted) return;
     setState(() => _allowPop = true);
     Navigator.of(context).pop();
   }
@@ -372,6 +573,7 @@ class _UnifiedWorkspaceEditorScreenState
 
   @override
   void dispose() {
+    _autosaveTimer?.cancel();
     shell.removeListener(_refresh);
     shell.dispose();
     siteInteraction.dispose();
@@ -465,6 +667,7 @@ class _UnifiedWorkspaceEditorScreenState
                 projectIoBusy: _projectIoBusy,
                 projectMetadata: _projectMetadata,
                 saveStatus: _saveStatus,
+                saveFailureHint: _saveFailureHint,
                 onSaveProject: _saveProject,
                 onOpenProject: _openSavedProject,
                 onOpenMiniMap: _openMiniMap,
@@ -589,6 +792,7 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.projectIoBusy,
     required this.projectMetadata,
     required this.saveStatus,
+    required this.saveFailureHint,
     required this.onSaveProject,
     required this.onOpenProject,
     required this.onOpenMiniMap,
@@ -600,6 +804,7 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool projectIoBusy;
   final EditorProjectMetadata projectMetadata;
   final EditorProjectSaveStatus saveStatus;
+  final String? saveFailureHint;
   final VoidCallback onSaveProject;
   final VoidCallback onOpenProject;
   final VoidCallback onOpenMiniMap;
@@ -622,9 +827,21 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
             key: const ValueKey('project-save-status'),
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Center(
-              child: Text(
-                saveStatus.label,
-                style: Theme.of(context).textTheme.labelMedium,
+              child: Tooltip(
+                message: saveFailureHint ?? saveStatus.label,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (saveStatus == EditorProjectSaveStatus.saveFailed) ...[
+                      const Icon(Icons.error_outline, size: 16),
+                      const SizedBox(width: 4),
+                    ],
+                    Text(
+                      saveStatus.label,
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

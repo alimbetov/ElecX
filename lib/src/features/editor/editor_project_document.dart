@@ -20,6 +20,7 @@ import 'editor_building_workspace.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 import 'project_persistence_metadata.dart';
+import 'project_save_diagnostics.dart';
 import 'project_schema_migrator.dart';
 
 final class EditorProjectResumeState {
@@ -100,11 +101,18 @@ final class EditorProjectDocument {
     DateTime? now,
   }) {
     final editor = workspace.editor;
+    // Keep the low-level persistence contract stable for callers that use
+    // capture() directly. User-facing structured diagnostics run in the
+    // editor preflight before capture.
     if (editor.p2.isManipulating) {
       throw StateError('Cannot save while a component transform is active.');
     }
     if (editor.routeSegments.isNotEmpty || editor.draftStart != null) {
       throw StateError('Cannot save an unfinished editor draft.');
+    }
+    final blockingIssue = EditorProjectSaveDiagnostics.firstBlocking(workspace);
+    if (blockingIssue != null) {
+      throw EditorProjectSaveBlockedException(blockingIssue);
     }
     workspace.synchronizeActiveEditorState();
     final projectMetadata = metadata ??
