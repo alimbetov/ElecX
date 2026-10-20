@@ -72,4 +72,35 @@ void main() {
     expect(find.byType(UnifiedWorkspaceEditorScreen), findsOneWidget);
     expect(find.byKey(const ValueKey('project-save')), findsOneWidget);
   });
+
+  testWidgets('hub creates independent project identities', (tester) async {
+    final store = _HubMemoryStore([]);
+    await tester.binding.setSurfaceSize(const Size(1440, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(home: ProjectHubScreen(projectStore: store)),
+    );
+    await tester.pumpAndSettle();
+
+    Future<void> createAndSave(String name) async {
+      await tester.tap(find.byKey(const ValueKey('create-project')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+          find.byKey(const ValueKey('new-project-name')), name);
+      await tester.tap(find.byKey(const ValueKey('create-project-confirm')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('project-save')));
+      await tester.pumpAndSettle();
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+    }
+
+    await createAndSave('Проект 1');
+    await createAndSave('Проект 2');
+
+    expect(store.documents, hasLength(2));
+    expect(store.documents[0].projectId, isNot(store.documents[1].projectId));
+    expect(store.documents.map((item) => item.projectName),
+        containsAll(<String>['Проект 1', 'Проект 2']));
+  });
 }

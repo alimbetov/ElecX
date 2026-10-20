@@ -9,6 +9,7 @@ import 'editor_keyboard_scope.dart';
 import 'editor_layout_policy.dart';
 import 'editor_p2_session.dart';
 import 'editor_project_document.dart';
+import 'project_persistence_metadata.dart';
 import 'editor_shell_state.dart';
 import 'editor_ui_tokens.dart';
 import 'engineering_placement_cursor_hud.dart';
@@ -25,6 +26,7 @@ class UnifiedWorkspaceEditorScreen extends StatefulWidget {
     super.key,
     this.projectStore,
     this.initialDocument,
+    this.initialMetadata,
   });
 
   /// Optional injection point used by tests and project-hub routing.
@@ -34,6 +36,10 @@ class UnifiedWorkspaceEditorScreen extends StatefulWidget {
   /// When provided, the screen starts from the persisted canonical document
   /// instead of constructing the demo workspace.
   final EditorProjectDocument? initialDocument;
+
+  /// Identity for a newly created unsaved project. The physical site keeps
+  /// its own ids; project identity is independent and immutable.
+  final EditorProjectMetadata? initialMetadata;
 
   @override
   State<UnifiedWorkspaceEditorScreen> createState() =>
@@ -48,19 +54,35 @@ class _UnifiedWorkspaceEditorScreenState
   late final EditorShellState shell;
   Future<EditorProjectStore>? _projectStoreFuture;
   bool _projectIoBusy = false;
+  late EditorProjectMetadata _projectMetadata;
+  late EditorProjectSaveStatus _saveStatus;
+  int _projectRevision = 0;
+  int _savedRevision = 0;
+  bool _allowPop = false;
+
+  bool get _hasUnsavedChanges =>
+      _projectRevision != _savedRevision ||
+      _saveStatus == EditorProjectSaveStatus.saveFailed;
 
   @override
   void initState() {
     super.initState();
     final initialDocument = widget.initialDocument;
     if (initialDocument == null) {
-      controller = EditorController.demo()..addListener(_refresh);
+      _projectMetadata = widget.initialMetadata ??
+          EditorProjectMetadata.create(projectName: 'Новый проект');
+      _saveStatus = EditorProjectSaveStatus.modified;
+      _projectRevision = 1;
+      _savedRevision = 0;
+      controller = EditorController.demo()..addListener(_onProjectChanged);
       workspace = EditorBuildingWorkspace.demo(controller)
-        ..addListener(_refresh);
+        ..addListener(_onProjectChanged);
     } else {
+      _projectMetadata = initialDocument.metadata;
+      _saveStatus = EditorProjectSaveStatus.saved;
       final restored = initialDocument.restore();
-      controller = restored.editor..addListener(_refresh);
-      workspace = restored.workspace..addListener(_refresh);
+      controller = restored.editor..addListener(_onProjectChanged);
+      workspace = restored.workspace..addListener(_onProjectChanged);
     }
     siteInteraction = SiteMapInteractionController();
     shell = EditorShellState()..addListener(_refresh);
@@ -79,28 +101,60 @@ class _UnifiedWorkspaceEditorScreenState
     }
   }
 
+  void _onProjectChanged() {
+    _projectRevision++;
+    if (_saveStatus != EditorProjectSaveStatus.saving &&
+        _saveStatus != EditorProjectSaveStatus.saveFailed) {
+      _saveStatus = EditorProjectSaveStatus.modified;
+    }
+    _refresh();
+  }
+
   Future<void> _saveProject() async {
     if (_projectIoBusy) return;
-    setState(() => _projectIoBusy = true);
+    final revisionAtCapture = _projectRevision;
+    final touchedMetadata = _projectMetadata.touch();
+    setState(() {
+      _projectIoBusy = true;
+      _saveStatus = EditorProjectSaveStatus.saving;
+    });
     try {
-      final document = EditorProjectDocument.capture(workspace);
+      final document = EditorProjectDocument.capture(
+        workspace,
+        metadata: touchedMetadata,
+      );
       final store = await _projectStore();
       await store.save(document);
       if (!mounted) return;
+      _projectMetadata = touchedMetadata;
+      _savedRevision = revisionAtCapture;
+      _saveStatus = _projectRevision == revisionAtCapture
+          ? EditorProjectSaveStatus.saved
+          : EditorProjectSaveStatus.modified;
       _showProjectMessage('Проект сохранён');
     } catch (error) {
       if (!mounted) return;
+      _saveStatus = EditorProjectSaveStatus.saveFailed;
       _showProjectMessage('Не удалось сохранить проект: $error', isError: true);
     } finally {
-      if (mounted) setState(() => _projectIoBusy = false);
+      if (mounted) {
+        setState(() => _projectIoBusy = false);
+      }
     }
   }
 
   Future<void> _openSavedProject() async {
     if (_projectIoBusy) return;
+    if (_hasUnsavedChanges &&
+        !await _confirmDiscardChanges(
+          title: 'Открыть сохранённую версию?',
+          message: 'Несохранённые изменения текущей версии будут потеряны.',
+        )) {
+      return;
+    }
     setState(() => _projectIoBusy = true);
     try {
-      final projectId = workspace.site.site.id;
+      final projectId = _projectMetadata.projectId;
       final store = await _projectStore();
       final document = await store.load(projectId);
       if (!mounted) return;
@@ -109,7 +163,7 @@ class _UnifiedWorkspaceEditorScreenState
         return;
       }
       final restored = document.restore();
-      _replaceProject(restored);
+      _replaceProject(restored, document.metadata);
       _showProjectMessage('Проект открыт из сохранённой версии');
     } catch (error) {
       if (!mounted) return;
@@ -119,20 +173,64 @@ class _UnifiedWorkspaceEditorScreenState
     }
   }
 
-  void _replaceProject(RestoredEditorProject restored) {
+  void _replaceProject(
+    RestoredEditorProject restored,
+    EditorProjectMetadata metadata,
+  ) {
     final previousController = controller;
     final previousWorkspace = workspace;
 
-    previousWorkspace.removeListener(_refresh);
-    previousController.removeListener(_refresh);
+    previousWorkspace.removeListener(_onProjectChanged);
+    previousController.removeListener(_onProjectChanged);
     previousController.disposeP2State();
     previousWorkspace.dispose();
     previousController.dispose();
 
-    controller = restored.editor..addListener(_refresh);
-    workspace = restored.workspace..addListener(_refresh);
+    controller = restored.editor..addListener(_onProjectChanged);
+    workspace = restored.workspace..addListener(_onProjectChanged);
+    _projectMetadata = metadata;
+    _projectRevision = 0;
+    _savedRevision = 0;
+    _saveStatus = EditorProjectSaveStatus.saved;
     siteInteraction.clear();
     setState(() {});
+  }
+
+  Future<bool> _confirmDiscardChanges({
+    required String title,
+    required String message,
+  }) async {
+    if (!_hasUnsavedChanges) return true;
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        key: const ValueKey('unsaved-project-dialog'),
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Остаться'),
+          ),
+          FilledButton(
+            key: const ValueKey('discard-unsaved-project'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Не сохранять'),
+          ),
+        ],
+      ),
+    );
+    return discard ?? false;
+  }
+
+  Future<void> _confirmCloseFromBack() async {
+    final discard = await _confirmDiscardChanges(
+      title: 'Закрыть проект?',
+      message: 'Есть несохранённые изменения.',
+    );
+    if (!discard || !mounted) return;
+    setState(() => _allowPop = true);
+    Navigator.of(context).pop();
   }
 
   void _showProjectMessage(String message, {bool isError = false}) {
@@ -277,9 +375,9 @@ class _UnifiedWorkspaceEditorScreenState
     shell.removeListener(_refresh);
     shell.dispose();
     siteInteraction.dispose();
-    workspace.removeListener(_refresh);
+    workspace.removeListener(_onProjectChanged);
     workspace.dispose();
-    controller.removeListener(_refresh);
+    controller.removeListener(_onProjectChanged);
     controller.disposeP2State();
     controller.dispose();
     super.dispose();
@@ -287,114 +385,123 @@ class _UnifiedWorkspaceEditorScreenState
 
   @override
   Widget build(BuildContext context) {
-    return EditorKeyboardScope(
-      controller: controller,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final mode = EditorLayoutPolicy.forWidth(constraints.maxWidth);
-          final desktop = mode == EditorLayoutMode.desktop;
-          final rawCanvas =
-              workspace.context == EditorWorkspaceContext.siteOutdoor
-                  ? SiteMapCanvas(
-                      entities: SiteMapProjection.tower(workspace),
-                      interaction: siteInteraction,
-                      routeController: controller,
-                      onRouteTransitionTap: _followSiteTransition,
-                      onEntityOpen: _openSiteEntity,
-                    )
-                  : controller.viewMode == EditorViewMode.plan
-                      ? SpatialCanvas(controller: controller)
-                      : SurfaceCanvas(
-                          controller: controller,
-                          onOutdoorTransition: _followOutdoorTransition,
-                        );
-          final planContext =
-              workspace.context == EditorWorkspaceContext.siteOutdoor ||
-                  controller.viewMode == EditorViewMode.plan;
-          final canvas = Stack(
-            children: [
-              Positioned.fill(child: rawCanvas),
-              if (planContext)
-                Positioned(
-                  right: 12,
-                  top: 12,
-                  child: ProjectCompassOverlay(
-                    projectNorth: workspace.site.site.projectNorth,
-                    onTap: _editProjectNorth,
-                  ),
-                ),
-              if (workspace.context != EditorWorkspaceContext.siteOutdoor)
-                Positioned(
-                  right: 12,
-                  bottom: 52,
-                  child: EngineeringPlacementCursorHud(controller: controller),
-                ),
-            ],
-          );
-
-          return Scaffold(
-            drawer: desktop
-                ? null
-                : Drawer(
-                    width: EditorLayoutPolicy.navigatorWidth(mode),
-                    child: SafeArea(
-                      child: UnifiedSiteNavigator(
-                        workspace: workspace,
+    return PopScope(
+      canPop: _allowPop || !_hasUnsavedChanges,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) _confirmCloseFromBack();
+      },
+      child: EditorKeyboardScope(
+        controller: controller,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final mode = EditorLayoutPolicy.forWidth(constraints.maxWidth);
+            final desktop = mode == EditorLayoutMode.desktop;
+            final rawCanvas =
+                workspace.context == EditorWorkspaceContext.siteOutdoor
+                    ? SiteMapCanvas(
+                        entities: SiteMapProjection.tower(workspace),
                         interaction: siteInteraction,
-                        onOpenSiteMap: _openMiniMap,
-                        compact: true,
+                        routeController: controller,
+                        onRouteTransitionTap: _followSiteTransition,
+                        onEntityOpen: _openSiteEntity,
+                      )
+                    : controller.viewMode == EditorViewMode.plan
+                        ? SpatialCanvas(controller: controller)
+                        : SurfaceCanvas(
+                            controller: controller,
+                            onOutdoorTransition: _followOutdoorTransition,
+                          );
+            final planContext =
+                workspace.context == EditorWorkspaceContext.siteOutdoor ||
+                    controller.viewMode == EditorViewMode.plan;
+            final canvas = Stack(
+              children: [
+                Positioned.fill(child: rawCanvas),
+                if (planContext)
+                  Positioned(
+                    right: 12,
+                    top: 12,
+                    child: ProjectCompassOverlay(
+                      projectNorth: workspace.site.site.projectNorth,
+                      onTap: _editProjectNorth,
+                    ),
+                  ),
+                if (workspace.context != EditorWorkspaceContext.siteOutdoor)
+                  Positioned(
+                    right: 12,
+                    bottom: 52,
+                    child:
+                        EngineeringPlacementCursorHud(controller: controller),
+                  ),
+              ],
+            );
+
+            return Scaffold(
+              drawer: desktop
+                  ? null
+                  : Drawer(
+                      width: EditorLayoutPolicy.navigatorWidth(mode),
+                      child: SafeArea(
+                        child: UnifiedSiteNavigator(
+                          workspace: workspace,
+                          interaction: siteInteraction,
+                          onOpenSiteMap: _openMiniMap,
+                          compact: true,
+                        ),
                       ),
                     ),
-                  ),
-            endDrawer: desktop
-                ? null
-                : Drawer(
-                    width: EditorLayoutPolicy.inspectorWidth(mode),
-                    child: SafeArea(
-                      child: DeviceCatalogPanel(controller: controller),
+              endDrawer: desktop
+                  ? null
+                  : Drawer(
+                      width: EditorLayoutPolicy.inspectorWidth(mode),
+                      child: SafeArea(
+                        child: DeviceCatalogPanel(controller: controller),
+                      ),
                     ),
+              appBar: _WorkspaceAppBar(
+                workspace: workspace,
+                shell: shell,
+                compact: !desktop,
+                projectIoBusy: _projectIoBusy,
+                projectMetadata: _projectMetadata,
+                saveStatus: _saveStatus,
+                onSaveProject: _saveProject,
+                onOpenProject: _openSavedProject,
+                onOpenMiniMap: _openMiniMap,
+              ),
+              body: Column(
+                children: [
+                  UnifiedEditorIconToolbar(
+                    controller: controller,
+                    compact: !desktop,
                   ),
-            appBar: _WorkspaceAppBar(
-              workspace: workspace,
-              shell: shell,
-              compact: !desktop,
-              projectIoBusy: _projectIoBusy,
-              onSaveProject: _saveProject,
-              onOpenProject: _openSavedProject,
-              onOpenMiniMap: _openMiniMap,
-            ),
-            body: Column(
-              children: [
-                UnifiedEditorIconToolbar(
-                  controller: controller,
-                  compact: !desktop,
-                ),
-                if (shell.contextBarVisible)
-                  _ContextStrip(workspace: workspace),
-                Expanded(
-                  child: desktop
-                      ? _DesktopWorkspace(
-                          workspace: workspace,
-                          shell: shell,
-                          interaction: siteInteraction,
-                          canvas: canvas,
-                          onOpenMiniMap: _openMiniMap,
-                        )
-                      : Stack(
-                          children: [
-                            Positioned.fill(child: canvas),
-                            Positioned(
-                              left: 10,
-                              bottom: 10,
-                              child: _ContextBadge(workspace: workspace),
-                            ),
-                          ],
-                        ),
-                ),
-              ],
-            ),
-          );
-        },
+                  if (shell.contextBarVisible)
+                    _ContextStrip(workspace: workspace),
+                  Expanded(
+                    child: desktop
+                        ? _DesktopWorkspace(
+                            workspace: workspace,
+                            shell: shell,
+                            interaction: siteInteraction,
+                            canvas: canvas,
+                            onOpenMiniMap: _openMiniMap,
+                          )
+                        : Stack(
+                            children: [
+                              Positioned.fill(child: canvas),
+                              Positioned(
+                                left: 10,
+                                bottom: 10,
+                                child: _ContextBadge(workspace: workspace),
+                              ),
+                            ],
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -480,6 +587,8 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.shell,
     required this.compact,
     required this.projectIoBusy,
+    required this.projectMetadata,
+    required this.saveStatus,
     required this.onSaveProject,
     required this.onOpenProject,
     required this.onOpenMiniMap,
@@ -489,6 +598,8 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
   final EditorShellState shell;
   final bool compact;
   final bool projectIoBusy;
+  final EditorProjectMetadata projectMetadata;
+  final EditorProjectSaveStatus saveStatus;
   final VoidCallback onSaveProject;
   final VoidCallback onOpenProject;
   final VoidCallback onOpenMiniMap;
@@ -502,10 +613,21 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
       titleSpacing: compact ? 4 : 12,
       title: Text(
         workspace.context == EditorWorkspaceContext.siteOutdoor
-            ? 'ElecX · ${workspace.site.site.name}'
-            : 'ElecX · ${workspace.activeLevel?.displayName ?? ''}',
+            ? 'ElecX · ${projectMetadata.projectName}'
+            : 'ElecX · ${projectMetadata.projectName} · ${workspace.activeLevel?.displayName ?? ''}',
       ),
       actions: [
+        if (!compact)
+          Padding(
+            key: const ValueKey('project-save-status'),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Center(
+              child: Text(
+                saveStatus.label,
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+            ),
+          ),
         IconButton(
           key: const ValueKey('project-open'),
           tooltip: 'Открыть сохранённую версию',

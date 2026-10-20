@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../editor/editor_project_document.dart';
+import '../editor/project_persistence_metadata.dart';
 import '../editor/unified_workspace_editor_screen.dart';
 
 class ProjectHubScreen extends StatefulWidget {
@@ -35,10 +36,60 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
 
   void _reloadProjects() {
     if (!mounted) return;
-    setState(() => _projectsFuture = _loadProjects());
+    final nextProjects = _loadProjects();
+    setState(() {
+      _projectsFuture = nextProjects;
+    });
   }
 
-  Future<void> _openEditor({EditorProjectDocument? document}) async {
+  Future<void> _createProject() async {
+    var draftName = 'Новый проект';
+    final name = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        key: const ValueKey('new-project-dialog'),
+        title: const Text('Новый проект'),
+        content: TextFormField(
+          key: const ValueKey('new-project-name'),
+          initialValue: draftName,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Название проекта'),
+          onChanged: (value) => draftName = value,
+          onFieldSubmitted: (value) {
+            final normalized = value.trim();
+            if (normalized.isNotEmpty) {
+              Navigator.of(dialogContext).pop(normalized);
+            }
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            key: const ValueKey('create-project-confirm'),
+            onPressed: () {
+              final normalized = draftName.trim();
+              if (normalized.isNotEmpty) {
+                Navigator.of(dialogContext).pop(normalized);
+              }
+            },
+            child: const Text('Создать'),
+          ),
+        ],
+      ),
+    );
+    if (name == null || !mounted) return;
+    await _openEditor(
+      metadata: EditorProjectMetadata.create(projectName: name),
+    );
+  }
+
+  Future<void> _openEditor({
+    EditorProjectDocument? document,
+    EditorProjectMetadata? metadata,
+  }) async {
     final store = await _storeFuture;
     if (!mounted) return;
     await Navigator.of(context).push(
@@ -46,6 +97,7 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
         builder: (_) => UnifiedWorkspaceEditorScreen(
           projectStore: store,
           initialDocument: document,
+          initialMetadata: metadata,
         ),
       ),
     );
@@ -66,7 +118,8 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openEditor,
+        key: const ValueKey('create-project'),
+        onPressed: _createProject,
         icon: const Icon(Icons.add),
         label: const Text('Новый проект'),
       ),
