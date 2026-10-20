@@ -32,8 +32,9 @@ class UnifiedWorkspaceEditorScreen extends StatefulWidget {
     this.recoveryStore,
     this.autosaveDelay = const Duration(seconds: 2),
     this.initialDocument,
+    this.initialRecovery,
     this.initialMetadata,
-  });
+  }) : assert(initialDocument == null || initialRecovery == null);
 
   /// Optional injection point used by tests and project-hub routing.
   /// Production lazily opens the application documents project store.
@@ -48,6 +49,10 @@ class UnifiedWorkspaceEditorScreen extends StatefulWidget {
   /// When provided, the screen starts from the persisted canonical document
   /// instead of constructing the demo workspace.
   final EditorProjectDocument? initialDocument;
+
+  /// Explicit recovery entry opened from Project Hub. Recovery is never
+  /// treated as an explicit Save: the editor starts in Modified state.
+  final EditorProjectRecoverySnapshot? initialRecovery;
 
   /// Identity for a newly created unsaved project. The physical site keeps
   /// its own ids; project identity is independent and immutable.
@@ -84,7 +89,8 @@ class _UnifiedWorkspaceEditorScreenState
   @override
   void initState() {
     super.initState();
-    final initialDocument = widget.initialDocument;
+    final initialRecovery = widget.initialRecovery;
+    final initialDocument = initialRecovery?.document ?? widget.initialDocument;
     if (initialDocument == null) {
       _projectMetadata = widget.initialMetadata ??
           EditorProjectMetadata.create(projectName: 'Новый проект');
@@ -96,7 +102,15 @@ class _UnifiedWorkspaceEditorScreenState
         ..addListener(_onProjectChanged);
     } else {
       _projectMetadata = initialDocument.metadata;
-      _saveStatus = EditorProjectSaveStatus.saved;
+      if (initialRecovery == null) {
+        _saveStatus = EditorProjectSaveStatus.saved;
+      } else {
+        _saveStatus = EditorProjectSaveStatus.modified;
+        _projectRevision =
+            initialRecovery.revision > 0 ? initialRecovery.revision : 1;
+        _savedRevision = 0;
+        _lastAutosavedRevision = _projectRevision;
+      }
       final restored = initialDocument.restore();
       controller = restored.editor..addListener(_onProjectChanged);
       workspace = restored.workspace..addListener(_onProjectChanged);
@@ -115,7 +129,9 @@ class _UnifiedWorkspaceEditorScreenState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _scheduleAutosave();
-      _offerRecoveryIfNewer();
+      if (widget.initialRecovery == null) {
+        _offerRecoveryIfNewer();
+      }
     });
   }
 

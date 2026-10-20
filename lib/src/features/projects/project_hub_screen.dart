@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../editor/editor_project_document.dart';
+import '../editor/editor_project_recovery.dart';
 import '../editor/project_persistence_metadata.dart';
 import '../editor/unified_workspace_editor_screen.dart';
 
@@ -8,9 +9,11 @@ class ProjectHubScreen extends StatefulWidget {
   const ProjectHubScreen({
     super.key,
     this.projectStore,
+    this.recoveryStore,
   });
 
   final EditorProjectStore? projectStore;
+  final EditorProjectRecoveryStore? recoveryStore;
 
   @override
   State<ProjectHubScreen> createState() => _ProjectHubScreenState();
@@ -18,7 +21,8 @@ class ProjectHubScreen extends StatefulWidget {
 
 class _ProjectHubScreenState extends State<ProjectHubScreen> {
   late final Future<EditorProjectStore> _storeFuture;
-  late Future<List<EditorProjectDocument>> _projectsFuture;
+  late final Future<EditorProjectRecoveryStore?> _recoveryStoreFuture;
+  late Future<_ProjectHubData> _projectsFuture;
 
   @override
   void initState() {
@@ -26,12 +30,36 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
     _storeFuture = widget.projectStore == null
         ? JsonFileEditorProjectStore.openDefault()
         : Future<EditorProjectStore>.value(widget.projectStore!);
+    _recoveryStoreFuture = widget.recoveryStore != null
+        ? Future<EditorProjectRecoveryStore?>.value(widget.recoveryStore)
+        : widget.projectStore == null
+            ? JsonFileEditorProjectRecoveryStore.openDefault()
+            : Future<EditorProjectRecoveryStore?>.value(null);
     _projectsFuture = _loadProjects();
   }
 
-  Future<List<EditorProjectDocument>> _loadProjects() async {
+  Future<_ProjectHubData> _loadProjects() async {
     final store = await _storeFuture;
-    return store.list();
+    final projects = await store.list();
+    final recoveryStore = await _recoveryStoreFuture;
+    final allRecoveries = recoveryStore == null
+        ? const <EditorProjectRecoverySnapshot>[]
+        : await recoveryStore.list();
+    final savedById = {
+      for (final document in projects) document.projectId: document,
+    };
+    final recoveries = [
+      for (final recovery in allRecoveries)
+        if (savedById[recovery.projectId] == null ||
+            recovery.capturedAt.isAfter(
+              savedById[recovery.projectId]!.updatedAt,
+            ))
+          recovery,
+    ];
+    return _ProjectHubData(
+      projects: projects,
+      recoveries: List.unmodifiable(recoveries),
+    );
   }
 
   void _reloadProjects() {
@@ -88,19 +116,30 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
 
   Future<void> _openEditor({
     EditorProjectDocument? document,
+    EditorProjectRecoverySnapshot? recovery,
     EditorProjectMetadata? metadata,
   }) async {
     final store = await _storeFuture;
+    final recoveryStore = await _recoveryStoreFuture;
     if (!mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => UnifiedWorkspaceEditorScreen(
           projectStore: store,
+          recoveryStore: recoveryStore,
           initialDocument: document,
+          initialRecovery: recovery,
           initialMetadata: metadata,
         ),
       ),
     );
+    _reloadProjects();
+  }
+
+  Future<void> _discardRecovery(EditorProjectRecoverySnapshot recovery) async {
+    final store = await _recoveryStoreFuture;
+    if (store == null) return;
+    await store.discard(recovery.projectId);
     _reloadProjects();
   }
 
@@ -123,7 +162,7 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
         icon: const Icon(Icons.add),
         label: const Text('Новый проект'),
       ),
-      body: FutureBuilder<List<EditorProjectDocument>>(
+      body: FutureBuilder<_ProjectHubData>(
         future: _projectsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
@@ -135,10 +174,29 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
               onRetry: _reloadProjects,
             );
           }
-          final projects = snapshot.data ?? const [];
+          final data = snapshot.data ?? const _ProjectHubData();
+          final projects = data.projects;
+          final recoveries = data.recoveries;
           return ListView(
             padding: const EdgeInsets.all(24),
             children: [
+              if (recoveries.isNotEmpty) ...[
+                Text(
+                  'Аварийное восстановление',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 12),
+                for (final recovery in recoveries)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _RecoveryProjectCard(
+                      recovery: recovery,
+                      onRestore: () => _openEditor(recovery: recovery),
+                      onDiscard: () => _discardRecovery(recovery),
+                    ),
+                  ),
+                const SizedBox(height: 20),
+              ],
               Text('Продолжить', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 12),
               if (projects.isNotEmpty)
@@ -186,6 +244,49 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
       ),
     );
   }
+}
+
+final class _ProjectHubData {
+  const _ProjectHubData({
+    this.projects = const [],
+    this.recoveries = const [],
+  });
+
+  final List<EditorProjectDocument> projects;
+  final List<EditorProjectRecoverySnapshot> recoveries;
+}
+
+class _RecoveryProjectCard extends StatelessWidget {
+  const _RecoveryProjectCard({
+    required this.recovery,
+    required this.onRestore,
+    required this.onDiscard,
+  });
+
+  final EditorProjectRecoverySnapshot recovery;
+  final VoidCallback onRestore;
+  final VoidCallback onDiscard;
+
+  @override
+  Widget build(BuildContext context) => Card(
+        key: ValueKey('recovery-project-${recovery.projectId}'),
+        child: ListTile(
+          leading: const Icon(Icons.restore_page_outlined),
+          title: Text(recovery.document.projectName),
+          subtitle: Text(
+            'Автокопия · ${recovery.capturedAt.toLocal()} · '
+            '${recovery.document.p2State.components.length} компонентов · '
+            '${recovery.document.p2State.routes.length} трасс',
+          ),
+          onTap: onRestore,
+          trailing: IconButton(
+            key: ValueKey('discard-recovery-${recovery.projectId}'),
+            tooltip: 'Удалить аварийную копию',
+            onPressed: onDiscard,
+            icon: const Icon(Icons.delete_outline),
+          ),
+        ),
+      );
 }
 
 class _ProjectCard extends StatelessWidget {
