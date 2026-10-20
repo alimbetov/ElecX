@@ -25,6 +25,31 @@ jobs:
       - run: flutter pub get
       - name: Apply F19 contrast patch
         run: python3 tool/apply_f19_contrast_once.py
+      - name: Harden EngineeringColors lookup
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('lib/src/app/engineering_colors.dart')
+          text = p.read_text()
+          anchor = "  final Color onStatus;\n\n  @override\n"
+          replacement = """  final Color onStatus;\n\n  static EngineeringColors of(BuildContext context) {\n    final theme = Theme.of(context);\n    return theme.extension<EngineeringColors>() ??\n        (theme.brightness == Brightness.dark\n            ? EngineeringColors.dark()\n            : EngineeringColors.light());\n  }\n\n  @override\n"""
+          if anchor not in text:
+              raise SystemExit('EngineeringColors insertion anchor not found')
+          p.write_text(text.replace(anchor, replacement, 1))
+
+          for file_name in [
+              'lib/src/features/editor/engineering_selection_inspector.dart',
+              'lib/src/features/editor/device_catalog_panel.dart',
+          ]:
+              path = Path(file_name)
+              source = path.read_text()
+              source = source.replace(
+                  'Theme.of(context).extension<EngineeringColors>()!',
+                  'EngineeringColors.of(context)',
+              )
+              path.write_text(source)
+          PY
       - name: Format
         run: dart format lib test
       - name: Verify format
@@ -50,6 +75,7 @@ jobs:
         run: |
           git rm .github/workflows/apply-f19-contrast-once.yml
           git rm tool/apply_f19_contrast_once.py
+          git rm -f f19_failure.log || true
       - name: Commit verified contrast patch
         run: |
           git config user.name 'github-actions[bot]'
