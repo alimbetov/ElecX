@@ -45,4 +45,4 @@ jobs:
           git commit -m 'fix(editor): expose accessible scene traversal'
           git push origin HEAD:feat/spatial-editor-interaction-hardening
 
-# rerun after setting explicit LTR textDirection for semantic labels
+# rerun after satisfying curly-braces style gate
