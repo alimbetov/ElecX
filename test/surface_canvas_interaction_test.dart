@@ -15,23 +15,27 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   const viewportSize = Size(800, 600);
-  const wallWidthMm = 4200.0;
-  const wallHeightMm = 3000.0;
   const fitPaddingPx = 88.0;
+  const gestureDrain = Duration(milliseconds: 60);
 
-  double mmPerPixel() {
+  double mmPerPixel(EditorController controller) {
+    final wall = controller.activeWall!;
     final usableWidth = viewportSize.width - fitPaddingPx * 2;
     final usableHeight = viewportSize.height - fitPaddingPx * 2;
-    return (wallWidthMm / usableWidth) > (wallHeightMm / usableHeight)
-        ? wallWidthMm / usableWidth
-        : wallHeightMm / usableHeight;
+    final widthScale = wall.lengthMm / usableWidth;
+    final heightScale = wall.heightMm / usableHeight;
+    return widthScale > heightScale ? widthScale : heightScale;
   }
 
-  Offset viewportPoint(SurfacePointMm point) {
-    final scale = mmPerPixel();
+  Offset viewportPoint(
+    EditorController controller,
+    SurfacePointMm point,
+  ) {
+    final wall = controller.activeWall!;
+    final scale = mmPerPixel(controller);
     return Offset(
-      viewportSize.width / 2 + (point.xMm - wallWidthMm / 2) / scale,
-      viewportSize.height / 2 - (point.yMm - wallHeightMm / 2) / scale,
+      viewportSize.width / 2 + (point.xMm - wall.lengthMm / 2) / scale,
+      viewportSize.height / 2 - (point.yMm - wall.heightMm / 2) / scale,
     );
   }
 
@@ -54,30 +58,36 @@ void main() {
     await tester.pump();
   }
 
-  EditorController controllerWithWall() {
+  Future<void> drainGestureTimers(WidgetTester tester) async {
+    await tester.pump(gestureDrain);
+  }
+
+  EditorController controllerWithClearWall() {
     final controller = EditorController.demo();
-    controller.showWall(0);
+    // Wall 1 has no architectural openings in the demo fixture. Keeping the
+    // interaction fixture clear makes these tests exercise input/session wiring
+    // rather than obstacle migration semantics from an existing legacy route.
+    controller.showWall(1);
     return controller;
   }
 
   testWidgets('component mouse drag commits one transactional history entry', (
     tester,
   ) async {
-    final controller = controllerWithWall();
+    final controller = controllerWithClearWall();
     addTearDown(controller.dispose);
-    final surface = controller.activeSurface!;
     final component = controller.p2.placeComponent(
       type: ElectricalComponentType.socketOutlet,
-      surface: surface,
-      position: const SurfacePointMm(2100, 1500),
+      surface: controller.activeSurface!,
+      position: const SurfacePointMm(1600, 1500),
     );
     final depthBefore = controller.p2.history.undoDepth;
 
     await pumpCanvas(tester, controller);
     final canvasOrigin = tester.getTopLeft(find.byType(SurfaceCanvas));
-    final start = canvasOrigin + viewportPoint(component.position);
-    final target =
-        canvasOrigin + viewportPoint(const SurfacePointMm(2500, 1500));
+    final start = canvasOrigin + viewportPoint(controller, component.position);
+    final target = canvasOrigin +
+        viewportPoint(controller, const SurfacePointMm(2000, 1500));
 
     final gesture = await tester.startGesture(
       start,
@@ -86,9 +96,9 @@ void main() {
     await gesture.moveTo(target);
     await tester.pump();
     await gesture.up();
-    await tester.pump();
+    await drainGestureTimers(tester);
 
-    expect(controller.p2.selectedComponent?.position.xMm, 2500);
+    expect(controller.p2.selectedComponent?.position.xMm, 2000);
     expect(controller.p2.selectedComponent?.position.yMm, 1500);
     expect(controller.p2.history.undoDepth, depthBefore + 1);
 
@@ -99,19 +109,20 @@ void main() {
   testWidgets('escape cancels active pointer transform without history', (
     tester,
   ) async {
-    final controller = controllerWithWall();
+    final controller = controllerWithClearWall();
     addTearDown(controller.dispose);
     final component = controller.p2.placeComponent(
       type: ElectricalComponentType.socketOutlet,
       surface: controller.activeSurface!,
-      position: const SurfacePointMm(2100, 1500),
+      position: const SurfacePointMm(1600, 1500),
     );
     final depthBefore = controller.p2.history.undoDepth;
 
     await pumpCanvas(tester, controller);
     final origin = tester.getTopLeft(find.byType(SurfaceCanvas));
-    final start = origin + viewportPoint(component.position);
-    final moved = origin + viewportPoint(const SurfacePointMm(2500, 1500));
+    final start = origin + viewportPoint(controller, component.position);
+    final moved = origin +
+        viewportPoint(controller, const SurfacePointMm(2000, 1500));
 
     final gesture = await tester.startGesture(
       start,
@@ -127,7 +138,7 @@ void main() {
     expect(controller.p2.history.undoDepth, depthBefore);
 
     await gesture.up();
-    await tester.pump();
+    await drainGestureTimers(tester);
     expect(controller.p2.selectedComponent?.position, component.position);
     expect(controller.p2.history.undoDepth, depthBefore);
   });
@@ -135,19 +146,20 @@ void main() {
   testWidgets('second pointer cancels active component transform exactly', (
     tester,
   ) async {
-    final controller = controllerWithWall();
+    final controller = controllerWithClearWall();
     addTearDown(controller.dispose);
     final component = controller.p2.placeComponent(
       type: ElectricalComponentType.socketOutlet,
       surface: controller.activeSurface!,
-      position: const SurfacePointMm(2100, 1500),
+      position: const SurfacePointMm(1600, 1500),
     );
     final depthBefore = controller.p2.history.undoDepth;
 
     await pumpCanvas(tester, controller);
     final origin = tester.getTopLeft(find.byType(SurfaceCanvas));
-    final start = origin + viewportPoint(component.position);
-    final moved = origin + viewportPoint(const SurfacePointMm(2500, 1500));
+    final start = origin + viewportPoint(controller, component.position);
+    final moved = origin +
+        viewportPoint(controller, const SurfacePointMm(2000, 1500));
 
     final first = await tester.startGesture(
       start,
@@ -164,7 +176,7 @@ void main() {
     await tester.pump();
     await second.up();
     await first.up();
-    await tester.pump();
+    await drainGestureTimers(tester);
 
     expect(controller.p2.selectedComponent?.position, component.position);
     expect(controller.p2.history.undoDepth, depthBefore);
@@ -173,23 +185,23 @@ void main() {
   testWidgets('endpoint drag snaps to compatible port and is one undo step', (
     tester,
   ) async {
-    final controller = controllerWithWall();
+    final controller = controllerWithClearWall();
     addTearDown(controller.dispose);
     final surface = controller.activeSurface!;
     final source = controller.p2.placeComponent(
       type: ElectricalComponentType.powerSource,
       surface: surface,
-      position: const SurfacePointMm(1000, 1500),
+      position: const SurfacePointMm(600, 1500),
     );
     final oldTarget = controller.p2.placeComponent(
       type: ElectricalComponentType.socketOutlet,
       surface: surface,
-      position: const SurfacePointMm(3000, 1500),
+      position: const SurfacePointMm(2600, 1500),
     );
     final newTarget = controller.p2.placeComponent(
       type: ElectricalComponentType.socketOutlet,
       surface: surface,
-      position: const SurfacePointMm(2100, 2200),
+      position: const SurfacePointMm(1600, 2200),
     );
     controller.p2.select(source.id);
     controller.p2.select(oldTarget.id, mode: SelectionMode.add);
@@ -203,8 +215,9 @@ void main() {
 
     await pumpCanvas(tester, controller);
     final origin = tester.getTopLeft(find.byType(SurfaceCanvas));
-    final start = origin + viewportPoint(originalRoute.segments.last.points.last);
-    final target = origin + viewportPoint(newTarget.position);
+    final start = origin +
+        viewportPoint(controller, originalRoute.segments.last.points.last);
+    final target = origin + viewportPoint(controller, newTarget.position);
 
     final gesture = await tester.startGesture(
       start,
@@ -212,8 +225,14 @@ void main() {
     );
     await gesture.moveTo(target);
     await tester.pump();
+
+    expect(controller.cableEndpointTransform.active, isTrue);
+    final preview = controller.cableEndpointTransform.previewState;
+    expect(preview, isNotNull);
+    expect(preview!.route.target.componentId, newTarget.id);
+
     await gesture.up();
-    await tester.pump();
+    await drainGestureTimers(tester);
 
     final committed = controller.p2.routes.single;
     expect(committed.target.componentId, newTarget.id);
@@ -232,18 +251,18 @@ void main() {
   testWidgets('endpoint outside compatible ports is invalid and not committed', (
     tester,
   ) async {
-    final controller = controllerWithWall();
+    final controller = controllerWithClearWall();
     addTearDown(controller.dispose);
     final surface = controller.activeSurface!;
     final source = controller.p2.placeComponent(
       type: ElectricalComponentType.powerSource,
       surface: surface,
-      position: const SurfacePointMm(1000, 1500),
+      position: const SurfacePointMm(600, 1500),
     );
     final oldTarget = controller.p2.placeComponent(
       type: ElectricalComponentType.socketOutlet,
       surface: surface,
-      position: const SurfacePointMm(3000, 1500),
+      position: const SurfacePointMm(2600, 1500),
     );
     controller.p2.select(source.id);
     controller.p2.select(oldTarget.id, mode: SelectionMode.add);
@@ -257,8 +276,10 @@ void main() {
 
     await pumpCanvas(tester, controller);
     final origin = tester.getTopLeft(find.byType(SurfaceCanvas));
-    final start = origin + viewportPoint(originalRoute.segments.last.points.last);
-    final emptyPoint = origin + viewportPoint(const SurfacePointMm(2100, 2200));
+    final start = origin +
+        viewportPoint(controller, originalRoute.segments.last.points.last);
+    final emptyPoint = origin +
+        viewportPoint(controller, const SurfacePointMm(1600, 700));
 
     final gesture = await tester.startGesture(
       start,
@@ -267,11 +288,13 @@ void main() {
     await gesture.moveTo(emptyPoint);
     await tester.pump();
 
+    expect(controller.cableEndpointTransform.active, isTrue);
+    expect(controller.cableEndpointTransform.previewState, isNull);
     expect(find.textContaining('Недопустимый preview'), findsOneWidget);
     expect(controller.p2.routes.single.target, originalRoute.target);
 
     await gesture.up();
-    await tester.pump();
+    await drainGestureTimers(tester);
 
     expect(controller.p2.routes.single.target, originalRoute.target);
     expect(
