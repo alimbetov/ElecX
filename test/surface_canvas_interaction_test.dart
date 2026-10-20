@@ -1,7 +1,9 @@
 import 'package:elecx/src/domain/electrical_placement.dart';
 import 'package:elecx/src/domain/surfaces.dart';
+import 'package:elecx/src/engine/normative_route_engine.dart';
 import 'package:elecx/src/engine/selection_engine.dart';
 import 'package:elecx/src/features/editor/cable_edit_access.dart';
+import 'package:elecx/src/features/editor/cable_editor_ui_session.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
 import 'package:elecx/src/features/editor/editor_keyboard_scope.dart';
 import 'package:elecx/src/features/editor/editor_p2_session.dart';
@@ -107,6 +109,40 @@ void main() {
     expect(controller.p2.selectedComponent?.position, component.position);
   });
 
+  testWidgets('component stylus drag uses the same transform transaction', (
+    tester,
+  ) async {
+    final controller = controllerWithClearWall();
+    addTearDown(controller.dispose);
+    final component = controller.p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: controller.activeSurface!,
+      position: const SurfacePointMm(1600, 1500),
+    );
+    final depthBefore = controller.p2.history.undoDepth;
+
+    await pumpCanvas(tester, controller);
+    final origin = tester.getTopLeft(find.byType(SurfaceCanvas));
+    final start = origin + viewportPoint(controller, component.position);
+    final target =
+        origin + viewportPoint(controller, const SurfacePointMm(2000, 1500));
+
+    final gesture = await tester.startGesture(
+      start,
+      kind: PointerDeviceKind.stylus,
+    );
+    await gesture.moveTo(target);
+    await tester.pump();
+    await gesture.up();
+    await drainGestureTimers(tester);
+
+    expect(controller.p2.selectedComponent?.position.xMm, 2000);
+    expect(controller.p2.selectedComponent?.position.yMm, 1500);
+    expect(controller.p2.history.undoDepth, depthBefore + 1);
+    controller.p2.undo();
+    expect(controller.p2.selectedComponent?.position, component.position);
+  });
+
   testWidgets('escape cancels active pointer transform without history', (
     tester,
   ) async {
@@ -132,7 +168,9 @@ void main() {
     await gesture.moveTo(moved);
     await tester.pump();
     expect(
-        controller.p2.selectedComponent?.position, isNot(component.position));
+      controller.p2.selectedComponent?.position,
+      isNot(component.position),
+    );
 
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
@@ -250,8 +288,72 @@ void main() {
     );
   });
 
-  testWidgets('endpoint outside compatible ports is invalid and not committed',
-      (
+  testWidgets('assisted first segment drag keeps endpoints and is undoable', (
+    tester,
+  ) async {
+    final controller = controllerWithClearWall();
+    addTearDown(controller.dispose);
+    final surface = controller.activeSurface!;
+    final source = controller.p2.placeComponent(
+      type: ElectricalComponentType.powerSource,
+      surface: surface,
+      position: const SurfacePointMm(600, 1000),
+    );
+    final target = controller.p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: surface,
+      position: const SurfacePointMm(2600, 2200),
+    );
+    controller.p2.select(source.id);
+    controller.p2.select(target.id, mode: SelectionMode.add);
+    expect(
+      controller.p2.autoRouteSelectedPair(space: controller.selectedSpace),
+      isTrue,
+    );
+    final original = controller.p2.routes.single;
+    expect(original.segments.single.points.length, greaterThanOrEqualTo(3));
+    controller.routeSelection.select(original.id);
+    controller.cableUi.setMode(CableRoutingMode.assisted);
+    final depthBefore = controller.p2.history.undoDepth;
+
+    await pumpCanvas(tester, controller);
+    final points = original.segments.single.points;
+    final edgeA = points[0];
+    final edgeB = points[1];
+    final midpoint = SurfacePointMm(
+      (edgeA.xMm + edgeB.xMm) ~/ 2,
+      (edgeA.yMm + edgeB.yMm) ~/ 2,
+    );
+    final horizontal = edgeA.yMm == edgeB.yMm;
+    final dragTarget = horizontal
+        ? SurfacePointMm(midpoint.xMm, midpoint.yMm + 300)
+        : SurfacePointMm(midpoint.xMm + 300, midpoint.yMm);
+    final origin = tester.getTopLeft(find.byType(SurfaceCanvas));
+
+    final gesture = await tester.startGesture(
+      origin + viewportPoint(controller, midpoint),
+      kind: PointerDeviceKind.mouse,
+    );
+    await gesture.moveTo(origin + viewportPoint(controller, dragTarget));
+    await tester.pump();
+
+    expect(controller.cableRouteEdit.active, isTrue);
+    expect(controller.cableRouteEdit.previewState, isNotNull);
+
+    await gesture.up();
+    await drainGestureTimers(tester);
+
+    final committed = controller.p2.routes.single;
+    expect(committed.segments.single.points, isNot(original.segments.single.points));
+    expect(committed.segments.single.points.first, points.first);
+    expect(committed.segments.single.points.last, points.last);
+    expect(controller.p2.history.undoDepth, depthBefore + 1);
+
+    controller.p2.undo();
+    expect(controller.p2.routes.single.segments.single.points, points);
+  });
+
+  testWidgets('endpoint outside compatible ports is invalid and not committed', (
     tester,
   ) async {
     final controller = controllerWithClearWall();
