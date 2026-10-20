@@ -30,6 +30,9 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Fix cable sizing generator target
+        run: python3 tool/fix_cable_sizing_generator.py
+
       - name: Apply cable sizing evidence patch
         run: python3 tool/apply_cable_sizing_evidence_once.py
 
@@ -48,6 +51,7 @@ jobs:
       - name: Remove one-shot helpers
         run: |
           rm -f tool/apply_cable_sizing_evidence_once.py
+          rm -f tool/fix_cable_sizing_generator.py
           rm -f .github/workflows/apply-cable-sizing-evidence-once.yml
 
       - name: Commit verified production changes
