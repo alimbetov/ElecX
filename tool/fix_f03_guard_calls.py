@@ -81,6 +81,17 @@ for path in production_files:
         text = text.replace('return updateSelectedOpening(', 'return updateSelectedOpeningGuarded(')
     path.write_text(text)
 
+# Fix the only one-line conditional produced in the adaptive inspector.
+adaptive = Path('lib/src/features/editor/adaptive_spatial_editor_screen.dart')
+text = adaptive.read_text()
+text = text.replace(
+    '''              if (value != null) controller.updateSelectedOpeningGuarded(type: value);''',
+    '''              if (value != null) {
+                controller.updateSelectedOpeningGuarded(type: value);
+              }''',
+)
+adaptive.write_text(text)
+
 # Existing focused opening tests should exercise the guarded public path too.
 for name in [
     'editor_project_persistence_test.dart',
@@ -92,7 +103,6 @@ for name in [
     if "electrical_host_geometry_guard.dart" not in text:
         anchor = "import 'package:elecx/src/features/editor/editor_controller.dart';\n"
         if anchor not in text:
-            # Insert after the last import if a focused test does not directly import controller.
             lines = text.splitlines(keepends=True)
             last = max(i for i, line in enumerate(lines) if line.startswith('import '))
             lines.insert(
