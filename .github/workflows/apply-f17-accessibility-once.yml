@@ -48,4 +48,4 @@ jobs:
           git commit -m 'fix(editor): expose accessible scene traversal'
           git push origin HEAD:feat/spatial-editor-interaction-hardening
 
-# rerun with current find.semantics.byLabel oracle
+# rerun after removing the redundant SemanticsHandle from testWidgets
