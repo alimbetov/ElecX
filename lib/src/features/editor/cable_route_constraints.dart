@@ -116,6 +116,15 @@ final class CableRouteConstraints {
     );
   }
 
+  /// Rebinds persistent constraints to replacement route geometry.
+  ///
+  /// Waypoints are physical anchors, so their coordinates are authoritative.
+  /// A route edit may insert/remove intermediate vertices before a waypoint;
+  /// retaining the old numeric index would then point at the wrong geometry.
+  /// We therefore prefer the old index only when it still contains the same
+  /// coordinate, otherwise search the same segment for that physical point.
+  /// Missing physical anchors are dropped rather than silently rebound to an
+  /// unrelated vertex.
   CableRouteConstraints reconcile(List<List<SurfacePointMm>> segmentPoints) {
     final validLocks = lockedSegments
         .where((segmentIndex) => segmentIndex < segmentPoints.length)
@@ -124,12 +133,19 @@ final class CableRouteConstraints {
     for (final waypoint in mandatoryWaypoints) {
       if (waypoint.segmentIndex >= segmentPoints.length) continue;
       final points = segmentPoints[waypoint.segmentIndex];
-      if (waypoint.pointIndex >= points.length) continue;
+      var index = -1;
+      if (waypoint.pointIndex < points.length &&
+          _samePoint(points[waypoint.pointIndex], waypoint.point)) {
+        index = waypoint.pointIndex;
+      } else {
+        index = points.indexWhere((point) => _samePoint(point, waypoint.point));
+      }
+      if (index < 0) continue;
       nextWaypoints.add(
         CableMandatoryWaypoint(
           segmentIndex: waypoint.segmentIndex,
-          pointIndex: waypoint.pointIndex,
-          point: points[waypoint.pointIndex],
+          pointIndex: index,
+          point: waypoint.point,
         ),
       );
     }
@@ -175,4 +191,7 @@ final class CableRouteConstraints {
       mandatoryWaypoints: waypoints,
     );
   }
+
+  static bool _samePoint(SurfacePointMm a, SurfacePointMm b) =>
+      a.xMm == b.xMm && a.yMm == b.yMm;
 }
