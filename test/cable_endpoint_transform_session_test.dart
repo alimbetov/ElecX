@@ -172,8 +172,10 @@ void main() {
     expect(preview.validation.isValid, isTrue);
     expect(preview.route.target.componentId, 'socket-new');
     expect(preview.route.segments.single.points, contains(waypoint));
-    expect(preview.route.segments.single.points.first, const SurfacePointMm(200, 200));
-    expect(preview.route.segments.single.points.last, const SurfacePointMm(1800, 1400));
+    expect(preview.route.segments.single.points.first,
+        const SurfacePointMm(200, 200));
+    expect(preview.route.segments.single.points.last,
+        const SurfacePointMm(1800, 1400));
   });
 
   test('locked endpoint segment cannot start endpoint transform', () {

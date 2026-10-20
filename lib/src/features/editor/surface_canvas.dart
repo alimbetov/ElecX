@@ -621,8 +621,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
               : endpoint.route.segments[endpoint.segmentIndex].points.length -
                   1,
         );
-        if (ui.isSegmentLocked(endpoint.route.id, endpoint.segmentIndex) ||
-            ui.segmentHasWaypoints(endpoint.route.id, endpoint.segmentIndex)) {
+        if (ui.isSegmentLocked(endpoint.route.id, endpoint.segmentIndex)) {
           return false;
         }
         if (!controller.cableEndpointTransform.start(
@@ -630,6 +629,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
           role: endpoint.role,
           components: controller.p2.components,
           context: _routeContext(projection),
+          constraints: controller.p2.routeConstraintsFor(endpoint.route.id),
         )) {
           return false;
         }
