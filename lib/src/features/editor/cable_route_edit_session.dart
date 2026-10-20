@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../domain/electrical_routing.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/normative_route_engine.dart';
+import 'cable_route_constraints.dart';
 import 'editor_edit_session.dart';
 
 final class CableRouteEditPreview {
@@ -31,6 +32,7 @@ final class CableRouteEditSession extends ChangeNotifier
   CableRouteEditPreview? _preview;
   RouteNormativeContext? _context;
   int? _segmentIndex;
+  List<CableMandatoryWaypoint> _mandatoryWaypoints = const [];
   CableRoutingMode _mode = CableRoutingMode.auto;
   EditorEditSessionPhase _phase = EditorEditSessionPhase.idle;
 
@@ -66,23 +68,26 @@ final class CableRouteEditSession extends ChangeNotifier
     required int segmentIndex,
     required RouteNormativeContext context,
     CableRoutingMode mode = CableRoutingMode.auto,
+    CableRouteConstraints? constraints,
   }) {
     if (segmentIndex < 0 || segmentIndex >= route.segments.length) return false;
     final segment = route.segments[segmentIndex];
     if (segment.surface != context.surface || segment.points.length < 2) {
       return false;
     }
+    final waypoints = constraints?.mandatoryWaypoints
+            .where((item) => item.segmentIndex == segmentIndex)
+            .toList(growable: false) ??
+        const <CableMandatoryWaypoint>[];
     _origin = route;
     _segmentIndex = segmentIndex;
     _context = context;
+    _mandatoryWaypoints = waypoints;
     _mode = mode;
     _phase = EditorEditSessionPhase.previewing;
     _preview = CableRouteEditPreview(
       route: route,
-      validation: NormativeRouteEngine.validate(
-        points: segment.points,
-        context: context,
-      ),
+      validation: _validatePoints(segment.points, context),
       mode: mode,
     );
     notifyListeners();
@@ -92,27 +97,41 @@ final class CableRouteEditSession extends ChangeNotifier
   @override
   bool begin() => _origin != null;
 
-  /// Rebuilds the edited segment automatically from its first and last point.
-  /// The lowest-scoring valid candidate is selected.
+  /// Rebuilds the edited segment automatically while preserving mandatory
+  /// waypoints. Each mandatory point becomes a hard intermediate routing node.
   bool autoRoute() {
     final origin = _origin;
     final index = _segmentIndex;
     final context = _context;
     if (origin == null || index == null || context == null) return false;
     final segment = origin.segments[index];
-    final candidates = NormativeRouteEngine.buildCandidates(
-      source: segment.points.first,
-      target: segment.points.last,
-      context: context,
-    );
-    final best =
-        candidates.where((item) => item.validation.isValid).firstOrNull;
-    if (best == null) {
-      _phase = EditorEditSessionPhase.invalid;
-      notifyListeners();
-      return false;
+    final orderedWaypoints = _mandatoryWaypoints.toList()
+      ..sort((a, b) => a.pointIndex.compareTo(b.pointIndex));
+    final anchors = <SurfacePointMm>[
+      segment.points.first,
+      for (final waypoint in orderedWaypoints) waypoint.point,
+      segment.points.last,
+    ];
+    final rebuilt = <SurfacePointMm>[];
+    for (var i = 1; i < anchors.length; i++) {
+      final candidates = NormativeRouteEngine.buildCandidates(
+        source: anchors[i - 1],
+        target: anchors[i],
+        context: context,
+      );
+      final best = candidates.where((item) => item.validation.isValid).firstOrNull;
+      if (best == null) {
+        _phase = EditorEditSessionPhase.invalid;
+        notifyListeners();
+        return false;
+      }
+      if (rebuilt.isEmpty) {
+        rebuilt.addAll(best.points);
+      } else {
+        rebuilt.addAll(best.points.skip(1));
+      }
     }
-    return preview(best.points);
+    return preview(_removeConsecutiveDuplicates(rebuilt));
   }
 
   /// Applies an engineer-authored route preview. In AUTO/ASSISTED mode invalid
@@ -125,10 +144,7 @@ final class CableRouteEditSession extends ChangeNotifier
     final context = _context;
     if (origin == null || index == null || context == null) return false;
 
-    final validation = NormativeRouteEngine.validate(
-      points: points,
-      context: context,
-    );
+    final validation = _validatePoints(points, context);
     final replacement = ElectricalRouteSegment(
       surface: origin.segments[index].surface,
       points: List.unmodifiable(points),
@@ -144,6 +160,34 @@ final class CableRouteEditSession extends ChangeNotifier
         : EditorEditSessionPhase.invalid;
     notifyListeners();
     return validation.isValid;
+  }
+
+  RouteConstraintResult _validatePoints(
+    List<SurfacePointMm> points,
+    RouteNormativeContext context,
+  ) {
+    final normative = NormativeRouteEngine.validate(
+      points: points,
+      context: context,
+    );
+    final issues = <RouteConstraintIssue>[...normative.issues];
+    for (final waypoint in _mandatoryWaypoints) {
+      final preserved = points.any(
+        (point) =>
+            point.xMm == waypoint.point.xMm && point.yMm == waypoint.point.yMm,
+      );
+      if (!preserved) {
+        issues.add(
+          RouteConstraintIssue(
+            code: 'route.mandatory-waypoint-missing',
+            message:
+                'Маршрут должен проходить через обязательную точку ${waypoint.point.xMm}, ${waypoint.point.yMm} мм.',
+            severity: RouteConstraintSeverity.error,
+          ),
+        );
+      }
+    }
+    return RouteConstraintResult(List.unmodifiable(issues));
   }
 
   @override
@@ -177,6 +221,7 @@ final class CableRouteEditSession extends ChangeNotifier
     _preview = null;
     _context = null;
     _segmentIndex = null;
+    _mandatoryWaypoints = const [];
     _phase = terminal;
     notifyListeners();
   }
@@ -198,6 +243,21 @@ final class CableRouteEditSession extends ChangeNotifier
         medium: route.medium,
         reservePercent: route.reservePercent,
       );
+
+  static List<SurfacePointMm> _removeConsecutiveDuplicates(
+    List<SurfacePointMm> points,
+  ) {
+    final result = <SurfacePointMm>[];
+    for (final point in points) {
+      if (result.isNotEmpty &&
+          result.last.xMm == point.xMm &&
+          result.last.yMm == point.yMm) {
+        continue;
+      }
+      result.add(point);
+    }
+    return List.unmodifiable(result);
+  }
 
   static bool _changed(
     ElectricalCableRoute before,
