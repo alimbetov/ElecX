@@ -21,6 +21,7 @@ jobs:
           channel: stable
       - run: flutter pub get
       - run: python3 tool/apply_same_surface_autoroute_once.py
+      - run: python3 tool/fix_same_surface_autoroute_test_once.py
       - run: dart format lib test
       - run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter analyze
@@ -28,6 +29,7 @@ jobs:
       - name: Remove one-shot helpers
         run: |
           rm tool/apply_same_surface_autoroute_once.py
+          rm tool/fix_same_surface_autoroute_test_once.py
           rm .github/workflows/apply-same-surface-autoroute-once.yml
       - name: Commit verified AUTO routing
         run: |
