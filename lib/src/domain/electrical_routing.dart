@@ -108,6 +108,28 @@ abstract final class ElectricalConnectivityValidator {
       ) !=
       null;
 
+  static bool routeIsPhysicallyAnchored({
+    required ElectricalCableRoute route,
+    required Iterable<ElectricalComponentPlacement> components,
+  }) {
+    if (route.segments.isEmpty ||
+        route.segments.first.points.isEmpty ||
+        route.segments.last.points.isEmpty) {
+      return false;
+    }
+    ElectricalComponentPlacement? sourceComponent;
+    ElectricalComponentPlacement? targetComponent;
+    for (final component in components) {
+      if (component.id == route.source.componentId) sourceComponent = component;
+      if (component.id == route.target.componentId) targetComponent = component;
+    }
+    if (sourceComponent == null || targetComponent == null) return false;
+    return route.segments.first.surface == sourceComponent.surface &&
+        route.segments.first.points.first == sourceComponent.position &&
+        route.segments.last.surface == targetComponent.surface &&
+        route.segments.last.points.last == targetComponent.position;
+  }
+
   static bool routeIsConnected({
     required ElectricalCableRoute route,
     required Iterable<ElectricalComponentPlacement> components,

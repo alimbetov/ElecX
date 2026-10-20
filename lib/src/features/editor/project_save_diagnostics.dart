@@ -162,6 +162,21 @@ abstract final class EditorProjectSaveDiagnostics {
             routeId: route.id,
           ),
         );
+        continue;
+      }
+      if (!ElectricalConnectivityValidator.routeIsPhysicallyAnchored(
+        route: route,
+        components: editor.p2.components,
+      )) {
+        issues.add(
+          EditorProjectSaveIssue(
+            code: EditorProjectSaveIssueCode.disconnectedRoute,
+            title: 'Конец кабеля оторван от компонента',
+            detail:
+                'Трасса ${route.id}: физическая точка или поверхность конца не совпадает с подключённым компонентом. Переподключите кабель перед сохранением.',
+            routeId: route.id,
+          ),
+        );
       }
     }
     final registry = CircuitCableRegistry();

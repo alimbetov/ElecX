@@ -517,9 +517,13 @@ final class EditorP2Session extends ChangeNotifier {
     final current = _routeForId(before.id);
     if (current == null || !_sameRoute(current, before)) return false;
     if (!ElectricalConnectivityValidator.routeIsConnected(
-      route: after,
-      components: components,
-    )) {
+          route: after,
+          components: components,
+        ) ||
+        !ElectricalConnectivityValidator.routeIsPhysicallyAnchored(
+          route: after,
+          components: components,
+        )) {
       return false;
     }
     if (!_routeGeometryIsValid(after)) return false;
@@ -682,8 +686,7 @@ final class EditorP2Session extends ChangeNotifier {
     final component = selectedComponent;
     if (component == null ||
         layers.isLocked(EditorLayerId.electrical) ||
-        (layers.isLocked(EditorLayerId.cableRoutes) &&
-            _componentHasConnectedRoutes(component.id))) {
+        _componentHasConnectedRoutes(component.id)) {
       return false;
     }
     history.execute(
@@ -823,6 +826,10 @@ final class EditorP2Session extends ChangeNotifier {
       medium: RouteMediumProfile.acPower,
     );
     if (!ElectricalConnectivityValidator.routeIsConnected(
+          route: route,
+          components: components,
+        ) ||
+        !ElectricalConnectivityValidator.routeIsPhysicallyAnchored(
           route: route,
           components: components,
         ) ||
@@ -1220,6 +1227,10 @@ final class EditorP2Session extends ChangeNotifier {
         continue;
       }
       if (!ElectricalConnectivityValidator.routeIsConnected(
+            route: route,
+            components: preview.components,
+          ) ||
+          !ElectricalConnectivityValidator.routeIsPhysicallyAnchored(
             route: route,
             components: preview.components,
           ) ||
