@@ -1,5 +1,6 @@
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
+import 'package:elecx/src/features/editor/electrical_host_geometry_guard.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -10,7 +11,7 @@ void main() {
 
     expect(controller.selectedOpening, isNotNull);
     expect(
-      controller.updateSelectedOpening(
+      controller.updateSelectedOpeningGuarded(
         offsetFromStartMm: 800,
         widthMm: 1000,
         heightMm: 2200,
@@ -35,7 +36,7 @@ void main() {
     controller.selectOpening('window-101-a');
 
     expect(
-      controller.updateSelectedOpening(
+      controller.updateSelectedOpeningGuarded(
         offsetFromStartMm: 1200,
         widthMm: 1500,
         heightMm: 1300,
@@ -58,7 +59,7 @@ void main() {
     controller.selectOpening('door-101-a');
     final before = controller.selectedOpening!;
 
-    expect(controller.updateSelectedOpening(widthMm: 99999), isFalse);
+    expect(controller.updateSelectedOpeningGuarded(widthMm: 99999), isFalse);
 
     final after = controller.selectedOpening!;
     expect(after.widthMm, before.widthMm);

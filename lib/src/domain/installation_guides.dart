@@ -8,11 +8,7 @@ enum InstallationGuideKind {
   ceilingLightingGrid,
 }
 
-enum InstallationGuideAuthority {
-  normative,
-  projectPreset,
-  advisory,
-}
+enum InstallationGuideAuthority { normative, projectPreset, advisory }
 
 final class InstallationGuideSource {
   const InstallationGuideSource({

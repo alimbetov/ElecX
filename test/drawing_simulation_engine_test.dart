@@ -40,20 +40,22 @@ void main() {
       position: const SurfacePointMm(2100, 1800),
     );
 
-    final topology = EngineeringTopology(nodes: [
-      EngineeringNodeFactory.fromPlacement(
-        placement: board,
-        entry: ComponentCatalogV2.require('power.distribution-board.general'),
-      ),
-      EngineeringNodeFactory.fromPlacement(
-        placement: switchPlacement,
-        entry: ComponentCatalogV2.require('lighting.switch.general'),
-      ),
-      EngineeringNodeFactory.fromPlacement(
-        placement: light,
-        entry: ComponentCatalogV2.require('lighting.luminaire.general'),
-      ),
-    ]);
+    final topology = EngineeringTopology(
+      nodes: [
+        EngineeringNodeFactory.fromPlacement(
+          placement: board,
+          entry: ComponentCatalogV2.require('power.distribution-board.general'),
+        ),
+        EngineeringNodeFactory.fromPlacement(
+          placement: switchPlacement,
+          entry: ComponentCatalogV2.require('lighting.switch.general'),
+        ),
+        EngineeringNodeFactory.fromPlacement(
+          placement: light,
+          entry: ComponentCatalogV2.require('lighting.luminaire.general'),
+        ),
+      ],
+    );
     topology.connect(
       id: 'board-switch',
       fromNodeId: board.id,
@@ -71,10 +73,7 @@ void main() {
         componentId: switchPlacement.id,
         portId: 'control-out',
       ),
-      target: ElectricalEndpointRef(
-        componentId: light.id,
-        portId: 'power-in',
-      ),
+      target: ElectricalEndpointRef(componentId: light.id, portId: 'power-in'),
       segments: [
         ElectricalRouteSegment(
           surface: wall,
@@ -203,14 +202,8 @@ void main() {
 
     final route = ElectricalCableRoute(
       id: 'route-through-door-zone',
-      source: ElectricalEndpointRef(
-        componentId: board.id,
-        portId: 'power-out',
-      ),
-      target: ElectricalEndpointRef(
-        componentId: socket.id,
-        portId: 'power-in',
-      ),
+      source: ElectricalEndpointRef(componentId: board.id, portId: 'power-out'),
+      target: ElectricalEndpointRef(componentId: socket.id, portId: 'power-in'),
       segments: [
         ElectricalRouteSegment(
           surface: wall,
@@ -270,16 +263,18 @@ void main() {
       position: const SurfacePointMm(1000, 1500),
     );
 
-    final topology = EngineeringTopology(nodes: [
-      EngineeringNodeFactory.fromPlacement(
-        placement: board,
-        entry: ComponentCatalogV2.require('power.distribution-board.general'),
-      ),
-      EngineeringNodeFactory.fromPlacement(
-        placement: source,
-        entry: ComponentCatalogV2.require('power.source.general'),
-      ),
-    ]);
+    final topology = EngineeringTopology(
+      nodes: [
+        EngineeringNodeFactory.fromPlacement(
+          placement: board,
+          entry: ComponentCatalogV2.require('power.distribution-board.general'),
+        ),
+        EngineeringNodeFactory.fromPlacement(
+          placement: source,
+          entry: ComponentCatalogV2.require('power.source.general'),
+        ),
+      ],
+    );
     topology.connect(
       id: 'source-to-board',
       fromNodeId: source.id,

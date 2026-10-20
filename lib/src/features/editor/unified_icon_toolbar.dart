@@ -152,10 +152,7 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
     );
   }
 
-  ButtonStyle _commandStyle(
-    BuildContext context, {
-    bool selected = false,
-  }) =>
+  ButtonStyle _commandStyle(BuildContext context, {bool selected = false}) =>
       IconButton.styleFrom(
         minimumSize: Size(_target, _target),
         maximumSize: Size(_target, _target),

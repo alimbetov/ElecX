@@ -92,7 +92,8 @@ final class MmPolygon {
     final top = math.max(a.y, b.y);
     if (left == right || bottom == top) {
       throw ArgumentError(
-          'A room rectangle must have non-zero width and height.');
+        'A room rectangle must have non-zero width and height.',
+      );
     }
     return MmPolygon([
       MmPoint(left, bottom),

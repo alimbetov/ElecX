@@ -1,4 +1,5 @@
 import 'geometry.dart';
+import 'site_orientation.dart';
 import 'wall_profile.dart';
 
 enum SpaceType {
@@ -8,7 +9,7 @@ enum SpaceType {
   technicalRoom,
   stair,
   shaft,
-  outdoorArea
+  outdoorArea,
 }
 
 final class GridDefinition {
@@ -76,12 +77,7 @@ final class EngineeringSpace {
     if (wallIndex < 0 || wallIndex >= boundary.vertices.length) {
       throw RangeError.index(wallIndex, boundary.vertices, 'wallIndex');
     }
-    return copyWith(
-      wallProfiles: {
-        ...wallProfiles,
-        wallIndex: profile,
-      },
-    );
+    return copyWith(wallProfiles: {...wallProfiles, wallIndex: profile});
   }
 
   EngineeringSpace withoutWallProfile(int wallIndex) {
@@ -92,11 +88,12 @@ final class EngineeringSpace {
 }
 
 final class BuildingLevel {
-  const BuildingLevel(
-      {required this.id,
-      required this.name,
-      required this.elevationMm,
-      required this.spaces});
+  const BuildingLevel({
+    required this.id,
+    required this.name,
+    required this.elevationMm,
+    required this.spaces,
+  });
 
   final String id;
   final String name;
@@ -120,17 +117,48 @@ final class Building {
 }
 
 final class ProjectSite {
-  const ProjectSite(
-      {required this.id, required this.name, required this.buildings});
+  const ProjectSite({
+    required this.id,
+    required this.name,
+    required this.buildings,
+    this.projectNorth = const ProjectNorth(),
+    this.solarContext,
+  });
 
   final String id;
   final String name;
   final List<Building> buildings;
+
+  /// True-north orientation relative to the project/plan coordinate system.
+  /// All facade/window azimuths are derived from this single source of truth.
+  final ProjectNorth projectNorth;
+
+  /// Optional physical site data for future solar/daylight calculations.
+  /// Keeping it nullable allows offline CAD work without geolocation.
+  final SolarSiteContext? solarContext;
+
+  ProjectSite copyWith({
+    List<Building>? buildings,
+    ProjectNorth? projectNorth,
+    SolarSiteContext? solarContext,
+    bool clearSolarContext = false,
+  }) =>
+      ProjectSite(
+        id: id,
+        name: name,
+        buildings: buildings ?? this.buildings,
+        projectNorth: projectNorth ?? this.projectNorth,
+        solarContext:
+            clearSolarContext ? null : solarContext ?? this.solarContext,
+      );
 }
 
 final class EngineeringProject {
-  const EngineeringProject(
-      {required this.id, required this.name, required this.site});
+  const EngineeringProject({
+    required this.id,
+    required this.name,
+    required this.site,
+  });
 
   final String id;
   final String name;

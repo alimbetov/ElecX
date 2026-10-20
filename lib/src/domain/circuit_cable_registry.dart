@@ -213,7 +213,9 @@ final class CircuitCableRegistry {
       a.terminalId == b.terminalId;
 
   static bool _sameProtectiveDevice(
-          ProtectiveDeviceRef a, ProtectiveDeviceRef b) =>
+    ProtectiveDeviceRef a,
+    ProtectiveDeviceRef b,
+  ) =>
       a.id == b.id &&
       a.boardId == b.boardId &&
       a.designation == b.designation &&

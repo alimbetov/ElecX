@@ -1,12 +1,6 @@
 import 'project_model.dart';
 
-enum BuildingLevelKind {
-  basement,
-  ground,
-  residential,
-  technical,
-  roof,
-}
+enum BuildingLevelKind { basement, ground, residential, technical, roof }
 
 enum BuildingZoneKind {
   apartment,

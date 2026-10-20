@@ -2,10 +2,12 @@ import '../../domain/component_catalog_v2.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/command_history.dart';
+import '../../engine/editor_layers.dart';
 import 'editor_p2_session.dart';
 
-final Expando<int> _catalogSequences =
-    Expando<int>('ElecX catalog component sequence');
+final Expando<int> _catalogSequences = Expando<int>(
+  'ElecX catalog component sequence',
+);
 
 extension CatalogComponentPlacement on EditorP2Session {
   ElectricalComponentPlacement placeCatalogComponent({
@@ -13,6 +15,10 @@ extension CatalogComponentPlacement on EditorP2Session {
     required RoomSurfaceRef surface,
     required SurfacePointMm position,
   }) {
+    if (!layers.isVisible(EditorLayerId.electrical) ||
+        layers.isLocked(EditorLayerId.electrical)) {
+      throw StateError('Electrical layer is not editable.');
+    }
     if (!entry.canPlaceOn(surface)) {
       throw StateError(
         'Component ${entry.id} is not allowed on ${surface.type.name}.',
@@ -72,7 +78,9 @@ List<ElectricalPortDefinition> _legacyPortsFor(
     'lighting.luminaire.general' ||
     'power.junction-box.general' ||
     'power.distribution-board.general' =>
-      ElectricalComponentDefaults.portsFor(visualType),
+      ElectricalComponentDefaults.portsFor(
+        visualType,
+      ),
     _ => const <ElectricalPortDefinition>[],
   };
 }
@@ -87,9 +95,8 @@ final class _AddCatalogComponentCommand
   String get label => 'Add ${component.label}';
 
   @override
-  EditorP2State execute(EditorP2State state) => state.copyWith(
-        components: [...state.components, component],
-      );
+  EditorP2State execute(EditorP2State state) =>
+      state.copyWith(components: [...state.components, component]);
 
   @override
   EditorP2State undo(EditorP2State state) => state.copyWith(

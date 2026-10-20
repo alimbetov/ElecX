@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import '../domain/geometry.dart';
 
 enum SnapKind {
+  port,
+  componentAnchor,
   endpoint,
   intersection,
   midpoint,
@@ -28,6 +30,21 @@ final class SnapCandidate {
   final String? sourceId;
 }
 
+final class SemanticSnapAnchor {
+  const SemanticSnapAnchor({
+    required this.kind,
+    required this.point,
+    required this.sourceId,
+  }) : assert(
+          kind == SnapKind.port || kind == SnapKind.componentAnchor,
+          'Semantic anchors are restricted to port/component anchors.',
+        );
+
+  final SnapKind kind;
+  final MmPoint point;
+  final String sourceId;
+}
+
 final class SnapSegment {
   const SnapSegment({required this.id, required this.a, required this.b});
 
@@ -45,6 +62,7 @@ final class SnapRequest {
     required this.gridStepMm,
     this.segments = const [],
     this.guides = const [],
+    this.semanticAnchors = const [],
   });
 
   final MmPoint rawPoint;
@@ -52,19 +70,50 @@ final class SnapRequest {
   final int gridStepMm;
   final List<SnapSegment> segments;
   final List<MmPoint> guides;
+  final List<SemanticSnapAnchor> semanticAnchors;
+}
+
+/// Holds a captured semantic target until the pointer leaves a larger release
+/// radius. This prevents attach/detach flicker around a port boundary.
+final class SnapHysteresis {
+  SnapCandidate? _captured;
+
+  SnapCandidate? get captured => _captured;
+
+  SnapCandidate? resolve({
+    required MmPoint rawPoint,
+    required SnapCandidate? candidate,
+    required double releaseRadiusMm,
+  }) {
+    if (releaseRadiusMm <= 0) {
+      throw ArgumentError.value(releaseRadiusMm, 'releaseRadiusMm');
+    }
+    final current = _captured;
+    if (current != null) {
+      final distance = rawPoint.distanceTo(current.point);
+      if (distance <= releaseRadiusMm) return current;
+      _captured = null;
+    }
+    if (candidate != null) _captured = candidate;
+    return _captured;
+  }
+
+  void clear() => _captured = null;
 }
 
 abstract final class SnapEngine {
   static const Map<SnapKind, int> _priority = {
-    SnapKind.endpoint: 0,
-    SnapKind.intersection: 1,
-    SnapKind.midpoint: 2,
-    SnapKind.center: 3,
-    SnapKind.perpendicular: 4,
-    SnapKind.wall: 5,
-    SnapKind.guide: 6,
-    SnapKind.nearest: 7,
-    SnapKind.grid: 8,
+    SnapKind.port: 0,
+    SnapKind.componentAnchor: 1,
+    SnapKind.endpoint: 2,
+    SnapKind.intersection: 3,
+    SnapKind.midpoint: 4,
+    SnapKind.center: 5,
+    SnapKind.perpendicular: 6,
+    SnapKind.wall: 7,
+    SnapKind.guide: 8,
+    SnapKind.nearest: 9,
+    SnapKind.grid: 10,
   };
 
   static SnapCandidate? resolve(SnapRequest request) {
@@ -73,6 +122,17 @@ abstract final class SnapEngine {
     }
 
     final candidates = <SnapCandidate>[];
+
+    for (final anchor in request.semanticAnchors) {
+      _addPoint(
+        candidates,
+        request,
+        anchor.kind,
+        anchor.point,
+        anchor.sourceId,
+      );
+    }
+
     for (final segment in request.segments) {
       _addPoint(candidates, request, SnapKind.endpoint, segment.a, segment.id);
       _addPoint(candidates, request, SnapKind.endpoint, segment.b, segment.id);
@@ -83,8 +143,11 @@ abstract final class SnapEngine {
         segment.midpoint,
         segment.id,
       );
-      final nearest =
-          _nearestPointOnSegment(request.rawPoint, segment.a, segment.b);
+      final nearest = _nearestPointOnSegment(
+        request.rawPoint,
+        segment.a,
+        segment.b,
+      );
       _addPoint(candidates, request, SnapKind.nearest, nearest, segment.id);
     }
 
@@ -156,8 +219,10 @@ abstract final class SnapEngine {
     final dy = (b.y - a.y).toDouble();
     final lengthSquared = dx * dx + dy * dy;
     if (lengthSquared == 0) return a;
-    final t =
-        (((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSquared).clamp(0.0, 1.0);
+    final t = (((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSquared).clamp(
+      0.0,
+      1.0,
+    );
     return MmPoint((a.x + dx * t).round(), (a.y + dy * t).round());
   }
 

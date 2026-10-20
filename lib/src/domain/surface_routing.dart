@@ -5,10 +5,7 @@ import 'project_model.dart';
 import 'surfaces.dart';
 
 final class SurfaceRouteSegmentDraft {
-  const SurfaceRouteSegmentDraft({
-    required this.surface,
-    required this.points,
-  });
+  const SurfaceRouteSegmentDraft({required this.surface, required this.points});
 
   final RoomSurfaceRef surface;
   final List<SurfacePointMm> points;
@@ -26,10 +23,7 @@ final class SurfaceRouteSegmentDraft {
   }
 
   SurfaceRouteSegmentDraft append(SurfacePointMm point) =>
-      SurfaceRouteSegmentDraft(
-        surface: surface,
-        points: [...points, point],
-      );
+      SurfaceRouteSegmentDraft(surface: surface, points: [...points, point]);
 }
 
 /// Maps a route point between room surfaces only when both coordinates
@@ -48,8 +42,10 @@ abstract final class SurfaceTransitionResolver {
 
     if (from.type == SurfacePlaneType.wall) {
       final fromWall = RoomSurfaceResolver.wall(space, from.wallIndex!);
-      final planPoint =
-          RoomSurfaceResolver.wallLocalToPlan(fromWall, point.xMm);
+      final planPoint = RoomSurfaceResolver.wallLocalToPlan(
+        fromWall,
+        point.xMm,
+      );
 
       if (to.type == SurfacePlaneType.floor && point.yMm.abs() <= toleranceMm) {
         return _planToHorizontal(space, planPoint);

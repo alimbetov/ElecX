@@ -108,24 +108,25 @@ void main() {
   });
 
   test(
-      'controller creates a new route segment when surface transition is valid',
-      () {
-    final controller = EditorController.demo();
-    controller.setTool(EditorTool.cableRoute);
-    controller.showWall(0);
-    final wall = controller.activeWall!;
-    controller.surfaceTap(SurfacePointMm(wall.lengthMm.round(), 1200));
+    'controller creates a new route segment when surface transition is valid',
+    () {
+      final controller = EditorController.demo();
+      controller.setTool(EditorTool.cableRoute);
+      controller.showWall(0);
+      final wall = controller.activeWall!;
+      controller.surfaceTap(SurfacePointMm(wall.lengthMm.round(), 1200));
 
-    controller.nextWall();
+      controller.nextWall();
 
-    expect(controller.routeSegments, hasLength(2));
-    expect(
-      controller.routeSegments.last.surface,
-      RoomSurfaceRef.wall('room-101', 1),
-    );
-    expect(controller.routeSegments.last.points.single.xMm, 0);
-    expect(controller.routeSegments.last.points.single.yMm, 1200);
-  });
+      expect(controller.routeSegments, hasLength(2));
+      expect(
+        controller.routeSegments.last.surface,
+        RoomSurfaceRef.wall('room-101', 1),
+      );
+      expect(controller.routeSegments.last.points.single.xMm, 0);
+      expect(controller.routeSegments.last.points.single.yMm, 1200);
+    },
+  );
 
   test('wall edges resolve to floor ceiling and adjacent walls', () {
     final controller = EditorController.demo();

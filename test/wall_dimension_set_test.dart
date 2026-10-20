@@ -28,10 +28,7 @@ void main() {
     expect(horizontal.depthLabel, 'D 3200 mm');
     expect(horizontal.heightLabel, 'H 3000 mm');
 
-    final vertical = WallDimensionResolver.resolve(
-      space: space,
-      wallIndex: 1,
-    );
+    final vertical = WallDimensionResolver.resolve(space: space, wallIndex: 1);
     expect(vertical.lengthMm, 3200);
     expect(vertical.depthMm, 4200);
     expect(vertical.heightMm, 3000);

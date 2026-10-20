@@ -49,15 +49,17 @@ void main() {
     expect(b.qrPayload, 'elecx://cable/cable-0017?end=b');
   });
 
-  test('label preserves termination identity for installation traceability',
-      () {
-    final label = CableLabelComposer.compose(
-      cable: cable,
-      circuit: circuit,
-      end: CableEnd.b,
-    );
+  test(
+    'label preserves termination identity for installation traceability',
+    () {
+      final label = CableLabelComposer.compose(
+        cable: cable,
+        circuit: circuit,
+        end: CableEnd.b,
+      );
 
-    expect(label.tertiaryText, contains('LIGHT-03:power-in'));
-    expect(label.tertiaryText, contains('DB-01:outgoing'));
-  });
+      expect(label.tertiaryText, contains('LIGHT-03:power-in'));
+      expect(label.tertiaryText, contains('DB-01:outgoing'));
+    },
+  );
 }

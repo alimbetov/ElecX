@@ -7,10 +7,7 @@ import '../domain/wall_profile.dart';
 /// The plan renderer uses the depth only as a visual offset; it must never
 /// mutate the room footprint.
 final class WallPlanProfilePoint {
-  const WallPlanProfilePoint({
-    required this.xMm,
-    required this.depthFromTopMm,
-  });
+  const WallPlanProfilePoint({required this.xMm, required this.depthFromTopMm});
 
   final int xMm;
   final int depthFromTopMm;

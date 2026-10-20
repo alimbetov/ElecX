@@ -88,9 +88,8 @@ class _PinUnlockScreenState extends State<PinUnlockScreen> {
                                     : () => _press(value),
                                 child: Text(
                                   value,
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.headlineSmall,
+                                  style:
+                                      Theme.of(context).textTheme.headlineSmall,
                                 ),
                               ),
                       );

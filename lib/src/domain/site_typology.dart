@@ -10,12 +10,7 @@ enum SiteTypology {
   mixedUse,
 }
 
-enum PropertyLotKind {
-  detachedHouse,
-  townhouseUnit,
-  commonFacility,
-  technical,
-}
+enum PropertyLotKind { detachedHouse, townhouseUnit, commonFacility, technical }
 
 /// One legal/functional parcel inside a site. Geometry is expressed in the
 /// same integer-millimetre site coordinate system as outdoor zones/buildings.
@@ -114,12 +109,14 @@ final class ComposedSite {
     for (final network in networks) {
       if (!network.servedBuildingIds.every(buildingIds.contains)) {
         throw ArgumentError(
-            'Network ${network.id} references unknown building.');
+          'Network ${network.id} references unknown building.',
+        );
       }
       final source = network.sourceOutdoorZoneId;
       if (source != null && !zoneIds.contains(source)) {
         throw ArgumentError(
-            'Network ${network.id} references unknown source zone.');
+          'Network ${network.id} references unknown source zone.',
+        );
       }
     }
   }

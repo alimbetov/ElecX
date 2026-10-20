@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../domain/boundary_editing.dart';
 import '../../domain/surfaces.dart';
 import 'boundary_edit_session.dart';
+import 'electrical_host_geometry_guard.dart';
 import 'editor_controller.dart';
 import 'wall_profile_editor_actions.dart';
 
@@ -81,7 +82,14 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: () {
-                  controller.addOpening(ArchitecturalOpeningType.door);
+                  controller.addOpeningGuarded(
+                    ArchitecturalOpeningType.door,
+                    canCommit: (candidate) =>
+                        ElectricalHostGeometryGuard.openingCandidateAllowed(
+                      controller,
+                      candidate,
+                    ),
+                  );
                   final opening = controller.selectedOpening;
                   if (opening != null) session.beginOpeningDraft(opening);
                 },
@@ -93,7 +101,14 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: () {
-                  controller.addOpening(ArchitecturalOpeningType.window);
+                  controller.addOpeningGuarded(
+                    ArchitecturalOpeningType.window,
+                    canCommit: (candidate) =>
+                        ElectricalHostGeometryGuard.openingCandidateAllowed(
+                      controller,
+                      candidate,
+                    ),
+                  );
                   final opening = controller.selectedOpening;
                   if (opening != null) session.beginOpeningDraft(opening);
                 },
@@ -168,25 +183,22 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
             fieldKey: '${selected.id}:width',
             label: 'Ширина',
             value: draft.widthMm,
-            onChanged: (value) => session.updateOpeningDraft(
-              draft.copyWith(widthMm: value),
-            ),
+            onChanged: (value) =>
+                session.updateOpeningDraft(draft.copyWith(widthMm: value)),
           ),
           _DraftIntField(
             fieldKey: '${selected.id}:height',
             label: 'Высота',
             value: draft.heightMm,
-            onChanged: (value) => session.updateOpeningDraft(
-              draft.copyWith(heightMm: value),
-            ),
+            onChanged: (value) =>
+                session.updateOpeningDraft(draft.copyWith(heightMm: value)),
           ),
           _DraftIntField(
             fieldKey: '${selected.id}:sill',
             label: 'От пола',
             value: draft.sillHeightMm,
-            onChanged: (value) => session.updateOpeningDraft(
-              draft.copyWith(sillHeightMm: value),
-            ),
+            onChanged: (value) =>
+                session.updateOpeningDraft(draft.copyWith(sillHeightMm: value)),
           ),
           if (!valid) _ValidationBadge('Параметры выходят за профиль стены'),
           TextButton(
@@ -232,14 +244,8 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
               600,
               math.max(100, wall.lengthMm.round() ~/ 3),
             );
-            final start = math.max(
-              0,
-              (wall.lengthMm.round() - width) ~/ 2,
-            );
-            final depth = math.min(
-              300,
-              math.max(50, wall.heightMm ~/ 6),
-            );
+            final start = math.max(0, (wall.lengthMm.round() - width) ~/ 2);
+            final depth = math.min(300, math.max(50, wall.heightMm ~/ 6));
             session.beginBeamDraft(
               BeamEditDraft.newDraft(
                 startMm: start,
@@ -287,25 +293,22 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
             fieldKey: 'beam:x',
             label: 'X от стены',
             value: draft.startMm,
-            onChanged: (value) => session.updateBeamDraft(
-              draft!.copyWith(startMm: value),
-            ),
+            onChanged: (value) =>
+                session.updateBeamDraft(draft!.copyWith(startMm: value)),
           ),
           _DraftIntField(
             fieldKey: 'beam:width',
             label: 'Ширина',
             value: draft.widthMm,
-            onChanged: (value) => session.updateBeamDraft(
-              draft!.copyWith(widthMm: value),
-            ),
+            onChanged: (value) =>
+                session.updateBeamDraft(draft!.copyWith(widthMm: value)),
           ),
           _DraftIntField(
             fieldKey: 'beam:depth',
             label: 'Глубина',
             value: draft.depthMm,
-            onChanged: (value) => session.updateBeamDraft(
-              draft!.copyWith(depthMm: value),
-            ),
+            onChanged: (value) =>
+                session.updateBeamDraft(draft!.copyWith(depthMm: value)),
           ),
           Chip(
             avatar: const Icon(Icons.height, size: 16),
@@ -402,10 +405,7 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
     );
   }
 
-  bool _openingDraftValid(
-    ArchitecturalOpening source,
-    OpeningEditDraft draft,
-  ) {
+  bool _openingDraftValid(ArchitecturalOpening source, OpeningEditDraft draft) {
     final wall = controller.activeWall;
     if (wall == null ||
         draft.offsetFromStartMm < 0 ||
@@ -417,7 +417,9 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
     try {
       final candidate = draft.toOpening(source);
       return RoomSurfaceResolver.openingFitsWall(
-          opening: candidate, wall: wall);
+        opening: candidate,
+        wall: wall,
+      );
     } on ArgumentError {
       return false;
     }
@@ -441,16 +443,18 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
     return true;
   }
 
-  void _saveOpening(
-    ArchitecturalOpening source,
-    OpeningEditDraft draft,
-  ) {
-    final saved = controller.updateSelectedOpening(
+  void _saveOpening(ArchitecturalOpening source, OpeningEditDraft draft) {
+    final saved = controller.updateSelectedOpeningGuarded(
       type: draft.type,
       offsetFromStartMm: draft.offsetFromStartMm,
       widthMm: draft.widthMm,
       heightMm: draft.heightMm,
       sillHeightMm: draft.sillHeightMm,
+      canCommit: (candidate) =>
+          ElectricalHostGeometryGuard.openingCandidateAllowed(
+        controller,
+        candidate,
+      ),
     );
     if (saved) {
       final current = controller.selectedOpening;
@@ -491,9 +495,7 @@ Future<bool> resolveBoundaryDraft(
     context: context,
     builder: (context) => AlertDialog(
       title: const Text('Сохранить изменения?'),
-      content: const Text(
-        'В редакторе границ есть несохранённые изменения.',
-      ),
+      content: const Text('В редакторе границ есть несохранённые изменения.'),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, _DirtyDraftChoice.cancel),
@@ -549,7 +551,7 @@ bool _commitBoundaryDraft(EditorController controller) {
   if (openingDraft != null) {
     final selected = controller.selectedOpening;
     if (selected == null || selected.id != openingDraft.openingId) return false;
-    final saved = controller.updateSelectedOpening(
+    final saved = controller.updateSelectedOpeningGuarded(
       type: openingDraft.type,
       offsetFromStartMm: openingDraft.offsetFromStartMm,
       widthMm: openingDraft.widthMm,

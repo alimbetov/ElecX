@@ -42,7 +42,9 @@ void main() {
     expect(root.find('level:-30'), isNotNull);
     final level7 = root.find('level:7')!;
     expect(
-        level7.children.any((node) => node.label.contains('Квартира')), isTrue);
+      level7.children.any((node) => node.label.contains('Квартира')),
+      isTrue,
+    );
     expect(level7.children.any((node) => node.label == 'МОП'), isTrue);
     expect(root.pathTo('room:L7:apt01-room').map((node) => node.kind), [
       NavigatorNodeKind.site,
@@ -54,41 +56,42 @@ void main() {
   });
 
   test(
-      'cottage village projection exposes lots houses levels rooms and networks',
-      () {
-    final house = Building(
-      id: 'template-house',
-      name: 'Дом',
-      levels: [
-        BuildingLevel(
-          id: 'floor-1',
-          name: 'Этаж 1',
-          elevationMm: 0,
-          spaces: [_space('living', 'Гостиная', 0, 0, 5000, 4000)],
-        ),
-      ],
-    );
-    final site = CottageSiteBuilder.village(
-      typicalHouse: house,
-      houseCount: 12,
-      lotWidthMm: 20000,
-      lotDepthMm: 30000,
-    );
+    'cottage village projection exposes lots houses levels rooms and networks',
+    () {
+      final house = Building(
+        id: 'template-house',
+        name: 'Дом',
+        levels: [
+          BuildingLevel(
+            id: 'floor-1',
+            name: 'Этаж 1',
+            elevationMm: 0,
+            spaces: [_space('living', 'Гостиная', 0, 0, 5000, 4000)],
+          ),
+        ],
+      );
+      final site = CottageSiteBuilder.village(
+        typicalHouse: house,
+        houseCount: 12,
+        lotWidthMm: 20000,
+        lotDepthMm: 30000,
+      );
 
-    final root = SiteNavigationProjection.cottageSite(site);
+      final root = SiteNavigationProjection.cottageSite(site);
 
-    expect(root.find('lot:lot-1'), isNotNull);
-    expect(root.find('building:house-12'), isNotNull);
-    expect(root.find('room:H7:living'), isNotNull);
-    expect(root.find('network:network-electrical'), isNotNull);
-    expect(root.pathTo('room:H7:living').map((node) => node.kind), [
-      NavigatorNodeKind.site,
-      NavigatorNodeKind.lot,
-      NavigatorNodeKind.building,
-      NavigatorNodeKind.level,
-      NavigatorNodeKind.room,
-    ]);
-  });
+      expect(root.find('lot:lot-1'), isNotNull);
+      expect(root.find('building:house-12'), isNotNull);
+      expect(root.find('room:H7:living'), isNotNull);
+      expect(root.find('network:network-electrical'), isNotNull);
+      expect(root.pathTo('room:H7:living').map((node) => node.kind), [
+        NavigatorNodeKind.site,
+        NavigatorNodeKind.lot,
+        NavigatorNodeKind.building,
+        NavigatorNodeKind.level,
+        NavigatorNodeKind.room,
+      ]);
+    },
+  );
 }
 
 ComposedBuildingLevel _residentialTemplate() {

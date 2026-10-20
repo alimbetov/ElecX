@@ -16,17 +16,29 @@ void main() {
   });
 
   test('beam notch projects as a stepped upper contour', () {
-    final profile = WallProfile.rectangle(widthMm: 4000, heightMm: 3000)
-        .withTopNotch(startMm: 1200, widthMm: 800, depthMm: 450);
+    final profile = WallProfile.rectangle(
+      widthMm: 4000,
+      heightMm: 3000,
+    ).withTopNotch(startMm: 1200, widthMm: 800, depthMm: 450);
 
     final contour = WallProfilePlanProjection.topContour(profile);
 
-    expect(
-        contour.map((point) => point.xMm), [0, 1200, 1200, 2000, 2000, 4000]);
-    expect(
-      contour.map((point) => point.depthFromTopMm),
-      [0, 0, 450, 450, 0, 0],
-    );
+    expect(contour.map((point) => point.xMm), [
+      0,
+      1200,
+      1200,
+      2000,
+      2000,
+      4000,
+    ]);
+    expect(contour.map((point) => point.depthFromTopMm), [
+      0,
+      0,
+      450,
+      450,
+      0,
+      0,
+    ]);
     expect(WallProfilePlanProjection.hasVerticalVariation(profile), isTrue);
   });
 

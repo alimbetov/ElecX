@@ -48,8 +48,9 @@ void main() {
       expect(detector.ports, hasLength(2));
       expect(
         detector.ports.every(
-          (port) => port.allowedConnections
-              .contains(EngineeringConnectionType.fireLoop),
+          (port) => port.allowedConnections.contains(
+            EngineeringConnectionType.fireLoop,
+          ),
         ),
         isTrue,
       );
@@ -84,15 +85,18 @@ void main() {
     });
 
     test('catalog can be filtered by system and surface', () {
-      final fire =
-          ComponentCatalogV2.forSystem(EngineeringSystemClass.fireAlarm);
+      final fire = ComponentCatalogV2.forSystem(
+        EngineeringSystemClass.fireAlarm,
+      );
       expect(fire.map((item) => item.id), contains('fire.detector.smoke'));
 
       final ceiling = ComponentCatalogV2.forSurface(SurfacePlaneType.ceiling);
       expect(ceiling.map((item) => item.id), contains('data.wifi-ap.poe'));
       expect(ceiling.map((item) => item.id), contains('cctv.camera.poe'));
-      expect(ceiling.map((item) => item.id),
-          isNot(contains('power.socket.general')));
+      expect(
+        ceiling.map((item) => item.id),
+        isNot(contains('power.socket.general')),
+      );
     });
   });
 }

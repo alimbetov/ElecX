@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../app/alien_cockpit_tokens.dart';
+import '../../app/engineering_colors.dart';
 import '../../domain/circuit_cable_registry.dart';
 import '../../domain/component_taxonomy.dart';
 import '../../domain/electrical_placement.dart';
@@ -13,10 +13,7 @@ import 'editor_p2_session.dart';
 import 'route_selection_session.dart';
 
 class EngineeringSelectionInspector extends StatelessWidget {
-  const EngineeringSelectionInspector({
-    required this.controller,
-    super.key,
-  });
+  const EngineeringSelectionInspector({required this.controller, super.key});
 
   final EditorController controller;
 
@@ -39,8 +36,9 @@ class EngineeringSelectionInspector extends StatelessWidget {
           );
         }
         if (hostedRoute != null) {
-          final bundle = controller.circuitCableRegistry
-              .bundleByRouteId(hostedRoute.routeId);
+          final bundle = controller.circuitCableRegistry.bundleByRouteId(
+            hostedRoute.routeId,
+          );
           return _HostedRouteInspector(
             routeId: hostedRoute.routeId,
             medium: hostedRoute.medium,
@@ -100,8 +98,10 @@ class _ComponentInspector extends StatelessWidget {
             'POWER',
             component.ratedPowerW == null ? '—' : '${component.ratedPowerW} W',
           ),
-          _row('PORTS',
-              component.ports.isEmpty ? '—' : '${component.ports.length}'),
+          _row(
+            'PORTS',
+            component.ports.isEmpty ? '—' : '${component.ports.length}',
+          ),
         ]),
       ],
     );
@@ -117,13 +117,12 @@ class _RouteInspector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final assigned = bundle != null;
+    final engineering = EngineeringColors.of(context);
     return _InspectorScaffold(
       title: bundle?.cable.designation ?? route.id,
       subtitle: route.medium.displayName,
       status: assigned ? 'REGISTERED' : 'UNASSIGNED',
-      statusColor: assigned
-          ? AlienCockpitTokens.signalAqua
-          : AlienCockpitTokens.signalWarning,
+      statusColor: assigned ? engineering.registered : engineering.warning,
       children: [
         if (bundle case final registry?) _registrySections(registry),
         _section('CONNECTION', [
@@ -132,8 +131,10 @@ class _RouteInspector extends StatelessWidget {
         ]),
         _section('CABLE', [
           _row('MEDIUM', route.medium.displayName),
-          _row('SPEC',
-              route.cableType ?? bundle?.cable.cableSpecId ?? 'NOT ASSIGNED'),
+          _row(
+            'SPEC',
+            route.cableType ?? bundle?.cable.cableSpecId ?? 'NOT ASSIGNED',
+          ),
           _row('RESERVE', '${route.reservePercent}%'),
         ]),
         _section('ROUTE', [
@@ -172,13 +173,12 @@ class _HostedRouteInspector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final assigned = bundle != null;
+    final engineering = EngineeringColors.of(context);
     return _InspectorScaffold(
       title: bundle?.cable.designation ?? routeId,
       subtitle: medium.displayName,
       status: assigned ? 'REGISTERED' : 'HOSTED ROUTE',
-      statusColor: assigned
-          ? AlienCockpitTokens.signalAqua
-          : AlienCockpitTokens.signalCyan,
+      statusColor: assigned ? engineering.registered : engineering.info,
       children: [
         if (bundle case final registry?) _registrySections(registry),
         _section('ROUTE', [
@@ -208,10 +208,9 @@ Widget _registrySections(CircuitCableBundle bundle) {
         _row('CIRCUIT ID', circuit.id),
         _row('BOARD', circuit.boardId ?? 'UNASSIGNED'),
         _row(
-            'PROTECTION',
-            protective?.designation ??
-                circuit.protectiveDeviceId ??
-                'UNASSIGNED'),
+          'PROTECTION',
+          protective?.designation ?? circuit.protectiveDeviceId ?? 'UNASSIGNED',
+        ),
         if (protective?.ratedCurrentA != null)
           _row('RATING', '${protective!.ratedCurrentA} A'),
         if (protective?.poleCount != null)
@@ -254,9 +253,10 @@ class _EmptyInspector extends StatelessWidget {
               const SizedBox(height: 10),
               Text(
                 'SELECT ENGINEERING OBJECT',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      letterSpacing: 1.1,
-                    ),
+                style: Theme.of(context)
+                    .textTheme
+                    .labelMedium
+                    ?.copyWith(letterSpacing: 1.1),
               ),
               const SizedBox(height: 5),
               Text(
@@ -288,7 +288,8 @@ class _InspectorScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final signal = statusColor ?? AlienCockpitTokens.signalCyan;
+    final engineering = EngineeringColors.of(context);
+    final signal = statusColor ?? engineering.info;
     return ListView(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 20),
       children: [
@@ -308,14 +309,17 @@ class _InspectorScaffold extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title,
-                          style: Theme.of(context).textTheme.titleSmall),
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            ),
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelSmall
+                            ?.copyWith(color: scheme.onSurfaceVariant),
                       ),
                     ],
                   ),
@@ -346,9 +350,8 @@ Widget _section(String title, List<Widget> rows) => Padding(
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surfaceContainerLow,
             borderRadius: BorderRadius.circular(7),
-            border: Border.all(
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
+            border:
+                Border.all(color: Theme.of(context).colorScheme.outlineVariant),
           ),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
@@ -357,10 +360,10 @@ Widget _section(String title, List<Widget> rows) => Padding(
               children: [
                 Text(
                   title,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1,
-                      ),
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelSmall
+                      ?.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1),
                 ),
                 const SizedBox(height: 7),
                 ...rows,
@@ -390,9 +393,10 @@ Widget _row(String label, String value) => Builder(
                 value,
                 textAlign: TextAlign.right,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                style: Theme.of(context)
+                    .textTheme
+                    .labelSmall
+                    ?.copyWith(fontWeight: FontWeight.w600),
               ),
             ),
           ],

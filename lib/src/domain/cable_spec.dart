@@ -11,7 +11,7 @@ enum CableSegregationClass {
   safety,
   optical,
   coaxial,
-  other
+  other,
 }
 
 final class CableSpec {

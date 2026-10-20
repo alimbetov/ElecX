@@ -5,6 +5,7 @@ import '../../domain/project_model.dart';
 import '../../domain/surface_navigation.dart';
 import '../../domain/surface_routing.dart';
 import '../../domain/surfaces.dart';
+import '../../engine/normative_route_engine.dart';
 import '../../engine/snap_engine.dart';
 
 enum EditorTool { select, roomRectangle, guide, cableRoute }
@@ -56,6 +57,74 @@ final class EditorController extends ChangeNotifier {
     ];
   }
 
+  EditorController.blank({
+    String levelId = 'level-1',
+    String levelName = 'Этаж 1',
+  }) : level = BuildingLevel(
+          id: levelId,
+          name: levelName,
+          elevationMm: 0,
+          spaces: const [],
+        ) {
+    openings = <ArchitecturalOpening>[];
+    roomSequence = 1;
+    openingSequence = 1;
+    selectedSpaceId = null;
+    selectedOpeningId = null;
+    activeSurface = null;
+    viewMode = EditorViewMode.plan;
+    tool = EditorTool.select;
+  }
+
+  EditorController.restored({
+    required this.level,
+    required List<ArchitecturalOpening> openings,
+  }) {
+    this.openings = List<ArchitecturalOpening>.of(openings);
+  }
+
+  void restoreResumeState({
+    required String? selectedSpaceId,
+    required String? selectedOpeningId,
+    required RoomSurfaceRef? activeSurface,
+    required EditorViewMode viewMode,
+    required bool snapEnabled,
+    required bool dimensionsVisible,
+    required int floorGridMm,
+    required double zoom,
+    required int roomSequence,
+    required int openingSequence,
+  }) {
+    if (selectedSpaceId != null &&
+        !level.spaces.any((space) => space.id == selectedSpaceId)) {
+      throw ArgumentError('Restored selected space does not exist.');
+    }
+    if (selectedOpeningId != null &&
+        !openings.any((opening) => opening.id == selectedOpeningId)) {
+      throw ArgumentError('Restored selected opening does not exist.');
+    }
+    if (activeSurface != null &&
+        !level.spaces.any((space) => space.id == activeSurface.spaceId)) {
+      throw ArgumentError('Restored active surface references unknown space.');
+    }
+    if (floorGridMm <= 0 || roomSequence <= 0 || openingSequence <= 0) {
+      throw ArgumentError('Restored editor counters/grid are invalid.');
+    }
+    this.selectedSpaceId = selectedSpaceId;
+    this.selectedOpeningId = selectedOpeningId;
+    this.activeSurface = activeSurface;
+    this.viewMode = viewMode;
+    tool = EditorTool.select;
+    draftStart = null;
+    routeSegments.clear();
+    this.snapEnabled = snapEnabled;
+    this.dimensionsVisible = dimensionsVisible;
+    this.floorGridMm = floorGridMm;
+    this.zoom = zoom.clamp(0.35, 6.0).toDouble();
+    this.roomSequence = roomSequence;
+    this.openingSequence = openingSequence;
+  }
+
   static EngineeringSpace _room(
     String id,
     String name,
@@ -88,6 +157,14 @@ final class EditorController extends ChangeNotifier {
   int roomSequence = 102;
   int openingSequence = 1;
   double zoom = 1.0;
+  final ValueNotifier<int> _editCancellationRevision = ValueNotifier<int>(0);
+
+  ValueListenable<int> get editCancellationListenable =>
+      _editCancellationRevision;
+
+  void requestEditCancellation() {
+    _editCancellationRevision.value++;
+  }
 
   EngineeringSpace? get selectedSpace {
     for (final space in level.spaces) {
@@ -131,6 +208,56 @@ final class EditorController extends ChangeNotifier {
         .toList(growable: false);
   }
 
+  RouteNormativeContext? routeNormativeContextFor(RoomSurfaceRef surface) {
+    EngineeringSpace? space;
+    for (final candidate in level.spaces) {
+      if (candidate.id == surface.spaceId) {
+        space = candidate;
+        break;
+      }
+    }
+    if (space == null) return null;
+
+    if (surface.type == SurfacePlaneType.wall) {
+      final wallIndex = surface.wallIndex;
+      if (wallIndex == null) return null;
+      final wall = RoomSurfaceResolver.wall(space, wallIndex);
+      return RouteNormativeContext(
+        surface: surface,
+        widthMm: wall.lengthMm.round(),
+        heightMm: wall.heightMm,
+        edgeClearanceMm: 0,
+        boundary: [
+          for (final point in wall.profile.vertices)
+            SurfacePointMm(point.xMm, point.yMm),
+        ],
+        obstacles: [
+          for (final opening in openings)
+            if (opening.hostWall == surface)
+              RouteObstacleMm(
+                id: opening.id,
+                leftMm: opening.offsetFromStartMm,
+                topMm: opening.sillHeightMm,
+                rightMm: opening.endOffsetMm,
+                bottomMm: opening.topMm,
+              ),
+        ],
+      );
+    }
+
+    final bounds = space.boundary.bounds;
+    return RouteNormativeContext(
+      surface: surface,
+      widthMm: bounds.width,
+      heightMm: bounds.height,
+      edgeClearanceMm: 0,
+      boundary: [
+        for (final point in space.boundary.vertices)
+          SurfacePointMm(point.x - bounds.left, point.y - bounds.bottom),
+      ],
+    );
+  }
+
   SurfaceRouteSegmentDraft? get activeRouteSegment {
     final surface = activeSurface;
     if (surface == null || routeSegments.isEmpty) return null;
@@ -144,18 +271,18 @@ final class EditorController extends ChangeNotifier {
     return segment.points.last;
   }
 
-  double get routeLengthMm => routeSegments.fold(
-        0.0,
-        (sum, segment) => sum + segment.lengthMm,
-      );
+  double get routeLengthMm =>
+      routeSegments.fold(0.0, (sum, segment) => sum + segment.lengthMm);
 
   void setTool(EditorTool value) {
+    requestEditCancellation();
     tool = value;
     draftStart = null;
     notifyListeners();
   }
 
   void selectSpace(String? id) {
+    requestEditCancellation();
     selectedSpaceId = id;
     selectedOpeningId = null;
     if (id == null || activeSurface?.spaceId != id) {
@@ -168,6 +295,7 @@ final class EditorController extends ChangeNotifier {
   void enterRoomWorld([String? spaceId]) {
     final id = spaceId ?? selectedSpaceId;
     if (id == null || !level.spaces.any((space) => space.id == id)) return;
+    requestEditCancellation();
     selectedSpaceId = id;
     selectedOpeningId = null;
     activeSurface = null;
@@ -178,6 +306,7 @@ final class EditorController extends ChangeNotifier {
 
   void showRoomWorld() {
     if (selectedSpace == null) return;
+    requestEditCancellation();
     selectedOpeningId = null;
     activeSurface = null;
     viewMode = EditorViewMode.roomWorld;
@@ -185,6 +314,7 @@ final class EditorController extends ChangeNotifier {
   }
 
   void selectOpening(String? id) {
+    requestEditCancellation();
     selectedOpeningId = id;
     final opening = selectedOpening;
     if (opening != null) {
@@ -202,6 +332,7 @@ final class EditorController extends ChangeNotifier {
     int? widthMm,
     int? heightMm,
     int? sillHeightMm,
+    required bool Function(ArchitecturalOpening candidate) canCommit,
   }) {
     final current = selectedOpening;
     final wall = activeWall;
@@ -222,7 +353,8 @@ final class EditorController extends ChangeNotifier {
       return false;
     }
 
-    if (!RoomSurfaceResolver.openingFitsWall(opening: candidate, wall: wall)) {
+    if (!RoomSurfaceResolver.openingFitsWall(opening: candidate, wall: wall) ||
+        !canCommit(candidate)) {
       return false;
     }
 
@@ -234,9 +366,12 @@ final class EditorController extends ChangeNotifier {
     return true;
   }
 
-  void addOpening(ArchitecturalOpeningType type) {
+  bool addOpening(
+    ArchitecturalOpeningType type, {
+    required bool Function(ArchitecturalOpening candidate) canCommit,
+  }) {
     final wall = activeWall;
-    if (wall == null) return;
+    if (wall == null) return false;
 
     final defaultWidth = type == ArchitecturalOpeningType.window ? 1200 : 900;
     final defaultHeight = type == ArchitecturalOpeningType.window ? 1400 : 2100;
@@ -246,10 +381,10 @@ final class EditorController extends ChangeNotifier {
     final offset =
         ((wallLength - width) / 2).round().clamp(0, wallLength - width).toInt();
     final maxHeight = wall.heightMm - sill;
-    if (maxHeight <= 0) return;
+    if (maxHeight <= 0) return false;
 
     final opening = ArchitecturalOpening(
-      id: 'opening-${openingSequence++}',
+      id: 'opening-$openingSequence',
       hostWall: wall.ref,
       type: type,
       offsetFromStartMm: offset,
@@ -257,10 +392,13 @@ final class EditorController extends ChangeNotifier {
       heightMm: defaultHeight.clamp(300, maxHeight).toInt(),
       sillHeightMm: sill,
     );
+    if (!canCommit(opening)) return false;
+    openingSequence++;
     openings = [...openings, opening];
     selectedOpeningId = opening.id;
     tool = EditorTool.select;
     notifyListeners();
+    return true;
   }
 
   void deleteSelectedOpening() {
@@ -344,11 +482,7 @@ final class EditorController extends ChangeNotifier {
     );
   }
 
-  MmPoint snap(
-    MmPoint point, {
-    int? stepMm,
-    double acquisitionRadiusMm = 80,
-  }) {
+  MmPoint snap(MmPoint point, {int? stepMm, double acquisitionRadiusMm = 80}) {
     if (!snapEnabled) return point;
     return resolvePlanSnap(
           point,
@@ -366,6 +500,7 @@ final class EditorController extends ChangeNotifier {
   }
 
   void showPlan() {
+    requestEditCancellation();
     viewMode = EditorViewMode.plan;
     activeSurface = null;
     selectedOpeningId = null;
@@ -410,10 +545,7 @@ final class EditorController extends ChangeNotifier {
     _switchSurface(target);
   }
 
-  void navigateHorizontalBoundary(
-    int boundaryEdgeIndex,
-    SurfacePointMm point,
-  ) {
+  void navigateHorizontalBoundary(int boundaryEdgeIndex, SurfacePointMm point) {
     final space = selectedSpace;
     final surface = activeSurface;
     if (space == null ||
@@ -435,6 +567,7 @@ final class EditorController extends ChangeNotifier {
   void _switchSurface(RoomSurfaceRef target) {
     final space = selectedSpace;
     if (space == null) return;
+    requestEditCancellation();
 
     selectedOpeningId = null;
     if (tool == EditorTool.cableRoute &&
@@ -479,10 +612,7 @@ final class EditorController extends ChangeNotifier {
   }
 
   void canvasTap(MmPoint rawPoint, {double? snapRadiusMm}) {
-    final point = snap(
-      rawPoint,
-      acquisitionRadiusMm: snapRadiusMm ?? 80,
-    );
+    final point = snap(rawPoint, acquisitionRadiusMm: snapRadiusMm ?? 80);
     switch (tool) {
       case EditorTool.select:
         selectAt(point);
@@ -520,8 +650,9 @@ final class EditorController extends ChangeNotifier {
         SurfaceRouteSegmentDraft(surface: surface, points: [point]),
       );
     } else {
-      routeSegments[routeSegments.length - 1] =
-          routeSegments.last.append(point);
+      routeSegments[routeSegments.length - 1] = routeSegments.last.append(
+        point,
+      );
     }
   }
 
@@ -556,6 +687,41 @@ final class EditorController extends ChangeNotifier {
     selectedSpaceId = id;
   }
 
+  void restoreDocumentArchitecture({
+    required BuildingLevel level,
+    required List<ArchitecturalOpening> openings,
+    required int roomSequence,
+    required int openingSequence,
+    String? selectedSpaceId,
+    String? selectedOpeningId,
+  }) {
+    requestEditCancellation();
+    this.level = level;
+    this.openings = List<ArchitecturalOpening>.of(openings);
+    this.roomSequence = roomSequence;
+    this.openingSequence = openingSequence;
+    this.selectedSpaceId = selectedSpaceId != null &&
+            level.spaces.any((space) => space.id == selectedSpaceId)
+        ? selectedSpaceId
+        : null;
+    this.selectedOpeningId = selectedOpeningId != null &&
+            this.openings.any((opening) => opening.id == selectedOpeningId)
+        ? selectedOpeningId
+        : null;
+    activeSurface = null;
+    viewMode = EditorViewMode.plan;
+    tool = EditorTool.select;
+    draftStart = null;
+    routeSegments.clear();
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _editCancellationRevision.dispose();
+    super.dispose();
+  }
+
   void updateSelectedGrid(int minorStepMm) {
     final selected = selectedSpace;
     if (selected == null) return;
@@ -563,9 +729,7 @@ final class EditorController extends ChangeNotifier {
       spaces: [
         for (final space in level.spaces)
           if (space.id == selected.id)
-            space.copyWith(
-              grid: space.grid.copyWith(minorStepMm: minorStepMm),
-            )
+            space.copyWith(grid: space.grid.copyWith(minorStepMm: minorStepMm))
           else
             space,
       ],

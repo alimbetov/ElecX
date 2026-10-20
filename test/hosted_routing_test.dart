@@ -13,8 +13,10 @@ void main() {
       id: 'room-1',
       name: 'Electrical room',
       type: SpaceType.technicalRoom,
-      boundary:
-          MmPolygon.rectangle(const MmPoint(0, 0), const MmPoint(4000, 3000)),
+      boundary: MmPolygon.rectangle(
+        const MmPoint(0, 0),
+        const MmPoint(4000, 3000),
+      ),
       referenceFrame: const RoomReferenceFrame(origin: MmPoint(2000, 1500)),
     );
     final level = BuildingLevel(
@@ -58,9 +60,8 @@ void main() {
 
     final transitions = SiteRouteTransitionResolver.fromConnections(
       project: project,
-      resolveIndoorHost: (_) => RouteHostRef.indoor(
-        RoomSurfaceRef.wall('room-1', 1),
-      ),
+      resolveIndoorHost: (_) =>
+          RouteHostRef.indoor(RoomSurfaceRef.wall('room-1', 1)),
     );
 
     expect(transitions, hasLength(1));
@@ -92,8 +93,10 @@ void main() {
       medium: RouteMediumProfile.acPower,
       phase: 0.25,
     );
-    expect(samples,
-        isEmpty); // AC uses oscillating glow rather than fake particles.
+    expect(
+      samples,
+      isEmpty,
+    ); // AC uses oscillating glow rather than fake particles.
 
     final dcSamples = RouteInteractionEngine.flowSamples(
       route: route,

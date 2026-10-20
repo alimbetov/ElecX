@@ -21,10 +21,7 @@ final class WallProfile {
     }
   }
 
-  factory WallProfile.rectangle({
-    required int widthMm,
-    required int heightMm,
-  }) {
+  factory WallProfile.rectangle({required int widthMm, required int heightMm}) {
     if (widthMm <= 0 || heightMm <= 0) {
       throw ArgumentError('Wall profile dimensions must be positive.');
     }
@@ -92,7 +89,8 @@ final class WallProfile {
     }
     if (topPoints.first.xMm != 0 || topPoints.last.xMm != maxX) {
       throw ArgumentError(
-          'Top polyline must start at X=0 and end at wall width.');
+        'Top polyline must start at X=0 and end at wall width.',
+      );
     }
 
     return WallProfile(

@@ -76,9 +76,7 @@ final class DriftComponentCatalogRepository
   Future<void> seedDefaultsIfEmpty() async {
     await ensureSchema();
     final countRow = await _db
-        .customSelect(
-          'SELECT COUNT(*) AS c FROM component_type',
-        )
+        .customSelect('SELECT COUNT(*) AS c FROM component_type')
         .getSingle();
     if (countRow.read<int>('c') == 0) {
       await replaceAll(ComponentCatalogV2.entries);
@@ -89,9 +87,7 @@ final class DriftComponentCatalogRepository
   Future<List<ComponentCatalogEntryV2>> all() async {
     await ensureSchema();
     final rows = await _db
-        .customSelect(
-          'SELECT * FROM component_type ORDER BY discipline, name',
-        )
+        .customSelect('SELECT * FROM component_type ORDER BY discipline, name')
         .get();
     final result = <ComponentCatalogEntryV2>[];
     for (final row in rows) {
@@ -155,8 +151,9 @@ final class DriftComponentCatalogRepository
     await _db.transaction(() async {
       await _db.customStatement('DELETE FROM component_port_connection_type');
       await _db.customStatement('DELETE FROM component_type_port');
-      await _db
-          .customStatement('DELETE FROM component_type_allowed_room_usage');
+      await _db.customStatement(
+        'DELETE FROM component_type_allowed_room_usage',
+      );
       await _db.customStatement('DELETE FROM component_type_allowed_surface');
       await _db.customStatement('DELETE FROM component_type');
 
@@ -305,14 +302,16 @@ final class DriftComponentCatalogRepository
             )
             .toSet(),
         preferredHeightMm: row.readNullable<int>('preferred_height_mm'),
-        preferredCeilingOffsetMm:
-            row.readNullable<int>('preferred_ceiling_offset_mm'),
+        preferredCeilingOffsetMm: row.readNullable<int>(
+          'preferred_ceiling_offset_mm',
+        ),
       ),
       environment: ComponentEnvironmentConstraints(
         minAmbientC: row.read<double>('min_ambient_c'),
         maxAmbientC: row.read<double>('max_ambient_c'),
-        maxRelativeHumidityPercent:
-            row.read<double>('max_relative_humidity_percent'),
+        maxRelativeHumidityPercent: row.read<double>(
+          'max_relative_humidity_percent',
+        ),
         allowWetZone: row.read<int>('allow_wet_zone') == 1,
         allowDusty: row.read<int>('allow_dusty') == 1,
         allowCorrosive: row.read<int>('allow_corrosive') == 1,

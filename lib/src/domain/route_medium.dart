@@ -1,12 +1,4 @@
-enum RouteMediumFamily {
-  power,
-  data,
-  control,
-  safety,
-  optical,
-  coaxial,
-  other,
-}
+enum RouteMediumFamily { power, data, control, safety, optical, coaxial, other }
 
 enum RouteFlowVisualKind {
   acOscillation,

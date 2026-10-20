@@ -81,15 +81,7 @@ ComposedBuildingLevel _residentialTemplate() {
 
 ComposedBuildingLevel _basementTemplate() {
   final spaces = [
-    _space(
-      'parking',
-      'Паркинг',
-      0,
-      0,
-      12000,
-      8000,
-      type: SpaceType.hall,
-    ),
+    _space('parking', 'Паркинг', 0, 0, 12000, 8000, type: SpaceType.hall),
     _space(
       'electrical-room',
       'Электрощитовая',

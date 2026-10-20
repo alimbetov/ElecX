@@ -11,19 +11,15 @@ abstract final class WallProfileCommand {
     required int widthMm,
     required int depthMm,
   }) {
-    return _replaceSpace(
-      level,
-      spaceId,
-      (space) {
-        final wall = RoomSurfaceResolver.wall(space, wallIndex);
-        final profile = wall.profile.withTopNotch(
-          startMm: startMm,
-          widthMm: widthMm,
-          depthMm: depthMm,
-        );
-        return space.withWallProfile(wallIndex, profile);
-      },
-    );
+    return _replaceSpace(level, spaceId, (space) {
+      final wall = RoomSurfaceResolver.wall(space, wallIndex);
+      final profile = wall.profile.withTopNotch(
+        startMm: startMm,
+        widthMm: widthMm,
+        depthMm: depthMm,
+      );
+      return space.withWallProfile(wallIndex, profile);
+    });
   }
 
   static BuildingLevel setTopPolyline({
@@ -32,15 +28,11 @@ abstract final class WallProfileCommand {
     required int wallIndex,
     required List<WallProfilePoint> topPoints,
   }) {
-    return _replaceSpace(
-      level,
-      spaceId,
-      (space) {
-        final wall = RoomSurfaceResolver.wall(space, wallIndex);
-        final profile = wall.profile.withTopPolyline(topPoints);
-        return space.withWallProfile(wallIndex, profile);
-      },
-    );
+    return _replaceSpace(level, spaceId, (space) {
+      final wall = RoomSurfaceResolver.wall(space, wallIndex);
+      final profile = wall.profile.withTopPolyline(topPoints);
+      return space.withWallProfile(wallIndex, profile);
+    });
   }
 
   static BuildingLevel resetWallProfile({

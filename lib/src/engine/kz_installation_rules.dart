@@ -46,7 +46,8 @@ abstract final class KzInstallationRules {
 
   /// General-lighting switches: 0.8…1.7 m above finished floor.
   static InstallationRuleResult validateGeneralLightingSwitchHeight(
-      int heightMm) {
+    int heightMm,
+  ) {
     final pass = heightMm >= 800 && heightMm <= 1700;
     return InstallationRuleResult(
       ruleId: 'KZ-SP404106-15.33-SWITCH-HEIGHT',

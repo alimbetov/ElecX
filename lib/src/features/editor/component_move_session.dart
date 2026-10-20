@@ -64,16 +64,10 @@ final class ComponentMoveSession extends ChangeNotifier {
     return true;
   }
 
-  bool preview(
-    SurfacePointMm position, {
-    required bool isValid,
-  }) {
+  bool preview(SurfacePointMm position, {required bool isValid}) {
     final current = _state;
     if (current == null) return false;
-    _state = current.copyWith(
-      previewPosition: position,
-      isValid: isValid,
-    );
+    _state = current.copyWith(previewPosition: position, isValid: isValid);
     if (isValid) {
       controller.p2.previewMoveSelectedComponent(position);
     }

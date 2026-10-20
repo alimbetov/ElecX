@@ -44,10 +44,14 @@ abstract final class AutoRouteGraphBuilder {
     _connectHorizontalTransitionNodes(builder, SurfacePlaneType.floor);
     _connectHorizontalTransitionNodes(builder, SurfacePlaneType.ceiling);
 
-    if ({source.surface.type, target.surface.type}
-            .contains(SurfacePlaneType.floor) &&
-        {source.surface.type, target.surface.type}
-            .contains(SurfacePlaneType.ceiling)) {
+    if ({
+          source.surface.type,
+          target.surface.type,
+        }.contains(SurfacePlaneType.floor) &&
+        {
+          source.surface.type,
+          target.surface.type,
+        }.contains(SurfacePlaneType.ceiling)) {
       _addFloorCeilingBridges(
         builder: builder,
         space: space,
@@ -69,15 +73,13 @@ abstract final class AutoRouteGraphBuilder {
   }) {
     switch (component.surface.type) {
       case SurfacePlaneType.wall:
-        final wall =
-            RoomSurfaceResolver.wall(space, component.surface.wallIndex!);
+        final wall = RoomSurfaceResolver.wall(
+          space,
+          component.surface.wallIndex!,
+        );
         final x = component.position.xMm.clamp(0, wall.lengthMm.round());
         final bottomId = '$componentId:wall-bottom';
-        builder.addNode(
-          bottomId,
-          component.surface,
-          SurfacePointMm(x, 0),
-        );
+        builder.addNode(bottomId, component.surface, SurfacePointMm(x, 0));
         builder.connectOrthogonal(componentId, bottomId);
         final floorPoint = _wallXToHorizontal(space, wall, x);
         final floorId = '$componentId:floor-transition';
@@ -243,7 +245,9 @@ final class _GraphBuilder {
 
   void addNode(String id, RoomSurfaceRef surface, SurfacePointMm point) {
     nodes.putIfAbsent(
-        id, () => RouteNode(id: id, surface: surface, point: point));
+      id,
+      () => RouteNode(id: id, surface: surface, point: point),
+    );
   }
 
   void connectTransition(String a, String b) {
@@ -284,18 +288,14 @@ final class _GraphBuilder {
     connectDirect(yId, b);
   }
 
-  void _connect(
-    String a,
-    String b,
-    double cost, {
-    bool transition = false,
-  }) {
+  void _connect(String a, String b, double cost, {bool transition = false}) {
     if (a == b) return;
     final normalized = math.max(cost, 0.001).toDouble();
     edges
       ..add(RouteEdge(from: a, to: b, cost: normalized, transition: transition))
       ..add(
-          RouteEdge(from: b, to: a, cost: normalized, transition: transition));
+        RouteEdge(from: b, to: a, cost: normalized, transition: transition),
+      );
   }
 
   RoutingGraph build() => RoutingGraph(

@@ -1,17 +1,23 @@
 import 'package:flutter/foundation.dart';
 
+import '../../domain/cable_identity.dart';
+import '../../domain/circuit_cable_registry.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/electrical_routing.dart';
 import '../../domain/geometry.dart';
+import '../../domain/route_medium.dart';
 import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/auto_route_graph_builder.dart';
 import '../../engine/command_history.dart';
 import '../../engine/direct_manipulation.dart';
 import '../../engine/editor_layers.dart';
+import '../../engine/normative_route_engine.dart';
 import '../../engine/route_engine.dart';
 import '../../engine/selection_engine.dart';
 import '../../engine/snap_engine.dart';
+import 'cable_route_constraints.dart';
+import 'circuit_sizing_evidence.dart';
 import 'editor_controller.dart';
 
 final class EditorP2State {
@@ -19,36 +25,68 @@ final class EditorP2State {
     this.components = const [],
     this.routes = const [],
     this.selection = const SelectionState(),
+    this.routeConstraints = const {},
+    this.circuitBundles = const [],
+    this.sizingEvidenceByRoute = const {},
   });
 
   final List<ElectricalComponentPlacement> components;
   final List<ElectricalCableRoute> routes;
   final SelectionState selection;
+  final Map<String, CableRouteConstraints> routeConstraints;
+  final List<CircuitCableBundle> circuitBundles;
+  final Map<String, CircuitSizingEvidence> sizingEvidenceByRoute;
 
   EditorP2State copyWith({
     List<ElectricalComponentPlacement>? components,
     List<ElectricalCableRoute>? routes,
     SelectionState? selection,
+    Map<String, CableRouteConstraints>? routeConstraints,
+    List<CircuitCableBundle>? circuitBundles,
+    Map<String, CircuitSizingEvidence>? sizingEvidenceByRoute,
   }) =>
       EditorP2State(
         components: components ?? this.components,
         routes: routes ?? this.routes,
         selection: selection ?? this.selection,
+        routeConstraints: routeConstraints ?? this.routeConstraints,
+        circuitBundles: circuitBundles ?? this.circuitBundles,
+        sizingEvidenceByRoute:
+            sizingEvidenceByRoute ?? this.sizingEvidenceByRoute,
       );
 }
 
 final class EditorP2Session extends ChangeNotifier {
-  EditorP2Session()
-      : history = CommandHistory<EditorP2State>(const EditorP2State());
+  EditorP2Session({
+    EditorP2State initialState = const EditorP2State(),
+    RouteNormativeContext? Function(RoomSurfaceRef surface)?
+        routeContextResolver,
+  })  : _routeContextResolver = routeContextResolver,
+        _componentSequence = _nextSequence(
+          prefix: 'component-',
+          ids: initialState.components.map((item) => item.id),
+        ),
+        _routeSequence = _nextSequence(
+          prefix: 'route-',
+          ids: initialState.routes.map((item) => item.id),
+        ),
+        history = CommandHistory<EditorP2State>(initialState) {
+    _validateUniqueIds(initialState);
+  }
 
   final CommandHistory<EditorP2State> history;
+  final RouteNormativeContext? Function(RoomSurfaceRef surface)?
+      _routeContextResolver;
   final EditorLayerRegistry layers = EditorLayerRegistry();
   SnapCandidate? activeSnap;
   ElectricalComponentType? placementType;
   RoutePreference routePreference = RoutePreference.shortest;
-  ElectricalComponentPlacement? _moveOrigin;
-  int _componentSequence = 1;
-  int _routeSequence = 1;
+  EditorP2State? _moveOriginState;
+  String? _moveComponentId;
+  Set<String> _moveComponentIds = const <String>{};
+  bool _movePreviewValid = false;
+  int _componentSequence;
+  int _routeSequence;
 
   EditorP2State get state => history.state;
   List<ElectricalComponentPlacement> get components => state.components;
@@ -56,7 +94,8 @@ final class EditorP2Session extends ChangeNotifier {
   SelectionState get selection => state.selection;
   bool get canUndo => history.canUndo;
   bool get canRedo => history.canRedo;
-  bool get isManipulating => _moveOrigin != null;
+  bool get isManipulating => _moveOriginState != null;
+  bool get movePreviewValid => _movePreviewValid;
 
   ElectricalComponentPlacement? get selectedComponent {
     final id = selection.primaryId;
@@ -70,6 +109,209 @@ final class EditorP2Session extends ChangeNotifier {
   List<ElectricalComponentPlacement> get selectedComponents => components
       .where((component) => selection.ids.contains(component.id))
       .toList(growable: false);
+
+  CableRouteConstraints routeConstraintsFor(String routeId) =>
+      state.routeConstraints[routeId] ?? CableRouteConstraints.empty;
+
+  CircuitCableBundle? circuitBundleForRoute(String routeId) {
+    for (final bundle in state.circuitBundles) {
+      if (bundle.cable.routeId == routeId) return bundle;
+    }
+    return null;
+  }
+
+  CircuitCableBundle? circuitBundleForLoad(String componentId) {
+    for (final bundle in state.circuitBundles) {
+      if (bundle.cable.endB.componentId == componentId) return bundle;
+    }
+    return null;
+  }
+
+  CircuitSizingEvidence? sizingEvidenceForLoad(String componentId) {
+    final bundle = circuitBundleForLoad(componentId);
+    if (bundle == null) return null;
+    return state.sizingEvidenceByRoute[bundle.cable.routeId];
+  }
+
+  bool setCircuitSizingEvidenceForLoad({
+    required String loadComponentId,
+    required CircuitSizingEvidence evidence,
+  }) {
+    final bundle = circuitBundleForLoad(loadComponentId);
+    if (bundle == null || bundle.cable.routeId != evidence.routeId) {
+      return false;
+    }
+    final route = _routeForId(evidence.routeId);
+    if (route == null || !evidence.matchesRoute(route)) return false;
+    if (bundle.cable.cableSpecId != evidence.cable.id) return false;
+    final afterEvidence = Map<String, CircuitSizingEvidence>.of(
+      state.sizingEvidenceByRoute,
+    )..[route.id] = evidence;
+    history.execute(
+      _ReplaceEditorStateCommand(
+        before: state,
+        after: state.copyWith(
+          sizingEvidenceByRoute: Map.unmodifiable(afterEvidence),
+        ),
+        label: 'Update cable sizing evidence',
+      ),
+    );
+    notifyListeners();
+    return true;
+  }
+
+  bool updateLoadElectricalData({
+    required String componentId,
+    required int ratedPowerW,
+    required int voltageV,
+  }) {
+    if (ratedPowerW <= 0 || voltageV <= 0) return false;
+    final component = _componentForId(state, componentId);
+    if (component == null ||
+        component.type == ElectricalComponentType.distributionBoard ||
+        layers.isLocked(EditorLayerId.electrical)) {
+      return false;
+    }
+    final replacement = component.copyWith(
+      ratedPowerW: ratedPowerW,
+      voltageV: voltageV,
+    );
+    history.execute(
+      _ReplaceComponentCommand(before: component, after: replacement),
+    );
+    notifyListeners();
+    return true;
+  }
+
+  bool assignCableSpecificationToLoad({
+    required String loadComponentId,
+    required String cableSpecId,
+  }) {
+    final normalized = cableSpecId.trim();
+    if (normalized.isEmpty || layers.isLocked(EditorLayerId.cableRoutes)) {
+      return false;
+    }
+    final bundle = circuitBundleForLoad(loadComponentId);
+    if (bundle == null) return false;
+    final route = _routeForId(bundle.cable.routeId);
+    if (route == null) return false;
+    final replacementRoute = ElectricalCableRoute(
+      id: route.id,
+      source: route.source,
+      target: route.target,
+      segments: route.segments,
+      cableType: normalized,
+      medium: route.medium,
+      reservePercent: route.reservePercent,
+    );
+    final replacementCable = CableIdentity(
+      id: bundle.cable.id,
+      routeId: bundle.cable.routeId,
+      circuitId: bundle.cable.circuitId,
+      designation: bundle.cable.designation,
+      endA: bundle.cable.endA,
+      endB: bundle.cable.endB,
+      cableSpecId: normalized,
+    );
+    final replacementBundle = CircuitCableBundle(
+      circuit: bundle.circuit,
+      cable: replacementCable,
+      protectiveDevice: bundle.protectiveDevice,
+    );
+    final registry = CircuitCableRegistry()
+      ..registerBundle(
+        route: replacementRoute,
+        circuit: replacementBundle.circuit,
+        cable: replacementBundle.cable,
+        protectiveDevice: replacementBundle.protectiveDevice,
+      );
+    if (registry.bundleByRouteId(route.id) == null) return false;
+    final nextEvidence = Map<String, CircuitSizingEvidence>.of(
+      state.sizingEvidenceByRoute,
+    )..remove(route.id);
+    final after = state.copyWith(
+      routes: [
+        for (final item in routes)
+          if (item.id == route.id) replacementRoute else item,
+      ],
+      circuitBundles: [
+        for (final item in state.circuitBundles)
+          if (item.cable.routeId == route.id) replacementBundle else item,
+      ],
+      sizingEvidenceByRoute: Map.unmodifiable(nextEvidence),
+    );
+    history.execute(
+      _ReplaceEditorStateCommand(
+        before: state,
+        after: after,
+        label: 'Assign circuit cable specification',
+      ),
+    );
+    notifyListeners();
+    return true;
+  }
+
+  bool assignProtectiveDeviceToLoad({
+    required String loadComponentId,
+    required String designation,
+    int? poleCount,
+    double? ratedCurrentA,
+  }) {
+    final normalizedDesignation = designation.trim();
+    if (normalizedDesignation.isEmpty ||
+        (poleCount != null && poleCount <= 0) ||
+        (ratedCurrentA != null && ratedCurrentA <= 0)) {
+      return false;
+    }
+    final bundle = circuitBundleForLoad(loadComponentId);
+    if (bundle == null) return false;
+    final route = _routeForId(bundle.cable.routeId);
+    final boardId = bundle.circuit.boardId;
+    if (route == null || boardId == null) return false;
+
+    final device = ProtectiveDeviceRef(
+      id: bundle.protectiveDevice?.id ?? 'protection-${bundle.circuit.id}',
+      boardId: boardId,
+      designation: normalizedDesignation,
+      poleCount: poleCount,
+      ratedCurrentA: ratedCurrentA,
+    );
+    final circuit = CircuitRef(
+      id: bundle.circuit.id,
+      name: bundle.circuit.name,
+      boardId: boardId,
+      protectiveDeviceId: device.id,
+    );
+    final replacement = CircuitCableBundle(
+      circuit: circuit,
+      cable: bundle.cable,
+      protectiveDevice: device,
+    );
+    final registry = CircuitCableRegistry()
+      ..registerBundle(
+        route: route,
+        circuit: circuit,
+        cable: bundle.cable,
+        protectiveDevice: device,
+      );
+    if (registry.bundleByRouteId(route.id) == null) return false;
+
+    final after = state.copyWith(
+      circuitBundles: [
+        for (final item in state.circuitBundles)
+          if (item.cable.routeId == route.id) replacement else item,
+      ],
+    );
+    history.execute(
+      _ReplaceEditorStateCommand(
+        before: state,
+        after: after,
+        label: 'Assign circuit protective device',
+      ),
+    );
+    notifyListeners();
+    return true;
+  }
 
   void setPlacementType(ElectricalComponentType? type) {
     placementType = type;
@@ -99,9 +341,7 @@ final class EditorP2Session extends ChangeNotifier {
 
   void select(String id, {SelectionMode mode = SelectionMode.replace}) {
     _replaceState(
-      state.copyWith(
-        selection: SelectionEngine.apply(selection, id, mode),
-      ),
+      state.copyWith(selection: SelectionEngine.apply(selection, id, mode)),
     );
   }
 
@@ -119,21 +359,25 @@ final class EditorP2Session extends ChangeNotifier {
       throw StateError('Electrical layer is locked.');
     }
     final sequence = _componentSequence++;
+    final componentId = _nextAvailableId(
+      prefix: 'component-',
+      initialSequence: sequence,
+      existingIds: components.map((item) => item.id).toSet(),
+    );
+    _componentSequence = componentId.$2;
     final component = ElectricalComponentPlacement(
-      id: 'component-$sequence',
+      id: componentId.$1,
       type: type,
       surface: surface,
       position: position,
-      label: '${ElectricalComponentDefaults.defaultLabel(type)} $sequence',
+      label:
+          '${ElectricalComponentDefaults.defaultLabel(type)} ${componentId.$2 - 1}',
       ports: ElectricalComponentDefaults.portsFor(type),
     );
     history.execute(_AddComponentCommand(component));
     _replaceState(
       history.state.copyWith(
-        selection: SelectionState(
-          ids: {component.id},
-          primaryId: component.id,
-        ),
+        selection: SelectionState(ids: {component.id}, primaryId: component.id),
       ),
       notify: false,
     );
@@ -144,56 +388,352 @@ final class EditorP2Session extends ChangeNotifier {
 
   bool beginMoveSelectedComponent() {
     final component = selectedComponent;
-    if (component == null || layers.isLocked(EditorLayerId.electrical)) {
+    final selected = selectedComponents;
+    if (component == null ||
+        selected.isEmpty ||
+        selected.any((item) => item.surface != component.surface) ||
+        layers.isLocked(EditorLayerId.electrical) ||
+        (layers.isLocked(EditorLayerId.cableRoutes) &&
+            selected.any((item) => _componentHasConnectedRoutes(item.id))) ||
+        _moveOriginState != null) {
       return false;
     }
-    _moveOrigin = component;
+    _moveOriginState = state;
+    _moveComponentId = component.id;
+    _moveComponentIds = Set.unmodifiable(selected.map((item) => item.id));
+    _movePreviewValid = true;
     return true;
   }
 
   bool previewMoveSelectedComponent(SurfacePointMm point) {
-    final origin = _moveOrigin;
-    final current = selectedComponent;
-    if (origin == null || current == null || current.id != origin.id) {
+    final originState = _moveOriginState;
+    final primaryId = _moveComponentId;
+    final selectedIds = _moveComponentIds;
+    if (originState == null || primaryId == null || selectedIds.isEmpty) {
       return false;
     }
-    _replaceState(
-      _replaceComponent(
-        state,
-        current.copyWith(position: point),
-      ),
+
+    final originPrimary = _componentForId(originState, primaryId);
+    if (originPrimary == null) return false;
+    final dxMm = point.xMm - originPrimary.position.xMm;
+    final dyMm = point.yMm - originPrimary.position.yMm;
+
+    var preview = originState;
+    final movedById = <String, ElectricalComponentPlacement>{};
+    for (final component in originState.components) {
+      if (!selectedIds.contains(component.id)) continue;
+      final moved = component.copyWith(
+        position: SurfacePointMm(
+          component.position.xMm + dxMm,
+          component.position.yMm + dyMm,
+        ),
+      );
+      movedById[component.id] = moved;
+      preview = _replaceComponent(preview, moved);
+    }
+    if (movedById.length != selectedIds.length) {
+      _movePreviewValid = false;
+      return false;
+    }
+
+    final nextRoutes = <ElectricalCableRoute>[];
+    final nextConstraints = Map<String, CableRouteConstraints>.of(
+      originState.routeConstraints,
     );
+
+    for (final route in originState.routes) {
+      final sourceSelected = selectedIds.contains(route.source.componentId);
+      final targetSelected = selectedIds.contains(route.target.componentId);
+      if (!sourceSelected && !targetSelected) {
+        nextRoutes.add(route);
+        continue;
+      }
+
+      final constraints =
+          originState.routeConstraints[route.id] ?? CableRouteConstraints.empty;
+      ElectricalCableRoute? transformed;
+      if (sourceSelected && targetSelected) {
+        // Internal group wiring belongs to the transform. Explicitly locked
+        // geometry/waypoints are absolute authoring constraints, so the whole
+        // transaction must fail rather than silently breaking them.
+        if (!constraints.isEmpty) {
+          _movePreviewValid = false;
+          return false;
+        }
+        transformed = _translateRoute(route, dxMm: dxMm, dyMm: dyMm);
+        if (!_routeGeometryIsValid(transformed)) {
+          _movePreviewValid = false;
+          return false;
+        }
+      } else {
+        final movedComponent = movedById[sourceSelected
+            ? route.source.componentId
+            : route.target.componentId];
+        if (movedComponent == null) {
+          _movePreviewValid = false;
+          return false;
+        }
+        transformed = _rerouteForMovedComponent(
+          route: route,
+          movedComponent: movedComponent,
+          isSource: sourceSelected,
+          constraints: constraints,
+        );
+        if (transformed == null) {
+          _movePreviewValid = false;
+          return false;
+        }
+        final reconciled = constraints.reconcile([
+          for (final segment in transformed.segments) segment.points,
+        ]);
+        if (reconciled.isEmpty) {
+          nextConstraints.remove(route.id);
+        } else {
+          nextConstraints[route.id] = reconciled;
+        }
+      }
+      nextRoutes.add(transformed);
+    }
+
+    preview = preview.copyWith(
+      routes: List.unmodifiable(nextRoutes),
+      routeConstraints: Map.unmodifiable(nextConstraints),
+    );
+    final valid = _movePreviewValidState(preview, selectedIds);
+    if (!valid) {
+      _movePreviewValid = false;
+      return false;
+    }
+    _replaceState(preview);
+    _movePreviewValid = true;
     return true;
   }
 
   bool commitMoveSelectedComponent() {
-    final origin = _moveOrigin;
-    final current = selectedComponent;
-    _moveOrigin = null;
-    if (origin == null || current == null || current.id != origin.id) {
+    final origin = _moveOriginState;
+    final componentIds = _moveComponentIds;
+    final after = state;
+    final previewValid = _movePreviewValid &&
+        componentIds.isNotEmpty &&
+        _movePreviewValidState(after, componentIds);
+    _clearMoveTransaction();
+    if (origin == null || componentIds.isEmpty || !previewValid) {
+      if (origin != null) _replaceState(origin);
       return false;
     }
-    if (origin.position.xMm == current.position.xMm &&
-        origin.position.yMm == current.position.yMm) {
+
+    final dirty = componentIds.any((componentId) {
+      final beforeComponent = _componentForId(origin, componentId);
+      final afterComponent = _componentForId(after, componentId);
+      return beforeComponent == null ||
+          afterComponent == null ||
+          beforeComponent.position != afterComponent.position;
+    });
+    if (!dirty) {
+      _replaceState(origin);
       return false;
     }
+
     history.execute(
-      _ReplaceComponentCommand(before: origin, after: current),
+      _ReplaceEditorStateCommand(
+        before: origin,
+        after: after,
+        label: componentIds.length == 1
+            ? 'Move component with connected routes'
+            : 'Move component group with connected routes',
+      ),
     );
     notifyListeners();
     return true;
   }
 
   void cancelMoveSelectedComponent() {
-    final origin = _moveOrigin;
-    _moveOrigin = null;
+    final origin = _moveOriginState;
+    _clearMoveTransaction();
     if (origin == null) return;
-    _replaceState(_replaceComponent(state, origin));
+    _replaceState(origin);
+  }
+
+  bool replaceCableRoute(
+    ElectricalCableRoute before,
+    ElectricalCableRoute after,
+  ) {
+    if (before.id != after.id || layers.isLocked(EditorLayerId.cableRoutes)) {
+      return false;
+    }
+    final current = _routeForId(before.id);
+    if (current == null || !_sameRoute(current, before)) return false;
+    if (!ElectricalConnectivityValidator.routeIsConnected(
+          route: after,
+          components: components,
+        ) ||
+        !ElectricalConnectivityValidator.routeIsPhysicallyAnchored(
+          route: after,
+          components: components,
+        )) {
+      return false;
+    }
+    if (!_routeGeometryIsValid(after)) return false;
+
+    final beforeConstraints = routeConstraintsFor(before.id);
+    if (!_constraintsAllowReplacement(
+      before: current,
+      after: after,
+      constraints: beforeConstraints,
+    )) {
+      return false;
+    }
+    final afterConstraints = beforeConstraints.reconcile([
+      for (final segment in after.segments) segment.points,
+    ]);
+
+    final assignedBundle = circuitBundleForRoute(after.id);
+    CircuitCableBundle? reboundBundle;
+    if (assignedBundle != null) {
+      if (assignedBundle.protectiveDevice != null &&
+          after.source.componentId != before.source.componentId) {
+        // Moving a protected circuit to another board requires an explicit
+        // protective-device reassignment workflow; never do it implicitly.
+        return false;
+      }
+      final targetComponent = _componentForId(state, after.target.componentId);
+      final reboundCircuit = CircuitRef(
+        id: assignedBundle.circuit.id,
+        name: targetComponent == null
+            ? assignedBundle.circuit.name
+            : 'Группа · ${targetComponent.label}',
+        boardId: assignedBundle.circuit.boardId == before.source.componentId
+            ? after.source.componentId
+            : assignedBundle.circuit.boardId,
+        protectiveDeviceId: assignedBundle.circuit.protectiveDeviceId,
+      );
+      final reboundCable = CableIdentity(
+        id: assignedBundle.cable.id,
+        routeId: assignedBundle.cable.routeId,
+        circuitId: assignedBundle.cable.circuitId,
+        designation: assignedBundle.cable.designation,
+        cableSpecId: assignedBundle.cable.cableSpecId,
+        endA: CableTerminationRef(
+          componentId: after.source.componentId,
+          portId: after.source.portId,
+        ),
+        endB: CableTerminationRef(
+          componentId: after.target.componentId,
+          portId: after.target.portId,
+        ),
+      );
+      reboundBundle = CircuitCableBundle(
+        circuit: reboundCircuit,
+        cable: reboundCable,
+        protectiveDevice: assignedBundle.protectiveDevice,
+      );
+      final registry = CircuitCableRegistry()
+        ..registerBundle(
+          route: after,
+          circuit: reboundCircuit,
+          cable: reboundCable,
+          protectiveDevice: assignedBundle.protectiveDevice,
+        );
+      if (registry.bundleByRouteId(after.id) == null) return false;
+    }
+
+    final nextConstraints = Map<String, CableRouteConstraints>.of(
+      state.routeConstraints,
+    );
+    if (afterConstraints.isEmpty) {
+      nextConstraints.remove(after.id);
+    } else {
+      nextConstraints[after.id] = afterConstraints;
+    }
+    final nextEvidence = Map<String, CircuitSizingEvidence>.of(
+      state.sizingEvidenceByRoute,
+    )..remove(after.id);
+    final nextState = state.copyWith(
+      routes: [
+        for (final route in routes)
+          if (route.id == after.id) after else route,
+      ],
+      routeConstraints: Map.unmodifiable(nextConstraints),
+      circuitBundles: reboundBundle == null
+          ? state.circuitBundles
+          : [
+              for (final bundle in state.circuitBundles)
+                if (bundle.cable.routeId == after.id) reboundBundle else bundle,
+            ],
+      sizingEvidenceByRoute: Map.unmodifiable(nextEvidence),
+    );
+    history.execute(
+      _ReplaceEditorStateCommand(
+        before: state,
+        after: nextState,
+        label: 'Edit cable route and engineering identity',
+      ),
+    );
+    notifyListeners();
+    return true;
+  }
+
+  bool toggleRouteSegmentLock(String routeId, int segmentIndex) {
+    if (layers.isLocked(EditorLayerId.cableRoutes)) return false;
+    final route = _routeForId(routeId);
+    if (route == null ||
+        segmentIndex < 0 ||
+        segmentIndex >= route.segments.length) {
+      return false;
+    }
+    final before = routeConstraintsFor(routeId);
+    final after = before.toggleSegmentLock(segmentIndex);
+    history.execute(
+      _ReplaceRouteConstraintsCommand(
+        routeId: routeId,
+        before: before,
+        after: after,
+      ),
+    );
+    notifyListeners();
+    return true;
+  }
+
+  bool toggleRouteWaypoint({
+    required String routeId,
+    required int segmentIndex,
+    required int pointIndex,
+    required SurfacePointMm point,
+  }) {
+    if (layers.isLocked(EditorLayerId.cableRoutes)) return false;
+    final route = _routeForId(routeId);
+    if (route == null ||
+        segmentIndex < 0 ||
+        segmentIndex >= route.segments.length) {
+      return false;
+    }
+    final points = route.segments[segmentIndex].points;
+    if (pointIndex < 0 || pointIndex >= points.length) return false;
+    final actual = points[pointIndex];
+    if (actual.xMm != point.xMm || actual.yMm != point.yMm) return false;
+
+    final before = routeConstraintsFor(routeId);
+    final after = before.toggleWaypoint(
+      segmentIndex: segmentIndex,
+      pointIndex: pointIndex,
+      point: point,
+    );
+    history.execute(
+      _ReplaceRouteConstraintsCommand(
+        routeId: routeId,
+        before: before,
+        after: after,
+      ),
+    );
+    notifyListeners();
+    return true;
   }
 
   bool moveSelectedComponent(SurfacePointMm point) {
     final component = selectedComponent;
-    if (component == null || layers.isLocked(EditorLayerId.electrical)) {
+    if (component == null ||
+        layers.isLocked(EditorLayerId.electrical) ||
+        _componentHasConnectedRoutes(component.id)) {
       return false;
     }
     history.execute(
@@ -213,10 +753,46 @@ final class EditorP2Session extends ChangeNotifier {
         .where((component) => ids.contains(component.id))
         .toList(growable: false);
     if (deleted.isEmpty) return false;
-    history.execute(_DeleteComponentsCommand(deleted));
-    _replaceState(
-      history.state.copyWith(selection: const SelectionState()),
-      notify: false,
+
+    final removedRouteIds = <String>{
+      for (final route in routes)
+        if (ids.contains(route.source.componentId) ||
+            ids.contains(route.target.componentId))
+          route.id,
+    };
+    if (removedRouteIds.isNotEmpty &&
+        layers.isLocked(EditorLayerId.cableRoutes)) {
+      return false;
+    }
+    final nextConstraints = Map<String, CableRouteConstraints>.of(
+      state.routeConstraints,
+    )..removeWhere((routeId, _) => removedRouteIds.contains(routeId));
+    final nextSizingEvidence = Map<String, CircuitSizingEvidence>.of(
+      state.sizingEvidenceByRoute,
+    )..removeWhere((routeId, _) => removedRouteIds.contains(routeId));
+    final after = state.copyWith(
+      components: [
+        for (final component in components)
+          if (!ids.contains(component.id)) component,
+      ],
+      routes: [
+        for (final route in routes)
+          if (!removedRouteIds.contains(route.id)) route,
+      ],
+      selection: const SelectionState(),
+      routeConstraints: Map.unmodifiable(nextConstraints),
+      circuitBundles: [
+        for (final bundle in state.circuitBundles)
+          if (!removedRouteIds.contains(bundle.cable.routeId)) bundle,
+      ],
+      sizingEvidenceByRoute: Map.unmodifiable(nextSizingEvidence),
+    );
+    history.execute(
+      _ReplaceEditorStateCommand(
+        before: state,
+        after: after,
+        label: 'Delete components with connected engineering routes',
+      ),
     );
     notifyListeners();
     return true;
@@ -238,87 +814,254 @@ final class EditorP2Session extends ChangeNotifier {
       preference: routePreference,
     );
     if (solution == null) return false;
-    final route = ElectricalCableRoute(
-      id: 'route-${_routeSequence++}',
+    return _addRouteSegments(
       source: source,
       target: target,
       segments: RouteEngine.toSegments(graph, solution),
       cableType: cableType,
     );
-    if (!ElectricalConnectivityValidator.routeIsConnected(
-      route: route,
-      components: components,
-    )) {
-      return false;
-    }
-    history.execute(_AddRouteCommand(route));
-    notifyListeners();
-    return true;
   }
 
-  bool autoRouteSelectedPair({
+  CircuitCableBundle? connectLoadToBoard({
+    required String loadComponentId,
+    required String boardComponentId,
     EngineeringSpace? space,
     String? cableType,
   }) {
+    if (layers.isLocked(EditorLayerId.electrical) ||
+        layers.isLocked(EditorLayerId.cableRoutes)) {
+      return null;
+    }
+    if (circuitBundleForLoad(loadComponentId) != null) return null;
+
+    final board = _componentForId(state, boardComponentId);
+    final load = _componentForId(state, loadComponentId);
+    if (board == null ||
+        load == null ||
+        board.id == load.id ||
+        board.type != ElectricalComponentType.distributionBoard ||
+        board.surface.spaceId != load.surface.spaceId) {
+      return null;
+    }
+    final pair = _resolvePortPair(board, load);
+    if (pair == null || pair.sourceComponent.id != board.id) return null;
+
+    final segments = _buildSegmentsBetween(
+      sourceComponent: board,
+      targetComponent: load,
+      space: space,
+    );
+    if (segments == null) return null;
+
+    final routeId = _nextAvailableId(
+      prefix: 'route-',
+      initialSequence: _routeSequence,
+      existingIds: routes.map((item) => item.id).toSet(),
+    );
+    final route = ElectricalCableRoute(
+      id: routeId.$1,
+      source: ElectricalEndpointRef(
+        componentId: board.id,
+        portId: pair.sourcePort.id,
+      ),
+      target: ElectricalEndpointRef(
+        componentId: load.id,
+        portId: pair.targetPort.id,
+      ),
+      segments: segments,
+      cableType: cableType,
+      medium: RouteMediumProfile.acPower,
+    );
+    if (!ElectricalConnectivityValidator.routeIsConnected(
+          route: route,
+          components: components,
+        ) ||
+        !ElectricalConnectivityValidator.routeIsPhysicallyAnchored(
+          route: route,
+          components: components,
+        ) ||
+        !_routeGeometryIsValid(route)) {
+      return null;
+    }
+
+    final suffix = route.id.startsWith('route-')
+        ? route.id.substring('route-'.length)
+        : route.id;
+    final circuit = CircuitRef(
+      id: 'circuit-$suffix',
+      name: 'Группа · ${load.label}',
+      boardId: board.id,
+    );
+    final cable = CableIdentity(
+      id: 'cable-$suffix',
+      routeId: route.id,
+      circuitId: circuit.id,
+      designation: 'CAB-$suffix',
+      endA: CableTerminationRef(
+        componentId: route.source.componentId,
+        portId: route.source.portId,
+      ),
+      endB: CableTerminationRef(
+        componentId: route.target.componentId,
+        portId: route.target.portId,
+      ),
+      cableSpecId: cableType,
+    );
+    final bundle = CircuitCableBundle(circuit: circuit, cable: cable);
+    final registry = CircuitCableRegistry()
+      ..registerBundle(route: route, circuit: circuit, cable: cable);
+    if (registry.bundleByRouteId(route.id) == null) return null;
+
+    final after = state.copyWith(
+      routes: List.unmodifiable([...routes, route]),
+      circuitBundles: List.unmodifiable([...state.circuitBundles, bundle]),
+      selection: SelectionState(ids: {load.id}, primaryId: load.id),
+    );
+    _routeSequence = routeId.$2;
+    history.execute(
+      _ReplaceEditorStateCommand(
+        before: state,
+        after: after,
+        label: 'Connect load to distribution board',
+      ),
+    );
+    notifyListeners();
+    return bundle;
+  }
+
+  bool autoRouteSelectedPair({EngineeringSpace? space, String? cableType}) {
     final pair = selectedComponents;
     if (pair.length != 2) return false;
-    final sourceComponent = _preferredSource(pair[0], pair[1]);
-    final targetComponent =
-        identical(sourceComponent, pair[0]) ? pair[1] : pair[0];
-    final sourcePort = _portForSource(sourceComponent);
-    final targetPort = _portForTarget(targetComponent);
-    if (sourcePort == null || targetPort == null) return false;
+    final forward = _resolvePortPair(pair[0], pair[1]);
+    final reverse = forward == null ? _resolvePortPair(pair[1], pair[0]) : null;
+    final portPair = forward ?? reverse;
+    if (portPair == null) return false;
+    final segments = _buildSegmentsBetween(
+      sourceComponent: portPair.sourceComponent,
+      targetComponent: portPair.targetComponent,
+      space: space,
+    );
+    if (segments == null) return false;
+    return _addRouteSegments(
+      source: ElectricalEndpointRef(
+        componentId: portPair.sourceComponent.id,
+        portId: portPair.sourcePort.id,
+      ),
+      target: ElectricalEndpointRef(
+        componentId: portPair.targetComponent.id,
+        portId: portPair.targetPort.id,
+      ),
+      segments: segments,
+      cableType: cableType,
+    );
+  }
 
-    late final RoutingGraph graph;
-    late final String startNodeId;
-    late final String endNodeId;
+  List<ElectricalRouteSegment>? _buildSegmentsBetween({
+    required ElectricalComponentPlacement sourceComponent,
+    required ElectricalComponentPlacement targetComponent,
+    EngineeringSpace? space,
+  }) {
     if (sourceComponent.surface == targetComponent.surface) {
       final surface = sourceComponent.surface;
+      final context = _routeContextResolver?.call(surface);
+      if (context != null) {
+        for (final candidate in NormativeRouteEngine.buildCandidates(
+          source: sourceComponent.position,
+          target: targetComponent.position,
+          context: context,
+        )) {
+          if (candidate.validation.isValid) {
+            return [
+              ElectricalRouteSegment(
+                  surface: surface, points: candidate.points),
+            ];
+          }
+        }
+        return null;
+      }
       final a = sourceComponent.position;
       final d = targetComponent.position;
       final elbowX = SurfacePointMm(d.xMm, a.yMm);
-      final elbowY = SurfacePointMm(a.xMm, d.yMm);
-      graph = RoutingGraph(
-        nodes: {
-          'a': RouteNode(id: 'a', surface: surface, point: a),
-          'bx': RouteNode(id: 'bx', surface: surface, point: elbowX),
-          'by': RouteNode(id: 'by', surface: surface, point: elbowY),
-          'd': RouteNode(id: 'd', surface: surface, point: d),
-        },
-        edges: [
-          RouteEdge(from: 'a', to: 'bx', cost: _axisDistance(a, elbowX)),
-          RouteEdge(from: 'bx', to: 'd', cost: _axisDistance(elbowX, d)),
-          RouteEdge(from: 'a', to: 'by', cost: _axisDistance(a, elbowY)),
-          RouteEdge(from: 'by', to: 'd', cost: _axisDistance(elbowY, d)),
-        ],
-      );
-      startNodeId = 'a';
-      endNodeId = 'd';
-    } else {
-      if (space == null) return false;
-      graph = AutoRouteGraphBuilder.build(
-        space: space,
-        source: sourceComponent,
-        target: targetComponent,
-      );
-      startNodeId = 'source';
-      endNodeId = 'target';
+      return [
+        ElectricalRouteSegment(
+          surface: surface,
+          points: _compactOrthogonal([a, elbowX, d]),
+        ),
+      ];
     }
-
-    return addAutoRoute(
+    if (space == null) return null;
+    final graph = AutoRouteGraphBuilder.build(
+      space: space,
+      source: sourceComponent,
+      target: targetComponent,
+    );
+    final solution = RouteEngine.solve(
       graph: graph,
-      startNodeId: startNodeId,
-      endNodeId: endNodeId,
-      source: ElectricalEndpointRef(
-        componentId: sourceComponent.id,
-        portId: sourcePort.id,
-      ),
-      target: ElectricalEndpointRef(
-        componentId: targetComponent.id,
-        portId: targetPort.id,
-      ),
+      startNodeId: 'source',
+      endNodeId: 'target',
+      preference: routePreference,
+    );
+    return solution == null ? null : RouteEngine.toSegments(graph, solution);
+  }
+
+  static List<SurfacePointMm> _compactOrthogonal(
+    List<SurfacePointMm> points,
+  ) {
+    final result = <SurfacePointMm>[];
+    for (final point in points) {
+      if (result.isEmpty || result.last != point) result.add(point);
+    }
+    return List.unmodifiable(result);
+  }
+
+  bool addManualRouteSegments({
+    required ElectricalEndpointRef source,
+    required ElectricalEndpointRef target,
+    required List<ElectricalRouteSegment> segments,
+    String? cableType,
+  }) {
+    if (!layers.isVisible(EditorLayerId.cableRoutes) ||
+        layers.isLocked(EditorLayerId.cableRoutes)) {
+      return false;
+    }
+    return _addRouteSegments(
+      source: source,
+      target: target,
+      segments: segments,
       cableType: cableType,
     );
+  }
+
+  bool _addRouteSegments({
+    required ElectricalEndpointRef source,
+    required ElectricalEndpointRef target,
+    required List<ElectricalRouteSegment> segments,
+    String? cableType,
+  }) {
+    if (layers.isLocked(EditorLayerId.cableRoutes)) return false;
+    final routeId = _nextAvailableId(
+      prefix: 'route-',
+      initialSequence: _routeSequence,
+      existingIds: routes.map((item) => item.id).toSet(),
+    );
+    final route = ElectricalCableRoute(
+      id: routeId.$1,
+      source: source,
+      target: target,
+      segments: segments,
+      cableType: cableType,
+    );
+    if (!ElectricalConnectivityValidator.routeIsConnected(
+          route: route,
+          components: components,
+        ) ||
+        !_routeGeometryIsValid(route)) {
+      return false;
+    }
+    _routeSequence = routeId.$2;
+    history.execute(_AddRouteCommand(route));
+    notifyListeners();
+    return true;
   }
 
   List<ManipulationHandle> handlesForSelection() {
@@ -372,6 +1115,19 @@ final class EditorP2Session extends ChangeNotifier {
     if (notify) notifyListeners();
   }
 
+  bool _componentHasConnectedRoutes(String componentId) => routes.any(
+        (route) =>
+            route.source.componentId == componentId ||
+            route.target.componentId == componentId,
+      );
+
+  ElectricalCableRoute? _routeForId(String routeId) {
+    for (final route in routes) {
+      if (route.id == routeId) return route;
+    }
+    return null;
+  }
+
   static bool _sameSnap(SnapCandidate? a, SnapCandidate? b) =>
       a?.kind == b?.kind &&
       a?.point.x == b?.point.x &&
@@ -389,50 +1145,409 @@ final class EditorP2Session extends ChangeNotifier {
         ],
       );
 
-  static ElectricalComponentPlacement _preferredSource(
-    ElectricalComponentPlacement first,
-    ElectricalComponentPlacement second,
-  ) {
-    bool hasPowerOut(ElectricalComponentPlacement component) =>
-        component.ports.any((port) => port.kind == ElectricalPortKind.powerOut);
-    if (hasPowerOut(first) && !hasPowerOut(second)) return first;
-    if (hasPowerOut(second) && !hasPowerOut(first)) return second;
-    return first;
-  }
+  ElectricalCableRoute? _rerouteForMovedComponent({
+    required ElectricalCableRoute route,
+    required ElectricalComponentPlacement movedComponent,
+    required bool isSource,
+    required CableRouteConstraints constraints,
+  }) {
+    if (route.segments.isEmpty) return null;
+    final segmentIndex = isSource ? 0 : route.segments.length - 1;
+    if (constraints.isSegmentLocked(segmentIndex)) return null;
+    final segment = route.segments[segmentIndex];
+    if (segment.surface != movedComponent.surface ||
+        segment.points.length < 2) {
+      return null;
+    }
+    final context = _routeContextResolver?.call(segment.surface);
+    if (context == null) {
+      // Context-free unit sessions preserve the old component-only behavior.
+      final points = segment.points.toList();
+      if (isSource) {
+        points[0] = movedComponent.position;
+      } else {
+        points[points.length - 1] = movedComponent.position;
+      }
+      final replacement = _routeWithSegment(route, segmentIndex, points);
+      return _routeGeometryIsValid(replacement) ? replacement : null;
+    }
 
-  static ElectricalPortDefinition? _portForSource(
-    ElectricalComponentPlacement component,
-  ) {
-    for (final port in component.ports) {
-      if (port.kind == ElectricalPortKind.powerOut ||
-          port.kind == ElectricalPortKind.controlOut) {
-        return port;
+    final waypoints = constraints.mandatoryWaypoints
+        .where((item) => item.segmentIndex == segmentIndex)
+        .toList()
+      ..sort((a, b) => a.pointIndex.compareTo(b.pointIndex));
+    for (final waypoint in waypoints) {
+      if (waypoint.pointIndex >= segment.points.length ||
+          segment.points[waypoint.pointIndex] != waypoint.point) {
+        return null;
       }
     }
-    return component.ports.isEmpty ? null : component.ports.first;
+
+    final anchors = <SurfacePointMm>[];
+    if (isSource) {
+      anchors.add(movedComponent.position);
+      anchors.addAll(waypoints.map((item) => item.point));
+      anchors.add(segment.points.last);
+    } else {
+      anchors.add(segment.points.first);
+      anchors.addAll(waypoints.map((item) => item.point));
+      anchors.add(movedComponent.position);
+    }
+    final points = _routeThroughAnchors(anchors, context);
+    if (points == null) return null;
+    final replacement = _routeWithSegment(route, segmentIndex, points);
+    if (!_routeGeometryIsValid(replacement) ||
+        !_constraintsAllowReplacement(
+          before: route,
+          after: replacement,
+          constraints: constraints,
+        )) {
+      return null;
+    }
+    return replacement;
   }
 
-  static ElectricalPortDefinition? _portForTarget(
-    ElectricalComponentPlacement component,
+  static List<SurfacePointMm>? _routeThroughAnchors(
+    List<SurfacePointMm> anchors,
+    RouteNormativeContext context,
   ) {
-    for (final port in component.ports) {
-      if (port.kind == ElectricalPortKind.powerIn ||
-          port.kind == ElectricalPortKind.controlIn) {
-        return port;
+    if (anchors.length < 2) return null;
+    final result = <SurfacePointMm>[];
+    for (var i = 1; i < anchors.length; i++) {
+      RouteCandidate? best;
+      for (final candidate in NormativeRouteEngine.buildCandidates(
+        source: anchors[i - 1],
+        target: anchors[i],
+        context: context,
+      )) {
+        if (candidate.validation.isValid) {
+          best = candidate;
+          break;
+        }
+      }
+      if (best == null) return null;
+      for (final point in best.points) {
+        if (result.isEmpty || result.last != point) result.add(point);
       }
     }
-    return component.ports.isEmpty ? null : component.ports.first;
+    return List.unmodifiable(result);
   }
 
-  static double _axisDistance(SurfacePointMm a, SurfacePointMm b) =>
-      (a.xMm - b.xMm).abs().toDouble() + (a.yMm - b.yMm).abs().toDouble();
+  static ElectricalCableRoute _translateRoute(
+    ElectricalCableRoute route, {
+    required int dxMm,
+    required int dyMm,
+  }) =>
+      ElectricalCableRoute(
+        id: route.id,
+        source: route.source,
+        target: route.target,
+        segments: [
+          for (final segment in route.segments)
+            ElectricalRouteSegment(
+              surface: segment.surface,
+              points: List.unmodifiable([
+                for (final point in segment.points)
+                  SurfacePointMm(point.xMm + dxMm, point.yMm + dyMm),
+              ]),
+            ),
+        ],
+        cableType: route.cableType,
+        medium: route.medium,
+        reservePercent: route.reservePercent,
+      );
+
+  static ElectricalCableRoute _routeWithSegment(
+    ElectricalCableRoute route,
+    int segmentIndex,
+    List<SurfacePointMm> points,
+  ) =>
+      ElectricalCableRoute(
+        id: route.id,
+        source: route.source,
+        target: route.target,
+        segments: [
+          for (var i = 0; i < route.segments.length; i++)
+            if (i == segmentIndex)
+              ElectricalRouteSegment(
+                surface: route.segments[i].surface,
+                points: List.unmodifiable(points),
+              )
+            else
+              route.segments[i],
+        ],
+        cableType: route.cableType,
+        medium: route.medium,
+        reservePercent: route.reservePercent,
+      );
+
+  static ElectricalComponentPlacement? _componentForId(
+    EditorP2State state,
+    String componentId,
+  ) {
+    for (final component in state.components) {
+      if (component.id == componentId) return component;
+    }
+    return null;
+  }
+
+  bool _movePreviewValidState(
+    EditorP2State preview,
+    Set<String> componentIds,
+  ) {
+    for (final route in preview.routes) {
+      if (!componentIds.contains(route.source.componentId) &&
+          !componentIds.contains(route.target.componentId)) {
+        continue;
+      }
+      if (!ElectricalConnectivityValidator.routeIsConnected(
+            route: route,
+            components: preview.components,
+          ) ||
+          !ElectricalConnectivityValidator.routeIsPhysicallyAnchored(
+            route: route,
+            components: preview.components,
+          ) ||
+          !_routeGeometryIsValid(route)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  void _clearMoveTransaction() {
+    _moveOriginState = null;
+    _moveComponentId = null;
+    _moveComponentIds = const <String>{};
+    _movePreviewValid = false;
+  }
+
+  static _ResolvedPortPair? _resolvePortPair(
+    ElectricalComponentPlacement source,
+    ElectricalComponentPlacement target,
+  ) {
+    for (final sourcePort in source.ports) {
+      for (final targetPort in target.ports) {
+        if (ElectricalPortCompatibility.areCompatible(
+          sourcePort.kind,
+          targetPort.kind,
+        )) {
+          return _ResolvedPortPair(
+            sourceComponent: source,
+            targetComponent: target,
+            sourcePort: sourcePort,
+            targetPort: targetPort,
+          );
+        }
+      }
+    }
+    return null;
+  }
+
+  bool _routeGeometryIsValid(ElectricalCableRoute route) {
+    final resolver = _routeContextResolver;
+    if (resolver == null) return true;
+    for (final segment in route.segments) {
+      final context = resolver(segment.surface);
+      if (context == null ||
+          !NormativeRouteEngine.validate(
+            points: segment.points,
+            context: context,
+          ).isValid) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static bool _constraintsAllowReplacement({
+    required ElectricalCableRoute before,
+    required ElectricalCableRoute after,
+    required CableRouteConstraints constraints,
+  }) {
+    for (final segmentIndex in constraints.lockedSegments) {
+      if (segmentIndex >= before.segments.length ||
+          segmentIndex >= after.segments.length ||
+          !_sameSegment(
+            before.segments[segmentIndex],
+            after.segments[segmentIndex],
+          )) {
+        return false;
+      }
+    }
+    for (final waypoint in constraints.mandatoryWaypoints) {
+      if (waypoint.segmentIndex >= after.segments.length ||
+          !after.segments[waypoint.segmentIndex].points
+              .contains(waypoint.point)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static bool _sameRoute(ElectricalCableRoute a, ElectricalCableRoute b) {
+    if (a.id != b.id ||
+        a.source.componentId != b.source.componentId ||
+        a.source.portId != b.source.portId ||
+        a.target.componentId != b.target.componentId ||
+        a.target.portId != b.target.portId ||
+        a.segments.length != b.segments.length) {
+      return false;
+    }
+    for (var i = 0; i < a.segments.length; i++) {
+      if (!_sameSegment(a.segments[i], b.segments[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static bool _sameSegment(ElectricalRouteSegment a, ElectricalRouteSegment b) {
+    if (a.surface != b.surface || a.points.length != b.points.length) {
+      return false;
+    }
+    for (var i = 0; i < a.points.length; i++) {
+      if (a.points[i] != b.points[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static int _nextSequence({
+    required String prefix,
+    required Iterable<String> ids,
+  }) {
+    var next = 1;
+    for (final id in ids) {
+      if (!id.startsWith(prefix)) continue;
+      final parsed = int.tryParse(id.substring(prefix.length));
+      if (parsed != null && parsed >= next) {
+        next = parsed + 1;
+      }
+    }
+    return next;
+  }
+
+  static (String, int) _nextAvailableId({
+    required String prefix,
+    required int initialSequence,
+    required Set<String> existingIds,
+  }) {
+    var sequence = initialSequence;
+    while (existingIds.contains('$prefix$sequence')) {
+      sequence++;
+    }
+    return ('$prefix$sequence', sequence + 1);
+  }
+
+  static void _validateUniqueIds(EditorP2State state) {
+    final componentIds = <String>{};
+    for (final component in state.components) {
+      if (!componentIds.add(component.id)) {
+        throw ArgumentError('Duplicate component id: ${component.id}');
+      }
+    }
+    final routeIds = <String>{};
+    for (final route in state.routes) {
+      if (!routeIds.add(route.id)) {
+        throw ArgumentError('Duplicate route id: ${route.id}');
+      }
+    }
+  }
 }
 
-final Expando<EditorP2Session> _p2Sessions =
-    Expando<EditorP2Session>('ElecX P2 editor session');
+final class _ReplaceEditorStateCommand implements EditorCommand<EditorP2State> {
+  const _ReplaceEditorStateCommand({
+    required this.before,
+    required this.after,
+    required this.label,
+  });
+
+  final EditorP2State before;
+  final EditorP2State after;
+
+  @override
+  final String label;
+
+  @override
+  EditorP2State execute(EditorP2State state) => after;
+
+  @override
+  EditorP2State undo(EditorP2State state) => before;
+}
+
+final class _ResolvedPortPair {
+  const _ResolvedPortPair({
+    required this.sourceComponent,
+    required this.targetComponent,
+    required this.sourcePort,
+    required this.targetPort,
+  });
+
+  final ElectricalComponentPlacement sourceComponent;
+  final ElectricalComponentPlacement targetComponent;
+  final ElectricalPortDefinition sourcePort;
+  final ElectricalPortDefinition targetPort;
+}
+
+final class _ReplaceRouteConstraintsCommand
+    implements EditorCommand<EditorP2State> {
+  const _ReplaceRouteConstraintsCommand({
+    required this.routeId,
+    required this.before,
+    required this.after,
+  });
+
+  final String routeId;
+  final CableRouteConstraints before;
+  final CableRouteConstraints after;
+
+  @override
+  String get label => 'Edit cable route constraints';
+
+  @override
+  EditorP2State execute(EditorP2State state) => _replace(state, after);
+
+  @override
+  EditorP2State undo(EditorP2State state) => _replace(state, before);
+
+  EditorP2State _replace(
+    EditorP2State state,
+    CableRouteConstraints constraints,
+  ) {
+    final next = Map<String, CableRouteConstraints>.of(state.routeConstraints);
+    if (constraints.isEmpty) {
+      next.remove(routeId);
+    } else {
+      next[routeId] = constraints;
+    }
+    return state.copyWith(routeConstraints: Map.unmodifiable(next));
+  }
+}
+
+final Expando<EditorP2Session> _p2Sessions = Expando<EditorP2Session>(
+  'ElecX P2 editor session',
+);
 
 extension EditorP2SessionAccess on EditorController {
-  EditorP2Session get p2 => _p2Sessions[this] ??= EditorP2Session();
+  EditorP2Session get p2 => _p2Sessions[this] ??= EditorP2Session(
+        routeContextResolver: routeNormativeContextFor,
+      );
+
+  void restoreP2State(EditorP2State state) {
+    final previous = _p2Sessions[this];
+    previous?.dispose();
+    _p2Sessions[this] = EditorP2Session(
+      initialState: state,
+      routeContextResolver: routeNormativeContextFor,
+    );
+  }
+
+  void disposeP2State() {
+    _p2Sessions[this]?.dispose();
+    _p2Sessions[this] = null;
+  }
 }
 
 final class _AddComponentCommand implements EditorCommand<EditorP2State> {
@@ -443,9 +1558,8 @@ final class _AddComponentCommand implements EditorCommand<EditorP2State> {
   String get label => 'Add ${component.label}';
 
   @override
-  EditorP2State execute(EditorP2State state) => state.copyWith(
-        components: [...state.components, component],
-      );
+  EditorP2State execute(EditorP2State state) =>
+      state.copyWith(components: [...state.components, component]);
 
   @override
   EditorP2State undo(EditorP2State state) => state.copyWith(
@@ -472,29 +1586,6 @@ final class _ReplaceComponentCommand implements EditorCommand<EditorP2State> {
       EditorP2Session._replaceComponent(state, before);
 }
 
-final class _DeleteComponentsCommand implements EditorCommand<EditorP2State> {
-  const _DeleteComponentsCommand(this.deleted);
-  final List<ElectricalComponentPlacement> deleted;
-
-  @override
-  String get label => 'Delete components';
-
-  @override
-  EditorP2State execute(EditorP2State state) {
-    final ids = deleted.map((component) => component.id).toSet();
-    return state.copyWith(
-      components: state.components
-          .where((component) => !ids.contains(component.id))
-          .toList(growable: false),
-    );
-  }
-
-  @override
-  EditorP2State undo(EditorP2State state) => state.copyWith(
-        components: [...state.components, ...deleted],
-      );
-}
-
 final class _AddRouteCommand implements EditorCommand<EditorP2State> {
   const _AddRouteCommand(this.route);
   final ElectricalCableRoute route;
@@ -503,9 +1594,8 @@ final class _AddRouteCommand implements EditorCommand<EditorP2State> {
   String get label => 'Add route';
 
   @override
-  EditorP2State execute(EditorP2State state) => state.copyWith(
-        routes: [...state.routes, route],
-      );
+  EditorP2State execute(EditorP2State state) =>
+      state.copyWith(routes: [...state.routes, route]);
 
   @override
   EditorP2State undo(EditorP2State state) => state.copyWith(

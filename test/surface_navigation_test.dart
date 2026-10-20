@@ -21,10 +21,7 @@ void main() {
     controller.setTool(EditorTool.cableRoute);
     controller.showFloor();
 
-    controller.navigateHorizontalBoundary(
-      0,
-      const SurfacePointMm(1000, 0),
-    );
+    controller.navigateHorizontalBoundary(0, const SurfacePointMm(1000, 0));
 
     expect(controller.activeSurface, RoomSurfaceRef.wall('room-101', 0));
     expect(controller.routeSegments, hasLength(2));

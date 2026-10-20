@@ -319,8 +319,10 @@ abstract final class DrawingSimulationEngine {
       );
     }
 
-    final bends =
-        route.segments.fold<int>(0, (sum, item) => sum + _bendCount(item));
+    final bends = route.segments.fold<int>(
+      0,
+      (sum, item) => sum + _bendCount(item),
+    );
     if (bends > request.profile.maxRouteBends) {
       defects.add(
         DrawingDefect(
@@ -505,12 +507,15 @@ abstract final class DrawingSimulationEngine {
     var score = 100;
     for (final defect in defects) {
       score -= switch (defect.severity) {
-        SimulationSeverity.error =>
-          profile.penaltyFor(AnalysisSeverityWeight.error),
-        SimulationSeverity.warning =>
-          profile.penaltyFor(AnalysisSeverityWeight.warning),
-        SimulationSeverity.info =>
-          profile.penaltyFor(AnalysisSeverityWeight.info),
+        SimulationSeverity.error => profile.penaltyFor(
+            AnalysisSeverityWeight.error,
+          ),
+        SimulationSeverity.warning => profile.penaltyFor(
+            AnalysisSeverityWeight.warning,
+          ),
+        SimulationSeverity.info => profile.penaltyFor(
+            AnalysisSeverityWeight.info,
+          ),
       };
     }
     return score.clamp(0, 100);

@@ -256,12 +256,15 @@ class _UnifiedSiteNavigatorState extends State<UnifiedSiteNavigator> {
                 selectedTileColor:
                     Theme.of(context).colorScheme.secondaryContainer,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(7)),
+                  borderRadius: BorderRadius.circular(7),
+                ),
                 leading: hasChildren
                     ? IconButton(
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints.tightFor(
-                            width: 26, height: 26),
+                          width: 26,
+                          height: 26,
+                        ),
                         onPressed: () => setState(() {
                           if (!_expanded.add(node.id)) {
                             _expanded.remove(node.id);

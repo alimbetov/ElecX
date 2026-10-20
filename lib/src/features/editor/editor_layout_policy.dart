@@ -1,10 +1,6 @@
 import 'editor_ui_tokens.dart';
 
-enum EditorLayoutMode {
-  mobile,
-  tablet,
-  desktop,
-}
+enum EditorLayoutMode { mobile, tablet, desktop }
 
 abstract final class EditorLayoutPolicy {
   static const double tabletMinWidth = 700;

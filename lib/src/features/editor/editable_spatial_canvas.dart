@@ -12,8 +12,10 @@ import '../../engine/plan_pull_measure.dart';
 import '../../engine/render_policy.dart';
 import '../../engine/spatial_scene_index.dart';
 import '../../engine/world_camera.dart';
+import 'electrical_host_geometry_guard.dart';
 import 'editor_controller.dart';
 import 'editor_viewport_commands.dart';
+import 'viewport_zoom_policy.dart';
 import 'plan_geometry_editor_actions.dart';
 
 enum _PlanDragKind { vertex, edge, openingMove, openingStart, openingEnd }
@@ -36,6 +38,9 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
 
   Size _size = Size.zero;
   Offset? _panAnchor;
+  int? _panPointer;
+  int? _primaryDragPointer;
+  final Set<int> _activePointers = <int>{};
   WorldCamera? _touchStartCamera;
   Offset? _touchStartFocal;
   int _sceneFingerprint = -1;
@@ -60,6 +65,8 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     _sceneIndex = SpatialSceneIndex();
     _lastViewportRevision = controller.viewportCommandRevision;
     controller.viewportCommandListenable.addListener(_onViewportCommand);
+    controller.editCancellationListenable
+        .addListener(_cancelTransientInteraction);
     _rebuildIndex(force: true);
   }
 
@@ -67,10 +74,16 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
   void didUpdateWidget(covariant SpatialCanvas oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
-      oldWidget.controller.viewportCommandListenable
-          .removeListener(_onViewportCommand);
+      oldWidget.controller.viewportCommandListenable.removeListener(
+        _onViewportCommand,
+      );
+      oldWidget.controller.editCancellationListenable.removeListener(
+        _cancelTransientInteraction,
+      );
       _lastViewportRevision = controller.viewportCommandRevision;
       controller.viewportCommandListenable.addListener(_onViewportCommand);
+      controller.editCancellationListenable
+          .addListener(_cancelTransientInteraction);
       _selectedExternalEdgeIndex = null;
       _selectedExternalSpaceId = null;
       _selectedExternalPullSign = 1;
@@ -81,6 +94,8 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
   @override
   void dispose() {
     controller.viewportCommandListenable.removeListener(_onViewportCommand);
+    controller.editCancellationListenable
+        .removeListener(_cancelTransientInteraction);
     super.dispose();
   }
 
@@ -88,6 +103,18 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     if (mounted) {
       setState(() {});
     }
+  }
+
+  void _cancelTransientInteraction() {
+    if (_dragKind != null) {
+      _finishPrimaryDrag(cancelled: true);
+    }
+    _panAnchor = null;
+    _panPointer = null;
+    _primaryDragPointer = null;
+    _activePointers.clear();
+    _touchStartCamera = null;
+    _touchStartFocal = null;
   }
 
   int _fingerprint() => Object.hashAll(
@@ -342,6 +369,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     final openingHandle = _openingHandleAt(event.localPosition);
     if (openingHandle != null) {
       _clearExternalWallSelection();
+      _primaryDragPointer = event.pointer;
       _dragKind = openingHandle;
       _dragBaseOpening = controller.selectedOpening;
       _previewOpening = _dragBaseOpening;
@@ -356,6 +384,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     if (opening != null) {
       _clearExternalWallSelection();
       controller.selectOpeningForPlan(opening);
+      _primaryDragPointer = event.pointer;
       _dragKind = _PlanDragKind.openingMove;
       _dragBaseOpening = opening;
       _previewOpening = opening;
@@ -365,6 +394,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     final vertex = _vertexHandleAt(event.localPosition);
     if (vertex != null) {
       _clearExternalWallSelection();
+      _primaryDragPointer = event.pointer;
       _dragKind = _PlanDragKind.vertex;
       _dragIndex = vertex;
       _dragBaseBoundary = controller.selectedSpace?.boundary;
@@ -374,6 +404,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
 
     final edge = _edgeHandleAt(event.localPosition);
     if (edge != null) {
+      _primaryDragPointer = event.pointer;
       _dragKind = _PlanDragKind.edge;
       _dragIndex = edge;
       _dragStartWorld = world;
@@ -384,7 +415,9 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
 
   void _updatePrimaryDrag(PointerMoveEvent event) {
     final kind = _dragKind;
-    if (kind == null || event.buttons != kPrimaryMouseButton) {
+    if (kind == null ||
+        event.pointer != _primaryDragPointer ||
+        event.buttons != kPrimaryMouseButton) {
       return;
     }
     final raw = _toWorld(event.localPosition);
@@ -448,10 +481,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
           if (width < 300) {
             return;
           }
-          candidate = base.copyWith(
-            offsetFromStartMm: offset,
-            widthMm: width,
-          );
+          candidate = base.copyWith(offsetFromStartMm: offset, widthMm: width);
         case _PlanDragKind.openingEnd:
           final width = offset - base.offsetFromStartMm;
           if (width < 300) {
@@ -483,9 +513,14 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
         controller.commitSelectedBoundary(_previewBoundary!);
         _rebuildIndex(force: true);
       } else if (_previewOpening case final opening?) {
-        controller.updateSelectedOpening(
+        controller.updateSelectedOpeningGuarded(
           offsetFromStartMm: opening.offsetFromStartMm,
           widthMm: opening.widthMm,
+          canCommit: (candidate) =>
+              ElectricalHostGeometryGuard.openingCandidateAllowed(
+            controller,
+            candidate,
+          ),
         );
         controller.viewMode = EditorViewMode.plan;
       }
@@ -493,6 +528,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
 
     setState(() {
       _dragKind = null;
+      _primaryDragPointer = null;
       _dragIndex = null;
       _dragStartWorld = null;
       _dragBaseBoundary = null;
@@ -528,8 +564,10 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
           if (external) {
             _selectedExternalEdgeIndex = wallIndex;
             _selectedExternalSpaceId = controller.selectedSpaceId;
-            _selectedExternalPullSign =
-                _pullSignForCursor(wallIndex, details.localPosition);
+            _selectedExternalPullSign = _pullSignForCursor(
+              wallIndex,
+              details.localPosition,
+            );
           } else {
             _clearExternalWallSelection();
           }
@@ -680,15 +718,27 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                   _updatePullSideFromPointer(event.localPosition);
                 },
                 onPointerSignal: (event) {
-                  if (event is PointerScrollEvent) {
-                    _zoomAt(
-                      event.localPosition,
-                      event.scrollDelta.dy < 0 ? 1.18 : 1 / 1.18,
-                    );
-                  }
+                  if (event is! PointerScrollEvent) return;
+                  final factor = ViewportZoomPolicy.factorForScrollDelta(
+                    dx: event.scrollDelta.dx,
+                    dy: event.scrollDelta.dy,
+                  );
+                  if (factor == null) return;
+                  GestureBinding.instance.pointerSignalResolver.register(
+                    event,
+                    (_) => _zoomAt(event.localPosition, factor),
+                  );
                 },
                 onPointerDown: (event) {
+                  _activePointers.add(event.pointer);
+                  if (_activePointers.length > 1) {
+                    if (_dragKind != null) {
+                      _finishPrimaryDrag(cancelled: true);
+                    }
+                    return;
+                  }
                   if (event.buttons == kMiddleMouseButton) {
+                    _panPointer = event.pointer;
                     _panAnchor = event.localPosition;
                     return;
                   }
@@ -698,7 +748,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                 },
                 onPointerMove: (event) {
                   final anchor = _panAnchor;
-                  if (anchor != null) {
+                  if (anchor != null && event.pointer == _panPointer) {
                     final delta = event.localPosition - anchor;
                     _panAnchor = event.localPosition;
                     setState(() {
@@ -711,13 +761,25 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                   }
                   _updatePrimaryDrag(event);
                 },
-                onPointerUp: (_) {
-                  _panAnchor = null;
-                  _finishPrimaryDrag(cancelled: false);
+                onPointerUp: (event) {
+                  _activePointers.remove(event.pointer);
+                  if (event.pointer == _panPointer) {
+                    _panPointer = null;
+                    _panAnchor = null;
+                  }
+                  if (event.pointer == _primaryDragPointer) {
+                    _finishPrimaryDrag(cancelled: false);
+                  }
                 },
-                onPointerCancel: (_) {
-                  _panAnchor = null;
-                  _finishPrimaryDrag(cancelled: true);
+                onPointerCancel: (event) {
+                  _activePointers.remove(event.pointer);
+                  if (event.pointer == _panPointer) {
+                    _panPointer = null;
+                    _panAnchor = null;
+                  }
+                  if (event.pointer == _primaryDragPointer) {
+                    _finishPrimaryDrag(cancelled: true);
+                  }
                 },
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
@@ -789,10 +851,8 @@ class _PlanPainter extends CustomPainter {
         ),
         sceneFingerprint = Object.hashAll(
           visibleSpaces.map(
-            (space) => Object.hash(
-              space.id,
-              Object.hashAll(space.boundary.vertices),
-            ),
+            (space) =>
+                Object.hash(space.id, Object.hashAll(space.boundary.vertices)),
           ),
         );
 
@@ -1025,11 +1085,7 @@ class _PlanPainter extends CustomPainter {
       ..strokeWidth = 0.8;
 
     final y = math.max(bottomLeft.dy, bottomRight.dy) + 22;
-    canvas.drawLine(
-      Offset(bottomLeft.dx, y),
-      Offset(bottomRight.dx, y),
-      paint,
-    );
+    canvas.drawLine(Offset(bottomLeft.dx, y), Offset(bottomRight.dx, y), paint);
     _text(
       canvas,
       '${bounds.width} mm',
@@ -1037,11 +1093,7 @@ class _PlanPainter extends CustomPainter {
     );
 
     final x = topRight.dx + 24;
-    canvas.drawLine(
-      Offset(x, topRight.dy),
-      Offset(x, bottomRight.dy),
-      paint,
-    );
+    canvas.drawLine(Offset(x, topRight.dy), Offset(x, bottomRight.dy), paint);
     _text(
       canvas,
       '${bounds.height} mm',
@@ -1057,10 +1109,7 @@ class _PlanPainter extends CustomPainter {
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    painter.paint(
-      canvas,
-      at - Offset(painter.width / 2, painter.height / 2),
-    );
+    painter.paint(canvas, at - Offset(painter.width / 2, painter.height / 2));
   }
 
   @override
@@ -1124,10 +1173,7 @@ class _PullMeasurePainter extends CustomPainter {
       textDirection: TextDirection.ltr,
     )..layout();
     final labelAt = midpoint + normal * 12;
-    text.paint(
-      canvas,
-      labelAt - Offset(text.width / 2, text.height / 2),
-    );
+    text.paint(canvas, labelAt - Offset(text.width / 2, text.height / 2));
   }
 
   @override

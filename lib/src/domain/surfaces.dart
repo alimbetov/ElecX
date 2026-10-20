@@ -20,20 +20,19 @@ final class RoomSurfaceRef {
     this.wallIndex,
   });
 
-  factory RoomSurfaceRef.floor(String spaceId) => RoomSurfaceRef._(
-        spaceId: spaceId,
-        type: SurfacePlaneType.floor,
-      );
+  factory RoomSurfaceRef.floor(String spaceId) =>
+      RoomSurfaceRef._(spaceId: spaceId, type: SurfacePlaneType.floor);
 
-  factory RoomSurfaceRef.ceiling(String spaceId) => RoomSurfaceRef._(
-        spaceId: spaceId,
-        type: SurfacePlaneType.ceiling,
-      );
+  factory RoomSurfaceRef.ceiling(String spaceId) =>
+      RoomSurfaceRef._(spaceId: spaceId, type: SurfacePlaneType.ceiling);
 
   factory RoomSurfaceRef.wall(String spaceId, int wallIndex) {
     if (wallIndex < 0) {
       throw ArgumentError.value(
-          wallIndex, 'wallIndex', 'Must be non-negative.');
+        wallIndex,
+        'wallIndex',
+        'Must be non-negative.',
+      );
     }
     return RoomSurfaceRef._(
       spaceId: spaceId,
@@ -146,6 +145,13 @@ final class SurfacePointMm {
 
   final int xMm;
   final int yMm;
+
+  @override
+  bool operator ==(Object other) =>
+      other is SurfacePointMm && other.xMm == xMm && other.yMm == yMm;
+
+  @override
+  int get hashCode => Object.hash(xMm, yMm);
 }
 
 final class SurfaceRouteDraft {
@@ -231,8 +237,6 @@ abstract final class RoomSurfaceResolver {
     );
   }
 
-  static double wallAngleRadians(RoomWallSurface wall) => math.atan2(
-        wall.end.y - wall.start.y,
-        wall.end.x - wall.start.x,
-      );
+  static double wallAngleRadians(RoomWallSurface wall) =>
+      math.atan2(wall.end.y - wall.start.y, wall.end.x - wall.start.x);
 }

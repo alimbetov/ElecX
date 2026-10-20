@@ -78,7 +78,8 @@ final class InstallationCapacityResult {
 
 abstract final class InstallationCapacityEngine {
   static InstallationCapacityResult evaluate(
-      InstallationCapacityRequest request) {
+    InstallationCapacityRequest request,
+  ) {
     final defects = <InstallationDefect>[];
     final utilizations = <ChannelUtilization>[];
     final specById = <String, InstallationPathSpec>{

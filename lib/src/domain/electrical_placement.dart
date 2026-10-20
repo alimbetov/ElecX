@@ -110,7 +110,8 @@ String legacyComponentTypeId(ElectricalComponentType type) => switch (type) {
     };
 
 ElectricalComponentType legacyVisualTypeForComponentId(
-        String componentTypeId) =>
+  String componentTypeId,
+) =>
     switch (componentTypeId) {
       'power.socket.general' => ElectricalComponentType.socketOutlet,
       'lighting.switch.general' => ElectricalComponentType.switchControl,
@@ -134,9 +135,7 @@ abstract final class ElectricalComponentDefaults {
               kind: ElectricalPortKind.powerIn,
             ),
             ElectricalPortDefinition(
-              id: 'earth',
-              kind: ElectricalPortKind.earth,
-            ),
+                id: 'earth', kind: ElectricalPortKind.earth),
           ],
         ElectricalComponentType.switchControl => const [
             ElectricalPortDefinition(
@@ -158,9 +157,7 @@ abstract final class ElectricalComponentDefaults {
               kind: ElectricalPortKind.controlIn,
             ),
             ElectricalPortDefinition(
-              id: 'earth',
-              kind: ElectricalPortKind.earth,
-            ),
+                id: 'earth', kind: ElectricalPortKind.earth),
           ],
         ElectricalComponentType.curtainMotor => const [
             ElectricalPortDefinition(
@@ -172,9 +169,7 @@ abstract final class ElectricalComponentDefaults {
               kind: ElectricalPortKind.controlIn,
             ),
             ElectricalPortDefinition(
-              id: 'earth',
-              kind: ElectricalPortKind.earth,
-            ),
+                id: 'earth', kind: ElectricalPortKind.earth),
           ],
         ElectricalComponentType.junctionBox => const [
             ElectricalPortDefinition(
@@ -192,9 +187,7 @@ abstract final class ElectricalComponentDefaults {
               kind: ElectricalPortKind.powerOut,
             ),
             ElectricalPortDefinition(
-              id: 'earth',
-              kind: ElectricalPortKind.earth,
-            ),
+                id: 'earth', kind: ElectricalPortKind.earth),
           ],
         ElectricalComponentType.distributionBoard => const [
             ElectricalPortDefinition(
@@ -202,9 +195,7 @@ abstract final class ElectricalComponentDefaults {
               kind: ElectricalPortKind.powerOut,
             ),
             ElectricalPortDefinition(
-              id: 'earth',
-              kind: ElectricalPortKind.earth,
-            ),
+                id: 'earth', kind: ElectricalPortKind.earth),
           ],
         ElectricalComponentType.custom => const [],
       };

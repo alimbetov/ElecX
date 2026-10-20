@@ -88,7 +88,7 @@ abstract final class SiteNavigationProjection {
 
   static NavigatorNode cottageSite(ComposedSite site) {
     final buildings = {
-      for (final building in site.site.buildings) building.id: building
+      for (final building in site.site.buildings) building.id: building,
     };
     return NavigatorNode(
       id: 'site:${site.id}',
@@ -160,8 +160,9 @@ abstract final class SiteNavigationProjection {
       );
     }
 
-    final ungrouped =
-        level.level.spaces.where((space) => !claimed.contains(space.id));
+    final ungrouped = level.level.spaces.where(
+      (space) => !claimed.contains(space.id),
+    );
     return NavigatorNode(
       id: 'level:${level.levelNumber}',
       label: level.displayName,
@@ -169,10 +170,7 @@ abstract final class SiteNavigationProjection {
       levelNumber: level.levelNumber,
       targetId: level.level.id,
       subtitle: '${level.level.elevationMm} mm',
-      children: [
-        ...zoneNodes,
-        for (final space in ungrouped) _roomNode(space),
-      ],
+      children: [...zoneNodes, for (final space in ungrouped) _roomNode(space)],
     );
   }
 

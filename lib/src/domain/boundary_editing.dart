@@ -1,17 +1,10 @@
 import 'surfaces.dart';
 import 'wall_profile.dart';
 
-enum BoundaryEditProfile {
-  wall,
-  structuralProfile,
-  openings,
-}
+enum BoundaryEditProfile { wall, structuralProfile, openings }
 
 final class WallProfileSegment {
-  const WallProfileSegment({
-    required this.a,
-    required this.b,
-  });
+  const WallProfileSegment({required this.a, required this.b});
 
   final WallProfilePoint a;
   final WallProfilePoint b;

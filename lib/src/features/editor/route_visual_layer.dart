@@ -104,8 +104,9 @@ final class RouteVisualPainter extends CustomPainter {
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
         ..strokeWidth = 9
-        ..color =
-            colorScheme.primary.withValues(alpha: 0.12 + frame.glow * 0.18);
+        ..color = colorScheme.primary.withValues(
+          alpha: 0.12 + frame.glow * 0.18,
+        );
       _drawHostedSegments(canvas, route, halo);
     }
     _drawHostedSegments(canvas, route, base);

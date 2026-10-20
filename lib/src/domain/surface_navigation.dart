@@ -15,10 +15,14 @@ abstract final class SurfaceNavigationResolver {
     return switch (edge) {
       WallNavigationEdge.floor => RoomSurfaceRef.floor(space.id),
       WallNavigationEdge.ceiling => RoomSurfaceRef.ceiling(space.id),
-      WallNavigationEdge.start =>
-        RoomSurfaceRef.wall(space.id, (wallIndex - 1 + wallCount) % wallCount),
-      WallNavigationEdge.end =>
-        RoomSurfaceRef.wall(space.id, (wallIndex + 1) % wallCount),
+      WallNavigationEdge.start => RoomSurfaceRef.wall(
+          space.id,
+          (wallIndex - 1 + wallCount) % wallCount,
+        ),
+      WallNavigationEdge.end => RoomSurfaceRef.wall(
+          space.id,
+          (wallIndex + 1) % wallCount,
+        ),
     };
   }
 

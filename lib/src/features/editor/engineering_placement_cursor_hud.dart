@@ -9,10 +9,7 @@ import 'engineering_placement_cursor_session.dart';
 import 'route_selection_session.dart';
 
 class EngineeringPlacementCursorHud extends StatelessWidget {
-  const EngineeringPlacementCursorHud({
-    required this.controller,
-    super.key,
-  });
+  const EngineeringPlacementCursorHud({required this.controller, super.key});
 
   final EditorController controller;
 
@@ -113,7 +110,9 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
                         placement.coordinateLabel,
                         style:
                             Theme.of(context).textTheme.labelMedium?.copyWith(
-                          fontFeatures: const [FontFeature.tabularFigures()],
+                          fontFeatures: const [
+                            FontFeature.tabularFigures(),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 3),
@@ -133,38 +132,26 @@ class EngineeringPlacementCursorHud extends StatelessWidget {
                           _NudgeButton(
                             icon: Icons.arrow_left,
                             tooltip: '← $step mm',
-                            onPressed: () =>
-                                controller.placementCursor.nudgeGrid(
-                              dxSteps: -1,
-                              dySteps: 0,
-                            ),
+                            onPressed: () => controller.placementCursor
+                                .nudgeGrid(dxSteps: -1, dySteps: 0),
                           ),
                           _NudgeButton(
                             icon: Icons.arrow_right,
                             tooltip: '→ $step mm',
-                            onPressed: () =>
-                                controller.placementCursor.nudgeGrid(
-                              dxSteps: 1,
-                              dySteps: 0,
-                            ),
+                            onPressed: () => controller.placementCursor
+                                .nudgeGrid(dxSteps: 1, dySteps: 0),
                           ),
                           _NudgeButton(
                             icon: Icons.arrow_upward,
                             tooltip: '↑ $step mm',
-                            onPressed: () =>
-                                controller.placementCursor.nudgeGrid(
-                              dxSteps: 0,
-                              dySteps: 1,
-                            ),
+                            onPressed: () => controller.placementCursor
+                                .nudgeGrid(dxSteps: 0, dySteps: 1),
                           ),
                           _NudgeButton(
                             icon: Icons.arrow_downward,
                             tooltip: '↓ $step mm',
-                            onPressed: () =>
-                                controller.placementCursor.nudgeGrid(
-                              dxSteps: 0,
-                              dySteps: -1,
-                            ),
+                            onPressed: () => controller.placementCursor
+                                .nudgeGrid(dxSteps: 0, dySteps: -1),
                           ),
                           const SizedBox(width: 5),
                           IconButton.filledTonal(

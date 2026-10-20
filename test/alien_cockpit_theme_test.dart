@@ -35,8 +35,9 @@ void main() {
     expect(EditorUiTokens.minimumTouchTarget, greaterThanOrEqualTo(44));
   });
 
-  testWidgets('semantic CAD states remain distinct in dark mode',
-      (tester) async {
+  testWidgets('semantic CAD states remain distinct in dark mode', (
+    tester,
+  ) async {
     late Color selected;
     late Color invalid;
     late Color warning;

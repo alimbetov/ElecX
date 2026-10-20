@@ -90,10 +90,7 @@ void main() {
       segments: [
         ElectricalRouteSegment(
           surface: RoomSurfaceRef.ceiling('room-101'),
-          points: const [
-            SurfacePointMm(100, 100),
-            SurfacePointMm(2000, 100),
-          ],
+          points: const [SurfacePointMm(100, 100), SurfacePointMm(2000, 100)],
         ),
       ],
     );

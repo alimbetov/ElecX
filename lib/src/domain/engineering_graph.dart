@@ -319,10 +319,7 @@ final class CableSizingInput {
       );
     }
     if (maxVoltageDropPercent <= 0) {
-      throw ArgumentError.value(
-        maxVoltageDropPercent,
-        'maxVoltageDropPercent',
-      );
+      throw ArgumentError.value(maxVoltageDropPercent, 'maxVoltageDropPercent');
     }
   }
 

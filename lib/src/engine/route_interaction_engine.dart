@@ -206,8 +206,10 @@ abstract final class RouteInteractionEngine {
       final oy = py - ay;
       return math.sqrt(ox * ox + oy * oy);
     }
-    final t =
-        (((px - ax) * dx + (py - ay) * dy) / lengthSquared).clamp(0.0, 1.0);
+    final t = (((px - ax) * dx + (py - ay) * dy) / lengthSquared).clamp(
+      0.0,
+      1.0,
+    );
     final x = ax + t * dx;
     final y = ay + t * dy;
     final ox = px - x;

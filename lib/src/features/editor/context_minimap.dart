@@ -274,13 +274,21 @@ class _LevelMiniMapState extends State<_LevelMiniMap> {
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTapUp: (details) {
-              final hit =
-                  _hitSpace(details.localPosition, size, bounds, spaces);
+              final hit = _hitSpace(
+                details.localPosition,
+                size,
+                bounds,
+                spaces,
+              );
               if (hit != null) widget.workspace.editor.selectSpace(hit.id);
             },
             onDoubleTapDown: (details) {
-              final hit =
-                  _hitSpace(details.localPosition, size, bounds, spaces);
+              final hit = _hitSpace(
+                details.localPosition,
+                size,
+                bounds,
+                spaces,
+              );
               if (hit != null) {
                 widget.workspace.editor.selectSpace(hit.id);
                 Navigator.of(context).pop();
@@ -427,8 +435,10 @@ final class _MiniTransform {
   factory _MiniTransform.fit(MmBounds bounds, Size size) {
     const padding = 22.0;
     final usableWidth = (size.width - padding * 2).clamp(1.0, double.infinity);
-    final usableHeight =
-        (size.height - padding * 2).clamp(1.0, double.infinity);
+    final usableHeight = (size.height - padding * 2).clamp(
+      1.0,
+      double.infinity,
+    );
     final sx = usableWidth / (bounds.width == 0 ? 1 : bounds.width);
     final sy = usableHeight / (bounds.height == 0 ? 1 : bounds.height);
     final scale = sx < sy ? sx : sy;

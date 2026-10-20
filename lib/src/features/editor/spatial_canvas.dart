@@ -119,10 +119,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
 }
 
 class _ProfiledWallsStrip extends StatelessWidget {
-  const _ProfiledWallsStrip({
-    required this.controller,
-    required this.profiles,
-  });
+  const _ProfiledWallsStrip({required this.controller, required this.profiles});
 
   final EditorController controller;
   final List<MapEntry<int, WallProfile>> profiles;
@@ -155,9 +152,10 @@ class _ProfiledWallsStrip extends StatelessWidget {
                   const SizedBox(width: 5),
                   Text(
                     'ПРОФИЛИ',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                    style: Theme.of(context)
+                        .textTheme
+                        .labelSmall
+                        ?.copyWith(fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -259,10 +257,7 @@ class _ProfileWallButton extends StatelessWidget {
 }
 
 class _ProfileSparklinePainter extends CustomPainter {
-  const _ProfileSparklinePainter({
-    required this.profile,
-    required this.color,
-  });
+  const _ProfileSparklinePainter({required this.profile, required this.color});
 
   final WallProfile profile;
   final Color color;

@@ -3,10 +3,8 @@ import 'dart:math' as math;
 import '../domain/geometry.dart';
 
 final class WorldCamera {
-  const WorldCamera({
-    required this.centerMm,
-    required this.mmPerPixel,
-  }) : assert(mmPerPixel > 0);
+  const WorldCamera({required this.centerMm, required this.mmPerPixel})
+      : assert(mmPerPixel > 0);
 
   final MmPoint centerMm;
   final double mmPerPixel;
@@ -27,10 +25,7 @@ final class WorldCamera {
       xPx: cursorXpx,
       yPx: cursorYpx,
     );
-    final nextScale = (mmPerPixel / factor).clamp(
-      minMmPerPixel,
-      maxMmPerPixel,
-    );
+    final nextScale = (mmPerPixel / factor).clamp(minMmPerPixel, maxMmPerPixel);
     final provisional = WorldCamera(
       centerMm: centerMm,
       mmPerPixel: nextScale.toDouble(),

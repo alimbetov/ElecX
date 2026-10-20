@@ -121,8 +121,11 @@ class _RoomWorldStatus extends StatelessWidget {
           Text('пол ↓', style: Theme.of(context).textTheme.labelSmall),
           const Spacer(),
           if (route.isNotEmpty) ...[
-            Icon(Icons.alt_route,
-                size: 15, color: CadVisualTokens.route(scheme)),
+            Icon(
+              Icons.alt_route,
+              size: 15,
+              color: CadVisualTokens.route(scheme),
+            ),
             const SizedBox(width: 5),
             Flexible(
               child: Text(
@@ -205,8 +208,9 @@ class _SurfaceTile extends StatelessWidget {
 
     return Material(
       color: switch (role) {
-        _SurfaceRole.ceiling =>
-          scheme.surfaceContainerLow.withValues(alpha: 0.72),
+        _SurfaceRole.ceiling => scheme.surfaceContainerLow.withValues(
+            alpha: 0.72,
+          ),
         _SurfaceRole.wall => scheme.surfaceContainerLow,
         _SurfaceRole.floor => scheme.surfaceContainerLowest,
       },
@@ -318,10 +322,8 @@ class _RoomWorldSurfacePainter extends CustomPainter {
     final dx = (size.width - bounds.$1 * scale) / 2;
     final dy = (size.height - bounds.$2 * scale) / 2;
 
-    Offset mapPoint(SurfacePointMm point) => Offset(
-          dx + point.xMm * scale,
-          size.height - (dy + point.yMm * scale),
-        );
+    Offset mapPoint(SurfacePointMm point) =>
+        Offset(dx + point.xMm * scale, size.height - (dy + point.yMm * scale));
 
     final outline = Paint()
       ..style = PaintingStyle.stroke
@@ -436,11 +438,7 @@ class _RoomWorldSurfacePainter extends CustomPainter {
         path.lineTo(mapped.dx, mapped.dy);
       }
       canvas.drawPath(path, routePaint);
-      canvas.drawCircle(
-        first,
-        CadVisualTokens.transitionNodeRadius,
-        nodePaint,
-      );
+      canvas.drawCircle(first, CadVisualTokens.transitionNodeRadius, nodePaint);
       canvas.drawCircle(
         mapPoint(segment.points.last),
         CadVisualTokens.transitionNodeRadius,

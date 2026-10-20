@@ -474,11 +474,7 @@ class _SiteMapPainter extends CustomPainter {
     }
   }
 
-  void _drawTransitions(
-    Canvas canvas,
-    Size size,
-    HostedRoutePath route,
-  ) {
+  void _drawTransitions(Canvas canvas, Size size, HostedRoutePath route) {
     for (final transition in route.transitions) {
       MmPoint? point;
       if (transition.fromHost.kind == RouteHostKind.outdoorZone) {
@@ -488,11 +484,7 @@ class _SiteMapPainter extends CustomPainter {
       }
       if (point == null) continue;
       final center = _screen(size, point);
-      canvas.drawCircle(
-        center,
-        8,
-        Paint()..color = scheme.tertiaryContainer,
-      );
+      canvas.drawCircle(center, 8, Paint()..color = scheme.tertiaryContainer);
       canvas.drawCircle(
         center,
         8,

@@ -177,10 +177,7 @@ final class BoundaryEditSession extends ChangeNotifier {
     notifyListeners();
   }
 
-  void beginOpeningDraft(
-    ArchitecturalOpening opening, {
-    bool force = false,
-  }) {
+  void beginOpeningDraft(ArchitecturalOpening opening, {bool force = false}) {
     if (!force && _openingDraft?.openingId == opening.id) return;
     _openingDraft = OpeningEditDraft.fromOpening(opening);
     _openingDraftDirty = false;

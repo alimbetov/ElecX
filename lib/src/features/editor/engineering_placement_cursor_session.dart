@@ -5,6 +5,7 @@ import '../../domain/electrical_placement.dart';
 import '../../domain/engineering_placement_cursor.dart';
 import '../../domain/geometry.dart';
 import '../../domain/surfaces.dart';
+import '../../engine/editor_layers.dart';
 import 'catalog_component_placement.dart';
 import 'component_catalog_session.dart';
 import 'editor_controller.dart';
@@ -36,10 +37,7 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
     notifyListeners();
   }
 
-  void beginCatalogPlacement(
-    String componentTypeId, {
-    bool repeat = false,
-  }) {
+  void beginCatalogPlacement(String componentTypeId, {bool repeat = false}) {
     controller.componentCatalog.require(componentTypeId);
     _requestedComponentTypeId = componentTypeId;
     _repeatPlacement = repeat;
@@ -150,6 +148,10 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
   bool confirm() {
     final current = ensure();
     if (current == null || !current.isValid) return false;
+    if (!controller.p2.layers.isVisible(EditorLayerId.electrical) ||
+        controller.p2.layers.isLocked(EditorLayerId.electrical)) {
+      return false;
+    }
     final entry = controller.componentCatalog.byId(current.componentTypeId);
     if (entry == null) return false;
     controller.p2.placeCatalogComponent(
@@ -202,10 +204,7 @@ final class EngineeringPlacementCursorSession extends ChangeNotifier {
     final bounds = space.boundary.bounds;
     if (point.xMm > bounds.width || point.yMm > bounds.height) return false;
     return space.boundary.contains(
-      MmPoint(
-        point.xMm + bounds.left,
-        point.yMm + bounds.bottom,
-      ),
+      MmPoint(point.xMm + bounds.left, point.yMm + bounds.bottom),
     );
   }
 }

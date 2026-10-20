@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 /// expose larger targets through adaptive interaction policies.
 abstract final class EditorUiTokens {
   static const double appBarHeight = 48;
-  static const double commandBarHeight = 48;
+  static const double commandBarHeight = 56;
   static const double contextBarHeight = 36;
   static const double desktopNavigatorWidth = 252;
   static const double desktopInspectorWidth = 312;
@@ -14,12 +14,12 @@ abstract final class EditorUiTokens {
   static const double panelHeaderHeight = 40;
 
   // Pointer-oriented desktop controls.
-  static const double commandTarget = 40;
+  static const double commandTarget = 48;
 
   // Compact/mobile chrome must still preserve a comfortable target. Fine-grain
   // device-specific hit targets are owned by EditorInteractionPolicy.
-  static const double compactCommandTarget = 44;
-  static const double minimumTouchTarget = 44;
+  static const double compactCommandTarget = 48;
+  static const double minimumTouchTarget = 48;
 
   static const double panelRadius = 8;
   static const double controlRadius = 7;

@@ -14,18 +14,21 @@ void main() {
     expect(guides.length, 9);
     expect(
       guides.where(
-          (guide) => guide.kind == InstallationGuideKind.socketMountingLine),
+        (guide) => guide.kind == InstallationGuideKind.socketMountingLine,
+      ),
       hasLength(4),
     );
     expect(
       guides.where(
-          (guide) => guide.kind == InstallationGuideKind.switchMountingLine),
+        (guide) => guide.kind == InstallationGuideKind.switchMountingLine,
+      ),
       hasLength(4),
     );
     expect(
       guides
-          .singleWhere((guide) =>
-              guide.kind == InstallationGuideKind.ceilingLightingAxis)
+          .singleWhere(
+            (guide) => guide.kind == InstallationGuideKind.ceilingLightingAxis,
+          )
           .surface,
       RoomSurfaceRef.ceiling('room-1'),
     );
@@ -72,22 +75,18 @@ void main() {
       profile: profile,
     );
 
-    expect(
-      guides.where((guide) => guide.offsetMm == 450),
-      hasLength(2),
-    );
-    expect(
-      guides.where((guide) => guide.offsetMm == 1050),
-      hasLength(2),
-    );
+    expect(guides.where((guide) => guide.offsetMm == 450), hasLength(2));
+    expect(guides.where((guide) => guide.offsetMm == 1050), hasLength(2));
     expect(
       guides.where(
-          (guide) => guide.kind == InstallationGuideKind.ceilingLightingAxis),
+        (guide) => guide.kind == InstallationGuideKind.ceilingLightingAxis,
+      ),
       isEmpty,
     );
     expect(
       guides.where(
-          (guide) => guide.kind == InstallationGuideKind.ceilingLightingGrid),
+        (guide) => guide.kind == InstallationGuideKind.ceilingLightingGrid,
+      ),
       hasLength(1),
     );
   });

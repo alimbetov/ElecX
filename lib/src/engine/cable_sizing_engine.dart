@@ -140,10 +140,7 @@ abstract final class CableSizingEngine {
 
     final voltageDrop = impedance == null
         ? null
-        : _voltageDropV(
-            requirement: request.requirement,
-            evidence: impedance,
-          );
+        : _voltageDropV(requirement: request.requirement, evidence: impedance);
     final voltageDropRatio = voltageDrop == null
         ? null
         : voltageDrop / request.requirement.nominalVoltageV;

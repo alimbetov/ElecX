@@ -227,8 +227,7 @@ abstract final class ComponentCatalogV2 {
   ) =>
       entries
           .where(
-            (entry) => entry.mounting.allowedSurfaces.contains(surfaceType),
-          )
+              (entry) => entry.mounting.allowedSurfaces.contains(surfaceType))
           .toList(growable: false);
 
   static final List<ComponentCatalogEntryV2> _defaults = [
@@ -318,10 +317,7 @@ abstract final class ComponentCatalogV2 {
     systemClass: EngineeringSystemClass.lighting,
     calculationKind: EngineeringCalculationKind.powerCableSizing,
     mounting: ComponentMountingPolicy(
-      allowedSurfaces: const {
-        SurfacePlaneType.ceiling,
-        SurfacePlaneType.wall,
-      },
+      allowedSurfaces: const {SurfacePlaneType.ceiling, SurfacePlaneType.wall},
     ),
     environment: const ComponentEnvironmentConstraints(
       minAmbientC: -20,
@@ -350,10 +346,7 @@ abstract final class ComponentCatalogV2 {
     systemClass: EngineeringSystemClass.powerAc,
     calculationKind: EngineeringCalculationKind.powerCableSizing,
     mounting: ComponentMountingPolicy(
-      allowedSurfaces: const {
-        SurfacePlaneType.wall,
-        SurfacePlaneType.ceiling,
-      },
+      allowedSurfaces: const {SurfacePlaneType.wall, SurfacePlaneType.ceiling},
     ),
     environment: const ComponentEnvironmentConstraints(
       minAmbientC: 0,
@@ -391,10 +384,7 @@ abstract final class ComponentCatalogV2 {
     systemClass: EngineeringSystemClass.powerAc,
     calculationKind: EngineeringCalculationKind.powerCableSizing,
     mounting: ComponentMountingPolicy(
-      allowedSurfaces: const {
-        SurfacePlaneType.wall,
-        SurfacePlaneType.ceiling,
-      },
+      allowedSurfaces: const {SurfacePlaneType.wall, SurfacePlaneType.ceiling},
     ),
     environment: const ComponentEnvironmentConstraints(),
     ports: [
@@ -420,10 +410,7 @@ abstract final class ComponentCatalogV2 {
     systemClass: EngineeringSystemClass.powerAc,
     calculationKind: EngineeringCalculationKind.powerCableSizing,
     mounting: ComponentMountingPolicy(
-      allowedSurfaces: const {
-        SurfacePlaneType.wall,
-        SurfacePlaneType.floor,
-      },
+      allowedSurfaces: const {SurfacePlaneType.wall, SurfacePlaneType.floor},
     ),
     environment: const ComponentEnvironmentConstraints(
       allowWetZone: false,
@@ -493,10 +480,7 @@ abstract final class ComponentCatalogV2 {
     systemClass: EngineeringSystemClass.cctv,
     calculationKind: EngineeringCalculationKind.poePowerBudget,
     mounting: ComponentMountingPolicy(
-      allowedSurfaces: const {
-        SurfacePlaneType.wall,
-        SurfacePlaneType.ceiling,
-      },
+      allowedSurfaces: const {SurfacePlaneType.wall, SurfacePlaneType.ceiling},
     ),
     environment: const ComponentEnvironmentConstraints(
       minAmbientC: -20,

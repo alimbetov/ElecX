@@ -5,8 +5,10 @@ import 'route_medium.dart';
 import 'surfaces.dart';
 
 final class ElectricalEndpointRef {
-  const ElectricalEndpointRef(
-      {required this.componentId, required this.portId});
+  const ElectricalEndpointRef({
+    required this.componentId,
+    required this.portId,
+  });
 
   final String componentId;
   final String portId;
@@ -69,23 +71,80 @@ final class ElectricalCableRoute {
       geometricLengthMm * (1 + reservePercent / 100);
 }
 
-abstract final class ElectricalConnectivityValidator {
-  static bool endpointExists({
+abstract final class ElectricalPortCompatibility {
+  static bool areCompatible(
+    ElectricalPortKind source,
+    ElectricalPortKind target,
+  ) =>
+      switch (source) {
+        ElectricalPortKind.powerOut => target == ElectricalPortKind.powerIn,
+        ElectricalPortKind.controlOut => target == ElectricalPortKind.controlIn,
+        _ => false,
+      };
+
+  static ElectricalPortDefinition? portForEndpoint({
     required ElectricalEndpointRef endpoint,
     required Iterable<ElectricalComponentPlacement> components,
   }) {
     for (final component in components) {
       if (component.id != endpoint.componentId) continue;
-      return component.ports.any((port) => port.id == endpoint.portId);
+      for (final port in component.ports) {
+        if (port.id == endpoint.portId) return port;
+      }
+      return null;
     }
-    return false;
+    return null;
+  }
+}
+
+abstract final class ElectricalConnectivityValidator {
+  static bool endpointExists({
+    required ElectricalEndpointRef endpoint,
+    required Iterable<ElectricalComponentPlacement> components,
+  }) =>
+      ElectricalPortCompatibility.portForEndpoint(
+        endpoint: endpoint,
+        components: components,
+      ) !=
+      null;
+
+  static bool routeIsPhysicallyAnchored({
+    required ElectricalCableRoute route,
+    required Iterable<ElectricalComponentPlacement> components,
+  }) {
+    if (route.segments.isEmpty ||
+        route.segments.first.points.isEmpty ||
+        route.segments.last.points.isEmpty) {
+      return false;
+    }
+    ElectricalComponentPlacement? sourceComponent;
+    ElectricalComponentPlacement? targetComponent;
+    for (final component in components) {
+      if (component.id == route.source.componentId) sourceComponent = component;
+      if (component.id == route.target.componentId) targetComponent = component;
+    }
+    if (sourceComponent == null || targetComponent == null) return false;
+    return route.segments.first.surface == sourceComponent.surface &&
+        route.segments.first.points.first == sourceComponent.position &&
+        route.segments.last.surface == targetComponent.surface &&
+        route.segments.last.points.last == targetComponent.position;
   }
 
   static bool routeIsConnected({
     required ElectricalCableRoute route,
     required Iterable<ElectricalComponentPlacement> components,
-  }) =>
-      route.segments.isNotEmpty &&
-      endpointExists(endpoint: route.source, components: components) &&
-      endpointExists(endpoint: route.target, components: components);
+  }) {
+    if (route.segments.isEmpty) return false;
+    final source = ElectricalPortCompatibility.portForEndpoint(
+      endpoint: route.source,
+      components: components,
+    );
+    final target = ElectricalPortCompatibility.portForEndpoint(
+      endpoint: route.target,
+      components: components,
+    );
+    return source != null &&
+        target != null &&
+        ElectricalPortCompatibility.areCompatible(source.kind, target.kind);
+  }
 }

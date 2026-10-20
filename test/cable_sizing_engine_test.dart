@@ -150,9 +150,7 @@ void main() {
           maxVoltageDropRatio: 0.05,
           powerFactor: 1,
         ),
-        impedanceEvidence: const CableImpedanceEvidence(
-          resistanceOhmPerKm: 1,
-        ),
+        impedanceEvidence: const CableImpedanceEvidence(resistanceOhmPerKm: 1),
         ampacitySections: [
           SectionAmpacityEvidence(
             sectionId: 'tray',

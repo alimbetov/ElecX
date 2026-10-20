@@ -18,10 +18,7 @@ void main() {
         segments: [
           ElectricalRouteSegment(
             surface: RoomSurfaceRef.wall('room-1', 0),
-            points: const [
-              SurfacePointMm(0, 300),
-              SurfacePointMm(1000, 300),
-            ],
+            points: const [SurfacePointMm(0, 300), SurfacePointMm(1000, 300)],
           ),
         ],
       );
@@ -31,14 +28,8 @@ void main() {
     routeId: 'route-1',
     circuitId: 'circuit-1',
     designation: 'W-001',
-    endA: CableTerminationRef(
-      componentId: 'DB-01',
-      portId: 'outgoing',
-    ),
-    endB: CableTerminationRef(
-      componentId: 'LOAD-01',
-      portId: 'power-in',
-    ),
+    endA: CableTerminationRef(componentId: 'DB-01', portId: 'outgoing'),
+    endB: CableTerminationRef(componentId: 'LOAD-01', portId: 'power-in'),
   );
 
   test('same bundle can be registered idempotently', () {

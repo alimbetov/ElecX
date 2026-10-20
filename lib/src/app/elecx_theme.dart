@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'alien_cockpit_tokens.dart';
+import 'engineering_colors.dart';
 
 abstract final class ElecXTheme {
   static ThemeData light() => _theme(Brightness.light);
@@ -49,6 +50,9 @@ abstract final class ElecXTheme {
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
+      extensions: <ThemeExtension<dynamic>>[
+        dark ? EngineeringColors.dark() : EngineeringColors.light(),
+      ],
       visualDensity: VisualDensity.compact,
       scaffoldBackgroundColor: scheme.surface,
       splashFactory: InkSparkle.splashFactory,
@@ -111,8 +115,9 @@ abstract final class ElecXTheme {
         labelPadding: const EdgeInsets.symmetric(horizontal: 4),
         labelStyle: const TextStyle(fontSize: 11.5),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
-        selectedColor:
-            scheme.primaryContainer.withValues(alpha: dark ? 0.82 : 0.55),
+        selectedColor: scheme.primaryContainer.withValues(
+          alpha: dark ? 0.82 : 0.55,
+        ),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
@@ -120,8 +125,9 @@ abstract final class ElecXTheme {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
-          side:
-              BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.72)),
+          side: BorderSide(
+            color: scheme.outlineVariant.withValues(alpha: 0.72),
+          ),
         ),
       ),
       iconButtonTheme: IconButtonThemeData(

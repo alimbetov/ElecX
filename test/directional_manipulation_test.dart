@@ -123,13 +123,7 @@ void main() {
   });
 }
 
-EngineeringSpace _space(
-  String id,
-  int left,
-  int bottom,
-  int right,
-  int top,
-) {
+EngineeringSpace _space(String id, int left, int bottom, int right, int top) {
   final boundary = MmPolygon.rectangle(
     MmPoint(left, bottom),
     MmPoint(right, top),

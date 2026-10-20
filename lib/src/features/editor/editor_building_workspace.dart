@@ -3,8 +3,10 @@ import 'package:flutter/foundation.dart';
 import '../../domain/building_composition.dart';
 import '../../domain/geometry.dart';
 import '../../domain/project_model.dart';
+import '../../domain/site_orientation.dart';
 import '../../domain/residential_tower_builder.dart';
 import '../../domain/site_outdoor_model.dart';
+import '../../domain/surfaces.dart';
 import 'editor_controller.dart';
 
 enum EditorWorkspaceContext { buildingLevel, siteOutdoor }
@@ -15,11 +17,53 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
     required this.building,
     required this.site,
     int initialLevelNumber = 1,
-  }) : _activeLevelNumber = initialLevelNumber {
+    Map<int, List<ArchitecturalOpening>> initialOpeningsByLevel = const {},
+  })  : _activeLevelNumber = initialLevelNumber,
+        _openingsByLevel = {
+          for (final entry in initialOpeningsByLevel.entries)
+            entry.key: List<ArchitecturalOpening>.of(entry.value),
+        } {
     final initial = building.levelByNumber(initialLevelNumber) ??
         building.orderedLevels.first;
     _activeLevelNumber = initial.levelNumber;
     _activateLevel(initial);
+  }
+
+  factory EditorBuildingWorkspace.blank(
+    EditorController editor, {
+    required String projectId,
+    required String projectName,
+  }) {
+    final level = ComposedBuildingLevel(
+      level: editor.level,
+      levelNumber: 1,
+      kind: BuildingLevelKind.residential,
+      zones: const [],
+    );
+    final buildingGeometry = Building(
+      id: 'building-$projectId',
+      name: projectName,
+      levels: [level.level],
+    );
+    final building = ComposedBuilding(
+      building: buildingGeometry,
+      levels: [level],
+    );
+    final site = ComposedProjectSite(
+      site: ProjectSite(
+        id: 'site-$projectId',
+        name: projectName,
+        buildings: [buildingGeometry],
+      ),
+      outdoorZones: const [],
+      connections: const [],
+    );
+    return EditorBuildingWorkspace(
+      editor: editor,
+      building: building,
+      site: site,
+      initialLevelNumber: 1,
+    );
   }
 
   factory EditorBuildingWorkspace.demo(EditorController editor) {
@@ -69,8 +113,9 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
   }
 
   final EditorController editor;
-  final ComposedBuilding building;
-  final ComposedProjectSite site;
+  ComposedBuilding building;
+  ComposedProjectSite site;
+  final Map<int, List<ArchitecturalOpening>> _openingsByLevel;
 
   EditorWorkspaceContext _context = EditorWorkspaceContext.buildingLevel;
   late int _activeLevelNumber;
@@ -81,6 +126,11 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
   int get activeLevelNumber => _activeLevelNumber;
   String? get selectedZoneId => _selectedZoneId;
   String? get activeOutdoorZoneId => _activeOutdoorZoneId;
+  Map<int, List<ArchitecturalOpening>> get openingsByLevel =>
+      Map<int, List<ArchitecturalOpening>>.unmodifiable({
+        for (final entry in _openingsByLevel.entries)
+          entry.key: List<ArchitecturalOpening>.unmodifiable(entry.value),
+      });
 
   ComposedBuildingLevel? get activeLevel =>
       building.levelByNumber(_activeLevelNumber);
@@ -102,7 +152,21 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
       .where((level) => level.levelNumber < 0)
       .toList(growable: false);
 
+  void updateProjectNorth(ProjectNorth value) {
+    if (site.site.projectNorth.northAzimuthDegrees ==
+        value.northAzimuthDegrees) {
+      return;
+    }
+    site = site.copyWith(
+      site: site.site.copyWith(projectNorth: value),
+    );
+    notifyListeners();
+  }
+
   void selectLevel(int levelNumber) {
+    if (_context == EditorWorkspaceContext.buildingLevel) {
+      synchronizeActiveEditorState();
+    }
     final level = building.levelByNumber(levelNumber);
     if (level == null) {
       throw ArgumentError.value(levelNumber, 'levelNumber', 'Unknown level.');
@@ -130,7 +194,10 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
     }
     if (zone == null) {
       throw ArgumentError.value(
-          zoneId, 'zoneId', 'Unknown zone on active level.');
+        zoneId,
+        'zoneId',
+        'Unknown zone on active level.',
+      );
     }
     _selectedZoneId = zone.id;
     final firstSpaceId = zone.spaceIds.first;
@@ -139,6 +206,9 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
   }
 
   void selectOutdoorZone(String zoneId) {
+    if (_context == EditorWorkspaceContext.buildingLevel) {
+      synchronizeActiveEditorState();
+    }
     OutdoorZone? zone;
     for (final candidate in site.outdoorZones) {
       if (candidate.id == zoneId) {
@@ -162,8 +232,9 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
           name: zone.name,
           type: SpaceType.outdoorArea,
           boundary: zone.boundary,
-          referenceFrame:
-              RoomReferenceFrame(origin: zone.boundary.bounds.center),
+          referenceFrame: RoomReferenceFrame(
+            origin: zone.boundary.bounds.center,
+          ),
           grid: zone.grid,
         ),
       ],
@@ -175,8 +246,9 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
   void nextLevel() {
     if (_context != EditorWorkspaceContext.buildingLevel) return;
     final levels = building.orderedLevels;
-    final index =
-        levels.indexWhere((level) => level.levelNumber == _activeLevelNumber);
+    final index = levels.indexWhere(
+      (level) => level.levelNumber == _activeLevelNumber,
+    );
     if (index >= 0 && index + 1 < levels.length) {
       selectLevel(levels[index + 1].levelNumber);
     }
@@ -185,20 +257,88 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
   void previousLevel() {
     if (_context != EditorWorkspaceContext.buildingLevel) return;
     final levels = building.orderedLevels;
-    final index =
-        levels.indexWhere((level) => level.levelNumber == _activeLevelNumber);
+    final index = levels.indexWhere(
+      (level) => level.levelNumber == _activeLevelNumber,
+    );
     if (index > 0) {
       selectLevel(levels[index - 1].levelNumber);
     }
   }
 
-  void _activateLevel(ComposedBuildingLevel level) {
-    editor.level = level.level;
-    _resetEditorForLevel(level.level);
+  void synchronizeActiveEditorState() {
+    if (_context != EditorWorkspaceContext.buildingLevel) return;
+    final current = building.levelByNumber(_activeLevelNumber);
+    if (current == null) return;
+
+    _openingsByLevel[_activeLevelNumber] =
+        List<ArchitecturalOpening>.of(editor.openings);
+    final updatedLevel = ComposedBuildingLevel(
+      level: editor.level,
+      levelNumber: current.levelNumber,
+      kind: current.kind,
+      floorToFloorHeightMm: current.floorToFloorHeightMm,
+      zones: current.zones,
+    );
+    final levels = [
+      for (final level in building.levels)
+        if (level.levelNumber == _activeLevelNumber) updatedLevel else level,
+    ];
+    final geometry = Building(
+      id: building.building.id,
+      name: building.building.name,
+      levels: [for (final level in levels) level.level],
+    );
+    building = ComposedBuilding(
+      building: geometry,
+      levels: levels,
+      verticalCores: building.verticalCores,
+    );
+    site = site.copyWith(
+      site: site.site.copyWith(
+        buildings: [
+          for (final candidate in site.site.buildings)
+            if (candidate.id == geometry.id) geometry else candidate,
+        ],
+      ),
+    );
   }
 
-  void _resetEditorForLevel(BuildingLevel level) {
-    editor.openings = [];
+  void restoreNavigationState({
+    required EditorWorkspaceContext context,
+    String? selectedZoneId,
+    String? activeOutdoorZoneId,
+  }) {
+    if (context == EditorWorkspaceContext.siteOutdoor) {
+      if (activeOutdoorZoneId == null) {
+        throw ArgumentError('Outdoor context requires an active zone.');
+      }
+      selectOutdoorZone(activeOutdoorZoneId);
+      return;
+    }
+    _context = EditorWorkspaceContext.buildingLevel;
+    _activeOutdoorZoneId = null;
+    if (selectedZoneId != null &&
+        !(activeLevel?.zones.any((zone) => zone.id == selectedZoneId) ??
+            false)) {
+      throw ArgumentError('Restored building zone does not exist.');
+    }
+    _selectedZoneId = selectedZoneId;
+    notifyListeners();
+  }
+
+  void _activateLevel(ComposedBuildingLevel level) {
+    editor.level = level.level;
+    _resetEditorForLevel(
+      level.level,
+      openings: _openingsByLevel[level.levelNumber] ?? const [],
+    );
+  }
+
+  void _resetEditorForLevel(
+    BuildingLevel level, {
+    List<ArchitecturalOpening> openings = const [],
+  }) {
+    editor.openings = List<ArchitecturalOpening>.of(openings);
     editor.routeSegments.clear();
     editor.activeSurface = null;
     editor.selectedOpeningId = null;

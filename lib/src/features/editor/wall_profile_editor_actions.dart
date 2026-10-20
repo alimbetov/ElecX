@@ -2,6 +2,7 @@ import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
 import '../../domain/wall_profile.dart';
 import 'editor_controller.dart';
+import 'electrical_host_geometry_guard.dart';
 import 'wall_profile_command.dart';
 
 final class WallTopNotchState {
@@ -51,7 +52,12 @@ extension WallProfileEditorActions on EditorController {
         wall: candidateWall,
       ),
     );
-    if (invalidatesOpening) {
+    if (invalidatesOpening ||
+        !ElectricalHostGeometryGuard.wallProfileCandidateAllowed(
+          this,
+          candidateSpace,
+          wallIndex,
+        )) {
       return false;
     }
 
