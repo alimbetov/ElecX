@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../domain/surfaces.dart';
 import 'editor_building_workspace.dart';
 import 'editor_controller.dart';
+import 'electrical_host_geometry_guard.dart';
 import 'plan_geometry_editor_actions.dart';
 import 'wall_profile_editor_actions.dart';
 
@@ -247,7 +248,7 @@ class EngineeringInspector extends StatelessWidget {
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: () =>
-                    controller.addOpening(ArchitecturalOpeningType.door),
+                    controller.addOpeningGuarded(ArchitecturalOpeningType.door),
                 icon: const Icon(Icons.door_front_door_outlined, size: 17),
                 label: const Text('Дверь'),
               ),
@@ -255,8 +256,8 @@ class EngineeringInspector extends StatelessWidget {
             const SizedBox(width: 6),
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () =>
-                    controller.addOpening(ArchitecturalOpeningType.window),
+                onPressed: () => controller
+                    .addOpeningGuarded(ArchitecturalOpeningType.window),
                 icon: const Icon(Icons.window_outlined, size: 17),
                 label: const Text('Окно'),
               ),
@@ -510,7 +511,7 @@ class _OpeningEditor extends StatelessWidget {
               ],
               onChanged: (value) {
                 if (value != null) {
-                  controller.updateSelectedOpening(type: value);
+                  controller.updateSelectedOpeningGuarded(type: value);
                 }
               },
             ),
@@ -521,8 +522,8 @@ class _OpeningEditor extends StatelessWidget {
               ),
               label: 'Позиция от начала стены',
               value: opening.offsetFromStartMm,
-              onCommit: (value) =>
-                  controller.updateSelectedOpening(offsetFromStartMm: value),
+              onCommit: (value) => controller.updateSelectedOpeningGuarded(
+                  offsetFromStartMm: value),
             ),
             const SizedBox(height: 6),
             _CommitIntField(
@@ -530,7 +531,7 @@ class _OpeningEditor extends StatelessWidget {
               label: 'Ширина',
               value: opening.widthMm,
               onCommit: (value) =>
-                  controller.updateSelectedOpening(widthMm: value),
+                  controller.updateSelectedOpeningGuarded(widthMm: value),
             ),
             const SizedBox(height: 6),
             _CommitIntField(
@@ -538,7 +539,7 @@ class _OpeningEditor extends StatelessWidget {
               label: 'Высота',
               value: opening.heightMm,
               onCommit: (value) =>
-                  controller.updateSelectedOpening(heightMm: value),
+                  controller.updateSelectedOpeningGuarded(heightMm: value),
             ),
             const SizedBox(height: 6),
             _CommitIntField(
@@ -546,7 +547,7 @@ class _OpeningEditor extends StatelessWidget {
               label: 'От пола / подоконник',
               value: opening.sillHeightMm,
               onCommit: (value) =>
-                  controller.updateSelectedOpening(sillHeightMm: value),
+                  controller.updateSelectedOpeningGuarded(sillHeightMm: value),
             ),
             TextButton.icon(
               onPressed: controller.deleteSelectedOpening,

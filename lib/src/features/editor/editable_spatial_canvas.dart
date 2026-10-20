@@ -12,6 +12,7 @@ import '../../engine/plan_pull_measure.dart';
 import '../../engine/render_policy.dart';
 import '../../engine/spatial_scene_index.dart';
 import '../../engine/world_camera.dart';
+import 'electrical_host_geometry_guard.dart';
 import 'editor_controller.dart';
 import 'editor_viewport_commands.dart';
 import 'plan_geometry_editor_actions.dart';
@@ -511,9 +512,14 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
         controller.commitSelectedBoundary(_previewBoundary!);
         _rebuildIndex(force: true);
       } else if (_previewOpening case final opening?) {
-        controller.updateSelectedOpening(
+        controller.updateSelectedOpeningGuarded(
           offsetFromStartMm: opening.offsetFromStartMm,
           widthMm: opening.widthMm,
+          canCommit: (candidate) =>
+              ElectricalHostGeometryGuard.openingCandidateAllowed(
+            controller,
+            candidate,
+          ),
         );
         controller.viewMode = EditorViewMode.plan;
       }

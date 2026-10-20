@@ -5,6 +5,7 @@ import 'package:elecx/src/domain/site_orientation.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/features/editor/editor_building_workspace.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
+import 'package:elecx/src/features/editor/electrical_host_geometry_guard.dart';
 import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:elecx/src/features/editor/editor_project_document.dart';
 import 'package:elecx/src/features/editor/project_persistence_metadata.dart';
@@ -27,7 +28,7 @@ void main() {
 
     final space = editor.selectedSpace!;
     editor.showWall(0);
-    editor.addOpening(ArchitecturalOpeningType.door);
+    editor.addOpeningGuarded(ArchitecturalOpeningType.door);
     final wall = editor.activeSurface!;
     final source = editor.p2.placeComponent(
       type: ElectricalComponentType.powerSource,
@@ -124,7 +125,7 @@ void main() {
     );
     editor.selectSpace(editor.level.spaces.first.id);
     editor.showWall(0);
-    editor.addOpening(ArchitecturalOpeningType.window);
+    editor.addOpeningGuarded(ArchitecturalOpeningType.window);
     expect(editor.level.spaces, hasLength(originalCount + 1));
     expect(editor.openings, hasLength(1));
 

@@ -1,4 +1,5 @@
 import 'package:elecx/src/features/editor/editor_controller.dart';
+import 'package:elecx/src/features/editor/electrical_host_geometry_guard.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -8,7 +9,7 @@ void main() {
     final opening = controller.activeWallOpenings.single;
     controller.selectOpening(opening.id);
 
-    final updated = controller.updateSelectedOpening(
+    final updated = controller.updateSelectedOpeningGuarded(
       offsetFromStartMm: 900,
       widthMm: 1000,
       heightMm: 2200,
@@ -26,7 +27,7 @@ void main() {
     final opening = controller.activeWallOpenings.single;
     controller.selectOpening(opening.id);
 
-    final updated = controller.updateSelectedOpening(
+    final updated = controller.updateSelectedOpeningGuarded(
       offsetFromStartMm: 3900,
       widthMm: 1000,
     );
@@ -42,7 +43,7 @@ void main() {
     final opening = controller.activeWallOpenings.single;
     controller.selectOpening(opening.id);
 
-    final updated = controller.updateSelectedOpening(
+    final updated = controller.updateSelectedOpeningGuarded(
       sillHeightMm: 2000,
       heightMm: 1400,
     );

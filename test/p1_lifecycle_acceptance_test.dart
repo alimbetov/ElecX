@@ -1,10 +1,12 @@
 import 'package:elecx/src/domain/electrical_placement.dart';
 import 'package:elecx/src/domain/geometry.dart';
 import 'package:elecx/src/domain/surfaces.dart';
+import 'package:elecx/src/engine/selection_engine.dart';
 import 'package:elecx/src/engine/world_camera.dart';
 import 'package:elecx/src/features/editor/component_transform_session.dart';
 import 'package:elecx/src/features/editor/editor_building_workspace.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
+import 'package:elecx/src/features/editor/electrical_host_geometry_guard.dart';
 import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:elecx/src/features/editor/editor_project_document.dart';
 import 'package:elecx/src/features/editor/editor_project_recovery.dart';
@@ -169,6 +171,49 @@ void main() {
     await tester.pump(const Duration(milliseconds: 20));
     await tester.pumpAndSettle();
     expect(recovery.snapshots[document.projectId], isNull);
+  });
+
+  test('F03 adding an opening across existing cable is rejected atomically',
+      () {
+    final controller = EditorController.demo();
+    addTearDown(() {
+      controller.disposeP2State();
+      controller.dispose();
+    });
+    controller.showWall(1);
+    final surface = controller.activeSurface!;
+    final board = controller.p2.placeComponent(
+      type: ElectricalComponentType.distributionBoard,
+      surface: surface,
+      position: const SurfacePointMm(200, 1000),
+    );
+    final load = controller.p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: surface,
+      position: const SurfacePointMm(2800, 1000),
+    );
+    controller.p2.select(board.id, mode: SelectionMode.replace);
+    controller.p2.select(load.id, mode: SelectionMode.add);
+    expect(
+      controller.p2.autoRouteSelectedPair(space: controller.selectedSpace),
+      isTrue,
+    );
+    final beforeOpenings = List<ArchitecturalOpening>.of(controller.openings);
+    final beforeRoute = controller.p2.routes.single;
+
+    expect(
+      controller.addOpeningGuarded(
+        ArchitecturalOpeningType.door,
+        canCommit: (candidate) =>
+            ElectricalHostGeometryGuard.openingCandidateAllowed(
+          controller,
+          candidate,
+        ),
+      ),
+      isFalse,
+    );
+    expect(controller.openings, orderedEquals(beforeOpenings));
+    expect(controller.p2.routes.single.segments, beforeRoute.segments);
   });
 
   test('F03 shrinking room around electrical component is rejected atomically',

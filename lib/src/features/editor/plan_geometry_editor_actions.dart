@@ -6,6 +6,7 @@ import '../../domain/surfaces.dart';
 import '../../engine/normative_route_engine.dart';
 import '../../engine/plan_geometry_editing.dart';
 import 'editor_controller.dart';
+import 'electrical_host_geometry_guard.dart';
 import 'editor_p2_session.dart';
 
 extension PlanGeometryEditorActions on EditorController {
@@ -297,7 +298,7 @@ extension PlanGeometryEditorActions on EditorController {
       return false;
     }
     final offset = targetCenterMm - opening.widthMm ~/ 2;
-    return updateSelectedOpening(offsetFromStartMm: offset);
+    return updateSelectedOpeningGuarded(offsetFromStartMm: offset);
   }
 
   /// Moves the selected window/door along its host wall.
@@ -306,7 +307,7 @@ extension PlanGeometryEditorActions on EditorController {
     if (opening == null || deltaMm == 0) {
       return false;
     }
-    return updateSelectedOpening(
+    return updateSelectedOpeningGuarded(
       offsetFromStartMm: opening.offsetFromStartMm + deltaMm,
     );
   }
@@ -321,7 +322,8 @@ extension PlanGeometryEditorActions on EditorController {
     if (width < 300) {
       return false;
     }
-    return updateSelectedOpening(offsetFromStartMm: newStartMm, widthMm: width);
+    return updateSelectedOpeningGuarded(
+        offsetFromStartMm: newStartMm, widthMm: width);
   }
 
   bool resizeSelectedOpeningFromEnd(int newEndMm) {
@@ -333,7 +335,7 @@ extension PlanGeometryEditorActions on EditorController {
     if (width < 300) {
       return false;
     }
-    return updateSelectedOpening(widthMm: width);
+    return updateSelectedOpeningGuarded(widthMm: width);
   }
 
   ArchitecturalOpening? openingAtPlanPoint(

@@ -4,6 +4,7 @@ import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
 import 'adjacent_room_command.dart';
 import 'editor_controller.dart';
+import 'electrical_host_geometry_guard.dart';
 import 'editor_keyboard_scope.dart';
 import 'editor_layout_policy.dart';
 import 'spatial_canvas.dart';
@@ -630,8 +631,8 @@ class _Inspector extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () =>
-                        controller.addOpening(ArchitecturalOpeningType.door),
+                    onPressed: () => controller
+                        .addOpeningGuarded(ArchitecturalOpeningType.door),
                     icon: const Icon(Icons.door_front_door_outlined),
                     label: const Text('Дверь'),
                   ),
@@ -639,8 +640,8 @@ class _Inspector extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () =>
-                        controller.addOpening(ArchitecturalOpeningType.window),
+                    onPressed: () => controller
+                        .addOpeningGuarded(ArchitecturalOpeningType.window),
                     icon: const Icon(Icons.window_outlined),
                     label: const Text('Окно'),
                   ),
@@ -827,7 +828,9 @@ class _OpeningEditor extends StatelessWidget {
               ),
             ],
             onChanged: (value) {
-              if (value != null) controller.updateSelectedOpening(type: value);
+              if (value != null) {
+                controller.updateSelectedOpeningGuarded(type: value);
+              }
             },
           ),
           const SizedBox(height: 8),
@@ -835,8 +838,8 @@ class _OpeningEditor extends StatelessWidget {
             key: ValueKey('${opening.id}-offset-${opening.offsetFromStartMm}'),
             label: 'Позиция от начала стены',
             value: opening.offsetFromStartMm,
-            onSubmit: (value) =>
-                controller.updateSelectedOpening(offsetFromStartMm: value),
+            onSubmit: (value) => controller.updateSelectedOpeningGuarded(
+                offsetFromStartMm: value),
           ),
           const SizedBox(height: 8),
           _SubmitIntField(
@@ -844,7 +847,7 @@ class _OpeningEditor extends StatelessWidget {
             label: 'Ширина',
             value: opening.widthMm,
             onSubmit: (value) =>
-                controller.updateSelectedOpening(widthMm: value),
+                controller.updateSelectedOpeningGuarded(widthMm: value),
           ),
           const SizedBox(height: 8),
           _SubmitIntField(
@@ -852,7 +855,7 @@ class _OpeningEditor extends StatelessWidget {
             label: 'Высота',
             value: opening.heightMm,
             onSubmit: (value) =>
-                controller.updateSelectedOpening(heightMm: value),
+                controller.updateSelectedOpeningGuarded(heightMm: value),
           ),
           const SizedBox(height: 8),
           _SubmitIntField(
@@ -860,7 +863,7 @@ class _OpeningEditor extends StatelessWidget {
             label: 'Подоконник / от пола',
             value: opening.sillHeightMm,
             onSubmit: (value) =>
-                controller.updateSelectedOpening(sillHeightMm: value),
+                controller.updateSelectedOpeningGuarded(sillHeightMm: value),
           ),
           const SizedBox(height: 8),
           Text(

@@ -313,6 +313,7 @@ final class EditorController extends ChangeNotifier {
     int? widthMm,
     int? heightMm,
     int? sillHeightMm,
+    required bool Function(ArchitecturalOpening candidate) canCommit,
   }) {
     final current = selectedOpening;
     final wall = activeWall;
@@ -333,7 +334,8 @@ final class EditorController extends ChangeNotifier {
       return false;
     }
 
-    if (!RoomSurfaceResolver.openingFitsWall(opening: candidate, wall: wall)) {
+    if (!RoomSurfaceResolver.openingFitsWall(opening: candidate, wall: wall) ||
+        !canCommit(candidate)) {
       return false;
     }
 
@@ -345,9 +347,12 @@ final class EditorController extends ChangeNotifier {
     return true;
   }
 
-  void addOpening(ArchitecturalOpeningType type) {
+  bool addOpening(
+    ArchitecturalOpeningType type, {
+    required bool Function(ArchitecturalOpening candidate) canCommit,
+  }) {
     final wall = activeWall;
-    if (wall == null) return;
+    if (wall == null) return false;
 
     final defaultWidth = type == ArchitecturalOpeningType.window ? 1200 : 900;
     final defaultHeight = type == ArchitecturalOpeningType.window ? 1400 : 2100;
@@ -357,10 +362,10 @@ final class EditorController extends ChangeNotifier {
     final offset =
         ((wallLength - width) / 2).round().clamp(0, wallLength - width).toInt();
     final maxHeight = wall.heightMm - sill;
-    if (maxHeight <= 0) return;
+    if (maxHeight <= 0) return false;
 
     final opening = ArchitecturalOpening(
-      id: 'opening-${openingSequence++}',
+      id: 'opening-$openingSequence',
       hostWall: wall.ref,
       type: type,
       offsetFromStartMm: offset,
@@ -368,10 +373,13 @@ final class EditorController extends ChangeNotifier {
       heightMm: defaultHeight.clamp(300, maxHeight).toInt(),
       sillHeightMm: sill,
     );
+    if (!canCommit(opening)) return false;
+    openingSequence++;
     openings = [...openings, opening];
     selectedOpeningId = opening.id;
     tool = EditorTool.select;
     notifyListeners();
+    return true;
   }
 
   void deleteSelectedOpening() {

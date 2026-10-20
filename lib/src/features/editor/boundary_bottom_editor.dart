@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../domain/boundary_editing.dart';
 import '../../domain/surfaces.dart';
 import 'boundary_edit_session.dart';
+import 'electrical_host_geometry_guard.dart';
 import 'editor_controller.dart';
 import 'wall_profile_editor_actions.dart';
 
@@ -81,7 +82,14 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: () {
-                  controller.addOpening(ArchitecturalOpeningType.door);
+                  controller.addOpeningGuarded(
+                    ArchitecturalOpeningType.door,
+                    canCommit: (candidate) =>
+                        ElectricalHostGeometryGuard.openingCandidateAllowed(
+                      controller,
+                      candidate,
+                    ),
+                  );
                   final opening = controller.selectedOpening;
                   if (opening != null) session.beginOpeningDraft(opening);
                 },
@@ -93,7 +101,14 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: () {
-                  controller.addOpening(ArchitecturalOpeningType.window);
+                  controller.addOpeningGuarded(
+                    ArchitecturalOpeningType.window,
+                    canCommit: (candidate) =>
+                        ElectricalHostGeometryGuard.openingCandidateAllowed(
+                      controller,
+                      candidate,
+                    ),
+                  );
                   final opening = controller.selectedOpening;
                   if (opening != null) session.beginOpeningDraft(opening);
                 },
@@ -429,12 +444,17 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
   }
 
   void _saveOpening(ArchitecturalOpening source, OpeningEditDraft draft) {
-    final saved = controller.updateSelectedOpening(
+    final saved = controller.updateSelectedOpeningGuarded(
       type: draft.type,
       offsetFromStartMm: draft.offsetFromStartMm,
       widthMm: draft.widthMm,
       heightMm: draft.heightMm,
       sillHeightMm: draft.sillHeightMm,
+      canCommit: (candidate) =>
+          ElectricalHostGeometryGuard.openingCandidateAllowed(
+        controller,
+        candidate,
+      ),
     );
     if (saved) {
       final current = controller.selectedOpening;
@@ -531,7 +551,7 @@ bool _commitBoundaryDraft(EditorController controller) {
   if (openingDraft != null) {
     final selected = controller.selectedOpening;
     if (selected == null || selected.id != openingDraft.openingId) return false;
-    final saved = controller.updateSelectedOpening(
+    final saved = controller.updateSelectedOpeningGuarded(
       type: openingDraft.type,
       offsetFromStartMm: openingDraft.offsetFromStartMm,
       widthMm: openingDraft.widthMm,
