@@ -1,0 +1,48 @@
+name: Apply F22 blank project once
+
+on:
+  push:
+    branches:
+      - feat/spatial-editor-interaction-hardening
+    paths:
+      - '.github/workflows/apply-f22-blank-project-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/spatial-editor-interaction-hardening
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Apply F22 blank project flow
+        run: python3 tool/apply_f22_blank_project_once.py
+      - name: Format
+        run: dart format lib test
+      - name: Verify format
+        run: dart format --output=none --set-exit-if-changed lib test
+      - name: Analyze
+        run: flutter analyze
+      - name: Focused F22 tests
+        run: flutter test test/f22_blank_project_test.dart test/unified_workspace_persistence_ui_test.dart test/project_hub_persistence_test.dart
+      - name: Full test suite
+        run: flutter test
+      - name: Remove one-shot staging
+        run: |
+          git rm .github/workflows/apply-f22-blank-project-once.yml
+          git rm tool/apply_f22_blank_project_once.py
+      - name: Commit verified F22
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib test
+          git commit -m 'fix(editor): start new projects from blank workspace'
+          git push origin HEAD:feat/spatial-editor-interaction-hardening
