@@ -26,7 +26,9 @@ text = text.replace(
       return false;
     }""",
     """    final after = state;
-    final previewValid = _movePreviewValid && _movePreviewValidState(after);
+    final previewValid = _movePreviewValid &&
+        componentId != null &&
+        _movePreviewValidState(after, componentId);
     _clearMoveTransaction();
     if (origin == null || componentId == null || !previewValid) {
       if (origin != null) _replaceState(origin);
@@ -66,8 +68,12 @@ text = text.replace(
     """  bool _movePreviewValidState(EditorP2State preview) {
     if (!_movePreviewValid) return false;
     for (final route in preview.routes) {""",
-    """  bool _movePreviewValidState(EditorP2State preview) {
-    for (final route in preview.routes) {""",
+    """  bool _movePreviewValidState(EditorP2State preview, String componentId) {
+    for (final route in preview.routes) {
+      if (route.source.componentId != componentId &&
+          route.target.componentId != componentId) {
+        continue;
+      }""",
 )
 if 'CableEndpointRole' in text:
     raise RuntimeError('CableEndpointRole dependency remains in EditorP2Session')
