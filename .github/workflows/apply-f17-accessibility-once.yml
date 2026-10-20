@@ -44,3 +44,5 @@ jobs:
           git add lib test
           git commit -m 'fix(editor): expose accessible scene traversal'
           git push origin HEAD:feat/spatial-editor-interaction-hardening
+
+# rerun after explicit package:flutter/semantics.dart import
