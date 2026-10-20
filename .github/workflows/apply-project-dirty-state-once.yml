@@ -21,13 +21,14 @@ jobs:
           channel: stable
       - run: flutter pub get
       - run: python3 tool/apply_project_dirty_state_once.py
+      - run: python3 tool/fix_project_dirty_lifecycle_once.py
       - run: dart format lib test
       - run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter analyze
       - run: flutter test
       - name: Remove one-shot helpers
         if: success()
-        run: rm -f tool/apply_project_dirty_state_once.py .github/workflows/apply-project-dirty-state-once.yml
+        run: rm -f tool/apply_project_dirty_state_once.py tool/fix_project_dirty_lifecycle_once.py .github/workflows/apply-project-dirty-state-once.yml
       - name: Commit verified dirty lifecycle
         if: success()
         run: |
