@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'editor_ui_tokens.dart';
+
 class CanvasViewportNavigator extends StatelessWidget {
   const CanvasViewportNavigator({
     required this.onPan,
@@ -93,8 +95,11 @@ class _NavButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => IconButton(
         tooltip: tooltip,
-        visualDensity: VisualDensity.compact,
-        constraints: const BoxConstraints.tightFor(width: 34, height: 34),
+        visualDensity: VisualDensity.standard,
+        constraints: const BoxConstraints.tightFor(
+          width: EditorUiTokens.minimumTouchTarget,
+          height: EditorUiTokens.minimumTouchTarget,
+        ),
         padding: EdgeInsets.zero,
         onPressed: onPressed,
         icon: Icon(icon, size: 20),

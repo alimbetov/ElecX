@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'editor_ui_tokens.dart';
+
 class CanvasComponentControls extends StatelessWidget {
   const CanvasComponentControls({
     required this.label,
@@ -75,24 +77,31 @@ class CanvasComponentControls extends StatelessWidget {
                   onPressed: () => onMove(1, 0),
                 ),
                 const SizedBox(width: 6),
-                PopupMenuButton<int>(
-                  tooltip: 'Шаг перемещения',
-                  initialValue: stepMm,
-                  onSelected: onStepChanged,
-                  itemBuilder: (context) => const [
-                    PopupMenuItem(value: 10, child: Text('10 мм')),
-                    PopupMenuItem(value: 100, child: Text('100 мм')),
-                    PopupMenuItem(value: 500, child: Text('500 мм')),
-                  ],
-                  child: Chip(
-                    visualDensity: VisualDensity.compact,
-                    label: Text('$stepMm мм'),
+                SizedBox(
+                  height: EditorUiTokens.minimumTouchTarget,
+                  child: PopupMenuButton<int>(
+                    tooltip: 'Шаг перемещения',
+                    initialValue: stepMm,
+                    onSelected: onStepChanged,
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(value: 10, child: Text('10 мм')),
+                      PopupMenuItem(value: 100, child: Text('100 мм')),
+                      PopupMenuItem(value: 500, child: Text('500 мм')),
+                    ],
+                    child: Chip(
+                      visualDensity: VisualDensity.compact,
+                      label: Text('$stepMm мм'),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 4),
                 IconButton(
                   tooltip: 'Удалить компонент',
-                  visualDensity: VisualDensity.compact,
+                  visualDensity: VisualDensity.standard,
+                  constraints: const BoxConstraints.tightFor(
+                    width: EditorUiTokens.minimumTouchTarget,
+                    height: EditorUiTokens.minimumTouchTarget,
+                  ),
                   color: scheme.error,
                   onPressed: onDelete,
                   icon: const Icon(Icons.delete_outline),
@@ -120,8 +129,11 @@ class _MoveButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => IconButton(
         tooltip: tooltip,
-        visualDensity: VisualDensity.compact,
-        constraints: const BoxConstraints.tightFor(width: 34, height: 34),
+        visualDensity: VisualDensity.standard,
+        constraints: const BoxConstraints.tightFor(
+          width: EditorUiTokens.minimumTouchTarget,
+          height: EditorUiTokens.minimumTouchTarget,
+        ),
         padding: EdgeInsets.zero,
         onPressed: onPressed,
         icon: Icon(icon, size: 22),
