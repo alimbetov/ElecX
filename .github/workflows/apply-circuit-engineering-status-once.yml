@@ -61,3 +61,5 @@ jobs:
           fi
           git commit -m "feat(editor): expose circuit load and sizing readiness"
           git push origin HEAD:feat/spatial-editor-interaction-hardening
+
+# retry after closing the generated regression test block
