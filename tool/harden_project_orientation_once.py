@@ -20,6 +20,11 @@ replace_once(
 workspace = Path('lib/src/features/editor/editor_building_workspace.dart')
 replace_once(
     workspace,
+    "import '../../domain/project_model.dart';\n",
+    "import '../../domain/project_model.dart';\nimport '../../domain/site_orientation.dart';\n",
+)
+replace_once(
+    workspace,
     "  final ComposedProjectSite site;\n",
     "  ComposedProjectSite site;\n",
 )
