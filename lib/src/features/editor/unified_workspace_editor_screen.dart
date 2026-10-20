@@ -24,11 +24,16 @@ class UnifiedWorkspaceEditorScreen extends StatefulWidget {
   const UnifiedWorkspaceEditorScreen({
     super.key,
     this.projectStore,
+    this.initialDocument,
   });
 
-  /// Optional injection point used by tests and future project-hub routing.
+  /// Optional injection point used by tests and project-hub routing.
   /// Production lazily opens the application documents project store.
   final EditorProjectStore? projectStore;
+
+  /// When provided, the screen starts from the persisted canonical document
+  /// instead of constructing the demo workspace.
+  final EditorProjectDocument? initialDocument;
 
   @override
   State<UnifiedWorkspaceEditorScreen> createState() =>
@@ -47,8 +52,16 @@ class _UnifiedWorkspaceEditorScreenState
   @override
   void initState() {
     super.initState();
-    controller = EditorController.demo()..addListener(_refresh);
-    workspace = EditorBuildingWorkspace.demo(controller)..addListener(_refresh);
+    final initialDocument = widget.initialDocument;
+    if (initialDocument == null) {
+      controller = EditorController.demo()..addListener(_refresh);
+      workspace = EditorBuildingWorkspace.demo(controller)
+        ..addListener(_refresh);
+    } else {
+      final restored = initialDocument.restore();
+      controller = restored.editor..addListener(_refresh);
+      workspace = restored.workspace..addListener(_refresh);
+    }
     siteInteraction = SiteMapInteractionController();
     shell = EditorShellState()..addListener(_refresh);
     final injectedStore = widget.projectStore;

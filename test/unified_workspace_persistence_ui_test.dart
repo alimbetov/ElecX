@@ -19,6 +19,10 @@ final class _MemoryProjectStore implements EditorProjectStore {
     loadCount++;
     return documents[projectId];
   }
+
+  @override
+  Future<List<EditorProjectDocument>> list() async =>
+      List<EditorProjectDocument>.unmodifiable(documents.values);
 }
 
 void main() {

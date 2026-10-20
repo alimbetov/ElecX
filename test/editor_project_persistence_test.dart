@@ -167,6 +167,29 @@ void main() {
     );
   });
 
+  test('file store lists saved projects for application restart', () async {
+    final root = await Directory.systemTemp.createTemp('elecx-project-list-');
+    addTearDown(() async {
+      if (await root.exists()) await root.delete(recursive: true);
+    });
+    final editor = EditorController.demo();
+    final workspace = EditorBuildingWorkspace.demo(editor);
+    addTearDown(() {
+      editor.disposeP2State();
+      workspace.dispose();
+      editor.dispose();
+    });
+    final document = EditorProjectDocument.capture(workspace);
+    final store = JsonFileEditorProjectStore(root);
+
+    await store.save(document);
+    final listed = await store.list();
+
+    expect(listed, hasLength(1));
+    expect(listed.single.projectId, document.projectId);
+    expect(listed.single.projectName, document.projectName);
+  });
+
   test('unsupported schema is rejected explicitly', () {
     expect(
       () => EditorProjectDocument.fromJson(const {

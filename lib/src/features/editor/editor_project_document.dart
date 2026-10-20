@@ -230,6 +230,7 @@ final class EditorProjectDocument {
 abstract interface class EditorProjectStore {
   Future<void> save(EditorProjectDocument document);
   Future<EditorProjectDocument?> load(String projectId);
+  Future<List<EditorProjectDocument>> list();
 }
 
 final class JsonFileEditorProjectStore implements EditorProjectStore {
@@ -304,6 +305,28 @@ final class JsonFileEditorProjectStore implements EditorProjectStore {
           'Persisted project id does not match requested id.');
     }
     return document;
+  }
+
+  @override
+  Future<List<EditorProjectDocument>> list() async {
+    if (!await rootDirectory.exists()) return const [];
+    final result = <EditorProjectDocument>[];
+    await for (final entity in rootDirectory.list(followLinks: false)) {
+      if (entity is! File || !entity.path.endsWith('.elecx.json')) continue;
+      final raw = jsonDecode(await entity.readAsString());
+      if (raw is! Map) {
+        throw FormatException(
+          'ElecX project ${path.basename(entity.path)} must be a JSON object.',
+        );
+      }
+      result.add(
+        EditorProjectDocument.fromJson(
+          raw.map((key, value) => MapEntry(key.toString(), value)),
+        ),
+      );
+    }
+    result.sort((a, b) => a.projectName.compareTo(b.projectName));
+    return List<EditorProjectDocument>.unmodifiable(result);
   }
 
   File _target(String projectId) {
