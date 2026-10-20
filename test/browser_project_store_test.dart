@@ -38,7 +38,6 @@ void main() {
   });
 
   tearDown(() {
-    editor.disposeP2State();
     workspace.dispose();
     editor.dispose();
   });
