@@ -501,7 +501,7 @@ test('load data and cable specification edits are undoable and persisted', () {
   final restoredLoad = restored.editor.p2.components.singleWhere((item) => item.id == load.id);
   expect(restoredLoad.ratedPowerW, 2300);
   expect(restored.editor.p2.circuitBundleForLoad(load.id)!.cable.cableSpecId, 'VVGng-LS-3x2.5');
-}
+});
 '''
 p = Path(path)
 text = p.read_text()
