@@ -84,4 +84,4 @@ jobs:
           git commit -m "fix(editor): close P1 document integrity gaps"
           git push origin HEAD:feat/spatial-editor-interaction-hardening
 
-# rerun: nullability correction
+# rerun: boundary nullability correction
