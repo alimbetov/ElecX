@@ -40,7 +40,16 @@ jobs:
         run: dart format --output=none --set-exit-if-changed lib test
 
       - name: Analyze
-        run: flutter analyze
+        shell: bash
+        run: flutter analyze 2>&1 | tee analyze.log
+
+      - name: Upload analyzer diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p1-analyzer-diagnostics
+          path: analyze.log
+          if-no-files-found: ignore
 
       - name: Test
         run: flutter test
