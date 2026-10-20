@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../domain/building_composition.dart';
 import '../../domain/geometry.dart';
 import '../../domain/project_model.dart';
+import '../../domain/site_orientation.dart';
 import '../../domain/residential_tower_builder.dart';
 import '../../domain/site_outdoor_model.dart';
 import 'editor_controller.dart';
@@ -70,7 +71,7 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
 
   final EditorController editor;
   final ComposedBuilding building;
-  final ComposedProjectSite site;
+  ComposedProjectSite site;
 
   EditorWorkspaceContext _context = EditorWorkspaceContext.buildingLevel;
   late int _activeLevelNumber;
@@ -101,6 +102,17 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
   List<ComposedBuildingLevel> get basementLevels => building.orderedLevels
       .where((level) => level.levelNumber < 0)
       .toList(growable: false);
+
+  void updateProjectNorth(ProjectNorth value) {
+    if (site.site.projectNorth.northAzimuthDegrees ==
+        value.northAzimuthDegrees) {
+      return;
+    }
+    site = site.copyWith(
+      site: site.site.copyWith(projectNorth: value),
+    );
+    notifyListeners();
+  }
 
   void selectLevel(int levelNumber) {
     final level = building.levelByNumber(levelNumber);

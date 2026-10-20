@@ -119,4 +119,15 @@ final class ComposedProjectSite {
   final ProjectSite site;
   final List<OutdoorZone> outdoorZones;
   final List<SiteBuildingConnection> connections;
+
+  ComposedProjectSite copyWith({
+    ProjectSite? site,
+    List<OutdoorZone>? outdoorZones,
+    List<SiteBuildingConnection>? connections,
+  }) =>
+      ComposedProjectSite(
+        site: site ?? this.site,
+        outdoorZones: outdoorZones ?? this.outdoorZones,
+        connections: connections ?? this.connections,
+      );
 }

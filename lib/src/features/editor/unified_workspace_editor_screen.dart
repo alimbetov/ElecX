@@ -48,6 +48,54 @@ class _UnifiedWorkspaceEditorScreenState
     }
   }
 
+  Future<void> _editProjectNorth() async {
+    final current = workspace.site.site.projectNorth;
+    final input = TextEditingController(
+      text: current.northAzimuthDegrees.toStringAsFixed(1),
+    );
+    final value = await showDialog<double>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Ориентация проекта'),
+        content: TextField(
+          controller: input,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(
+            labelText: 'Азимут севера',
+            suffixText: '°',
+            helperText: '0° = север вверх по плану, угол по часовой стрелке',
+          ),
+          onSubmitted: (text) {
+            final parsed = double.tryParse(text.replaceAll(',', '.'));
+            if (parsed != null && parsed >= 0 && parsed < 360) {
+              Navigator.of(dialogContext).pop(parsed);
+            }
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final parsed = double.tryParse(input.text.replaceAll(',', '.'));
+              if (parsed == null || parsed < 0 || parsed >= 360) return;
+              Navigator.of(dialogContext).pop(parsed);
+            },
+            child: const Text('Применить'),
+          ),
+        ],
+      ),
+    );
+    input.dispose();
+    if (value == null || !mounted) return;
+    workspace.updateProjectNorth(
+      current.copyWith(northAzimuthDegrees: value),
+    );
+  }
+
   void _openMiniMap() {
     showContextMiniMapSheet(
       context: context,
@@ -171,6 +219,7 @@ class _UnifiedWorkspaceEditorScreenState
                   top: 12,
                   child: ProjectCompassOverlay(
                     projectNorth: workspace.site.site.projectNorth,
+                    onTap: _editProjectNorth,
                   ),
                 ),
               if (workspace.context != EditorWorkspaceContext.siteOutdoor)

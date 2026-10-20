@@ -84,6 +84,22 @@ void main() {
     expect(editor.viewMode, EditorViewMode.plan);
   });
 
+  test('project north updates site state and survives level switches', () {
+    final editor = EditorController.demo();
+    final workspace = EditorBuildingWorkspace.demo(editor);
+    addTearDown(workspace.dispose);
+    addTearDown(editor.dispose);
+
+    workspace.updateProjectNorth(
+      workspace.site.site.projectNorth.copyWith(northAzimuthDegrees: 37.5),
+    );
+    expect(workspace.site.site.projectNorth.northAzimuthDegrees, 37.5);
+
+    workspace.selectLevel(7);
+    workspace.selectLevel(-1);
+    expect(workspace.site.site.projectNorth.northAzimuthDegrees, 37.5);
+  });
+
   test('next and previous level traverse physical level order', () {
     final editor = EditorController.demo();
     final workspace = EditorBuildingWorkspace.demo(editor);
