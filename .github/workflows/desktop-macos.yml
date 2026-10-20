@@ -1,0 +1,40 @@
+name: macOS Desktop
+
+on:
+  push:
+    branches:
+      - main
+      - fix/desktop-path-provider-packaging
+    paths:
+      - 'macos/**'
+      - 'lib/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+  pull_request:
+    paths:
+      - 'macos/**'
+      - 'lib/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+
+jobs:
+  macos-desktop:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter config --enable-macos-desktop
+      - run: flutter pub get
+      - name: Verify path_provider registration
+        run: |
+          test -f macos/Flutter/GeneratedPluginRegistrant.swift
+          grep -q 'PathProviderPlugin.register' macos/Flutter/GeneratedPluginRegistrant.swift
+      - name: Analyze
+        run: flutter analyze
+      - name: Test
+        run: flutter test
+      - name: Build macOS debug app
+        run: flutter build macos --debug
