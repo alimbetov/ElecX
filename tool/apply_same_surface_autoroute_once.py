@@ -17,8 +17,6 @@ replace_once(
     'same-surface guarded routing',
 )
 
-# Centralize route creation so both graph routing and guarded geometry share
-# identity allocation, semantic connectivity and write-time geometry validation.
 replace_once(
     p,
     '''    final routeId = _nextAvailableId(\n      prefix: 'route-',\n      initialSequence: _routeSequence,\n      existingIds: routes.map((item) => item.id).toSet(),\n    );\n    _routeSequence = routeId.$2;\n    final route = ElectricalCableRoute(\n      id: routeId.$1,\n      source: source,\n      target: target,\n      segments: RouteEngine.toSegments(graph, solution),\n      cableType: cableType,\n    );\n    if (!ElectricalConnectivityValidator.routeIsConnected(\n          route: route,\n          components: components,\n        ) ||\n        !_routeGeometryIsValid(route)) {\n      return false;\n    }\n    history.execute(_AddRouteCommand(route));\n    notifyListeners();\n    return true;''',
@@ -35,6 +33,14 @@ replace_once(
 
 p = 'test/editor_p2_session_test.dart'
 text = Path(p).read_text()
+import_anchor = "import 'package:elecx/src/engine/editor_layers.dart';\n"
+if text.count(import_anchor) != 1:
+    raise RuntimeError('editor session import anchor mismatch')
+text = text.replace(
+    import_anchor,
+    import_anchor + "import 'package:elecx/src/engine/normative_route_engine.dart';\n",
+    1,
+)
 insert_before = "  test('wall source can auto-route to ceiling load through topology', () {"
 if text.count(insert_before) != 1:
     raise RuntimeError('editor session test anchor mismatch')
