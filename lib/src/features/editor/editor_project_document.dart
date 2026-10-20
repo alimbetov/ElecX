@@ -19,6 +19,8 @@ import 'cable_route_constraints.dart';
 import 'editor_building_workspace.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
+import 'project_persistence_metadata.dart';
+import 'project_schema_migrator.dart';
 
 final class EditorProjectResumeState {
   const EditorProjectResumeState({
@@ -61,8 +63,7 @@ final class RestoredEditorProject {
 final class EditorProjectDocument {
   const EditorProjectDocument({
     required this.schemaVersion,
-    required this.projectId,
-    required this.projectName,
+    required this.metadata,
     required this.building,
     required this.site,
     required this.workspaceContext,
@@ -74,11 +75,15 @@ final class EditorProjectDocument {
     required this.p2State,
   });
 
-  static const currentSchemaVersion = 1;
+  static const currentSchemaVersion =
+      EditorProjectSchemaMigrator.currentSchemaVersion;
 
   final int schemaVersion;
-  final String projectId;
-  final String projectName;
+  final EditorProjectMetadata metadata;
+  String get projectId => metadata.projectId;
+  String get projectName => metadata.projectName;
+  DateTime get createdAt => metadata.createdAt;
+  DateTime get updatedAt => metadata.updatedAt;
   final ComposedBuilding building;
   final ComposedProjectSite site;
   final EditorWorkspaceContext workspaceContext;
@@ -89,7 +94,11 @@ final class EditorProjectDocument {
   final EditorProjectResumeState resume;
   final EditorP2State p2State;
 
-  factory EditorProjectDocument.capture(EditorBuildingWorkspace workspace) {
+  factory EditorProjectDocument.capture(
+    EditorBuildingWorkspace workspace, {
+    EditorProjectMetadata? metadata,
+    DateTime? now,
+  }) {
     final editor = workspace.editor;
     if (editor.p2.isManipulating) {
       throw StateError('Cannot save while a component transform is active.');
@@ -98,10 +107,15 @@ final class EditorProjectDocument {
       throw StateError('Cannot save an unfinished editor draft.');
     }
     workspace.synchronizeActiveEditorState();
+    final projectMetadata = metadata ??
+        EditorProjectMetadata.create(
+          projectName: workspace.site.site.name,
+          projectId: workspace.site.site.id,
+          now: now,
+        );
     return EditorProjectDocument(
       schemaVersion: currentSchemaVersion,
-      projectId: workspace.site.site.id,
-      projectName: workspace.site.site.name,
+      metadata: projectMetadata,
       building: workspace.building,
       site: workspace.site,
       workspaceContext: workspace.context,
@@ -164,8 +178,12 @@ final class EditorProjectDocument {
 
   Map<String, Object?> toJson() => {
         'schemaVersion': schemaVersion,
-        'projectId': projectId,
-        'projectName': projectName,
+        'metadata': {
+          'projectId': metadata.projectId,
+          'projectName': metadata.projectName,
+          'createdAt': metadata.createdAt.toUtc().toIso8601String(),
+          'updatedAt': metadata.updatedAt.toUtc().toIso8601String(),
+        },
         'building': _buildingToJson(building),
         'site': _siteToJson(site),
         'workspace': {
@@ -184,15 +202,17 @@ final class EditorProjectDocument {
         'p2': _p2ToJson(p2State),
       };
 
-  factory EditorProjectDocument.fromJson(Map<String, Object?> json) {
-    final version = _int(json['schemaVersion'], 'schemaVersion');
-    if (version != currentSchemaVersion) {
-      throw FormatException(
-        'Unsupported ElecX project schema $version; expected '
-        '$currentSchemaVersion.',
-      );
-    }
-    final workspace = _map(json['workspace'], 'workspace');
+  factory EditorProjectDocument.fromJson(
+    Map<String, Object?> json, {
+    DateTime? legacyTimestamp,
+  }) {
+    final migrated = EditorProjectSchemaMigrator.migrate(
+      json,
+      legacyTimestamp: legacyTimestamp,
+    );
+    final version = _int(migrated['schemaVersion'], 'schemaVersion');
+    final metadataJson = _map(migrated['metadata'], 'metadata');
+    final workspace = _map(migrated['workspace'], 'workspace');
     final openingsRaw = _map(workspace['openingsByLevel'], 'openingsByLevel');
     final openings = <int, List<ArchitecturalOpening>>{};
     for (final entry in openingsRaw.entries) {
@@ -205,12 +225,26 @@ final class EditorProjectDocument {
           _openingFromJson(_map(item, 'opening')),
       ];
     }
+    final createdAt = DateTime.parse(
+      _string(metadataJson['createdAt'], 'metadata.createdAt'),
+    ).toUtc();
+    final updatedAt = DateTime.parse(
+      _string(metadataJson['updatedAt'], 'metadata.updatedAt'),
+    ).toUtc();
+    if (updatedAt.isBefore(createdAt)) {
+      throw const FormatException('metadata.updatedAt precedes createdAt.');
+    }
     return EditorProjectDocument(
       schemaVersion: version,
-      projectId: _string(json['projectId'], 'projectId'),
-      projectName: _string(json['projectName'], 'projectName'),
-      building: _buildingFromJson(_map(json['building'], 'building')),
-      site: _siteFromJson(_map(json['site'], 'site')),
+      metadata: EditorProjectMetadata(
+        projectId: _string(metadataJson['projectId'], 'metadata.projectId'),
+        projectName:
+            _string(metadataJson['projectName'], 'metadata.projectName'),
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+      ),
+      building: _buildingFromJson(_map(migrated['building'], 'building')),
+      site: _siteFromJson(_map(migrated['site'], 'site')),
       workspaceContext: _enumValue(
         EditorWorkspaceContext.values,
         _string(workspace['context'], 'workspace.context'),
@@ -222,7 +256,7 @@ final class EditorProjectDocument {
       activeOutdoorZoneId: _nullableString(workspace['activeOutdoorZoneId']),
       openingsByLevel: Map.unmodifiable(openings),
       resume: _resumeFromJson(_map(workspace['resume'], 'workspace.resume')),
-      p2State: _p2FromJson(_map(json['p2'], 'p2')),
+      p2State: _p2FromJson(_map(migrated['p2'], 'p2')),
     );
   }
 }
@@ -297,8 +331,10 @@ final class JsonFileEditorProjectStore implements EditorProjectStore {
     if (raw is! Map) {
       throw FormatException('ElecX project root must be a JSON object.');
     }
+    final stat = await source.stat();
     final document = EditorProjectDocument.fromJson(
       raw.map((key, value) => MapEntry(key.toString(), value)),
+      legacyTimestamp: stat.modified.toUtc(),
     );
     if (document.projectId != projectId) {
       throw FormatException(
@@ -319,13 +355,15 @@ final class JsonFileEditorProjectStore implements EditorProjectStore {
           'ElecX project ${path.basename(entity.path)} must be a JSON object.',
         );
       }
+      final stat = await entity.stat();
       result.add(
         EditorProjectDocument.fromJson(
           raw.map((key, value) => MapEntry(key.toString(), value)),
+          legacyTimestamp: stat.modified.toUtc(),
         ),
       );
     }
-    result.sort((a, b) => a.projectName.compareTo(b.projectName));
+    result.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
     return List<EditorProjectDocument>.unmodifiable(result);
   }
 

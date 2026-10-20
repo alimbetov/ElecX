@@ -7,6 +7,7 @@ import 'package:elecx/src/features/editor/editor_building_workspace.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
 import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:elecx/src/features/editor/editor_project_document.dart';
+import 'package:elecx/src/features/editor/project_persistence_metadata.dart';
 import 'package:elecx/src/engine/selection_engine.dart';
 import 'package:elecx/src/domain/geometry.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -188,6 +189,48 @@ void main() {
     expect(listed, hasLength(1));
     expect(listed.single.projectId, document.projectId);
     expect(listed.single.projectName, document.projectName);
+  });
+
+  test('project identity is independent from physical site identity', () {
+    final now = DateTime.utc(2026, 10, 20, 8);
+    final first =
+        EditorProjectMetadata.create(projectName: 'Проект A', now: now);
+    final second =
+        EditorProjectMetadata.create(projectName: 'Проект B', now: now);
+
+    expect(first.projectId, isNot(second.projectId));
+    expect(first.projectId, isNot('site-1'));
+    expect(first.createdAt, now);
+    expect(first.updatedAt, now);
+  });
+
+  test('schema v1 migrates to v2 metadata without losing project identity', () {
+    final editor = EditorController.demo();
+    final workspace = EditorBuildingWorkspace.demo(editor);
+    addTearDown(() {
+      editor.disposeP2State();
+      workspace.dispose();
+      editor.dispose();
+    });
+    final v2 = EditorProjectDocument.capture(workspace).toJson();
+    final metadata = Map<String, Object?>.from(v2['metadata']! as Map);
+    final legacy = Map<String, Object?>.from(v2)
+      ..['schemaVersion'] = 1
+      ..['projectId'] = metadata['projectId']
+      ..['projectName'] = metadata['projectName']
+      ..remove('metadata');
+    final migratedAt = DateTime.utc(2026, 10, 20, 7, 30);
+
+    final decoded = EditorProjectDocument.fromJson(
+      legacy,
+      legacyTimestamp: migratedAt,
+    );
+
+    expect(decoded.schemaVersion, 2);
+    expect(decoded.projectId, metadata['projectId']);
+    expect(decoded.projectName, metadata['projectName']);
+    expect(decoded.createdAt, migratedAt);
+    expect(decoded.updatedAt, migratedAt);
   });
 
   test('unsupported schema is rejected explicitly', () {

@@ -47,9 +47,10 @@ final class EditorProjectSchemaMigrator {
     if (projectName is! String || projectName.trim().isEmpty) {
       throw const FormatException('Legacy projectName must be non-empty.');
     }
-    final timestamp = (legacyTimestamp ?? DateTime.fromMillisecondsSinceEpoch(0))
-        .toUtc()
-        .toIso8601String();
+    final timestamp =
+        (legacyTimestamp ?? DateTime.fromMillisecondsSinceEpoch(0))
+            .toUtc()
+            .toIso8601String();
     return <String, Object?>{
       ...source,
       'schemaVersion': 2,

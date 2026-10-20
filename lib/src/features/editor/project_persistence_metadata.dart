@@ -21,7 +21,8 @@ final class EditorProjectMetadata {
     final timestamp = (now ?? DateTime.now()).toUtc();
     final normalizedName = projectName.trim();
     if (normalizedName.isEmpty) {
-      throw ArgumentError.value(projectName, 'projectName', 'Must be non-empty.');
+      throw ArgumentError.value(
+          projectName, 'projectName', 'Must be non-empty.');
     }
     return EditorProjectMetadata(
       projectId: projectId ?? _ProjectIdGenerator.generate(timestamp),
@@ -37,7 +38,8 @@ final class EditorProjectMetadata {
   }) {
     final nextName = (projectName ?? this.projectName).trim();
     if (nextName.isEmpty) {
-      throw ArgumentError.value(projectName, 'projectName', 'Must be non-empty.');
+      throw ArgumentError.value(
+          projectName, 'projectName', 'Must be non-empty.');
     }
     final nextUpdatedAt = (updatedAt ?? this.updatedAt).toUtc();
     if (nextUpdatedAt.isBefore(createdAt)) {
