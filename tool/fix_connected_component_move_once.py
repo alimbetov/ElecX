@@ -73,15 +73,18 @@ if 'CableEndpointRole' in text:
     raise RuntimeError('CableEndpointRole dependency remains in EditorP2Session')
 p.write_text(text)
 
-# Avoid duplicate imports introduced by the staged regression patch.
 p = Path('test/component_transform_session_test.dart')
 text = p.read_text()
+text = text.replace(
+    "import 'package:elecx/src/domain/electrical_routing.dart';\n",
+    '',
+)
 seen = set()
 lines = []
 for line in text.splitlines():
     if line.startswith('import '):
-      if line in seen:
-        continue
-      seen.add(line)
+        if line in seen:
+            continue
+        seen.add(line)
     lines.append(line)
 p.write_text('\n'.join(lines) + '\n')
