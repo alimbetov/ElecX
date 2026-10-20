@@ -71,6 +71,7 @@ final class CableRouteEditSession extends ChangeNotifier
     CableRouteConstraints? constraints,
   }) {
     if (segmentIndex < 0 || segmentIndex >= route.segments.length) return false;
+    if (constraints?.isSegmentLocked(segmentIndex) ?? false) return false;
     final segment = route.segments[segmentIndex];
     if (segment.surface != context.surface || segment.points.length < 2) {
       return false;
@@ -171,11 +172,24 @@ final class CableRouteEditSession extends ChangeNotifier
       context: context,
     );
     final issues = <RouteConstraintIssue>[...normative.issues];
+    final origin = _origin;
+    final index = _segmentIndex;
+    if (origin != null && index != null && points.length >= 2) {
+      final original = origin.segments[index].points;
+      if (!_samePoint(points.first, original.first) ||
+          !_samePoint(points.last, original.last)) {
+        issues.add(
+          const RouteConstraintIssue(
+            code: 'route.endpoint-moved',
+            message:
+                'Редактирование сегмента не должно смещать подключённые концы кабеля. Переносите endpoint через портовый handle.',
+            severity: RouteConstraintSeverity.error,
+          ),
+        );
+      }
+    }
     for (final waypoint in _mandatoryWaypoints) {
-      final preserved = points.any(
-        (point) =>
-            point.xMm == waypoint.point.xMm && point.yMm == waypoint.point.yMm,
-      );
+      final preserved = points.any((point) => _samePoint(point, waypoint.point));
       if (!preserved) {
         issues.add(
           RouteConstraintIssue(
@@ -249,15 +263,14 @@ final class CableRouteEditSession extends ChangeNotifier
   ) {
     final result = <SurfacePointMm>[];
     for (final point in points) {
-      if (result.isNotEmpty &&
-          result.last.xMm == point.xMm &&
-          result.last.yMm == point.yMm) {
-        continue;
-      }
+      if (result.isNotEmpty && _samePoint(result.last, point)) continue;
       result.add(point);
     }
     return List.unmodifiable(result);
   }
+
+  static bool _samePoint(SurfacePointMm a, SurfacePointMm b) =>
+      a.xMm == b.xMm && a.yMm == b.yMm;
 
   static bool _changed(
     ElectricalCableRoute before,
@@ -269,10 +282,7 @@ final class CableRouteEditSession extends ChangeNotifier
       final b = after.segments[i];
       if (a.points.length != b.points.length) return true;
       for (var p = 0; p < a.points.length; p++) {
-        if (a.points[p].xMm != b.points[p].xMm ||
-            a.points[p].yMm != b.points[p].yMm) {
-          return true;
-        }
+        if (!_samePoint(a.points[p], b.points[p])) return true;
       }
     }
     return false;
