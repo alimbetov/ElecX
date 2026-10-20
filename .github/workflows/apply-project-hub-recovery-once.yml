@@ -33,6 +33,9 @@ jobs:
       - name: Apply project hub recovery patch
         run: python3 tool/apply_project_hub_recovery_once.py
 
+      - name: Fix recovery test extension import
+        run: python3 tool/fix_project_hub_recovery_test_import.py
+
       - name: Format
         run: dart format lib test
 
@@ -48,6 +51,7 @@ jobs:
       - name: Remove one-shot helpers
         run: |
           rm -f tool/apply_project_hub_recovery_once.py
+          rm -f tool/fix_project_hub_recovery_test_import.py
           rm -f .github/workflows/apply-project-hub-recovery-once.yml
 
       - name: Commit verified production changes
