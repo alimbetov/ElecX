@@ -7,6 +7,7 @@ import '../../domain/surfaces.dart';
 import '../../engine/normative_route_engine.dart';
 import '../../engine/port_snap_resolver.dart';
 import '../../engine/snap_engine.dart';
+import 'cable_route_constraints.dart';
 import 'editor_edit_session.dart';
 
 final class CableEndpointTransformPreview {
@@ -23,6 +24,11 @@ final class CableEndpointTransformPreview {
 
 /// Edits one cable endpoint as an atomic semantic operation:
 /// drag/nudge -> magnetic port snap -> normative autoroute -> commit/cancel.
+///
+/// Persistent route constraints are enforced inside the session, not only by
+/// widget policy. Locked endpoint segments cannot be changed. Mandatory
+/// waypoints remain physical anchors and endpoint rerouting is solved through
+/// them in segment order before the complete replacement polyline is validated.
 final class CableEndpointTransformSession extends ChangeNotifier
     implements EditorEditSession<CableEndpointTransformPreview> {
   CableEndpointTransformSession({required this.onCommit});
@@ -35,6 +41,7 @@ final class CableEndpointTransformSession extends ChangeNotifier
   List<ElectricalComponentPlacement> _components = const [];
   RouteNormativeContext? _context;
   CableEndpointRole? _role;
+  CableRouteConstraints _constraints = CableRouteConstraints.empty;
   CableEndpointTransformPreview? _preview;
   EditorEditSessionPhase _phase = EditorEditSessionPhase.idle;
 
@@ -54,18 +61,28 @@ final class CableEndpointTransformSession extends ChangeNotifier
     required CableEndpointRole role,
     required Iterable<ElectricalComponentPlacement> components,
     required RouteNormativeContext context,
+    CableRouteConstraints? constraints,
   }) {
     if (route.segments.isEmpty) return false;
-    final segment = role == CableEndpointRole.source
-        ? route.segments.first
-        : route.segments.last;
-    if (segment.surface != context.surface || segment.points.length < 2) {
+    final segmentIndex =
+        role == CableEndpointRole.source ? 0 : route.segments.length - 1;
+    final segment = route.segments[segmentIndex];
+    final routeConstraints = constraints ?? CableRouteConstraints.empty;
+    if (segment.surface != context.surface ||
+        segment.points.length < 2 ||
+        routeConstraints.isSegmentLocked(segmentIndex) ||
+        !_waypointsBelongToSegment(
+          constraints: routeConstraints,
+          segmentIndex: segmentIndex,
+          points: segment.points,
+        )) {
       return false;
     }
     _origin = route;
     _components = List.unmodifiable(components);
     _context = context;
     _role = role;
+    _constraints = routeConstraints;
     _preview = null;
     _hysteresis.clear();
     _phase = EditorEditSessionPhase.previewing;
@@ -117,17 +134,13 @@ final class CableEndpointTransformSession extends ChangeNotifier
       releaseRadiusMm: releaseRadiusMm,
     );
     if (snap == null || snap.kind != SnapKind.port || snap.sourceId == null) {
-      _preview = null;
-      _phase = EditorEditSessionPhase.invalid;
-      notifyListeners();
+      _invalidate();
       return false;
     }
 
     final endpoint = _endpointForSourceId(snap.sourceId!);
     if (endpoint == null) {
-      _preview = null;
-      _phase = EditorEditSessionPhase.invalid;
-      notifyListeners();
+      _invalidate();
       return false;
     }
 
@@ -142,16 +155,14 @@ final class CableEndpointTransformSession extends ChangeNotifier
         role == CableEndpointRole.source ? movedPoint : fixedPoint;
     final targetPoint =
         role == CableEndpointRole.target ? movedPoint : fixedPoint;
-    final candidates = NormativeRouteEngine.buildCandidates(
+    final routed = _routeThroughMandatoryWaypoints(
       source: sourcePoint,
       target: targetPoint,
+      segmentIndex: segmentIndex,
       context: context,
     );
-    final best = _firstValid(candidates);
-    if (best == null) {
-      _preview = null;
-      _phase = EditorEditSessionPhase.invalid;
-      notifyListeners();
+    if (routed == null) {
+      _invalidate();
       return false;
     }
 
@@ -163,7 +174,9 @@ final class CableEndpointTransformSession extends ChangeNotifier
         for (var i = 0; i < origin.segments.length; i++)
           if (i == segmentIndex)
             ElectricalRouteSegment(
-                surface: segment.surface, points: best.points)
+              surface: segment.surface,
+              points: routed.points,
+            )
           else
             origin.segments[i],
       ],
@@ -174,11 +187,13 @@ final class CableEndpointTransformSession extends ChangeNotifier
     _preview = CableEndpointTransformPreview(
       route: route,
       snap: snap,
-      validation: best.validation,
+      validation: routed.validation,
     );
-    _phase = EditorEditSessionPhase.previewing;
+    _phase = routed.validation.isValid
+        ? EditorEditSessionPhase.previewing
+        : EditorEditSessionPhase.invalid;
     notifyListeners();
-    return true;
+    return routed.validation.isValid;
   }
 
   @override
@@ -203,6 +218,62 @@ final class CableEndpointTransformSession extends ChangeNotifier
     _clear(EditorEditSessionPhase.cancelled);
   }
 
+  ({List<SurfacePointMm> points, RouteConstraintResult validation})?
+      _routeThroughMandatoryWaypoints({
+    required SurfacePointMm source,
+    required SurfacePointMm target,
+    required int segmentIndex,
+    required RouteNormativeContext context,
+  }) {
+    final waypoints = _constraints.mandatoryWaypoints
+        .where((item) => item.segmentIndex == segmentIndex)
+        .toList(growable: false)
+      ..sort((a, b) => a.pointIndex.compareTo(b.pointIndex));
+    final anchors = <SurfacePointMm>[
+      source,
+      for (final waypoint in waypoints) waypoint.point,
+      target,
+    ];
+    final combined = <SurfacePointMm>[];
+    for (var i = 1; i < anchors.length; i++) {
+      final from = anchors[i - 1];
+      final to = anchors[i];
+      if (_samePoint(from, to)) {
+        if (combined.isEmpty || !_samePoint(combined.last, to)) {
+          combined.add(to);
+        }
+        continue;
+      }
+      final best = _firstValid(
+        NormativeRouteEngine.buildCandidates(
+          source: from,
+          target: to,
+          context: context,
+        ),
+      );
+      if (best == null) return null;
+      for (final point in best.points) {
+        if (combined.isEmpty || !_samePoint(combined.last, point)) {
+          combined.add(point);
+        }
+      }
+    }
+    if (combined.length < 2) return null;
+    for (final waypoint in waypoints) {
+      if (!combined.any((point) => _samePoint(point, waypoint.point))) {
+        return null;
+      }
+    }
+    final validation = NormativeRouteEngine.validate(
+      points: combined,
+      context: context,
+    );
+    return (
+      points: List.unmodifiable(combined),
+      validation: validation,
+    );
+  }
+
   ElectricalEndpointRef? _endpointForSourceId(String sourceId) {
     for (final component in _components) {
       for (final port in component.ports) {
@@ -217,6 +288,26 @@ final class CableEndpointTransformSession extends ChangeNotifier
     return null;
   }
 
+  void _invalidate() {
+    _preview = null;
+    _phase = EditorEditSessionPhase.invalid;
+    notifyListeners();
+  }
+
+  static bool _waypointsBelongToSegment({
+    required CableRouteConstraints constraints,
+    required int segmentIndex,
+    required List<SurfacePointMm> points,
+  }) {
+    for (final waypoint in constraints.mandatoryWaypoints) {
+      if (waypoint.segmentIndex != segmentIndex) continue;
+      if (!points.any((point) => _samePoint(point, waypoint.point))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   static RouteCandidate? _firstValid(Iterable<RouteCandidate> candidates) {
     for (final candidate in candidates) {
       if (candidate.validation.isValid) return candidate;
@@ -224,11 +315,15 @@ final class CableEndpointTransformSession extends ChangeNotifier
     return null;
   }
 
+  static bool _samePoint(SurfacePointMm a, SurfacePointMm b) =>
+      a.xMm == b.xMm && a.yMm == b.yMm;
+
   void _clear(EditorEditSessionPhase terminal) {
     _origin = null;
     _components = const [];
     _context = null;
     _role = null;
+    _constraints = CableRouteConstraints.empty;
     _preview = null;
     _hysteresis.clear();
     _phase = terminal;
