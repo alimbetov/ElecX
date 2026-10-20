@@ -2,6 +2,7 @@ import '../../domain/component_catalog_v2.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/command_history.dart';
+import '../../engine/editor_layers.dart';
 import 'editor_p2_session.dart';
 
 final Expando<int> _catalogSequences = Expando<int>(
@@ -14,6 +15,10 @@ extension CatalogComponentPlacement on EditorP2Session {
     required RoomSurfaceRef surface,
     required SurfacePointMm position,
   }) {
+    if (!layers.isVisible(EditorLayerId.electrical) ||
+        layers.isLocked(EditorLayerId.electrical)) {
+      throw StateError('Electrical layer is not editable.');
+    }
     if (!entry.canPlaceOn(surface)) {
       throw StateError(
         'Component ${entry.id} is not allowed on ${surface.type.name}.',

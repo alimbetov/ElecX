@@ -389,6 +389,8 @@ final class EditorP2Session extends ChangeNotifier {
     final component = selectedComponent;
     if (component == null ||
         layers.isLocked(EditorLayerId.electrical) ||
+        (layers.isLocked(EditorLayerId.cableRoutes) &&
+            _componentHasConnectedRoutes(component.id)) ||
         _moveOriginState != null) {
       return false;
     }
@@ -621,6 +623,7 @@ final class EditorP2Session extends ChangeNotifier {
   }
 
   bool toggleRouteSegmentLock(String routeId, int segmentIndex) {
+    if (layers.isLocked(EditorLayerId.cableRoutes)) return false;
     final route = _routeForId(routeId);
     if (route == null ||
         segmentIndex < 0 ||
@@ -646,6 +649,7 @@ final class EditorP2Session extends ChangeNotifier {
     required int pointIndex,
     required SurfacePointMm point,
   }) {
+    if (layers.isLocked(EditorLayerId.cableRoutes)) return false;
     final route = _routeForId(routeId);
     if (route == null ||
         segmentIndex < 0 ||
@@ -676,7 +680,10 @@ final class EditorP2Session extends ChangeNotifier {
 
   bool moveSelectedComponent(SurfacePointMm point) {
     final component = selectedComponent;
-    if (component == null || layers.isLocked(EditorLayerId.electrical)) {
+    if (component == null ||
+        layers.isLocked(EditorLayerId.electrical) ||
+        (layers.isLocked(EditorLayerId.cableRoutes) &&
+            _componentHasConnectedRoutes(component.id))) {
       return false;
     }
     history.execute(
@@ -703,6 +710,10 @@ final class EditorP2Session extends ChangeNotifier {
             ids.contains(route.target.componentId))
           route.id,
     };
+    if (removedRouteIds.isNotEmpty &&
+        layers.isLocked(EditorLayerId.cableRoutes)) {
+      return false;
+    }
     final nextConstraints = Map<String, CableRouteConstraints>.of(
       state.routeConstraints,
     )..removeWhere((routeId, _) => removedRouteIds.contains(routeId));
@@ -949,6 +960,24 @@ final class EditorP2Session extends ChangeNotifier {
     return List.unmodifiable(result);
   }
 
+  bool addManualRouteSegments({
+    required ElectricalEndpointRef source,
+    required ElectricalEndpointRef target,
+    required List<ElectricalRouteSegment> segments,
+    String? cableType,
+  }) {
+    if (!layers.isVisible(EditorLayerId.cableRoutes) ||
+        layers.isLocked(EditorLayerId.cableRoutes)) {
+      return false;
+    }
+    return _addRouteSegments(
+      source: source,
+      target: target,
+      segments: segments,
+      cableType: cableType,
+    );
+  }
+
   bool _addRouteSegments({
     required ElectricalEndpointRef source,
     required ElectricalEndpointRef target,
@@ -1031,6 +1060,12 @@ final class EditorP2Session extends ChangeNotifier {
     history.replaceState(next, clearHistory: false);
     if (notify) notifyListeners();
   }
+
+  bool _componentHasConnectedRoutes(String componentId) => routes.any(
+        (route) =>
+            route.source.componentId == componentId ||
+            route.target.componentId == componentId,
+      );
 
   ElectricalCableRoute? _routeForId(String routeId) {
     for (final route in routes) {

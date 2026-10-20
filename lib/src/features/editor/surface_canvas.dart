@@ -41,6 +41,7 @@ import 'editor_interaction_policy.dart';
 import 'editor_p2_session.dart';
 import 'editor_viewport_commands.dart';
 import 'hosted_route_session.dart';
+import 'manual_cable_draft_persistence.dart';
 import 'route_selection_session.dart';
 import 'viewport_zoom_policy.dart';
 
@@ -478,6 +479,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
     SurfacePointMm point,
     _SurfaceProjection projection,
   ) {
+    if (!controller.p2.layers.isVisible(EditorLayerId.electrical)) return null;
     final radiusMm = math.max(80.0, projection.camera.mmPerPixel * 18);
     final handle = DirectManipulationEngine.hitTest(
       handles: controller.p2.handlesForSelection(),
@@ -621,6 +623,10 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
     _SurfaceProjection projection,
     PointerDeviceKind kind,
   ) {
+    if (!controller.p2.layers.isVisible(EditorLayerId.cableRoutes) ||
+        controller.p2.layers.isLocked(EditorLayerId.cableRoutes)) {
+      return null;
+    }
     final route = controller.routeSelection.selectedRoute;
     final surface = controller.activeSurface;
     if (route == null || surface == null) return null;
@@ -807,6 +813,10 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
 
     final placementType = controller.p2.placementType;
     if (placementType != null) {
+      if (!controller.p2.layers.isVisible(EditorLayerId.electrical) ||
+          controller.p2.layers.isLocked(EditorLayerId.electrical)) {
+        return;
+      }
       controller.p2.placeComponent(
         type: placementType,
         surface: surface,
@@ -825,27 +835,29 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
         return;
       }
 
-      final explicitTransition = _explicitTransitionAt(raw, projection);
-      if (explicitTransition != null) {
-        _followTransition(explicitTransition, surface);
-        return;
-      }
-      final legacyTarget = _legacyTransitionTargetAt(raw, projection);
-      if (legacyTarget != null) {
-        _navigateToSurface(legacyTarget);
-        return;
-      }
+      if (controller.p2.layers.isVisible(EditorLayerId.cableRoutes)) {
+        final explicitTransition = _explicitTransitionAt(raw, projection);
+        if (explicitTransition != null) {
+          _followTransition(explicitTransition, surface);
+          return;
+        }
+        final legacyTarget = _legacyTransitionTargetAt(raw, projection);
+        if (legacyTarget != null) {
+          _navigateToSurface(legacyTarget);
+          return;
+        }
 
-      final hit = RouteInteractionEngine.hitTestHosted(
-        routes: _allHostedRoutes(),
-        host: RouteHostRef.indoor(surface),
-        xMm: raw.xMm.toDouble(),
-        yMm: raw.yMm.toDouble(),
-        radiusMm: math.max(70.0, projection.camera.mmPerPixel * 12),
-      );
-      if (hit != null) {
-        controller.routeSelection.select(hit.routeId);
-        return;
+        final hit = RouteInteractionEngine.hitTestHosted(
+          routes: _allHostedRoutes(),
+          host: RouteHostRef.indoor(surface),
+          xMm: raw.xMm.toDouble(),
+          yMm: raw.yMm.toDouble(),
+          radiusMm: math.max(70.0, projection.camera.mmPerPixel * 12),
+        );
+        if (hit != null) {
+          controller.routeSelection.select(hit.routeId);
+          return;
+        }
       }
 
       controller.routeSelection.clear();
@@ -894,6 +906,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
   }
 
   void _commitMarquee(_SurfaceProjection projection) {
+    if (!controller.p2.layers.isVisible(EditorLayerId.electrical)) return;
     final rect = _marqueeRect;
     if (rect == null || rect.width < 3 || rect.height < 3) return;
     final a = projection.viewportToSurface(rect.topLeft);
@@ -998,6 +1011,10 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
         final bottomEditorVisible = surface.type == SurfacePlaneType.wall &&
             controller.boundaryEditing.active &&
             controller.boundaryEditing.profile != BoundaryEditProfile.wall;
+        final electricalVisible =
+            controller.p2.layers.isVisible(EditorLayerId.electrical);
+        final cableRoutesVisible =
+            controller.p2.layers.isVisible(EditorLayerId.cableRoutes);
 
         return Stack(
           children: [
@@ -1185,20 +1202,21 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
               bottom: bottomEditorVisible ? 148 : (compact ? 8 : 12),
               child: _EdgeNavigationHint(surface: surface),
             ),
-            if (controller.p2.selectedComponent case final component?)
-              Positioned(
-                left: compact ? 8 : 12,
-                bottom: bottomEditorVisible ? 148 : (compact ? 8 : 12),
-                child: CanvasComponentControls(
-                  label: component.label,
-                  stepMm: _componentNudgeStepMm,
-                  onStepChanged: (value) =>
-                      setState(() => _componentNudgeStepMm = value),
-                  onMove: (dx, dy) =>
-                      _nudgeSelectedComponent(dx, dy, projection),
-                  onDelete: controller.p2.deleteSelection,
+            if (electricalVisible)
+              if (controller.p2.selectedComponent case final component?)
+                Positioned(
+                  left: compact ? 8 : 12,
+                  bottom: bottomEditorVisible ? 148 : (compact ? 8 : 12),
+                  child: CanvasComponentControls(
+                    label: component.label,
+                    stepMm: _componentNudgeStepMm,
+                    onStepChanged: (value) =>
+                        setState(() => _componentNudgeStepMm = value),
+                    onMove: (dx, dy) =>
+                        _nudgeSelectedComponent(dx, dy, projection),
+                    onDelete: controller.p2.deleteSelection,
+                  ),
                 ),
-              ),
             if (controller.p2.placementType case final type?)
               Positioned(
                 left: 12,
@@ -1210,16 +1228,18 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                   ),
                 ),
               ),
-            if (controller.routeSelection.selectedRouteId case final routeId?)
-              Positioned(
-                left: 12,
-                bottom: bottomEditorVisible ? 188 : 52,
-                child: Chip(
-                  avatar: const Icon(Icons.alt_route, size: 18),
-                  label: Text('Трасса: $routeId · переходы активны'),
+            if (cableRoutesVisible)
+              if (controller.routeSelection.selectedRouteId case final routeId?)
+                Positioned(
+                  left: 12,
+                  bottom: bottomEditorVisible ? 188 : 52,
+                  child: Chip(
+                    avatar: const Icon(Icons.alt_route, size: 18),
+                    label: Text('Трасса: $routeId · переходы активны'),
+                  ),
                 ),
-              ),
-            if (controller.routeSelection.selectedRouteId != null)
+            if (cableRoutesVisible &&
+                controller.routeSelection.selectedRouteId != null)
               Positioned(
                 left: compact ? 8 : 12,
                 top: compact ? 56 : 60,
@@ -1238,6 +1258,51 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                       controller.cableRouteEdit.previewState?.validation,
                   previewInvalid: controller.cableEndpointTransform.active &&
                       controller.cableEndpointTransform.previewState == null,
+                ),
+              ),
+            if (cableRoutesVisible &&
+                controller.tool == EditorTool.cableRoute &&
+                controller.routeSegments.isNotEmpty)
+              Positioned(
+                right: compact ? 8 : 12,
+                bottom: bottomEditorVisible ? 148 : 12,
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextButton.icon(
+                          key: const ValueKey('manual-cable-cancel'),
+                          onPressed: controller.cancelManualCableDraft,
+                          icon: const Icon(Icons.close, size: 16),
+                          label: const Text('Отмена'),
+                        ),
+                        const SizedBox(width: 4),
+                        FilledButton.icon(
+                          key: const ValueKey('manual-cable-finish'),
+                          onPressed: controller.finishManualCableDraft,
+                          icon: const Icon(Icons.check, size: 16),
+                          label: const Text('Завершить'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            if (controller.componentTransform.previewState case final preview?
+                when !preview.isValid)
+              Positioned(
+                left: compact ? 8 : 12,
+                top: compact ? 104 : 108,
+                child: Chip(
+                  key: const ValueKey('component-preview-invalid'),
+                  avatar:
+                      Icon(Icons.error_outline, color: scheme.error, size: 18),
+                  label: const Text('Невалидная позиция · commit запрещён'),
                 ),
               ),
             if (surface.type == SurfacePlaneType.wall)
@@ -1584,6 +1649,15 @@ class _SurfacePainter extends CustomPainter {
           ),
         ),
         selectionFingerprint = Object.hashAll(controller.p2.selection.ids),
+        transformPreviewFingerprint =
+            controller.componentTransform.previewState == null
+                ? 0
+                : Object.hash(
+                    controller.componentTransform.previewState!.componentId,
+                    controller.componentTransform.previewState!.position.xMm,
+                    controller.componentTransform.previewState!.position.yMm,
+                    controller.componentTransform.previewState!.isValid,
+                  ),
         snapFingerprint = controller.p2.activeSnap == null
             ? 0
             : Object.hash(
@@ -1624,6 +1698,7 @@ class _SurfacePainter extends CustomPainter {
   final int routeFingerprint;
   final int componentsFingerprint;
   final int selectionFingerprint;
+  final int transformPreviewFingerprint;
   final int snapFingerprint;
   final int profileFingerprint;
 
@@ -2315,6 +2390,28 @@ class _SurfacePainter extends CustomPainter {
       final selected = controller.p2.selection.contains(component.id);
       _drawComponentSymbol(canvas, component.type, center, selected);
     }
+    final transformPreview = controller.componentTransform.previewState;
+    if (transformPreview != null &&
+        !transformPreview.isValid &&
+        transformPreview.surface == surface) {
+      ElectricalComponentPlacement? previewComponent;
+      for (final component in controller.p2.components) {
+        if (component.id == transformPreview.componentId) {
+          previewComponent = component;
+          break;
+        }
+      }
+      if (previewComponent != null) {
+        _drawComponentSymbol(
+          canvas,
+          previewComponent.type,
+          projection.surfaceToViewport(transformPreview.position),
+          true,
+          strokeColor: scheme.error,
+          fillColor: scheme.errorContainer.withValues(alpha: 0.55),
+        );
+      }
+    }
     final snap = controller.p2.activeSnap;
     if (snap != null) {
       final center = projection.surfaceToViewport(
@@ -2341,19 +2438,23 @@ class _SurfacePainter extends CustomPainter {
     Canvas canvas,
     ElectricalComponentType type,
     Offset center,
-    bool selected,
-  ) {
+    bool selected, {
+    Color? strokeColor,
+    Color? fillColor,
+  }) {
     final stroke = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = selected ? 2.6 : 1.8
-      ..color = selected
-          ? CadVisualTokens.selectedGeometry(scheme)
-          : scheme.onSurface;
+      ..color = strokeColor ??
+          (selected
+              ? CadVisualTokens.selectedGeometry(scheme)
+              : scheme.onSurface);
     final fill = Paint()
       ..style = PaintingStyle.fill
-      ..color = selected
-          ? CadVisualTokens.selectedFill(scheme)
-          : scheme.surfaceContainerLowest;
+      ..color = fillColor ??
+          (selected
+              ? CadVisualTokens.selectedFill(scheme)
+              : scheme.surfaceContainerLowest);
     canvas.drawCircle(center, selected ? 11 : 9, fill);
     switch (type) {
       case ElectricalComponentType.socketOutlet:
@@ -2537,6 +2638,7 @@ class _SurfacePainter extends CustomPainter {
       oldDelegate.routeFingerprint != routeFingerprint ||
       oldDelegate.componentsFingerprint != componentsFingerprint ||
       oldDelegate.selectionFingerprint != selectionFingerprint ||
+      oldDelegate.transformPreviewFingerprint != transformPreviewFingerprint ||
       oldDelegate.snapFingerprint != snapFingerprint ||
       oldDelegate.profileFingerprint != profileFingerprint;
 }

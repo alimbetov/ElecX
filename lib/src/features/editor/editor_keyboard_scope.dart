@@ -10,6 +10,7 @@ import 'editor_interaction_policy.dart';
 import 'editor_p2_session.dart';
 import 'editor_viewport_commands.dart';
 import 'engineering_placement_cursor_session.dart';
+import 'manual_cable_draft_persistence.dart';
 
 /// Desktop-first keyboard layer for the spatial editor.
 ///
@@ -91,6 +92,9 @@ class EditorKeyboardScope extends StatelessWidget {
       controller.componentTransform.cancel();
     } else if (controller.placementCursor.active) {
       controller.placementCursor.cancel();
+    } else if (controller.tool == EditorTool.cableRoute &&
+        controller.routeSegments.isNotEmpty) {
+      controller.cancelManualCableDraft();
     } else {
       controller.setTool(EditorTool.select);
     }
@@ -106,6 +110,9 @@ class EditorKeyboardScope extends StatelessWidget {
       controller.componentTransform.commit();
     } else if (controller.placementCursor.active) {
       controller.placementCursor.confirm();
+    } else if (controller.tool == EditorTool.cableRoute &&
+        controller.routeSegments.isNotEmpty) {
+      controller.finishManualCableDraft();
     }
   }
 
