@@ -27,5 +27,6 @@ final class _HtmlLocalStorageBackend implements BrowserKeyValueStore {
 Future<EditorProjectStore> openDefaultEditorProjectStore() async =>
     BrowserEditorProjectStore(const _HtmlLocalStorageBackend());
 
-Future<EditorProjectRecoveryStore> openDefaultEditorProjectRecoveryStore() async =>
-    BrowserEditorProjectRecoveryStore(const _HtmlLocalStorageBackend());
+Future<EditorProjectRecoveryStore>
+    openDefaultEditorProjectRecoveryStore() async =>
+        BrowserEditorProjectRecoveryStore(const _HtmlLocalStorageBackend());
