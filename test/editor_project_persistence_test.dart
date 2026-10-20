@@ -242,4 +242,37 @@ void main() {
       throwsFormatException,
     );
   });
+
+  test(
+      'project listing isolates corrupt files and recovers backup-only project',
+      () async {
+    final temp = await Directory.systemTemp.createTemp('elecx-listing-');
+    addTearDown(() async {
+      if (await temp.exists()) await temp.delete(recursive: true);
+    });
+    final controller = EditorController.demo();
+    final workspace = EditorBuildingWorkspace.demo(controller);
+    final document = EditorProjectDocument.capture(
+      workspace,
+      metadata: EditorProjectMetadata.create(projectName: 'Healthy project'),
+    );
+    final store = JsonFileEditorProjectStore(temp);
+    await store.save(document);
+
+    final primary = (await temp
+        .list()
+        .where(
+            (entity) => entity is File && entity.path.endsWith('.elecx.json'))
+        .first) as File;
+    final backup = File('${primary.path}.bak');
+    await primary.rename(backup.path);
+    await File('${temp.path}/corrupt.elecx.json').writeAsString('{broken');
+
+    final listed = await store.list();
+    expect(listed.map((item) => item.projectId), [document.projectId]);
+
+    workspace.dispose();
+    controller.disposeP2State();
+    controller.dispose();
+  });
 }

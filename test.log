@@ -10,8 +10,8 @@ Try `flutter pub outdated` for more information.
 
 ::group::✅ Passing tests
 ✅ /home/runner/work/ElecX/ElecX/test/wall_profile_parameter_editing_regression_test.dart: existing top notch is replaced by new X width and depth parameters
-✅ /home/runner/work/ElecX/ElecX/test/residential_tower_builder_test.dart: tower supports B30 through residential floor 16
 ✅ /home/runner/work/ElecX/ElecX/test/wall_profile_parameter_editing_regression_test.dart: invalid beam parameters leave existing notch unchanged
+✅ /home/runner/work/ElecX/ElecX/test/residential_tower_builder_test.dart: tower supports B30 through residential floor 16
 ✅ /home/runner/work/ElecX/ElecX/test/residential_tower_builder_test.dart: every residential floor owns independent apartments and room ids
 ✅ /home/runner/work/ElecX/ElecX/test/residential_tower_builder_test.dart: vertical cores span every level from B30 to 16
 ✅ /home/runner/work/ElecX/ElecX/test/residential_tower_builder_test.dart: one space cannot belong to two apartment/common zones
@@ -51,6 +51,7 @@ Try `flutter pub outdated` for more information.
 ✅ /home/runner/work/ElecX/ElecX/test/editor_project_persistence_test.dart: project identity is independent from physical site identity
 ✅ /home/runner/work/ElecX/ElecX/test/editor_project_persistence_test.dart: schema v1 migrates through v4 without losing project identity
 ✅ /home/runner/work/ElecX/ElecX/test/editor_project_persistence_test.dart: unsupported schema is rejected explicitly
+✅ /home/runner/work/ElecX/ElecX/test/editor_project_persistence_test.dart: project listing isolates corrupt files and recovers backup-only project
 ✅ /home/runner/work/ElecX/ElecX/test/alien_cockpit_theme_test.dart: dark theme exposes the cockpit semantic palette
 ✅ /home/runner/work/ElecX/ElecX/test/alien_cockpit_theme_test.dart: light theme keeps semantic accents without dark-only surfaces
 ✅ /home/runner/work/ElecX/ElecX/test/alien_cockpit_theme_test.dart: compact editor target meets the explicit touch ergonomics floor
@@ -84,13 +85,14 @@ Try `flutter pub outdated` for more information.
 ✅ /home/runner/work/ElecX/ElecX/test/editor_controller_test.dart: plan snap prefers nearby endpoint over grid
 ✅ /home/runner/work/ElecX/ElecX/test/editor_controller_test.dart: plan snap uses grid when no higher-priority geometry is in range
 ✅ /home/runner/work/ElecX/ElecX/test/editor_controller_test.dart: rectangle room gets a centered local reference frame
+✅ /home/runner/work/ElecX/ElecX/test/unified_workspace_persistence_ui_test.dart: desktop Save and Open use canonical project store
 ✅ /home/runner/work/ElecX/ElecX/test/cable_route_constraints_test.dart: constraint payload round-trips for project persistence
 ✅ /home/runner/work/ElecX/ElecX/test/cable_route_constraints_test.dart: lock and waypoint mutations are undoable editor state
 ✅ /home/runner/work/ElecX/ElecX/test/cable_route_constraints_test.dart: constraint state survives session reopen from canonical snapshot
 ✅ /home/runner/work/ElecX/ElecX/test/cable_route_constraints_test.dart: constraint mutation rejects stale geometry references
 ✅ /home/runner/work/ElecX/ElecX/test/cable_route_constraints_test.dart: reconcile tracks physical waypoint when its vertex index shifts
 ✅ /home/runner/work/ElecX/ElecX/test/cable_route_constraints_test.dart: route replacement reconciles constraints in the same undo command
-✅ /home/runner/work/ElecX/ElecX/test/unified_workspace_persistence_ui_test.dart: desktop Save and Open use canonical project store
+✅ /home/runner/work/ElecX/ElecX/test/unified_workspace_persistence_ui_test.dart: unsaved new project blocks back until discard is explicit
 ✅ /home/runner/work/ElecX/ElecX/test/cable_route_edit_session_test.dart: auto route previews valid geometry and commits once
 ✅ /home/runner/work/ElecX/ElecX/test/cable_route_edit_session_test.dart: manual guardrails expose invalid preview but block commit
 ✅ /home/runner/work/ElecX/ElecX/test/cable_route_edit_session_test.dart: locked segment cannot start an edit session
@@ -99,7 +101,6 @@ Try `flutter pub outdated` for more information.
 ✅ /home/runner/work/ElecX/ElecX/test/cable_route_edit_session_test.dart: auto route preserves mandatory waypoint as an intermediate anchor
 ✅ /home/runner/work/ElecX/ElecX/test/semantic_snap_test.dart: port snap wins over grid and centers on component anchor
 ✅ /home/runner/work/ElecX/ElecX/test/semantic_snap_test.dart: captured port remains sticky until release radius is exceeded
-✅ /home/runner/work/ElecX/ElecX/test/unified_workspace_persistence_ui_test.dart: unsaved new project blocks back until discard is explicit
 ✅ /home/runner/work/ElecX/ElecX/test/component_catalog_v2_test.dart: ComponentCatalogV2 socket is wall-only and uses power cable sizing
 ✅ /home/runner/work/ElecX/ElecX/test/component_catalog_v2_test.dart: ComponentCatalogV2 PoE camera exposes network port and PoE budget calculation
 ✅ /home/runner/work/ElecX/ElecX/test/component_catalog_v2_test.dart: ComponentCatalogV2 smoke detector is ceiling-only and uses fire loop topology
@@ -261,17 +262,17 @@ Try `flutter pub outdated` for more information.
 ✅ /home/runner/work/ElecX/ElecX/test/p1_integrity_hardening_test.dart: concave boundary rejects segment that exits through polygon vertices
 ✅ /home/runner/work/ElecX/ElecX/test/p1_integrity_hardening_test.dart: assigned cable route rebind updates engineering identity atomically
 ✅ /home/runner/work/ElecX/ElecX/test/p1_integrity_hardening_test.dart: recovery load falls back to backup after interrupted publication
+✅ /home/runner/work/ElecX/ElecX/test/p1_lifecycle_acceptance_test.dart: F01 electrical mutation changes Saved to Modified and autosaves recovery
 ✅ /home/runner/work/ElecX/ElecX/test/route_interaction_hosted_test.dart: hosted route hit test selects only segments on requested host
 ✅ /home/runner/work/ElecX/ElecX/test/route_interaction_hosted_test.dart: route selection accepts hosted-only route identity
 ✅ /home/runner/work/ElecX/ElecX/test/route_interaction_hosted_test.dart: indoor adapter preserves route medium semantics
 ✅ /home/runner/work/ElecX/ElecX/test/route_interaction_hosted_test.dart: selected hosted route keeps transition visible from both hosts
-✅ /home/runner/work/ElecX/ElecX/test/p1_lifecycle_acceptance_test.dart: F01 electrical mutation changes Saved to Modified and autosaves recovery
-✅ /home/runner/work/ElecX/ElecX/test/routing_constraints_test.dart: keep-out zone removes crossing edge but preserves alternative path
-✅ /home/runner/work/ElecX/ElecX/test/routing_constraints_test.dart: route violations return each keep-out zone once
 ✅ /home/runner/work/ElecX/ElecX/test/p1_lifecycle_acceptance_test.dart: F01 selection-only and preview-cancel keep saved project clean
 ✅ /home/runner/work/ElecX/ElecX/test/p1_lifecycle_acceptance_test.dart: F03 adding an opening across existing cable is rejected atomically
 ✅ /home/runner/work/ElecX/ElecX/test/p1_lifecycle_acceptance_test.dart: F03 shrinking room around electrical component is rejected atomically
 ✅ /home/runner/work/ElecX/ElecX/test/p1_lifecycle_acceptance_test.dart: F05 second pointer cancels plan boundary drag without commit
+✅ /home/runner/work/ElecX/ElecX/test/routing_constraints_test.dart: keep-out zone removes crossing edge but preserves alternative path
+✅ /home/runner/work/ElecX/ElecX/test/routing_constraints_test.dart: route violations return each keep-out zone once
 ✅ /home/runner/work/ElecX/ElecX/test/p1_lifecycle_acceptance_test.dart: F06 tool switch cancels active surface component preview
 ✅ /home/runner/work/ElecX/ElecX/test/wall_profile_plan_projection_test.dart: rectangular wall projects as a flat upper contour
 ✅ /home/runner/work/ElecX/ElecX/test/wall_profile_plan_projection_test.dart: beam notch projects as a stepped upper contour
@@ -305,6 +306,7 @@ Try `flutter pub outdated` for more information.
 ✅ /home/runner/work/ElecX/ElecX/test/cable_sizing_engine_test.dart: three phase equation uses sqrt(3) multiplier
 ✅ /home/runner/work/ElecX/ElecX/test/project_recovery_and_save_diagnostics_test.dart: Save failed shows actionable incompatible cable hint
 ✅ /home/runner/work/ElecX/ElecX/test/boundary_edit_session_test.dart: boundary edit session enters, switches profiles and exits cleanly
+✅ /home/runner/work/ElecX/ElecX/test/project_recovery_and_save_diagnostics_test.dart: in-flight autosave cannot resurrect recovery after explicit Save
 ✅ /home/runner/work/ElecX/ElecX/test/site_navigation_model_test.dart: tower projection exposes yard levels apartments common and rooms
 ✅ /home/runner/work/ElecX/ElecX/test/site_navigation_model_test.dart: cottage village projection exposes lots houses levels rooms and networks
 ✅ /home/runner/work/ElecX/ElecX/test/opening_editor_test.dart: opening position and dimensions update when they fit wall
@@ -324,4 +326,4 @@ Try `flutter pub outdated` for more information.
 ✅ /home/runner/work/ElecX/ElecX/test/catalog_component_identity_test.dart: catalog component ids remain monotonic after delete and re-add
 ::endgroup::
 
-🎉 313 tests passed.
+🎉 315 tests passed.

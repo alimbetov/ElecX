@@ -357,22 +357,41 @@ final class JsonFileEditorProjectStore implements EditorProjectStore {
   @override
   Future<List<EditorProjectDocument>> list() async {
     if (!await rootDirectory.exists()) return const [];
-    final result = <EditorProjectDocument>[];
+    final sourcesByBasePath = <String, File>{};
     await for (final entity in rootDirectory.list(followLinks: false)) {
-      if (entity is! File || !entity.path.endsWith('.elecx.json')) continue;
-      final raw = jsonDecode(await entity.readAsString());
-      if (raw is! Map) {
-        throw FormatException(
-          'ElecX project ${path.basename(entity.path)} must be a JSON object.',
-        );
+      if (entity is! File) continue;
+      final isPrimary = entity.path.endsWith('.elecx.json');
+      final isBackup = entity.path.endsWith('.elecx.json.bak');
+      if (!isPrimary && !isBackup) continue;
+      final basePath = isBackup
+          ? entity.path.substring(0, entity.path.length - '.bak'.length)
+          : entity.path;
+      if (isPrimary) {
+        sourcesByBasePath[basePath] = entity;
+      } else {
+        sourcesByBasePath.putIfAbsent(basePath, () => entity);
       }
-      final stat = await entity.stat();
-      result.add(
-        EditorProjectDocument.fromJson(
-          raw.map((key, value) => MapEntry(key.toString(), value)),
-          legacyTimestamp: stat.modified.toUtc(),
-        ),
-      );
+    }
+
+    final result = <EditorProjectDocument>[];
+    for (final source in sourcesByBasePath.values) {
+      try {
+        final raw = jsonDecode(await source.readAsString());
+        if (raw is! Map) continue;
+        final stat = await source.stat();
+        result.add(
+          EditorProjectDocument.fromJson(
+            raw.map((key, value) => MapEntry(key.toString(), value)),
+            legacyTimestamp: stat.modified.toUtc(),
+          ),
+        );
+      } on FormatException {
+        // One damaged project must not hide every healthy project in the Hub.
+        continue;
+      } on FileSystemException {
+        // A file can disappear between directory enumeration and read.
+        continue;
+      }
     }
     result.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
     return List<EditorProjectDocument>.unmodifiable(result);

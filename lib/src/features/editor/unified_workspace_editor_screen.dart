@@ -76,6 +76,7 @@ class _UnifiedWorkspaceEditorScreenState
   Timer? _autosaveTimer;
   bool _autosaveInFlight = false;
   int _lastAutosavedRevision = -1;
+  int _recoveryGeneration = 0;
   String? _saveFailureHint;
   bool _projectIoBusy = false;
   late EditorProjectMetadata _projectMetadata;
@@ -195,27 +196,33 @@ class _UnifiedWorkspaceEditorScreenState
     final issue = EditorProjectSaveDiagnostics.firstBlocking(workspace);
     if (issue != null) return;
     final revision = _projectRevision;
+    final generation = _recoveryGeneration;
     _autosaveInFlight = true;
     try {
       final document = EditorProjectDocument.capture(
         workspace,
         metadata: _projectMetadata,
       );
+      final snapshot = EditorProjectRecoverySnapshot(
+        capturedAt: DateTime.now().toUtc(),
+        revision: revision,
+        document: document,
+      );
       final store = await _recoveryStoreOrNull();
       if (store == null) return;
-      await store.save(
-        EditorProjectRecoverySnapshot(
-          capturedAt: DateTime.now().toUtc(),
-          revision: revision,
-          document: document,
-        ),
-      );
+      await store.save(snapshot);
+      if (generation != _recoveryGeneration ||
+          snapshot.projectId != _projectMetadata.projectId) {
+        await store.discard(snapshot.projectId);
+        return;
+      }
       _lastAutosavedRevision = revision;
     } catch (error) {
       debugPrint('ElecX recovery autosave skipped: $error');
     } finally {
       _autosaveInFlight = false;
       if (mounted &&
+          generation == _recoveryGeneration &&
           _hasUnsavedChanges &&
           _lastAutosavedRevision != _projectRevision) {
         _scheduleAutosave();
@@ -278,12 +285,16 @@ class _UnifiedWorkspaceEditorScreenState
 
   Future<void> _discardRecoveryBestEffort() async {
     _autosaveTimer?.cancel();
+    final generation = ++_recoveryGeneration;
     if (!_recoveryEnabled) return;
+    final projectId = _projectMetadata.projectId;
     try {
       final store = await _recoveryStoreOrNull();
       if (store == null) return;
-      await store.discard(_projectMetadata.projectId);
-      _lastAutosavedRevision = -1;
+      await store.discard(projectId);
+      if (generation == _recoveryGeneration) {
+        _lastAutosavedRevision = -1;
+      }
     } catch (error) {
       debugPrint('ElecX recovery cleanup skipped: $error');
     }
@@ -408,6 +419,7 @@ class _UnifiedWorkspaceEditorScreenState
     bool markSaved = true,
     int recoveryRevision = 1,
   }) {
+    _recoveryGeneration++;
     final previousController = controller;
     final previousWorkspace = workspace;
 

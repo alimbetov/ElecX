@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:elecx/src/domain/electrical_placement.dart';
@@ -41,6 +42,34 @@ final class _MemoryRecoveryStore implements EditorProjectRecoveryStore {
   @override
   Future<void> save(EditorProjectRecoverySnapshot snapshot) async {
     saves++;
+    snapshots[snapshot.projectId] = snapshot;
+  }
+
+  @override
+  Future<EditorProjectRecoverySnapshot?> load(String projectId) async =>
+      snapshots[projectId];
+
+  @override
+  Future<List<EditorProjectRecoverySnapshot>> list() async =>
+      List.unmodifiable(snapshots.values);
+
+  @override
+  Future<void> discard(String projectId) async {
+    discards++;
+    snapshots.remove(projectId);
+  }
+}
+
+final class _DelayedRecoveryStore implements EditorProjectRecoveryStore {
+  final Map<String, EditorProjectRecoverySnapshot> snapshots = {};
+  final Completer<void> releaseFirstSave = Completer<void>();
+  int saves = 0;
+  int discards = 0;
+
+  @override
+  Future<void> save(EditorProjectRecoverySnapshot snapshot) async {
+    saves++;
+    if (saves == 1) await releaseFirstSave.future;
     snapshots[snapshot.projectId] = snapshot;
   }
 
@@ -226,5 +255,40 @@ void main() {
     expect(find.textContaining('controlIn'), findsOneWidget);
     expect(find.text('Save failed'), findsOneWidget);
     expect(projects.saves, 0);
+  });
+
+  testWidgets(
+      'in-flight autosave cannot resurrect recovery after explicit Save',
+      (tester) async {
+    final projects = _MemoryProjectStore();
+    final recovery = _DelayedRecoveryStore();
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: UnifiedWorkspaceEditorScreen(
+          projectStore: projects,
+          recoveryStore: recovery,
+          autosaveDelay: const Duration(milliseconds: 5),
+          initialMetadata: EditorProjectMetadata.create(
+            projectName: 'Autosave race',
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 10));
+    expect(recovery.saves, 1);
+
+    await tester.tap(find.byKey(const ValueKey('project-save')));
+    await tester.pump();
+    expect(projects.saves, 1);
+    expect(recovery.discards, greaterThanOrEqualTo(1));
+
+    recovery.releaseFirstSave.complete();
+    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(recovery.snapshots, isEmpty);
+    expect(recovery.discards, greaterThanOrEqualTo(2));
+    expect(find.text('Saved'), findsOneWidget);
   });
 }
