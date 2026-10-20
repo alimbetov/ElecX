@@ -56,3 +56,5 @@ jobs:
           git add lib test
           git commit -m 'fix(editor): close layer draft and invalid-preview gaps'
           git push origin HEAD:feat/spatial-editor-interaction-hardening
+
+# rerun after analyzer-only staging fixes
