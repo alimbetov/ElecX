@@ -138,6 +138,14 @@ final class EditorController extends ChangeNotifier {
   int roomSequence = 102;
   int openingSequence = 1;
   double zoom = 1.0;
+  final ValueNotifier<int> _editCancellationRevision = ValueNotifier<int>(0);
+
+  ValueListenable<int> get editCancellationListenable =>
+      _editCancellationRevision;
+
+  void requestEditCancellation() {
+    _editCancellationRevision.value++;
+  }
 
   EngineeringSpace? get selectedSpace {
     for (final space in level.spaces) {
@@ -248,12 +256,14 @@ final class EditorController extends ChangeNotifier {
       routeSegments.fold(0.0, (sum, segment) => sum + segment.lengthMm);
 
   void setTool(EditorTool value) {
+    requestEditCancellation();
     tool = value;
     draftStart = null;
     notifyListeners();
   }
 
   void selectSpace(String? id) {
+    requestEditCancellation();
     selectedSpaceId = id;
     selectedOpeningId = null;
     if (id == null || activeSurface?.spaceId != id) {
@@ -266,6 +276,7 @@ final class EditorController extends ChangeNotifier {
   void enterRoomWorld([String? spaceId]) {
     final id = spaceId ?? selectedSpaceId;
     if (id == null || !level.spaces.any((space) => space.id == id)) return;
+    requestEditCancellation();
     selectedSpaceId = id;
     selectedOpeningId = null;
     activeSurface = null;
@@ -276,6 +287,7 @@ final class EditorController extends ChangeNotifier {
 
   void showRoomWorld() {
     if (selectedSpace == null) return;
+    requestEditCancellation();
     selectedOpeningId = null;
     activeSurface = null;
     viewMode = EditorViewMode.roomWorld;
@@ -283,6 +295,7 @@ final class EditorController extends ChangeNotifier {
   }
 
   void selectOpening(String? id) {
+    requestEditCancellation();
     selectedOpeningId = id;
     final opening = selectedOpening;
     if (opening != null) {
@@ -460,6 +473,7 @@ final class EditorController extends ChangeNotifier {
   }
 
   void showPlan() {
+    requestEditCancellation();
     viewMode = EditorViewMode.plan;
     activeSurface = null;
     selectedOpeningId = null;
@@ -526,6 +540,7 @@ final class EditorController extends ChangeNotifier {
   void _switchSurface(RoomSurfaceRef target) {
     final space = selectedSpace;
     if (space == null) return;
+    requestEditCancellation();
 
     selectedOpeningId = null;
     if (tool == EditorTool.cableRoute &&
@@ -643,6 +658,12 @@ final class EditorController extends ChangeNotifier {
     roomSequence += 1;
     level = level.copyWith(spaces: [...level.spaces, room]);
     selectedSpaceId = id;
+  }
+
+  @override
+  void dispose() {
+    _editCancellationRevision.dispose();
+    super.dispose();
   }
 
   void updateSelectedGrid(int minorStepMm) {

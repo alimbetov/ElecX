@@ -89,27 +89,41 @@ final class JsonFileEditorProjectRecoveryStore
 
     final target = _target(snapshot.projectId);
     final temp = File('${target.path}.tmp');
+    final backup = File('${target.path}.bak');
     if (await temp.exists()) await temp.delete();
     await temp.writeAsString(encoded, flush: true);
-    if (await target.exists()) await target.delete();
-    await temp.rename(target.path);
+    if (await backup.exists()) await backup.delete();
+    if (await target.exists()) {
+      await target.rename(backup.path);
+    }
+    try {
+      await temp.rename(target.path);
+      if (await backup.exists()) await backup.delete();
+    } catch (_) {
+      if (!await target.exists() && await backup.exists()) {
+        await backup.rename(target.path);
+      }
+      rethrow;
+    }
   }
 
   @override
   Future<EditorProjectRecoverySnapshot?> load(String projectId) async {
     final target = _target(projectId);
-    if (!await target.exists()) return null;
-    final raw = jsonDecode(await target.readAsString());
-    if (raw is! Map) {
-      throw const FormatException('ElecX recovery root must be an object.');
+    final candidates = <File>[
+      target,
+      File('${target.path}.bak'),
+      File('${target.path}.tmp'),
+    ];
+    EditorProjectRecoverySnapshot? best;
+    for (final file in candidates) {
+      final snapshot = await _tryRead(file, expectedProjectId: projectId);
+      if (snapshot != null &&
+          (best == null || snapshot.capturedAt.isAfter(best.capturedAt))) {
+        best = snapshot;
+      }
     }
-    final snapshot = EditorProjectRecoverySnapshot.fromJson(
-      raw.map((key, value) => MapEntry(key.toString(), value)),
-    );
-    if (snapshot.projectId != projectId) {
-      throw const FormatException('Recovery project id mismatch.');
-    }
-    return snapshot;
+    return best;
   }
 
   @override
@@ -117,16 +131,22 @@ final class JsonFileEditorProjectRecoveryStore
     if (!await rootDirectory.exists()) return const [];
     final result = <EditorProjectRecoverySnapshot>[];
     await for (final entity in rootDirectory.list(followLinks: false)) {
-      if (entity is! File || !entity.path.endsWith('.elecx.recovery.json')) {
+      if (entity is! File ||
+          (!entity.path.endsWith('.elecx.recovery.json') &&
+              !entity.path.endsWith('.elecx.recovery.json.bak') &&
+              !entity.path.endsWith('.elecx.recovery.json.tmp'))) {
         continue;
       }
-      final raw = jsonDecode(await entity.readAsString());
-      if (raw is! Map) continue;
-      result.add(
-        EditorProjectRecoverySnapshot.fromJson(
-          raw.map((key, value) => MapEntry(key.toString(), value)),
-        ),
-      );
+      final snapshot = await _tryRead(entity);
+      if (snapshot == null) continue;
+      final existingIndex =
+          result.indexWhere((item) => item.projectId == snapshot.projectId);
+      if (existingIndex == -1) {
+        result.add(snapshot);
+      } else if (snapshot.capturedAt
+          .isAfter(result[existingIndex].capturedAt)) {
+        result[existingIndex] = snapshot;
+      }
     }
     result.sort((a, b) => b.capturedAt.compareTo(a.capturedAt));
     return List.unmodifiable(result);
@@ -136,8 +156,31 @@ final class JsonFileEditorProjectRecoveryStore
   Future<void> discard(String projectId) async {
     final target = _target(projectId);
     final temp = File('${target.path}.tmp');
+    final backup = File('${target.path}.bak');
     if (await target.exists()) await target.delete();
     if (await temp.exists()) await temp.delete();
+    if (await backup.exists()) await backup.delete();
+  }
+
+  Future<EditorProjectRecoverySnapshot?> _tryRead(
+    File file, {
+    String? expectedProjectId,
+  }) async {
+    if (!await file.exists()) return null;
+    try {
+      final raw = jsonDecode(await file.readAsString());
+      if (raw is! Map) return null;
+      final snapshot = EditorProjectRecoverySnapshot.fromJson(
+        raw.map((key, value) => MapEntry(key.toString(), value)),
+      );
+      if (expectedProjectId != null &&
+          snapshot.projectId != expectedProjectId) {
+        return null;
+      }
+      return snapshot;
+    } catch (_) {
+      return null;
+    }
   }
 
   File _target(String projectId) {

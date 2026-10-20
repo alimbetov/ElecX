@@ -117,6 +117,7 @@ class _UnifiedWorkspaceEditorScreenState
       controller = restored.editor..addListener(_onProjectChanged);
       workspace = restored.workspace..addListener(_onProjectChanged);
     }
+    controller.p2.addListener(_onProjectChanged);
     siteInteraction = SiteMapInteractionController();
     shell = EditorShellState()..addListener(_refresh);
     final injectedStore = widget.projectStore;
@@ -202,6 +203,11 @@ class _UnifiedWorkspaceEditorScreenState
       debugPrint('ElecX recovery autosave skipped: $error');
     } finally {
       _autosaveInFlight = false;
+      if (mounted &&
+          _hasUnsavedChanges &&
+          _lastAutosavedRevision != _projectRevision) {
+        _scheduleAutosave();
+      }
     }
   }
 
@@ -395,12 +401,14 @@ class _UnifiedWorkspaceEditorScreenState
 
     previousWorkspace.removeListener(_onProjectChanged);
     previousController.removeListener(_onProjectChanged);
+    previousController.p2.removeListener(_onProjectChanged);
     previousController.disposeP2State();
     previousWorkspace.dispose();
     previousController.dispose();
 
     controller = restored.editor..addListener(_onProjectChanged);
     workspace = restored.workspace..addListener(_onProjectChanged);
+    controller.p2.addListener(_onProjectChanged);
     _projectMetadata = metadata;
     _projectRevision =
         markSaved ? 0 : (recoveryRevision <= 0 ? 1 : recoveryRevision);
@@ -598,6 +606,7 @@ class _UnifiedWorkspaceEditorScreenState
     workspace.removeListener(_onProjectChanged);
     workspace.dispose();
     controller.removeListener(_onProjectChanged);
+    controller.p2.removeListener(_onProjectChanged);
     controller.disposeP2State();
     controller.dispose();
     super.dispose();

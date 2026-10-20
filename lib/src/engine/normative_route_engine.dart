@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../domain/surfaces.dart';
 
 enum CableRoutingMode { auto, assisted, manualGuardrails }
@@ -290,7 +292,62 @@ abstract final class NormativeRouteEngine {
       final d = boundary[(i + 1) % boundary.length];
       if (_properlyIntersects(a, b, c, d)) return false;
     }
+
+    // Proper-intersection tests alone miss the case where a segment exits a
+    // concave polygon exactly through one vertex and re-enters through another.
+    // Split the segment at every boundary vertex lying on it, then require the
+    // midpoint of every open interval to remain inside/on the polygon.
+    final cuts = <double>[0, 1];
+    final dx = b.xMm - a.xMm;
+    final dy = b.yMm - a.yMm;
+    for (final vertex in boundary) {
+      if (!_onSegment(a, vertex, b)) continue;
+      final t = dx.abs() >= dy.abs()
+          ? (dx == 0 ? 0.0 : (vertex.xMm - a.xMm) / dx)
+          : (dy == 0 ? 0.0 : (vertex.yMm - a.yMm) / dy);
+      if (t > 0 && t < 1) cuts.add(t);
+    }
+    cuts.sort();
+    final unique = <double>[];
+    for (final value in cuts) {
+      if (unique.isEmpty || (value - unique.last).abs() > 1e-9) {
+        unique.add(value);
+      }
+    }
+    for (var i = 1; i < unique.length; i++) {
+      final t = (unique[i - 1] + unique[i]) / 2;
+      final x = a.xMm + dx * t;
+      final y = a.yMm + dy * t;
+      if (!_insideOrBoundaryAt(x, y, boundary)) return false;
+    }
     return true;
+  }
+
+  static bool _insideOrBoundaryAt(
+    double x,
+    double y,
+    List<SurfacePointMm> polygon,
+  ) {
+    var inside = false;
+    const epsilon = 1e-7;
+    for (var i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      final a = polygon[j];
+      final b = polygon[i];
+      final cross =
+          (b.xMm - a.xMm) * (y - a.yMm) - (b.yMm - a.yMm) * (x - a.xMm);
+      if (cross.abs() <= epsilon &&
+          x >= math.min(a.xMm, b.xMm) - epsilon &&
+          x <= math.max(a.xMm, b.xMm) + epsilon &&
+          y >= math.min(a.yMm, b.yMm) - epsilon &&
+          y <= math.max(a.yMm, b.yMm) + epsilon) {
+        return true;
+      }
+      final crosses = (a.yMm > y) != (b.yMm > y);
+      if (!crosses) continue;
+      final crossingX = (b.xMm - a.xMm) * (y - a.yMm) / (b.yMm - a.yMm) + a.xMm;
+      if (x < crossingX) inside = !inside;
+    }
+    return inside;
   }
 
   static bool _insideOrBoundary(

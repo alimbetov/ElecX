@@ -94,6 +94,7 @@ class EditorKeyboardScope extends StatelessWidget {
     } else {
       controller.setTool(EditorTool.select);
     }
+    controller.requestEditCancellation();
   }
 
   void _commitActiveEdit() {

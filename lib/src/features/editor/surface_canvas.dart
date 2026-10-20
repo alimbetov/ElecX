@@ -91,6 +91,8 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
     );
     _lastViewportRevision = controller.viewportCommandRevision;
     controller.viewportCommandListenable.addListener(_onViewportCommand);
+    controller.editCancellationListenable
+        .addListener(_onEditCancellationRequested);
     controller.p2.addListener(_onP2Changed);
     controller.boundaryEditing.addListener(_onBoundaryEditChanged);
     controller.hostedRoutes.addListener(_onRouteChanged);
@@ -109,6 +111,9 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
       oldWidget.controller.viewportCommandListenable.removeListener(
         _onViewportCommand,
       );
+      oldWidget.controller.editCancellationListenable.removeListener(
+        _onEditCancellationRequested,
+      );
       oldWidget.controller.p2.removeListener(_onP2Changed);
       oldWidget.controller.boundaryEditing.removeListener(
         _onBoundaryEditChanged,
@@ -124,6 +129,8 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
       _cancelActiveInteractions(oldWidget.controller);
       _lastViewportRevision = controller.viewportCommandRevision;
       controller.viewportCommandListenable.addListener(_onViewportCommand);
+      controller.editCancellationListenable
+          .addListener(_onEditCancellationRequested);
       controller.p2.addListener(_onP2Changed);
       controller.boundaryEditing.addListener(_onBoundaryEditChanged);
       controller.hostedRoutes.addListener(_onRouteChanged);
@@ -139,6 +146,9 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
   @override
   void dispose() {
     controller.viewportCommandListenable.removeListener(_onViewportCommand);
+    controller.editCancellationListenable.removeListener(
+      _onEditCancellationRequested,
+    );
     controller.p2.removeListener(_onP2Changed);
     controller.boundaryEditing.removeListener(_onBoundaryEditChanged);
     controller.hostedRoutes.removeListener(_onRouteChanged);
@@ -176,6 +186,17 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
   }
 
   void _onViewportCommand() {
+    if (mounted) setState(() {});
+  }
+
+  void _onEditCancellationRequested() {
+    _cancelActiveInteractions(controller);
+    _panAnchor = null;
+    _marqueeStart = null;
+    _marqueeCurrent = null;
+    if (controller.boundaryEditing.active) {
+      controller.boundaryEditing.exit(force: true);
+    }
     if (mounted) setState(() {});
   }
 

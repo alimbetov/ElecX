@@ -3,8 +3,10 @@ import 'dart:math' as math;
 import '../../domain/geometry.dart';
 import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
+import '../../engine/normative_route_engine.dart';
 import '../../engine/plan_geometry_editing.dart';
 import 'editor_controller.dart';
+import 'editor_p2_session.dart';
 
 extension PlanGeometryEditorActions on EditorController {
   bool commitSelectedBoundary(MmPolygon candidate) {
@@ -37,7 +39,8 @@ extension PlanGeometryEditorActions on EditorController {
     }
 
     for (final replacement in replacements.values) {
-      if (!_spaceGeometryIsCompatible(replacement)) {
+      if (!_spaceGeometryIsCompatible(replacement) ||
+          !_spaceElectricalModelIsCompatible(replacement)) {
         return false;
       }
     }
@@ -80,6 +83,105 @@ extension PlanGeometryEditorActions on EditorController {
         wall: walls[index],
       )) {
         return false;
+      }
+    }
+    return true;
+  }
+
+  bool _spaceElectricalModelIsCompatible(EngineeringSpace candidateSpace) {
+    RouteNormativeContext? contextFor(RoomSurfaceRef surface) {
+      if (surface.spaceId != candidateSpace.id) return null;
+      if (surface.type == SurfacePlaneType.wall) {
+        final wallIndex = surface.wallIndex;
+        final walls = RoomSurfaceResolver.walls(candidateSpace);
+        if (wallIndex == null || wallIndex < 0 || wallIndex >= walls.length) {
+          return null;
+        }
+        final wall = walls[wallIndex];
+        return RouteNormativeContext(
+          surface: surface,
+          widthMm: wall.lengthMm.round(),
+          heightMm: wall.heightMm,
+          edgeClearanceMm: 0,
+          boundary: [
+            for (final point in wall.profile.vertices)
+              SurfacePointMm(point.xMm, point.yMm),
+          ],
+          obstacles: [
+            for (final opening in openings)
+              if (opening.hostWall == surface)
+                RouteObstacleMm(
+                  id: opening.id,
+                  leftMm: opening.offsetFromStartMm,
+                  topMm: opening.sillHeightMm,
+                  rightMm: opening.endOffsetMm,
+                  bottomMm: opening.topMm,
+                ),
+          ],
+        );
+      }
+      final bounds = candidateSpace.boundary.bounds;
+      return RouteNormativeContext(
+        surface: surface,
+        widthMm: bounds.width,
+        heightMm: bounds.height,
+        edgeClearanceMm: 0,
+        boundary: [
+          for (final point in candidateSpace.boundary.vertices)
+            SurfacePointMm(point.x - bounds.left, point.y - bounds.bottom),
+        ],
+      );
+    }
+
+    bool containsPoint(SurfacePointMm point, RouteNormativeContext context) {
+      if (point.xMm < 0 ||
+          point.yMm < 0 ||
+          point.xMm > context.widthMm ||
+          point.yMm > context.heightMm) {
+        return false;
+      }
+      final polygon = context.boundary;
+      if (polygon.isEmpty) return true;
+      var inside = false;
+      for (var i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        final a = polygon[j];
+        final b = polygon[i];
+        final cross = (b.xMm - a.xMm) * (point.yMm - a.yMm) -
+            (b.yMm - a.yMm) * (point.xMm - a.xMm);
+        if (cross == 0 &&
+            point.xMm >= math.min(a.xMm, b.xMm) &&
+            point.xMm <= math.max(a.xMm, b.xMm) &&
+            point.yMm >= math.min(a.yMm, b.yMm) &&
+            point.yMm <= math.max(a.yMm, b.yMm)) {
+          return true;
+        }
+        final crosses = (a.yMm > point.yMm) != (b.yMm > point.yMm);
+        if (!crosses) continue;
+        final crossingX =
+            (b.xMm - a.xMm) * (point.yMm - a.yMm) / (b.yMm - a.yMm) + a.xMm;
+        if (point.xMm < crossingX) inside = !inside;
+      }
+      return inside;
+    }
+
+    for (final component in p2.components) {
+      if (component.surface.spaceId != candidateSpace.id) continue;
+      final context = contextFor(component.surface);
+      if (context == null || !containsPoint(component.position, context)) {
+        return false;
+      }
+    }
+    for (final route in p2.routes) {
+      for (final segment in route.segments) {
+        if (segment.surface.spaceId != candidateSpace.id) continue;
+        final context = contextFor(segment.surface);
+        if (context == null ||
+            !NormativeRouteEngine.validate(
+              points: segment.points,
+              context: context,
+            ).isValid) {
+          return false;
+        }
       }
     }
     return true;

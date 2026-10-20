@@ -533,12 +533,87 @@ final class EditorP2Session extends ChangeNotifier {
     final afterConstraints = beforeConstraints.reconcile([
       for (final segment in after.segments) segment.points,
     ]);
+
+    final assignedBundle = circuitBundleForRoute(after.id);
+    CircuitCableBundle? reboundBundle;
+    if (assignedBundle != null) {
+      if (assignedBundle.protectiveDevice != null &&
+          after.source.componentId != before.source.componentId) {
+        // Moving a protected circuit to another board requires an explicit
+        // protective-device reassignment workflow; never do it implicitly.
+        return false;
+      }
+      final targetComponent = _componentForId(state, after.target.componentId);
+      final reboundCircuit = CircuitRef(
+        id: assignedBundle.circuit.id,
+        name: targetComponent == null
+            ? assignedBundle.circuit.name
+            : 'Группа · ${targetComponent.label}',
+        boardId: assignedBundle.circuit.boardId == before.source.componentId
+            ? after.source.componentId
+            : assignedBundle.circuit.boardId,
+        protectiveDeviceId: assignedBundle.circuit.protectiveDeviceId,
+      );
+      final reboundCable = CableIdentity(
+        id: assignedBundle.cable.id,
+        routeId: assignedBundle.cable.routeId,
+        circuitId: assignedBundle.cable.circuitId,
+        designation: assignedBundle.cable.designation,
+        cableSpecId: assignedBundle.cable.cableSpecId,
+        endA: CableTerminationRef(
+          componentId: after.source.componentId,
+          portId: after.source.portId,
+        ),
+        endB: CableTerminationRef(
+          componentId: after.target.componentId,
+          portId: after.target.portId,
+        ),
+      );
+      reboundBundle = CircuitCableBundle(
+        circuit: reboundCircuit,
+        cable: reboundCable,
+        protectiveDevice: assignedBundle.protectiveDevice,
+      );
+      final registry = CircuitCableRegistry()
+        ..registerBundle(
+          route: after,
+          circuit: reboundCircuit,
+          cable: reboundCable,
+          protectiveDevice: assignedBundle.protectiveDevice,
+        );
+      if (registry.bundleByRouteId(after.id) == null) return false;
+    }
+
+    final nextConstraints = Map<String, CableRouteConstraints>.of(
+      state.routeConstraints,
+    );
+    if (afterConstraints.isEmpty) {
+      nextConstraints.remove(after.id);
+    } else {
+      nextConstraints[after.id] = afterConstraints;
+    }
+    final nextEvidence = Map<String, CircuitSizingEvidence>.of(
+      state.sizingEvidenceByRoute,
+    )..remove(after.id);
+    final nextState = state.copyWith(
+      routes: [
+        for (final route in routes)
+          if (route.id == after.id) after else route,
+      ],
+      routeConstraints: Map.unmodifiable(nextConstraints),
+      circuitBundles: reboundBundle == null
+          ? state.circuitBundles
+          : [
+              for (final bundle in state.circuitBundles)
+                if (bundle.cable.routeId == after.id) reboundBundle else bundle,
+            ],
+      sizingEvidenceByRoute: Map.unmodifiable(nextEvidence),
+    );
     history.execute(
-      _ReplaceCableRouteCommand(
-        before: current,
-        after: after,
-        beforeConstraints: beforeConstraints,
-        afterConstraints: afterConstraints,
+      _ReplaceEditorStateCommand(
+        before: state,
+        after: nextState,
+        label: 'Edit cable route and engineering identity',
       ),
     );
     notifyListeners();
@@ -1327,62 +1402,6 @@ final class _ReplaceRouteConstraintsCommand
       next[routeId] = constraints;
     }
     return state.copyWith(routeConstraints: Map.unmodifiable(next));
-  }
-}
-
-final class _ReplaceCableRouteCommand implements EditorCommand<EditorP2State> {
-  const _ReplaceCableRouteCommand({
-    required this.before,
-    required this.after,
-    required this.beforeConstraints,
-    required this.afterConstraints,
-  });
-
-  final ElectricalCableRoute before;
-  final ElectricalCableRoute after;
-  final CableRouteConstraints beforeConstraints;
-  final CableRouteConstraints afterConstraints;
-
-  @override
-  String get label => 'Edit cable route';
-
-  @override
-  EditorP2State execute(EditorP2State state) => _replace(
-        state,
-        before.id,
-        after,
-        afterConstraints,
-      );
-
-  @override
-  EditorP2State undo(EditorP2State state) => _replace(
-        state,
-        after.id,
-        before,
-        beforeConstraints,
-      );
-
-  static EditorP2State _replace(
-    EditorP2State state,
-    String routeId,
-    ElectricalCableRoute replacement,
-    CableRouteConstraints constraints,
-  ) {
-    final nextConstraints = Map<String, CableRouteConstraints>.of(
-      state.routeConstraints,
-    );
-    if (constraints.isEmpty) {
-      nextConstraints.remove(routeId);
-    } else {
-      nextConstraints[routeId] = constraints;
-    }
-    return state.copyWith(
-      routes: [
-        for (final route in state.routes)
-          if (route.id == routeId) replacement else route,
-      ],
-      routeConstraints: Map.unmodifiable(nextConstraints),
-    );
   }
 }
 
