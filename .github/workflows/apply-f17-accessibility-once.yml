@@ -1,0 +1,46 @@
+name: Apply F17 scene accessibility once
+
+on:
+  push:
+    branches:
+      - feat/spatial-editor-interaction-hardening
+    paths:
+      - '.github/workflows/apply-f17-accessibility-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/spatial-editor-interaction-hardening
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Apply F17 accessibility patch
+        run: python3 tool/apply_f17_accessibility_once.py
+      - name: Format
+        run: dart format lib test
+      - name: Verify format
+        run: dart format --output=none --set-exit-if-changed lib test
+      - name: Analyze
+        run: flutter analyze
+      - name: Full tests
+        run: flutter test
+      - name: Remove one-shot staging
+        run: |
+          git rm .github/workflows/apply-f17-accessibility-once.yml
+          git rm tool/apply_f17_accessibility_once.py
+      - name: Commit verified accessibility patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib test
+          git commit -m 'fix(editor): expose accessible scene traversal'
+          git push origin HEAD:feat/spatial-editor-interaction-hardening
