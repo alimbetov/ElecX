@@ -111,6 +111,66 @@ void main() {
     expect(recovery.snapshots[document.projectId], isNotNull);
   });
 
+  testWidgets('F01 selection-only and preview-cancel keep saved project clean',
+      (tester) async {
+    final projects = _MemoryProjectStore();
+    final recovery = _MemoryRecoveryStore();
+    final document = _savedDocument();
+    projects.documents[document.projectId] = document;
+
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: UnifiedWorkspaceEditorScreen(
+          projectStore: projects,
+          recoveryStore: recovery,
+          autosaveDelay: const Duration(milliseconds: 10),
+          initialDocument: document,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Saved'), findsOneWidget);
+
+    final spatialCanvas =
+        tester.widget<SpatialCanvas>(find.byType(SpatialCanvas));
+    final controller = spatialCanvas.controller;
+    final component = controller.p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: RoomSurfaceRef.floor(controller.selectedSpace!.id),
+      position: const SurfacePointMm(1000, 500),
+    );
+    await tester.pump();
+    expect(find.text('Modified'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('project-save')));
+    await tester.pumpAndSettle();
+    expect(find.text('Saved'), findsOneWidget);
+
+    controller.p2.clearSelection();
+    controller.p2.select(component.id);
+    controller.p2.updateSnap(null);
+    await tester.pump();
+    expect(find.text('Saved'), findsOneWidget);
+
+    expect(controller.componentTransform.begin(), isTrue);
+    expect(
+      controller.componentTransform.preview(
+        const SurfacePointMm(1200, 500),
+        isValid: true,
+      ),
+      isTrue,
+    );
+    controller.componentTransform.cancel();
+    await tester.pump();
+    expect(find.text('Saved'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 20));
+    await tester.pumpAndSettle();
+    expect(recovery.snapshots[document.projectId], isNull);
+  });
+
   test('F03 shrinking room around electrical component is rejected atomically',
       () {
     final controller = EditorController.demo();

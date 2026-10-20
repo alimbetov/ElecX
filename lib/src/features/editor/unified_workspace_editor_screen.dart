@@ -82,6 +82,7 @@ class _UnifiedWorkspaceEditorScreenState
   late EditorProjectSaveStatus _saveStatus;
   int _projectRevision = 0;
   int _savedRevision = 0;
+  int _lastP2CommittedRevision = 0;
   bool _allowPop = false;
 
   bool get _hasUnsavedChanges =>
@@ -117,7 +118,8 @@ class _UnifiedWorkspaceEditorScreenState
       controller = restored.editor..addListener(_onProjectChanged);
       workspace = restored.workspace..addListener(_onProjectChanged);
     }
-    controller.p2.addListener(_onProjectChanged);
+    _lastP2CommittedRevision = controller.p2.history.mutationRevision;
+    controller.p2.addListener(_onP2Changed);
     siteInteraction = SiteMapInteractionController();
     shell = EditorShellState()..addListener(_refresh);
     final injectedStore = widget.projectStore;
@@ -154,6 +156,16 @@ class _UnifiedWorkspaceEditorScreenState
     if (mounted) {
       setState(() {});
     }
+  }
+
+  void _onP2Changed() {
+    final committed = controller.p2.history.mutationRevision;
+    if (committed == _lastP2CommittedRevision) {
+      _refresh();
+      return;
+    }
+    _lastP2CommittedRevision = committed;
+    _onProjectChanged();
   }
 
   void _onProjectChanged() {
@@ -401,14 +413,15 @@ class _UnifiedWorkspaceEditorScreenState
 
     previousWorkspace.removeListener(_onProjectChanged);
     previousController.removeListener(_onProjectChanged);
-    previousController.p2.removeListener(_onProjectChanged);
+    previousController.p2.removeListener(_onP2Changed);
     previousController.disposeP2State();
     previousWorkspace.dispose();
     previousController.dispose();
 
     controller = restored.editor..addListener(_onProjectChanged);
     workspace = restored.workspace..addListener(_onProjectChanged);
-    controller.p2.addListener(_onProjectChanged);
+    _lastP2CommittedRevision = controller.p2.history.mutationRevision;
+    controller.p2.addListener(_onP2Changed);
     _projectMetadata = metadata;
     _projectRevision =
         markSaved ? 0 : (recoveryRevision <= 0 ? 1 : recoveryRevision);
@@ -606,7 +619,7 @@ class _UnifiedWorkspaceEditorScreenState
     workspace.removeListener(_onProjectChanged);
     workspace.dispose();
     controller.removeListener(_onProjectChanged);
-    controller.p2.removeListener(_onProjectChanged);
+    controller.p2.removeListener(_onP2Changed);
     controller.disposeP2State();
     controller.dispose();
     super.dispose();
