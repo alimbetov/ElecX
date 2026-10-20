@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../app/alien_cockpit_tokens.dart';
+import '../../app/engineering_colors.dart';
 import '../../domain/component_catalog_v2.dart';
 import '../../domain/component_taxonomy.dart';
 import '../../domain/engineering_graph.dart';
@@ -259,6 +259,7 @@ class _InspectorMode extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final engineering = EngineeringColors.of(context);
     return Column(
       children: [
         Container(
@@ -268,16 +269,16 @@ class _InspectorMode extends StatelessWidget {
             color: scheme.surfaceContainerLow,
             border: Border(
               bottom: BorderSide(
-                color: AlienCockpitTokens.signalAqua.withValues(alpha: 0.22),
+                color: engineering.active.withValues(alpha: 0.22),
               ),
             ),
           ),
           child: Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.monitor_heart_outlined,
                 size: 17,
-                color: AlienCockpitTokens.signalAqua,
+                color: engineering.active,
               ),
               const SizedBox(width: 7),
               Expanded(
@@ -316,6 +317,7 @@ class _CatalogHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final engineering = EngineeringColors.of(context);
     return Container(
       height: EditorUiTokens.panelHeaderHeight + 4,
       padding: const EdgeInsets.symmetric(horizontal: 11),
@@ -323,16 +325,16 @@ class _CatalogHeader extends StatelessWidget {
         color: scheme.surfaceContainerLow,
         border: Border(
           bottom: BorderSide(
-            color: AlienCockpitTokens.signalCyan.withValues(alpha: 0.16),
+            color: engineering.info.withValues(alpha: 0.16),
           ),
         ),
       ),
       child: Row(
         children: [
-          const Icon(
+          Icon(
             Icons.widgets_outlined,
             size: 17,
-            color: AlienCockpitTokens.signalCyan,
+            color: engineering.info,
           ),
           const SizedBox(width: 7),
           Expanded(
@@ -345,12 +347,12 @@ class _CatalogHeader extends StatelessWidget {
             ),
           ),
           if (activeComponentTypeId != null)
-            const Padding(
-              padding: EdgeInsets.only(right: 7),
+            Padding(
+              padding: const EdgeInsets.only(right: 7),
               child: Icon(
                 Icons.radar,
                 size: 15,
-                color: AlienCockpitTokens.signalAqua,
+                color: engineering.active,
               ),
             ),
           Text(
@@ -373,39 +375,42 @@ class _SectionHeader extends StatelessWidget {
   final int count;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(5, 9, 5, 5),
-        child: Row(
-          children: [
-            Container(
-              width: 3,
-              height: 12,
-              decoration: BoxDecoration(
-                color: AlienCockpitTokens.signalViolet,
-                borderRadius: BorderRadius.circular(2),
-              ),
+  Widget build(BuildContext context) {
+    final engineering = EngineeringColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(5, 9, 5, 5),
+      child: Row(
+        children: [
+          Container(
+            width: 3,
+            height: 12,
+            decoration: BoxDecoration(
+              color: engineering.category,
+              borderRadius: BorderRadius.circular(2),
             ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                label.toUpperCase(),
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontSize: 9.5,
-                      letterSpacing: 0.85,
-                      fontWeight: FontWeight.w800,
-                    ),
-              ),
-            ),
-            Text(
-              '$count',
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              label.toUpperCase(),
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: 9.5,
+                    letterSpacing: 0.85,
+                    fontWeight: FontWeight.w800,
                   ),
             ),
-          ],
-        ),
-      );
+          ),
+          Text(
+            '$count',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 9.5,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _EquipmentCard extends StatelessWidget {
@@ -426,10 +431,11 @@ class _EquipmentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final engineering = EngineeringColors.of(context);
     final signal = placing
-        ? AlienCockpitTokens.signalAqua
+        ? engineering.active
         : compatible
-            ? AlienCockpitTokens.signalCyan
+            ? engineering.info
             : scheme.onSurfaceVariant;
     return Padding(
       padding: const EdgeInsets.only(bottom: 5),
@@ -502,7 +508,7 @@ class _EquipmentCard extends StatelessWidget {
                               fontSize: 9.5,
                               color: compatible
                                   ? scheme.onSurfaceVariant
-                                  : AlienCockpitTokens.signalWarning,
+                                  : engineering.warning,
                             ),
                       ),
                     ],

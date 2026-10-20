@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../app/alien_cockpit_tokens.dart';
+import '../../app/engineering_colors.dart';
 import '../../domain/circuit_cable_registry.dart';
 import '../../domain/component_taxonomy.dart';
 import '../../domain/electrical_placement.dart';
@@ -117,13 +117,12 @@ class _RouteInspector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final assigned = bundle != null;
+    final engineering = EngineeringColors.of(context);
     return _InspectorScaffold(
       title: bundle?.cable.designation ?? route.id,
       subtitle: route.medium.displayName,
       status: assigned ? 'REGISTERED' : 'UNASSIGNED',
-      statusColor: assigned
-          ? AlienCockpitTokens.signalAqua
-          : AlienCockpitTokens.signalWarning,
+      statusColor: assigned ? engineering.registered : engineering.warning,
       children: [
         if (bundle case final registry?) _registrySections(registry),
         _section('CONNECTION', [
@@ -174,13 +173,12 @@ class _HostedRouteInspector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final assigned = bundle != null;
+    final engineering = EngineeringColors.of(context);
     return _InspectorScaffold(
       title: bundle?.cable.designation ?? routeId,
       subtitle: medium.displayName,
       status: assigned ? 'REGISTERED' : 'HOSTED ROUTE',
-      statusColor: assigned
-          ? AlienCockpitTokens.signalAqua
-          : AlienCockpitTokens.signalCyan,
+      statusColor: assigned ? engineering.registered : engineering.info,
       children: [
         if (bundle case final registry?) _registrySections(registry),
         _section('ROUTE', [
@@ -290,7 +288,8 @@ class _InspectorScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final signal = statusColor ?? AlienCockpitTokens.signalCyan;
+    final engineering = EngineeringColors.of(context);
+    final signal = statusColor ?? engineering.info;
     return ListView(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 20),
       children: [

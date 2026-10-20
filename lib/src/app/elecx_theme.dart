@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'alien_cockpit_tokens.dart';
+import 'engineering_colors.dart';
 
 abstract final class ElecXTheme {
   static ThemeData light() => _theme(Brightness.light);
@@ -49,6 +50,9 @@ abstract final class ElecXTheme {
       useMaterial3: true,
       brightness: brightness,
       colorScheme: scheme,
+      extensions: <ThemeExtension<dynamic>>[
+        dark ? EngineeringColors.dark() : EngineeringColors.light(),
+      ],
       visualDensity: VisualDensity.compact,
       scaffoldBackgroundColor: scheme.surface,
       splashFactory: InkSparkle.splashFactory,
