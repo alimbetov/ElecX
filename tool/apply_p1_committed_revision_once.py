@@ -65,7 +65,7 @@ replace_once(
 # Acceptance: transient P2 notifications must not dirty a saved project.
 p = Path('test/p1_lifecycle_acceptance_test.dart')
 text = p.read_text()
-anchor = "  test('F03 shrinking room around electrical component is rejected atomically', () {\n"
+anchor = "  test('F03 shrinking room around electrical component is rejected atomically',"
 addition = r'''  testWidgets(
       'F01 selection-only and preview-cancel keep saved project clean',
       (tester) async {
@@ -127,6 +127,7 @@ addition = r'''  testWidgets(
   });
 
 '''
-if anchor not in text:
+index = text.find(anchor)
+if index == -1:
     raise SystemExit('acceptance anchor missing')
-p.write_text(text.replace(anchor, addition + anchor, 1))
+p.write_text(text[:index] + addition + text[index:])
