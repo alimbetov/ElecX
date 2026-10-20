@@ -1,3 +1,4 @@
+import 'package:elecx/src/domain/electrical_placement.dart';
 import 'package:elecx/src/domain/electrical_routing.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/features/editor/cable_route_constraints.dart';
@@ -28,6 +29,29 @@ void main() {
     ],
   );
 
+  final components = [
+    ElectricalComponentPlacement(
+      id: 'source',
+      type: ElectricalComponentType.powerSource,
+      surface: surface,
+      position: const SurfacePointMm(100, 100),
+      label: 'Source',
+      ports: ElectricalComponentDefaults.portsFor(
+        ElectricalComponentType.powerSource,
+      ),
+    ),
+    ElectricalComponentPlacement(
+      id: 'target',
+      type: ElectricalComponentType.socketOutlet,
+      surface: surface,
+      position: const SurfacePointMm(1000, 800),
+      label: 'Target',
+      ports: ElectricalComponentDefaults.portsFor(
+        ElectricalComponentType.socketOutlet,
+      ),
+    ),
+  ];
+
   test('constraint payload round-trips for project persistence', () {
     final constraints = CableRouteConstraints(
       lockedSegments: {0},
@@ -44,8 +68,10 @@ void main() {
 
     expect(restored.isSegmentLocked(0), isTrue);
     expect(restored.isWaypoint(0, 1), isTrue);
-    expect(restored.mandatoryWaypoints.single.point,
-        const SurfacePointMm(1000, 100));
+    expect(
+      restored.mandatoryWaypoints.single.point,
+      const SurfacePointMm(1000, 100),
+    );
   });
 
   test('lock and waypoint mutations are undoable editor state', () {
@@ -110,5 +136,95 @@ void main() {
       isFalse,
     );
     expect(session.history.undoDepth, 0);
+  });
+
+  test('reconcile tracks physical waypoint when its vertex index shifts', () {
+    final constraints = CableRouteConstraints(
+      mandatoryWaypoints: const [
+        CableMandatoryWaypoint(
+          segmentIndex: 0,
+          pointIndex: 1,
+          point: SurfacePointMm(1000, 100),
+        ),
+      ],
+    );
+
+    final reconciled = constraints.reconcile(const [
+      [
+        SurfacePointMm(100, 100),
+        SurfacePointMm(500, 100),
+        SurfacePointMm(1000, 100),
+        SurfacePointMm(1000, 800),
+      ],
+    ]);
+
+    expect(reconciled.mandatoryWaypoints, hasLength(1));
+    expect(reconciled.mandatoryWaypoints.single.pointIndex, 2);
+    expect(
+      reconciled.mandatoryWaypoints.single.point,
+      const SurfacePointMm(1000, 100),
+    );
+  });
+
+  test('route replacement reconciles constraints in the same undo command', () {
+    final session = EditorP2Session(
+      initialState: EditorP2State(
+        components: components,
+        routes: [route],
+        routeConstraints: {
+          route.id: CableRouteConstraints(
+            lockedSegments: {0},
+            mandatoryWaypoints: const [
+              CableMandatoryWaypoint(
+                segmentIndex: 0,
+                pointIndex: 1,
+                point: SurfacePointMm(1000, 100),
+              ),
+            ],
+          ),
+        },
+      ),
+    );
+    final replacement = ElectricalCableRoute(
+      id: route.id,
+      source: route.source,
+      target: route.target,
+      segments: [
+        ElectricalRouteSegment(
+          surface: surface,
+          points: const [
+            SurfacePointMm(100, 100),
+            SurfacePointMm(500, 100),
+            SurfacePointMm(1000, 100),
+            SurfacePointMm(1000, 800),
+          ],
+        ),
+      ],
+      cableType: route.cableType,
+      medium: route.medium,
+      reservePercent: route.reservePercent,
+    );
+
+    expect(session.replaceCableRoute(route, replacement), isTrue);
+    expect(session.routes.single.segments.single.points, hasLength(4));
+    expect(session.routeConstraintsFor(route.id).isSegmentLocked(0), isTrue);
+    expect(
+      session.routeConstraintsFor(route.id).mandatoryWaypoints.single.pointIndex,
+      2,
+    );
+
+    session.undo();
+    expect(session.routes.single.segments.single.points, hasLength(3));
+    expect(
+      session.routeConstraintsFor(route.id).mandatoryWaypoints.single.pointIndex,
+      1,
+    );
+
+    session.redo();
+    expect(session.routes.single.segments.single.points, hasLength(4));
+    expect(
+      session.routeConstraintsFor(route.id).mandatoryWaypoints.single.pointIndex,
+      2,
+    );
   });
 }
