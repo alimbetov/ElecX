@@ -25,6 +25,24 @@ jobs:
       - run: flutter pub get
       - name: Apply F07 document history
         run: python3 tool/apply_f07_document_history_once.py
+      - name: Fix F07 analyzer hygiene
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('lib/src/features/editor/editor_document_history.dart')
+          text = p.read_text()
+          text = text.replace(
+              "import '../../domain/project_model.dart';\n",
+              "import '../../domain/project_model.dart';\nimport '../../domain/surfaces.dart';\n",
+              1,
+          )
+          text = text.replace(
+              '  late EditorP2Session _p2;',
+              '  final EditorP2Session _p2;',
+              1,
+          )
+          p.write_text(text)
+          PY
       - name: Format
         run: dart format lib test
       - name: Verify format
