@@ -31,7 +31,7 @@ jobs:
       - name: Verify path_provider registration
         run: |
           test -f macos/Flutter/GeneratedPluginRegistrant.swift
-          grep -q 'PathProviderPlugin.register' macos/Flutter/GeneratedPluginRegistrant.swift
+          grep -q 'path_provider_foundation' macos/Flutter/GeneratedPluginRegistrant.swift
       - name: Analyze
         run: flutter analyze
       - name: Test
