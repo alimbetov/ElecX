@@ -1,4 +1,4 @@
-import 'dart:html' as html;
+import 'package:web/web.dart' as web;
 
 import 'browser_project_store.dart';
 import 'editor_project_document.dart';
@@ -7,20 +7,26 @@ import 'editor_project_recovery.dart';
 final class _HtmlLocalStorageBackend implements BrowserKeyValueStore {
   const _HtmlLocalStorageBackend();
 
-  html.Storage get _storage => html.window.localStorage;
+  web.Storage get _storage => web.window.localStorage;
 
   @override
-  Iterable<String> get keys => List<String>.unmodifiable(_storage.keys);
+  Iterable<String> get keys sync* {
+    final storage = _storage;
+    for (var index = 0; index < storage.length; index++) {
+      final key = storage.key(index);
+      if (key != null) yield key;
+    }
+  }
 
   @override
-  String? read(String key) => _storage[key];
+  String? read(String key) => _storage.getItem(key);
 
   @override
-  void remove(String key) => _storage.remove(key);
+  void remove(String key) => _storage.removeItem(key);
 
   @override
   void write(String key, String value) {
-    _storage[key] = value;
+    _storage.setItem(key, value);
   }
 }
 
