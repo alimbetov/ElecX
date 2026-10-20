@@ -48,4 +48,4 @@ jobs:
           git commit -m 'fix(editor): expose accessible scene traversal'
           git push origin HEAD:feat/spatial-editor-interaction-hardening
 
-# rerun with direct SemanticsNode tree assertion for CustomPainter semantics
+# rerun with current find.semantics.byLabel oracle
