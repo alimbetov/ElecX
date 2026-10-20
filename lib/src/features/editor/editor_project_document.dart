@@ -18,6 +18,7 @@ import '../../domain/surfaces.dart';
 import '../../domain/wall_profile.dart';
 import '../../engine/selection_engine.dart';
 import 'cable_route_constraints.dart';
+import 'circuit_sizing_evidence.dart';
 import 'editor_building_workspace.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
@@ -818,11 +819,17 @@ Map<String, Object?> _p2ToJson(EditorP2State value) => {
       'circuitBundles': [
         for (final bundle in value.circuitBundles) _circuitBundleToJson(bundle),
       ],
+      'sizingEvidenceByRoute': {
+        for (final entry in value.sizingEvidenceByRoute.entries)
+          entry.key: entry.value.toJson(),
+      },
     };
 
 EditorP2State _p2FromJson(Map<String, Object?> json) {
   final selection = _map(json['selection'], 'p2.selection');
   final constraints = _map(json['routeConstraints'], 'p2.routeConstraints');
+  final sizingEvidence =
+      _map(json['sizingEvidenceByRoute'], 'p2.sizingEvidenceByRoute');
   return EditorP2State(
     components: [
       for (final item in _list(json['components'], 'p2.components'))
@@ -849,6 +856,12 @@ EditorP2State _p2FromJson(Map<String, Object?> json) {
       for (final item in _list(json['circuitBundles'], 'p2.circuitBundles'))
         _circuitBundleFromJson(_map(item, 'circuitBundle')),
     ],
+    sizingEvidenceByRoute: Map.unmodifiable({
+      for (final entry in sizingEvidence.entries)
+        entry.key: CircuitSizingEvidence.fromJson(
+          _map(entry.value, 'sizingEvidence.${entry.key}'),
+        ),
+    }),
   );
 }
 

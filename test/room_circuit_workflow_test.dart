@@ -1,4 +1,8 @@
+import 'package:elecx/src/domain/cable_spec.dart';
 import 'package:elecx/src/domain/electrical_placement.dart';
+import 'package:elecx/src/domain/route_medium.dart';
+import 'package:elecx/src/engine/cable_sizing_engine.dart';
+import 'package:elecx/src/features/editor/circuit_sizing_evidence.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/features/editor/editor_building_workspace.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
@@ -149,7 +153,7 @@ void main() {
       ..['p2'] = legacyP2;
 
     final decoded = EditorProjectDocument.fromJson(legacy);
-    expect(decoded.schemaVersion, 3);
+    expect(decoded.schemaVersion, 4);
     expect(decoded.p2State.circuitBundles, isEmpty);
   });
 
@@ -305,5 +309,80 @@ void main() {
     expect(restoredLoad.ratedPowerW, 2300);
     expect(restored.editor.p2.circuitBundleForLoad(load.id)!.cable.cableSpecId,
         'VVGng-LS-3x2.5');
+  });
+
+  test('sizing evidence is undoable and survives project reopen', () {
+    final editor = EditorController.demo();
+    final workspace = EditorBuildingWorkspace.demo(editor);
+    addTearDown(() {
+      editor.disposeP2State();
+      workspace.dispose();
+      editor.dispose();
+    });
+    final surface = RoomSurfaceRef.wall(editor.selectedSpace!.id, 1);
+    final board = editor.p2.placeComponent(
+      type: ElectricalComponentType.distributionBoard,
+      surface: surface,
+      position: const SurfacePointMm(300, 2200),
+    );
+    final load = editor.p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: surface,
+      position: const SurfacePointMm(1400, 2200),
+    );
+    expect(
+      editor.p2.connectLoadToBoard(
+        loadComponentId: load.id,
+        boardComponentId: board.id,
+        space: editor.selectedSpace,
+        cableType: 'cable-3x2.5',
+      ),
+      isNotNull,
+    );
+    final route = editor.p2.routes.single;
+    final evidence = CircuitSizingEvidence(
+      routeId: route.id,
+      routeGeometrySignature: CircuitSizingEvidence.geometrySignature(route),
+      cable: const CableSpec(
+        id: 'cable-3x2.5',
+        name: '3x2.5',
+        medium: RouteMediumProfile.acPower,
+        outerDiameterMm: 10,
+        segregationClass: CableSegregationClass.power,
+        conductorMaterial: ConductorMaterial.copper,
+        conductorCount: 3,
+        conductorCrossSectionMm2: 2.5,
+        ratedVoltageV: 230,
+      ),
+      phaseSystem: CircuitPhaseSystem.singlePhaseAc,
+      designCurrentA: 10,
+      nominalVoltageV: 230,
+      maxVoltageDropRatio: 0.03,
+      powerFactor: 1,
+      ampacitySections: const [],
+    );
+    final depth = editor.p2.history.undoDepth;
+    expect(
+      editor.p2.setCircuitSizingEvidenceForLoad(
+        loadComponentId: load.id,
+        evidence: evidence,
+      ),
+      isTrue,
+    );
+    expect(editor.p2.history.undoDepth, depth + 1);
+    editor.p2.undo();
+    expect(editor.p2.sizingEvidenceForLoad(load.id), isNull);
+    editor.p2.redo();
+    expect(editor.p2.sizingEvidenceForLoad(load.id), isNotNull);
+
+    final restored = EditorProjectDocument.fromJson(
+      EditorProjectDocument.capture(workspace).toJson(),
+    ).restore();
+    addTearDown(() {
+      restored.editor.disposeP2State();
+      restored.workspace.dispose();
+      restored.editor.dispose();
+    });
+    expect(restored.editor.p2.sizingEvidenceForLoad(load.id), isNotNull);
   });
 }

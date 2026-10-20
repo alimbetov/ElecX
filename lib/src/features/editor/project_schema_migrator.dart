@@ -1,7 +1,7 @@
 final class EditorProjectSchemaMigrator {
   const EditorProjectSchemaMigrator._();
 
-  static const int currentSchemaVersion = 3;
+  static const int currentSchemaVersion = 4;
 
   static Map<String, Object?> migrate(
     Map<String, Object?> source, {
@@ -27,6 +27,7 @@ final class EditorProjectSchemaMigrator {
       result = switch (version) {
         1 => _v1ToV2(result, legacyTimestamp: legacyTimestamp),
         2 => _v2ToV3(result),
+        3 => _v3ToV4(result),
         _ => throw FormatException(
             'No ElecX migration registered from schema $version.',
           ),
@@ -34,6 +35,22 @@ final class EditorProjectSchemaMigrator {
       version = result['schemaVersion']! as int;
     }
     return result;
+  }
+
+  static Map<String, Object?> _v3ToV4(Map<String, Object?> source) {
+    final p2Raw = source['p2'];
+    if (p2Raw is! Map) {
+      throw const FormatException('p2 must be an object for schema v3.');
+    }
+    final p2 = p2Raw.map((key, value) => MapEntry(key.toString(), value));
+    return <String, Object?>{
+      ...source,
+      'schemaVersion': 4,
+      'p2': <String, Object?>{
+        ...p2,
+        'sizingEvidenceByRoute': const <String, Object?>{},
+      },
+    };
   }
 
   static Map<String, Object?> _v2ToV3(Map<String, Object?> source) {

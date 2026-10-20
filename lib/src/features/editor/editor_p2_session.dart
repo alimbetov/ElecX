@@ -5,6 +5,7 @@ import '../../domain/circuit_cable_registry.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/electrical_routing.dart';
 import '../../domain/geometry.dart';
+import '../../domain/route_medium.dart';
 import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/auto_route_graph_builder.dart';
@@ -16,6 +17,7 @@ import '../../engine/route_engine.dart';
 import '../../engine/selection_engine.dart';
 import '../../engine/snap_engine.dart';
 import 'cable_route_constraints.dart';
+import 'circuit_sizing_evidence.dart';
 import 'editor_controller.dart';
 
 final class EditorP2State {
@@ -25,6 +27,7 @@ final class EditorP2State {
     this.selection = const SelectionState(),
     this.routeConstraints = const {},
     this.circuitBundles = const [],
+    this.sizingEvidenceByRoute = const {},
   });
 
   final List<ElectricalComponentPlacement> components;
@@ -32,6 +35,7 @@ final class EditorP2State {
   final SelectionState selection;
   final Map<String, CableRouteConstraints> routeConstraints;
   final List<CircuitCableBundle> circuitBundles;
+  final Map<String, CircuitSizingEvidence> sizingEvidenceByRoute;
 
   EditorP2State copyWith({
     List<ElectricalComponentPlacement>? components,
@@ -39,6 +43,7 @@ final class EditorP2State {
     SelectionState? selection,
     Map<String, CableRouteConstraints>? routeConstraints,
     List<CircuitCableBundle>? circuitBundles,
+    Map<String, CircuitSizingEvidence>? sizingEvidenceByRoute,
   }) =>
       EditorP2State(
         components: components ?? this.components,
@@ -46,6 +51,8 @@ final class EditorP2State {
         selection: selection ?? this.selection,
         routeConstraints: routeConstraints ?? this.routeConstraints,
         circuitBundles: circuitBundles ?? this.circuitBundles,
+        sizingEvidenceByRoute:
+            sizingEvidenceByRoute ?? this.sizingEvidenceByRoute,
       );
 }
 
@@ -119,6 +126,39 @@ final class EditorP2Session extends ChangeNotifier {
     return null;
   }
 
+  CircuitSizingEvidence? sizingEvidenceForLoad(String componentId) {
+    final bundle = circuitBundleForLoad(componentId);
+    if (bundle == null) return null;
+    return state.sizingEvidenceByRoute[bundle.cable.routeId];
+  }
+
+  bool setCircuitSizingEvidenceForLoad({
+    required String loadComponentId,
+    required CircuitSizingEvidence evidence,
+  }) {
+    final bundle = circuitBundleForLoad(loadComponentId);
+    if (bundle == null || bundle.cable.routeId != evidence.routeId) {
+      return false;
+    }
+    final route = _routeForId(evidence.routeId);
+    if (route == null || !evidence.matchesRoute(route)) return false;
+    if (bundle.cable.cableSpecId != evidence.cable.id) return false;
+    final afterEvidence = Map<String, CircuitSizingEvidence>.of(
+      state.sizingEvidenceByRoute,
+    )..[route.id] = evidence;
+    history.execute(
+      _ReplaceEditorStateCommand(
+        before: state,
+        after: state.copyWith(
+          sizingEvidenceByRoute: Map.unmodifiable(afterEvidence),
+        ),
+        label: 'Update cable sizing evidence',
+      ),
+    );
+    notifyListeners();
+    return true;
+  }
+
   bool updateLoadElectricalData({
     required String componentId,
     required int ratedPowerW,
@@ -185,6 +225,9 @@ final class EditorP2Session extends ChangeNotifier {
         protectiveDevice: replacementBundle.protectiveDevice,
       );
     if (registry.bundleByRouteId(route.id) == null) return false;
+    final nextEvidence = Map<String, CircuitSizingEvidence>.of(
+      state.sizingEvidenceByRoute,
+    )..remove(route.id);
     final after = state.copyWith(
       routes: [
         for (final item in routes)
@@ -194,6 +237,7 @@ final class EditorP2Session extends ChangeNotifier {
         for (final item in state.circuitBundles)
           if (item.cable.routeId == route.id) replacementBundle else item,
       ],
+      sizingEvidenceByRoute: Map.unmodifiable(nextEvidence),
     );
     history.execute(
       _ReplaceEditorStateCommand(
@@ -587,6 +631,9 @@ final class EditorP2Session extends ChangeNotifier {
     final nextConstraints = Map<String, CableRouteConstraints>.of(
       state.routeConstraints,
     )..removeWhere((routeId, _) => removedRouteIds.contains(routeId));
+    final nextSizingEvidence = Map<String, CircuitSizingEvidence>.of(
+      state.sizingEvidenceByRoute,
+    )..removeWhere((routeId, _) => removedRouteIds.contains(routeId));
     final after = state.copyWith(
       components: [
         for (final component in components)
@@ -602,6 +649,7 @@ final class EditorP2Session extends ChangeNotifier {
         for (final bundle in state.circuitBundles)
           if (!removedRouteIds.contains(bundle.cable.routeId)) bundle,
       ],
+      sizingEvidenceByRoute: Map.unmodifiable(nextSizingEvidence),
     );
     history.execute(
       _ReplaceEditorStateCommand(
@@ -686,6 +734,7 @@ final class EditorP2Session extends ChangeNotifier {
       ),
       segments: segments,
       cableType: cableType,
+      medium: RouteMediumProfile.acPower,
     );
     if (!ElectricalConnectivityValidator.routeIsConnected(
           route: route,

@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../../domain/cable_spec.dart';
 import '../../domain/circuit_cable_registry.dart';
 import '../../domain/electrical_placement.dart';
+import '../../domain/electrical_routing.dart';
 import '../../domain/project_model.dart';
+import '../../engine/cable_sizing_engine.dart';
 import 'circuit_engineering_status.dart';
+import 'circuit_sizing_evidence.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 
@@ -45,6 +49,7 @@ class RoomCircuitPanel extends StatelessWidget {
                   load: selected,
                   route: route,
                   bundle: bundle,
+                  sizingEvidence: p2.sizingEvidenceForLoad(selected.id),
                 );
           return Card(
             key: const ValueKey('room-circuit-status'),
@@ -133,6 +138,20 @@ class RoomCircuitPanel extends StatelessWidget {
                         onPressed: () => _editLoadData(context, selected),
                         icon: const Icon(Icons.bolt_outlined),
                         label: const Text('Нагрузка'),
+                      ),
+                      OutlinedButton.icon(
+                        key: const ValueKey('edit-cable-sizing-evidence'),
+                        onPressed:
+                            route == null || bundle.cable.cableSpecId == null
+                                ? null
+                                : () => _editSizingEvidence(
+                                      context,
+                                      load: selected,
+                                      route: route,
+                                      bundle: bundle,
+                                    ),
+                        icon: const Icon(Icons.calculate_outlined),
+                        label: const Text('Расчёт'),
                       ),
                       OutlinedButton.icon(
                         key: const ValueKey('assign-cable-specification'),
@@ -230,6 +249,339 @@ class RoomCircuitPanel extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _editSizingEvidence(
+    BuildContext context, {
+    required ElectricalComponentPlacement load,
+    required ElectricalCableRoute route,
+    required CircuitCableBundle bundle,
+  }) async {
+    final existing = controller.p2.sizingEvidenceForLoad(load.id);
+    final preliminaryCurrent = load.ratedPowerW == null
+        ? ''
+        : (load.ratedPowerW! / load.voltageV).toStringAsFixed(2);
+    var phaseSystem = existing?.phaseSystem ?? CircuitPhaseSystem.singlePhaseAc;
+    var designCurrentText =
+        existing?.designCurrentA.toString() ?? preliminaryCurrent;
+    var powerFactorText = existing?.powerFactor.toString() ?? '1.0';
+    var voltageDropText = existing == null
+        ? '3.0'
+        : (existing.maxVoltageDropRatio * 100).toString();
+    var diameterText = existing?.cable.outerDiameterMm.toString() ?? '';
+    var material =
+        existing?.cable.conductorMaterial ?? ConductorMaterial.copper;
+    var conductorCountText = existing?.cable.conductorCount?.toString() ?? '3';
+    var crossSectionText =
+        existing?.cable.conductorCrossSectionMm2?.toString() ?? '';
+    var baseAmpacityText =
+        existing?.ampacitySections.firstOrNull?.baseAmpacityA.toString() ?? '';
+    var correctionText =
+        existing?.ampacitySections.firstOrNull?.combinedFactor.toString() ??
+            '1.0';
+    var ampacitySource =
+        existing?.ampacitySections.firstOrNull?.sourceKey ?? '';
+    var resistanceText =
+        existing?.impedanceEvidence?.resistanceOhmPerKm.toString() ?? '';
+    var reactanceText =
+        existing?.impedanceEvidence?.reactanceOhmPerKm.toString() ?? '0';
+    var impedanceSource = existing?.impedanceEvidence?.sourceKey ?? '';
+    var designCurrentSource = existing?.designCurrentSourceKey ?? '';
+
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setLocalState) => AlertDialog(
+          key: const ValueKey('cable-sizing-evidence-dialog'),
+          title: const Text('Расчёт кабеля · evidence'),
+          content: SizedBox(
+            width: 520,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<CircuitPhaseSystem>(
+                    initialValue: phaseSystem,
+                    decoration: const InputDecoration(labelText: 'Система'),
+                    items: const [
+                      DropdownMenuItem(
+                        value: CircuitPhaseSystem.singlePhaseAc,
+                        child: Text('1-фаза AC'),
+                      ),
+                      DropdownMenuItem(
+                        value: CircuitPhaseSystem.threePhaseAc,
+                        child: Text('3-фазы AC'),
+                      ),
+                      DropdownMenuItem(
+                        value: CircuitPhaseSystem.dc,
+                        child: Text('DC'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setLocalState(() => phaseSystem = value);
+                      }
+                    },
+                  ),
+                  TextFormField(
+                    key: const ValueKey('sizing-design-current'),
+                    initialValue: designCurrentText,
+                    decoration: InputDecoration(
+                      labelText: 'Расчётный ток',
+                      suffixText: 'A',
+                      helperText: preliminaryCurrent.isEmpty
+                          ? 'Введите подтверждённый расчётный ток.'
+                          : 'P/U≈$preliminaryCurrent A только как подсказка; подтвердите расчётный ток.',
+                    ),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (value) => designCurrentText = value,
+                  ),
+                  TextFormField(
+                    initialValue: designCurrentSource,
+                    decoration: const InputDecoration(
+                        labelText: 'Источник расчётного тока'),
+                    onChanged: (value) => designCurrentSource = value,
+                  ),
+                  TextFormField(
+                    initialValue: powerFactorText,
+                    decoration: const InputDecoration(labelText: 'cosφ'),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (value) => powerFactorText = value,
+                  ),
+                  TextFormField(
+                    initialValue: voltageDropText,
+                    decoration: const InputDecoration(
+                      labelText: 'Допустимое падение напряжения',
+                      suffixText: '%',
+                    ),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (value) => voltageDropText = value,
+                  ),
+                  const Divider(height: 24),
+                  TextFormField(
+                    initialValue: diameterText,
+                    decoration: const InputDecoration(
+                      labelText: 'Наружный диаметр кабеля',
+                      suffixText: 'мм',
+                    ),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (value) => diameterText = value,
+                  ),
+                  DropdownButtonFormField<ConductorMaterial>(
+                    initialValue: material,
+                    decoration:
+                        const InputDecoration(labelText: 'Материал жил'),
+                    items: const [
+                      DropdownMenuItem(
+                          value: ConductorMaterial.copper, child: Text('Cu')),
+                      DropdownMenuItem(
+                          value: ConductorMaterial.aluminum, child: Text('Al')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setLocalState(() => material = value);
+                      }
+                    },
+                  ),
+                  TextFormField(
+                    initialValue: conductorCountText,
+                    decoration:
+                        const InputDecoration(labelText: 'Количество жил'),
+                    keyboardType: TextInputType.number,
+                    onChanged: (value) => conductorCountText = value,
+                  ),
+                  TextFormField(
+                    initialValue: crossSectionText,
+                    decoration: const InputDecoration(
+                      labelText: 'Сечение жилы',
+                      suffixText: 'мм²',
+                    ),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (value) => crossSectionText = value,
+                  ),
+                  const Divider(height: 24),
+                  TextFormField(
+                    key: const ValueKey('sizing-base-ampacity'),
+                    initialValue: baseAmpacityText,
+                    decoration: const InputDecoration(
+                      labelText: 'Base ampacity участка',
+                      suffixText: 'A',
+                      helperText:
+                          'Оставьте пустым → current check = INDETERMINATE.',
+                    ),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (value) => baseAmpacityText = value,
+                  ),
+                  TextFormField(
+                    initialValue: correctionText,
+                    decoration: const InputDecoration(
+                        labelText: 'Суммарный correction factor'),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (value) => correctionText = value,
+                  ),
+                  TextFormField(
+                    initialValue: ampacitySource,
+                    decoration:
+                        const InputDecoration(labelText: 'Источник ampacity'),
+                    onChanged: (value) => ampacitySource = value,
+                  ),
+                  TextFormField(
+                    key: const ValueKey('sizing-resistance'),
+                    initialValue: resistanceText,
+                    decoration: const InputDecoration(
+                      labelText: 'R',
+                      suffixText: 'Ω/км',
+                      helperText:
+                          'Оставьте пустым → voltage-drop check = INDETERMINATE.',
+                    ),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (value) => resistanceText = value,
+                  ),
+                  TextFormField(
+                    initialValue: reactanceText,
+                    decoration: const InputDecoration(
+                        labelText: 'X', suffixText: 'Ω/км'),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (value) => reactanceText = value,
+                  ),
+                  TextFormField(
+                    initialValue: impedanceSource,
+                    decoration:
+                        const InputDecoration(labelText: 'Источник impedance'),
+                    onChanged: (value) => impedanceSource = value,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Отмена'),
+            ),
+            FilledButton(
+              key: const ValueKey('cable-sizing-evidence-confirm'),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Рассчитать'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (accepted != true || !context.mounted) return;
+
+    double? parseDouble(String value) =>
+        double.tryParse(value.trim().replaceAll(',', '.'));
+    final designCurrent = parseDouble(designCurrentText);
+    final powerFactor = parseDouble(powerFactorText);
+    final voltageDropPercent = parseDouble(voltageDropText);
+    final diameter = parseDouble(diameterText);
+    final conductorCount = int.tryParse(conductorCountText.trim());
+    final crossSection = parseDouble(crossSectionText);
+    final baseAmpacity =
+        baseAmpacityText.trim().isEmpty ? null : parseDouble(baseAmpacityText);
+    final correction = parseDouble(correctionText);
+    final resistance =
+        resistanceText.trim().isEmpty ? null : parseDouble(resistanceText);
+    final reactance = parseDouble(reactanceText) ?? 0;
+    final specId = bundle.cable.cableSpecId;
+    if (designCurrent == null ||
+        designCurrent <= 0 ||
+        powerFactor == null ||
+        powerFactor <= 0 ||
+        powerFactor > 1 ||
+        voltageDropPercent == null ||
+        voltageDropPercent <= 0 ||
+        voltageDropPercent >= 100 ||
+        diameter == null ||
+        diameter <= 0 ||
+        conductorCount == null ||
+        conductorCount <= 0 ||
+        crossSection == null ||
+        crossSection <= 0 ||
+        correction == null ||
+        correction <= 0 ||
+        specId == null) {
+      _showResult(
+          context, 'Проверьте обязательные параметры расчёта и CableSpec.');
+      return;
+    }
+    if ((baseAmpacity != null && baseAmpacity <= 0) ||
+        (resistance != null && resistance < 0) ||
+        reactance < 0) {
+      _showResult(
+          context, 'Ampacity/R/X не могут иметь отрицательные значения.');
+      return;
+    }
+
+    final cable = CableSpec(
+      id: specId,
+      name: specId,
+      medium: route.medium,
+      outerDiameterMm: diameter,
+      segregationClass: CableSegregationClass.power,
+      conductorMaterial: material,
+      conductorCount: conductorCount,
+      conductorCrossSectionMm2: crossSection,
+      ratedVoltageV: load.voltageV,
+    );
+    final evidence = CircuitSizingEvidence(
+      routeId: route.id,
+      routeGeometrySignature: CircuitSizingEvidence.geometrySignature(route),
+      cable: cable,
+      phaseSystem: phaseSystem,
+      designCurrentA: designCurrent,
+      nominalVoltageV: load.voltageV.toDouble(),
+      maxVoltageDropRatio: voltageDropPercent / 100,
+      powerFactor: powerFactor,
+      designCurrentSourceKey: designCurrentSource.trim().isEmpty
+          ? null
+          : designCurrentSource.trim(),
+      ampacitySections: baseAmpacity == null
+          ? const []
+          : [
+              SectionAmpacityEvidence(
+                sectionId: '${route.id}:whole-route',
+                baseAmpacityA: baseAmpacity,
+                sourceKey: ampacitySource.trim().isEmpty
+                    ? null
+                    : ampacitySource.trim(),
+                factors: [
+                  ThermalCorrectionFactor(
+                    id: 'combined-user-factor',
+                    factor: correction,
+                    reason: 'Engineer-supplied combined factor',
+                  ),
+                ],
+              ),
+            ],
+      impedanceEvidence: resistance == null
+          ? null
+          : CableImpedanceEvidence(
+              resistanceOhmPerKm: resistance,
+              reactanceOhmPerKm: reactance,
+              sourceKey: impedanceSource.trim().isEmpty
+                  ? null
+                  : impedanceSource.trim(),
+            ),
+    );
+    final ok = controller.p2.setCircuitSizingEvidenceForLoad(
+      loadComponentId: load.id,
+      evidence: evidence,
+    );
+    _showResult(
+      context,
+      ok ? 'Расчёт кабеля обновлён.' : 'Не удалось сохранить evidence расчёта.',
     );
   }
 
