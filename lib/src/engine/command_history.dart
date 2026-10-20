@@ -17,12 +17,14 @@ final class CommandHistory<T> {
   final int capacity;
   final List<EditorCommand<T>> _undo = [];
   final List<EditorCommand<T>> _redo = [];
+  int _mutationRevision = 0;
 
   T get state => _state;
   bool get canUndo => _undo.isNotEmpty;
   bool get canRedo => _redo.isNotEmpty;
   int get undoDepth => _undo.length;
   int get redoDepth => _redo.length;
+  int get mutationRevision => _mutationRevision;
 
   T execute(EditorCommand<T> command) {
     _state = command.execute(_state);
@@ -31,6 +33,7 @@ final class CommandHistory<T> {
       _undo.removeAt(0);
     }
     _redo.clear();
+    _mutationRevision++;
     return _state;
   }
 
@@ -39,6 +42,7 @@ final class CommandHistory<T> {
     final command = _undo.removeLast();
     _state = command.undo(_state);
     _redo.add(command);
+    _mutationRevision++;
     return _state;
   }
 
@@ -47,6 +51,7 @@ final class CommandHistory<T> {
     final command = _redo.removeLast();
     _state = command.execute(_state);
     _undo.add(command);
+    _mutationRevision++;
     return _state;
   }
 
