@@ -1,72 +1,65 @@
 from pathlib import Path
+import re
 
+screen = Path('lib/src/features/editor/unified_workspace_editor_screen.dart')
+text = screen.read_text()
 
-def replace_once(path: str, old: str, new: str):
-    p = Path(path)
-    text = p.read_text()
-    if old not in text:
-        raise SystemExit(f'anchor missing in {path}: {old[:120]!r}')
-    p.write_text(text.replace(old, new, 1))
+if '_lastP2CommittedRevision' not in text:
+    text = text.replace(
+        '  int _projectRevision = 0;\n  int _savedRevision = 0;\n',
+        '  int _projectRevision = 0;\n  int _savedRevision = 0;\n  int _lastP2CommittedRevision = 0;\n',
+        1,
+    )
 
-# CommandHistory: expose committed mutation revision. replaceState() is preview/transient and must not advance it.
-replace_once(
-    'lib/src/engine/command_history.dart',
-    "  final List<EditorCommand<T>> _undo = [];\n  final List<EditorCommand<T>> _redo = [];\n\n  T get state => _state;\n",
-    "  final List<EditorCommand<T>> _undo = [];\n  final List<EditorCommand<T>> _redo = [];\n  int _mutationRevision = 0;\n\n  T get state => _state;\n  int get mutationRevision => _mutationRevision;\n",
-)
-replace_once(
-    'lib/src/engine/command_history.dart',
-    "    _redo.clear();\n    return _state;\n  }\n\n  T undo() {\n",
-    "    _redo.clear();\n    _mutationRevision++;\n    return _state;\n  }\n\n  T undo() {\n",
-)
-replace_once(
-    'lib/src/engine/command_history.dart',
-    "    _state = command.undo(_state);\n    _redo.add(command);\n    return _state;\n  }\n\n  T redo() {\n",
-    "    _state = command.undo(_state);\n    _redo.add(command);\n    _mutationRevision++;\n    return _state;\n  }\n\n  T redo() {\n",
-)
-replace_once(
-    'lib/src/engine/command_history.dart',
-    "    _state = command.execute(_state);\n    _undo.add(command);\n    return _state;\n  }\n\n  void replaceState",
-    "    _state = command.execute(_state);\n    _undo.add(command);\n    _mutationRevision++;\n    return _state;\n  }\n\n  void replaceState",
+text = text.replace(
+    '    controller.p2.addListener(_onProjectChanged);\n    siteInteraction = SiteMapInteractionController();\n',
+    '    _lastP2CommittedRevision = controller.p2.history.mutationRevision;\n'
+    '    controller.p2.addListener(_onP2Changed);\n'
+    '    siteInteraction = SiteMapInteractionController();\n',
+    1,
 )
 
-# Screen listens to P2 notifications only as a trigger, but dirty advances only when history revision advances.
-replace_once(
-    'lib/src/features/editor/unified_workspace_editor_screen.dart',
-    "  int _projectRevision = 0;\n  int _savedRevision = 0;\n  bool _allowPop = false;\n",
-    "  int _projectRevision = 0;\n  int _savedRevision = 0;\n  int _lastP2CommittedRevision = 0;\n  bool _allowPop = false;\n",
+if 'void _onP2Changed()' not in text:
+    marker = '  void _onProjectChanged() {\n'
+    idx = text.find(marker)
+    if idx == -1:
+        raise SystemExit('screen _onProjectChanged anchor missing')
+    method = '''  void _onP2Changed() {\n    final committed = controller.p2.history.mutationRevision;\n    if (committed == _lastP2CommittedRevision) {\n      _refresh();\n      return;\n    }\n    _lastP2CommittedRevision = committed;\n    _onProjectChanged();\n  }\n\n'''
+    text = text[:idx] + method + text[idx:]
+
+text = text.replace(
+    '    previousController.p2.removeListener(_onProjectChanged);\n',
+    '    previousController.p2.removeListener(_onP2Changed);\n',
 )
-replace_once(
-    'lib/src/features/editor/unified_workspace_editor_screen.dart',
-    "    controller.p2.addListener(_onProjectChanged);\n    siteInteraction = SiteMapInteractionController();\n",
-    "    _lastP2CommittedRevision = controller.p2.history.mutationRevision;\n    controller.p2.addListener(_onP2Changed);\n    siteInteraction = SiteMapInteractionController();\n",
+text = text.replace(
+    '    controller.p2.addListener(_onProjectChanged);\n    _projectMetadata = metadata;\n',
+    '    _lastP2CommittedRevision = controller.p2.history.mutationRevision;\n'
+    '    controller.p2.addListener(_onP2Changed);\n'
+    '    _projectMetadata = metadata;\n',
 )
-replace_once(
-    'lib/src/features/editor/unified_workspace_editor_screen.dart',
-    "  void _onProjectChanged() {\n    _projectRevision++;\n",
-    "  void _onP2Changed() {\n    final committed = controller.p2.history.mutationRevision;\n    if (committed == _lastP2CommittedRevision) {\n      _refresh();\n      return;\n    }\n    _lastP2CommittedRevision = committed;\n    _onProjectChanged();\n  }\n\n  void _onProjectChanged() {\n    _projectRevision++;\n",
+text = text.replace(
+    '    controller.removeListener(_onProjectChanged);\n    controller.disposeP2State();\n',
+    '    controller.removeListener(_onProjectChanged);\n'
+    '    controller.p2.removeListener(_onP2Changed);\n'
+    '    controller.disposeP2State();\n',
 )
-replace_once(
-    'lib/src/features/editor/unified_workspace_editor_screen.dart',
-    "    previousController.p2.removeListener(_onProjectChanged);\n",
-    "    previousController.p2.removeListener(_onP2Changed);\n",
-)
-replace_once(
-    'lib/src/features/editor/unified_workspace_editor_screen.dart',
-    "    controller.p2.addListener(_onProjectChanged);\n    _projectMetadata = metadata;\n",
-    "    _lastP2CommittedRevision = controller.p2.history.mutationRevision;\n    controller.p2.addListener(_onP2Changed);\n    _projectMetadata = metadata;\n",
-)
-replace_once(
-    'lib/src/features/editor/unified_workspace_editor_screen.dart',
-    "    workspace.removeListener(_onProjectChanged);\n    workspace.dispose();\n    controller.removeListener(_onProjectChanged);\n    controller.disposeP2State();\n",
-    "    workspace.removeListener(_onProjectChanged);\n    workspace.dispose();\n    controller.removeListener(_onProjectChanged);\n    controller.p2.removeListener(_onP2Changed);\n    controller.disposeP2State();\n",
-)
+
+if 'controller.p2.addListener(_onProjectChanged)' in text or 'controller.p2.removeListener(_onProjectChanged)' in text:
+    raise SystemExit('stale p2 project-change listener remains')
+if 'controller.p2.addListener(_onP2Changed)' not in text:
+    raise SystemExit('p2 committed listener was not installed')
+screen.write_text(text)
 
 # Acceptance: transient P2 notifications must not dirty a saved project.
-p = Path('test/p1_lifecycle_acceptance_test.dart')
-text = p.read_text()
-anchor = "  test('F03 shrinking room around electrical component is rejected atomically',"
-addition = r'''  testWidgets(
+test_path = Path('test/p1_lifecycle_acceptance_test.dart')
+test = test_path.read_text()
+case_name = 'F01 selection-only and preview-cancel keep saved project clean'
+if case_name not in test:
+    anchor = "  test('F03 shrinking room around electrical component is rejected atomically',"
+    idx = test.find(anchor)
+    if idx == -1:
+        raise SystemExit('acceptance F03 anchor missing')
+    addition = r'''  testWidgets(
       'F01 selection-only and preview-cancel keep saved project clean',
       (tester) async {
     final projects = _MemoryProjectStore();
@@ -127,7 +120,5 @@ addition = r'''  testWidgets(
   });
 
 '''
-index = text.find(anchor)
-if index == -1:
-    raise SystemExit('acceptance anchor missing')
-p.write_text(text[:index] + addition + text[index:])
+    test = test[:idx] + addition + test[idx:]
+test_path.write_text(test)
