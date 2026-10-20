@@ -26,24 +26,24 @@ jobs:
       - name: Generate canonical macOS shell
         run: flutter create --platforms=macos --project-name elecx --org kz.elecx .
       - run: flutter pub get
-      - name: Verify path_provider registration
-        run: |
-          test -f macos/Flutter/GeneratedPluginRegistrant.swift
-          cat macos/Flutter/GeneratedPluginRegistrant.swift
-          grep -q 'path_provider_foundation' macos/Flutter/GeneratedPluginRegistrant.swift
       - name: Analyze
         run: flutter analyze
       - name: Test
         run: flutter test
       - name: Build macOS debug app
         run: flutter build macos --debug
-      - name: Remove one-shot bootstrap
-        run: git rm .github/workflows/bootstrap-macos-runner-once.yml
+      - name: Runtime path_provider smoke
+        run: flutter test integration_test/path_provider_macos_smoke_test.dart -d macos
+      - name: Remove generated template test and one-shot bootstrap
+        run: |
+          rm -f test/widget_test.dart elecx.iml
+          rm -rf .idea
+          git checkout -- analysis_options.yaml pubspec.lock
+          git rm .github/workflows/bootstrap-macos-runner-once.yml
       - name: Commit generated macOS runner
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add macos .metadata
-          git add -u
           git commit -m 'fix(macos): add canonical Flutter desktop runner'
           git push origin HEAD:fix/desktop-path-provider-packaging
