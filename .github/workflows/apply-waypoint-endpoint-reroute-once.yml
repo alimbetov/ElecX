@@ -1,0 +1,39 @@
+name: Apply waypoint endpoint reroute once
+
+on:
+  push:
+    branches:
+      - feat/spatial-editor-interaction-hardening
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/spatial-editor-interaction-hardening
+          fetch-depth: 1
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - run: python3 tool/apply_waypoint_endpoint_reroute_once.py
+      - run: dart format lib test
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze
+      - run: flutter test
+      - name: Remove one-shot helpers
+        run: |
+          rm tool/apply_waypoint_endpoint_reroute_once.py
+          rm .github/workflows/apply-waypoint-endpoint-reroute-once.yml
+      - name: Commit verified endpoint reroute
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --quiet || git commit -m 'feat(editor): reroute endpoints through mandatory waypoints'
+          git push origin HEAD:feat/spatial-editor-interaction-hardening
