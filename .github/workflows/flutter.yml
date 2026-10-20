@@ -28,3 +28,5 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
+      - name: Build Flutter Web
+        run: flutter build web
