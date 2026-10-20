@@ -33,6 +33,9 @@ jobs:
       - name: Apply room circuit overview patch
         run: python3 tool/apply_room_circuit_overview_once.py
 
+      - name: Fix room circuit overview analyzer contract
+        run: python3 tool/fix_room_circuit_overview_gate.py
+
       - name: Format
         run: dart format lib test
 
@@ -48,6 +51,7 @@ jobs:
       - name: Remove one-shot helpers
         run: |
           rm -f tool/apply_room_circuit_overview_once.py
+          rm -f tool/fix_room_circuit_overview_gate.py
           rm -f .github/workflows/apply-room-circuit-overview-once.yml
 
       - name: Commit verified production changes
