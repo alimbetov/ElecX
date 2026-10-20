@@ -1,0 +1,74 @@
+name: Finalize runtime hardening once
+
+on:
+  push:
+    branches:
+      - feat/spatial-editor-interaction-hardening
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/spatial-editor-interaction-hardening
+          fetch-depth: 1
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Remove duplicated helper
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('lib/src/features/editor/surface_canvas.dart')
+          text = path.read_text()
+          marker = '''  void _verticalDimension(
+              Canvas canvas,
+              double x,
+              double y1,
+              double y2,
+              String text,
+            ) {'''
+          # Dart formatting may differ from the source indentation, so locate by
+          # signature instead of relying on the whole method body.
+          signature = '  void _verticalDimension(\n'
+          starts = []
+          offset = 0
+          while True:
+            index = text.find(signature, offset)
+            if index < 0:
+              break
+            starts.append(index)
+            offset = index + len(signature)
+          if len(starts) != 2:
+            raise SystemExit(f'expected exactly 2 verticalDimension methods, got {len(starts)}')
+          second = starts[1]
+          next_method = text.find('  void _label(\n', second)
+          if next_method < 0:
+            raise SystemExit('could not find _label after duplicate helper')
+          text = text[:second] + text[next_method:]
+          path.write_text(text)
+          PY
+      - name: Format
+        run: dart format lib test
+      - name: Analyze
+        run: flutter analyze
+      - name: Test
+        run: flutter test
+      - name: Remove one-shot workflow
+        run: rm .github/workflows/finalize-runtime-hardening-once.yml
+      - name: Commit verified hardening
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib test .github/workflows/finalize-runtime-hardening-once.yml
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m 'fix(editor): verify runtime interaction hardening'
+          git push origin HEAD:feat/spatial-editor-interaction-hardening
