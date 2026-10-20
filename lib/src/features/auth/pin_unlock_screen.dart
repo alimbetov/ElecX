@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../projects/project_hub_screen.dart';
+import '../projects/platform_project_hub_screen.dart';
 
 class PinUnlockScreen extends StatefulWidget {
   const PinUnlockScreen({super.key});
@@ -19,7 +19,9 @@ class _PinUnlockScreenState extends State<PinUnlockScreen> {
       Future<void>.delayed(const Duration(milliseconds: 120), () {
         if (!mounted) return;
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute<void>(builder: (_) => const ProjectHubScreen()),
+          MaterialPageRoute<void>(
+            builder: (_) => const PlatformProjectHubScreen(),
+          ),
         );
       });
     }
