@@ -15,6 +15,7 @@ import '../../engine/world_camera.dart';
 import 'electrical_host_geometry_guard.dart';
 import 'editor_controller.dart';
 import 'editor_viewport_commands.dart';
+import 'viewport_zoom_policy.dart';
 import 'plan_geometry_editor_actions.dart';
 
 enum _PlanDragKind { vertex, edge, openingMove, openingStart, openingEnd }
@@ -717,12 +718,16 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                   _updatePullSideFromPointer(event.localPosition);
                 },
                 onPointerSignal: (event) {
-                  if (event is PointerScrollEvent) {
-                    _zoomAt(
-                      event.localPosition,
-                      event.scrollDelta.dy < 0 ? 1.18 : 1 / 1.18,
-                    );
-                  }
+                  if (event is! PointerScrollEvent) return;
+                  final factor = ViewportZoomPolicy.factorForScrollDelta(
+                    dx: event.scrollDelta.dx,
+                    dy: event.scrollDelta.dy,
+                  );
+                  if (factor == null) return;
+                  GestureBinding.instance.pointerSignalResolver.register(
+                    event,
+                    (_) => _zoomAt(event.localPosition, factor),
+                  );
                 },
                 onPointerDown: (event) {
                   _activePointers.add(event.pointer);

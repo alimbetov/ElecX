@@ -15,4 +15,28 @@ void main() {
     expect(() => ViewportZoomPolicy.minMmPerPixel(0), throwsArgumentError);
     expect(() => ViewportZoomPolicy.maxMmPerPixel(-1), throwsArgumentError);
   });
+
+  test('F12 horizontal scroll does not zoom', () {
+    expect(
+      ViewportZoomPolicy.factorForScrollDelta(dx: 80, dy: 0),
+      isNull,
+    );
+    expect(
+      ViewportZoomPolicy.factorForScrollDelta(dx: 80, dy: 10),
+      isNull,
+    );
+  });
+
+  test('F12 wheel zoom follows magnitude and direction with a safe cap', () {
+    final tinyIn = ViewportZoomPolicy.factorForScrollDelta(dx: 0, dy: -1)!;
+    final largeIn = ViewportZoomPolicy.factorForScrollDelta(dx: 0, dy: -120)!;
+    final hugeIn = ViewportZoomPolicy.factorForScrollDelta(dx: 0, dy: -1200)!;
+    final out = ViewportZoomPolicy.factorForScrollDelta(dx: 0, dy: 120)!;
+
+    expect(tinyIn, greaterThan(1));
+    expect(tinyIn, lessThan(largeIn));
+    expect(largeIn, ViewportZoomPolicy.maxWheelFactor);
+    expect(hugeIn, ViewportZoomPolicy.maxWheelFactor);
+    expect(out, closeTo(1 / ViewportZoomPolicy.maxWheelFactor, 1e-9));
+  });
 }

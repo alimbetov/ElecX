@@ -1020,13 +1020,16 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                 onPointerHover: (event) =>
                     _updateBoundaryHover(event.localPosition, projection),
                 onPointerSignal: (event) {
-                  if (event is PointerScrollEvent) {
-                    _zoomAt(
-                      event.localPosition,
-                      event.scrollDelta.dy < 0 ? 1.18 : 1 / 1.18,
-                      extent,
-                    );
-                  }
+                  if (event is! PointerScrollEvent) return;
+                  final factor = ViewportZoomPolicy.factorForScrollDelta(
+                    dx: event.scrollDelta.dx,
+                    dy: event.scrollDelta.dy,
+                  );
+                  if (factor == null) return;
+                  GestureBinding.instance.pointerSignalResolver.register(
+                    event,
+                    (_) => _zoomAt(event.localPosition, factor, extent),
+                  );
                 },
                 onPointerDown: (event) {
                   _activePointers.add(event.pointer);

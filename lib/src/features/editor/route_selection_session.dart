@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../domain/electrical_routing.dart';
 import '../../domain/hosted_routing.dart';
+import 'cable_editor_ui_session.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 import 'hosted_route_session.dart';
@@ -39,6 +40,7 @@ final class RouteSelectionSession extends ChangeNotifier {
     if (routeId != null && !_routeExists(routeId)) return;
     if (_selectedRouteId == routeId) return;
     _selectedRouteId = routeId;
+    controller.cableUi.clearFocus();
     if (routeId != null) controller.p2.clearSelection();
     notifyListeners();
   }
