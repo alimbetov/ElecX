@@ -17,8 +17,8 @@ replace_once(
 )
 replace_once(
     'test/cable_route_constraints_test.dart',
-    '''    expect(session.routeConstraintsFor(route.id).isSegmentLocked(0), isTrue);''',
-    '''    expect(session.routeConstraintsFor(route.id).isSegmentLocked(0), isFalse);''',
+    '''    expect(session.routes.single.segments.single.points, hasLength(4));\n    expect(session.routeConstraintsFor(route.id).isSegmentLocked(0), isTrue);\n    expect(''',
+    '''    expect(session.routes.single.segments.single.points, hasLength(4));\n    expect(session.routeConstraintsFor(route.id).isSegmentLocked(0), isFalse);\n    expect(''',
     'reconciliation lock expectation',
 )
 replace_once(
