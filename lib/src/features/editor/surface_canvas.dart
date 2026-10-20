@@ -654,9 +654,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
         }
       case final CableSegmentHit segment:
         ui.focusGeometry(
-          routeId: segment.route.id,
-          segmentIndex: segment.segmentIndex,
-        );
+            routeId: segment.route.id, segmentIndex: segment.segmentIndex);
         if (ui.mode == CableRoutingMode.auto ||
             ui.isSegmentLocked(segment.route.id, segment.segmentIndex) ||
             ui.segmentHasWaypoints(segment.route.id, segment.segmentIndex)) {
@@ -2115,28 +2113,28 @@ class _SurfacePainter extends CustomPainter {
           center,
           isEndpoint ? 7 : 5,
           Paint()
-            ..color = isWaypoint
-                ? Colors.amber.shade700
-                : isEndpoint
-                    ? scheme.primary
-                    : scheme.secondary,
+            ..style = PaintingStyle.fill
+            ..color = isWaypoint ? scheme.tertiary : scheme.surface,
         );
         canvas.drawCircle(
           center,
-          isEndpoint ? 10 : 7,
+          isEndpoint ? 7 : 5,
           Paint()
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.5
-            ..color = scheme.onSurface.withValues(alpha: 0.72),
+            ..strokeWidth = 2
+            ..color = controller.cableUi.isSegmentLocked(selected.id, s)
+                ? scheme.outline
+                : scheme.primary,
         );
       }
-      for (var edge = 1; edge < segment.points.length - 2; edge++) {
+      for (var edge = 0; edge < segment.points.length - 1; edge++) {
         final a = projection.surfaceToViewport(segment.points[edge]);
         final b = projection.surfaceToViewport(segment.points[edge + 1]);
         final midpoint = Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
         canvas.drawRect(
           Rect.fromCenter(center: midpoint, width: 9, height: 9),
           Paint()
+            ..style = PaintingStyle.fill
             ..color = controller.cableUi.isSegmentLocked(selected.id, s)
                 ? scheme.outline
                 : scheme.tertiary,
@@ -2153,7 +2151,14 @@ class _SurfacePainter extends CustomPainter {
   ) {
     for (final segment in route.segments) {
       if (segment.host != host || segment.points.length < 2) continue;
-      _drawHostedRoutePoints(canvas, segment.points, paint);
+      Offset? previous;
+      for (final point in segment.points) {
+        final current = projection.surfaceToViewport(
+          SurfacePointMm(point.x, point.y),
+        );
+        if (previous != null) canvas.drawLine(previous, current, paint);
+        previous = current;
+      }
     }
   }
 
@@ -2163,70 +2168,50 @@ class _SurfacePainter extends CustomPainter {
     RouteHostRef host,
     RouteMediumProfile medium,
   ) {
-    final segments = route.segments
-        .where((segment) => segment.host == host && segment.points.length >= 2)
-        .toList(growable: false);
-    if (segments.isEmpty) return;
-    final samples = RouteFlowVisualizationPolicy.samples(
-      segments: segments,
+    final samples = RouteInteractionEngine.flowSamples(
+      route: route,
       medium: medium,
       phase: flowAnimation.value,
-      countPerSegment: 3,
     );
-    final color = _mediumColor(medium);
     for (final sample in samples) {
-      final point = projection.surfaceToViewport(
+      if (sample.hostId != host.id) continue;
+      final center = projection.surfaceToViewport(
         SurfacePointMm(sample.xMm.round(), sample.yMm.round()),
       );
       canvas.drawCircle(
-        point,
-        sample.direction < 0 ? 2.8 : 3.4,
-        Paint()..color = color.withValues(alpha: 0.72),
+        center,
+        sample.reverse ? 3.2 : 4.2,
+        Paint()..color = scheme.primary,
       );
+      if (sample.reverse) {
+        canvas.drawCircle(
+          center,
+          6.5,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1
+            ..color = scheme.primary.withValues(alpha: 0.5),
+        );
+      }
     }
-  }
-
-  Color _mediumColor(RouteMediumProfile medium) {
-    if (medium.id == RouteMediumProfiles.ac.id) return scheme.primary;
-    if (medium.id == RouteMediumProfiles.dc.id) return scheme.tertiary;
-    if (medium.id == RouteMediumProfiles.ethernet.id) return scheme.secondary;
-    return scheme.outline;
   }
 
   void _drawTransitionMarkers(
     Canvas canvas,
     HostedRoutePath route,
-    RouteHostRef activeHost,
+    RouteHostRef host,
   ) {
-    for (final transition in route.transitions) {
-      final point = transition.fromHost == activeHost
+    for (final transition in RouteInteractionEngine.transitionsOnHost(
+      route: route,
+      host: host,
+    )) {
+      final point = transition.fromHost == host
           ? transition.fromPoint
-          : transition.toHost == activeHost
-              ? transition.toPoint
-              : null;
-      if (point == null) continue;
-      final center = projection.surfaceToViewport(
-        SurfacePointMm(point.x.round(), point.y.round()),
-      );
-      canvas.drawCircle(
-        center,
-        8,
-        Paint()..color = scheme.surface.withValues(alpha: 0.94),
-      );
-      canvas.drawCircle(
-        center,
-        8,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2
-          ..color = scheme.tertiary,
-      );
-      canvas.drawLine(
-        center + const Offset(-3, 0),
-        center + const Offset(3, 0),
-        Paint()
-          ..strokeWidth = 1.5
-          ..color = scheme.tertiary,
+          : transition.toPoint;
+      _drawTransitionMarker(
+        canvas,
+        SurfacePointMm(point.x, point.y),
+        outdoor: transition.fromHost.kind != transition.toHost.kind,
       );
     }
   }
@@ -2236,30 +2221,44 @@ class _SurfacePainter extends CustomPainter {
     String routeId,
     RoomSurfaceRef activeSurface,
   ) {
-    final route = controller.p2.routes
-        .where((candidate) => candidate.id == routeId)
-        .firstOrNull;
-    if (route == null) return;
-    for (var i = 0; i < route.segments.length; i++) {
-      final segment = route.segments[i];
+    final selected = controller.routeSelection.selectedRoute;
+    if (selected == null || selected.id != routeId) return;
+    for (var i = 0; i < selected.segments.length; i++) {
+      final segment = selected.segments[i];
       if (segment.surface != activeSurface || segment.points.isEmpty) continue;
-      if (i > 0) _drawLegacyTransitionMarker(canvas, segment.points.first);
-      if (i + 1 < route.segments.length) {
-        _drawLegacyTransitionMarker(canvas, segment.points.last);
+      if (i > 0 && selected.segments[i - 1].surface != activeSurface) {
+        _drawTransitionMarker(canvas, segment.points.first);
+      }
+      if (i + 1 < selected.segments.length &&
+          selected.segments[i + 1].surface != activeSurface) {
+        _drawTransitionMarker(canvas, segment.points.last);
       }
     }
   }
 
-  void _drawLegacyTransitionMarker(Canvas canvas, SurfacePointMm point) {
+  void _drawTransitionMarker(
+    Canvas canvas,
+    SurfacePointMm point, {
+    bool outdoor = false,
+  }) {
     final center = projection.surfaceToViewport(point);
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..color = scheme.tertiary;
-    canvas.drawRect(
-      Rect.fromCenter(center: center, width: 11, height: 11),
-      paint,
+    final color = outdoor ? scheme.secondary : scheme.tertiary;
+    canvas.drawCircle(
+      center,
+      8,
+      Paint()
+        ..style = PaintingStyle.fill
+        ..color = color.withValues(alpha: 0.20),
     );
+    canvas.drawCircle(
+      center,
+      8,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = color,
+    );
+    canvas.drawCircle(center, 2.5, Paint()..color = color);
   }
 
   void _drawRoutePoints(
@@ -2267,316 +2266,246 @@ class _SurfacePainter extends CustomPainter {
     List<SurfacePointMm> points,
     Paint paint,
   ) {
-    for (var i = 1; i < points.length; i++) {
-      canvas.drawLine(
-        projection.surfaceToViewport(points[i - 1]),
-        projection.surfaceToViewport(points[i]),
-        paint,
-      );
-    }
-  }
-
-  void _drawHostedRoutePoints(
-    Canvas canvas,
-    List<HostedRoutePoint> points,
-    Paint paint,
-  ) {
-    for (var i = 1; i < points.length; i++) {
-      final a = projection.surfaceToViewport(
-        SurfacePointMm(points[i - 1].x.round(), points[i - 1].y.round()),
-      );
-      final b = projection.surfaceToViewport(
-        SurfacePointMm(points[i].x.round(), points[i].y.round()),
-      );
-      canvas.drawLine(a, b, paint);
+    Offset? previous;
+    for (final point in points) {
+      final current = projection.surfaceToViewport(point);
+      if (previous != null) canvas.drawLine(previous, current, paint);
+      canvas.drawCircle(current, CadVisualTokens.transitionNodeRadius, paint);
+      previous = current;
     }
   }
 
   void _drawElectricalComponents(Canvas canvas) {
     if (!electricalVisible) return;
     final surface = controller.activeSurface;
-    if (surface == null) return;
-    final symbolRadius = switch (lod) {
-      RenderLod.site => 5.0,
-      RenderLod.zone => 6.0,
-      RenderLod.room => 8.0,
-      RenderLod.detail => 11.0,
-    };
     for (final component in controller.p2.components) {
       if (component.surface != surface) continue;
       final center = projection.surfaceToViewport(component.position);
       final selected = controller.p2.selection.contains(component.id);
-      final color = _componentColor(component.type);
-      if (selected) {
-        canvas.drawCircle(
-          center,
-          symbolRadius + 7,
-          Paint()..color = CadVisualTokens.selectedFill(scheme),
-        );
-      }
-      switch (component.type) {
-        case ElectricalComponentType.socketOutlet:
-          canvas.drawCircle(
-            center,
-            symbolRadius,
-            Paint()
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 2
-              ..color = color,
-          );
-          canvas.drawLine(
-            center + Offset(-symbolRadius * 0.65, 0),
-            center + Offset(symbolRadius * 0.65, 0),
-            Paint()
-              ..strokeWidth = 1.5
-              ..color = color,
-          );
-        case ElectricalComponentType.switchDevice:
-          canvas.drawCircle(
-            center,
-            symbolRadius,
-            Paint()
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 2
-              ..color = color,
-          );
-          canvas.drawLine(
-            center,
-            center + Offset(symbolRadius * 0.9, -symbolRadius * 0.9),
-            Paint()
-              ..strokeWidth = 1.7
-              ..color = color,
-          );
-        case ElectricalComponentType.luminaire:
-          canvas.drawCircle(
-            center,
-            symbolRadius,
-            Paint()
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 2
-              ..color = color,
-          );
-          canvas.drawLine(
-            center + Offset(-symbolRadius * 0.65, -symbolRadius * 0.65),
-            center + Offset(symbolRadius * 0.65, symbolRadius * 0.65),
-            Paint()
-              ..strokeWidth = 1.5
-              ..color = color,
-          );
-          canvas.drawLine(
-            center + Offset(symbolRadius * 0.65, -symbolRadius * 0.65),
-            center + Offset(-symbolRadius * 0.65, symbolRadius * 0.65),
-            Paint()
-              ..strokeWidth = 1.5
-              ..color = color,
-          );
-        case ElectricalComponentType.junctionBox:
-          canvas.drawRect(
-            Rect.fromCenter(
-              center: center,
-              width: symbolRadius * 1.8,
-              height: symbolRadius * 1.8,
-            ),
-            Paint()
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 2
-              ..color = color,
-          );
-        case ElectricalComponentType.distributionBoard:
-          canvas.drawRect(
-            Rect.fromCenter(
-              center: center,
-              width: symbolRadius * 2.2,
-              height: symbolRadius * 2.8,
-            ),
-            Paint()
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 2
-              ..color = color,
-          );
-          canvas.drawLine(
-            center + Offset(-symbolRadius * 0.65, 0),
-            center + Offset(symbolRadius * 0.65, 0),
-            Paint()
-              ..strokeWidth = 1.6
-              ..color = color,
-          );
-        case ElectricalComponentType.powerSource:
-          canvas.drawCircle(
-            center,
-            symbolRadius,
-            Paint()
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 2
-              ..color = color,
-          );
-          final bolt = Path()
-            ..moveTo(center.dx - 2, center.dy - symbolRadius * 0.65)
-            ..lineTo(center.dx + 2, center.dy - 1)
-            ..lineTo(center.dx - 1, center.dy - 1)
-            ..lineTo(center.dx + 2, center.dy + symbolRadius * 0.65);
-          canvas.drawPath(
-            bolt,
-            Paint()
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 1.7
-              ..color = color,
-          );
-      }
-      if (lod.index >= RenderLod.detail.index) {
-        _label(
-          canvas,
-          component.label,
-          center + Offset(0, symbolRadius + 14),
-          centered: true,
-        );
-      }
+      _drawComponentSymbol(canvas, component.type, center, selected);
+    }
+    final snap = controller.p2.activeSnap;
+    if (snap != null) {
+      final center = projection.surfaceToViewport(
+        SurfacePointMm(snap.point.x, snap.point.y),
+      );
+      canvas.drawCircle(
+        center,
+        7,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5
+          ..color = CadVisualTokens.selectedGeometry(scheme),
+      );
+      _label(
+        canvas,
+        snap.kind.name.toUpperCase(),
+        center + const Offset(9, -16),
+        small: true,
+      );
     }
   }
 
-  Color _componentColor(ElectricalComponentType type) => switch (type) {
-        ElectricalComponentType.socketOutlet => scheme.primary,
-        ElectricalComponentType.switchDevice => scheme.secondary,
-        ElectricalComponentType.luminaire => scheme.tertiary,
-        ElectricalComponentType.junctionBox => scheme.outline,
-        ElectricalComponentType.distributionBoard => scheme.error,
-        ElectricalComponentType.powerSource => scheme.primary,
-      };
+  void _drawComponentSymbol(
+    Canvas canvas,
+    ElectricalComponentType type,
+    Offset center,
+    bool selected,
+  ) {
+    final stroke = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = selected ? 2.6 : 1.8
+      ..color = selected
+          ? CadVisualTokens.selectedGeometry(scheme)
+          : scheme.onSurface;
+    final fill = Paint()
+      ..style = PaintingStyle.fill
+      ..color = selected
+          ? CadVisualTokens.selectedFill(scheme)
+          : scheme.surfaceContainerLowest;
+    canvas.drawCircle(center, selected ? 11 : 9, fill);
+    switch (type) {
+      case ElectricalComponentType.socketOutlet:
+        canvas.drawCircle(center, 8, stroke);
+        canvas.drawLine(
+          center + const Offset(-4, 0),
+          center + const Offset(4, 0),
+          stroke,
+        );
+        canvas.drawLine(
+          center + const Offset(-2, -3),
+          center + const Offset(-2, 3),
+          stroke,
+        );
+        canvas.drawLine(
+          center + const Offset(2, -3),
+          center + const Offset(2, 3),
+          stroke,
+        );
+      case ElectricalComponentType.switchControl:
+        canvas.drawCircle(center, 8, stroke);
+        canvas.drawLine(
+          center + const Offset(-4, 4),
+          center + const Offset(4, -4),
+          stroke,
+        );
+      case ElectricalComponentType.lightingPoint:
+        canvas.drawCircle(center, 8, stroke);
+        canvas.drawLine(
+          center + const Offset(-5, -5),
+          center + const Offset(5, 5),
+          stroke,
+        );
+        canvas.drawLine(
+          center + const Offset(5, -5),
+          center + const Offset(-5, 5),
+          stroke,
+        );
+      case ElectricalComponentType.curtainMotor:
+        canvas.drawRect(
+          Rect.fromCenter(center: center, width: 16, height: 11),
+          stroke,
+        );
+        _label(canvas, 'M', center, centered: true, small: true);
+      case ElectricalComponentType.junctionBox:
+        canvas.drawRect(
+          Rect.fromCenter(center: center, width: 15, height: 15),
+          stroke,
+        );
+        canvas.drawCircle(center, 2, stroke);
+      case ElectricalComponentType.powerSource:
+        canvas.drawCircle(center, 8, stroke);
+        canvas.drawLine(
+          center + const Offset(0, -5),
+          center + const Offset(0, 5),
+          stroke,
+        );
+      case ElectricalComponentType.distributionBoard:
+        canvas.drawRect(
+          Rect.fromCenter(center: center, width: 15, height: 18),
+          stroke,
+        );
+        canvas.drawLine(
+          center + const Offset(-4, -3),
+          center + const Offset(4, -3),
+          stroke,
+        );
+        canvas.drawLine(
+          center + const Offset(-4, 2),
+          center + const Offset(4, 2),
+          stroke,
+        );
+      case ElectricalComponentType.custom:
+        canvas.drawRect(
+          Rect.fromCenter(center: center, width: 15, height: 15),
+          stroke,
+        );
+    }
+    if (selected) {
+      canvas.drawCircle(
+        center,
+        13,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2
+          ..color = CadVisualTokens.selectedGeometry(scheme),
+      );
+      canvas.drawRect(
+        Rect.fromCenter(center: center, width: 5, height: 5),
+        Paint()..color = CadVisualTokens.selectedGeometry(scheme),
+      );
+    }
+  }
 
   void _drawNavigationEdges(Canvas canvas, Rect rect) {
-    final color = scheme.tertiary.withValues(alpha: 0.65);
     final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 8
-      ..strokeCap = StrokeCap.round
-      ..color = color;
-    canvas.drawLine(
-      Offset(rect.left, rect.top + 10),
-      Offset(rect.left, rect.bottom - 10),
-      paint,
-    );
-    canvas.drawLine(
-      Offset(rect.right, rect.top + 10),
-      Offset(rect.right, rect.bottom - 10),
-      paint,
-    );
-    canvas.drawLine(
-      Offset(rect.left + 10, rect.top),
-      Offset(rect.right - 10, rect.top),
-      paint,
-    );
-    canvas.drawLine(
-      Offset(rect.left + 10, rect.bottom),
-      Offset(rect.right - 10, rect.bottom),
-      paint,
-    );
+      ..color = scheme.primary.withValues(alpha: 0.12)
+      ..strokeWidth = 5;
+    canvas.drawLine(rect.topLeft, rect.topRight, paint);
+    canvas.drawLine(rect.bottomLeft, rect.bottomRight, paint);
+    canvas.drawLine(rect.topLeft, rect.bottomLeft, paint);
+    canvas.drawLine(rect.topRight, rect.bottomRight, paint);
   }
 
   void _horizontalDimension(
     Canvas canvas,
-    double x1,
-    double x2,
+    double left,
+    double right,
     double y,
     String text,
   ) {
     final paint = Paint()
-      ..color = CadVisualTokens.dimension(scheme)
-      ..strokeWidth = CadVisualTokens.dimensionStroke;
-    canvas.drawLine(Offset(x1, y), Offset(x2, y), paint);
-    canvas.drawLine(Offset(x1, y - 5), Offset(x1, y + 5), paint);
-    canvas.drawLine(Offset(x2, y - 5), Offset(x2, y + 5), paint);
-    _label(canvas, text, Offset((x1 + x2) / 2, y - 14), centered: true);
-  }
-
-  void _verticalDimension(
-    Canvas canvas,
-    double x,
-    double y1,
-    double y2,
-    String text,
-  ) {
-    final paint = Paint()
-      ..color = CadVisualTokens.dimension(scheme)
-      ..strokeWidth = CadVisualTokens.dimensionStroke;
-    canvas.drawLine(Offset(x, y1), Offset(x, y2), paint);
-    canvas.drawLine(Offset(x - 5, y1), Offset(x + 5, y1), paint);
-    canvas.drawLine(Offset(x - 5, y2), Offset(x + 5, y2), paint);
+      ..color = scheme.outline
+      ..strokeWidth = 0.9;
+    canvas.drawLine(Offset(left, y), Offset(right, y), paint);
     _label(
       canvas,
       text,
-      Offset(x + 28, (y1 + y2) / 2),
+      Offset((left + right) / 2, y - 10),
       centered: true,
+      small: true,
     );
   }
 
   void _verticalDimension(
     Canvas canvas,
     double x,
-    double y1,
-    double y2,
+    double top,
+    double bottom,
     String text,
   ) {
     final paint = Paint()
-      ..color = CadVisualTokens.dimension(scheme)
-      ..strokeWidth = CadVisualTokens.dimensionStroke;
-    canvas.drawLine(Offset(x, y1), Offset(x, y2), paint);
-    canvas.drawLine(Offset(x - 5, y1), Offset(x + 5, y1), paint);
-    canvas.drawLine(Offset(x - 5, y2), Offset(x + 5, y2), paint);
-    _label(
-      canvas,
-      text,
-      Offset(x + 28, (y1 + y2) / 2),
-      centered: true,
-    );
+      ..color = scheme.outline
+      ..strokeWidth = 0.9;
+    canvas.drawLine(Offset(x, top), Offset(x, bottom), paint);
+    _label(canvas, text, Offset(x + 8, (top + bottom) / 2), small: true);
   }
 
   void _label(
     Canvas canvas,
     String text,
-    Offset anchor, {
+    Offset point, {
     bool centered = false,
     bool bold = false,
+    bool small = false,
   }) {
     final painter = TextPainter(
       text: TextSpan(
         text: text,
         style: TextStyle(
           color: scheme.onSurfaceVariant,
-          fontSize: 11,
-          fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+          fontSize: small ? 10 : 12,
+          fontWeight: bold ? FontWeight.w600 : FontWeight.w400,
         ),
       ),
       textDirection: TextDirection.ltr,
-      maxLines: 1,
     )..layout();
-    final offset = centered
-        ? anchor - Offset(painter.width / 2, painter.height / 2)
-        : anchor;
-    painter.paint(canvas, offset);
+    painter.paint(
+      canvas,
+      centered ? point - Offset(painter.width / 2, painter.height / 2) : point,
+    );
   }
 
   @override
   bool shouldRepaint(covariant _SurfacePainter oldDelegate) =>
-      activeSurfaceId != oldDelegate.activeSurfaceId ||
-      selectedSpaceId != oldDelegate.selectedSpaceId ||
-      projection.camera.centerMm != oldDelegate.projection.camera.centerMm ||
-      projection.camera.mmPerPixel != oldDelegate.projection.camera.mmPerPixel ||
-      projection.viewportSize != oldDelegate.projection.viewportSize ||
-      lod != oldDelegate.lod ||
-      scheme != oldDelegate.scheme ||
-      dimensionsVisible != oldDelegate.dimensionsVisible ||
-      openingsVisible != oldDelegate.openingsVisible ||
-      electricalVisible != oldDelegate.electricalVisible ||
-      cableRoutesVisible != oldDelegate.cableRoutesVisible ||
-      boundaryProfile != oldDelegate.boundaryProfile ||
-      hoveredOpeningId != oldDelegate.hoveredOpeningId ||
-      selectedOpeningId != oldDelegate.selectedOpeningId ||
-      selectedRouteId != oldDelegate.selectedRouteId ||
-      draftFingerprint != oldDelegate.draftFingerprint ||
-      openingsFingerprint != oldDelegate.openingsFingerprint ||
-      routeFingerprint != oldDelegate.routeFingerprint ||
-      componentsFingerprint != oldDelegate.componentsFingerprint ||
-      selectionFingerprint != oldDelegate.selectionFingerprint ||
-      snapFingerprint != oldDelegate.snapFingerprint ||
-      profileFingerprint != oldDelegate.profileFingerprint;
+      oldDelegate.projection.camera != projection.camera ||
+      oldDelegate.lod != lod ||
+      oldDelegate.scheme != scheme ||
+      oldDelegate.activeSurfaceId != activeSurfaceId ||
+      oldDelegate.selectedSpaceId != selectedSpaceId ||
+      oldDelegate.dimensionsVisible != dimensionsVisible ||
+      oldDelegate.openingsVisible != openingsVisible ||
+      oldDelegate.electricalVisible != electricalVisible ||
+      oldDelegate.cableRoutesVisible != cableRoutesVisible ||
+      oldDelegate.boundaryProfile != boundaryProfile ||
+      oldDelegate.hoveredOpeningId != hoveredOpeningId ||
+      oldDelegate.selectedOpeningId != selectedOpeningId ||
+      oldDelegate.selectedRouteId != selectedRouteId ||
+      oldDelegate.draftFingerprint != draftFingerprint ||
+      oldDelegate.openingsFingerprint != openingsFingerprint ||
+      oldDelegate.routeFingerprint != routeFingerprint ||
+      oldDelegate.componentsFingerprint != componentsFingerprint ||
+      oldDelegate.selectionFingerprint != selectionFingerprint ||
+      oldDelegate.snapFingerprint != snapFingerprint ||
+      oldDelegate.profileFingerprint != profileFingerprint;
 }

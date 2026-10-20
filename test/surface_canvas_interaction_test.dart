@@ -1,6 +1,7 @@
 import 'package:elecx/src/domain/electrical_placement.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/engine/selection_engine.dart';
+import 'package:elecx/src/features/editor/cable_edit_access.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
 import 'package:elecx/src/features/editor/editor_keyboard_scope.dart';
 import 'package:elecx/src/features/editor/editor_p2_session.dart';
@@ -121,8 +122,8 @@ void main() {
     await pumpCanvas(tester, controller);
     final origin = tester.getTopLeft(find.byType(SurfaceCanvas));
     final start = origin + viewportPoint(controller, component.position);
-    final moved = origin +
-        viewportPoint(controller, const SurfacePointMm(2000, 1500));
+    final moved =
+        origin + viewportPoint(controller, const SurfacePointMm(2000, 1500));
 
     final gesture = await tester.startGesture(
       start,
@@ -130,7 +131,8 @@ void main() {
     );
     await gesture.moveTo(moved);
     await tester.pump();
-    expect(controller.p2.selectedComponent?.position, isNot(component.position));
+    expect(
+        controller.p2.selectedComponent?.position, isNot(component.position));
 
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
@@ -158,8 +160,8 @@ void main() {
     await pumpCanvas(tester, controller);
     final origin = tester.getTopLeft(find.byType(SurfaceCanvas));
     final start = origin + viewportPoint(controller, component.position);
-    final moved = origin +
-        viewportPoint(controller, const SurfacePointMm(2000, 1500));
+    final moved =
+        origin + viewportPoint(controller, const SurfacePointMm(2000, 1500));
 
     final first = await tester.startGesture(
       start,
@@ -248,7 +250,8 @@ void main() {
     );
   });
 
-  testWidgets('endpoint outside compatible ports is invalid and not committed', (
+  testWidgets('endpoint outside compatible ports is invalid and not committed',
+      (
     tester,
   ) async {
     final controller = controllerWithClearWall();
@@ -278,8 +281,8 @@ void main() {
     final origin = tester.getTopLeft(find.byType(SurfaceCanvas));
     final start = origin +
         viewportPoint(controller, originalRoute.segments.last.points.last);
-    final emptyPoint = origin +
-        viewportPoint(controller, const SurfacePointMm(1600, 700));
+    final emptyPoint =
+        origin + viewportPoint(controller, const SurfacePointMm(1600, 700));
 
     final gesture = await tester.startGesture(
       start,
