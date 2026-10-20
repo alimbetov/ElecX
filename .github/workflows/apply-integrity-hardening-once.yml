@@ -21,6 +21,7 @@ jobs:
           channel: stable
       - run: flutter pub get
       - run: python3 tool/apply_integrity_hardening_once.py
+      - run: dart fix --apply
       - run: dart format lib test
       - run: dart format --output=none --set-exit-if-changed lib test
       - run: flutter analyze
