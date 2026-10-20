@@ -188,4 +188,57 @@ void main() {
     expect(editor.p2.state.circuitBundles, hasLength(1));
     expect(find.textContaining('Защита не назначена'), findsOneWidget);
   });
+
+  test('manual protective device assignment is undoable engineering evidence',
+      () {
+    final editor = EditorController.demo();
+    final workspace = EditorBuildingWorkspace.demo(editor);
+    addTearDown(() {
+      editor.disposeP2State();
+      workspace.dispose();
+      editor.dispose();
+    });
+    final surface = RoomSurfaceRef.wall(editor.selectedSpace!.id, 1);
+    final board = editor.p2.placeComponent(
+      type: ElectricalComponentType.distributionBoard,
+      surface: surface,
+      position: const SurfacePointMm(300, 2200),
+    );
+    final load = editor.p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: surface,
+      position: const SurfacePointMm(1400, 2200),
+    );
+    expect(
+      editor.p2.connectLoadToBoard(
+        loadComponentId: load.id,
+        boardComponentId: board.id,
+        space: editor.selectedSpace,
+      ),
+      isNotNull,
+    );
+    final depthBefore = editor.p2.history.undoDepth;
+
+    expect(
+      editor.p2.assignProtectiveDeviceToLoad(
+        loadComponentId: load.id,
+        designation: 'QF-1',
+        ratedCurrentA: 16,
+        poleCount: 1,
+      ),
+      isTrue,
+    );
+    final protected = editor.p2.circuitBundleForLoad(load.id)!;
+    expect(
+        protected.circuit.protectiveDeviceId, protected.protectiveDevice!.id);
+    expect(protected.protectiveDevice!.designation, 'QF-1');
+    expect(protected.protectiveDevice!.ratedCurrentA, 16);
+    expect(editor.p2.history.undoDepth, depthBefore + 1);
+
+    editor.p2.undo();
+    expect(editor.p2.circuitBundleForLoad(load.id)!.protectiveDevice, isNull);
+    editor.p2.redo();
+    expect(
+        editor.p2.circuitBundleForLoad(load.id)!.protectiveDevice, isNotNull);
+  });
 }

@@ -119,6 +119,68 @@ final class EditorP2Session extends ChangeNotifier {
     return null;
   }
 
+  bool assignProtectiveDeviceToLoad({
+    required String loadComponentId,
+    required String designation,
+    int? poleCount,
+    double? ratedCurrentA,
+  }) {
+    final normalizedDesignation = designation.trim();
+    if (normalizedDesignation.isEmpty ||
+        (poleCount != null && poleCount <= 0) ||
+        (ratedCurrentA != null && ratedCurrentA <= 0)) {
+      return false;
+    }
+    final bundle = circuitBundleForLoad(loadComponentId);
+    if (bundle == null) return false;
+    final route = _routeForId(bundle.cable.routeId);
+    final boardId = bundle.circuit.boardId;
+    if (route == null || boardId == null) return false;
+
+    final device = ProtectiveDeviceRef(
+      id: bundle.protectiveDevice?.id ?? 'protection-${bundle.circuit.id}',
+      boardId: boardId,
+      designation: normalizedDesignation,
+      poleCount: poleCount,
+      ratedCurrentA: ratedCurrentA,
+    );
+    final circuit = CircuitRef(
+      id: bundle.circuit.id,
+      name: bundle.circuit.name,
+      boardId: boardId,
+      protectiveDeviceId: device.id,
+    );
+    final replacement = CircuitCableBundle(
+      circuit: circuit,
+      cable: bundle.cable,
+      protectiveDevice: device,
+    );
+    final registry = CircuitCableRegistry()
+      ..registerBundle(
+        route: route,
+        circuit: circuit,
+        cable: bundle.cable,
+        protectiveDevice: device,
+      );
+    if (registry.bundleByRouteId(route.id) == null) return false;
+
+    final after = state.copyWith(
+      circuitBundles: [
+        for (final item in state.circuitBundles)
+          if (item.cable.routeId == route.id) replacement else item,
+      ],
+    );
+    history.execute(
+      _ReplaceEditorStateCommand(
+        before: state,
+        after: after,
+        label: 'Assign circuit protective device',
+      ),
+    );
+    notifyListeners();
+    return true;
+  }
+
   void setPlacementType(ElectricalComponentType? type) {
     placementType = type;
     notifyListeners();
