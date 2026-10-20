@@ -2,6 +2,12 @@ from pathlib import Path
 
 p = Path('test/f17_scene_accessibility_test.dart')
 text = p.read_text()
+old = r'''    final semantics = tester.ensureSemantics();
+    addTearDown(semantics.dispose);
+'''
+if old not in text:
+    raise SystemExit('F17 redundant semantics handle anchor not found')
+text = text.replace(old, '', 1)
 old = r'''    expect(
       find.bySemanticsLabel('${source.label}, электрический компонент'),
       findsOneWidget,
