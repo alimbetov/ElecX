@@ -70,21 +70,22 @@ final class ComponentTransformSession extends ChangeNotifier
   bool preview(SurfacePointMm position, {required bool isValid}) {
     final current = _preview;
     if (current == null || !active) return false;
+    final routesValid =
+        isValid && controller.p2.previewMoveSelectedComponent(position);
+    final previewValid =
+        isValid && routesValid && controller.p2.movePreviewValid;
     _preview = ComponentTransformPreview(
       componentId: current.componentId,
       surface: current.surface,
       originalPosition: current.originalPosition,
       position: position,
-      isValid: isValid,
+      isValid: previewValid,
     );
-    _phase = isValid
+    _phase = previewValid
         ? EditorEditSessionPhase.previewing
         : EditorEditSessionPhase.invalid;
-    if (isValid) {
-      controller.p2.previewMoveSelectedComponent(position);
-    }
     notifyListeners();
-    return isValid;
+    return previewValid;
   }
 
   bool nudge({
