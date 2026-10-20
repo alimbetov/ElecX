@@ -25,7 +25,9 @@ jobs:
           cache: true
       - run: flutter pub get
       - name: Apply F03 host geometry guards
-        run: python3 tool/apply_f03_host_geometry_once.py
+        run: |
+          python3 tool/apply_f03_host_geometry_once.py
+          python3 tool/fix_f03_guard_calls.py
       - name: Format
         run: dart format lib test
       - name: Verify format
@@ -39,6 +41,7 @@ jobs:
       - name: Remove one-shot staging
         run: |
           rm -f tool/apply_f03_host_geometry_once.py
+          rm -f tool/fix_f03_guard_calls.py
           rm -f .github/workflows/apply-f03-host-geometry-once.yml
       - name: Commit verified F03 guard
         run: |
