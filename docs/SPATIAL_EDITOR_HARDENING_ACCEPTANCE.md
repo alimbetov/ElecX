@@ -169,3 +169,9 @@ The hardening branch is not merge-ready unless all are true:
 5. No temporary one-shot workflow/helper remains.
 6. No UI path bypasses the canonical edit session for persistent component/cable geometry mutation.
 7. PR description explicitly distinguishes design-assist geometry from normative/photometric compliance.
+
+## 13. Final verification record
+
+The verified runtime parent is `23e903e0e960f04b6bf1c171a0a771d2ec41382d` (`feat(editor): summarize room circuit engineering state`). Its controlled gate passed formatting, analyzer, the full Flutter test suite, one-shot cleanup and production commit.
+
+This documentation-only commit exists to trigger a normal user-authored Flutter CI run on the same runtime tree. The branch may be marked `READY FOR MERGE` only after that final CI run succeeds and the repository remains free of temporary one-shot workflow/helper files.
