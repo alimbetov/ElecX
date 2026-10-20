@@ -118,8 +118,29 @@ text = replace_once(
 
 text = replace_once(
     text,
-    '      for (var edge = 1; edge < segment.points.length - 2; edge++) {\n',
-    '      for (var edge = 0; edge < segment.points.length - 1; edge++) {\n',
+    """      }
+    }
+  }
+
+  void _drawHostedSegmentsOnHost(""",
+    """      }
+      for (var edge = 0; edge < segment.points.length - 1; edge++) {
+        final a = projection.surfaceToViewport(segment.points[edge]);
+        final b = projection.surfaceToViewport(segment.points[edge + 1]);
+        final midpoint = Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
+        canvas.drawRect(
+          Rect.fromCenter(center: midpoint, width: 9, height: 9),
+          Paint()
+            ..style = PaintingStyle.fill
+            ..color = controller.cableUi.isSegmentLocked(selected.id, s)
+                ? scheme.outline
+                : scheme.tertiary,
+        );
+      }
+    }
+  }
+
+  void _drawHostedSegmentsOnHost(""",
     'segment handle visibility',
 )
 
