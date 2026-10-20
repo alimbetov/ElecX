@@ -54,3 +54,5 @@ jobs:
           fi
           git commit -m "fix(editor): validate electrical model on host geometry edits"
           git push origin HEAD:feat/spatial-editor-interaction-hardening
+
+# rerun: final analyzer lint fixed
