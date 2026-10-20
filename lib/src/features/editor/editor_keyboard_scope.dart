@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../domain/geometry.dart';
 import '../../domain/surfaces.dart';
+import '../../engine/editor_layers.dart';
 import 'cable_edit_access.dart';
 import 'component_transform_session.dart';
 import 'editor_controller.dart';
@@ -11,6 +12,7 @@ import 'editor_p2_session.dart';
 import 'editor_viewport_commands.dart';
 import 'engineering_placement_cursor_session.dart';
 import 'manual_cable_draft_persistence.dart';
+import 'route_selection_session.dart';
 
 /// Desktop-first keyboard layer for the spatial editor.
 ///
@@ -116,6 +118,53 @@ class EditorKeyboardScope extends StatelessWidget {
     }
   }
 
+  void _cycleSceneSelection({required bool reverse}) {
+    if (_persistentEditActive) return;
+    final surface = controller.activeSurface;
+    if (surface == null) return;
+    final items = <({String id, bool route})>[];
+    if (controller.p2.layers.isVisible(EditorLayerId.electrical)) {
+      for (final component in controller.p2.components) {
+        if (component.surface == surface) {
+          items.add((id: component.id, route: false));
+        }
+      }
+    }
+    if (controller.p2.layers.isVisible(EditorLayerId.cableRoutes)) {
+      for (final route in controller.p2.routes) {
+        if (route.segments.any((segment) => segment.surface == surface)) {
+          items.add((id: route.id, route: true));
+        }
+      }
+    }
+    if (items.isEmpty) return;
+    final selectedRouteId = controller.routeSelection.selectedRouteId;
+    final selectedComponentId = controller.p2.selection.primaryId;
+    var currentIndex = -1;
+    for (var index = 0; index < items.length; index++) {
+      final item = items[index];
+      final selected = item.route
+          ? item.id == selectedRouteId
+          : item.id == selectedComponentId;
+      if (selected) {
+        currentIndex = index;
+        break;
+      }
+    }
+    final nextIndex = currentIndex < 0
+        ? (reverse ? items.length - 1 : 0)
+        : (currentIndex + (reverse ? -1 : 1)) % items.length;
+    final normalizedIndex = nextIndex < 0 ? items.length - 1 : nextIndex;
+    final next = items[normalizedIndex];
+    if (next.route) {
+      controller.p2.clearSelection();
+      controller.routeSelection.select(next.id);
+    } else {
+      controller.routeSelection.clear();
+      controller.p2.select(next.id);
+    }
+  }
+
   void _undo() {
     if (_persistentEditActive) return;
     controller.p2.undo();
@@ -142,6 +191,10 @@ class EditorKeyboardScope extends StatelessWidget {
         const SingleActivator(LogicalKeyboardKey.keyC): () =>
             controller.setTool(EditorTool.cableRoute),
         const SingleActivator(LogicalKeyboardKey.escape): _cancelActiveEdit,
+        const SingleActivator(LogicalKeyboardKey.tab): () =>
+            _cycleSceneSelection(reverse: false),
+        const SingleActivator(LogicalKeyboardKey.tab, shift: true): () =>
+            _cycleSceneSelection(reverse: true),
         const SingleActivator(LogicalKeyboardKey.enter): _commitActiveEdit,
         const SingleActivator(LogicalKeyboardKey.numpadEnter):
             _commitActiveEdit,

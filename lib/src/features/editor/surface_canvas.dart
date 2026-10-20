@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 
 import '../../domain/boundary_editing.dart';
@@ -1701,6 +1702,84 @@ class _SurfacePainter extends CustomPainter {
   final int transformPreviewFingerprint;
   final int snapFingerprint;
   final int profileFingerprint;
+
+  @override
+  SemanticsBuilderCallback get semanticsBuilder => (Size size) {
+        final nodes = <CustomPainterSemantics>[];
+        final surface = controller.activeSurface;
+        if (surface == null) return nodes;
+        if (electricalVisible) {
+          for (final component in controller.p2.components) {
+            if (component.surface != surface) continue;
+            final center = projection.surfaceToViewport(component.position);
+            nodes.add(
+              CustomPainterSemantics(
+                key: ValueKey<String>('component-semantics-${component.id}'),
+                rect: Rect.fromCenter(center: center, width: 48, height: 48),
+                properties: SemanticsProperties(
+                  label: '${component.label}, электрический компонент',
+                  value:
+                      '${component.position.xMm} на ${component.position.yMm} мм',
+                  hint: 'Двойное касание выбирает компонент',
+                  textDirection: TextDirection.ltr,
+                  button: true,
+                  selected: controller.p2.selection.contains(component.id),
+                  onTap: () {
+                    controller.routeSelection.clear();
+                    controller.p2.select(component.id);
+                  },
+                ),
+              ),
+            );
+          }
+        }
+        if (cableRoutesVisible) {
+          for (final route in controller.p2.routes) {
+            final points = <Offset>[];
+            for (final segment in route.segments) {
+              if (segment.surface != surface) continue;
+              for (final point in segment.points) {
+                points.add(projection.surfaceToViewport(point));
+              }
+            }
+            if (points.isEmpty) continue;
+            var left = points.first.dx;
+            var right = points.first.dx;
+            var top = points.first.dy;
+            var bottom = points.first.dy;
+            for (final point in points.skip(1)) {
+              left = math.min(left, point.dx);
+              right = math.max(right, point.dx);
+              top = math.min(top, point.dy);
+              bottom = math.max(bottom, point.dy);
+            }
+            final raw = Rect.fromLTRB(left, top, right, bottom);
+            nodes.add(
+              CustomPainterSemantics(
+                key: ValueKey<String>('route-semantics-${route.id}'),
+                rect: Rect.fromCenter(
+                  center: raw.center,
+                  width: math.max(48, raw.width + 24),
+                  height: math.max(48, raw.height + 24),
+                ),
+                properties: SemanticsProperties(
+                  label: 'Кабельная трасса ${route.id}',
+                  value: route.medium.id,
+                  hint: 'Двойное касание выбирает трассу',
+                  textDirection: TextDirection.ltr,
+                  button: true,
+                  selected: selectedRouteId == route.id,
+                  onTap: () {
+                    controller.p2.clearSelection();
+                    controller.routeSelection.select(route.id);
+                  },
+                ),
+              ),
+            );
+          }
+        }
+        return nodes;
+      };
 
   @override
   void paint(Canvas canvas, Size size) {
