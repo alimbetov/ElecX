@@ -14,6 +14,7 @@ import 'editor_project_document.dart';
 import 'editor_project_recovery.dart';
 import 'project_persistence_metadata.dart';
 import 'project_save_diagnostics.dart';
+import 'room_circuit_overview.dart';
 import 'room_circuit_panel.dart';
 import 'editor_shell_state.dart';
 import 'editor_ui_tokens.dart';
@@ -676,6 +677,7 @@ class _UnifiedWorkspaceEditorScreenState
                       child: SafeArea(
                         child: Column(
                           children: [
+                            RoomCircuitOverviewPanel(controller: controller),
                             RoomCircuitPanel(controller: controller),
                             const Divider(height: 1),
                             Expanded(
@@ -1000,6 +1002,7 @@ class _CatalogPanel extends StatelessWidget {
             ),
           ),
           const Divider(height: 1),
+          RoomCircuitOverviewPanel(controller: controller),
           RoomCircuitPanel(controller: controller),
           const Divider(height: 1),
           Expanded(child: DeviceCatalogPanel(controller: controller)),
