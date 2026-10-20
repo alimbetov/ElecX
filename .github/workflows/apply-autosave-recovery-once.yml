@@ -36,6 +36,9 @@ jobs:
       - name: Fix diagnostics extension import
         run: python3 tool/fix_autosave_diagnostics_import.py
 
+      - name: Preserve persistence compatibility
+        run: python3 tool/fix_autosave_compatibility.py
+
       - name: Format
         run: dart format lib test
 
@@ -52,6 +55,7 @@ jobs:
         run: |
           rm -f tool/apply_autosave_recovery_once.py
           rm -f tool/fix_autosave_diagnostics_import.py
+          rm -f tool/fix_autosave_compatibility.py
           rm -f .github/workflows/apply-autosave-recovery-once.yml
 
       - name: Commit verified production changes
