@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../domain/cable_identity.dart';
+import '../../domain/circuit_cable_registry.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/electrical_routing.dart';
 import '../../domain/geometry.dart';
@@ -22,24 +24,28 @@ final class EditorP2State {
     this.routes = const [],
     this.selection = const SelectionState(),
     this.routeConstraints = const {},
+    this.circuitBundles = const [],
   });
 
   final List<ElectricalComponentPlacement> components;
   final List<ElectricalCableRoute> routes;
   final SelectionState selection;
   final Map<String, CableRouteConstraints> routeConstraints;
+  final List<CircuitCableBundle> circuitBundles;
 
   EditorP2State copyWith({
     List<ElectricalComponentPlacement>? components,
     List<ElectricalCableRoute>? routes,
     SelectionState? selection,
     Map<String, CableRouteConstraints>? routeConstraints,
+    List<CircuitCableBundle>? circuitBundles,
   }) =>
       EditorP2State(
         components: components ?? this.components,
         routes: routes ?? this.routes,
         selection: selection ?? this.selection,
         routeConstraints: routeConstraints ?? this.routeConstraints,
+        circuitBundles: circuitBundles ?? this.circuitBundles,
       );
 }
 
@@ -98,6 +104,20 @@ final class EditorP2Session extends ChangeNotifier {
 
   CableRouteConstraints routeConstraintsFor(String routeId) =>
       state.routeConstraints[routeId] ?? CableRouteConstraints.empty;
+
+  CircuitCableBundle? circuitBundleForRoute(String routeId) {
+    for (final bundle in state.circuitBundles) {
+      if (bundle.cable.routeId == routeId) return bundle;
+    }
+    return null;
+  }
+
+  CircuitCableBundle? circuitBundleForLoad(String componentId) {
+    for (final bundle in state.circuitBundles) {
+      if (bundle.cable.endB.componentId == componentId) return bundle;
+    }
+    return null;
+  }
 
   void setPlacementType(ElectricalComponentType? type) {
     placementType = type;
@@ -408,10 +428,38 @@ final class EditorP2Session extends ChangeNotifier {
         .where((component) => ids.contains(component.id))
         .toList(growable: false);
     if (deleted.isEmpty) return false;
-    history.execute(_DeleteComponentsCommand(deleted));
-    _replaceState(
-      history.state.copyWith(selection: const SelectionState()),
-      notify: false,
+
+    final removedRouteIds = <String>{
+      for (final route in routes)
+        if (ids.contains(route.source.componentId) ||
+            ids.contains(route.target.componentId))
+          route.id,
+    };
+    final nextConstraints = Map<String, CableRouteConstraints>.of(
+      state.routeConstraints,
+    )..removeWhere((routeId, _) => removedRouteIds.contains(routeId));
+    final after = state.copyWith(
+      components: [
+        for (final component in components)
+          if (!ids.contains(component.id)) component,
+      ],
+      routes: [
+        for (final route in routes)
+          if (!removedRouteIds.contains(route.id)) route,
+      ],
+      selection: const SelectionState(),
+      routeConstraints: Map.unmodifiable(nextConstraints),
+      circuitBundles: [
+        for (final bundle in state.circuitBundles)
+          if (!removedRouteIds.contains(bundle.cable.routeId)) bundle,
+      ],
+    );
+    history.execute(
+      _ReplaceEditorStateCommand(
+        before: state,
+        after: after,
+        label: 'Delete components with connected engineering routes',
+      ),
     );
     notifyListeners();
     return true;
@@ -441,6 +489,108 @@ final class EditorP2Session extends ChangeNotifier {
     );
   }
 
+  CircuitCableBundle? connectLoadToBoard({
+    required String loadComponentId,
+    required String boardComponentId,
+    EngineeringSpace? space,
+    String? cableType,
+  }) {
+    if (layers.isLocked(EditorLayerId.electrical) ||
+        layers.isLocked(EditorLayerId.cableRoutes)) {
+      return null;
+    }
+    if (circuitBundleForLoad(loadComponentId) != null) return null;
+
+    final board = _componentForId(state, boardComponentId);
+    final load = _componentForId(state, loadComponentId);
+    if (board == null ||
+        load == null ||
+        board.id == load.id ||
+        board.type != ElectricalComponentType.distributionBoard ||
+        board.surface.spaceId != load.surface.spaceId) {
+      return null;
+    }
+    final pair = _resolvePortPair(board, load);
+    if (pair == null || pair.sourceComponent.id != board.id) return null;
+
+    final segments = _buildSegmentsBetween(
+      sourceComponent: board,
+      targetComponent: load,
+      space: space,
+    );
+    if (segments == null) return null;
+
+    final routeId = _nextAvailableId(
+      prefix: 'route-',
+      initialSequence: _routeSequence,
+      existingIds: routes.map((item) => item.id).toSet(),
+    );
+    final route = ElectricalCableRoute(
+      id: routeId.$1,
+      source: ElectricalEndpointRef(
+        componentId: board.id,
+        portId: pair.sourcePort.id,
+      ),
+      target: ElectricalEndpointRef(
+        componentId: load.id,
+        portId: pair.targetPort.id,
+      ),
+      segments: segments,
+      cableType: cableType,
+    );
+    if (!ElectricalConnectivityValidator.routeIsConnected(
+          route: route,
+          components: components,
+        ) ||
+        !_routeGeometryIsValid(route)) {
+      return null;
+    }
+
+    final suffix = route.id.startsWith('route-')
+        ? route.id.substring('route-'.length)
+        : route.id;
+    final circuit = CircuitRef(
+      id: 'circuit-$suffix',
+      name: 'Группа · ${load.label}',
+      boardId: board.id,
+    );
+    final cable = CableIdentity(
+      id: 'cable-$suffix',
+      routeId: route.id,
+      circuitId: circuit.id,
+      designation: 'CAB-$suffix',
+      endA: CableTerminationRef(
+        componentId: route.source.componentId,
+        portId: route.source.portId,
+      ),
+      endB: CableTerminationRef(
+        componentId: route.target.componentId,
+        portId: route.target.portId,
+      ),
+      cableSpecId: cableType,
+    );
+    final bundle = CircuitCableBundle(circuit: circuit, cable: cable);
+    final registry = CircuitCableRegistry()
+      ..registerBundle(route: route, circuit: circuit, cable: cable);
+    if (registry.bundleByRouteId(route.id) == null) return null;
+
+    final after = state.copyWith(
+      routes: List.unmodifiable([...routes, route]),
+      circuitBundles: List.unmodifiable([...state.circuitBundles, bundle]),
+      selection: SelectionState(ids: {load.id}, primaryId: load.id),
+    );
+    _routeSequence = routeId.$2;
+    history.execute(
+      _ReplaceEditorStateCommand(
+        before: state,
+        after: after,
+        label: 'Connect load to distribution board',
+      ),
+    );
+    notifyListeners();
+    return bundle;
+  }
+
   bool autoRouteSelectedPair({EngineeringSpace? space, String? cableType}) {
     final pair = selectedComponents;
     if (pair.length != 2) return false;
@@ -448,95 +598,82 @@ final class EditorP2Session extends ChangeNotifier {
     final reverse = forward == null ? _resolvePortPair(pair[1], pair[0]) : null;
     final portPair = forward ?? reverse;
     if (portPair == null) return false;
-    final sourceComponent = portPair.sourceComponent;
-    final targetComponent = portPair.targetComponent;
-    final sourcePort = portPair.sourcePort;
-    final targetPort = portPair.targetPort;
+    final segments = _buildSegmentsBetween(
+      sourceComponent: portPair.sourceComponent,
+      targetComponent: portPair.targetComponent,
+      space: space,
+    );
+    if (segments == null) return false;
+    return _addRouteSegments(
+      source: ElectricalEndpointRef(
+        componentId: portPair.sourceComponent.id,
+        portId: portPair.sourcePort.id,
+      ),
+      target: ElectricalEndpointRef(
+        componentId: portPair.targetComponent.id,
+        portId: portPair.targetPort.id,
+      ),
+      segments: segments,
+      cableType: cableType,
+    );
+  }
 
-    late final RoutingGraph graph;
-    late final String startNodeId;
-    late final String endNodeId;
+  List<ElectricalRouteSegment>? _buildSegmentsBetween({
+    required ElectricalComponentPlacement sourceComponent,
+    required ElectricalComponentPlacement targetComponent,
+    EngineeringSpace? space,
+  }) {
     if (sourceComponent.surface == targetComponent.surface) {
       final surface = sourceComponent.surface;
       final context = _routeContextResolver?.call(surface);
       if (context != null) {
-        final candidates = NormativeRouteEngine.buildCandidates(
+        for (final candidate in NormativeRouteEngine.buildCandidates(
           source: sourceComponent.position,
           target: targetComponent.position,
           context: context,
-        );
-        RouteCandidate? best;
-        for (final candidate in candidates) {
+        )) {
           if (candidate.validation.isValid) {
-            best = candidate;
-            break;
+            return [
+              ElectricalRouteSegment(
+                  surface: surface, points: candidate.points),
+            ];
           }
         }
-        if (best == null) return false;
-        return _addRouteSegments(
-          source: ElectricalEndpointRef(
-            componentId: sourceComponent.id,
-            portId: sourcePort.id,
-          ),
-          target: ElectricalEndpointRef(
-            componentId: targetComponent.id,
-            portId: targetPort.id,
-          ),
-          segments: [
-            ElectricalRouteSegment(surface: surface, points: best.points),
-          ],
-          cableType: cableType,
-        );
+        return null;
       }
-
-      // Context-free sessions retain the deterministic two-elbow fallback used
-      // by low-level engine tests. Production EditorController sessions always
-      // provide routeContextResolver and therefore use the guarded router above.
       final a = sourceComponent.position;
       final d = targetComponent.position;
       final elbowX = SurfacePointMm(d.xMm, a.yMm);
-      final elbowY = SurfacePointMm(a.xMm, d.yMm);
-      graph = RoutingGraph(
-        nodes: {
-          'a': RouteNode(id: 'a', surface: surface, point: a),
-          'bx': RouteNode(id: 'bx', surface: surface, point: elbowX),
-          'by': RouteNode(id: 'by', surface: surface, point: elbowY),
-          'd': RouteNode(id: 'd', surface: surface, point: d),
-        },
-        edges: [
-          RouteEdge(from: 'a', to: 'bx', cost: _axisDistance(a, elbowX)),
-          RouteEdge(from: 'bx', to: 'd', cost: _axisDistance(elbowX, d)),
-          RouteEdge(from: 'a', to: 'by', cost: _axisDistance(a, elbowY)),
-          RouteEdge(from: 'by', to: 'd', cost: _axisDistance(elbowY, d)),
-        ],
-      );
-      startNodeId = 'a';
-      endNodeId = 'd';
-    } else {
-      if (space == null) return false;
-      graph = AutoRouteGraphBuilder.build(
-        space: space,
-        source: sourceComponent,
-        target: targetComponent,
-      );
-      startNodeId = 'source';
-      endNodeId = 'target';
+      return [
+        ElectricalRouteSegment(
+          surface: surface,
+          points: _compactOrthogonal([a, elbowX, d]),
+        ),
+      ];
     }
-
-    return addAutoRoute(
-      graph: graph,
-      startNodeId: startNodeId,
-      endNodeId: endNodeId,
-      source: ElectricalEndpointRef(
-        componentId: sourceComponent.id,
-        portId: sourcePort.id,
-      ),
-      target: ElectricalEndpointRef(
-        componentId: targetComponent.id,
-        portId: targetPort.id,
-      ),
-      cableType: cableType,
+    if (space == null) return null;
+    final graph = AutoRouteGraphBuilder.build(
+      space: space,
+      source: sourceComponent,
+      target: targetComponent,
     );
+    final solution = RouteEngine.solve(
+      graph: graph,
+      startNodeId: 'source',
+      endNodeId: 'target',
+      preference: routePreference,
+    );
+    return solution == null ? null : RouteEngine.toSegments(graph, solution);
+  }
+
+  static List<SurfacePointMm> _compactOrthogonal(
+    List<SurfacePointMm> points,
+  ) {
+    final result = <SurfacePointMm>[];
+    for (final point in points) {
+      if (result.isEmpty || result.last != point) result.add(point);
+    }
+    return List.unmodifiable(result);
   }
 
   bool _addRouteSegments({
@@ -924,9 +1061,6 @@ final class EditorP2Session extends ChangeNotifier {
       }
     }
   }
-
-  static double _axisDistance(SurfacePointMm a, SurfacePointMm b) =>
-      (a.xMm - b.xMm).abs().toDouble() + (a.yMm - b.yMm).abs().toDouble();
 }
 
 final class _ReplaceEditorStateCommand implements EditorCommand<EditorP2State> {
@@ -1112,28 +1246,6 @@ final class _ReplaceComponentCommand implements EditorCommand<EditorP2State> {
   @override
   EditorP2State undo(EditorP2State state) =>
       EditorP2Session._replaceComponent(state, before);
-}
-
-final class _DeleteComponentsCommand implements EditorCommand<EditorP2State> {
-  const _DeleteComponentsCommand(this.deleted);
-  final List<ElectricalComponentPlacement> deleted;
-
-  @override
-  String get label => 'Delete components';
-
-  @override
-  EditorP2State execute(EditorP2State state) {
-    final ids = deleted.map((component) => component.id).toSet();
-    return state.copyWith(
-      components: state.components
-          .where((component) => !ids.contains(component.id))
-          .toList(growable: false),
-    );
-  }
-
-  @override
-  EditorP2State undo(EditorP2State state) =>
-      state.copyWith(components: [...state.components, ...deleted]);
 }
 
 final class _AddRouteCommand implements EditorCommand<EditorP2State> {

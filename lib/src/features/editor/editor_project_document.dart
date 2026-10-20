@@ -5,6 +5,8 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 import '../../domain/building_composition.dart';
+import '../../domain/cable_identity.dart';
+import '../../domain/circuit_cable_registry.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/electrical_routing.dart';
 import '../../domain/geometry.dart';
@@ -813,6 +815,9 @@ Map<String, Object?> _p2ToJson(EditorP2State value) => {
         for (final entry in value.routeConstraints.entries)
           entry.key: entry.value.toJson(),
       },
+      'circuitBundles': [
+        for (final bundle in value.circuitBundles) _circuitBundleToJson(bundle),
+      ],
     };
 
 EditorP2State _p2FromJson(Map<String, Object?> json) {
@@ -840,8 +845,98 @@ EditorP2State _p2FromJson(Map<String, Object?> json) {
           _map(entry.value, 'routeConstraints.${entry.key}'),
         ),
     }),
+    circuitBundles: [
+      for (final item in _list(json['circuitBundles'], 'p2.circuitBundles'))
+        _circuitBundleFromJson(_map(item, 'circuitBundle')),
+    ],
   );
 }
+
+Map<String, Object?> _circuitBundleToJson(CircuitCableBundle value) => {
+      'circuit': {
+        'id': value.circuit.id,
+        'name': value.circuit.name,
+        'boardId': value.circuit.boardId,
+        'protectiveDeviceId': value.circuit.protectiveDeviceId,
+      },
+      'cable': {
+        'id': value.cable.id,
+        'routeId': value.cable.routeId,
+        'circuitId': value.cable.circuitId,
+        'designation': value.cable.designation,
+        'cableSpecId': value.cable.cableSpecId,
+        'endA': _terminationToJson(value.cable.endA),
+        'endB': _terminationToJson(value.cable.endB),
+      },
+      'protectiveDevice': value.protectiveDevice == null
+          ? null
+          : {
+              'id': value.protectiveDevice!.id,
+              'boardId': value.protectiveDevice!.boardId,
+              'designation': value.protectiveDevice!.designation,
+              'poleCount': value.protectiveDevice!.poleCount,
+              'ratedCurrentA': value.protectiveDevice!.ratedCurrentA,
+            },
+    };
+
+CircuitCableBundle _circuitBundleFromJson(Map<String, Object?> json) {
+  final circuitJson = _map(json['circuit'], 'circuitBundle.circuit');
+  final cableJson = _map(json['cable'], 'circuitBundle.cable');
+  final deviceRaw = json['protectiveDevice'];
+  final circuit = CircuitRef(
+    id: _string(circuitJson['id'], 'circuit.id'),
+    name: _string(circuitJson['name'], 'circuit.name'),
+    boardId: _nullableString(circuitJson['boardId']),
+    protectiveDeviceId: _nullableString(circuitJson['protectiveDeviceId']),
+  );
+  final cable = CableIdentity(
+    id: _string(cableJson['id'], 'cable.id'),
+    routeId: _string(cableJson['routeId'], 'cable.routeId'),
+    circuitId: _string(cableJson['circuitId'], 'cable.circuitId'),
+    designation: _string(cableJson['designation'], 'cable.designation'),
+    cableSpecId: _nullableString(cableJson['cableSpecId']),
+    endA: _terminationFromJson(_map(cableJson['endA'], 'cable.endA')),
+    endB: _terminationFromJson(_map(cableJson['endB'], 'cable.endB')),
+  );
+  final protectiveDevice = deviceRaw == null
+      ? null
+      : () {
+          final device = _map(deviceRaw, 'circuitBundle.protectiveDevice');
+          return ProtectiveDeviceRef(
+            id: _string(device['id'], 'protectiveDevice.id'),
+            boardId: _string(device['boardId'], 'protectiveDevice.boardId'),
+            designation:
+                _string(device['designation'], 'protectiveDevice.designation'),
+            poleCount: device['poleCount'] == null
+                ? null
+                : _int(device['poleCount'], 'protectiveDevice.poleCount'),
+            ratedCurrentA: device['ratedCurrentA'] == null
+                ? null
+                : _double(
+                    device['ratedCurrentA'],
+                    'protectiveDevice.ratedCurrentA',
+                  ),
+          );
+        }();
+  return CircuitCableBundle(
+    circuit: circuit,
+    cable: cable,
+    protectiveDevice: protectiveDevice,
+  );
+}
+
+Map<String, Object?> _terminationToJson(CableTerminationRef value) => {
+      'componentId': value.componentId,
+      'portId': value.portId,
+      'terminalId': value.terminalId,
+    };
+
+CableTerminationRef _terminationFromJson(Map<String, Object?> json) =>
+    CableTerminationRef(
+      componentId: _string(json['componentId'], 'termination.componentId'),
+      portId: _string(json['portId'], 'termination.portId'),
+      terminalId: _nullableString(json['terminalId']),
+    );
 
 Map<String, Object?> _componentToJson(ElectricalComponentPlacement value) => {
       'id': value.id,

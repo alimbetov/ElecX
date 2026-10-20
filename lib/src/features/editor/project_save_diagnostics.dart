@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import '../../domain/circuit_cable_registry.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/electrical_routing.dart';
 import 'editor_building_workspace.dart';
@@ -12,6 +13,8 @@ enum EditorProjectSaveIssueCode {
   missingPort,
   incompatiblePorts,
   disconnectedRoute,
+  missingCircuitRoute,
+  invalidCircuitAssignment,
 }
 
 final class EditorProjectSaveIssue {
@@ -72,6 +75,7 @@ abstract final class EditorProjectSaveDiagnostics {
     final components = {
       for (final component in editor.p2.components) component.id: component,
     };
+    final routes = {for (final route in editor.p2.routes) route.id: route};
     for (final route in editor.p2.routes) {
       final sourceComponent = components[route.source.componentId];
       if (sourceComponent == null) {
@@ -155,6 +159,40 @@ abstract final class EditorProjectSaveDiagnostics {
             title: 'У кабеля отсутствует геометрия трассы',
             detail:
                 'Трасса ${route.id} подключена семантически, но не содержит ни одного физического сегмента. Постройте трассу заново.',
+            routeId: route.id,
+          ),
+        );
+      }
+    }
+    final registry = CircuitCableRegistry();
+    for (final bundle in editor.p2.state.circuitBundles) {
+      final route = routes[bundle.cable.routeId];
+      if (route == null) {
+        issues.add(
+          EditorProjectSaveIssue(
+            code: EditorProjectSaveIssueCode.missingCircuitRoute,
+            title: 'Инженерная группа потеряла кабельную трассу',
+            detail:
+                'Группа ${bundle.circuit.id} ссылается на отсутствующую трассу ${bundle.cable.routeId}. Переподключите нагрузку к щиту.',
+            routeId: bundle.cable.routeId,
+          ),
+        );
+        continue;
+      }
+      try {
+        registry.registerBundle(
+          route: route,
+          circuit: bundle.circuit,
+          cable: bundle.cable,
+          protectiveDevice: bundle.protectiveDevice,
+        );
+      } catch (error) {
+        issues.add(
+          EditorProjectSaveIssue(
+            code: EditorProjectSaveIssueCode.invalidCircuitAssignment,
+            title: 'Нарушена целостность электрической группы',
+            detail:
+                'Группа ${bundle.circuit.id}: $error Исправьте подключение нагрузки к щиту перед сохранением.',
             routeId: route.id,
           ),
         );

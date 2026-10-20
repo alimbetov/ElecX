@@ -204,7 +204,7 @@ void main() {
     expect(first.updatedAt, now);
   });
 
-  test('schema v1 migrates to v2 metadata without losing project identity', () {
+  test('schema v1 migrates through v3 without losing project identity', () {
     final editor = EditorController.demo();
     final workspace = EditorBuildingWorkspace.demo(editor);
     addTearDown(() {
@@ -226,7 +226,7 @@ void main() {
       legacyTimestamp: migratedAt,
     );
 
-    expect(decoded.schemaVersion, 2);
+    expect(decoded.schemaVersion, 3);
     expect(decoded.projectId, metadata['projectId']);
     expect(decoded.projectName, metadata['projectName']);
     expect(decoded.createdAt, migratedAt);

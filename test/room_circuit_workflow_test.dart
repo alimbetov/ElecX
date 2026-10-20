@@ -1,0 +1,191 @@
+import 'package:elecx/src/domain/electrical_placement.dart';
+import 'package:elecx/src/domain/surfaces.dart';
+import 'package:elecx/src/features/editor/editor_building_workspace.dart';
+import 'package:elecx/src/features/editor/editor_controller.dart';
+import 'package:elecx/src/features/editor/editor_p2_session.dart';
+import 'package:elecx/src/features/editor/editor_project_document.dart';
+import 'package:elecx/src/features/editor/room_circuit_panel.dart';
+import 'package:elecx/src/engine/selection_engine.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  test('selected load connects to board as one engineering transaction', () {
+    final editor = EditorController.demo();
+    final workspace = EditorBuildingWorkspace.demo(editor);
+    addTearDown(() {
+      editor.disposeP2State();
+      workspace.dispose();
+      editor.dispose();
+    });
+    final surface = RoomSurfaceRef.wall(editor.selectedSpace!.id, 1);
+    final board = editor.p2.placeComponent(
+      type: ElectricalComponentType.distributionBoard,
+      surface: surface,
+      position: const SurfacePointMm(300, 2200),
+    );
+    final load = editor.p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: surface,
+      position: const SurfacePointMm(1400, 2200),
+    );
+    final depthBefore = editor.p2.history.undoDepth;
+
+    final bundle = editor.p2.connectLoadToBoard(
+      loadComponentId: load.id,
+      boardComponentId: board.id,
+      space: editor.selectedSpace,
+    );
+
+    expect(bundle, isNotNull);
+    expect(editor.p2.routes, hasLength(1));
+    expect(editor.p2.state.circuitBundles, hasLength(1));
+    expect(bundle!.circuit.boardId, board.id);
+    expect(bundle.cable.endB.componentId, load.id);
+    expect(bundle.protectiveDevice, isNull);
+    expect(editor.p2.history.undoDepth, depthBefore + 1);
+
+    editor.p2.undo();
+    expect(editor.p2.routes, isEmpty);
+    expect(editor.p2.state.circuitBundles, isEmpty);
+    editor.p2.redo();
+    expect(editor.p2.routes, hasLength(1));
+    expect(editor.p2.state.circuitBundles, hasLength(1));
+  });
+
+  test('circuit bundle survives canonical save and reopen', () {
+    final editor = EditorController.demo();
+    final workspace = EditorBuildingWorkspace.demo(editor);
+    addTearDown(() {
+      editor.disposeP2State();
+      workspace.dispose();
+      editor.dispose();
+    });
+    final surface = RoomSurfaceRef.wall(editor.selectedSpace!.id, 1);
+    final board = editor.p2.placeComponent(
+      type: ElectricalComponentType.distributionBoard,
+      surface: surface,
+      position: const SurfacePointMm(300, 2200),
+    );
+    final load = editor.p2.placeComponent(
+      type: ElectricalComponentType.lightingPoint,
+      surface: surface,
+      position: const SurfacePointMm(1400, 2200),
+    );
+    expect(
+      editor.p2.connectLoadToBoard(
+        loadComponentId: load.id,
+        boardComponentId: board.id,
+        space: editor.selectedSpace,
+      ),
+      isNotNull,
+    );
+
+    final encoded = EditorProjectDocument.capture(workspace).toJson();
+    final decoded = EditorProjectDocument.fromJson(encoded);
+    final restored = decoded.restore();
+    addTearDown(() {
+      restored.editor.disposeP2State();
+      restored.workspace.dispose();
+      restored.editor.dispose();
+    });
+    expect(restored.editor.p2.routes, hasLength(1));
+    expect(restored.editor.p2.state.circuitBundles, hasLength(1));
+    expect(restored.editor.p2.circuitBundleForLoad(load.id), isNotNull);
+  });
+
+  test('deleting a connected load removes route and circuit atomically', () {
+    final editor = EditorController.demo();
+    final workspace = EditorBuildingWorkspace.demo(editor);
+    addTearDown(() {
+      editor.disposeP2State();
+      workspace.dispose();
+      editor.dispose();
+    });
+    final surface = RoomSurfaceRef.wall(editor.selectedSpace!.id, 1);
+    final board = editor.p2.placeComponent(
+      type: ElectricalComponentType.distributionBoard,
+      surface: surface,
+      position: const SurfacePointMm(300, 2200),
+    );
+    final load = editor.p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: surface,
+      position: const SurfacePointMm(1400, 2200),
+    );
+    expect(
+      editor.p2.connectLoadToBoard(
+        loadComponentId: load.id,
+        boardComponentId: board.id,
+        space: editor.selectedSpace,
+      ),
+      isNotNull,
+    );
+    editor.p2.select(load.id, mode: SelectionMode.replace);
+    expect(editor.p2.deleteSelection(), isTrue);
+    expect(editor.p2.routes, isEmpty);
+    expect(editor.p2.state.circuitBundles, isEmpty);
+    expect(editor.p2.components.any((item) => item.id == load.id), isFalse);
+
+    editor.p2.undo();
+    expect(editor.p2.routes, hasLength(1));
+    expect(editor.p2.state.circuitBundles, hasLength(1));
+    expect(editor.p2.components.any((item) => item.id == load.id), isTrue);
+  });
+
+  test('schema v2 migrates with empty circuit bundle list', () {
+    final editor = EditorController.demo();
+    final workspace = EditorBuildingWorkspace.demo(editor);
+    addTearDown(() {
+      editor.disposeP2State();
+      workspace.dispose();
+      editor.dispose();
+    });
+    final current = EditorProjectDocument.capture(workspace).toJson();
+    final legacyP2 = Map<String, Object?>.from(current['p2']! as Map)
+      ..remove('circuitBundles');
+    final legacy = Map<String, Object?>.from(current)
+      ..['schemaVersion'] = 2
+      ..['p2'] = legacyP2;
+
+    final decoded = EditorProjectDocument.fromJson(legacy);
+    expect(decoded.schemaVersion, 3);
+    expect(decoded.p2State.circuitBundles, isEmpty);
+  });
+
+  testWidgets(
+      'circuit panel connects selected load and exposes incomplete protection',
+      (tester) async {
+    final editor = EditorController.demo();
+    addTearDown(() {
+      editor.disposeP2State();
+      editor.dispose();
+    });
+    final surface = RoomSurfaceRef.wall(editor.selectedSpace!.id, 1);
+    final board = editor.p2.placeComponent(
+      type: ElectricalComponentType.distributionBoard,
+      surface: surface,
+      position: const SurfacePointMm(300, 2200),
+    );
+    final load = editor.p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: surface,
+      position: const SurfacePointMm(1400, 2200),
+    );
+    editor.p2.select(load.id);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: RoomCircuitPanel(controller: editor)),
+      ),
+    );
+    await tester.pump();
+    expect(find.byKey(ValueKey('connect-load-to-board-${board.id}')),
+        findsOneWidget);
+
+    await tester.tap(find.byKey(ValueKey('connect-load-to-board-${board.id}')));
+    await tester.pump();
+    expect(editor.p2.state.circuitBundles, hasLength(1));
+    expect(find.textContaining('Защита не назначена'), findsOneWidget);
+  });
+}
