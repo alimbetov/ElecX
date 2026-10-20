@@ -57,6 +57,55 @@ final class EditorController extends ChangeNotifier {
     ];
   }
 
+  EditorController.restored({
+    required this.level,
+    required List<ArchitecturalOpening> openings,
+  }) {
+    this.openings = List<ArchitecturalOpening>.of(openings);
+  }
+
+  void restoreResumeState({
+    required String? selectedSpaceId,
+    required String? selectedOpeningId,
+    required RoomSurfaceRef? activeSurface,
+    required EditorViewMode viewMode,
+    required bool snapEnabled,
+    required bool dimensionsVisible,
+    required int floorGridMm,
+    required double zoom,
+    required int roomSequence,
+    required int openingSequence,
+  }) {
+    if (selectedSpaceId != null &&
+        !level.spaces.any((space) => space.id == selectedSpaceId)) {
+      throw ArgumentError('Restored selected space does not exist.');
+    }
+    if (selectedOpeningId != null &&
+        !openings.any((opening) => opening.id == selectedOpeningId)) {
+      throw ArgumentError('Restored selected opening does not exist.');
+    }
+    if (activeSurface != null &&
+        !level.spaces.any((space) => space.id == activeSurface.spaceId)) {
+      throw ArgumentError('Restored active surface references unknown space.');
+    }
+    if (floorGridMm <= 0 || roomSequence <= 0 || openingSequence <= 0) {
+      throw ArgumentError('Restored editor counters/grid are invalid.');
+    }
+    this.selectedSpaceId = selectedSpaceId;
+    this.selectedOpeningId = selectedOpeningId;
+    this.activeSurface = activeSurface;
+    this.viewMode = viewMode;
+    tool = EditorTool.select;
+    draftStart = null;
+    routeSegments.clear();
+    this.snapEnabled = snapEnabled;
+    this.dimensionsVisible = dimensionsVisible;
+    this.floorGridMm = floorGridMm;
+    this.zoom = zoom.clamp(0.35, 6.0).toDouble();
+    this.roomSequence = roomSequence;
+    this.openingSequence = openingSequence;
+  }
+
   static EngineeringSpace _room(
     String id,
     String name,

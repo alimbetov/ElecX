@@ -1062,6 +1062,20 @@ extension EditorP2SessionAccess on EditorController {
   EditorP2Session get p2 => _p2Sessions[this] ??= EditorP2Session(
         routeContextResolver: routeNormativeContextFor,
       );
+
+  void restoreP2State(EditorP2State state) {
+    final previous = _p2Sessions[this];
+    previous?.dispose();
+    _p2Sessions[this] = EditorP2Session(
+      initialState: state,
+      routeContextResolver: routeNormativeContextFor,
+    );
+  }
+
+  void disposeP2State() {
+    _p2Sessions[this]?.dispose();
+    _p2Sessions[this] = null;
+  }
 }
 
 final class _AddComponentCommand implements EditorCommand<EditorP2State> {
