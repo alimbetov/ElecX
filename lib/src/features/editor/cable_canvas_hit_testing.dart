@@ -150,10 +150,8 @@ abstract final class CableCanvasHitTesting {
     var bestDistance = double.infinity;
     for (var s = 0; s < route.segments.length; s++) {
       final segment = route.segments[s];
-      if (segment.surface != surface || segment.points.length < 4) continue;
-      // Endpoint-adjacent edges remain owned by endpoint transforms. Only
-      // interior runs are translated as a whole segment.
-      for (var e = 1; e < segment.points.length - 2; e++) {
+      if (segment.surface != surface || segment.points.length < 2) continue;
+      for (var e = 0; e < segment.points.length - 1; e++) {
         final a = segment.points[e];
         final b = segment.points[e + 1];
         final nearest = _nearestPoint(point, a, b);
@@ -200,7 +198,7 @@ abstract final class CableCanvasHitTesting {
     required int edgeIndex,
     required SurfacePointMm target,
   }) {
-    if (edgeIndex <= 0 || edgeIndex >= points.length - 2) return points;
+    if (edgeIndex < 0 || edgeIndex >= points.length - 1) return points;
     final a = points[edgeIndex];
     final b = points[edgeIndex + 1];
     final horizontal = a.yMm == b.yMm;
@@ -213,15 +211,18 @@ abstract final class CableCanvasHitTesting {
     final movedB = horizontal
         ? SurfacePointMm(b.xMm, target.yMm)
         : SurfacePointMm(target.xMm, b.yMm);
-    return _compactOrthogonal([
-      for (var i = 0; i < points.length; i++)
-        if (i == edgeIndex)
-          movedA
-        else if (i == edgeIndex + 1)
-          movedB
-        else
-          points[i],
-    ]);
+    final firstEdge = edgeIndex == 0;
+    final lastEdge = edgeIndex == points.length - 2;
+
+    final result = <SurfacePointMm>[
+      ...points.take(edgeIndex),
+      if (firstEdge) a,
+      movedA,
+      movedB,
+      if (lastEdge) b,
+      ...points.skip(edgeIndex + 2),
+    ];
+    return _compactOrthogonal(result);
   }
 
   static List<SurfacePointMm> _compactOrthogonal(
