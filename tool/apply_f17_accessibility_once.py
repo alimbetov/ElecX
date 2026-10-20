@@ -84,6 +84,11 @@ replace_once(
 # exposing engineering objects to screen readers.
 replace_once(
     'lib/src/features/editor/surface_canvas.dart',
+    "import 'package:flutter/material.dart';\n",
+    "import 'package:flutter/material.dart';\nimport 'package:flutter/semantics.dart';\n",
+)
+replace_once(
+    'lib/src/features/editor/surface_canvas.dart',
     "  @override\n  void paint(Canvas canvas, Size size) {\n",
     r'''  @override
   SemanticsBuilderCallback get semanticsBuilder => (Size size) {
