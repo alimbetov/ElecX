@@ -24,7 +24,9 @@ jobs:
           cache: true
       - run: flutter pub get
       - name: Apply F17 accessibility patch
-        run: python3 tool/apply_f17_accessibility_once.py
+        run: |
+          python3 tool/apply_f17_accessibility_once.py
+          python3 tool/apply_f17_test_oracle.py
       - name: Format
         run: dart format lib test
       - name: Verify format
@@ -37,6 +39,7 @@ jobs:
         run: |
           git rm .github/workflows/apply-f17-accessibility-once.yml
           git rm tool/apply_f17_accessibility_once.py
+          git rm tool/apply_f17_test_oracle.py
       - name: Commit verified accessibility patch
         run: |
           git config user.name 'github-actions[bot]'
@@ -45,4 +48,4 @@ jobs:
           git commit -m 'fix(editor): expose accessible scene traversal'
           git push origin HEAD:feat/spatial-editor-interaction-hardening
 
-# rerun after satisfying curly-braces style gate
+# rerun with direct SemanticsNode tree assertion for CustomPainter semantics
