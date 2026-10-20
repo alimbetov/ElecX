@@ -1,0 +1,35 @@
+name: Format runtime tests once
+
+on:
+  push:
+    branches:
+      - feat/spatial-editor-interaction-hardening
+
+permissions:
+  contents: write
+
+jobs:
+  format-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/spatial-editor-interaction-hardening
+          fetch-depth: 1
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - run: dart format test/surface_canvas_interaction_test.dart
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze
+      - run: flutter test
+      - name: Remove one-shot workflow
+        run: rm .github/workflows/format-runtime-tests-once.yml
+      - name: Commit verified formatting
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'style: normalize runtime interaction tests'
+          git push origin HEAD:feat/spatial-editor-interaction-hardening
