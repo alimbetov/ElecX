@@ -39,6 +39,9 @@ jobs:
       - name: Fix cable sizing analyzer contract
         run: python3 tool/fix_cable_sizing_gate.py
 
+      - name: Align schema migration regression
+        run: python3 tool/fix_cable_sizing_schema_test.py
+
       - name: Format
         run: dart format lib test
 
@@ -56,6 +59,7 @@ jobs:
           rm -f tool/apply_cable_sizing_evidence_once.py
           rm -f tool/fix_cable_sizing_generator.py
           rm -f tool/fix_cable_sizing_gate.py
+          rm -f tool/fix_cable_sizing_schema_test.py
           rm -f .github/workflows/apply-cable-sizing-evidence-once.yml
 
       - name: Commit verified production changes
