@@ -1,5 +1,6 @@
 import 'package:elecx/src/domain/electrical_placement.dart';
 import 'package:elecx/src/domain/surfaces.dart';
+import 'package:elecx/src/engine/selection_engine.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
 import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:elecx/src/features/editor/route_selection_session.dart';
@@ -101,7 +102,11 @@ void main() {
     final start = origin + viewportPoint(component.position);
     final moved = origin + viewportPoint(const SurfacePointMm(2500, 1500));
 
-    final first = await tester.startGesture(start, pointer: 1, kind: PointerDeviceKind.touch);
+    final first = await tester.startGesture(
+      start,
+      pointer: 1,
+      kind: PointerDeviceKind.touch,
+    );
     await first.moveTo(moved);
     await tester.pump();
     final second = await tester.startGesture(
