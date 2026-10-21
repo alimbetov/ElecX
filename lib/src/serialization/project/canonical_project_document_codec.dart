@@ -69,8 +69,10 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
         sites[id] = ProjectSiteEntity(
           id: id,
           name: _string(json['name'], 'site.name'),
-          buildingIds: _stringList(json['buildingIds'], 'site.buildingIds')
-              .map(BuildingId.new),
+          buildingIds: _uniqueStringList(
+            json['buildingIds'],
+            'site.buildingIds',
+          ).map(BuildingId.new),
         );
       }
 
@@ -86,8 +88,10 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
           siteId: SiteId(_string(json['siteId'], 'building.siteId')),
           name: _string(json['name'], 'building.name'),
           displayOrder: _int(json['displayOrder'], 'building.displayOrder'),
-          levelIds: _stringList(json['levelIds'], 'building.levelIds')
-              .map(LevelId.new),
+          levelIds: _uniqueStringList(
+            json['levelIds'],
+            'building.levelIds',
+          ).map(LevelId.new),
         );
       }
 
@@ -107,9 +111,14 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
           levelNumber: _int(json['levelNumber'], 'level.levelNumber'),
           displayOrder: _int(json['displayOrder'], 'level.displayOrder'),
           elevationMm: _int(json['elevationMm'], 'level.elevationMm'),
-          zoneIds: _stringList(json['zoneIds'], 'level.zoneIds').map(ZoneId.new),
-          spaceIds:
-              _stringList(json['spaceIds'], 'level.spaceIds').map(SpaceId.new),
+          zoneIds: _uniqueStringList(
+            json['zoneIds'],
+            'level.zoneIds',
+          ).map(ZoneId.new),
+          spaceIds: _uniqueStringList(
+            json['spaceIds'],
+            'level.spaceIds',
+          ).map(SpaceId.new),
         );
       }
 
@@ -124,8 +133,10 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
           id: id,
           levelId: LevelId(_string(json['levelId'], 'zone.levelId')),
           name: _string(json['name'], 'zone.name'),
-          spaceIds:
-              _stringList(json['spaceIds'], 'zone.spaceIds').map(SpaceId.new),
+          spaceIds: _uniqueStringList(
+            json['spaceIds'],
+            'zone.spaceIds',
+          ).map(SpaceId.new),
         );
       }
 
@@ -272,9 +283,18 @@ List<Object?> _list(Object? value, String field) {
   return value.cast<Object?>();
 }
 
-List<String> _stringList(Object? value, String field) => <String>[
-      for (final item in _list(value, field)) _string(item, field),
-    ];
+List<String> _uniqueStringList(Object? value, String field) {
+  final result = <String>[];
+  final seen = <String>{};
+  for (final item in _list(value, field)) {
+    final id = _string(item, field);
+    if (!seen.add(id)) {
+      throw FormatException('$field contains duplicate id $id.');
+    }
+    result.add(id);
+  }
+  return result;
+}
 
 String _string(Object? value, String field) {
   if (value is! String || value.trim().isEmpty) {
