@@ -1003,8 +1003,7 @@ class _UnifiedWorkspaceEditorScreenState
                               _canEditProjectNorth ? _editProjectNorth : null,
                         ),
                       ),
-                    if (workspace.context !=
-                        EditorWorkspaceContext.siteOutdoor)
+                    if (workspace.context != EditorWorkspaceContext.siteOutdoor)
                       Positioned(
                         right: 12,
                         bottom: 52,
