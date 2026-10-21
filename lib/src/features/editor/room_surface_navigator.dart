@@ -276,6 +276,9 @@ final class _RoomSurfaceMiniPainter extends CustomPainter {
     final selectedPaint = Paint()
       ..style = PaintingStyle.fill
       ..color = scheme.primaryContainer;
+    final ceilingPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = scheme.surface.withValues(alpha: 0.55);
     final outline = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.4
@@ -313,9 +316,7 @@ final class _RoomSurfaceMiniPainter extends CustomPainter {
       polygon(ceiling),
       projection.kind == RoomSurfaceNavigatorKind.ceiling
           ? selectedPaint
-          : Paint()
-            ..style = PaintingStyle.fill
-            ..color = scheme.surface.withValues(alpha: 0.55),
+          : ceilingPaint,
     );
     canvas.drawPath(
       polygon(ceiling),
