@@ -24,13 +24,28 @@ final class CompassNorthUnspecified extends CompassProjectionState {
 
 /// Canonical Project North has a deterministic screen projection.
 final class CompassNorthDefined extends CompassProjectionState {
-  const CompassNorthDefined({
+  factory CompassNorthDefined({
+    required ProjectEngineeringNorth canonicalNorth,
+    required int screenMilliDegreesClockwiseFromUp,
+  }) {
+    if (screenMilliDegreesClockwiseFromUp < 0 ||
+        screenMilliDegreesClockwiseFromUp >= 360000) {
+      throw ArgumentError.value(
+        screenMilliDegreesClockwiseFromUp,
+        'screenMilliDegreesClockwiseFromUp',
+        'Screen projection must already be normalized to [0, 360000).',
+      );
+    }
+    return CompassNorthDefined._(
+      canonicalNorth: canonicalNorth,
+      screenMilliDegreesClockwiseFromUp: screenMilliDegreesClockwiseFromUp,
+    );
+  }
+
+  const CompassNorthDefined._({
     required this.canonicalNorth,
     required this.screenMilliDegreesClockwiseFromUp,
-  }) : assert(
-          screenMilliDegreesClockwiseFromUp >= 0 &&
-              screenMilliDegreesClockwiseFromUp < 360000,
-        );
+  });
 
   final ProjectEngineeringNorth canonicalNorth;
   final int screenMilliDegreesClockwiseFromUp;
