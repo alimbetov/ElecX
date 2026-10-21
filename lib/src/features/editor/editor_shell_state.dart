@@ -5,6 +5,7 @@ final class EditorShellState extends ChangeNotifier {
   bool _inspectorVisible = true;
   bool _contextBarVisible = true;
   bool _compassRequestedVisible = false;
+  bool _roomSurfaceNavigatorCollapsed = false;
   bool _focusMode = false;
 
   bool get navigatorVisible => _navigatorVisible && !_focusMode;
@@ -24,6 +25,9 @@ final class EditorShellState extends ChangeNotifier {
   /// Effective compass visibility after shell-level suppression is applied.
   bool get compassVisible =>
       _compassRequestedVisible && !compassSuppressedByFocusMode;
+
+  /// Transient P5E shell preference. It is deliberately not project data.
+  bool get roomSurfaceNavigatorCollapsed => _roomSurfaceNavigatorCollapsed;
 
   bool get focusMode => _focusMode;
 
@@ -66,6 +70,18 @@ final class EditorShellState extends ChangeNotifier {
       return;
     }
     _compassRequestedVisible = value;
+    notifyListeners();
+  }
+
+  void toggleRoomSurfaceNavigatorCollapsed() {
+    setRoomSurfaceNavigatorCollapsed(!_roomSurfaceNavigatorCollapsed);
+  }
+
+  /// Updates only transient P5E presentation state. This must never dirty a
+  /// project, change the selected Room, or alter the active editor surface.
+  void setRoomSurfaceNavigatorCollapsed(bool value) {
+    if (_roomSurfaceNavigatorCollapsed == value) return;
+    _roomSurfaceNavigatorCollapsed = value;
     notifyListeners();
   }
 
