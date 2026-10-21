@@ -33,7 +33,9 @@ class ProjectCompassOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = this.state;
     if (state is CompassUnavailable) {
-      return const SizedBox.shrink(key: ValueKey('project-compass-unavailable'));
+      return const SizedBox.shrink(
+        key: ValueKey('project-compass-unavailable'),
+      );
     }
 
     final scheme = Theme.of(context).colorScheme;
