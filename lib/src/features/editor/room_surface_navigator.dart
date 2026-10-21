@@ -280,7 +280,8 @@ final class _RoomSurfaceMiniGeometry {
     }
     const padding = 16.0;
     const rise = 22.0;
-    final width = math.max(1.0, size.width - padding * 2);
+    const skew = 12.0;
+    final width = math.max(1.0, size.width - padding * 2 - skew);
     final height = math.max(1.0, size.height - padding * 2 - rise);
     final floor = [
       for (final point in points)
@@ -289,7 +290,9 @@ final class _RoomSurfaceMiniGeometry {
           padding + rise + point.dy * height,
         ),
     ];
-    final ceiling = [for (final point in floor) point - const Offset(0, rise)];
+    final ceiling = [
+      for (final point in floor) point + const Offset(skew, -rise),
+    ];
     final walls = <Path>[];
     for (var i = 0; i < floor.length; i++) {
       final next = (i + 1) % floor.length;
