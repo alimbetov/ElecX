@@ -57,8 +57,11 @@ void main() {
 
       expect(publicationAttempts, 1);
       expect(fixture.session.project.version.value, 1);
-      expect(fixture.session.projectNorthEditing.currentProjectNorth?.degrees, 32.5);
-      expect(fixture.session.mutations.undoDepth, 1);
+      expect(
+        fixture.session.projectNorthEditing.currentProjectNorth?.degrees,
+        32.5,
+      );
+      expect(fixture.mutations.undoDepth, 1);
       expect(
         find.textContaining('persistence owner не подтвердил владение'),
         findsOneWidget,
@@ -69,9 +72,7 @@ void main() {
         reason: 'canonical publication failure must not dirty legacy persistence',
       );
 
-      final undone = fixture.session.mutations.undo(
-        fixture.session.project.version,
-      );
+      final undone = fixture.mutations.undo(fixture.session.project.version);
       expect(undone, isNotNull);
       expect(fixture.session.project.engineeringMetadata.projectNorth, isNull);
     },
@@ -170,12 +171,14 @@ final class _Fixture {
   const _Fixture({
     required this.document,
     required this.store,
+    required this.mutations,
     required this.session,
     required this.runtime,
   });
 
   final EditorProjectDocument document;
   final _MemoryProjectStore store;
+  final ProjectMutationSession mutations;
   final ProjectStructureAuthoringSession session;
   final CanonicalEditorResolvedRuntime runtime;
 }
@@ -206,8 +209,9 @@ _Fixture _fixture(String projectId) {
   legacyController.dispose();
 
   final project = _canonicalProject(projectId);
+  final mutations = ProjectMutationSession(project);
   final session = ProjectStructureAuthoringSession(
-    mutations: ProjectMutationSession(project),
+    mutations: mutations,
     idFactory: SecureRandomEntityIdFactory(random: Random(1917)),
   );
   final binding = CanonicalEditorWorkspaceBinding(
@@ -226,6 +230,7 @@ _Fixture _fixture(String projectId) {
   return _Fixture(
     document: document,
     store: _MemoryProjectStore(document),
+    mutations: mutations,
     session: session,
     runtime: runtime,
   );
