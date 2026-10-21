@@ -1,10 +1,36 @@
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
+import 'project_authoring_error.dart';
 import 'project_building_commands.dart';
 import 'project_level_commands.dart';
 import 'project_mutation.dart';
 import 'project_navigation_state.dart';
 import 'project_space_commands.dart';
+
+enum ProjectStructureAuthoringIssueCode {
+  navigationSiteMismatch,
+  activeBuildingRequired,
+  activeLevelRequired,
+  reconciliationProjectMismatch,
+  reconciliationVersionMismatch,
+}
+
+final class ProjectStructureAuthoringException implements Exception {
+  const ProjectStructureAuthoringException({
+    required this.code,
+    required this.message,
+    this.entityId,
+    this.relatedEntityId,
+  });
+
+  final ProjectStructureAuthoringIssueCode code;
+  final String message;
+  final EntityId? entityId;
+  final EntityId? relatedEntityId;
+
+  @override
+  String toString() => '${code.name}: $message';
+}
 
 /// Availability of the discoverable P5C primary authoring actions.
 ///
@@ -91,9 +117,7 @@ final class ProjectStructureAuthoringSession {
     ProjectNavigationState? navigation,
   })  : _mutations = mutations,
         _idFactory = idFactory,
-        _navigation = (navigation ??
-                ProjectNavigationState.initial(mutations.current))
-            .reconcile(mutations.current);
+        _navigation = _initialNavigation(mutations.current, navigation);
 
   final ProjectMutationSession _mutations;
   final EntityIdFactory _idFactory;
@@ -102,18 +126,19 @@ final class ProjectStructureAuthoringSession {
   ProjectAggregateRoot get project => _mutations.current;
   ProjectNavigationState get navigation => _navigation;
 
+  /// Pure availability derived from the exact navigation state that the action
+  /// methods will use. It deliberately does not auto-repair stale navigation;
+  /// external structural mutations must call [reconcileNavigation] explicitly.
   ProjectStructureAuthoringAvailability get availability {
     final current = _mutations.current;
-    final reconciled = _navigation.reconcile(current);
-    final buildingId = reconciled.activeBuildingId;
-    final levelId = reconciled.activeLevelId;
+    final buildingId = _navigation.activeBuildingId;
+    final levelId = _navigation.activeLevelId;
 
-    final hasBuilding =
-        buildingId != null && current.index.building(buildingId) != null;
-    final hasLevel = levelId != null &&
-        current.index.level(levelId) != null &&
-        hasBuilding &&
-        current.index.level(levelId)!.buildingId == buildingId;
+    final building = buildingId == null ? null : current.index.building(buildingId);
+    final level = levelId == null ? null : current.index.level(levelId);
+    final hasBuilding = building != null && building.siteId == current.siteId;
+    final hasLevel =
+        level != null && hasBuilding && level.buildingId == building!.id;
 
     return ProjectStructureAuthoringAvailability(
       canAddBuilding: current.index.site(current.siteId) != null,
@@ -187,9 +212,20 @@ final class ProjectStructureAuthoringSession {
     final zoneId = input.structuralZoneId;
     if (zoneId != null) {
       final zone = project.index.zone(zoneId);
-      if (zone == null || zone.levelId != levelId) {
-        throw StateError(
-          'Room structural zone must exist on the active Level.',
+      if (zone == null) {
+        throw ProjectAuthoringException(
+          code: ProjectAuthoringIssueCode.structuralZoneNotFound,
+          entityId: zoneId,
+          message: 'Structural zone $zoneId does not exist.',
+        );
+      }
+      if (zone.levelId != levelId) {
+        throw ProjectAuthoringException(
+          code: ProjectAuthoringIssueCode.structuralZoneLevelMismatch,
+          entityId: zone.id,
+          relatedEntityId: zone.levelId,
+          message: 'Structural zone ${zone.id} belongs to level ${zone.levelId}, '
+              'not active level $levelId.',
         );
       }
     }
@@ -219,32 +255,67 @@ final class ProjectStructureAuthoringSession {
     );
   }
 
-  /// Reconciles current location after external structural mutation/Undo/Redo.
+  /// Reconciles current location after one external structural mutation,
+  /// Undo, or Redo that has already committed through the shared mutation
+  /// session. Unrelated or skipped snapshots are rejected fail-closed because
+  /// neighbor fallback depends on the immediate before/after graph pair.
   void reconcileNavigation({
     required ProjectAggregateRoot before,
     required ProjectAggregateRoot after,
   }) {
-    _navigation = _navigation.reconcileAfterMutation(before: before, after: after);
+    final current = project;
+    if (before.id != current.id ||
+        after.id != current.id ||
+        before.siteId != current.siteId ||
+        after.siteId != current.siteId) {
+      throw ProjectStructureAuthoringException(
+        code: ProjectStructureAuthoringIssueCode.reconciliationProjectMismatch,
+        entityId: current.id,
+        message: 'Navigation reconciliation snapshots must belong to the '
+            'current project and site.',
+      );
+    }
+    if (after.version != current.version ||
+        after.version.value != before.version.value + 1) {
+      throw ProjectStructureAuthoringException(
+        code: ProjectStructureAuthoringIssueCode.reconciliationVersionMismatch,
+        entityId: current.id,
+        message: 'Navigation reconciliation requires the immediate committed '
+            'before/after versions ending at ${current.version}.',
+      );
+    }
+
+    _navigation =
+        _navigation.reconcileAfterMutation(before: before, after: after);
   }
 
   BuildingId _requireActiveBuilding() {
     final id = _navigation.activeBuildingId;
-    if (id == null || project.index.building(id) == null) {
-      throw StateError('+Level requires an explicit active BuildingId.');
+    final building = id == null ? null : project.index.building(id);
+    if (building == null || building.siteId != project.siteId) {
+      throw ProjectStructureAuthoringException(
+        code: ProjectStructureAuthoringIssueCode.activeBuildingRequired,
+        entityId: id,
+        relatedEntityId: project.siteId,
+        message: '+Level requires an explicit active BuildingId in the '
+            'current site.',
+      );
     }
-    return id;
+    return building.id;
   }
 
   LevelId _requireActiveLevel() {
     final id = _navigation.activeLevelId;
-    if (id == null) {
-      throw StateError('+Room requires an explicit active LevelId.');
-    }
-    final level = project.index.level(id);
+    final level = id == null ? null : project.index.level(id);
     if (level == null || level.buildingId != _navigation.activeBuildingId) {
-      throw StateError('+Room requires a valid active Building/Level context.');
+      throw ProjectStructureAuthoringException(
+        code: ProjectStructureAuthoringIssueCode.activeLevelRequired,
+        entityId: id,
+        relatedEntityId: _navigation.activeBuildingId,
+        message: '+Room requires a valid active BuildingId/LevelId context.',
+      );
     }
-    return id;
+    return level.id;
   }
 
   ProjectMutationResult _requireCommit(
@@ -258,4 +329,20 @@ final class ProjectStructureAuthoringSession {
     }
     return result;
   }
+}
+
+ProjectNavigationState _initialNavigation(
+  ProjectAggregateRoot project,
+  ProjectNavigationState? navigation,
+) {
+  if (navigation != null && navigation.siteId != project.siteId) {
+    throw ProjectStructureAuthoringException(
+      code: ProjectStructureAuthoringIssueCode.navigationSiteMismatch,
+      entityId: navigation.siteId,
+      relatedEntityId: project.siteId,
+      message: 'Authoring navigation belongs to site ${navigation.siteId}, '
+          'not current site ${project.siteId}.',
+    );
+  }
+  return (navigation ?? ProjectNavigationState.initial(project)).reconcile(project);
 }
