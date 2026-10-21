@@ -48,7 +48,9 @@ void main() {
       findsOneWidget,
     );
     expect(
-        find.byKey(const ValueKey('room-surface-mini-view')), findsOneWidget);
+      find.byKey(const ValueKey('room-surface-mini-view')),
+      findsOneWidget,
+    );
     expect(find.byKey(const ValueKey('room-surface-wall-0')), findsOneWidget);
     expect(find.byKey(const ValueKey('room-surface-wall-3')), findsOneWidget);
     expect(find.byKey(const ValueKey('room-surface-wall-4')), findsNothing);
@@ -75,6 +77,41 @@ void main() {
     expect(controller.viewMode, EditorViewMode.plan);
     expect(controller.activeSurface, isNull);
     expect(find.text('Current surface: Plan'), findsOneWidget);
+  });
+
+  testWidgets('mini-view wall plane selects the matching editor wall',
+      (tester) async {
+    final controller = EditorController.demo();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RoomSurfaceNavigator(
+            controller: controller,
+            canonicalSpaceId: SpaceId('canonical-room-101'),
+            legacySpaceId: 'room-101',
+            collapsed: false,
+            onToggleCollapsed: () {},
+          ),
+        ),
+      ),
+    );
+
+    final preview = tester.getRect(
+      find.byKey(const ValueKey('room-surface-mini-view')),
+    );
+    await tester.tapAt(
+      Offset(
+        preview.right - 22,
+        preview.center.dy,
+      ),
+    );
+    await tester.pump();
+
+    expect(controller.activeSurface?.type, SurfacePlaneType.wall);
+    expect(controller.activeSurface?.wallIndex, 1);
+    expect(find.text('Current surface: Wall 2'), findsOneWidget);
   });
 
   testWidgets('L-shaped room exposes every real boundary wall', (tester) async {
@@ -170,7 +207,9 @@ void main() {
 
     expect(shell.roomSurfaceNavigatorCollapsed, isFalse);
     expect(
-        find.byKey(const ValueKey('room-surface-mini-view')), findsOneWidget);
+      find.byKey(const ValueKey('room-surface-mini-view')),
+      findsOneWidget,
+    );
     expect(find.text('Current surface: Wall 3'), findsOneWidget);
   });
 
