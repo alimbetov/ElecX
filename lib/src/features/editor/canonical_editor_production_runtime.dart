@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import '../../application/project/project_structure_authoring.dart';
 import '../../domain/project_identity.dart';
 import 'canonical_editor_runtime_cutover.dart';
@@ -20,7 +18,19 @@ typedef CanonicalEditorRuntimeResolver = CanonicalEditorResolvedRuntime?
   EditorProjectMetadata metadata,
 );
 
-typedef CanonicalProductionAuthoringCommittedCallback = FutureOr<void> Function(
+/// Explicit acknowledgement that the production host has synchronously taken
+/// ownership of a committed canonical structure mutation.
+///
+/// This is deliberately not a durable-save acknowledgement. P5C does not own
+/// the final persistence backend. The host may persist through the canonical
+/// repository workflow later, but once this receipt is returned it owns the
+/// committed canonical state and must not treat it as a best-effort event.
+final class CanonicalAuthoringOwnershipReceipt {
+  const CanonicalAuthoringOwnershipReceipt.accepted();
+}
+
+typedef CanonicalProductionAuthoringCommittedCallback =
+    CanonicalAuthoringOwnershipReceipt Function(
   ProjectStructureAuthoringSession session,
   EntityId createdId,
 );
@@ -47,8 +57,11 @@ final class CanonicalEditorResolvedRuntime {
 /// The existing screen Save path serializes the transitional editor document,
 /// not ProjectAggregateRoot, so enabling +Building/+Level/+Room without an
 /// external canonical persistence owner would otherwise create unsaved state.
-/// The callback may be asynchronous and is awaited by the canonical navigator
-/// before the authoring interaction is considered fully published.
+///
+/// The callback is a synchronous ownership-transfer boundary. It must return an
+/// explicit [CanonicalAuthoringOwnershipReceipt] after the host has accepted
+/// responsibility for the committed canonical state. Durable storage itself is
+/// outside P5C and remains behind the canonical repository / P16 boundary.
 final class CanonicalEditorProductionRuntimeConfig {
   const CanonicalEditorProductionRuntimeConfig({
     required this.resolveRuntime,
