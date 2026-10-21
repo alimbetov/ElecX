@@ -69,6 +69,27 @@ final class RoomSurfaceNavigatorProjection {
       wallIndex: wallIndex,
     );
   }
+
+  static bool hasStaleWallSelection({
+    required EditorController controller,
+    required SpaceId? canonicalSpaceId,
+    required String? legacySpaceId,
+  }) {
+    if (canonicalSpaceId == null || legacySpaceId == null) return false;
+    if (controller.selectedSpaceId != legacySpaceId) return false;
+    final space = controller.selectedSpace;
+    final active = controller.activeSurface;
+    if (space == null ||
+        active == null ||
+        active.spaceId != legacySpaceId ||
+        active.type != SurfacePlaneType.wall) {
+      return false;
+    }
+    final wallIndex = active.wallIndex;
+    return wallIndex == null ||
+        wallIndex < 0 ||
+        wallIndex >= space.boundary.vertices.length;
+  }
 }
 
 class RoomSurfaceNavigator extends StatelessWidget {
@@ -92,6 +113,23 @@ class RoomSurfaceNavigator extends StatelessWidget {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
+        if (RoomSurfaceNavigatorProjection.hasStaleWallSelection(
+          controller: controller,
+          canonicalSpaceId: canonicalSpaceId,
+          legacySpaceId: legacySpaceId,
+        )) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (RoomSurfaceNavigatorProjection.hasStaleWallSelection(
+              controller: controller,
+              canonicalSpaceId: canonicalSpaceId,
+              legacySpaceId: legacySpaceId,
+            )) {
+              controller.showPlan();
+            }
+          });
+          return const SizedBox.shrink();
+        }
+
         final projection = RoomSurfaceNavigatorProjection.fromEditor(
           controller: controller,
           canonicalSpaceId: canonicalSpaceId,
