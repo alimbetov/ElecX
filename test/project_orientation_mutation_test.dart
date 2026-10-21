@@ -171,7 +171,8 @@ void main() {
       expect(session.current.engineeringMetadata.projectNorth, isNull);
     });
 
-    test('mixed entity and metadata command produces one combined change set', () {
+    test('mixed entity and metadata command produces one combined change set',
+        () {
       final session = ProjectMutationSession(_project());
       final north = ProjectEngineeringNorth.fromDegrees(45);
 
@@ -186,7 +187,8 @@ void main() {
       expect(result.project.index.site(SiteId('site-1'))?.name, 'Renamed Site');
       expect(result.project.engineeringMetadata.projectNorth, north);
       expect(result.changeSet.updatedEntityIds, <EntityId>{SiteId('site-1')});
-      expect(result.changeSet.engineeringMetadataDiff.beforeProjectNorth, isNull);
+      expect(
+          result.changeSet.engineeringMetadataDiff.beforeProjectNorth, isNull);
       expect(result.changeSet.engineeringMetadataDiff.afterProjectNorth, north);
       expect(session.undoDepth, 1);
 
