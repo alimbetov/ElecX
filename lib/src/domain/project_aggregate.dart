@@ -1,4 +1,5 @@
 import 'project_identity.dart';
+import 'project_orientation.dart';
 
 /// Local monotonic version of the canonical in-memory project state.
 ///
@@ -630,6 +631,7 @@ final class ProjectAggregateRoot {
     required this.id,
     required this.siteId,
     required this.version,
+    required this.engineeringMetadata,
     required this.stores,
     required this.index,
   });
@@ -638,6 +640,8 @@ final class ProjectAggregateRoot {
     required ProjectId id,
     required SiteId siteId,
     required LocalProjectVersion version,
+    ProjectEngineeringMetadata engineeringMetadata =
+        const ProjectEngineeringMetadata(),
     required ProjectEntityStores stores,
   }) {
     final issues = ProjectAggregateValidator.validate(
@@ -654,6 +658,7 @@ final class ProjectAggregateRoot {
       id: id,
       siteId: siteId,
       version: version,
+      engineeringMetadata: engineeringMetadata,
       stores: stores,
       index: index,
     );
@@ -662,6 +667,7 @@ final class ProjectAggregateRoot {
   final ProjectId id;
   final SiteId siteId;
   final LocalProjectVersion version;
+  final ProjectEngineeringMetadata engineeringMetadata;
   final ProjectEntityStores stores;
   final ProjectIndex index;
 }
