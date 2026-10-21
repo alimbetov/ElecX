@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../application/project/project_navigator_projection.dart';
@@ -16,7 +18,7 @@ typedef RoomRequestResolver = Future<CreateRoomRequest?> Function(
   BuildContext context,
   LevelId levelId,
 );
-typedef ProjectAuthoringCommittedCallback = void Function(
+typedef ProjectAuthoringCommittedCallback = FutureOr<void> Function(
   ProjectStructureAuthoringSession session,
   EntityId createdId,
 );
@@ -317,7 +319,7 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
     if (!mounted) return;
     setState(() {});
     _notifyNavigationChanged();
-    _notifyAuthoringCommitted(result.createdId);
+    await _notifyAuthoringCommitted(result.createdId);
     _scheduleRevealCurrent();
   }
 
@@ -342,7 +344,7 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
     if (!mounted) return;
     setState(() {});
     _notifyNavigationChanged();
-    _notifyAuthoringCommitted(result.createdId);
+    await _notifyAuthoringCommitted(result.createdId);
     _scheduleRevealCurrent();
   }
 
@@ -367,7 +369,7 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
     if (!mounted) return;
     setState(() {});
     _notifyNavigationChanged();
-    _notifyAuthoringCommitted(result.createdId);
+    await _notifyAuthoringCommitted(result.createdId);
     _scheduleRevealCurrent();
   }
 
@@ -381,11 +383,11 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
     }
   }
 
-  void _notifyAuthoringCommitted(EntityId createdId) {
+  Future<void> _notifyAuthoringCommitted(EntityId createdId) async {
     final callback = widget.onAuthoringCommitted;
     if (callback == null) return;
     try {
-      callback(session, createdId);
+      await callback(session, createdId);
     } catch (error, stackTrace) {
       _reportCallbackError('onAuthoringCommitted', error, stackTrace);
     }
