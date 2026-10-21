@@ -46,6 +46,7 @@ final class CreateLevelCommand implements ProjectCommand {
       current,
       building: building,
       levelNumber: levelNumber,
+      subjectLevelId: levelId,
     );
 
     final buildings =
@@ -123,6 +124,7 @@ final class RenumberLevelCommand implements ProjectCommand {
       current,
       building: building,
       levelNumber: levelNumber,
+      subjectLevelId: level.id,
       excludingLevelId: level.id,
     );
     return _replaceLevel(current, level, levelNumber: levelNumber);
@@ -183,6 +185,7 @@ void _ensureLevelNumberAvailable(
   ProjectAggregateRoot current, {
   required ProjectBuildingEntity building,
   required int levelNumber,
+  required LevelId subjectLevelId,
   LevelId? excludingLevelId,
 }) {
   for (final candidateId in building.levelIds) {
@@ -191,7 +194,7 @@ void _ensureLevelNumberAvailable(
     if (candidate?.levelNumber == levelNumber) {
       throw ProjectAuthoringException(
         code: ProjectAuthoringIssueCode.duplicateLevelNumber,
-        entityId: excludingLevelId,
+        entityId: subjectLevelId,
         relatedEntityId: candidateId,
         message: 'Building ${building.id} already contains level number '
             '$levelNumber at $candidateId.',
