@@ -77,13 +77,15 @@ Without `onAuthoringCommitted`:
 
 Canonical navigation remains available.
 
-`onAuthoringCommitted` is an ownership-transfer boundary, not an analytics event and not a best-effort notification. A host that supplies it accepts responsibility for the committed canonical state and for carrying that state into its persistence workflow. The standard legacy `EditorProjectDocument` Save path must never be presented as canonical persistence.
+`onAuthoringCommitted` is a synchronous ownership-transfer boundary, not an analytics event and not a best-effort notification. A host that supplies it must synchronously accept responsibility for the committed canonical state and return `CanonicalAuthoringOwnershipReceipt.accepted()`. Returning that receipt does **not** claim that bytes are already durably flushed to the final storage backend; it means the host has taken ownership of carrying the state into its canonical persistence workflow. The standard legacy `EditorProjectDocument` Save path must never be presented as canonical persistence.
+
+This distinction prevents the production screen from pretending that an un-awaited `Future` is a persistence guarantee while still keeping the final persistence backend outside P5C.
 
 P5C does not require the final Drift/SQLite backend. The production storage implementation remains P16 scope.
 
 ## Runtime concurrency rule
 
-Only one structure-authoring action may be in flight at a time. While a Building, Level, or Room request/publish flow is awaiting completion, all three structure-authoring controls are disabled. This prevents double-tap/double-click overlap from creating multiple canonical entities from one user intent or racing persistence publication.
+Only one structure-authoring action may be in flight at a time. While a Building, Level, or Room request/publish flow is awaiting completion, all three structure-authoring controls are disabled. This prevents double-tap/double-click overlap from creating multiple canonical entities from one user intent or racing publication into the persistence owner.
 
 ## Production wiring qualification
 
@@ -112,7 +114,7 @@ And the following cases:
 - canonical projection does not mark the legacy document Modified;
 - missing runtime materialization shows controlled blocked state and does not partially mutate the canvas;
 - production authoring controls are all disabled when no persistence owner exists and the canonical graph version remains unchanged;
-- with a persistence owner, a successful structure authoring action publishes exactly once with the exact created typed `EntityId`;
+- with a persistence owner, a successful structure authoring action publishes exactly once with the exact created typed `EntityId` and receives explicit synchronous ownership acceptance;
 - repeated editor notifications without navigation changes do not cause repeated canonical pulls;
 - feedback loops between canonical push and legacy listeners are suppressed.
 
@@ -144,6 +146,7 @@ Included:
 - production screen integration
 - fail-closed materialization
 - explicit persistence ownership gate
+- explicit ownership receipt
 - serialized async authoring controls
 
 Deferred:
