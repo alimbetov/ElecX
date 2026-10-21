@@ -17,8 +17,13 @@ final class EditorShellState extends ChangeNotifier {
   /// changing this requested state.
   bool get compassRequestedVisible => _compassRequestedVisible;
 
+  /// Whether focus mode is currently suppressing a requested compass overlay.
+  bool get compassSuppressedByFocusMode =>
+      _compassRequestedVisible && _focusMode;
+
   /// Effective compass visibility after shell-level suppression is applied.
-  bool get compassVisible => _compassRequestedVisible && !_focusMode;
+  bool get compassVisible =>
+      _compassRequestedVisible && !compassSuppressedByFocusMode;
 
   bool get focusMode => _focusMode;
 
@@ -52,8 +57,7 @@ final class EditorShellState extends ChangeNotifier {
   /// the compass presentation, but must not prevent the user from changing the
   /// preference that will become effective after focus mode exits.
   void toggleCompass() {
-    _compassRequestedVisible = !_compassRequestedVisible;
-    notifyListeners();
+    setCompassRequestedVisible(!_compassRequestedVisible);
   }
 
   /// Sets the requested compass state idempotently.
@@ -66,15 +70,19 @@ final class EditorShellState extends ChangeNotifier {
   }
 
   void toggleFocusMode() {
-    _focusMode = !_focusMode;
+    setFocusMode(!_focusMode);
+  }
+
+  /// Sets focus mode deterministically and without duplicate notifications.
+  void setFocusMode(bool value) {
+    if (_focusMode == value) {
+      return;
+    }
+    _focusMode = value;
     notifyListeners();
   }
 
   void exitFocusMode() {
-    if (!_focusMode) {
-      return;
-    }
-    _focusMode = false;
-    notifyListeners();
+    setFocusMode(false);
   }
 }
