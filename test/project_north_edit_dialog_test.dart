@@ -36,7 +36,8 @@ void main() {
     await tester.pump();
 
     expect(find.byKey(const ValueKey('project-north-dialog')), findsOneWidget);
-    expect(find.text('Введите конечное числовое значение угла.'), findsOneWidget);
+    expect(
+        find.text('Введите конечное числовое значение угла.'), findsOneWidget);
     expect(result, isNull);
   });
 
