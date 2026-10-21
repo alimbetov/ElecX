@@ -244,6 +244,12 @@ class _UnifiedWorkspaceEditorScreenState
   }
 
   void _onProjectChanged() {
+    // P5E surface switches are editor navigation/resume state, not an
+    // engineering mutation. The canvas and Room Surface Navigator listen to
+    // the controller directly, so the structural shell must neither become
+    // dirty nor rebuild the Project Navigator for this notification.
+    if (controller.isSurfaceNavigationNotification) return;
+
     if (_canonicalCutoverBinding?.coordinator.isSynchronizing == true) {
       _refresh();
       return;
@@ -965,42 +971,50 @@ class _UnifiedWorkspaceEditorScreenState
           builder: (context, constraints) {
             final mode = EditorLayoutPolicy.forWidth(constraints.maxWidth);
             final desktop = mode == EditorLayoutMode.desktop;
-            final rawCanvas =
-                workspace.context == EditorWorkspaceContext.siteOutdoor
-                    ? SiteMapCanvas(
-                        entities: SiteMapProjection.tower(workspace),
-                        interaction: siteInteraction,
-                        routeController: controller,
-                        onRouteTransitionTap: _followSiteTransition,
-                        onEntityOpen: _openSiteEntity,
-                      )
-                    : controller.viewMode == EditorViewMode.plan
-                        ? SpatialCanvas(controller: controller)
-                        : SurfaceCanvas(
-                            controller: controller,
-                            onOutdoorTransition: _followOutdoorTransition,
-                          );
-            final compassProjection = _compassProjectionState();
-            final canvas = Stack(
-              children: [
-                Positioned.fill(child: rawCanvas),
-                if (shell.compassVisible)
-                  Positioned(
-                    right: 12,
-                    top: 12,
-                    child: ProjectCompassOverlay(
-                      state: compassProjection,
-                      onTap: _canEditProjectNorth ? _editProjectNorth : null,
-                    ),
-                  ),
-                if (workspace.context != EditorWorkspaceContext.siteOutdoor)
-                  Positioned(
-                    right: 12,
-                    bottom: 52,
-                    child:
-                        EngineeringPlacementCursorHud(controller: controller),
-                  ),
-              ],
+            final canvas = AnimatedBuilder(
+              animation: controller,
+              builder: (context, _) {
+                final rawCanvas =
+                    workspace.context == EditorWorkspaceContext.siteOutdoor
+                        ? SiteMapCanvas(
+                            entities: SiteMapProjection.tower(workspace),
+                            interaction: siteInteraction,
+                            routeController: controller,
+                            onRouteTransitionTap: _followSiteTransition,
+                            onEntityOpen: _openSiteEntity,
+                          )
+                        : controller.viewMode == EditorViewMode.plan
+                            ? SpatialCanvas(controller: controller)
+                            : SurfaceCanvas(
+                                controller: controller,
+                                onOutdoorTransition: _followOutdoorTransition,
+                              );
+                final compassProjection = _compassProjectionState();
+                return Stack(
+                  children: [
+                    Positioned.fill(child: rawCanvas),
+                    if (shell.compassVisible)
+                      Positioned(
+                        right: 12,
+                        top: 12,
+                        child: ProjectCompassOverlay(
+                          state: compassProjection,
+                          onTap:
+                              _canEditProjectNorth ? _editProjectNorth : null,
+                        ),
+                      ),
+                    if (workspace.context !=
+                        EditorWorkspaceContext.siteOutdoor)
+                      Positioned(
+                        right: 12,
+                        bottom: 52,
+                        child: EngineeringPlacementCursorHud(
+                          controller: controller,
+                        ),
+                      ),
+                  ],
+                );
+              },
             );
 
             return Scaffold(
