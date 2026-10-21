@@ -126,6 +126,31 @@ final class ProjectStructureAuthoringSession {
   ProjectAggregateRoot get project => _mutations.current;
   ProjectNavigationState get navigation => _navigation;
 
+  /// Canonical navigation transitions used by Navigator/tree/breadcrumb UI.
+  ///
+  /// These methods never mutate engineering state and never identify a Level
+  /// by number, label, list index, or widget key. The shared navigation state
+  /// remains the single source for active/current/selected presentation.
+  void activateBuilding(BuildingId buildingId) {
+    _navigation = _navigation.activateBuilding(project, buildingId);
+  }
+
+  void activateLevel(LevelId levelId) {
+    _navigation = _navigation.activateLevel(project, levelId);
+  }
+
+  void selectZone(ZoneId zoneId) {
+    _navigation = _navigation.selectZone(project, zoneId);
+  }
+
+  void selectRoom(SpaceId spaceId) {
+    _navigation = _navigation.selectSpace(project, spaceId);
+  }
+
+  void clearSelection() {
+    _navigation = _navigation.clearSelection();
+  }
+
   /// Pure availability derived from the exact navigation state that the action
   /// methods will use. It deliberately does not auto-repair stale navigation;
   /// external structural mutations must call [reconcileNavigation] explicitly.
@@ -134,7 +159,8 @@ final class ProjectStructureAuthoringSession {
     final buildingId = _navigation.activeBuildingId;
     final levelId = _navigation.activeLevelId;
 
-    final building = buildingId == null ? null : current.index.building(buildingId);
+    final building =
+        buildingId == null ? null : current.index.building(buildingId);
     final level = levelId == null ? null : current.index.level(levelId);
     final hasBuilding = building != null && building.siteId == current.siteId;
     final hasLevel =
@@ -344,5 +370,6 @@ ProjectNavigationState _initialNavigation(
           'not current site ${project.siteId}.',
     );
   }
-  return (navigation ?? ProjectNavigationState.initial(project)).reconcile(project);
+  return (navigation ?? ProjectNavigationState.initial(project))
+      .reconcile(project);
 }
