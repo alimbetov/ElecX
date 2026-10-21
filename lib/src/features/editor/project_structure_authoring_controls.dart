@@ -1,11 +1,20 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+
+typedef ProjectStructureAuthoringAction = FutureOr<void> Function();
 
 /// Discoverable P5C primary authoring controls for the Project Navigator.
 ///
 /// This widget contains no project mutation logic. The host resolves action
 /// availability from the shared application/session state and wires these
 /// callbacks to the canonical P3/P4 command path.
-class ProjectStructureAuthoringControls extends StatelessWidget {
+///
+/// Only one authoring action may be in flight at a time. This closes the
+/// double-click / double-tap race where two async request resolvers or
+/// persistence-publication callbacks could otherwise overlap and commit two
+/// structures from one user intent.
+class ProjectStructureAuthoringControls extends StatefulWidget {
   const ProjectStructureAuthoringControls({
     required this.onAddBuilding,
     required this.onAddLevel,
@@ -14,10 +23,19 @@ class ProjectStructureAuthoringControls extends StatelessWidget {
     super.key,
   });
 
-  final VoidCallback? onAddBuilding;
-  final VoidCallback? onAddLevel;
-  final VoidCallback? onAddRoom;
+  final ProjectStructureAuthoringAction? onAddBuilding;
+  final ProjectStructureAuthoringAction? onAddLevel;
+  final ProjectStructureAuthoringAction? onAddRoom;
   final bool compact;
+
+  @override
+  State<ProjectStructureAuthoringControls> createState() =>
+      _ProjectStructureAuthoringControlsState();
+}
+
+class _ProjectStructureAuthoringControlsState
+    extends State<ProjectStructureAuthoringControls> {
+  bool _busy = false;
 
   @override
   Widget build(BuildContext context) {
@@ -26,23 +44,23 @@ class ProjectStructureAuthoringControls extends StatelessWidget {
         icon: Icons.apartment_outlined,
         label: '+ Building',
         tooltip: 'Add building to the active site',
-        onPressed: onAddBuilding,
+        onPressed: _enabledAction(widget.onAddBuilding),
       ),
       _AuthoringButton(
         icon: Icons.layers_outlined,
         label: '+ Level',
         tooltip: 'Add level to the active building',
-        onPressed: onAddLevel,
+        onPressed: _enabledAction(widget.onAddLevel),
       ),
       _AuthoringButton(
         icon: Icons.crop_square,
         label: '+ Room',
         tooltip: 'Add room to the active level',
-        onPressed: onAddRoom,
+        onPressed: _enabledAction(widget.onAddRoom),
       ),
     ];
 
-    if (compact) {
+    if (widget.compact) {
       return Wrap(
         spacing: 6,
         runSpacing: 6,
@@ -64,6 +82,21 @@ class ProjectStructureAuthoringControls extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  VoidCallback? _enabledAction(ProjectStructureAuthoringAction? action) {
+    if (_busy || action == null) return null;
+    return () => _run(action);
+  }
+
+  Future<void> _run(ProjectStructureAuthoringAction action) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await action();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 }
 
