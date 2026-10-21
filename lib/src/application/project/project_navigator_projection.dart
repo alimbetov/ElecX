@@ -62,6 +62,8 @@ final class ProjectBreadcrumbItem {
 /// Zone; an unzoned Space is projected directly under its Level.
 final class ProjectNavigatorProjection {
   ProjectNavigatorProjection._({
+    required this.projectId,
+    required this.sourceVersion,
     required this.rootSiteId,
     required Map<EntityId, ProjectNavigatorNode> nodesById,
     required Map<EntityId, EntityId?> parentById,
@@ -181,12 +183,19 @@ final class ProjectNavigatorProjection {
     }
 
     return ProjectNavigatorProjection._(
+      projectId: project.id,
+      sourceVersion: project.version,
       rootSiteId: project.siteId,
       nodesById: nodesById,
       parentById: parentById,
     );
   }
 
+  /// Canonical project identity and local version from which this projection
+  /// was built. UI code can use these values to reject stale projections after
+  /// a structural mutation instead of silently rendering old hierarchy data.
+  final ProjectId projectId;
+  final LocalProjectVersion sourceVersion;
   final SiteId rootSiteId;
   final Map<EntityId, ProjectNavigatorNode> nodesById;
   final Map<EntityId, EntityId?> parentById;
@@ -194,6 +203,12 @@ final class ProjectNavigatorProjection {
   ProjectNavigatorNode get root => nodesById[rootSiteId]!;
 
   ProjectNavigatorNode? node(EntityId id) => nodesById[id];
+
+  /// True only while this projection represents the supplied canonical state.
+  bool isCurrentFor(ProjectAggregateRoot project) =>
+      project.id == projectId &&
+      project.siteId == rootSiteId &&
+      project.version == sourceVersion;
 
   /// Returns the root-to-node path through indexed parent links.
   ///
@@ -229,7 +244,7 @@ final class ProjectNavigatorProjection {
   /// Stable IDs from Site through the active/selected leaf.
   Set<EntityId> currentPathIds(ProjectNavigationState navigation) {
     return Set.unmodifiable(
-      pathTo(currentLeafId(navigation)).map((node) => node.id),
+      _pathForNavigation(navigation).map((node) => node.id),
     );
   }
 
@@ -238,7 +253,7 @@ final class ProjectNavigatorProjection {
     ProjectNavigationState navigation,
   ) {
     return List.unmodifiable(
-      pathTo(currentLeafId(navigation)).map(
+      _pathForNavigation(navigation).map(
         (node) => ProjectBreadcrumbItem(
           id: node.id,
           kind: node.kind,
@@ -254,7 +269,7 @@ final class ProjectNavigatorProjection {
   Set<EntityId> requiredExpandedAncestorIds(
     ProjectNavigationState navigation,
   ) {
-    final path = pathTo(currentLeafId(navigation));
+    final path = _pathForNavigation(navigation);
     if (path.length <= 1) return const <EntityId>{};
     return Set.unmodifiable(path.take(path.length - 1).map((node) => node.id));
   }
@@ -283,6 +298,44 @@ final class ProjectNavigatorProjection {
       return node.id == navigation.selectedSpaceId;
     }
     return node.id == navigation.selectedZoneId;
+  }
+
+  /// Validates that navigation and projection describe one coherent ID-backed
+  /// path. This prevents a stale/mismatched session state from producing a
+  /// plausible breadcrumb merely because one leaf ID happens to exist.
+  List<ProjectNavigatorNode> _pathForNavigation(
+    ProjectNavigationState navigation,
+  ) {
+    if (navigation.siteId != rootSiteId) {
+      throw StateError(
+        'Navigation site ${navigation.siteId} does not match projection site '
+        '$rootSiteId.',
+      );
+    }
+    if (navigation.activeLevelId != null && navigation.activeBuildingId == null) {
+      throw StateError('Active Level requires an active Building.');
+    }
+    if ((navigation.selectedZoneId != null ||
+            navigation.selectedSpaceId != null) &&
+        navigation.activeLevelId == null) {
+      throw StateError('Selected Zone/Space requires an active Level.');
+    }
+
+    final path = pathTo(currentLeafId(navigation));
+    final pathIds = path.map((node) => node.id).toSet();
+
+    void requireOnPath(EntityId? id, String role) {
+      if (id != null && !pathIds.contains(id)) {
+        throw StateError('$role $id is outside the current navigator path.');
+      }
+    }
+
+    requireOnPath(navigation.activeBuildingId, 'Active Building');
+    requireOnPath(navigation.activeLevelId, 'Active Level');
+    requireOnPath(navigation.selectedZoneId, 'Selected Zone');
+    requireOnPath(navigation.selectedSpaceId, 'Selected Space');
+
+    return path;
   }
 }
 
