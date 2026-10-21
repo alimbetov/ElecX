@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:elecx/src/application/project/project_authoring_error.dart';
 import 'package:elecx/src/application/project/project_destructive_commands.dart';
 import 'package:elecx/src/application/project/project_mutation.dart';
-import 'package:elecx/src/application/project/project_navigation_state.dart';
 import 'package:elecx/src/application/project/project_structure_authoring.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
