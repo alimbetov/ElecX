@@ -57,6 +57,27 @@ final class ProjectNavigationState {
     );
   }
 
+  /// Restores persisted/session navigation identities and validates them
+  /// against the current canonical graph.
+  ///
+  /// Invalid identities are never rebound by label or level number. They are
+  /// repaired through the same deterministic ID-backed policy as [reconcile].
+  factory ProjectNavigationState.restore(
+    ProjectAggregateRoot project, {
+    BuildingId? activeBuildingId,
+    LevelId? activeLevelId,
+    ZoneId? selectedZoneId,
+    SpaceId? selectedSpaceId,
+  }) {
+    return ProjectNavigationState._(
+      siteId: project.siteId,
+      activeBuildingId: activeBuildingId,
+      activeLevelId: activeLevelId,
+      selectedZoneId: selectedZoneId,
+      selectedSpaceId: selectedSpaceId,
+    ).reconcile(project);
+  }
+
   final SiteId siteId;
   final BuildingId? activeBuildingId;
   final LevelId? activeLevelId;
@@ -200,9 +221,9 @@ final class ProjectNavigationState {
 
   /// Repairs this session state against the latest canonical project graph.
   ///
-  /// This is used after structural mutation and for restore/reopen validation.
-  /// Invalid identities are never rebound by display name or level number.
-  /// Instead a deterministic valid ID-backed fallback is selected.
+  /// This is used for restore/reopen validation and as a generic fallback when
+  /// the previous graph is unavailable. Invalid identities are never rebound by
+  /// display name or level number.
   ProjectNavigationState reconcile(ProjectAggregateRoot project) {
     var building = activeBuildingId == null
         ? null
@@ -220,6 +241,58 @@ final class ProjectNavigationState {
     }
     level ??= building == null ? null : _firstLevel(project, building.id);
 
+    return _withValidatedSelection(project, building, level);
+  }
+
+  /// Reconciles after a structural mutation while preserving spatially local
+  /// navigation where possible.
+  ///
+  /// If the active Level/Building was deleted, the next surviving sibling from
+  /// the previous canonical ordering is preferred, then the previous sibling.
+  /// This implements deterministic "neighbor" fallback without relying on Set
+  /// iteration order, labels, or matching level numbers.
+  ProjectNavigationState reconcileAfterMutation({
+    required ProjectAggregateRoot before,
+    required ProjectAggregateRoot after,
+  }) {
+    ProjectBuildingEntity? building;
+    if (activeBuildingId != null) {
+      building = after.index.building(activeBuildingId!);
+    }
+
+    if (building == null && activeBuildingId != null) {
+      building = _neighborBuilding(
+        before: before,
+        after: after,
+        removedBuildingId: activeBuildingId!,
+      );
+    }
+    building ??= _firstBuilding(after);
+
+    ProjectLevelEntity? level;
+    if (building != null && activeLevelId != null) {
+      final existing = after.index.level(activeLevelId!);
+      if (existing != null && existing.buildingId == building.id) {
+        level = existing;
+      } else if (activeBuildingId == building.id) {
+        level = _neighborLevel(
+          before: before,
+          after: after,
+          buildingId: building.id,
+          removedLevelId: activeLevelId!,
+        );
+      }
+    }
+    level ??= building == null ? null : _firstLevel(after, building.id);
+
+    return _withValidatedSelection(after, building, level);
+  }
+
+  ProjectNavigationState _withValidatedSelection(
+    ProjectAggregateRoot project,
+    ProjectBuildingEntity? building,
+    ProjectLevelEntity? level,
+  ) {
     if (building == null || level == null) {
       return ProjectNavigationState._(
         siteId: project.siteId,
@@ -252,15 +325,28 @@ final class ProjectNavigationState {
       selectedSpaceId: spaceId,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      other is ProjectNavigationState &&
+      other.siteId == siteId &&
+      other.activeBuildingId == activeBuildingId &&
+      other.activeLevelId == activeLevelId &&
+      other.selectedZoneId == selectedZoneId &&
+      other.selectedSpaceId == selectedSpaceId;
+
+  @override
+  int get hashCode => Object.hash(
+        siteId,
+        activeBuildingId,
+        activeLevelId,
+        selectedZoneId,
+        selectedSpaceId,
+      );
 }
 
 ProjectBuildingEntity? _firstBuilding(ProjectAggregateRoot project) {
-  final buildings = project.index.buildings.values.toList()
-    ..sort((left, right) {
-      final byOrder = left.displayOrder.compareTo(right.displayOrder);
-      if (byOrder != 0) return byOrder;
-      return left.id.value.compareTo(right.id.value);
-    });
+  final buildings = _orderedBuildings(project);
   return buildings.isEmpty ? null : buildings.first;
 }
 
@@ -268,7 +354,73 @@ ProjectLevelEntity? _firstLevel(
   ProjectAggregateRoot project,
   BuildingId buildingId,
 ) {
-  final levels = project.index.levels.values
+  final levels = _orderedLevels(project, buildingId);
+  return levels.isEmpty ? null : levels.first;
+}
+
+ProjectBuildingEntity? _neighborBuilding({
+  required ProjectAggregateRoot before,
+  required ProjectAggregateRoot after,
+  required BuildingId removedBuildingId,
+}) {
+  final previousOrder = _orderedBuildings(before);
+  final removedIndex = previousOrder.indexWhere(
+    (building) => building.id == removedBuildingId,
+  );
+  if (removedIndex < 0) return null;
+
+  for (var index = removedIndex + 1; index < previousOrder.length; index++) {
+    final candidate = after.index.building(previousOrder[index].id);
+    if (candidate != null) return candidate;
+  }
+  for (var index = removedIndex - 1; index >= 0; index--) {
+    final candidate = after.index.building(previousOrder[index].id);
+    if (candidate != null) return candidate;
+  }
+  return null;
+}
+
+ProjectLevelEntity? _neighborLevel({
+  required ProjectAggregateRoot before,
+  required ProjectAggregateRoot after,
+  required BuildingId buildingId,
+  required LevelId removedLevelId,
+}) {
+  final previousOrder = _orderedLevels(before, buildingId);
+  final removedIndex = previousOrder.indexWhere(
+    (level) => level.id == removedLevelId,
+  );
+  if (removedIndex < 0) return null;
+
+  for (var index = removedIndex + 1; index < previousOrder.length; index++) {
+    final candidate = after.index.level(previousOrder[index].id);
+    if (candidate != null && candidate.buildingId == buildingId) {
+      return candidate;
+    }
+  }
+  for (var index = removedIndex - 1; index >= 0; index--) {
+    final candidate = after.index.level(previousOrder[index].id);
+    if (candidate != null && candidate.buildingId == buildingId) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+List<ProjectBuildingEntity> _orderedBuildings(ProjectAggregateRoot project) {
+  return project.index.buildings.values.toList()
+    ..sort((left, right) {
+      final byOrder = left.displayOrder.compareTo(right.displayOrder);
+      if (byOrder != 0) return byOrder;
+      return left.id.value.compareTo(right.id.value);
+    });
+}
+
+List<ProjectLevelEntity> _orderedLevels(
+  ProjectAggregateRoot project,
+  BuildingId buildingId,
+) {
+  return project.index.levels.values
       .where((level) => level.buildingId == buildingId)
       .toList()
     ..sort((left, right) {
@@ -278,5 +430,4 @@ ProjectLevelEntity? _firstLevel(
       if (byNumber != 0) return byNumber;
       return left.id.value.compareTo(right.id.value);
     });
-  return levels.isEmpty ? null : levels.first;
 }
