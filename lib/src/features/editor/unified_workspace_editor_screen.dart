@@ -23,6 +23,7 @@ import 'project_persistence_metadata.dart';
 import 'project_save_diagnostics.dart';
 import 'room_circuit_overview.dart';
 import 'room_circuit_panel.dart';
+import 'room_surface_navigator.dart';
 import 'editor_shell_state.dart';
 import 'editor_ui_tokens.dart';
 import 'engineering_placement_cursor_hud.dart';
@@ -348,9 +349,15 @@ class _UnifiedWorkspaceEditorScreenState
       );
     }
 
+    final session = cutover.coordinator.session;
+    final selectedCanonicalSpaceId = session.navigation.selectedSpaceId;
+    final selectedLegacySpaceId = selectedCanonicalSpaceId == null
+        ? null
+        : cutover.coordinator.adapter.binding
+            .legacySpaceIds[selectedCanonicalSpaceId];
     final authoringEnabled = config.authoringEnabled;
-    return CanonicalProjectNavigator(
-      session: cutover.coordinator.session,
+    final navigator = CanonicalProjectNavigator(
+      session: session,
       requestBuilding: authoringEnabled ? config.requestBuilding : null,
       requestLevel: authoringEnabled ? config.requestLevel : null,
       requestRoom: authoringEnabled ? config.requestRoom : null,
@@ -373,6 +380,19 @@ class _UnifiedWorkspaceEditorScreenState
         StackTrace.current,
       ),
       compact: compact,
+    );
+
+    return Column(
+      children: [
+        Expanded(child: navigator),
+        RoomSurfaceNavigator(
+          controller: controller,
+          canonicalSpaceId: selectedCanonicalSpaceId,
+          legacySpaceId: selectedLegacySpaceId,
+          collapsed: shell.roomSurfaceNavigatorCollapsed,
+          onToggleCollapsed: shell.toggleRoomSurfaceNavigatorCollapsed,
+        ),
+      ],
     );
   }
 
