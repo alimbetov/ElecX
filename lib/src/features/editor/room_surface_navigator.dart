@@ -98,6 +98,7 @@ class RoomSurfaceNavigator extends StatelessWidget {
           legacySpaceId: legacySpaceId,
         );
         if (projection == null) return const SizedBox.shrink();
+        final normalizedPoints = _normalizedRoomPoints(controller);
 
         return Material(
           key: const ValueKey('room-surface-navigator'),
@@ -132,13 +133,34 @@ class RoomSurfaceNavigator extends StatelessWidget {
                         'Room surface preview, ${projection.currentLabel}, canonical room ${projection.canonicalSpaceId.value}',
                     child: SizedBox(
                       height: 112,
-                      child: CustomPaint(
-                        key: const ValueKey('room-surface-mini-view'),
-                        painter: _RoomSurfaceMiniPainter(
-                          points: _normalizedRoomPoints(controller),
-                          projection: projection,
-                          scheme: Theme.of(context).colorScheme,
-                        ),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final size = Size(
+                            constraints.maxWidth,
+                            constraints.maxHeight,
+                          );
+                          return GestureDetector(
+                            key: const ValueKey('room-surface-mini-view'),
+                            behavior: HitTestBehavior.opaque,
+                            onTapDown: (details) {
+                              final wallIndex = _RoomSurfaceMiniGeometry.build(
+                                normalizedPoints,
+                                size,
+                              ).wallIndexAt(details.localPosition);
+                              if (wallIndex != null) {
+                                controller.showWall(wallIndex);
+                              }
+                            },
+                            child: CustomPaint(
+                              painter: _RoomSurfaceMiniPainter(
+                                points: normalizedPoints,
+                                projection: projection,
+                                scheme: Theme.of(context).colorScheme,
+                              ),
+                              child: const SizedBox.expand(),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -241,6 +263,63 @@ class RoomSurfaceNavigator extends StatelessWidget {
   }
 }
 
+final class _RoomSurfaceMiniGeometry {
+  const _RoomSurfaceMiniGeometry({
+    required this.floor,
+    required this.ceiling,
+    required this.walls,
+  });
+
+  factory _RoomSurfaceMiniGeometry.build(List<Offset> points, Size size) {
+    if (points.length < 3) {
+      return const _RoomSurfaceMiniGeometry(
+        floor: <Offset>[],
+        ceiling: <Offset>[],
+        walls: <Path>[],
+      );
+    }
+    const padding = 16.0;
+    const rise = 22.0;
+    final width = math.max(1.0, size.width - padding * 2);
+    final height = math.max(1.0, size.height - padding * 2 - rise);
+    final floor = [
+      for (final point in points)
+        Offset(
+          padding + point.dx * width,
+          padding + rise + point.dy * height,
+        ),
+    ];
+    final ceiling = [for (final point in floor) point - const Offset(0, rise)];
+    final walls = <Path>[];
+    for (var i = 0; i < floor.length; i++) {
+      final next = (i + 1) % floor.length;
+      walls.add(
+        Path()
+          ..addPolygon(
+            [floor[i], floor[next], ceiling[next], ceiling[i]],
+            true,
+          ),
+      );
+    }
+    return _RoomSurfaceMiniGeometry(
+      floor: floor,
+      ceiling: ceiling,
+      walls: walls,
+    );
+  }
+
+  final List<Offset> floor;
+  final List<Offset> ceiling;
+  final List<Path> walls;
+
+  int? wallIndexAt(Offset point) {
+    for (var index = walls.length - 1; index >= 0; index--) {
+      if (walls[index].contains(point)) return index;
+    }
+    return null;
+  }
+}
+
 final class _RoomSurfaceMiniPainter extends CustomPainter {
   const _RoomSurfaceMiniPainter({
     required this.points,
@@ -254,20 +333,8 @@ final class _RoomSurfaceMiniPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (points.length < 3) return;
-
-    const padding = 16.0;
-    const rise = 22.0;
-    final width = math.max(1.0, size.width - padding * 2);
-    final height = math.max(1.0, size.height - padding * 2 - rise);
-    final floor = [
-      for (final point in points)
-        Offset(
-          padding + point.dx * width,
-          padding + rise + point.dy * height,
-        ),
-    ];
-    final ceiling = [for (final point in floor) point - const Offset(0, rise)];
+    final geometry = _RoomSurfaceMiniGeometry.build(points, size);
+    if (geometry.floor.length < 3) return;
 
     final basePaint = Paint()
       ..style = PaintingStyle.fill
@@ -290,34 +357,34 @@ final class _RoomSurfaceMiniPainter extends CustomPainter {
     Path polygon(List<Offset> values) => Path()..addPolygon(values, true);
 
     canvas.drawPath(
-      polygon(floor),
+      polygon(geometry.floor),
       projection.kind == RoomSurfaceNavigatorKind.floor
           ? selectedPaint
           : basePaint,
     );
-    canvas.drawPath(polygon(floor), outline);
+    canvas.drawPath(polygon(geometry.floor), outline);
 
-    for (var i = 0; i < floor.length; i++) {
-      final next = (i + 1) % floor.length;
-      final wall = Path()
-        ..addPolygon(
-          [floor[i], floor[next], ceiling[next], ceiling[i]],
-          true,
-        );
+    for (var i = 0; i < geometry.walls.length; i++) {
       final selected = projection.kind == RoomSurfaceNavigatorKind.wall &&
           projection.wallIndex == i;
-      canvas.drawPath(wall, selected ? selectedPaint : basePaint);
-      canvas.drawPath(wall, selected ? selectedOutline : outline);
+      canvas.drawPath(
+        geometry.walls[i],
+        selected ? selectedPaint : basePaint,
+      );
+      canvas.drawPath(
+        geometry.walls[i],
+        selected ? selectedOutline : outline,
+      );
     }
 
     canvas.drawPath(
-      polygon(ceiling),
+      polygon(geometry.ceiling),
       projection.kind == RoomSurfaceNavigatorKind.ceiling
           ? selectedPaint
           : ceilingPaint,
     );
     canvas.drawPath(
-      polygon(ceiling),
+      polygon(geometry.ceiling),
       projection.kind == RoomSurfaceNavigatorKind.ceiling
           ? selectedOutline
           : outline,
