@@ -99,7 +99,11 @@ final class ProjectNavigatorProjection {
       parentId: null,
     );
 
-    final buildings = project.index.buildings.values.toList()
+    // Traverse canonical membership IDs directly instead of repeatedly scanning
+    // global stores. This keeps projection construction linear in entity count.
+    final buildings = site.buildingIds
+        .map((buildingId) => project.index.building(buildingId)!)
+        .toList()
       ..sort(_compareBuildings);
     for (final building in buildings) {
       register(
@@ -109,8 +113,8 @@ final class ProjectNavigatorProjection {
         parentId: site.id,
       );
 
-      final levels = project.index.levels.values
-          .where((level) => level.buildingId == building.id)
+      final levels = building.levelIds
+          .map((levelId) => project.index.level(levelId)!)
           .toList()
         ..sort(_compareLevels);
       for (final level in levels) {
@@ -122,8 +126,7 @@ final class ProjectNavigatorProjection {
         );
 
         final zones = level.zoneIds
-            .map(project.index.zone)
-            .whereType<ProjectStructuralZoneEntity>()
+            .map((zoneId) => project.index.zone(zoneId)!)
             .toList()
           ..sort(_compareZones);
         for (final zone in zones) {
@@ -135,8 +138,7 @@ final class ProjectNavigatorProjection {
           );
 
           final zonedSpaces = zone.spaceIds
-              .map(project.index.space)
-              .whereType<ProjectSpaceEntity>()
+              .map((spaceId) => project.index.space(spaceId)!)
               .toList()
             ..sort(_compareSpaces);
           for (final space in zonedSpaces) {
@@ -151,11 +153,9 @@ final class ProjectNavigatorProjection {
 
         final unzonedSpaces = level.spaceIds
             .where(
-              (spaceId) =>
-                  project.index.structuralZoneBySpace[spaceId] == null,
+              (spaceId) => project.index.structuralZoneBySpace[spaceId] == null,
             )
-            .map(project.index.space)
-            .whereType<ProjectSpaceEntity>()
+            .map((spaceId) => project.index.space(spaceId)!)
             .toList()
           ..sort(_compareSpaces);
         for (final space in unzonedSpaces) {
@@ -226,6 +226,13 @@ final class ProjectNavigatorProjection {
         navigation.siteId;
   }
 
+  /// Stable IDs from Site through the active/selected leaf.
+  Set<EntityId> currentPathIds(ProjectNavigationState navigation) {
+    return Set.unmodifiable(
+      pathTo(currentLeafId(navigation)).map((node) => node.id),
+    );
+  }
+
   /// Breadcrumb and tree-current path are derived from the same source.
   List<ProjectBreadcrumbItem> breadcrumb(
     ProjectNavigationState navigation,
@@ -264,12 +271,19 @@ final class ProjectNavigatorProjection {
   ) =>
       node.id == navigation.activeLevelId;
 
+  /// True only for the selected leaf entity.
+  ///
+  /// When a Space is selected, its owning StructuralZone remains part of the
+  /// current path but is not also marked selected.
   bool isSelected(
     ProjectNavigatorNode node,
     ProjectNavigationState navigation,
-  ) =>
-      node.id == navigation.selectedZoneId ||
-      node.id == navigation.selectedSpaceId;
+  ) {
+    if (navigation.selectedSpaceId != null) {
+      return node.id == navigation.selectedSpaceId;
+    }
+    return node.id == navigation.selectedZoneId;
+  }
 }
 
 final class _NavigatorNodeSeed {
