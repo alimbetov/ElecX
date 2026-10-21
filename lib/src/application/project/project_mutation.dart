@@ -48,6 +48,13 @@ final class ProjectChangeSet {
     required this.afterVersion,
     Iterable<EntityId> affectedEntityIds = const <EntityId>[],
   }) : affectedEntityIds = Set<EntityId>.unmodifiable(affectedEntityIds) {
+    if (commandType.trim().isEmpty) {
+      throw ArgumentError.value(
+        commandType,
+        'commandType',
+        'Must be non-empty.',
+      );
+    }
     if (afterVersion.value != beforeVersion.value + 1) {
       throw ArgumentError(
         'A committed ProjectChangeSet must advance LocalProjectVersion exactly '
@@ -145,7 +152,15 @@ final class UndoRecord {
     required this.beforeStores,
     required this.afterStores,
     Iterable<EntityId> affectedEntityIds = const <EntityId>[],
-  }) : affectedEntityIds = Set<EntityId>.unmodifiable(affectedEntityIds);
+  }) : affectedEntityIds = Set<EntityId>.unmodifiable(affectedEntityIds) {
+    if (commandType.trim().isEmpty) {
+      throw ArgumentError.value(
+        commandType,
+        'commandType',
+        'Must be non-empty.',
+      );
+    }
+  }
 
   final String commandType;
   final ProjectEntityStores beforeStores;
@@ -173,6 +188,7 @@ final class ProjectMutationSession {
 
   ProjectMutationPreview preview(ProjectMutationRequest request) {
     _requireVersion(request.expectedVersion);
+    final commandType = _requireCommandType(request.command);
     final candidate = request.command.buildCandidate(_current);
     CandidateGraphValidator.validate(current: _current, candidate: candidate);
 
@@ -184,13 +200,14 @@ final class ProjectMutationSession {
     );
     return ProjectMutationPreview(
       candidate: previewRoot,
-      commandType: request.command.commandType,
+      commandType: commandType,
       affectedEntityIds: candidate.affectedEntityIds,
     );
   }
 
   ProjectMutationResult commit(ProjectMutationRequest request) {
     _requireVersion(request.expectedVersion);
+    final commandType = _requireCommandType(request.command);
     final before = _current;
     final candidate = request.command.buildCandidate(before);
     CandidateGraphValidator.validate(current: before, candidate: candidate);
@@ -208,7 +225,7 @@ final class ProjectMutationSession {
     );
     final changeSet = ProjectChangeSet(
       kind: ProjectChangeKind.command,
-      commandType: request.command.commandType,
+      commandType: commandType,
       beforeVersion: before.version,
       afterVersion: committed.version,
       affectedEntityIds: candidate.affectedEntityIds,
@@ -217,7 +234,7 @@ final class ProjectMutationSession {
     _current = committed;
     _undoStack.add(
       UndoRecord(
-        commandType: request.command.commandType,
+        commandType: commandType,
         beforeStores: before.stores,
         afterStores: committed.stores,
         affectedEntityIds: candidate.affectedEntityIds,
@@ -233,7 +250,7 @@ final class ProjectMutationSession {
     if (_undoStack.isEmpty) return null;
 
     final before = _current;
-    final record = _undoStack.removeLast();
+    final record = _undoStack.last;
     final restored = _commitStoredState(
       stores: record.beforeStores,
       before: before,
@@ -247,6 +264,7 @@ final class ProjectMutationSession {
     );
 
     _current = restored;
+    _undoStack.removeLast();
     _redoStack.add(record);
     return ProjectMutationResult(project: restored, changeSet: changeSet);
   }
@@ -256,7 +274,7 @@ final class ProjectMutationSession {
     if (_redoStack.isEmpty) return null;
 
     final before = _current;
-    final record = _redoStack.removeLast();
+    final record = _redoStack.last;
     final restored = _commitStoredState(
       stores: record.afterStores,
       before: before,
@@ -270,6 +288,7 @@ final class ProjectMutationSession {
     );
 
     _current = restored;
+    _redoStack.removeLast();
     _undoStack.add(record);
     return ProjectMutationResult(project: restored, changeSet: changeSet);
   }
@@ -291,6 +310,18 @@ final class ProjectMutationSession {
       version: before.version.next(),
       stores: stores,
     );
+  }
+
+  String _requireCommandType(ProjectCommand command) {
+    final commandType = command.commandType;
+    if (commandType.trim().isEmpty) {
+      throw ArgumentError.value(
+        commandType,
+        'command.commandType',
+        'Must be non-empty.',
+      );
+    }
+    return commandType;
   }
 
   void _requireVersion(LocalProjectVersion expectedVersion) {
