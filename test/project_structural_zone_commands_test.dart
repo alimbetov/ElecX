@@ -121,6 +121,47 @@ void main() {
       expect(session.undoDepth, 0);
     });
 
+    test('duplicate ZoneId reports its actual owning level', () {
+      final session = ProjectMutationSession(_projectWithTwoLevelsAndZone());
+
+      expect(
+        () => session.commit(
+          ProjectMutationRequest(
+            expectedVersion: session.current.version,
+            command: CreateStructuralZoneCommand(
+              zoneId: ZoneId('zone-a'),
+              levelId: LevelId('level-2'),
+              name: 'Duplicate on another level',
+            ),
+          ),
+        ),
+        throwsA(
+          isA<ProjectAuthoringException>()
+              .having(
+                (error) => error.code,
+                'code',
+                ProjectAuthoringIssueCode.structuralZoneAlreadyExists,
+              )
+              .having(
+                (error) => error.entityId,
+                'entityId',
+                ZoneId('zone-a'),
+              )
+              .having(
+                (error) => error.relatedEntityId,
+                'relatedEntityId',
+                LevelId('level-1'),
+              ),
+        ),
+      );
+      expect(session.current.version, LocalProjectVersion(0));
+      expect(session.undoDepth, 0);
+      expect(
+        session.current.index.level(LevelId('level-2'))!.zoneIds,
+        isEmpty,
+      );
+    });
+
     test('rejects create under a missing level fail closed', () {
       final session = ProjectMutationSession(_projectWithLevel());
 
@@ -277,6 +318,64 @@ ProjectAggregateRoot _projectWithZoneAndSpace() {
           id: spaceId,
           levelId: levelId,
           name: 'Room 1',
+        ),
+      },
+    ),
+  );
+}
+
+ProjectAggregateRoot _projectWithTwoLevelsAndZone() {
+  final siteId = SiteId('site-root');
+  final buildingId = BuildingId('building-a');
+  final level1 = LevelId('level-1');
+  final level2 = LevelId('level-2');
+  final zoneId = ZoneId('zone-a');
+  return ProjectAggregateRoot(
+    id: ProjectId('project-1'),
+    siteId: siteId,
+    version: LocalProjectVersion(0),
+    stores: ProjectEntityStores(
+      sites: <SiteId, ProjectSiteEntity>{
+        siteId: ProjectSiteEntity(
+          id: siteId,
+          name: 'Site',
+          buildingIds: <BuildingId>[buildingId],
+        ),
+      },
+      buildings: <BuildingId, ProjectBuildingEntity>{
+        buildingId: ProjectBuildingEntity(
+          id: buildingId,
+          siteId: siteId,
+          name: 'Building A',
+          displayOrder: 10,
+          levelIds: <LevelId>[level1, level2],
+        ),
+      },
+      levels: <LevelId, ProjectLevelEntity>{
+        level1: ProjectLevelEntity(
+          id: level1,
+          buildingId: buildingId,
+          name: 'Floor 1',
+          levelNumber: 1,
+          displayOrder: 10,
+          elevationMm: 0,
+          zoneIds: <ZoneId>[zoneId],
+        ),
+        level2: ProjectLevelEntity(
+          id: level2,
+          buildingId: buildingId,
+          name: 'Floor 2',
+          levelNumber: 2,
+          displayOrder: 20,
+          elevationMm: 3000,
+        ),
+      },
+      zones: <ZoneId, ProjectStructuralZoneEntity>{
+        zoneId: ProjectStructuralZoneEntity(
+          id: zoneId,
+          levelId: level1,
+          name: 'Apartment A',
+          spaceIds: const <SpaceId>[],
         ),
       },
     ),
