@@ -1,0 +1,180 @@
+openapi: 3.1.0
+info:
+  title: ElecX Project Sync API
+  version: 1.0.0-draft
+  description: >-
+    Contract for revision-aware synchronization of ElecX projects between native
+    desktop/mobile clients and the backend. This API is intentionally snapshot-first;
+    operation-level sync may be introduced later without changing project identity.
+servers:
+  - url: https://api.example.invalid
+paths:
+  /v1/projects:
+    get:
+      operationId: listProjects
+      responses:
+        '200':
+          description: Project heads visible to the current user.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectHead'
+  /v1/projects/{projectId}/head:
+    get:
+      operationId: getProjectHead
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      responses:
+        '200':
+          description: Current remote head.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectHead'
+        '404':
+          description: Project not found.
+  /v1/projects/{projectId}/revisions/{revision}:
+    get:
+      operationId: downloadProjectRevision
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+        - name: revision
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Canonical project snapshot for a specific revision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectRevision'
+        '404':
+          description: Project or revision not found.
+  /v1/projects/{projectId}/revisions:
+    post:
+      operationId: pushProjectRevision
+      description: >-
+        Creates a new immutable project revision only when baseRevision equals the
+        current remote head. The server must never silently overwrite a newer remote
+        revision.
+      parameters:
+        - $ref: '#/components/parameters/ProjectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushRevisionRequest'
+      responses:
+        '201':
+          description: Revision accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushRevisionAccepted'
+        '409':
+          description: Base revision is stale; explicit conflict resolution is required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushRevisionConflict'
+        '422':
+          description: Project identity/schema validation failed.
+components:
+  parameters:
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+  schemas:
+    ProjectHead:
+      type: object
+      additionalProperties: false
+      required: [projectId, revision, schemaVersion, updatedAt]
+      properties:
+        projectId:
+          type: string
+        revision:
+          type: integer
+          minimum: 1
+        schemaVersion:
+          type: integer
+          minimum: 1
+        updatedAt:
+          type: string
+          format: date-time
+    ProjectRevision:
+      type: object
+      additionalProperties: false
+      required: [projectId, revision, schemaVersion, updatedAt, document]
+      properties:
+        projectId:
+          type: string
+        revision:
+          type: integer
+          minimum: 1
+        schemaVersion:
+          type: integer
+          minimum: 1
+        updatedAt:
+          type: string
+          format: date-time
+        document:
+          type: object
+          description: Canonical EditorProjectDocument JSON payload.
+          additionalProperties: true
+    PushRevisionRequest:
+      type: object
+      additionalProperties: false
+      required: [baseRevision, schemaVersion, deviceId, document]
+      properties:
+        baseRevision:
+          type: integer
+          minimum: 0
+          description: 0 only when the project has no remote revision yet.
+        schemaVersion:
+          type: integer
+          minimum: 1
+        deviceId:
+          type: string
+          minLength: 1
+        document:
+          type: object
+          additionalProperties: true
+    PushRevisionAccepted:
+      type: object
+      additionalProperties: false
+      required: [projectId, revision, updatedAt]
+      properties:
+        projectId:
+          type: string
+        revision:
+          type: integer
+          minimum: 1
+        updatedAt:
+          type: string
+          format: date-time
+    PushRevisionConflict:
+      type: object
+      additionalProperties: false
+      required: [projectId, baseRevision, remoteRevision, code]
+      properties:
+        projectId:
+          type: string
+        baseRevision:
+          type: integer
+          minimum: 0
+        remoteRevision:
+          type: integer
+          minimum: 1
+        code:
+          type: string
+          const: PROJECT_REVISION_CONFLICT
