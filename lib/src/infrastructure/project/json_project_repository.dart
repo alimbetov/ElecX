@@ -34,13 +34,27 @@ final class JsonProjectRepository implements ProjectRepository {
     };
     final encoded = jsonEncode(envelope);
 
-    // Prove the complete serialized representation is decodable before
-    // touching the current on-disk project.
+    // Prove the complete serialized representation is decodable and stable
+    // before touching the current on-disk project. Identity-only validation is
+    // insufficient once canonical root metadata (for example Project North)
+    // participates in persistence: a lossy decoder could keep ProjectId while
+    // silently dropping engineering state.
     final validated = _documentFromJson(jsonDecode(encoded));
     final roundTrip = codec.decode(validated);
     if (roundTrip.id != snapshot.id) {
       throw StateError(
         'Project codec changed project identity during save validation.',
+      );
+    }
+
+    final reencoded = codec.encode(roundTrip);
+    final reencodedEnvelope = <String, Object?>{
+      'schemaVersion': reencoded.schemaVersion,
+      'payload': reencoded.payload,
+    };
+    if (jsonEncode(reencodedEnvelope) != encoded) {
+      throw StateError(
+        'Project codec changed canonical document during save validation.',
       );
     }
 
