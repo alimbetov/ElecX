@@ -54,9 +54,8 @@ final class RoomSurfaceNavigatorProjection {
             SurfacePlaneType.ceiling => RoomSurfaceNavigatorKind.ceiling,
             SurfacePlaneType.wall => RoomSurfaceNavigatorKind.wall,
           };
-    final wallIndex = kind == RoomSurfaceNavigatorKind.wall
-        ? active?.wallIndex
-        : null;
+    final wallIndex =
+        kind == RoomSurfaceNavigatorKind.wall ? active?.wallIndex : null;
     if (wallIndex != null &&
         (wallIndex < 0 || wallIndex >= space.boundary.vertices.length)) {
       return null;
@@ -186,14 +185,14 @@ class RoomSurfaceNavigator extends StatelessWidget {
                       itemBuilder: (context, index) => _surfaceButton(
                         key: ValueKey('room-surface-wall-$index'),
                         label: 'Wall ${index + 1}',
-                        semanticsLabel: projection.kind ==
-                                    RoomSurfaceNavigatorKind.wall &&
-                                projection.wallIndex == index
-                            ? 'Wall ${index + 1}, current surface'
-                            : 'Wall ${index + 1}',
-                        selected: projection.kind ==
-                                RoomSurfaceNavigatorKind.wall &&
-                            projection.wallIndex == index,
+                        semanticsLabel:
+                            projection.kind == RoomSurfaceNavigatorKind.wall &&
+                                    projection.wallIndex == index
+                                ? 'Wall ${index + 1}, current surface'
+                                : 'Wall ${index + 1}',
+                        selected:
+                            projection.kind == RoomSurfaceNavigatorKind.wall &&
+                                projection.wallIndex == index,
                         onPressed: () => controller.showWall(index),
                       ),
                     ),
@@ -288,8 +287,7 @@ final class _RoomSurfaceMiniPainter extends CustomPainter {
       ..strokeWidth = 3
       ..color = scheme.primary;
 
-    Path polygon(List<Offset> values) => Path()
-      ..addPolygon(values, true);
+    Path polygon(List<Offset> values) => Path()..addPolygon(values, true);
 
     canvas.drawPath(
       polygon(floor),
