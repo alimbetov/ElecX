@@ -98,12 +98,16 @@ void main() {
 
     expect(find.byType(ProjectCompassOverlay), findsNothing);
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-    await tester.pump();
-    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-    await tester.pump();
-    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-    await tester.pump();
+    var compassFocused = false;
+    for (var i = 0; i < 30 && !compassFocused; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      compassFocused = _focusIsInsideKey(
+        const ValueKey('project-compass-toggle'),
+      );
+    }
+
+    expect(compassFocused, isTrue);
     await tester.sendKeyEvent(LogicalKeyboardKey.space);
     await tester.pumpAndSettle();
 
@@ -151,6 +155,20 @@ void main() {
       await tester.pumpAndSettle();
     }
   });
+}
+
+bool _focusIsInsideKey(Key key) {
+  Element? current = FocusManager.instance.primaryFocus?.context as Element?;
+  while (current != null) {
+    if (current.widget.key == key) return true;
+    Element? parent;
+    current.visitAncestorElements((ancestor) {
+      parent = ancestor;
+      return false;
+    });
+    current = parent;
+  }
+  return false;
 }
 
 void _useSurface(WidgetTester tester, Size size) {
