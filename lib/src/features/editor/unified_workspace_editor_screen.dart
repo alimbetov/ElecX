@@ -18,6 +18,7 @@ import 'editor_layout_policy.dart';
 import 'editor_p2_session.dart';
 import 'editor_project_document.dart';
 import 'editor_project_recovery.dart';
+import 'project_north_edit_dialog.dart';
 import 'project_persistence_metadata.dart';
 import 'project_save_diagnostics.dart';
 import 'room_circuit_overview.dart';
@@ -700,7 +701,9 @@ class _UnifiedWorkspaceEditorScreenState
   }
 
   Future<void> _editProjectNorth() async {
-    if (!_canEditProjectNorth) {
+    final resolved = _canonicalResolvedRuntime;
+    final config = widget.canonicalRuntime;
+    if (!_canEditProjectNorth || resolved == null || config == null) {
       _showProjectMessage(
         'Редактирование Project North недоступно без canonical persistence owner.',
         isError: true,
@@ -708,67 +711,53 @@ class _UnifiedWorkspaceEditorScreenState
       return;
     }
 
-    final resolved = _canonicalResolvedRuntime!;
     final editing = resolved.session.projectNorthEditing;
-    final current = editing.currentProjectNorth;
-    final input = TextEditingController(
-      text: current?.degrees.toStringAsFixed(3) ?? '',
-    );
+    final capturedProjectId = editing.projectId;
+    final capturedVersion = editing.version;
+    final ownerCallback = config.onProjectNorthCommitted!;
+
     final value = await showDialog<ProjectEngineeringNorth>(
       context: context,
-      builder: (dialogContext) {
-        String? validationError;
-        return StatefulBuilder(
-          builder: (dialogContext, setDialogState) => AlertDialog(
-            key: const ValueKey('project-north-dialog'),
-            title: const Text('Project North'),
-            content: TextField(
-              key: const ValueKey('project-north-angle-input'),
-              controller: input,
-              autofocus: true,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                labelText: 'Угол',
-                suffixText: '°',
-                helperText:
-                    '0° = вверх по плану; положительное направление по часовой стрелке',
-                errorText: validationError,
-              ),
-              onSubmitted: (_) => _submitProjectNorthDialog(
-                dialogContext,
-                input.text,
-                setDialogState,
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('Отмена'),
-              ),
-              FilledButton(
-                key: const ValueKey('apply-project-north'),
-                onPressed: () => _submitProjectNorthDialog(
-                  dialogContext,
-                  input.text,
-                  setDialogState,
-                ),
-                child: const Text('Применить'),
-              ),
-            ],
-          ),
-        );
-      },
+      builder: (_) => ProjectNorthEditDialog(
+        initialValue: editing.currentProjectNorth,
+      ),
     );
-    input.dispose();
     if (value == null || !mounted) return;
 
-    final beforeVersion = resolved.session.project.version;
+    final currentResolved = _canonicalResolvedRuntime;
+    final currentConfig = widget.canonicalRuntime;
+    final currentEditing = resolved.session.projectNorthEditing;
+    final currentProject = resolved.session.project;
+    final affinityValid = identical(currentResolved, resolved) &&
+        identical(currentConfig, config) &&
+        _canonicalProjectMatchesScreen &&
+        currentProject.id == capturedProjectId &&
+        currentProject.version == capturedVersion &&
+        currentEditing.canEdit &&
+        currentEditing.projectId == capturedProjectId &&
+        currentEditing.version == capturedVersion &&
+        resolved.persistenceOwnerProjectId == capturedProjectId &&
+        currentConfig?.onProjectNorthCommitted != null;
+    if (!affinityValid) {
+      _showProjectMessage(
+        'Project North не изменён: canonical edit context изменился во время редактирования.',
+        isError: true,
+      );
+      _refresh();
+      return;
+    }
+
     ProjectMutationResult? result;
     try {
-      result = editing.setProjectNorth(value);
+      result = currentEditing.setProjectNorth(
+        value,
+        expectedVersion: capturedVersion,
+      );
     } catch (error) {
-      _showProjectMessage('Не удалось изменить Project North: $error', isError: true);
+      _showProjectMessage(
+        'Не удалось изменить Project North: $error',
+        isError: true,
+      );
       return;
     }
 
@@ -778,9 +767,15 @@ class _UnifiedWorkspaceEditorScreenState
     }
 
     final afterProject = resolved.session.project;
-    if (afterProject.version.value != beforeVersion.value + 1 ||
-        editing.version != afterProject.version ||
-        editing.currentProjectNorth != afterProject.engineeringMetadata.projectNorth) {
+    if (afterProject.id != capturedProjectId ||
+        afterProject.version.value != capturedVersion.value + 1 ||
+        currentEditing.version != afterProject.version ||
+        currentEditing.currentProjectNorth !=
+            afterProject.engineeringMetadata.projectNorth ||
+        result.project.id != afterProject.id ||
+        result.project.version != afterProject.version ||
+        result.changeSet.beforeVersion != capturedVersion ||
+        result.changeSet.afterVersion != afterProject.version) {
       _showProjectMessage(
         'Project North committed, но canonical runtime потерял mutation affinity.',
         isError: true,
@@ -790,7 +785,7 @@ class _UnifiedWorkspaceEditorScreenState
     }
 
     try {
-      widget.canonicalRuntime!.onProjectNorthCommitted!(editing, result);
+      ownerCallback(currentEditing, result);
     } catch (error) {
       _showProjectMessage(
         'Project North committed, но persistence owner не подтвердил владение: $error',
@@ -801,19 +796,6 @@ class _UnifiedWorkspaceEditorScreenState
     }
 
     _refresh();
-  }
-
-  void _submitProjectNorthDialog(
-    BuildContext dialogContext,
-    String raw,
-    StateSetter setDialogState,
-  ) {
-    final parsed = double.tryParse(raw.trim().replaceAll(',', '.'));
-    if (parsed == null || !parsed.isFinite) {
-      setDialogState(() {});
-      return;
-    }
-    Navigator.of(dialogContext).pop(ProjectEngineeringNorth.fromDegrees(parsed));
   }
 
   void _openMiniMap() {
@@ -1383,7 +1365,7 @@ class _CatalogPanel extends StatelessWidget {
             trailing: IconButton(
               tooltip: 'Свернуть каталог',
               onPressed: onCollapse,
-              icon: const Icon(Icons.chevron_right),
+              icon: Icon(Icons.chevron_right),
             ),
           ),
           const Divider(height: 1),
