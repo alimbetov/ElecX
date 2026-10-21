@@ -103,6 +103,7 @@ final class RemoveStructuralZoneCommand implements ProjectCommand {
         code: ProjectAuthoringIssueCode.structuralZoneHasSpaces,
         entityId: zone.id,
         relatedEntityId: zone.spaceIds.first,
+        blockingEntityIds: Set<EntityId>.unmodifiable(zone.spaceIds),
         message: 'Structural zone ${zone.id} cannot be removed while it '
             'contains ${zone.spaceIds.length} space(s).',
       );
@@ -162,13 +163,17 @@ final class RemoveLevelCommand implements ProjectCommand {
       );
     }
     if (level.zoneIds.isNotEmpty || level.spaceIds.isNotEmpty) {
-      final dependentId = level.zoneIds.isNotEmpty
-          ? level.zoneIds.first
-          : level.spaceIds.first;
+      final blockingEntityIds = <EntityId>{
+        ...level.zoneIds,
+        ...level.spaceIds,
+      };
+      final dependentId =
+          level.zoneIds.isNotEmpty ? level.zoneIds.first : level.spaceIds.first;
       throw ProjectAuthoringException(
         code: ProjectAuthoringIssueCode.levelHasChildren,
         entityId: level.id,
         relatedEntityId: dependentId,
+        blockingEntityIds: Set<EntityId>.unmodifiable(blockingEntityIds),
         message: 'Level ${level.id} cannot be removed while it contains '
             '${level.zoneIds.length} structural zone(s) and '
             '${level.spaceIds.length} space(s).',
@@ -229,6 +234,7 @@ final class RemoveBuildingCommand implements ProjectCommand {
         code: ProjectAuthoringIssueCode.buildingHasLevels,
         entityId: building.id,
         relatedEntityId: building.levelIds.first,
+        blockingEntityIds: Set<EntityId>.unmodifiable(building.levelIds),
         message: 'Building ${building.id} cannot be removed while it '
             'contains ${building.levelIds.length} level(s).',
       );
