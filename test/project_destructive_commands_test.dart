@@ -170,10 +170,10 @@ void main() {
                 SpaceId('space-1'),
               )
               .having(
-                (error) => error.blockingEntityIds,
-                'blockingEntityIds',
-                <EntityId>{SpaceId('space-1')},
-              ),
+            (error) => error.blockingEntityIds,
+            'blockingEntityIds',
+            <EntityId>{SpaceId('space-1')},
+          ),
         ),
       );
 
@@ -208,10 +208,10 @@ void main() {
                 LevelId('level-1'),
               )
               .having(
-                (error) => error.blockingEntityIds,
-                'blockingEntityIds',
-                <EntityId>{ZoneId('zone-a'), SpaceId('space-1')},
-              ),
+            (error) => error.blockingEntityIds,
+            'blockingEntityIds',
+            <EntityId>{ZoneId('zone-a'), SpaceId('space-1')},
+          ),
         ),
       );
 
@@ -246,10 +246,10 @@ void main() {
                 BuildingId('building-a'),
               )
               .having(
-                (error) => error.blockingEntityIds,
-                'blockingEntityIds',
-                <EntityId>{LevelId('level-1'), LevelId('level-2')},
-              ),
+            (error) => error.blockingEntityIds,
+            'blockingEntityIds',
+            <EntityId>{LevelId('level-1'), LevelId('level-2')},
+          ),
         ),
       );
 
