@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'package:elecx/src/application/project/project_authoring_error.dart';
+import 'package:elecx/src/application/project/project_destructive_commands.dart';
 import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/project_navigation_state.dart';
 import 'package:elecx/src/application/project/project_structure_authoring.dart';
@@ -41,7 +43,8 @@ void main() {
       expect(result.project.index.building(result.createdId)!.displayOrder, 3);
     });
 
-    test('create Level targets active Building and makes new Level current', () {
+    test('create Level targets active Building and makes new Level current',
+        () {
       final session = _session(_project(includeBuilding: true));
       final buildingId = session.navigation.activeBuildingId!;
 
@@ -110,7 +113,7 @@ void main() {
       expect(session.navigation, beforeNavigation);
     });
 
-    test('Room zone outside active Level is rejected before mutation', () {
+    test('Room zone outside active Level is rejected with typed domain error', () {
       final project = _twoLevelProjectWithZoneOnSecond();
       final navigation = ProjectNavigationState.initial(project)
           .activateLevel(project, LevelId('level-1'));
@@ -125,12 +128,144 @@ void main() {
             structuralZoneId: ZoneId('zone-level-2'),
           ),
         ),
-        throwsA(isA<StateError>()),
+        throwsA(
+          isA<ProjectAuthoringException>()
+              .having(
+                (error) => error.code,
+                'code',
+                ProjectAuthoringIssueCode.structuralZoneLevelMismatch,
+              )
+              .having(
+                (error) => error.relatedEntityId,
+                'actual owner level',
+                LevelId('level-2'),
+              ),
+        ),
       );
 
       expect(session.project.version, beforeVersion);
       expect(session.navigation, beforeNavigation);
       expect(session.project.stores.spaces, isEmpty);
+    });
+
+    test('authoring session rejects navigation from another Site', () {
+      final current = _project(includeBuilding: true);
+      final foreign = _project(
+        includeBuilding: true,
+        siteIdValue: 'site-other',
+        projectIdValue: 'project-other',
+      );
+      final foreignNavigation = ProjectNavigationState.initial(foreign);
+
+      expect(
+        () => _session(current, navigation: foreignNavigation),
+        throwsA(
+          isA<ProjectStructureAuthoringException>().having(
+            (error) => error.code,
+            'code',
+            ProjectStructureAuthoringIssueCode.navigationSiteMismatch,
+          ),
+        ),
+      );
+    });
+
+    test('availability never silently repairs stale navigation context', () {
+      final initial = _project(includeBuilding: true);
+      final mutations = ProjectMutationSession(initial);
+      final session = ProjectStructureAuthoringSession(
+        mutations: mutations,
+        idFactory: SecureRandomEntityIdFactory(random: Random(7)),
+      );
+      final beforeNavigation = session.navigation;
+
+      final removal = mutations.commit(
+        ProjectMutationRequest(
+          expectedVersion: mutations.current.version,
+          command: RemoveBuildingCommand(
+            buildingId: BuildingId('building-a'),
+          ),
+        ),
+      )!;
+
+      expect(session.availability.canAddBuilding, isTrue);
+      expect(session.availability.canAddLevel, isFalse);
+      expect(session.availability.canAddRoom, isFalse);
+      expect(session.navigation, beforeNavigation);
+      expect(
+        () => session.createLevel(
+          const CreateLevelRequest(
+            name: 'Floor 1',
+            levelNumber: 1,
+            elevationMm: 0,
+          ),
+        ),
+        throwsA(
+          isA<ProjectStructureAuthoringException>().having(
+            (error) => error.code,
+            'code',
+            ProjectStructureAuthoringIssueCode.activeBuildingRequired,
+          ),
+        ),
+      );
+
+      session.reconcileNavigation(before: initial, after: removal.project);
+      expect(session.navigation.activeBuildingId, isNull);
+      expect(session.availability.canAddLevel, isFalse);
+    });
+
+    test('reconcileNavigation rejects skipped or unrelated snapshots', () {
+      final initial = _project(includeBuilding: true);
+      final mutations = ProjectMutationSession(initial);
+      final session = ProjectStructureAuthoringSession(
+        mutations: mutations,
+        idFactory: SecureRandomEntityIdFactory(random: Random(7)),
+      );
+      final removal = mutations.commit(
+        ProjectMutationRequest(
+          expectedVersion: mutations.current.version,
+          command: RemoveBuildingCommand(
+            buildingId: BuildingId('building-a'),
+          ),
+        ),
+      )!;
+
+      final unrelatedBefore = _project(
+        includeBuilding: true,
+        projectIdValue: 'project-other',
+      );
+      expect(
+        () => session.reconcileNavigation(
+          before: unrelatedBefore,
+          after: removal.project,
+        ),
+        throwsA(
+          isA<ProjectStructureAuthoringException>().having(
+            (error) => error.code,
+            'code',
+            ProjectStructureAuthoringIssueCode.reconciliationProjectMismatch,
+          ),
+        ),
+      );
+
+      final skippedBefore = ProjectAggregateRoot(
+        id: initial.id,
+        siteId: initial.siteId,
+        version: LocalProjectVersion(9),
+        stores: initial.stores,
+      );
+      expect(
+        () => session.reconcileNavigation(
+          before: skippedBefore,
+          after: removal.project,
+        ),
+        throwsA(
+          isA<ProjectStructureAuthoringException>().having(
+            (error) => error.code,
+            'code',
+            ProjectStructureAuthoringIssueCode.reconciliationVersionMismatch,
+          ),
+        ),
+      );
     });
   });
 }
@@ -150,14 +285,16 @@ ProjectAggregateRoot _project({
   bool includeBuilding = false,
   bool includeLevel = false,
   bool includeZone = false,
+  String projectIdValue = 'project-1',
+  String siteIdValue = 'site-root',
 }) {
-  final siteId = SiteId('site-root');
+  final siteId = SiteId(siteIdValue);
   final buildingId = BuildingId('building-a');
   final levelId = LevelId('level-1');
   final zoneId = ZoneId('zone-a');
 
   return ProjectAggregateRoot(
-    id: ProjectId('project-1'),
+    id: ProjectId(projectIdValue),
     siteId: siteId,
     version: LocalProjectVersion(0),
     stores: ProjectEntityStores(
