@@ -60,7 +60,8 @@ void main() {
 
       await tester.tap(find.byKey(const ValueKey('project-compass-action')));
       await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('project-north-dialog')), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('project-north-dialog')), findsOneWidget);
 
       await tester.enterText(
         find.byKey(const ValueKey('project-north-angle-input')),
@@ -117,7 +118,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('project-compass-paint')), findsNothing);
-      expect(find.byKey(const ValueKey('project-compass-action')), findsNothing);
+      expect(
+          find.byKey(const ValueKey('project-compass-action')), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
@@ -157,7 +159,8 @@ void main() {
         find.byKey(const ValueKey('project-compass-read-only')),
         findsOneWidget,
       );
-      expect(find.byKey(const ValueKey('project-compass-action')), findsNothing);
+      expect(
+          find.byKey(const ValueKey('project-compass-action')), findsNothing);
       expect(fixture.session.project.version.value, 0);
     },
   );
@@ -188,7 +191,8 @@ void main() {
         find.byKey(const ValueKey('project-compass-read-only')),
         findsOneWidget,
       );
-      expect(find.byKey(const ValueKey('project-compass-action')), findsNothing);
+      expect(
+          find.byKey(const ValueKey('project-compass-action')), findsNothing);
     },
   );
 
