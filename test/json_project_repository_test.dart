@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:elecx/src/application/project/project_snapshot.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
+import 'package:elecx/src/domain/project_orientation.dart';
 import 'package:elecx/src/infrastructure/project/json_project_repository.dart';
+import 'package:elecx/src/serialization/project/canonical_project_document_codec.dart';
 import 'package:elecx/src/serialization/project/project_document_codec.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -50,6 +52,28 @@ void main() {
       ProjectId('project-b'),
       ProjectId('project-a'),
     ]);
+  });
+
+  test('canonical codec repository round-trip preserves Project North', () async {
+    final canonicalRepository = JsonProjectRepository(
+      rootDirectory: root,
+      codec: const CanonicalProjectDocumentCodec(),
+    );
+    final north = ProjectEngineeringNorth.fromDegrees(123.456);
+    final snapshot = _snapshot(
+      id: 'project-north',
+      name: 'Project North',
+      updatedAt: DateTime.utc(2026, 10, 21, 10),
+      north: north,
+    );
+
+    await canonicalRepository.save(snapshot);
+    final loaded = await canonicalRepository.load(ProjectId('project-north'));
+
+    expect(loaded, isNotNull);
+    expect(loaded!.aggregate.engineeringMetadata.projectNorth, north);
+    expect(loaded.localVersion, snapshot.localVersion);
+    expect(loaded.aggregate.index.site(loaded.siteId)?.name, 'Site project-north');
   });
 
   test('returns null for a project that has never been saved', () async {
@@ -105,6 +129,7 @@ ProjectSnapshot _snapshot({
   required String id,
   required String name,
   required DateTime updatedAt,
+  ProjectEngineeringNorth? north,
 }) {
   final projectId = ProjectId(id);
   final siteId = SiteId('site-$id');
@@ -113,6 +138,7 @@ ProjectSnapshot _snapshot({
       id: projectId,
       siteId: siteId,
       version: LocalProjectVersion(2),
+      engineeringMetadata: ProjectEngineeringMetadata(projectNorth: north),
       stores: ProjectEntityStores(
         sites: {
           siteId: ProjectSiteEntity(
