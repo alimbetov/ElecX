@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:elecx/src/application/project/project_snapshot.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
+import 'package:elecx/src/domain/project_orientation.dart';
 import 'package:elecx/src/serialization/project/canonical_project_document_codec.dart';
 import 'package:elecx/src/serialization/project/legacy_v4_project_compatibility.dart';
 import 'package:elecx/src/serialization/project/project_document_codec.dart';
@@ -13,34 +14,54 @@ void main() {
     const codec = CanonicalProjectDocumentCodec();
 
     test(
-        'round-trips a canonical multi-building snapshot without identity loss',
-        () {
-      final snapshot = _multiBuildingSnapshot();
+      'round-trips multi-building snapshot and Project North without identity loss',
+      () {
+        final north = ProjectEngineeringNorth.fromDegrees(32.5);
+        final snapshot = _multiBuildingSnapshot(north: north);
 
-      final first = codec.encode(snapshot);
-      final restored = codec.decode(first);
-      final second = codec.encode(restored);
+        final first = codec.encode(snapshot);
+        final restored = codec.decode(first);
+        final second = codec.encode(restored);
 
-      expect(restored.id, snapshot.id);
-      expect(restored.siteId, snapshot.siteId);
-      expect(restored.localVersion, snapshot.localVersion);
-      expect(restored.name, snapshot.name);
-      expect(restored.createdAt, snapshot.createdAt.toUtc());
-      expect(restored.updatedAt, snapshot.updatedAt.toUtc());
-      expect(restored.aggregate.stores.buildings, hasLength(2));
-      expect(restored.aggregate.stores.levels, hasLength(2));
-      expect(
-        restored.aggregate.index.buildingByLevel[LevelId('level-a-2')],
-        BuildingId('building-a'),
+        expect(first.schemaVersion, 2);
+        expect(restored.id, snapshot.id);
+        expect(restored.siteId, snapshot.siteId);
+        expect(restored.localVersion, snapshot.localVersion);
+        expect(restored.name, snapshot.name);
+        expect(restored.createdAt, snapshot.createdAt.toUtc());
+        expect(restored.updatedAt, snapshot.updatedAt.toUtc());
+        expect(restored.aggregate.engineeringMetadata.projectNorth, north);
+        expect(restored.aggregate.stores.buildings, hasLength(2));
+        expect(restored.aggregate.stores.levels, hasLength(2));
+        expect(
+          restored.aggregate.index.buildingByLevel[LevelId('level-a-2')],
+          BuildingId('building-a'),
+        );
+        expect(
+          restored.aggregate.index.buildingByLevel[LevelId('level-b-2')],
+          BuildingId('building-b'),
+        );
+
+        expect(jsonEncode(second.payload), jsonEncode(first.payload));
+      },
+    );
+
+    test('migrates canonical v1 to v2 with Project North unspecified', () {
+      final current = codec.encode(_multiBuildingSnapshot());
+      final v1Payload = Map<String, Object?>.from(current.payload)
+        ..remove('projectOrientation');
+      final restored = codec.decode(
+        ProjectDocument(schemaVersion: 1, payload: v1Payload),
       );
-      expect(
-        restored.aggregate.index.buildingByLevel[LevelId('level-b-2')],
-        BuildingId('building-b'),
-      );
 
-      // Canonical encode order makes the serialized semantic fingerprint
-      // stable enough to prove encode/decode/encode equivalence for P2D.
-      expect(jsonEncode(second.payload), jsonEncode(first.payload));
+      expect(restored.aggregate.engineeringMetadata.projectNorth, isNull);
+
+      final reencoded = codec.encode(restored);
+      expect(reencoded.schemaVersion, 2);
+      expect(
+        reencoded.payload['projectOrientation'],
+        <String, Object?>{'projectNorthMilliDegrees': null},
+      );
     });
 
     test('rejects unsupported canonical schema fail closed', () {
@@ -57,10 +78,73 @@ void main() {
       );
     });
 
+    test('rejects malformed or out-of-range persisted Project North', () {
+      final document = codec.encode(_multiBuildingSnapshot());
+
+      for (final malformed in <Object?>['90000', 90.0, -1, 360000]) {
+        final payload = _mutablePayload(document);
+        final orientation = payload['projectOrientation']! as Map;
+        orientation['projectNorthMilliDegrees'] = malformed;
+
+        expect(
+          () => codec.decode(
+            ProjectDocument(
+              schemaVersion: document.schemaVersion,
+              payload: _stringKeyed(payload),
+            ),
+          ),
+          throwsFormatException,
+          reason: 'persisted value $malformed must fail closed',
+        );
+      }
+    });
+
+    test('rejects missing or malformed orientation object in schema v2', () {
+      final document = codec.encode(_multiBuildingSnapshot());
+
+      final missing = _mutablePayload(document)..remove('projectOrientation');
+      expect(
+        () => codec.decode(
+          ProjectDocument(
+            schemaVersion: document.schemaVersion,
+            payload: _stringKeyed(missing),
+          ),
+        ),
+        throwsFormatException,
+      );
+
+      final malformed = _mutablePayload(document);
+      malformed['projectOrientation'] = 'north';
+      expect(
+        () => codec.decode(
+          ProjectDocument(
+            schemaVersion: document.schemaVersion,
+            payload: _stringKeyed(malformed),
+          ),
+        ),
+        throwsFormatException,
+      );
+    });
+
+    test('semantic fingerprint changes when only Project North changes', () {
+      final north0 = codec.encode(
+        _multiBuildingSnapshot(
+          north: ProjectEngineeringNorth.fromDegrees(0),
+        ),
+      );
+      final north90 = codec.encode(
+        _multiBuildingSnapshot(
+          north: ProjectEngineeringNorth.fromDegrees(90),
+        ),
+      );
+
+      expect(jsonEncode(north0.payload), isNot(jsonEncode(north90.payload)));
+    });
+
     test('rejects duplicate relationship ids instead of silently normalizing',
         () {
       final document = codec.encode(_multiBuildingSnapshot());
-      final mutablePayload = jsonDecode(jsonEncode(document.payload)) as Map;
+      final mutablePayload = _mutablePayload(document);
       final sites = mutablePayload['sites']! as List;
       final firstSite = sites.first! as Map;
       firstSite['buildingIds'] = <Object?>['building-a', 'building-a'];
@@ -69,9 +153,7 @@ void main() {
         () => codec.decode(
           ProjectDocument(
             schemaVersion: document.schemaVersion,
-            payload: mutablePayload.map(
-              (key, value) => MapEntry(key.toString(), value),
-            ),
+            payload: _stringKeyed(mutablePayload),
           ),
         ),
         throwsFormatException,
@@ -80,7 +162,7 @@ void main() {
 
     test('rejects timestamps without an explicit zone', () {
       final document = codec.encode(_multiBuildingSnapshot());
-      final mutablePayload = jsonDecode(jsonEncode(document.payload)) as Map;
+      final mutablePayload = _mutablePayload(document);
       final metadata = mutablePayload['metadata']! as Map;
       metadata['createdAt'] = '2026-10-21T06:00:00.000';
 
@@ -88,9 +170,7 @@ void main() {
         () => codec.decode(
           ProjectDocument(
             schemaVersion: document.schemaVersion,
-            payload: mutablePayload.map(
-              (key, value) => MapEntry(key.toString(), value),
-            ),
+            payload: _stringKeyed(mutablePayload),
           ),
         ),
         throwsFormatException,
@@ -100,11 +180,17 @@ void main() {
     test('project document deeply freezes nested payload collections', () {
       final document = codec.encode(_multiBuildingSnapshot());
       final metadata = document.payload['metadata']! as Map<String, Object?>;
+      final orientation =
+          document.payload['projectOrientation']! as Map<String, Object?>;
       final buildings = document.payload['buildings']! as List<Object?>;
       final firstBuilding = buildings.first! as Map<String, Object?>;
       final levelIds = firstBuilding['levelIds']! as List<Object?>;
 
       expect(() => metadata['name'] = 'Changed', throwsUnsupportedError);
+      expect(
+        () => orientation['projectNorthMilliDegrees'] = 90000,
+        throwsUnsupportedError,
+      );
       expect(() => buildings.clear(), throwsUnsupportedError);
       expect(() => firstBuilding['name'] = 'Changed', throwsUnsupportedError);
       expect(() => levelIds.clear(), throwsUnsupportedError);
@@ -158,7 +244,14 @@ void main() {
   });
 }
 
-ProjectSnapshot _multiBuildingSnapshot() {
+Map _mutablePayload(ProjectDocument document) =>
+    jsonDecode(jsonEncode(document.payload)) as Map;
+
+Map<String, Object?> _stringKeyed(Map source) => source.map(
+      (key, value) => MapEntry(key.toString(), value),
+    );
+
+ProjectSnapshot _multiBuildingSnapshot({ProjectEngineeringNorth? north}) {
   final projectId = ProjectId('project-1');
   final siteId = SiteId('site-1');
   final buildingA = BuildingId('building-a');
@@ -173,6 +266,7 @@ ProjectSnapshot _multiBuildingSnapshot() {
     id: projectId,
     siteId: siteId,
     version: LocalProjectVersion(7),
+    engineeringMetadata: ProjectEngineeringMetadata(projectNorth: north),
     stores: ProjectEntityStores(
       sites: <SiteId, ProjectSiteEntity>{
         siteId: ProjectSiteEntity(
