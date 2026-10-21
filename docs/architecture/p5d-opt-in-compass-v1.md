@@ -2,9 +2,9 @@
 
 ## Status
 
-Architecture and implementation specification for `feat/p5d-opt-in-compass-design`.
+Hardened architecture and implementation specification for `feat/p5d-opt-in-compass-design`.
 
-P5D follows P5C and must preserve the P5C canonical-navigation and controlled-hybrid invariants. It intentionally does not pull P5E, P6, P7 or P16 scope forward.
+This document incorporates the repository audit performed on 2026-10-21. P5D follows P5C and must preserve the P5C canonical-navigation, controlled-hybrid, persistence-owner and fail-closed invariants.
 
 ElecX remains native-only:
 
@@ -17,80 +17,102 @@ ElecX remains native-only:
 
 Web/browser runtime is out of scope.
 
-## Objective
+---
 
-Add a discoverable but non-intrusive compass that communicates canonical project orientation without becoming a second navigation model, a viewport transform owner, or a persistence shortcut.
+## 1. Objective
 
-The compass is hidden by default and appears only after explicit user action.
+Add a discoverable, opt-in compass that communicates the canonical engineering orientation of the project without becoming:
 
-The overlay must answer one question only:
+- a second navigation model;
+- a viewport-transform owner;
+- a geospatial/true-north subsystem;
+- a widget-owned persistence path;
+- a bypass around P3 canonical mutation semantics.
+
+The compass is hidden by default and appears only after an explicit user action.
+
+The overlay answers one question only:
 
 ```text
 Where is canonical Project North relative to the current plan view?
 ```
 
-It must not imply geospatial accuracy, device-heading accuracy, magnetic north, true north, survey north, or map georeferencing unless those capabilities are introduced by a later explicit architecture decision.
+It must not imply magnetic north, GPS heading, survey north, geographic north, device heading, or verified true north.
 
-## Scope boundary
+---
 
-P5D includes:
+## 2. Non-negotiable architecture split
 
-- hidden-by-default compass overlay;
-- explicit native UI toggle;
-- canonical `ProjectNorth` value semantics;
-- optional editing of Project North through an application/domain command;
-- projection of Project North into the current plan viewport;
-- focus-mode suppression;
-- desktop/mobile adaptive controls;
-- accessibility semantics;
-- qualification and regression tests.
+The repository already contains a legacy `ProjectNorth` whose semantics are tied to true-north/daylight calculations. P5D must not silently reinterpret that type.
 
-P5D does not include:
-
-- viewport rotation as a new editing feature;
-- device compass / magnetometer integration;
-- GPS or map georeferencing;
-- true-north / magnetic-declination calculations;
-- solar studies;
-- per-building local coordinate systems;
-- P5E Room Surface Navigator;
-- P6 semantic-space expansion;
-- P7 BoundaryEdge / wall-topology work;
-- P16 Drift/SQLite production persistence.
-
-## Existing architecture constraints
-
-The current project-structure specification already establishes:
+P5D establishes two different concepts:
 
 ```text
-compass visible = transient editor-shell/session UI state
-project north   = canonical engineering project state
+Canonical Project North
+  engineering reference direction inside canonical project XY
+  no geospatial claim
+
+True North Reference
+  optional relation between project frame and geographic true north
+  used only by explicit geospatial/daylight capabilities
 ```
 
-Therefore showing or hiding the compass must never mutate canonical project data or mark the engineering document modified.
+Recommended end-state names:
 
-The compass consumes canonical state. It does not own it.
+```dart
+final class ProjectNorth { ... }
+final class TrueNorthReference { ... }
+```
 
-## Coordinate contract
+The exact migration may retain a compatibility adapter temporarily, but one type must never carry both meanings.
 
-### Canonical plan coordinate space
+### 2.1 Daylight compatibility invariant
 
-P5D defines Project North only in the canonical plan XY plane.
+`DaylightAssistEngine` currently depends on true-north semantics. P5D must preserve that behavior explicitly.
 
-The existing geometry model uses millimetre coordinates with semantic `left/right/bottom/top`, therefore P5D treats the project plane as:
+After reconciliation:
+
+```text
+DaylightAssistEngine
+-> consumes TrueNorthReference or compatibility adapter
+-> never consumes canonical ProjectNorth by accident
+```
+
+P5D compass projection:
+
+```text
+ProjectNorth
+-> viewport projection
+-> screen arrow
+```
+
+These are separate pipelines.
+
+---
+
+## 3. Canonical coordinate contract
+
+The canonical plan plane is:
 
 ```text
 +X -> project right
 +Y -> project up
 ```
 
-This is a domain convention, not a Flutter screen-coordinate convention.
+P5D defines `ProjectNorth` as clockwise angle from canonical project `+Y`.
 
-### ProjectNorth representation
+```text
+0°   -> +Y
+90°  -> +X
+180° -> -Y
+270° -> -X
+```
 
-Use a dedicated immutable value object rather than a raw `double` spread across widgets.
+Flutter screen coordinates are not part of the domain model.
 
-Conceptual API:
+### 3.1 Canonical ProjectNorth value
+
+Use integer milli-degrees:
 
 ```dart
 final class ProjectNorth {
@@ -98,250 +120,473 @@ final class ProjectNorth {
 
   final int milliDegreesClockwiseFromPositiveY;
 
-  static ProjectNorth fromDegrees(double degrees);
+  static ProjectNorth fromMilliDegrees(int value);
+  static ProjectNorth fromDegrees(double value); // UI/import boundary only
+
   double get degrees;
 }
 ```
 
-Canonical storage range:
+Canonical normalized range:
 
 ```text
 0 <= milliDegreesClockwiseFromPositiveY < 360000
 ```
 
-Semantics:
+Rules:
 
-```text
-0°   -> North points along project +Y
-90°  -> North points along project +X
-180° -> North points along project -Y
-270° -> North points along project -X
-```
+- canonical equality uses the integer value;
+- `NaN` and `Infinity` are rejected before normalization;
+- negative and >360° explicit inputs normalize deterministically;
+- `360000` and `0` represent the same explicit orientation after normalization;
+- unspecified Project North is **not** `0`;
+- no default constructor may fabricate `0°`.
 
-Angles are normalized before commit.
+### 3.2 Unspecified state
 
-Do not persist NaN, Infinity, negative unnormalized values, or multiple equivalent encodings such as both `0` and `360`.
-
-### Why integer milli-degrees
-
-The canonical model should avoid floating-point equality and round-trip drift for a simple engineering orientation value.
-
-One milli-degree precision is more than sufficient for this stage and yields deterministic equality, serialization and change detection.
-
-### Unspecified Project North
-
-Existing projects must not silently acquire a fabricated engineering orientation.
-
-Therefore migration semantics are:
-
-```text
-legacy project without ProjectNorth
--> projectNorth = null / unspecified
-```
-
-Do not silently persist `0°` as if the engineer had confirmed it.
-
-When the compass is visible and Project North is unspecified, show an explicit setup state such as:
-
-```text
-North not set
-[ Set Project North ]
-```
-
-Do not draw a confident `N` arrow at 0°.
-
-## Ownership
-
-Project North is project-level canonical orientation metadata.
-
-Conceptually:
+Canonical root metadata uses nullable Project North:
 
 ```dart
-ProjectAggregateRoot {
-  ...
-  ProjectNorth? projectNorth;
+final class ProjectRootMetadata {
+  const ProjectRootMetadata({this.projectNorth});
+
+  final ProjectNorth? projectNorth;
 }
 ```
 
-It is not owned by:
+Semantics:
+
+```text
+null = engineer has not established Project North
+0°   = engineer explicitly established North along +Y
+```
+
+These states are not interchangeable.
+
+---
+
+## 4. Legacy migration and provenance
+
+The transitional legacy `ProjectSite` currently defaults orientation to `0°` and legacy editor JSON persists `projectNorthDegrees` without provenance proving user confirmation.
+
+Therefore canonical migration is fail-closed:
+
+```text
+legacy/transitional projectNorthDegrees
+without explicit confirmation provenance
+-> canonical projectNorth = null
+```
+
+This rule applies even when the legacy numeric value is non-zero. The historical field is not treated as canonical authority unless a schema explicitly proves user confirmation.
+
+P5D must never promote historical default `0°` into a confirmed canonical orientation.
+
+If a future compatibility schema adds explicit provenance, for example:
+
+```json
+{
+  "projectNorthConfirmed": true,
+  "projectNorthDegrees": 32.5
+}
+```
+
+only then may compatibility migration promote it into canonical `ProjectNorth`.
+
+---
+
+## 5. Canonical root ownership
+
+Project North is project-level canonical engineering metadata.
+
+Required root shape:
+
+```dart
+final class ProjectAggregateRoot {
+  final ProjectId id;
+  final SiteId siteId;
+  final LocalProjectVersion version;
+  final ProjectRootMetadata metadata;
+  final ProjectEntityStores stores;
+  final ProjectIndex index;
+}
+```
+
+Project North is not owned by:
 
 - `EditorController`;
 - `EditorBuildingWorkspace`;
-- a Level;
-- a Room;
+- Level;
+- Zone;
+- Room/Space;
 - `ProjectNavigationState`;
-- the compass widget.
+- compass widget;
+- viewport camera.
 
-Future building-local transforms may reference the project/site frame, but P5D does not introduce per-building rotation.
+---
 
-## Mutation semantics
+## 6. P3 mutation model extension
 
-Editing Project North is an engineering mutation and must use the same P3 mutation discipline as structural authoring.
+P5D cannot be implemented correctly while P3 changes only `ProjectEntityStores`.
 
-Conceptual commands:
+The mutation boundary must represent all mutable canonical root state.
+
+Recommended immutable state contract:
+
+```dart
+final class ProjectMutableState {
+  final ProjectRootMetadata metadata;
+  final ProjectEntityStores stores;
+}
+```
+
+Then:
+
+```dart
+final class ProjectCommandCandidate {
+  final ProjectMutableState state;
+  final Set<EntityId> declaredAffectedEntityIds;
+}
+```
+
+Equivalent APIs are acceptable if the same invariants hold.
+
+### 6.1 Authoritative diff
+
+A canonical change set must distinguish entity and root-metadata changes:
+
+```dart
+final class ProjectMetadataDiff {
+  final bool projectNorthChanged;
+
+  bool get isEmpty => !projectNorthChanged;
+}
+
+final class ProjectChangeSet {
+  final ProjectEntityDiff entityDiff;
+  final ProjectMetadataDiff metadataDiff;
+}
+```
+
+Commit is non-empty when:
+
+```text
+entityDiff is non-empty
+OR
+metadataDiff is non-empty
+```
+
+A metadata-only mutation must be a valid first-class commit.
+
+### 6.2 Undo/Redo
+
+Undo history must snapshot all canonical mutable state participating in a command:
+
+```dart
+final class UndoRecord {
+  final ProjectMutableState beforeState;
+  final ProjectMutableState afterState;
+}
+```
+
+Storing only `beforeStores/afterStores` becomes invalid once Project North is mutable.
+
+Undo/Redo invariants:
+
+- restore exact metadata + entity state;
+- LocalProjectVersion remains monotonic;
+- one semantic command -> one UndoRecord;
+- no-op creates no record;
+- entity-only commands preserve current behavior.
+
+### 6.3 Commands
+
+P5D commands:
 
 ```dart
 SetProjectNorthCommand(ProjectNorth north)
 ClearProjectNorthCommand()
 ```
 
-Required semantics:
+`ClearProjectNorthCommand` is implemented only if product UX exposes clearing, but the architecture must support `null` root metadata.
+
+Required Set semantics:
 
 ```text
-user confirms new orientation
--> validate request
--> build candidate ProjectAggregateRoot
--> candidate graph validation
--> compute ProjectChangeSet
+validate request
+-> verify expected LocalProjectVersion
+-> build immutable candidate root state
+-> candidate graph/root validation
+-> compute entity + metadata diff
+-> no-op if both diffs empty
 -> atomic commit
--> LocalProjectVersion + 1
--> one notification
--> one Undo boundary
+-> LocalProjectVersion + 1 exactly once
+-> one publication
+-> one UndoRecord
 ```
 
-Cancel must not change project state.
+Same normalized Project North is a no-op.
 
-Setting the same normalized value is a no-op:
+Compass visibility never enters this command path.
+
+---
+
+## 7. Candidate validation
+
+Candidate validation must remain fail-closed.
+
+For P5D metadata this means:
+
+- `ProjectNorth` is already normalized by its value type;
+- malformed raw persisted input is rejected before aggregate construction;
+- entity graph validation remains unchanged;
+- metadata validation does not fabricate defaults;
+- candidate construction cannot mutate the live root before validation succeeds.
+
+No fake Site/Building entity mutation may be used merely to force a non-empty `ProjectEntityDiff`.
+
+---
+
+## 8. Canonical persistence contract
+
+Persistence path:
 
 ```text
-same ProjectNorth
--> no version increment
--> no history record
--> no publication event
+ProjectAggregateRoot.metadata
+        ↓
+ProjectSnapshot
+        ↓
+CanonicalProjectDocumentCodec
+        ↓
+ProjectRepository
 ```
 
-Showing/hiding the compass is not a mutation and must never enter this command path.
+P5D does not require Drift/SQLite and must not pull P16 forward.
 
-## UI/session state
+### 8.1 Canonical codec schema v2
 
-Compass visibility belongs to editor-shell/session presentation state.
+Current canonical schema v1 contains no orientation. P5D introduces an explicit schema migration.
 
-Conceptual state:
+New schema:
+
+```json
+{
+  "schemaVersion": 2,
+  "metadata": { ... },
+  "projectOrientation": {
+    "projectNorthMilliDegrees": 32500
+  },
+  "sites": [ ... ],
+  "buildings": [ ... ],
+  "levels": [ ... ],
+  "zones": [ ... ],
+  "spaces": [ ... ]
+}
+```
+
+Unspecified:
+
+```json
+"projectOrientation": {
+  "projectNorthMilliDegrees": null
+}
+```
+
+### 8.2 Migration
+
+Canonical v1 decoding must migrate deterministically:
+
+```text
+v1 missing projectOrientation
+-> v2 projectNorth = null
+```
+
+Do not silently change the semantic meaning of schema v1 in place.
+
+Decoder rules:
+
+```text
+v1 -> migrate to v2 -> decode
+v2 null -> unspecified
+v2 integer in [0,359999] -> exact ProjectNorth
+v2 malformed/non-integer/out-of-range -> FormatException
+future unsupported version -> fail closed
+```
+
+Persisted canonical raw milli-degrees are already normalized and therefore must not be silently modulo-normalized during decode. Invalid persisted values are corruption, not user input.
+
+### 8.3 Semantic fingerprint
+
+Every canonical semantic fingerprint/equality qualification must include root metadata.
+
+Projects differing only by Project North must have different semantic fingerprints.
+
+---
+
+## 9. Transitional legacy persistence
+
+`EditorProjectDocument` may continue to contain its historical `projectNorthDegrees` field for compatibility.
+
+It is **not** the P5D canonical persistence owner.
+
+Production editing rule:
+
+```text
+canonical persistence owner available
+-> Project North edit enabled
+
+canonical persistence owner unavailable
+-> visibility toggle enabled
+-> read-only/not-set presentation enabled
+-> edit disabled
+```
+
+No widget may solve durability by writing canonical Project North directly into `EditorProjectDocument`.
+
+No canonical value may be inferred back from legacy `projectNorthDegrees` without explicit provenance.
+
+---
+
+## 10. Shell visibility state
+
+Compass visibility is transient editor-shell state.
+
+Required shape:
 
 ```dart
-final class CompassOverlayState {
-  final bool requestedVisible;
-  final bool suppressedByFocusMode;
+final class EditorShellState extends ChangeNotifier {
+  bool _compassRequestedVisible = false;
 
-  bool get effectiveVisible =>
-      requestedVisible && !suppressedByFocusMode;
+  bool get compassRequestedVisible => _compassRequestedVisible;
+  bool get compassVisible => _compassRequestedVisible && !_focusMode;
+
+  void toggleCompass();
 }
 ```
 
 Rules:
 
-- initial `requestedVisible = false`;
-- toggle changes presentation state only;
+- initial hidden;
+- toggling does not mutate canonical project;
 - no `ProjectChangeSet`;
 - no LocalProjectVersion change;
-- no canonical persistence publication;
-- no legacy document dirty flag;
-- focus mode may suppress the overlay without changing the user's requested visibility;
-- leaving focus mode restores the overlay if the user had requested it.
+- no legacy dirty flag;
+- entering Focus Mode suppresses effective visibility but preserves requested visibility;
+- leaving Focus Mode restores it;
+- changing requested visibility while Focus Mode is active is allowed and only affects post-focus state.
 
-P5D does not require persistence of compass visibility across app restarts. If such preference persistence is later added, it belongs to user/editor preferences, not engineering project data.
+Compass visibility is not persisted in engineering project files in P5D.
 
-## Viewport projection
+---
 
-The compass is a projection of canonical Project North into the current plan viewport.
+## 11. Projection contract
 
-The rendering layer may need a transient viewport rotation input if one already exists, but P5D must not introduce viewport rotation as a new editing capability.
+Current `WorldCamera` has pan/zoom but no rotation.
 
-Conceptually:
+Therefore P5D v1 uses direct projection:
 
 ```text
-canonical ProjectNorth
-+ existing viewport orientation
--> screen arrow orientation
+ProjectNorth 0°   -> screen up
+ProjectNorth 90°  -> screen right
+ProjectNorth 180° -> screen down
+ProjectNorth 270° -> screen left
 ```
 
-If the current viewport has no rotation capability, the compass projection is direct.
+P5D must not invent viewport rotation solely for compass rendering.
 
-The projection adapter must own Flutter/screen-axis conversion. Domain `ProjectNorth` must never encode Flutter Y-down coordinates.
+Define a presentation projection boundary so future camera rotation can be added without changing domain semantics.
 
-## Visibility by editor mode
+Recommended state:
 
-Baseline:
+```dart
+sealed class CompassProjectionState {}
+
+final class CompassUnavailable extends CompassProjectionState {}
+
+final class CompassNorthUnspecified extends CompassProjectionState {}
+
+final class CompassNorthDefined extends CompassProjectionState {
+  final ProjectNorth canonicalNorth;
+  final int screenMilliDegreesClockwiseFromUp;
+}
+```
+
+The widget consumes this resolved state; it must not read canonical aggregate or legacy workspace directly.
+
+---
+
+## 12. Supported editor modes
+
+P5D v1 projection policy:
 
 - Plan view: supported.
-- Room world / surface view: hidden unless a later explicit requirement defines useful semantics there.
-- Site/outdoor view: may be supported only when it uses the same canonical project coordinate frame.
+- Room world view: hidden.
+- Wall/floor/ceiling surface view: hidden.
+- Site/outdoor: hidden in P5D v1 unless a later explicit contract proves the exact same canonical frame.
+- blocked P5C materialization state: fail closed; no stale or misleading compass over stale canvas.
 
-Fail closed when the current editor mode does not have a valid plan-orientation projection.
+Unsupported projection returns `CompassUnavailable`.
 
-Do not show a misleading compass merely because an overlay slot is available.
+---
 
-## Native controls
+## 13. UI contract
 
-### Desktop
+### 13.1 Existing legacy compass path
 
-Provide a discoverable control in a View/app-bar surface:
+Current always-visible `ProjectCompassOverlay(workspace.site.site.projectNorth)` is transitional behavior and must not survive in canonical P5D mode.
+
+The production P5D path must be:
 
 ```text
-[ Compass ]
+canonical root metadata
+-> projection adapter
+-> CompassProjectionState
+-> ProjectCompassOverlay
 ```
 
-or equivalent checked menu item.
+The authoritative edit path must never call `workspace.updateProjectNorth()`.
+
+### 13.2 Desktop control
+
+Provide a discoverable View/app-bar/menu control:
+
+```text
+[✓] Compass
+```
 
 Requirements:
 
-- visible text or tooltip;
+- visible label or tooltip;
 - keyboard reachable;
-- checked/on state exposed semantically;
-- no hidden gesture-only activation.
+- semantic checked state;
+- no gesture-only hidden activation.
 
-### Mobile / tablet
+### 13.3 Mobile/tablet
 
-Expose the same semantic toggle in an adaptive View sheet/menu:
+Expose the same semantic toggle in an adaptive menu/sheet.
 
-```text
-[ ] Compass
-```
+Touch target must be at least practical platform minimum and no smaller than existing editor control policy.
 
-The domain behavior must be identical to desktop.
+### 13.4 Overlay placement
 
-## Overlay placement
+Overlay belongs to viewport-safe overlay layout, not raw screen coordinates.
 
-Default placement: viewport top-right safe overlay area, not raw screen top-right.
-
-The layout must account for:
+Must account for:
 
 - app bar;
-- navigator/drawer edge;
+- navigator/drawer;
+- inspector;
+- context bar;
 - floating authoring controls;
-- context controls;
-- platform safe areas;
-- mobile notches/insets;
-- blocked-materialization banner from P5C.
+- safe area/notches;
+- P5C blocked-state UI.
 
-The overlay must not cover primary authoring controls.
+Only the compass hit target may consume pointer events. The remaining overlay layer must pass gestures to the canvas.
 
-Recommended implementation shape:
+---
 
-```text
-Editor viewport Stack
-├── canvas
-├── controlled status/banner overlays
-└── compass overlay safe-area anchor
-```
+## 14. Edit flow
 
-The compass should consume pointer events only inside its own interactive hit target. The rest of the overlay layer must not block canvas gestures.
-
-## Interaction
-
-Minimum interaction:
-
-```text
-Toggle Compass
--> show/hide overlay
-
-Tap/click visible compass
--> open Project North details/edit action
-```
-
-Editing should be explicit and confirmable.
-
-Suggested first-stage editor:
+When canonical editing is enabled:
 
 ```text
 Project North
@@ -350,21 +595,38 @@ Angle: [ 32.500° ]
 [ Cancel ] [ Apply ]
 ```
 
-Optional quick presets may be added later, but P5D should not create multiple competing orientation inputs.
+Apply:
 
-The visible compass itself should not be freely draggable unless a separate UX decision justifies persistent/temporary placement behavior.
+```text
+parse finite input
+-> ProjectNorth.fromDegrees
+-> SetProjectNorthCommand
+-> P3 commit
+-> persistence publication through canonical owner
+-> projection refresh
+```
 
-## Accessibility
+Cancel:
 
-The compass must not rely on arrow color alone.
+```text
+no mutation
+no version change
+no dirty state
+```
 
-Required semantics:
+The editor dialog itself is not the state owner.
+
+---
+
+## 15. Accessibility
+
+Defined orientation semantics:
 
 ```text
 Compass, Project North 32.5 degrees clockwise from project up
 ```
 
-For unspecified orientation:
+Unspecified:
 
 ```text
 Compass, Project North not set
@@ -372,31 +634,49 @@ Compass, Project North not set
 
 Requirements:
 
-- keyboard focus on desktop;
-- Enter/Space activation where appropriate;
-- screen-reader label/state;
-- visible `N` marker when orientation is defined;
-- minimum practical touch target around the interactive control;
-- focus ring/treatment not dependent on color alone;
-- sufficient contrast in light and dark themes.
+- visible `N` marker only when orientation is defined;
+- text/semantic not-set state when undefined;
+- keyboard focus and Enter/Space activation on desktop;
+- screen-reader state;
+- focus indication not color-only;
+- sufficient contrast in light and dark themes;
+- no color-only direction communication;
+- no inaccessible tiny hit target.
 
-## Error handling
+---
 
-Invalid engineering input is rejected before mutation.
+## 16. Error handling
 
-Examples:
+User/import input:
 
 ```text
-empty / unparsable angle -> validation error
-NaN / Infinity          -> validation error
-same normalized value   -> no-op
+empty/unparsable -> validation error
+NaN/Infinity     -> validation error
+same normalized  -> no-op
 ```
 
-Unexpected runtime projection failure must not mutate Project North and must not rotate the canvas.
+Persisted canonical corruption:
 
-The compass may be hidden and a diagnostic surfaced rather than rendering a misleading arrow.
+```text
+wrong type
+negative raw milli-degrees
+>= 360000 raw milli-degrees
+malformed object
+-> FormatException
+```
 
-## P5C compatibility invariants
+Projection failure:
+
+```text
+-> CompassUnavailable
+-> no project mutation
+-> no canvas rotation
+-> optional diagnostic
+```
+
+---
+
+## 17. P5C compatibility invariants
 
 P5D must not weaken P5C.
 
@@ -408,143 +688,179 @@ Specifically:
 - no bypass of `CanonicalEditorRuntimeCutoverCoordinator` for structural navigation;
 - no new legacy persistence ownership claim;
 - no synthetic Room geometry;
-- no compass action may change Building/Level/Room navigation.
+- no compass action may change Building/Level/Zone/Space navigation;
+- blocked canonical target must not reveal stale legacy canvas merely to host the compass.
 
-The compass is orthogonal to `ProjectNavigationState`.
+Project North is orthogonal to `ProjectNavigationState`.
 
-## Persistence boundary
+---
 
-Project North is canonical engineering data and must participate in canonical codec/repository round-trip when P5D implementation adds the field.
+## 18. Hardened implementation sequence
 
-P5D does not require Drift/SQLite.
+### P5D-0 — semantic reconciliation gate
 
-The implementation order is:
+- inventory all current `ProjectNorth`, `toTrueAzimuth`, compass, daylight, legacy persistence consumers;
+- split canonical Project North from true/geospatial north semantics;
+- define compatibility path for daylight/solar;
+- lock legacy provenance rule;
+- finalize root metadata mutation state contract;
+- finalize codec v1→v2 migration contract.
 
-```text
-ProjectNorth value semantics
--> aggregate field
--> command/change-set semantics
--> canonical document codec / current repository boundary
--> UI projection
-```
+### P5D-A — canonical orientation value + root metadata
 
-Do not write Project North directly into `EditorProjectDocument` from the widget layer as an independent persistence path.
+- integer milli-degree `ProjectNorth`;
+- nullable `ProjectRootMetadata.projectNorth`;
+- aggregate root field;
+- equality/hash/normalization tests;
+- invalid input tests.
 
-If the transitional repository/codec cannot yet round-trip the field safely, Project North editing must remain disabled until an explicit canonical persistence owner exists, analogous to the P5C production-authoring gate.
+### P5D-B — P3 root-metadata mutation support
 
-## Suggested implementation slices
-
-### P5D-A — orientation value contract
-
-- add `ProjectNorth` value object;
-- normalization/validation;
-- equality/hash;
-- optional aggregate field;
-- codec round-trip contract tests.
-
-### P5D-B — mutation commands
-
+- full `ProjectMutableState` or equivalent candidate state;
+- `ProjectMetadataDiff`;
+- metadata-aware `ProjectChangeSet`;
+- metadata-aware Undo/Redo;
 - `SetProjectNorthCommand`;
-- optional `ClearProjectNorthCommand`;
-- no-op behavior;
-- undo/redo qualification;
-- LocalProjectVersion guard.
+- `ClearProjectNorthCommand` if exposed;
+- no-op/stale version tests.
 
-### P5D-C — shell presentation state
+### P5D-C — canonical persistence
+
+- canonical schema v2;
+- v1→v2 migration;
+- exact specified/unspecified round-trip;
+- repository save/load;
+- semantic fingerprint includes root metadata.
+
+### P5D-D — shell presentation state
 
 - hidden by default;
-- requested vs effective visibility;
-- focus-mode suppression;
-- no dirty-state side effects.
+- requested/effective visibility;
+- focus-mode suppression/restoration;
+- no engineering dirty state.
 
-### P5D-D — compass projection/widget
+### P5D-E — projection + widget
 
-- screen projection adapter;
-- plan-only fail-closed behavior;
-- safe overlay placement;
-- light/dark theme;
-- accessibility semantics.
+- explicit unavailable/not-set/defined projection states;
+- cardinal projection qualification;
+- plan-only fail-closed support;
+- safe layout;
+- pointer passthrough;
+- light/dark/focus/touch/accessibility qualification.
 
-### P5D-E — production wiring
+### P5D-F — production wiring
 
-- desktop View/app-bar toggle;
-- mobile/tablet adaptive toggle;
-- Project North edit flow;
-- persistence-owner gate when editing is not safely durable;
-- `UnifiedWorkspaceEditorScreen` integration without P5C regression.
+- replace current always-visible legacy compass in canonical mode;
+- desktop/mobile toggle;
+- canonical command edit flow;
+- canonical persistence-owner gate;
+- no `workspace.updateProjectNorth()` in canonical path;
+- P5C regression qualification.
 
-### P5D-F — qualification
+### P5D-G — closure
 
-- widget tests;
-- domain tests;
-- codec/repository round-trip tests;
-- Flutter analyze/test;
-- macOS Desktop gate;
-- later P17 native cross-platform qualification remains separate.
+- domain/mutation/codec/repository/widget tests;
+- P5C regression suite;
+- formatter/analyze/test green;
+- macOS Desktop green;
+- no P5E/P6/P7/P16/viewport-rotation scope creep.
 
-## Qualification matrix
+---
+
+## 19. Qualification matrix
 
 Mandatory scenarios:
 
 ```text
 D01 new session starts with compass hidden
-D02 showing compass does not increment LocalProjectVersion
-D03 showing compass does not mark legacy document Modified
-D04 hiding compass does not mutate ProjectNorth
+D02 show compass does not increment LocalProjectVersion
+D03 show compass does not mark legacy document Modified
+D04 hide compass does not mutate ProjectNorth
 D05 focus mode suppresses visible compass
-D06 leaving focus mode restores previously requested compass visibility
-D07 unspecified ProjectNorth shows explicit not-set state, never fake 0°
-D08 setting 0° points North along project +Y
-D09 setting 90° points North along project +X
-D10 angle normalization is deterministic
-D11 NaN/Infinity/unparsable values are rejected
-D12 setting same normalized value is a no-op
-D13 SetProjectNorth produces one ProjectChangeSet / one undo boundary
-D14 undo restores previous ProjectNorth exactly
-D15 redo restores edited ProjectNorth exactly
-D16 ProjectNorth round-trips through canonical codec/repository boundary
-D17 compass is absent in unsupported editor projection mode
-D18 compass toggle is keyboard accessible
-D19 screen-reader semantics expose current orientation / not-set state
-D20 compass overlay does not intercept unrelated canvas pointer gestures
-D21 overlay does not cover primary structural authoring controls
-D22 P5C navigator/cutover behavior remains unchanged
-D23 same-number Levels in different Buildings have no effect on compass identity
-D24 no Web/browser implementation or dependency is introduced
+D06 leaving focus mode restores requested visibility
+D07 unspecified ProjectNorth shows explicit not-set state
+D08 explicit 0° points North along +Y / screen up
+D09 explicit 90° points North along +X / screen right
+D10 180° points screen down
+D11 270° points screen left
+D12 user angle normalization is deterministic
+D13 NaN/Infinity/unparsable values are rejected
+D14 same normalized SetProjectNorth is a no-op
+D15 metadata-only SetProjectNorth creates one valid ProjectChangeSet
+D16 metadata-only commit advances LocalProjectVersion exactly once
+D17 metadata-only commit creates one UndoRecord
+D18 undo restores previous ProjectNorth exactly
+D19 redo restores edited ProjectNorth exactly
+D20 entity-only commands retain existing P3 behavior
+D21 mixed metadata+entity diff is deterministic
+D22 canonical schema v1 migrates to v2 with ProjectNorth unspecified
+D23 canonical v2 null round-trips as unspecified
+D24 canonical v2 integer round-trips exactly
+D25 canonical malformed orientation fails closed
+D26 canonical semantic fingerprint changes with ProjectNorth
+D27 repository save/load preserves ProjectNorth
+D28 legacy default 0° does not become confirmed canonical ProjectNorth
+D29 legacy non-zero projectNorthDegrees without provenance also remains unconfirmed
+D30 daylight true-north semantics remain explicit and unchanged
+D31 compass absent in unsupported editor projection modes
+D32 compass toggle keyboard accessible
+D33 screen-reader semantics expose orientation/not-set state
+D34 compass hit target does not intercept unrelated canvas gestures
+D35 overlay does not cover primary authoring controls
+D36 focus-mode toggle may change requested state while overlay remains suppressed
+D37 P5C navigator/cutover behavior remains unchanged
+D38 same-number Levels in different Buildings have no effect on compass identity
+D39 canonical P5D edit path contains no workspace.updateProjectNorth()
+D40 no Web/browser implementation or dependency introduced
 ```
 
-## Merge blockers
+---
 
-P5D is not complete if any of the following is true:
+## 20. Merge blockers
+
+P5D is not complete if any condition below is true:
 
 - compass is visible by default;
-- visibility dirties the engineering project;
-- UI stores Project North only in widget/controller state;
-- legacy projects silently acquire a persisted `0°` orientation;
-- compass uses Flutter screen coordinates as canonical orientation semantics;
-- compass changes structural navigation;
-- the overlay blocks canvas gestures outside its hit target;
-- focus mode permanently loses the user's requested visibility state;
-- Project North edit bypasses P3 mutation semantics;
-- Project North cannot round-trip through the accepted canonical persistence boundary;
-- unsupported editor modes show a misleading orientation;
-- accessibility exposes only an unlabeled icon/arrow;
-- P5D introduces device sensors, geospatial semantics, viewport rotation, P5E, P6, P7 or P16 work.
+- visibility dirties engineering state;
+- legacy `ProjectNorth` true-north semantics are silently redefined;
+- daylight consumes canonical engineering Project North as though it were geographic true north;
+- transitional legacy orientation is promoted without provenance;
+- unspecified is represented as `0°`;
+- Project North is stored only in widget/controller state;
+- Project North is encoded as a fake entity mutation;
+- metadata-only changes cannot create valid `ProjectChangeSet`;
+- Undo/Redo still snapshots only entity stores after metadata becomes mutable;
+- canonical schema v1 meaning is changed in place;
+- canonical codec does not migrate v1→v2 explicitly;
+- semantic fingerprint ignores Project North;
+- production edit bypasses P3;
+- production edit lacks canonical persistence ownership;
+- canonical path calls `workspace.updateProjectNorth()`;
+- unsupported modes show a misleading compass;
+- overlay intercepts unrelated gestures;
+- focus mode loses requested visibility;
+- accessibility exposes only an unlabeled arrow/icon;
+- viewport rotation is introduced solely for the compass;
+- P5D introduces device sensors, GPS/georeferencing, P5E, P6, P7, P16 or web scope.
 
-## Closure definition
+---
 
-P5D may be marked `CLOSED` when:
+## 21. Closure definition
+
+P5D may be marked `CLOSED` only when:
 
 ```text
-- ProjectNorth semantics are explicit and deterministic
+- ProjectNorth and TrueNorthReference semantics are unambiguous
+- legacy orientation provenance is handled fail-closed
+- root metadata participates in P3 diff/commit/undo/redo
+- canonical schema v2 migrates and round-trips orientation safely
 - compass is opt-in and hidden by default
-- visibility remains presentation-only state
-- Project North editing uses canonical mutation semantics
-- canonical persistence boundary round-trips ProjectNorth safely
-- production screen wiring is qualified
+- shell visibility remains presentation-only
+- projection is fail-closed and does not invent viewport rotation
+- production editing uses canonical command + persistence owner
 - pointer/keyboard/accessibility behavior is qualified
 - P5C regressions remain green
-- final Flutter and macOS Desktop gates pass
+- Flutter and macOS Desktop gates are green
 ```
 
 Expected closure statement:
@@ -553,18 +869,21 @@ Expected closure statement:
 P5D CLOSED
 
 Included:
-- canonical ProjectNorth value
+- canonical integer ProjectNorth
+- explicit separation from true/geospatial north
+- root metadata mutation support
+- metadata-aware Undo/Redo
+- canonical schema v2 migration
 - opt-in compass overlay
 - desktop/mobile toggle
 - focus-mode suppression
-- Project North edit command
-- canonical round-trip
+- canonical Project North edit command
 - accessibility/pointer qualification
 
 Deferred:
 - viewport rotation feature
 - device compass / magnetometer
-- georeferencing / true north
+- GPS/georeferencing / magnetic declination
 - per-building transforms
 - P5E Room Surface Navigator
 - P6/P7 model expansion
