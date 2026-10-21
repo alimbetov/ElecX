@@ -113,7 +113,8 @@ void main() {
       expect(session.navigation, beforeNavigation);
     });
 
-    test('Room zone outside active Level is rejected with typed domain error', () {
+    test('Room zone outside active Level is rejected with typed domain error',
+        () {
       final project = _twoLevelProjectWithZoneOnSecond();
       final navigation = ProjectNavigationState.initial(project)
           .activateLevel(project, LevelId('level-1'));
