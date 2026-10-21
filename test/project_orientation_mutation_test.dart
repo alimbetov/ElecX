@@ -53,6 +53,42 @@ void main() {
       expect(session.redoDepth, 0);
     });
 
+    test('clearing unspecified Project North is a semantic no-op', () {
+      final session = ProjectMutationSession(_project());
+
+      final result = session.commit(
+        ProjectMutationRequest(
+          expectedVersion: session.current.version,
+          command: const ClearProjectNorthCommand(),
+        ),
+      );
+
+      expect(result, isNull);
+      expect(session.current.version, LocalProjectVersion(4));
+      expect(session.undoDepth, 0);
+    });
+
+    test('stale metadata command fails closed without changing state', () {
+      final initial = _project();
+      final session = ProjectMutationSession(initial);
+
+      expect(
+        () => session.commit(
+          ProjectMutationRequest(
+            expectedVersion: LocalProjectVersion(3),
+            command: SetProjectNorthCommand(
+              ProjectEngineeringNorth.fromDegrees(15),
+            ),
+          ),
+        ),
+        throwsA(isA<StaleProjectMutationException>()),
+      );
+
+      expect(session.current, same(initial));
+      expect(session.undoDepth, 0);
+      expect(session.redoDepth, 0);
+    });
+
     test('undo and redo restore exact engineering metadata monotonically', () {
       final session = ProjectMutationSession(_project());
       final north = ProjectEngineeringNorth.fromDegrees(271.125);
@@ -134,6 +170,30 @@ void main() {
       expect(session.current, same(initial));
       expect(session.current.engineeringMetadata.projectNorth, isNull);
     });
+
+    test('mixed entity and metadata command produces one combined change set', () {
+      final session = ProjectMutationSession(_project());
+      final north = ProjectEngineeringNorth.fromDegrees(45);
+
+      final result = session.commit(
+        ProjectMutationRequest(
+          expectedVersion: session.current.version,
+          command: _RenameSiteAndSetNorthCommand('Renamed Site', north),
+        ),
+      )!;
+
+      expect(result.project.version, LocalProjectVersion(5));
+      expect(result.project.index.site(SiteId('site-1'))?.name, 'Renamed Site');
+      expect(result.project.engineeringMetadata.projectNorth, north);
+      expect(result.changeSet.updatedEntityIds, <EntityId>{SiteId('site-1')});
+      expect(result.changeSet.engineeringMetadataDiff.beforeProjectNorth, isNull);
+      expect(result.changeSet.engineeringMetadataDiff.afterProjectNorth, north);
+      expect(session.undoDepth, 1);
+
+      final undone = session.undo(result.project.version)!;
+      expect(undone.project.index.site(SiteId('site-1'))?.name, 'Site');
+      expect(undone.project.engineeringMetadata.projectNorth, isNull);
+    });
   });
 }
 
@@ -154,4 +214,39 @@ ProjectAggregateRoot _project({ProjectEngineeringNorth? north}) {
       },
     ),
   );
+}
+
+final class _RenameSiteAndSetNorthCommand implements ProjectCommand {
+  const _RenameSiteAndSetNorthCommand(this.name, this.north);
+
+  final String name;
+  final ProjectEngineeringNorth north;
+
+  @override
+  String get commandType => 'test.rename-site-and-set-project-north';
+
+  @override
+  ProjectCommandCandidate buildCandidate(ProjectAggregateRoot current) {
+    final site = current.index.site(current.siteId)!;
+    final sites = Map<SiteId, ProjectSiteEntity>.from(current.stores.sites);
+    sites[site.id] = ProjectSiteEntity(
+      id: site.id,
+      name: name,
+      buildingIds: site.buildingIds,
+    );
+
+    return ProjectCommandCandidate.fromState(
+      state: ProjectMutableState(
+        engineeringMetadata:
+            current.engineeringMetadata.withProjectNorth(north),
+        stores: ProjectEntityStores(
+          sites: sites,
+          buildings: current.stores.buildings,
+          levels: current.stores.levels,
+          zones: current.stores.zones,
+          spaces: current.stores.spaces,
+        ),
+      ),
+    );
+  }
 }
