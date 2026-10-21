@@ -151,7 +151,8 @@ final class CanonicalEditorRuntimeCutoverCoordinator {
   }
 
   /// Pulls legacy selection only when no canonical projection is in progress.
-  /// The returned state is then adopted atomically by the application session.
+  /// The application session is updated through its typed navigation API, so
+  /// this coordinator never reaches into private navigation state.
   ProjectNavigationState? pullLegacyToCanonical() {
     if (_phase != CanonicalEditorCutoverPhase.idle) return null;
 
@@ -161,10 +162,35 @@ final class CanonicalEditorRuntimeCutoverCoordinator {
         project: session.project,
         navigation: session.navigation,
       );
-      session.adoptNavigation(next);
+      _applyNavigation(next);
       return session.navigation;
     } finally {
       _phase = CanonicalEditorCutoverPhase.idle;
     }
+  }
+
+  void _applyNavigation(ProjectNavigationState next) {
+    final buildingId = next.activeBuildingId;
+    if (buildingId == null) return;
+    session.activateBuilding(buildingId);
+
+    final levelId = next.activeLevelId;
+    if (levelId != null) {
+      session.activateLevel(levelId);
+    }
+
+    final spaceId = next.selectedSpaceId;
+    if (spaceId != null) {
+      session.selectRoom(spaceId);
+      return;
+    }
+
+    final zoneId = next.selectedZoneId;
+    if (zoneId != null) {
+      session.selectZone(zoneId);
+      return;
+    }
+
+    session.clearSelection();
   }
 }
