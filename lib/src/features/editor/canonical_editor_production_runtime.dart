@@ -29,8 +29,8 @@ final class CanonicalAuthoringOwnershipReceipt {
   const CanonicalAuthoringOwnershipReceipt.accepted();
 }
 
-typedef CanonicalProductionAuthoringCommittedCallback =
-    CanonicalAuthoringOwnershipReceipt Function(
+typedef CanonicalProductionAuthoringCommittedCallback
+    = CanonicalAuthoringOwnershipReceipt Function(
   ProjectStructureAuthoringSession session,
   EntityId createdId,
 );
