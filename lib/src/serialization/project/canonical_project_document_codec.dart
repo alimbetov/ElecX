@@ -164,8 +164,10 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
       );
     } on FormatException {
       rethrow;
-    } on Object catch (error) {
-      throw FormatException('Invalid canonical ElecX project: $error');
+    } on ArgumentError catch (error) {
+      throw FormatException('Invalid canonical ElecX project value: $error');
+    } on ProjectAggregateValidationException catch (error) {
+      throw FormatException('Invalid canonical ElecX project graph: $error');
     }
   }
 
@@ -290,6 +292,12 @@ int _int(Object? value, String field) {
 
 DateTime _dateTime(Object? value, String field) {
   final raw = _string(value, field);
+  final hasExplicitZone = raw.endsWith('Z') ||
+      raw.endsWith('z') ||
+      RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(raw);
+  if (!hasExplicitZone) {
+    throw FormatException('$field must include an explicit UTC/offset zone.');
+  }
   final parsed = DateTime.tryParse(raw);
   if (parsed == null) {
     throw FormatException('$field must be an ISO-8601 timestamp.');
