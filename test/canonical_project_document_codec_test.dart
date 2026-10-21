@@ -12,7 +12,9 @@ void main() {
   group('CanonicalProjectDocumentCodec', () {
     const codec = CanonicalProjectDocumentCodec();
 
-    test('round-trips a canonical multi-building snapshot without identity loss', () {
+    test(
+        'round-trips a canonical multi-building snapshot without identity loss',
+        () {
       final snapshot = _multiBuildingSnapshot();
 
       final first = codec.encode(snapshot);
@@ -55,7 +57,8 @@ void main() {
       );
     });
 
-    test('rejects duplicate relationship ids instead of silently normalizing', () {
+    test('rejects duplicate relationship ids instead of silently normalizing',
+        () {
       final document = codec.encode(_multiBuildingSnapshot());
       final mutablePayload = jsonDecode(jsonEncode(document.payload)) as Map;
       final sites = mutablePayload['sites']! as List;
