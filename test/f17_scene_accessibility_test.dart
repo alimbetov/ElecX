@@ -57,7 +57,7 @@ void main() {
     );
   });
 
-  testWidgets('F17 Tab and Shift Tab traverse visible scene objects',
+  testWidgets('F17 Ctrl+Tab and Ctrl+Shift+Tab traverse visible scene objects',
       (tester) async {
     final controller = EditorController.demo();
     addTearDown(() {
@@ -94,25 +94,19 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-    await tester.pump();
+    await _sendControlTab(tester);
     expect(controller.p2.selection.primaryId, first.id);
-    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-    await tester.pump();
+    await _sendControlTab(tester);
     expect(controller.p2.selection.primaryId, second.id);
-    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-    await tester.pump();
+    await _sendControlTab(tester);
     expect(controller.routeSelection.selectedRouteId, routeId);
     expect(controller.p2.selection.ids, isEmpty);
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
-    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
-    await tester.pump();
+    await _sendControlTab(tester, reverse: true);
     expect(controller.p2.selection.primaryId, second.id);
     expect(controller.routeSelection.selectedRouteId, isNull);
   });
 
-  testWidgets('F17 hidden layers are omitted from keyboard traversal',
+  testWidgets('F17 hidden layers are omitted from keyboard scene traversal',
       (tester) async {
     final controller = EditorController.demo();
     addTearDown(() {
@@ -136,8 +130,23 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-    await tester.pump();
+    await _sendControlTab(tester);
     expect(controller.p2.selection.contains(component.id), isFalse);
   });
+}
+
+Future<void> _sendControlTab(
+  WidgetTester tester, {
+  bool reverse = false,
+}) async {
+  await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+  if (reverse) {
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+  }
+  await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+  if (reverse) {
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+  }
+  await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+  await tester.pump();
 }
