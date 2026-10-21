@@ -32,7 +32,8 @@ void main() {
       expect(workspace.editor.selectedSpaceId, isNull);
     });
 
-    test('does not fall back to matching levelNumber when binding is wrong', () {
+    test('does not fall back to matching levelNumber when binding is wrong',
+        () {
       final project = _canonicalProject();
       final workspace = _legacyWorkspace();
       final adapter = CanonicalEditorWorkspaceAdapter(
@@ -147,7 +148,8 @@ void main() {
       expect(workspace.editor.selectedSpaceId, isNull);
     });
 
-    test('legacy canvas Space selection is projected back to canonical ids', () {
+    test('legacy canvas Space selection is projected back to canonical ids',
+        () {
       final project = _canonicalProject();
       final workspace = _legacyWorkspace();
       final adapter = CanonicalEditorWorkspaceAdapter(
@@ -170,6 +172,70 @@ void main() {
       expect(navigation.selectedSpaceId, SpaceId('space-bedroom'));
     });
 
+    test('reverse Space binding cannot jump to another canonical Level', () {
+      final project = _canonicalProject();
+      final workspace = _legacyWorkspace();
+      final adapter = CanonicalEditorWorkspaceAdapter(
+        workspace: workspace,
+        binding: CanonicalEditorWorkspaceBinding(
+          buildingId: BuildingId('building-a'),
+          legacyBuildingId: 'legacy-building-a',
+          legacyLevelIds: <LevelId, String>{
+            LevelId('level-1'): 'legacy-level-one',
+            LevelId('level-2'): 'legacy-level-seven',
+          },
+          legacySpaceIds: <SpaceId, String>{
+            SpaceId('space-technical'): 'legacy-space-bedroom',
+          },
+        ),
+      );
+
+      workspace.editor.selectSpace('legacy-space-bedroom');
+
+      expect(
+        () => adapter.pullLegacySelection(
+          project: project,
+          navigation: ProjectNavigationState.initial(project),
+        ),
+        throwsA(
+          isA<CanonicalEditorWorkspaceException>().having(
+            (error) => error.code,
+            'code',
+            CanonicalEditorWorkspaceIssueCode.canonicalSpaceMissing,
+          ),
+        ),
+      );
+    });
+
+    test('reverse Level binding cannot jump to another canonical Building', () {
+      final project = _twoBuildingCanonicalProject();
+      final workspace = _legacyWorkspace();
+      final adapter = CanonicalEditorWorkspaceAdapter(
+        workspace: workspace,
+        binding: CanonicalEditorWorkspaceBinding(
+          buildingId: BuildingId('building-a'),
+          legacyBuildingId: 'legacy-building-a',
+          legacyLevelIds: <LevelId, String>{
+            LevelId('building-b-level'): 'legacy-level-one',
+          },
+        ),
+      );
+
+      expect(
+        () => adapter.pullLegacySelection(
+          project: project,
+          navigation: ProjectNavigationState.initial(project),
+        ),
+        throwsA(
+          isA<CanonicalEditorWorkspaceException>().having(
+            (error) => error.code,
+            'code',
+            CanonicalEditorWorkspaceIssueCode.legacyLevelBindingMissing,
+          ),
+        ),
+      );
+    });
+
     test('a different canonical Building fails closed', () {
       final project = _twoBuildingCanonicalProject();
       final workspace = _legacyWorkspace();
@@ -190,6 +256,23 @@ void main() {
             (error) => error.code,
             'code',
             CanonicalEditorWorkspaceIssueCode.unsupportedBuilding,
+          ),
+        ),
+      );
+    });
+
+    test('empty legacy binding is rejected', () {
+      expect(
+        () => CanonicalEditorWorkspaceBinding(
+          buildingId: BuildingId('building-a'),
+          legacyBuildingId: 'legacy-building-a',
+          legacyLevelIds: <LevelId, String>{LevelId('level-1'): ''},
+        ),
+        throwsA(
+          isA<CanonicalEditorWorkspaceException>().having(
+            (error) => error.code,
+            'code',
+            CanonicalEditorWorkspaceIssueCode.invalidLegacyBinding,
           ),
         ),
       );
@@ -241,6 +324,7 @@ ProjectAggregateRoot _canonicalProject() {
   final zoneId = ZoneId('zone-apartment');
   final bedroom = SpaceId('space-bedroom');
   final corridor = SpaceId('space-corridor');
+  final technical = SpaceId('space-technical');
 
   return ProjectAggregateRoot(
     id: ProjectId('project-1'),
@@ -278,6 +362,7 @@ ProjectAggregateRoot _canonicalProject() {
           name: 'Technical',
           levelNumber: 7,
           elevationMm: 21000,
+          spaceIds: <SpaceId>[technical],
         ),
       },
       zones: <ZoneId, ProjectStructuralZoneEntity>{
@@ -298,6 +383,11 @@ ProjectAggregateRoot _canonicalProject() {
           id: corridor,
           levelId: level1,
           name: 'Corridor',
+        ),
+        technical: ProjectSpaceEntity(
+          id: technical,
+          levelId: level2,
+          name: 'Technical room',
         ),
       },
     ),
