@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../application/project/project_navigation_state.dart';
 import '../../application/project/project_navigator_projection.dart';
 import '../../application/project/project_structure_authoring.dart';
 import '../../domain/project_identity.dart';
@@ -271,12 +272,16 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
           return;
         case ProjectNavigatorNodeKind.building:
           session.activateBuilding(node.id as BuildingId);
+          break;
         case ProjectNavigatorNodeKind.level:
           session.activateLevel(node.id as LevelId);
+          break;
         case ProjectNavigatorNodeKind.structuralZone:
           session.selectZone(node.id as ZoneId);
+          break;
         case ProjectNavigatorNodeKind.space:
           session.selectRoom(node.id as SpaceId);
+          break;
       }
       setState(() {});
       widget.onNavigationChanged?.call(session.navigation);
