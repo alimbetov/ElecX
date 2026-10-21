@@ -34,7 +34,8 @@ final class CreateBuildingCommand implements ProjectCommand {
     this.displayOrder = 0,
   }) {
     if (name.trim().isEmpty) {
-      throw ArgumentError.value(name, 'name', 'Building name must be non-empty.');
+      throw ArgumentError.value(
+          name, 'name', 'Building name must be non-empty.');
     }
   }
 
@@ -95,7 +96,8 @@ final class RenameBuildingCommand implements ProjectCommand {
     required this.name,
   }) {
     if (name.trim().isEmpty) {
-      throw ArgumentError.value(name, 'name', 'Building name must be non-empty.');
+      throw ArgumentError.value(
+          name, 'name', 'Building name must be non-empty.');
     }
   }
 
