@@ -84,9 +84,7 @@ final class ExistingBindingCanonicalEditorMaterializer
 
     final levelId = navigation.activeLevelId;
     final level = levelId == null ? null : project.index.level(levelId);
-    if (levelId == null ||
-        level == null ||
-        level.buildingId != buildingId) {
+    if (levelId == null || level == null || level.buildingId != buildingId) {
       return CanonicalEditorMaterializationResult(
         status: CanonicalEditorMaterializationStatus.blockedCanonicalMismatch,
         entityId: levelId,
