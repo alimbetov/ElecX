@@ -87,7 +87,8 @@ void main() {
       await tester.pump();
 
       expect(find.byType(RoomSurfaceNavigator), findsOneWidget);
-      expect(find.byKey(const ValueKey('room-surface-mini-view')), findsNothing);
+      expect(
+          find.byKey(const ValueKey('room-surface-mini-view')), findsNothing);
       expect(fixture.session.project.version, versionBefore);
       expect(fixture.session.navigation, navigationBefore);
 
@@ -103,7 +104,8 @@ void main() {
     },
   );
 
-  testWidgets('canonical level-only context keeps Room Surface Navigator hidden',
+  testWidgets(
+      'canonical level-only context keeps Room Surface Navigator hidden',
       (tester) async {
     _useDesktopSurface(tester);
     final fixture = _fixture(selectRoom: false);
