@@ -4,11 +4,22 @@ final class EditorShellState extends ChangeNotifier {
   bool _navigatorVisible = true;
   bool _inspectorVisible = true;
   bool _contextBarVisible = true;
+  bool _compassRequestedVisible = false;
   bool _focusMode = false;
 
   bool get navigatorVisible => _navigatorVisible && !_focusMode;
   bool get inspectorVisible => _inspectorVisible && !_focusMode;
   bool get contextBarVisible => _contextBarVisible && !_focusMode;
+
+  /// User preference for the transient compass overlay in this editor session.
+  ///
+  /// Focus mode may temporarily suppress the effective visibility without
+  /// changing this requested state.
+  bool get compassRequestedVisible => _compassRequestedVisible;
+
+  /// Effective compass visibility after shell-level suppression is applied.
+  bool get compassVisible => _compassRequestedVisible && !_focusMode;
+
   bool get focusMode => _focusMode;
 
   void toggleNavigator() {
@@ -32,6 +43,25 @@ final class EditorShellState extends ChangeNotifier {
       return;
     }
     _contextBarVisible = !_contextBarVisible;
+    notifyListeners();
+  }
+
+  /// Toggles the user's requested compass state even while focus mode is on.
+  ///
+  /// This is intentionally different from panel toggles: focus mode suppresses
+  /// the compass presentation, but must not prevent the user from changing the
+  /// preference that will become effective after focus mode exits.
+  void toggleCompass() {
+    _compassRequestedVisible = !_compassRequestedVisible;
+    notifyListeners();
+  }
+
+  /// Sets the requested compass state idempotently.
+  void setCompassRequestedVisible(bool value) {
+    if (_compassRequestedVisible == value) {
+      return;
+    }
+    _compassRequestedVisible = value;
     notifyListeners();
   }
 
