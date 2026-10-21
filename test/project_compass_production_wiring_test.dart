@@ -152,8 +152,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.bySemanticsLabel('Compass, Project North not set'),
+        find.byKey(const ValueKey('project-compass-paint')),
         findsOneWidget,
+        reason: 'ownership controls editing, not read-only projection',
       );
       expect(
         find.byKey(const ValueKey('project-compass-read-only')),
