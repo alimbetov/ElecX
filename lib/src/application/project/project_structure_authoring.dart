@@ -11,6 +11,7 @@ enum ProjectStructureAuthoringIssueCode {
   navigationSiteMismatch,
   activeBuildingRequired,
   activeLevelRequired,
+  authoringContextChanged,
   reconciliationProjectMismatch,
   reconciliationVersionMismatch,
 }
@@ -164,7 +165,7 @@ final class ProjectStructureAuthoringSession {
     final level = levelId == null ? null : current.index.level(levelId);
     final hasBuilding = building != null && building.siteId == current.siteId;
     final hasLevel =
-        level != null && hasBuilding && level.buildingId == building!.id;
+        level != null && hasBuilding && level.buildingId == building.id;
 
     return ProjectStructureAuthoringAvailability(
       canAddBuilding: current.index.site(current.siteId) != null,
@@ -201,9 +202,21 @@ final class ProjectStructureAuthoringSession {
   }
 
   ProjectStructureAuthoringResult<LevelId> createLevel(
-    CreateLevelRequest input,
-  ) {
+    CreateLevelRequest input, {
+    BuildingId? expectedActiveBuildingId,
+  }) {
     final buildingId = _requireActiveBuilding();
+    if (expectedActiveBuildingId != null &&
+        buildingId != expectedActiveBuildingId) {
+      throw ProjectStructureAuthoringException(
+        code: ProjectStructureAuthoringIssueCode.authoringContextChanged,
+        entityId: buildingId,
+        relatedEntityId: expectedActiveBuildingId,
+        message: 'Active Building changed while +Level authoring was in '
+            'progress.',
+      );
+    }
+
     final id = _idFactory.newLevelId();
     final command = CreateLevelCommand(
       levelId: id,
@@ -232,9 +245,19 @@ final class ProjectStructureAuthoringSession {
   }
 
   ProjectStructureAuthoringResult<SpaceId> createRoom(
-    CreateRoomRequest input,
-  ) {
+    CreateRoomRequest input, {
+    LevelId? expectedActiveLevelId,
+  }) {
     final levelId = _requireActiveLevel();
+    if (expectedActiveLevelId != null && levelId != expectedActiveLevelId) {
+      throw ProjectStructureAuthoringException(
+        code: ProjectStructureAuthoringIssueCode.authoringContextChanged,
+        entityId: levelId,
+        relatedEntityId: expectedActiveLevelId,
+        message: 'Active Level changed while +Room authoring was in progress.',
+      );
+    }
+
     final zoneId = input.structuralZoneId;
     if (zoneId != null) {
       final zone = project.index.zone(zoneId);
@@ -250,7 +273,8 @@ final class ProjectStructureAuthoringSession {
           code: ProjectAuthoringIssueCode.structuralZoneLevelMismatch,
           entityId: zone.id,
           relatedEntityId: zone.levelId,
-          message: 'Structural zone ${zone.id} belongs to level ${zone.levelId}, '
+          message:
+              'Structural zone ${zone.id} belongs to level ${zone.levelId}, '
               'not active level $levelId.',
         );
       }
