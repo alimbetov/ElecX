@@ -19,8 +19,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P5C production screen cutover', () {
-    testWidgets(
-        'canonical runtime stays read-only without a persistence owner',
+    testWidgets('canonical runtime stays read-only without a persistence owner',
         (tester) async {
       _useDesktopSurface(tester);
       final fixture = _fixture();
