@@ -95,7 +95,25 @@ void main() {
       );
     });
 
-    test('active and selected presentation flags stay distinct', () {
+    test('current path contains ancestors and selected leaf exactly once', () {
+      final project = _project();
+      final projection = ProjectNavigatorProjection.build(project);
+      final navigation = ProjectNavigationState.initial(project)
+          .selectSpace(project, SpaceId('space-zoned'));
+
+      expect(
+        projection.currentPathIds(navigation),
+        <EntityId>{
+          SiteId('site-root'),
+          BuildingId('building-a'),
+          LevelId('a-level-1'),
+          ZoneId('zone-a'),
+          SpaceId('space-zoned'),
+        },
+      );
+    });
+
+    test('active context and selected leaf presentation stay distinct', () {
       final project = _project();
       final projection = ProjectNavigatorProjection.build(project);
       final navigation = ProjectNavigationState.initial(project)
@@ -110,8 +128,23 @@ void main() {
       expect(projection.isActiveLevel(level, navigation), isTrue);
       expect(projection.isSelected(building, navigation), isFalse);
       expect(projection.isSelected(level, navigation), isFalse);
-      expect(projection.isSelected(zone, navigation), isTrue);
+      expect(projection.isSelected(zone, navigation), isFalse);
       expect(projection.isSelected(space, navigation), isTrue);
+      expect(projection.currentPathIds(navigation), contains(zone.id));
+    });
+
+    test('Zone is selected when it is the selected leaf', () {
+      final project = _project();
+      final projection = ProjectNavigatorProjection.build(project);
+      final navigation = ProjectNavigationState.initial(project)
+          .selectZone(project, ZoneId('zone-a'));
+
+      final zone = projection.node(ZoneId('zone-a'))!;
+      final space = projection.node(SpaceId('space-zoned'))!;
+
+      expect(projection.isSelected(zone, navigation), isTrue);
+      expect(projection.isSelected(space, navigation), isFalse);
+      expect(projection.currentLeafId(navigation), zone.id);
     });
 
     test('same-number Levels in different Buildings remain distinct nodes', () {
@@ -128,7 +161,8 @@ void main() {
       expect(project.index.level(LevelId('b-level-1'))!.levelNumber, 1);
     });
 
-    test('ordering is deterministic and independent of Map insertion order', () {
+    test('ordering is deterministic and independent of Map insertion order',
+        () {
       final projection = ProjectNavigatorProjection.build(
         _project(reverseInsertionOrder: true),
       );
