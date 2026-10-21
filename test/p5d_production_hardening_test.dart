@@ -4,7 +4,6 @@ import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/project_structure_authoring.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
-import 'package:elecx/src/domain/project_orientation.dart';
 import 'package:elecx/src/features/editor/canonical_editor_production_runtime.dart';
 import 'package:elecx/src/features/editor/canonical_editor_workspace_adapter.dart';
 import 'package:elecx/src/features/editor/editor_building_workspace.dart';
@@ -69,7 +68,8 @@ void main() {
       expect(
         find.text('Saved'),
         findsOneWidget,
-        reason: 'canonical publication failure must not dirty legacy persistence',
+        reason:
+            'canonical publication failure must not dirty legacy persistence',
       );
 
       final undone = fixture.mutations.undo(fixture.session.project.version);
