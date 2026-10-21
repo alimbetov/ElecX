@@ -8,6 +8,8 @@ import 'canonical_project_navigator.dart';
 import 'editor_building_workspace.dart';
 import 'project_persistence_metadata.dart';
 
+export '../../application/project/project_mutation.dart' show ProjectMutationResult;
+
 /// Resolves the canonical runtime that corresponds to one concrete legacy
 /// editor workspace instance.
 ///
