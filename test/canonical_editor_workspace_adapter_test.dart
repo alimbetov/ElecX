@@ -66,6 +66,48 @@ void main() {
       expect(workspace.editor.level.id, 'legacy-level-one');
     });
 
+    test('missing child binding fails before canvas Level is switched', () {
+      final project = _canonicalProject();
+      final workspace = _legacyWorkspace()..selectLevel(7);
+      final adapter = CanonicalEditorWorkspaceAdapter(
+        workspace: workspace,
+        binding: CanonicalEditorWorkspaceBinding(
+          buildingId: BuildingId('building-a'),
+          legacyBuildingId: 'legacy-building-a',
+          legacyLevelIds: <LevelId, String>{
+            LevelId('level-1'): 'legacy-level-one',
+            LevelId('level-2'): 'legacy-level-seven',
+          },
+          legacyZoneIds: <ZoneId, String>{
+            ZoneId('zone-apartment'): 'legacy-zone-apartment',
+          },
+        ),
+      );
+      final navigation = ProjectNavigationState.initial(project)
+          .selectSpace(project, SpaceId('space-bedroom'));
+      final beforeLevelId = workspace.editor.level.id;
+      final beforeLevelNumber = workspace.activeLevelNumber;
+      final beforeSpaceId = workspace.editor.selectedSpaceId;
+
+      expect(
+        () => adapter.applyCanonicalNavigation(
+          project: project,
+          navigation: navigation,
+        ),
+        throwsA(
+          isA<CanonicalEditorWorkspaceException>().having(
+            (error) => error.code,
+            'code',
+            CanonicalEditorWorkspaceIssueCode.legacySpaceBindingMissing,
+          ),
+        ),
+      );
+
+      expect(workspace.editor.level.id, beforeLevelId);
+      expect(workspace.activeLevelNumber, beforeLevelNumber);
+      expect(workspace.editor.selectedSpaceId, beforeSpaceId);
+    });
+
     test('opens exact canonical Space and its Zone on the canvas', () {
       final project = _canonicalProject();
       final workspace = _legacyWorkspace();
