@@ -7,41 +7,44 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P4D space commands', () {
-    test('creates an unzoned space and updates level membership atomically', () {
-      final session = ProjectMutationSession(_projectWithLevel());
-      final spaceId = SpaceId('space-1');
+    test(
+      'creates an unzoned space and updates level membership atomically',
+      () {
+        final session = ProjectMutationSession(_project());
+        final spaceId = SpaceId('space-1');
 
-      final result = session.commit(
-        ProjectMutationRequest(
-          expectedVersion: session.current.version,
-          command: CreateSpaceCommand(
-            spaceId: spaceId,
-            levelId: LevelId('level-1'),
-            name: 'Room 1',
+        final result = session.commit(
+          ProjectMutationRequest(
+            expectedVersion: session.current.version,
+            command: CreateSpaceCommand(
+              spaceId: spaceId,
+              levelId: LevelId('level-1'),
+              name: 'Room 1',
+            ),
           ),
-        ),
-      )!;
+        )!;
 
-      final space = result.project.index.space(spaceId)!;
-      expect(space.id, spaceId);
-      expect(space.levelId, LevelId('level-1'));
-      expect(space.name, 'Room 1');
-      expect(
-        result.project.index.level(LevelId('level-1'))!.spaceIds,
-        contains(spaceId),
-      );
-      expect(result.project.index.structuralZoneBySpace[spaceId], isNull);
-      expect(result.changeSet.addedEntityIds, <EntityId>{spaceId});
-      expect(
-        result.changeSet.updatedEntityIds,
-        <EntityId>{LevelId('level-1')},
-      );
-      expect(result.project.version, LocalProjectVersion(1));
-      expect(session.undoDepth, 1);
-    });
+        final space = result.project.index.space(spaceId)!;
+        expect(space.id, spaceId);
+        expect(space.levelId, LevelId('level-1'));
+        expect(space.name, 'Room 1');
+        expect(
+          result.project.index.level(LevelId('level-1'))!.spaceIds,
+          contains(spaceId),
+        );
+        expect(result.project.index.structuralZoneBySpace[spaceId], isNull);
+        expect(result.changeSet.addedEntityIds, <EntityId>{spaceId});
+        expect(
+          result.changeSet.updatedEntityIds,
+          <EntityId>{LevelId('level-1')},
+        );
+        expect(result.project.version, LocalProjectVersion(1));
+        expect(session.undoDepth, 1);
+      },
+    );
 
-    test('creates a zoned space and updates level and zone atomically', () {
-      final session = ProjectMutationSession(_projectWithEmptyZone());
+    test('creates a zoned space as one undoable multi-entity mutation', () {
+      final session = ProjectMutationSession(_project(zoneOnFirst: true));
       final spaceId = SpaceId('space-1');
       final zoneId = ZoneId('zone-a');
 
@@ -68,10 +71,32 @@ void main() {
         result.changeSet.updatedEntityIds,
         <EntityId>{LevelId('level-1'), zoneId},
       );
+      expect(session.undoDepth, 1);
+
+      final undone = session.undo(
+        expectedVersion: session.current.version,
+      )!;
+      expect(undone.project.index.space(spaceId), isNull);
+      expect(
+        undone.project.index.level(LevelId('level-1'))!.spaceIds,
+        isNot(contains(spaceId)),
+      );
+      expect(
+        undone.project.index.zone(zoneId)!.spaceIds,
+        isNot(contains(spaceId)),
+      );
+
+      final redone = session.redo(
+        expectedVersion: session.current.version,
+      )!;
+      expect(redone.project.index.space(spaceId), isNotNull);
+      expect(redone.project.index.structuralZoneBySpace[spaceId], zoneId);
     });
 
-    test('rename preserves identity, level and structural zone membership', () {
-      final session = ProjectMutationSession(_projectWithZonedSpace());
+    test('rename preserves identity, level and structural-zone membership', () {
+      final session = ProjectMutationSession(
+        _project(zoneOnFirst: true, spaceOnFirst: true, spaceInZone: true),
+      );
       final spaceId = SpaceId('space-1');
 
       final result = session.commit(
@@ -98,7 +123,9 @@ void main() {
     });
 
     test('rename to the same semantic value is suppressed as a no-op', () {
-      final session = ProjectMutationSession(_projectWithZonedSpace());
+      final session = ProjectMutationSession(
+        _project(zoneOnFirst: true, spaceOnFirst: true, spaceInZone: true),
+      );
       final before = session.current;
 
       final result = session.commit(
@@ -117,8 +144,10 @@ void main() {
       expect(session.undoDepth, 0);
     });
 
-    test('rejects duplicate SpaceId and reports existing owner level', () {
-      final session = ProjectMutationSession(_twoLevelsWithSpaceOnFirst());
+    test('duplicate SpaceId reports its actual owner level fail closed', () {
+      final session = ProjectMutationSession(
+        _project(secondLevel: true, spaceOnFirst: true),
+      );
 
       expect(
         () => session.commit(
@@ -150,6 +179,7 @@ void main() {
               ),
         ),
       );
+
       expect(session.current.version, LocalProjectVersion(0));
       expect(session.undoDepth, 0);
       expect(
@@ -158,8 +188,10 @@ void main() {
       );
     });
 
-    test('rejects structural zone from another level fail closed', () {
-      final session = ProjectMutationSession(_twoLevelsWithZoneOnFirst());
+    test('cross-level zone mismatch reports actual zone owner fail closed', () {
+      final session = ProjectMutationSession(
+        _project(secondLevel: true, zoneOnFirst: true),
+      );
 
       expect(
         () => session.commit(
@@ -188,17 +220,23 @@ void main() {
               .having(
                 (error) => error.relatedEntityId,
                 'relatedEntityId',
-                LevelId('level-2'),
+                LevelId('level-1'),
               ),
         ),
       );
+
       expect(session.current.version, LocalProjectVersion(0));
       expect(session.undoDepth, 0);
       expect(session.current.stores.spaces, isEmpty);
+      expect(
+        session.current.index.level(LevelId('level-2'))!.spaceIds,
+        isEmpty,
+      );
+      expect(session.current.index.zone(ZoneId('zone-a'))!.spaceIds, isEmpty);
     });
 
-    test('rejects missing level, zone and space fail closed', () {
-      final createMissingLevel = ProjectMutationSession(_projectWithLevel());
+    test('missing level, zone and space are rejected fail closed', () {
+      final createMissingLevel = ProjectMutationSession(_project());
       expect(
         () => createMissingLevel.commit(
           ProjectMutationRequest(
@@ -219,7 +257,7 @@ void main() {
         ),
       );
 
-      final createMissingZone = ProjectMutationSession(_projectWithLevel());
+      final createMissingZone = ProjectMutationSession(_project());
       expect(
         () => createMissingZone.commit(
           ProjectMutationRequest(
@@ -241,7 +279,7 @@ void main() {
         ),
       );
 
-      final renameMissing = ProjectMutationSession(_projectWithLevel());
+      final renameMissing = ProjectMutationSession(_project());
       expect(
         () => renameMissing.commit(
           ProjectMutationRequest(
@@ -271,96 +309,24 @@ void main() {
   });
 }
 
-ProjectAggregateRoot _projectWithLevel() {
+ProjectAggregateRoot _project({
+  bool secondLevel = false,
+  bool zoneOnFirst = false,
+  bool spaceOnFirst = false,
+  bool spaceInZone = false,
+}) {
   final siteId = SiteId('site-root');
   final buildingId = BuildingId('building-a');
-  final levelId = LevelId('level-1');
-  return ProjectAggregateRoot(
-    id: ProjectId('project-1'),
-    siteId: siteId,
-    version: LocalProjectVersion(0),
-    stores: ProjectEntityStores(
-      sites: <SiteId, ProjectSiteEntity>{
-        siteId: ProjectSiteEntity(
-          id: siteId,
-          name: 'Site',
-          buildingIds: <BuildingId>[buildingId],
-        ),
-      },
-      buildings: <BuildingId, ProjectBuildingEntity>{
-        buildingId: ProjectBuildingEntity(
-          id: buildingId,
-          siteId: siteId,
-          name: 'Building A',
-          levelIds: <LevelId>[levelId],
-        ),
-      },
-      levels: <LevelId, ProjectLevelEntity>{
-        levelId: ProjectLevelEntity(
-          id: levelId,
-          buildingId: buildingId,
-          name: 'Floor 1',
-          levelNumber: 1,
-          elevationMm: 0,
-        ),
-      },
-    ),
-  );
-}
-
-ProjectAggregateRoot _projectWithEmptyZone() {
-  final siteId = SiteId('site-root');
-  final buildingId = BuildingId('building-a');
-  final levelId = LevelId('level-1');
-  final zoneId = ZoneId('zone-a');
-  return ProjectAggregateRoot(
-    id: ProjectId('project-1'),
-    siteId: siteId,
-    version: LocalProjectVersion(0),
-    stores: ProjectEntityStores(
-      sites: <SiteId, ProjectSiteEntity>{
-        siteId: ProjectSiteEntity(
-          id: siteId,
-          name: 'Site',
-          buildingIds: <BuildingId>[buildingId],
-        ),
-      },
-      buildings: <BuildingId, ProjectBuildingEntity>{
-        buildingId: ProjectBuildingEntity(
-          id: buildingId,
-          siteId: siteId,
-          name: 'Building A',
-          levelIds: <LevelId>[levelId],
-        ),
-      },
-      levels: <LevelId, ProjectLevelEntity>{
-        levelId: ProjectLevelEntity(
-          id: levelId,
-          buildingId: buildingId,
-          name: 'Floor 1',
-          levelNumber: 1,
-          elevationMm: 0,
-          zoneIds: <ZoneId>[zoneId],
-        ),
-      },
-      zones: <ZoneId, ProjectStructuralZoneEntity>{
-        zoneId: ProjectStructuralZoneEntity(
-          id: zoneId,
-          levelId: levelId,
-          name: 'Apartment A',
-          spaceIds: const <SpaceId>[],
-        ),
-      },
-    ),
-  );
-}
-
-ProjectAggregateRoot _projectWithZonedSpace() {
-  final siteId = SiteId('site-root');
-  final buildingId = BuildingId('building-a');
-  final levelId = LevelId('level-1');
+  final levelOneId = LevelId('level-1');
+  final levelTwoId = LevelId('level-2');
   final zoneId = ZoneId('zone-a');
   final spaceId = SpaceId('space-1');
+
+  final levelIds = <LevelId>[
+    levelOneId,
+    if (secondLevel) levelTwoId,
+  ];
+
   return ProjectAggregateRoot(
     id: ProjectId('project-1'),
     siteId: siteId,
@@ -378,148 +344,45 @@ ProjectAggregateRoot _projectWithZonedSpace() {
           id: buildingId,
           siteId: siteId,
           name: 'Building A',
-          levelIds: <LevelId>[levelId],
+          levelIds: levelIds,
         ),
       },
       levels: <LevelId, ProjectLevelEntity>{
-        levelId: ProjectLevelEntity(
-          id: levelId,
+        levelOneId: ProjectLevelEntity(
+          id: levelOneId,
           buildingId: buildingId,
           name: 'Floor 1',
           levelNumber: 1,
           elevationMm: 0,
-          zoneIds: <ZoneId>[zoneId],
-          spaceIds: <SpaceId>[spaceId],
+          zoneIds: zoneOnFirst ? <ZoneId>[zoneId] : const <ZoneId>[],
+          spaceIds: spaceOnFirst ? <SpaceId>[spaceId] : const <SpaceId>[],
         ),
+        if (secondLevel)
+          levelTwoId: ProjectLevelEntity(
+            id: levelTwoId,
+            buildingId: buildingId,
+            name: 'Floor 2',
+            levelNumber: 2,
+            elevationMm: 3000,
+          ),
       },
       zones: <ZoneId, ProjectStructuralZoneEntity>{
-        zoneId: ProjectStructuralZoneEntity(
-          id: zoneId,
-          levelId: levelId,
-          name: 'Apartment A',
-          spaceIds: <SpaceId>[spaceId],
-        ),
+        if (zoneOnFirst)
+          zoneId: ProjectStructuralZoneEntity(
+            id: zoneId,
+            levelId: levelOneId,
+            name: 'Apartment A',
+            spaceIds:
+                spaceInZone ? <SpaceId>[spaceId] : const <SpaceId>[],
+          ),
       },
       spaces: <SpaceId, ProjectSpaceEntity>{
-        spaceId: ProjectSpaceEntity(
-          id: spaceId,
-          levelId: levelId,
-          name: 'Bedroom',
-        ),
-      },
-    ),
-  );
-}
-
-ProjectAggregateRoot _twoLevelsWithSpaceOnFirst() {
-  final base = _twoLevels();
-  final levelOne = base.index.level(LevelId('level-1'))!;
-  final levels = Map<LevelId, ProjectLevelEntity>.from(base.stores.levels);
-  levels[levelOne.id] = ProjectLevelEntity(
-    id: levelOne.id,
-    buildingId: levelOne.buildingId,
-    name: levelOne.name,
-    levelNumber: levelOne.levelNumber,
-    displayOrder: levelOne.displayOrder,
-    elevationMm: levelOne.elevationMm,
-    zoneIds: levelOne.zoneIds,
-    spaceIds: <SpaceId>[SpaceId('space-1')],
-  );
-  return ProjectAggregateRoot(
-    id: base.id,
-    siteId: base.siteId,
-    version: base.version,
-    stores: ProjectEntityStores(
-      sites: base.stores.sites,
-      buildings: base.stores.buildings,
-      levels: levels,
-      zones: base.stores.zones,
-      spaces: <SpaceId, ProjectSpaceEntity>{
-        SpaceId('space-1'): ProjectSpaceEntity(
-          id: SpaceId('space-1'),
-          levelId: LevelId('level-1'),
-          name: 'Existing',
-        ),
-      },
-    ),
-  );
-}
-
-ProjectAggregateRoot _twoLevelsWithZoneOnFirst() {
-  final base = _twoLevels();
-  final levelOne = base.index.level(LevelId('level-1'))!;
-  final levels = Map<LevelId, ProjectLevelEntity>.from(base.stores.levels);
-  levels[levelOne.id] = ProjectLevelEntity(
-    id: levelOne.id,
-    buildingId: levelOne.buildingId,
-    name: levelOne.name,
-    levelNumber: levelOne.levelNumber,
-    displayOrder: levelOne.displayOrder,
-    elevationMm: levelOne.elevationMm,
-    zoneIds: <ZoneId>[ZoneId('zone-a')],
-    spaceIds: levelOne.spaceIds,
-  );
-  return ProjectAggregateRoot(
-    id: base.id,
-    siteId: base.siteId,
-    version: base.version,
-    stores: ProjectEntityStores(
-      sites: base.stores.sites,
-      buildings: base.stores.buildings,
-      levels: levels,
-      zones: <ZoneId, ProjectStructuralZoneEntity>{
-        ZoneId('zone-a'): ProjectStructuralZoneEntity(
-          id: ZoneId('zone-a'),
-          levelId: LevelId('level-1'),
-          name: 'Apartment A',
-          spaceIds: const <SpaceId>[],
-        ),
-      },
-      spaces: base.stores.spaces,
-    ),
-  );
-}
-
-ProjectAggregateRoot _twoLevels() {
-  final siteId = SiteId('site-root');
-  final buildingId = BuildingId('building-a');
-  final levelOne = LevelId('level-1');
-  final levelTwo = LevelId('level-2');
-  return ProjectAggregateRoot(
-    id: ProjectId('project-1'),
-    siteId: siteId,
-    version: LocalProjectVersion(0),
-    stores: ProjectEntityStores(
-      sites: <SiteId, ProjectSiteEntity>{
-        siteId: ProjectSiteEntity(
-          id: siteId,
-          name: 'Site',
-          buildingIds: <BuildingId>[buildingId],
-        ),
-      },
-      buildings: <BuildingId, ProjectBuildingEntity>{
-        buildingId: ProjectBuildingEntity(
-          id: buildingId,
-          siteId: siteId,
-          name: 'Building A',
-          levelIds: <LevelId>[levelOne, levelTwo],
-        ),
-      },
-      levels: <LevelId, ProjectLevelEntity>{
-        levelOne: ProjectLevelEntity(
-          id: levelOne,
-          buildingId: buildingId,
-          name: 'Floor 1',
-          levelNumber: 1,
-          elevationMm: 0,
-        ),
-        levelTwo: ProjectLevelEntity(
-          id: levelTwo,
-          buildingId: buildingId,
-          name: 'Floor 2',
-          levelNumber: 2,
-          elevationMm: 3000,
-        ),
+        if (spaceOnFirst)
+          spaceId: ProjectSpaceEntity(
+            id: spaceId,
+            levelId: levelOneId,
+            name: spaceInZone ? 'Bedroom' : 'Existing',
+          ),
       },
     ),
   );
