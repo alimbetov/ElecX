@@ -7,6 +7,8 @@ import 'project_mutation.dart';
 import 'project_navigation_state.dart';
 import 'project_space_commands.dart';
 
+export 'project_navigation_state.dart';
+
 enum ProjectStructureAuthoringIssueCode {
   navigationSiteMismatch,
   activeBuildingRequired,
