@@ -73,6 +73,7 @@ A navigator button must never become a second persistence path.
 A user must be able to create the complete physical structure of an engineering project without hidden commands:
 
 - choose an initial project template;
+- create a building;
 - create a building level;
 - create a basement;
 - create a ground/plinth level;
@@ -80,10 +81,11 @@ A user must be able to create the complete physical structure of an engineering 
 - create a roof level;
 - create and classify rooms/spaces;
 - navigate the full hierarchy;
+- always see the current Site / Building / Level / Zone / Room context;
 - save, close and reopen the same structure;
 - continue editing the same logical project on another supported native platform later.
 
-The left navigator is therefore both a hierarchy viewer and the primary entry point for project-structure authoring.
+The left navigator is therefore both a hierarchy viewer, a live current-location indicator and the primary entry point for project-structure authoring.
 
 ## Canonical hierarchy
 
@@ -92,15 +94,16 @@ The navigator projects the canonical physical model. It does not own a separate 
 ```text
 Project
 └── Site
-    └── Building
-        ├── Roof
-        ├── Technical levels
-        ├── Residential levels
-        │   ├── Zones / apartments
-        │   └── Rooms / spaces
-        ├── Ground / plinth
-        └── Basements
-            └── Rooms / spaces
+    ├── Building A
+    │   ├── Roof
+    │   ├── Technical levels
+    │   ├── Residential levels
+    │   │   ├── Zones / apartments
+    │   │   └── Rooms / spaces
+    │   ├── Ground / plinth
+    │   └── Basements
+    │       └── Rooms / spaces
+    └── Building B
 ```
 
 Each visible node must reference a stable domain identity.
@@ -155,7 +158,7 @@ A template is a deterministic factory for canonical domain entities. It is not a
 
 Creates a valid local-first project identity and a minimal editable site/building context.
 
-It must be possible to add all subsequent levels and rooms using the same authoring commands used by every other project.
+It must be possible to add all subsequent buildings, levels and rooms using the same authoring commands used by every other project.
 
 ### Demo apartment
 
@@ -169,31 +172,119 @@ For current macOS qualification this is the preferred visual test fixture becaus
 
 ## Project Structure Editor
 
-The left navigator must expose explicit primary actions.
+The left navigator must expose explicit primary actions and must always display the user's current structural location.
 
 Desktop baseline:
 
 ```text
-NAVIGATOR
+PROJECT
 
 Site
-└── Building
-    ├── Roof
-    ├── Floor 2
-    │   ├── Room 201
-    │   └── Room 202
-    ├── Floor 1
-    │   ├── Living room
-    │   └── Bedroom
-    └── B1
-        └── Electrical room
+├── Building A
+│   ├── B1
+│   ├── Floor 1
+│   ├── Floor 2      ← CURRENT
+│   │   └── Bedroom  ← SELECTED
+│   └── Roof
+└── Building B
 
-[ + Level ]   [ + Room ]
+[ + Building ]
+[ + Level ] [ + Room ]
+[ Wizard ]
 ```
 
 Primary authoring actions require discoverable labels on desktop. A bare plus icon is not sufficient.
 
-On mobile/tablet these commands may move into an adaptive sheet/menu, but they must call the same application/domain commands and create byte/semantically equivalent canonical state.
+On mobile/tablet these commands may move into an adaptive sheet/menu, but they must call the same application/domain commands and create semantically equivalent canonical state.
+
+Detailed current-location behavior is defined in:
+
+`docs/architecture/project-navigator-current-location-v1.md`
+
+## Current location and selection
+
+The navigator must distinguish:
+
+```text
+ACTIVE CONTEXT
+Site / Building / Level currently opened by the editor.
+
+SELECTED ENTITY
+Zone/Room/other entity currently selected inside that context.
+```
+
+A selected Room does not replace the fact that its parent Level remains the active Level.
+
+The current path is based on stable identities, not level numbers, list indices or labels.
+
+Conceptually:
+
+```text
+SiteId
+BuildingId?
+LevelId?
+ZoneId?
+SpaceId?
+```
+
+When current location changes, the navigator must:
+
+- update the current/selected marker;
+- expand all required ancestors;
+- reveal/scroll the current node into view for explicit navigation actions;
+- preserve unrelated expansion state where practical;
+- update breadcrumb/path from the same state source;
+- never scroll/reselect merely because of hover.
+
+Current location must remain unambiguous for equal display numbers in different Buildings.
+
+For example:
+
+```text
+Building A / Floor 2
+Building B / Floor 2
+```
+
+therefore `levelNumber = 2` is insufficient as canonical navigation identity.
+
+## Current path / breadcrumb
+
+Desktop and tablet should expose a structural breadcrumb where useful:
+
+```text
+Site / Building A / Floor 2 / Apartment 201 / Bedroom
+```
+
+or:
+
+```text
+Site / Building A / Floor 2
+```
+
+The breadcrumb is a projection of the same current-location state as the tree and must never maintain an independent navigation model.
+
+## Authoring action targeting
+
+Primary actions operate on explicit current context:
+
+```text
++ Building → active Site
++ Level    → active Building
++ Room     → active Level
+Wizard     → explicit project/site/building/level insertion context where applicable
+```
+
+If the required parent context is not available or ambiguous, the action is disabled or requests explicit selection. It must not use stale widget state or silently guess a target.
+
+After successful creation:
+
+```text
+Create Building → new Building becomes active and visible
+Create Level    → new Level becomes current and visible
+Create Room     → Level remains active; new Room becomes selected and visible
+```
+
+Cancel/failure preserves the previous current location.
 
 ## Level creation
 
@@ -226,7 +317,7 @@ Defaults may be inferred from adjacent levels for user convenience, but the comm
 Before mutation:
 
 - building exists;
-- requested level number is unique;
+- requested level number is unique within the target Building;
 - level number is inside the domain-supported range;
 - height is positive;
 - elevation is valid for the request;
@@ -239,30 +330,34 @@ Before mutation:
 One successful level creation is one atomic logical mutation:
 
 ```text
+CreateLevelCommand
+    ↓
 validate request
     ↓
-create canonical level
+construct candidate canonical project state
     ↓
-update ComposedBuilding levels
+validate candidate graph
     ↓
-update Building.levels consistently
+compute ProjectChangeSet
     ↓
-update ProjectSite building projection
+commit once
     ↓
-activate new level
+activate created LevelId
     ↓
-mark project Modified
+project editor/navigator projections update
     ↓
-normal autosave/recovery path
+normal local autosave/recovery path
 ```
 
-Widgets must not manually perform these individual graph mutations themselves.
+There must not be a second independently mutable Building copy in the navigator/site model. Transitional adapters may exist, but authoritative mutation happens once through the canonical command boundary.
+
+Widgets must not manually perform individual graph mutations themselves.
 
 ## Basement
 
 A basement is not a separate persistence model.
 
-It is a canonical `ComposedBuildingLevel` with:
+It is a canonical building level with:
 
 ```text
 kind = basement
@@ -276,6 +371,8 @@ Suggested display numbering:
 B1 → -1
 B2 → -2
 ```
+
+`levelNumber` is a display/order attribute, not the persistent Level identity.
 
 Its identity and serialization are identical in semantics on macOS, Windows, Linux, Android, iOS and iPadOS.
 
@@ -302,7 +399,7 @@ Required flow:
 ```text
 + Room
   ↓
-activate level
+resolve explicit active BuildingId + LevelId
   ↓
 show Plan
   ↓
@@ -318,6 +415,8 @@ validate polygon
   ↓
 commit EngineeringSpace
   ↓
+select/reveal created SpaceId
+  ↓
 edit room properties
 ```
 
@@ -328,6 +427,7 @@ Room property minimum:
 ```text
 name
 SpaceType
+SpaceUsage when introduced
 optional zone assignment
 ```
 
@@ -344,7 +444,7 @@ shaft
 
 `outdoorArea` remains for outdoor/site contexts and must not be offered as an ordinary building-room type.
 
-After successful commit the room appears immediately in the navigator because the navigator is projected from canonical workspace state.
+After successful commit the room appears immediately in the navigator because the navigator is projected from canonical project state.
 
 ## Room mutation semantics
 
@@ -355,6 +455,7 @@ beginRoomCreation(...)
 commitRoom(...)
 renameRoom(...)
 changeRoomType(...)
+changeRoomUsage(...)
 assignRoomToZone(...)
 ```
 
@@ -362,19 +463,19 @@ Requirements:
 
 - validate before committed mutation;
 - no partial room on cancel/failure;
-- stable `spaceId` after rename/type change;
+- stable `spaceId` after rename/type/usage change;
 - one committed operation produces one project-change notification boundary;
 - no widget-specific persistence write;
 - normal project save/recovery captures the result.
 
 ## Level mutation API
 
-Structural authoring should expose an explicit application/workspace API, conceptually:
+Structural authoring should expose an explicit application/domain API, conceptually:
 
 ```dart
 createLevel(CreateLevelRequest request)
 renameLevel(LevelId id, String name)
-activateLevel(LevelId id)
+activateLevel(BuildingId buildingId, LevelId levelId)
 removeLevel(LevelId id)
 ```
 
@@ -384,7 +485,7 @@ Future dependency rules for risers, circuits, routes and equipment must be able 
 
 ## Local-first behavior
 
-Creating levels and rooms must not require network connectivity.
+Creating buildings, levels and rooms must not require network connectivity.
 
 The command path is local:
 
@@ -393,7 +494,7 @@ user action
   ↓
 application/domain command
   ↓
-canonical in-memory project state
+canonical project state
   ↓
 local save/autosave/recovery
   ↓
@@ -406,7 +507,7 @@ The future Sync Engine may upload the resulting revision later, but it must not 
 
 ## Persistence boundary
 
-`EditorProjectDocument.capture()` / `restore()` remain the current canonical serialization boundary during this stage.
+`EditorProjectDocument.capture()` / `restore()` remain the transitional serialization boundary during this stage.
 
 This feature must preserve compatibility with the planned migration behind repository interfaces to:
 
@@ -420,19 +521,22 @@ SQLite
 
 Therefore structural authoring code must not depend on JSON-file-specific behavior even though the current native implementation may still use file-backed persistence underneath the abstraction.
 
-New structure state that must round-trip:
+New structure state that must round-trip includes:
 
+- stable building identity;
 - stable level identity;
-- level number;
+- level number/order metadata;
 - level kind;
 - level display name;
 - elevation;
 - floor-to-floor height;
 - stable room/space identity;
 - geometry;
-- room type;
+- room type/usage;
 - zone membership;
-- active project navigation state where intentionally persisted.
+- intentional resume context using stable BuildingId/LevelId/ZoneId/SpaceId where supported.
+
+The target multi-building persisted project representation must be able to preserve full composed semantics for every Building, not only one active `ComposedBuilding` plus shallow copies in `ProjectSite`.
 
 ## Revision/sync compatibility
 
@@ -509,6 +613,15 @@ project north
 engineering entities
 ```
 
+Intentional resume/session context where supported:
+
+```text
+active BuildingId
+active LevelId
+selected ZoneId
+selected SpaceId
+```
+
 Transient shell/UI state:
 
 ```text
@@ -519,6 +632,8 @@ context bar visible
 focus mode
 compass visible
 hover state
+keyboard-focus node
+navigator scroll offset
 pointer/stylus preview
 ```
 
@@ -565,12 +680,12 @@ Structural mutations are fail-closed.
 
 Reject without partial canonical mutation:
 
-- duplicate level number;
+- duplicate level number within a Building;
 - invalid level kind/number combination;
 - invalid height/elevation request;
 - invalid/degenerate room geometry;
-- room creation without a valid active level;
-- references to unknown level/zone/space identities;
+- room creation without a valid active BuildingId + LevelId;
+- references to unknown building/level/zone/space identities;
 - duplicate generated external identity;
 - destructive operations that violate future protected dependencies.
 
@@ -589,6 +704,8 @@ construct candidate state
   ↓
 validate candidate graph
   ↓
+compute ProjectChangeSet
+  ↓
 commit state atomically
   ↓
 notify once
@@ -605,26 +722,36 @@ Testing is layered.
 Domain/application tests:
 
 - create valid typed level;
-- reject duplicate level number;
+- reject duplicate level number within one Building;
+- allow same level display number in different Buildings;
 - create basement/ground/technical/roof;
 - preserve stable IDs during non-identity edits;
-- create room and classify type;
+- create room and classify type/usage;
 - reject invalid geometry;
-- ensure failed mutation leaves state unchanged.
+- ensure failed mutation leaves state and current location unchanged.
 
 Persistence tests:
 
 - capture/restore preserves hierarchy;
-- save/reopen preserves hierarchy;
-- projectId/levelId/spaceId remain unchanged;
-- no transient compass/UI visibility is serialized as engineering meaning;
+- multi-building save/reopen preserves every Building's full composed semantics;
+- projectId/buildingId/levelId/spaceId remain unchanged;
+- intended resume context uses stable IDs;
+- no transient compass/hover/scroll visibility is serialized as engineering meaning;
 - structural data is platform-neutral.
 
 UI/widget tests:
 
 - template selector is discoverable;
+- `+ Building` visible;
 - `+ Level` visible;
 - `+ Room` visible;
+- `Wizard` visible;
+- current Building/Level is visibly indicated;
+- selected Room/Zone is distinguishable from active Level;
+- selecting deep nodes auto-expands required ancestors;
+- explicit navigation reveals current node in scroll view;
+- same-number levels in different Buildings are unambiguous;
+- action targeting follows current context;
 - dialogs validate inputs;
 - compass hidden initially;
 - user can explicitly show/hide compass.
@@ -638,31 +765,35 @@ macOS is the reference implementation/qualification platform for this stage.
 ```text
 A01 launch native macOS application
 A02 create Blank project
-A03 create Demo apartment and see built-in plan
-A04 create residential level
-A05 create ground/plinth level
-A06 create basement
-A07 create technical level
-A08 create roof
-A09 navigate between created levels
-A10 create room using plan rectangle tool
-A11 room appears immediately in hierarchy
-A12 rename room without changing spaceId
-A13 change room type
-A14 compass is hidden by default
-A15 explicitly show compass
-A16 edit ProjectNorth while compass visible
-A17 explicitly hide compass
-A18 save project locally
-A19 close ElecX completely
-A20 relaunch ElecX
-A21 reopen same projectId
-A22 hierarchy and stable ids are preserved
-A23 room geometry/type/zone membership are preserved
-A24 ProjectNorth is preserved
-A25 no MissingPluginException
-A26 no Web/browser fallback is involved
-A27 no platform-specific project corruption
+A03 current Site/Building/Level is visible in PROJECT tree
+A04 create Demo apartment and see built-in plan
+A05 create Building B
+A06 create residential level
+A07 create ground/plinth level
+A08 create basement
+A09 create technical level
+A10 create roof
+A11 navigate between created levels and verify current marker follows
+A12 switch between Building A/Floor 2 and Building B/Floor 2 without ambiguity
+A13 create room using plan rectangle tool
+A14 created room appears immediately, is selected and ancestors are revealed
+A15 rename room without changing spaceId
+A16 change room type/usage
+A17 compass is hidden by default
+A18 explicitly show compass
+A19 edit ProjectNorth while compass visible
+A20 explicitly hide compass
+A21 save project locally
+A22 close ElecX completely
+A23 relaunch ElecX
+A24 reopen same projectId
+A25 hierarchy and stable ids are preserved
+A26 valid current Building/Level/Room resume context is restored when supported
+A27 room geometry/type/usage/zone membership are preserved
+A28 ProjectNorth is preserved
+A29 no MissingPluginException
+A30 no Web/browser fallback is involved
+A31 no platform-specific project corruption
 ```
 
 ## Cross-platform qualification
@@ -680,37 +811,43 @@ A platform may use different controls, but acceptance fails if it creates projec
 
 ## Implementation sequence
 
+The authoritative umbrella roadmap is `P0..P17` from `project-composition-foundation-decisions-v1.md`.
+
+The former `S*` sequence is treated only as subordinate work inside the relevant P stages:
+
 ```text
-S1  architecture/specification alignment
-S2  acceptance/domain tests for structural commands
-S3  New Project template contract and selector
-S4  explicit level mutation API
-S5  + Level native desktop UX
-S6  level dialog validation and activation
-S7  explicit + Room action
-S8  reuse room rectangle transaction
-S9  room properties/type/zone commit
-S10 compass opt-in shell state and UI
-S11 capture/restore and save/reopen regression tests
-S12 macOS Golden Journey qualification
-S13 Windows qualification
-S14 Linux qualification
-S15 Android adaptation/qualification
-S16 iPadOS/iOS adaptation/qualification
+P4/P5  project structure authoring and navigator UX
+P5     current-location tree/breadcrumb and explicit +Building/+Level/+Room/Wizard actions
+P6     semantic spaces/openings/adjacency
+P8+    Wizard generation according to the umbrella roadmap
 ```
 
 Production backend sync remains outside this branch. Compatibility with the already accepted sync/revision boundary is mandatory throughout.
 
-## Definition of done
+## Specification definition of done
 
-`feat/project-structure-authoring` is ready for merge only when:
+The architecture/specification umbrella is ready to leave draft only when:
 
-- the feature complies with `native-project-portability-and-sync.md`;
+- it complies with `native-project-portability-and-sync.md`;
+- one authoritative canonical ownership model is defined;
+- multi-building persistence semantics are defined;
+- stable ID and command/change-set rules are internally consistent;
+- current-location navigator semantics are explicit and ID-based;
+- typed Wizard, provenance and qualification contracts are internally consistent;
 - no Web/browser runtime path is introduced;
+- one authoritative `P0..P17` roadmap is used.
+
+## Feature implementation definition of done
+
+The implemented Project Structure Authoring feature is complete only when:
+
 - Blank and Demo apartment flows work;
+- `+ Building`, `+ Level`, `+ Room`, `Wizard` are discoverable;
+- current Site/Building/Level/Zone/Room context is always understandable;
+- current path auto-expands/reveals after explicit navigation;
 - level creation supports all v1 kinds;
 - room creation is explicit and discoverable;
-- structural mutations use explicit command/workspace boundaries;
+- structural mutations use explicit command/change-set boundaries;
 - failed mutations are atomic/fail-closed;
 - project structure save/reopen is deterministic;
 - stable project/entity ids survive persistence;
