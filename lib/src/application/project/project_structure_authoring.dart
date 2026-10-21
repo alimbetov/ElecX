@@ -11,6 +11,7 @@ export 'project_navigation_state.dart';
 
 enum ProjectStructureAuthoringIssueCode {
   navigationSiteMismatch,
+  navigationStateMismatch,
   activeBuildingRequired,
   activeLevelRequired,
   authoringContextChanged,
@@ -152,6 +153,36 @@ final class ProjectStructureAuthoringSession {
 
   void clearSelection() {
     _navigation = _navigation.clearSelection();
+  }
+
+  /// Atomically adopts a complete canonical navigation state produced by a
+  /// trusted projection/adapter boundary. The supplied state must already be
+  /// coherent with the current project; this method never repairs it silently.
+  void adoptNavigation(ProjectNavigationState next) {
+    if (next.siteId != project.siteId) {
+      throw ProjectStructureAuthoringException(
+        code: ProjectStructureAuthoringIssueCode.navigationSiteMismatch,
+        entityId: next.siteId,
+        relatedEntityId: project.siteId,
+        message: 'Navigation belongs to site ${next.siteId}, not current site '
+            '${project.siteId}.',
+      );
+    }
+
+    final validated = next.reconcile(project);
+    if (validated != next) {
+      throw ProjectStructureAuthoringException(
+        code: ProjectStructureAuthoringIssueCode.navigationStateMismatch,
+        entityId: next.selectedSpaceId ??
+            next.selectedZoneId ??
+            next.activeLevelId ??
+            next.activeBuildingId,
+        message: 'Navigation state is not coherent with the current canonical '
+            'project and cannot be adopted without repair.',
+      );
+    }
+
+    _navigation = next;
   }
 
   /// Pure availability derived from the exact navigation state that the action
