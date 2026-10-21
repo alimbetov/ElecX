@@ -48,18 +48,12 @@ final class CanonicalEditorResolvedRuntime {
     required this.session,
     required this.binding,
     this.materializer = const ExistingBindingCanonicalEditorMaterializer(),
-    this.projectNorthEditing,
     this.persistenceOwnerProjectId,
   });
 
   final ProjectStructureAuthoringSession session;
   final CanonicalEditorWorkspaceBinding binding;
   final CanonicalEditorMaterializer materializer;
-
-  /// Optional narrow P5D edit capability. It must be backed by the same
-  /// canonical project represented by [session]. The screen verifies identity
-  /// and version affinity before enabling editing.
-  final ProjectNorthEditingPort? projectNorthEditing;
 
   /// Exact canonical project for which the production host accepts persistence
   /// ownership. Null keeps Project North read-only even when a canonical
@@ -75,9 +69,10 @@ final class CanonicalEditorResolvedRuntime {
 ///
 /// Canonical structure authoring is enabled only when [onAuthoringCommitted] is
 /// supplied. Project North editing is independently enabled only when the
-/// resolved runtime supplies [CanonicalEditorResolvedRuntime.projectNorthEditing],
-/// its persistence-owner identity matches the screen/canonical project, and
-/// [onProjectNorthCommitted] is supplied.
+/// resolved runtime persistence-owner identity matches the screen/canonical
+/// project and [onProjectNorthCommitted] is supplied. The editing capability is
+/// obtained from [ProjectStructureAuthoringSession.projectNorthEditing], which
+/// guarantees that structure and root-metadata edits share one P3 timeline.
 ///
 /// Both callbacks are synchronous ownership-transfer boundaries. They do not
 /// claim durable disk/backend save completion.
