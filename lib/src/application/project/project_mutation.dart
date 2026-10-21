@@ -491,9 +491,7 @@ void _diffMap<K extends EntityId, V>(
 }
 
 bool _sameSite(ProjectSiteEntity a, ProjectSiteEntity b) =>
-    a.id == b.id &&
-    a.name == b.name &&
-    _sameSet(a.buildingIds, b.buildingIds);
+    a.id == b.id && a.name == b.name && _sameSet(a.buildingIds, b.buildingIds);
 
 bool _sameBuilding(ProjectBuildingEntity a, ProjectBuildingEntity b) =>
     a.id == b.id &&
@@ -527,5 +525,4 @@ bool _sameSpace(ProjectSpaceEntity a, ProjectSpaceEntity b) =>
 bool _sameSet<T>(Set<T> a, Set<T> b) =>
     a.length == b.length && a.containsAll(b);
 
-bool _hasOverlap(Set<EntityId> a, Set<EntityId> b) =>
-    a.any(b.contains);
+bool _hasOverlap(Set<EntityId> a, Set<EntityId> b) => a.any(b.contains);
