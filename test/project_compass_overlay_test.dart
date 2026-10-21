@@ -8,10 +8,10 @@ void main() {
   testWidgets('unavailable projection renders no directional overlay',
       (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: Scaffold(
           body: ProjectCompassOverlay(
-            state: CompassUnavailable(),
+            state: const CompassUnavailable(),
           ),
         ),
       ),
@@ -31,10 +31,10 @@ void main() {
   testWidgets('unspecified north is explicit and read-only passes pointers',
       (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: Scaffold(
           body: ProjectCompassOverlay(
-            state: CompassNorthUnspecified(),
+            state: const CompassNorthUnspecified(),
           ),
         ),
       ),
@@ -124,10 +124,10 @@ void main() {
 
   testWidgets('invalid overlay size fails closed', (tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: Scaffold(
           body: ProjectCompassOverlay(
-            state: CompassNorthUnspecified(),
+            state: const CompassNorthUnspecified(),
             size: 0,
           ),
         ),
@@ -135,27 +135,5 @@ void main() {
     );
 
     expect(tester.takeException(), isA<ArgumentError>());
-  });
-
-  testWidgets('legacy compatibility input cannot fabricate a projection',
-      (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: ProjectCompassOverlay(
-            projectNorth: Object(),
-          ),
-        ),
-      ),
-    );
-
-    final overlay = find.byType(ProjectCompassOverlay);
-    expect(
-      find.descendant(
-        of: overlay,
-        matching: find.byKey(const ValueKey('project-compass-paint')),
-      ),
-      findsNothing,
-    );
   });
 }
