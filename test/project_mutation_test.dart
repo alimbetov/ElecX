@@ -42,7 +42,8 @@ void main() {
         'Preview Site',
       );
       expect(session.current, same(initial));
-      expect(session.current.index.site(SiteId('site-1'))?.name, 'Original Site');
+      expect(
+          session.current.index.site(SiteId('site-1'))?.name, 'Original Site');
       expect(session.undoDepth, 0);
       expect(session.redoDepth, 0);
     });
