@@ -122,18 +122,13 @@ void main() {
     }
   });
 
-  testWidgets('invalid overlay size fails closed', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: ProjectCompassOverlay(
-            state: const CompassNorthUnspecified(),
-            size: 0,
-          ),
-        ),
+  test('invalid overlay size fails closed at construction', () {
+    expect(
+      () => ProjectCompassOverlay(
+        state: const CompassNorthUnspecified(),
+        size: 0,
       ),
+      throwsArgumentError,
     );
-
-    expect(tester.takeException(), isA<ArgumentError>());
   });
 }
