@@ -2,59 +2,92 @@ import 'package:elecx/src/domain/project_orientation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('ProjectNorth', () {
+  group('ProjectEngineeringNorth', () {
     test('normalizes user input into canonical milli-degrees', () {
       expect(
-        ProjectNorth.fromDegrees(0).milliDegreesClockwiseFromPositiveY,
+        ProjectEngineeringNorth.fromDegrees(0)
+            .milliDegreesClockwiseFromPositiveY,
         0,
       );
       expect(
-        ProjectNorth.fromDegrees(360).milliDegreesClockwiseFromPositiveY,
+        ProjectEngineeringNorth.fromDegrees(360)
+            .milliDegreesClockwiseFromPositiveY,
         0,
       );
       expect(
-        ProjectNorth.fromDegrees(-90).milliDegreesClockwiseFromPositiveY,
+        ProjectEngineeringNorth.fromDegrees(-90)
+            .milliDegreesClockwiseFromPositiveY,
         270000,
       );
       expect(
-        ProjectNorth.fromDegrees(32.5004).milliDegreesClockwiseFromPositiveY,
+        ProjectEngineeringNorth.fromDegrees(32.5004)
+            .milliDegreesClockwiseFromPositiveY,
         32500,
+      );
+    });
+
+    test('quantizes wrap-around boundary deterministically', () {
+      expect(
+        ProjectEngineeringNorth.fromDegrees(359.9994)
+            .milliDegreesClockwiseFromPositiveY,
+        359999,
+      );
+      expect(
+        ProjectEngineeringNorth.fromDegrees(359.9995)
+            .milliDegreesClockwiseFromPositiveY,
+        0,
+      );
+      expect(
+        ProjectEngineeringNorth.fromDegrees(-0.0004)
+            .milliDegreesClockwiseFromPositiveY,
+        0,
+      );
+      expect(
+        ProjectEngineeringNorth.fromDegrees(-0.0006)
+            .milliDegreesClockwiseFromPositiveY,
+        359999,
+      );
+      expect(
+        ProjectEngineeringNorth.fromDegrees(720.0004)
+            .milliDegreesClockwiseFromPositiveY,
+        0,
       );
     });
 
     test('rejects non-finite user input', () {
       expect(
-        () => ProjectNorth.fromDegrees(double.nan),
+        () => ProjectEngineeringNorth.fromDegrees(double.nan),
         throwsArgumentError,
       );
       expect(
-        () => ProjectNorth.fromDegrees(double.infinity),
+        () => ProjectEngineeringNorth.fromDegrees(double.infinity),
         throwsArgumentError,
       );
       expect(
-        () => ProjectNorth.fromDegrees(double.negativeInfinity),
+        () => ProjectEngineeringNorth.fromDegrees(double.negativeInfinity),
         throwsArgumentError,
       );
     });
 
     test('strict persisted constructor rejects unnormalized values', () {
       expect(
-        ProjectNorth.fromNormalizedMilliDegrees(359999).degrees,
+        ProjectEngineeringNorth.fromNormalizedMilliDegrees(359999).degrees,
         359.999,
       );
       expect(
-        () => ProjectNorth.fromNormalizedMilliDegrees(-1),
+        () => ProjectEngineeringNorth.fromNormalizedMilliDegrees(-1),
         throwsRangeError,
       );
       expect(
-        () => ProjectNorth.fromNormalizedMilliDegrees(360000),
+        () => ProjectEngineeringNorth.fromNormalizedMilliDegrees(360000),
         throwsRangeError,
       );
     });
 
     test('equality is deterministic and integer based', () {
-      final a = ProjectNorth.fromDegrees(32.5);
-      final b = ProjectNorth.fromNormalizedMilliDegrees(32500);
+      final a = ProjectEngineeringNorth.fromDegrees(32.5);
+      final b =
+          ProjectEngineeringNorth.fromNormalizedMilliDegrees(32500);
 
       expect(a, b);
       expect(a.hashCode, b.hashCode);
@@ -65,7 +98,7 @@ void main() {
     test('unspecified north is distinct from explicit zero degrees', () {
       const unspecified = ProjectEngineeringMetadata();
       final zero = ProjectEngineeringMetadata(
-        projectNorth: ProjectNorth.fromDegrees(0),
+        projectNorth: ProjectEngineeringNorth.fromDegrees(0),
       );
 
       expect(unspecified.projectNorth, isNull);
@@ -76,12 +109,35 @@ void main() {
     test('copyWith can set and explicitly clear Project North', () {
       const initial = ProjectEngineeringMetadata();
       final withNorth = initial.copyWith(
-        projectNorth: ProjectNorth.fromDegrees(90),
+        projectNorth: ProjectEngineeringNorth.fromDegrees(90),
       );
       final cleared = withNorth.copyWith(clearProjectNorth: true);
 
       expect(withNorth.projectNorth?.milliDegreesClockwiseFromPositiveY, 90000);
       expect(cleared.projectNorth, isNull);
+    });
+
+    test('copyWith rejects contradictory set and clear request', () {
+      const initial = ProjectEngineeringMetadata();
+
+      expect(
+        () => initial.copyWith(
+          projectNorth: ProjectEngineeringNorth.fromDegrees(90),
+          clearProjectNorth: true,
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('explicit set and clear helpers have unambiguous semantics', () {
+      const initial = ProjectEngineeringMetadata();
+      final withNorth = initial.withProjectNorth(
+        ProjectEngineeringNorth.fromDegrees(180),
+      );
+      final cleared = withNorth.withoutProjectNorth();
+
+      expect(withNorth.projectNorth?.degrees, 180);
+      expect(cleared, const ProjectEngineeringMetadata());
     });
   });
 }
