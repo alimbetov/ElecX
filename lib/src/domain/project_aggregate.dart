@@ -53,6 +53,7 @@ final class ProjectBuildingEntity {
     required this.siteId,
     required this.name,
     required Iterable<LevelId> levelIds,
+    this.displayOrder = 0,
   }) : levelIds = Set.unmodifiable(levelIds) {
     if (name.trim().isEmpty) {
       throw ArgumentError.value(
@@ -66,13 +67,19 @@ final class ProjectBuildingEntity {
   final BuildingId id;
   final SiteId siteId;
   final String name;
+
+  /// Explicit structural ordering for navigator/projection use.
+  ///
+  /// Identity never depends on this value.
+  final int displayOrder;
   final Set<LevelId> levelIds;
 }
 
 /// Canonical level identity and hierarchy metadata.
 ///
-/// [levelNumber] is a display/order attribute. It is never used as the entity
-/// identity or as a foreign key.
+/// [levelNumber] is the user/building numbering attribute, [displayOrder] is
+/// the structural ordering attribute, [elevationMm] is the physical position,
+/// and [id] is the stable identity. These concerns must not be conflated.
 final class ProjectLevelEntity {
   ProjectLevelEntity({
     required this.id,
@@ -80,10 +87,11 @@ final class ProjectLevelEntity {
     required this.name,
     required this.levelNumber,
     required this.elevationMm,
+    this.displayOrder = 0,
     Iterable<ZoneId> zoneIds = const [],
     Iterable<SpaceId> spaceIds = const [],
-  })  : zoneIds = Set.unmodifiable(zoneIds),
-        spaceIds = Set.unmodifiable(spaceIds) {
+  }) : zoneIds = Set.unmodifiable(zoneIds),
+       spaceIds = Set.unmodifiable(spaceIds) {
     if (name.trim().isEmpty) {
       throw ArgumentError.value(name, 'name', 'Level name must be non-empty.');
     }
@@ -93,6 +101,7 @@ final class ProjectLevelEntity {
   final BuildingId buildingId;
   final String name;
   final int levelNumber;
+  final int displayOrder;
   final int elevationMm;
   final Set<ZoneId> zoneIds;
   final Set<SpaceId> spaceIds;
@@ -119,7 +128,7 @@ final class ProjectStructuralZoneEntity {
 }
 
 /// Minimal canonical space identity/hierarchy record for the P1 foundation.
-/// Geometry and semantic [SpaceUsage] integration are added in later stages.
+/// Geometry and semantic `SpaceUsage` integration are added in later stages.
 final class ProjectSpaceEntity {
   ProjectSpaceEntity({
     required this.id,
@@ -148,11 +157,11 @@ final class ProjectEntityStores {
     Map<LevelId, ProjectLevelEntity> levels = const {},
     Map<ZoneId, ProjectStructuralZoneEntity> zones = const {},
     Map<SpaceId, ProjectSpaceEntity> spaces = const {},
-  })  : sites = Map.unmodifiable(sites),
-        buildings = Map.unmodifiable(buildings),
-        levels = Map.unmodifiable(levels),
-        zones = Map.unmodifiable(zones),
-        spaces = Map.unmodifiable(spaces);
+  }) : sites = Map.unmodifiable(sites),
+       buildings = Map.unmodifiable(buildings),
+       levels = Map.unmodifiable(levels),
+       zones = Map.unmodifiable(zones),
+       spaces = Map.unmodifiable(spaces);
 
   final Map<SiteId, ProjectSiteEntity> sites;
   final Map<BuildingId, ProjectBuildingEntity> buildings;
@@ -163,6 +172,7 @@ final class ProjectEntityStores {
 
 enum ProjectAggregateIssueCode {
   missingRootSite,
+  unexpectedSite,
   danglingBuilding,
   buildingSiteMismatch,
   siteBuildingBackReferenceMissing,
@@ -180,9 +190,16 @@ enum ProjectAggregateIssueCode {
 }
 
 final class ProjectAggregateValidationIssue {
-  const ProjectAggregateValidationIssue(this.code, this.message);
+  const ProjectAggregateValidationIssue({
+    required this.code,
+    required this.message,
+    this.entityId,
+    this.relatedEntityId,
+  });
 
   final ProjectAggregateIssueCode code;
+  final EntityId? entityId;
+  final EntityId? relatedEntityId;
   final String message;
 
   @override
@@ -190,7 +207,9 @@ final class ProjectAggregateValidationIssue {
 }
 
 final class ProjectAggregateValidationException implements Exception {
-  ProjectAggregateValidationException(this.issues);
+  ProjectAggregateValidationException(
+    Iterable<ProjectAggregateValidationIssue> issues,
+  ) : issues = List.unmodifiable(issues);
 
   final List<ProjectAggregateValidationIssue> issues;
 
@@ -210,20 +229,34 @@ abstract final class ProjectAggregateValidator {
     if (rootSite == null) {
       issues.add(
         ProjectAggregateValidationIssue(
-          ProjectAggregateIssueCode.missingRootSite,
-          'Root site $rootSiteId does not exist.',
+          code: ProjectAggregateIssueCode.missingRootSite,
+          entityId: rootSiteId,
+          message: 'Root site $rootSiteId does not exist.',
         ),
       );
     }
 
     for (final site in stores.sites.values) {
+      if (site.id != rootSiteId) {
+        issues.add(
+          ProjectAggregateValidationIssue(
+            code: ProjectAggregateIssueCode.unexpectedSite,
+            entityId: site.id,
+            relatedEntityId: rootSiteId,
+            message: 'Project contains unexpected site ${site.id}; '
+                'the canonical project model currently permits exactly one site.',
+          ),
+        );
+      }
       for (final buildingId in site.buildingIds) {
         final building = stores.buildings[buildingId];
         if (building == null) {
           issues.add(
             ProjectAggregateValidationIssue(
-              ProjectAggregateIssueCode.danglingBuilding,
-              'Site ${site.id} references missing building $buildingId.',
+              code: ProjectAggregateIssueCode.danglingBuilding,
+              entityId: site.id,
+              relatedEntityId: buildingId,
+              message: 'Site ${site.id} references missing building $buildingId.',
             ),
           );
           continue;
@@ -231,8 +264,10 @@ abstract final class ProjectAggregateValidator {
         if (building.siteId != site.id) {
           issues.add(
             ProjectAggregateValidationIssue(
-              ProjectAggregateIssueCode.buildingSiteMismatch,
-              'Building ${building.id} belongs to ${building.siteId}, '
+              code: ProjectAggregateIssueCode.buildingSiteMismatch,
+              entityId: building.id,
+              relatedEntityId: site.id,
+              message: 'Building ${building.id} belongs to ${building.siteId}, '
                   'not site ${site.id}.',
             ),
           );
@@ -245,15 +280,20 @@ abstract final class ProjectAggregateValidator {
       if (site == null) {
         issues.add(
           ProjectAggregateValidationIssue(
-            ProjectAggregateIssueCode.danglingBuilding,
-            'Building ${building.id} references missing site ${building.siteId}.',
+            code: ProjectAggregateIssueCode.danglingBuilding,
+            entityId: building.id,
+            relatedEntityId: building.siteId,
+            message: 'Building ${building.id} references missing site '
+                '${building.siteId}.',
           ),
         );
       } else if (!site.buildingIds.contains(building.id)) {
         issues.add(
           ProjectAggregateValidationIssue(
-            ProjectAggregateIssueCode.siteBuildingBackReferenceMissing,
-            'Site ${site.id} does not reference building ${building.id}.',
+            code: ProjectAggregateIssueCode.siteBuildingBackReferenceMissing,
+            entityId: building.id,
+            relatedEntityId: site.id,
+            message: 'Site ${site.id} does not reference building ${building.id}.',
           ),
         );
       }
@@ -264,8 +304,10 @@ abstract final class ProjectAggregateValidator {
         if (level == null) {
           issues.add(
             ProjectAggregateValidationIssue(
-              ProjectAggregateIssueCode.danglingLevel,
-              'Building ${building.id} references missing level $levelId.',
+              code: ProjectAggregateIssueCode.danglingLevel,
+              entityId: building.id,
+              relatedEntityId: levelId,
+              message: 'Building ${building.id} references missing level $levelId.',
             ),
           );
           continue;
@@ -273,8 +315,10 @@ abstract final class ProjectAggregateValidator {
         if (level.buildingId != building.id) {
           issues.add(
             ProjectAggregateValidationIssue(
-              ProjectAggregateIssueCode.levelBuildingMismatch,
-              'Level ${level.id} belongs to ${level.buildingId}, '
+              code: ProjectAggregateIssueCode.levelBuildingMismatch,
+              entityId: level.id,
+              relatedEntityId: building.id,
+              message: 'Level ${level.id} belongs to ${level.buildingId}, '
                   'not building ${building.id}.',
             ),
           );
@@ -282,8 +326,10 @@ abstract final class ProjectAggregateValidator {
         if (!levelNumbers.add(level.levelNumber)) {
           issues.add(
             ProjectAggregateValidationIssue(
-              ProjectAggregateIssueCode.duplicateLevelNumber,
-              'Building ${building.id} contains duplicate level number '
+              code: ProjectAggregateIssueCode.duplicateLevelNumber,
+              entityId: level.id,
+              relatedEntityId: building.id,
+              message: 'Building ${building.id} contains duplicate level number '
                   '${level.levelNumber}.',
             ),
           );
@@ -296,15 +342,20 @@ abstract final class ProjectAggregateValidator {
       if (building == null) {
         issues.add(
           ProjectAggregateValidationIssue(
-            ProjectAggregateIssueCode.danglingLevel,
-            'Level ${level.id} references missing building ${level.buildingId}.',
+            code: ProjectAggregateIssueCode.danglingLevel,
+            entityId: level.id,
+            relatedEntityId: level.buildingId,
+            message: 'Level ${level.id} references missing building '
+                '${level.buildingId}.',
           ),
         );
       } else if (!building.levelIds.contains(level.id)) {
         issues.add(
           ProjectAggregateValidationIssue(
-            ProjectAggregateIssueCode.buildingLevelBackReferenceMissing,
-            'Building ${building.id} does not reference level ${level.id}.',
+            code: ProjectAggregateIssueCode.buildingLevelBackReferenceMissing,
+            entityId: level.id,
+            relatedEntityId: building.id,
+            message: 'Building ${building.id} does not reference level ${level.id}.',
           ),
         );
       }
@@ -314,15 +365,19 @@ abstract final class ProjectAggregateValidator {
         if (zone == null) {
           issues.add(
             ProjectAggregateValidationIssue(
-              ProjectAggregateIssueCode.danglingZone,
-              'Level ${level.id} references missing zone $zoneId.',
+              code: ProjectAggregateIssueCode.danglingZone,
+              entityId: level.id,
+              relatedEntityId: zoneId,
+              message: 'Level ${level.id} references missing zone $zoneId.',
             ),
           );
         } else if (zone.levelId != level.id) {
           issues.add(
             ProjectAggregateValidationIssue(
-              ProjectAggregateIssueCode.zoneLevelMismatch,
-              'Zone ${zone.id} belongs to ${zone.levelId}, '
+              code: ProjectAggregateIssueCode.zoneLevelMismatch,
+              entityId: zone.id,
+              relatedEntityId: level.id,
+              message: 'Zone ${zone.id} belongs to ${zone.levelId}, '
                   'not level ${level.id}.',
             ),
           );
@@ -334,15 +389,19 @@ abstract final class ProjectAggregateValidator {
         if (space == null) {
           issues.add(
             ProjectAggregateValidationIssue(
-              ProjectAggregateIssueCode.danglingSpace,
-              'Level ${level.id} references missing space $spaceId.',
+              code: ProjectAggregateIssueCode.danglingSpace,
+              entityId: level.id,
+              relatedEntityId: spaceId,
+              message: 'Level ${level.id} references missing space $spaceId.',
             ),
           );
         } else if (space.levelId != level.id) {
           issues.add(
             ProjectAggregateValidationIssue(
-              ProjectAggregateIssueCode.spaceLevelMismatch,
-              'Space ${space.id} belongs to ${space.levelId}, '
+              code: ProjectAggregateIssueCode.spaceLevelMismatch,
+              entityId: space.id,
+              relatedEntityId: level.id,
+              message: 'Space ${space.id} belongs to ${space.levelId}, '
                   'not level ${level.id}.',
             ),
           );
@@ -355,8 +414,10 @@ abstract final class ProjectAggregateValidator {
       if (level == null) {
         issues.add(
           ProjectAggregateValidationIssue(
-            ProjectAggregateIssueCode.danglingZone,
-            'Zone ${zone.id} references missing level ${zone.levelId}.',
+            code: ProjectAggregateIssueCode.danglingZone,
+            entityId: zone.id,
+            relatedEntityId: zone.levelId,
+            message: 'Zone ${zone.id} references missing level ${zone.levelId}.',
           ),
         );
         continue;
@@ -364,8 +425,10 @@ abstract final class ProjectAggregateValidator {
       if (!level.zoneIds.contains(zone.id)) {
         issues.add(
           ProjectAggregateValidationIssue(
-            ProjectAggregateIssueCode.levelZoneBackReferenceMissing,
-            'Level ${level.id} does not reference zone ${zone.id}.',
+            code: ProjectAggregateIssueCode.levelZoneBackReferenceMissing,
+            entityId: zone.id,
+            relatedEntityId: level.id,
+            message: 'Level ${level.id} does not reference zone ${zone.id}.',
           ),
         );
       }
@@ -374,15 +437,19 @@ abstract final class ProjectAggregateValidator {
         if (space == null) {
           issues.add(
             ProjectAggregateValidationIssue(
-              ProjectAggregateIssueCode.danglingSpace,
-              'Zone ${zone.id} references missing space $spaceId.',
+              code: ProjectAggregateIssueCode.danglingSpace,
+              entityId: zone.id,
+              relatedEntityId: spaceId,
+              message: 'Zone ${zone.id} references missing space $spaceId.',
             ),
           );
         } else if (space.levelId != zone.levelId) {
           issues.add(
             ProjectAggregateValidationIssue(
-              ProjectAggregateIssueCode.spaceLevelMismatch,
-              'Zone ${zone.id} references space ${space.id} from '
+              code: ProjectAggregateIssueCode.spaceLevelMismatch,
+              entityId: space.id,
+              relatedEntityId: zone.id,
+              message: 'Zone ${zone.id} references space ${space.id} from '
                   'level ${space.levelId}.',
             ),
           );
@@ -395,15 +462,19 @@ abstract final class ProjectAggregateValidator {
       if (level == null) {
         issues.add(
           ProjectAggregateValidationIssue(
-            ProjectAggregateIssueCode.danglingSpace,
-            'Space ${space.id} references missing level ${space.levelId}.',
+            code: ProjectAggregateIssueCode.danglingSpace,
+            entityId: space.id,
+            relatedEntityId: space.levelId,
+            message: 'Space ${space.id} references missing level ${space.levelId}.',
           ),
         );
       } else if (!level.spaceIds.contains(space.id)) {
         issues.add(
           ProjectAggregateValidationIssue(
-            ProjectAggregateIssueCode.levelSpaceBackReferenceMissing,
-            'Level ${level.id} does not reference space ${space.id}.',
+            code: ProjectAggregateIssueCode.levelSpaceBackReferenceMissing,
+            entityId: space.id,
+            relatedEntityId: level.id,
+            message: 'Level ${level.id} does not reference space ${space.id}.',
           ),
         );
       }
@@ -413,14 +484,18 @@ abstract final class ProjectAggregateValidator {
       final claimedSpaces = <SpaceId>{};
       for (final zoneId in level.zoneIds) {
         final zone = stores.zones[zoneId];
-        if (zone == null || zone.levelId != level.id) continue;
+        if (zone == null || zone.levelId != level.id) {
+          continue;
+        }
         for (final spaceId in zone.spaceIds) {
           if (!claimedSpaces.add(spaceId)) {
             issues.add(
               ProjectAggregateValidationIssue(
-                ProjectAggregateIssueCode.duplicateStructuralZoneMembership,
-                'Space $spaceId belongs to more than one structural zone '
-                    'on level ${level.id}.',
+                code: ProjectAggregateIssueCode.duplicateStructuralZoneMembership,
+                entityId: spaceId,
+                relatedEntityId: level.id,
+                message: 'Space $spaceId belongs to more than one structural '
+                    'zone on level ${level.id}.',
               ),
             );
           }
@@ -435,6 +510,7 @@ abstract final class ProjectAggregateValidator {
 /// Read-optimized identity/parent index built from one validated project graph.
 final class ProjectIndex {
   ProjectIndex._({
+    required this.sites,
     required this.buildings,
     required this.levels,
     required this.zones,
@@ -443,10 +519,19 @@ final class ProjectIndex {
     required this.buildingByLevel,
     required this.levelByZone,
     required this.levelBySpace,
+    required this.structuralZoneBySpace,
   });
 
   factory ProjectIndex.build(ProjectEntityStores stores) {
+    final structuralZoneBySpace = <SpaceId, ZoneId>{};
+    for (final zone in stores.zones.values) {
+      for (final spaceId in zone.spaceIds) {
+        structuralZoneBySpace[spaceId] = zone.id;
+      }
+    }
+
     return ProjectIndex._(
+      sites: stores.sites,
       buildings: stores.buildings,
       levels: stores.levels,
       zones: stores.zones,
@@ -464,9 +549,11 @@ final class ProjectIndex {
       levelBySpace: Map.unmodifiable({
         for (final space in stores.spaces.values) space.id: space.levelId,
       }),
+      structuralZoneBySpace: Map.unmodifiable(structuralZoneBySpace),
     );
   }
 
+  final Map<SiteId, ProjectSiteEntity> sites;
   final Map<BuildingId, ProjectBuildingEntity> buildings;
   final Map<LevelId, ProjectLevelEntity> levels;
   final Map<ZoneId, ProjectStructuralZoneEntity> zones;
@@ -475,11 +562,50 @@ final class ProjectIndex {
   final Map<LevelId, BuildingId> buildingByLevel;
   final Map<ZoneId, LevelId> levelByZone;
   final Map<SpaceId, LevelId> levelBySpace;
+  final Map<SpaceId, ZoneId> structuralZoneBySpace;
 
+  ProjectSiteEntity? site(SiteId id) => sites[id];
   ProjectBuildingEntity? building(BuildingId id) => buildings[id];
   ProjectLevelEntity? level(LevelId id) => levels[id];
   ProjectStructuralZoneEntity? zone(ZoneId id) => zones[id];
   ProjectSpaceEntity? space(SpaceId id) => spaces[id];
+
+  bool isConsistentWith(ProjectEntityStores stores) {
+    if (sites.length != stores.sites.length ||
+        buildings.length != stores.buildings.length ||
+        levels.length != stores.levels.length ||
+        zones.length != stores.zones.length ||
+        spaces.length != stores.spaces.length) {
+      return false;
+    }
+
+    for (final building in stores.buildings.values) {
+      if (siteByBuilding[building.id] != building.siteId) {
+        return false;
+      }
+    }
+    for (final level in stores.levels.values) {
+      if (buildingByLevel[level.id] != level.buildingId) {
+        return false;
+      }
+    }
+    for (final zone in stores.zones.values) {
+      if (levelByZone[zone.id] != zone.levelId) {
+        return false;
+      }
+      for (final spaceId in zone.spaceIds) {
+        if (structuralZoneBySpace[spaceId] != zone.id) {
+          return false;
+        }
+      }
+    }
+    for (final space in stores.spaces.values) {
+      if (levelBySpace[space.id] != space.levelId) {
+        return false;
+      }
+    }
+    return true;
+  }
 }
 
 /// Authoritative canonical project root introduced alongside the legacy editor.
@@ -509,12 +635,15 @@ final class ProjectAggregateRoot {
     if (issues.isNotEmpty) {
       throw ProjectAggregateValidationException(issues);
     }
+
+    final index = ProjectIndex.build(stores);
+    assert(index.isConsistentWith(stores));
     return ProjectAggregateRoot._(
       id: id,
       siteId: siteId,
       version: version,
       stores: stores,
-      index: ProjectIndex.build(stores),
+      index: index,
     );
   }
 
