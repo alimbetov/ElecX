@@ -242,7 +242,8 @@ final class _DroppingProjectNorthCodec implements ProjectDocumentCodec {
   int get currentSchemaVersion => _delegate.currentSchemaVersion;
 
   @override
-  ProjectDocument encode(ProjectSnapshot snapshot) => _delegate.encode(snapshot);
+  ProjectDocument encode(ProjectSnapshot snapshot) =>
+      _delegate.encode(snapshot);
 
   @override
   ProjectSnapshot decode(ProjectDocument document) {
