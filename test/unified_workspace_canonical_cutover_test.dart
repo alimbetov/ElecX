@@ -20,10 +20,11 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('P5C production screen cutover', () {
     testWidgets(
-        'canonical runtime replaces legacy navigator and projection stays saved',
+        'canonical runtime stays read-only without a persistence owner',
         (tester) async {
       _useDesktopSurface(tester);
       final fixture = _fixture();
+      final beforeVersion = fixture.session.project.version;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -34,6 +35,13 @@ void main() {
               resolveRuntime: (_, __) => fixture.runtime,
               requestBuilding: (_) async =>
                   const CreateBuildingRequest(name: 'Should stay disabled'),
+              requestLevel: (_, __) async => const CreateLevelRequest(
+                name: 'Should stay disabled',
+                levelNumber: 2,
+                elevationMm: 3000,
+              ),
+              requestRoom: (_, __) async =>
+                  const CreateRoomRequest(name: 'Should stay disabled'),
             ),
           ),
         ),
@@ -44,10 +52,16 @@ void main() {
       expect(find.byType(UnifiedSiteNavigator), findsNothing);
       expect(find.text('Saved'), findsOneWidget);
 
-      final buildingButton = tester.widget<OutlinedButton>(
-        find.widgetWithText(OutlinedButton, '+ Building'),
-      );
-      expect(buildingButton.onPressed, isNull);
+      for (final label in ['+ Building', '+ Level', '+ Room']) {
+        final button = tester.widget<OutlinedButton>(
+          find.widgetWithText(OutlinedButton, label),
+        );
+        expect(button.onPressed, isNull, reason: '$label must fail closed');
+      }
+      expect(fixture.session.project.version, beforeVersion);
+      expect(fixture.session.project.stores.buildings, hasLength(1));
+      expect(fixture.session.project.stores.levels, hasLength(1));
+      expect(fixture.session.project.stores.spaces, isEmpty);
     });
 
     testWidgets(
