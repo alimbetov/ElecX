@@ -46,6 +46,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.byType(SpatialCanvas), findsOneWidget);
+      expect(find.text('Saved'), findsOneWidget);
 
       await tester.tap(find.byKey(const ValueKey('room-surface-floor')));
       await tester.pumpAndSettle();
@@ -53,12 +54,20 @@ void main() {
       expect(find.byType(SurfaceCanvas), findsOneWidget);
       expect(find.text('Current surface: Floor'), findsOneWidget);
       expect(fixture.session.navigation.selectedSpaceId, fixture.spaceId);
+      expect(find.text('Saved'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('room-surface-wall-1')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Current surface: Wall 2'), findsOneWidget);
+      expect(find.text('Saved'), findsOneWidget);
 
       await tester.tap(find.byKey(const ValueKey('room-surface-plan')));
       await tester.pumpAndSettle();
 
       expect(find.byType(SpatialCanvas), findsOneWidget);
       expect(find.text('Current surface: Plan'), findsOneWidget);
+      expect(find.text('Saved'), findsOneWidget);
     },
   );
 
@@ -88,9 +97,12 @@ void main() {
 
       expect(find.byType(RoomSurfaceNavigator), findsOneWidget);
       expect(
-          find.byKey(const ValueKey('room-surface-mini-view')), findsNothing);
+        find.byKey(const ValueKey('room-surface-mini-view')),
+        findsNothing,
+      );
       expect(fixture.session.project.version, versionBefore);
       expect(fixture.session.navigation, navigationBefore);
+      expect(find.text('Saved'), findsOneWidget);
 
       await tester.tap(find.byKey(const ValueKey('room-surface-collapse')));
       await tester.pump();
@@ -101,34 +113,36 @@ void main() {
       );
       expect(fixture.session.project.version, versionBefore);
       expect(fixture.session.navigation, navigationBefore);
+      expect(find.text('Saved'), findsOneWidget);
     },
   );
 
   testWidgets(
-      'canonical level-only context keeps Room Surface Navigator hidden',
-      (tester) async {
-    _useDesktopSurface(tester);
-    final fixture = _fixture(selectRoom: false);
+    'canonical level-only context keeps Room Surface Navigator hidden',
+    (tester) async {
+      _useDesktopSurface(tester);
+      final fixture = _fixture(selectRoom: false);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: UnifiedWorkspaceEditorScreen(
-          projectStore: fixture.store,
-          initialDocument: fixture.document,
-          canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
-            resolveRuntime: (_, __) => fixture.runtime,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: UnifiedWorkspaceEditorScreen(
+            projectStore: fixture.store,
+            initialDocument: fixture.document,
+            canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
+              resolveRuntime: (_, __) => fixture.runtime,
+            ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.byType(CanonicalProjectNavigator), findsOneWidget);
-    expect(
-      find.byKey(const ValueKey('room-surface-navigator')),
-      findsNothing,
-    );
-  });
+      expect(find.byType(CanonicalProjectNavigator), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('room-surface-navigator')),
+        findsNothing,
+      );
+    },
+  );
 }
 
 void _useDesktopSurface(WidgetTester tester) {
