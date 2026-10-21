@@ -1,3 +1,4 @@
+import 'package:elecx/src/application/project/project_authoring_error.dart';
 import 'package:elecx/src/application/project/project_building_commands.dart';
 import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
