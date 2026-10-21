@@ -95,6 +95,39 @@ void main() {
       expect(state.activeLevelId, LevelId('a-level-1'));
     });
 
+    test('restore validates persisted identities and keeps valid context', () {
+      final project = _project();
+
+      final restored = ProjectNavigationState.restore(
+        project,
+        activeBuildingId: BuildingId('building-a'),
+        activeLevelId: LevelId('a-level-1'),
+        selectedZoneId: ZoneId('a-zone-1'),
+        selectedSpaceId: SpaceId('a-space-1'),
+      );
+
+      expect(restored.activeBuildingId, BuildingId('building-a'));
+      expect(restored.activeLevelId, LevelId('a-level-1'));
+      expect(restored.selectedZoneId, ZoneId('a-zone-1'));
+      expect(restored.selectedSpaceId, SpaceId('a-space-1'));
+    });
+
+    test('restore repairs invalid identities without label or number rebinding', () {
+      final project = _project(includeBuildingA: false);
+
+      final restored = ProjectNavigationState.restore(
+        project,
+        activeBuildingId: BuildingId('missing-building'),
+        activeLevelId: LevelId('a-level-1'),
+        selectedSpaceId: SpaceId('missing-space'),
+      );
+
+      expect(restored.activeBuildingId, BuildingId('building-b'));
+      expect(restored.activeLevelId, LevelId('b-level-1'));
+      expect(restored.selectedZoneId, isNull);
+      expect(restored.selectedSpaceId, isNull);
+    });
+
     test('reconcile clears deleted selected Space and keeps Level context', () {
       final before = _project();
       final state = ProjectNavigationState.initial(before)
@@ -109,7 +142,7 @@ void main() {
       expect(repaired.selectedSpaceId, isNull);
     });
 
-    test('reconcile replaces deleted active Level deterministically', () {
+    test('generic reconcile replaces deleted active Level deterministically', () {
       final before = _project();
       final state = ProjectNavigationState.initial(before)
           .activateLevel(before, LevelId('a-level-2'));
@@ -123,12 +156,39 @@ void main() {
       expect(repaired.selectedSpaceId, isNull);
     });
 
+    test('mutation reconcile chooses next surviving Level neighbor first', () {
+      final before = _project(includeThirdLevelA: true);
+      final state = ProjectNavigationState.initial(before)
+          .activateLevel(before, LevelId('a-level-2'));
+      final after = _project(
+        includeSecondLevelA: false,
+        includeThirdLevelA: true,
+      );
+
+      final repaired = state.reconcileAfterMutation(before: before, after: after);
+
+      expect(repaired.activeBuildingId, BuildingId('building-a'));
+      expect(repaired.activeLevelId, LevelId('a-level-3'));
+    });
+
+    test('mutation reconcile falls back to previous Level when no next survives', () {
+      final before = _project();
+      final state = ProjectNavigationState.initial(before)
+          .activateLevel(before, LevelId('a-level-2'));
+      final after = _project(includeSecondLevelA: false);
+
+      final repaired = state.reconcileAfterMutation(before: before, after: after);
+
+      expect(repaired.activeBuildingId, BuildingId('building-a'));
+      expect(repaired.activeLevelId, LevelId('a-level-1'));
+    });
+
     test('reconcile replaces deleted active Building deterministically', () {
       final before = _project();
       final state = ProjectNavigationState.initial(before);
       final after = _project(includeBuildingA: false);
 
-      final repaired = state.reconcile(after);
+      final repaired = state.reconcileAfterMutation(before: before, after: after);
 
       expect(repaired.activeBuildingId, BuildingId('building-b'));
       expect(repaired.activeLevelId, LevelId('b-level-1'));
@@ -140,7 +200,7 @@ void main() {
           .activateLevel(before, LevelId('a-level-1'));
       final after = _project(includeBuildingA: false);
 
-      final repaired = state.reconcile(after);
+      final repaired = state.reconcileAfterMutation(before: before, after: after);
 
       expect(repaired.activeLevelId, LevelId('b-level-1'));
       expect(repaired.activeLevelId, isNot(LevelId('a-level-1')));
@@ -159,12 +219,29 @@ void main() {
       expect(cleared.selectedZoneId, isNull);
       expect(cleared.selectedSpaceId, isNull);
     });
+
+    test('navigation state has semantic value equality', () {
+      final project = _project();
+      final left = ProjectNavigationState.initial(project)
+          .selectSpace(project, SpaceId('a-space-1'));
+      final right = ProjectNavigationState.restore(
+        project,
+        activeBuildingId: BuildingId('building-a'),
+        activeLevelId: LevelId('a-level-1'),
+        selectedZoneId: ZoneId('a-zone-1'),
+        selectedSpaceId: SpaceId('a-space-1'),
+      );
+
+      expect(left, right);
+      expect(left.hashCode, right.hashCode);
+    });
   });
 }
 
 ProjectAggregateRoot _project({
   bool includeBuildingA = true,
   bool includeSecondLevelA = true,
+  bool includeThirdLevelA = false,
   bool includeZoneAndSpace = true,
 }) {
   final siteId = SiteId('site-root');
@@ -172,6 +249,7 @@ ProjectAggregateRoot _project({
   final buildingBId = BuildingId('building-b');
   final aLevel1Id = LevelId('a-level-1');
   final aLevel2Id = LevelId('a-level-2');
+  final aLevel3Id = LevelId('a-level-3');
   final bLevel1Id = LevelId('b-level-1');
   final zoneId = ZoneId('a-zone-1');
   final spaceId = SpaceId('a-space-1');
@@ -201,6 +279,7 @@ ProjectAggregateRoot _project({
             levelIds: <LevelId>[
               aLevel1Id,
               if (includeSecondLevelA) aLevel2Id,
+              if (includeThirdLevelA) aLevel3Id,
             ],
           ),
         buildingBId: ProjectBuildingEntity(
@@ -233,6 +312,15 @@ ProjectAggregateRoot _project({
             levelNumber: 2,
             displayOrder: 1,
             elevationMm: 3000,
+          ),
+        if (includeBuildingA && includeThirdLevelA)
+          aLevel3Id: ProjectLevelEntity(
+            id: aLevel3Id,
+            buildingId: buildingAId,
+            name: 'Floor 3',
+            levelNumber: 3,
+            displayOrder: 2,
+            elevationMm: 6000,
           ),
         bLevel1Id: ProjectLevelEntity(
           id: bLevel1Id,
