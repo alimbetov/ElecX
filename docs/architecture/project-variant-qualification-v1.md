@@ -10,6 +10,7 @@ This document is subordinate to:
 - `docs/architecture/project-composition-foundation-decisions-v1.md`
 - `docs/architecture/project-composition-generation-v1.md`
 - `docs/architecture/project-template-wizard-v1.md`
+- `docs/architecture/project-navigator-current-location-v1.md`
 
 ElecX remains native-only. Supported qualification targets are macOS, Windows, Linux, Android, iOS and iPadOS. Web/browser is out of scope.
 
@@ -17,7 +18,7 @@ ElecX remains native-only. Supported qualification targets are macOS, Windows, L
 
 The feature must not be qualified only by one demo project or one golden journey.
 
-The goal is a repeatable variant smoke/qualification system that proves the architecture across representative project shapes, topology families, engineering profiles, persistence paths and regeneration scenarios.
+The goal is a repeatable variant smoke/qualification system that proves the architecture across representative project shapes, topology families, engineering profiles, persistence paths, navigator current-location behavior and regeneration scenarios.
 
 The qualification strategy intentionally avoids a full Cartesian product. Instead it uses:
 
@@ -39,6 +40,7 @@ launch
 open Project Hub
 create project
 open editor
+show valid current project location in navigator
 save
 close
 relaunch
@@ -51,7 +53,8 @@ Pass criteria:
 - no Web/browser fallback;
 - project identity preserved;
 - save/reopen succeeds;
-- editor reaches an operable state.
+- editor reaches an operable state;
+- navigator and editor agree on active Building/Level context.
 
 ### L2 — Structural smoke
 
@@ -79,6 +82,7 @@ Pass criteria:
 - unique stable IDs;
 - no dangling references;
 - project graph valid after each committed action;
+- navigator current location remains valid after mutation;
 - Undo/Redo restores valid graphs;
 - save/reopen preserves semantic equality.
 
@@ -191,6 +195,7 @@ Pass criteria:
 - schemaVersion moves only through registered migrations;
 - projectId unchanged;
 - stable entity IDs unchanged where semantics are unchanged;
+- resume context never rebinds by matching label or level number;
 - no silent inferred engineering meaning;
 - migration failure is fail-closed.
 
@@ -303,7 +308,7 @@ generationKey is unique within one generation semantic scope
 ```text
 capture/save/reopen preserves canonical graph
 semantic equality holds after round-trip
-transient UI state such as hover/compass visibility is not promoted to engineering meaning
+transient UI state such as hover/compass visibility/scroll offset is not promoted to engineering meaning
 ```
 
 ### Sync-readiness oracle
@@ -314,6 +319,34 @@ schemaVersion explicit
 stable entity IDs preserved
 no platform-local row ID leaks into canonical references
 candidate operations can be represented as deterministic change-sets later
+```
+
+### Transaction oracle
+
+```text
+one semantic command produces one committed ProjectChangeSet
+failed validation commits nothing
+one committed structural/generation action produces one Undo record
+one committed action publishes one canonical change boundary
+cancel/preview leaves project semantic fingerprint unchanged
+```
+
+### Navigator projection oracle
+
+```text
+current Site/Building/Level derives from canonical navigation state
+selected Zone/Room does not erase active Level context
+same-number Levels in different Buildings are unambiguous by stable IDs
+explicit navigation auto-expands required ancestors
+explicit navigation reveals current node in scroll view
+hover does not change current/selected project state
++ Building targets active Site
++ Level targets active Building
++ Room targets active Level
+cancel/failure preserves previous current location
+delete never leaves dangling current/selected IDs
+canvas/editor selection and navigator path agree
+breadcrumb and tree derive from the same source of truth
 ```
 
 ## Pairwise/combinatorial strategy
@@ -360,6 +393,16 @@ RC03 buildings + standalone parking/service block
 RC04 shared electrical service entry
 RC05 mixed building heights and apartment mixes
 RC06 multi-building engineering backbone stress fixture
+```
+
+Mandatory navigator multi-building cases:
+
+```text
+NV01 Building A/Floor 2 and Building B/Floor 2 show distinct current paths
+NV02 switch Building A → Building B updates active Building and Level atomically
+NV03 create Level in Building B cannot appear under Building A
+NV04 selecting deep Room reveals full ancestor path
+NV05 deleting active Level chooses deterministic valid fallback
 ```
 
 ## Engineering matrix
@@ -430,7 +473,7 @@ open preview
 → cancel
 ```
 
-Canonical project hash/semantic snapshot before and after cancel must be equal.
+Canonical project semantic fingerprint before and after cancel must be equal.
 
 No permanent IDs allocated during preview may leak into committed stores unless the design explicitly allocates them transactionally at commit.
 
@@ -468,7 +511,7 @@ regenerate Lighting → Undo → Redo
 remove dependency-safe structure → Undo → Redo
 ```
 
-Every intermediate state must satisfy canonical graph validation.
+Every intermediate state must satisfy canonical graph validation and leave navigator current location valid.
 
 ## Performance qualification
 
@@ -490,11 +533,12 @@ Measure at least:
 - command execution time;
 - candidate validation time;
 - navigator projection/update time;
+- current-node reveal/lookup time;
 - save/autosave serialization time;
 - memory growth during Wizard preview/regeneration;
 - rebuild counts for transient hover/selection changes.
 
-Reject designs that require full-project deep-copy for every pointer move, hover or parameter slider tick.
+Reject designs that require full-project deep-copy for every pointer move, hover or parameter slider tick, or repeated O(N²) scans to reveal current tree location.
 
 ## Native platform sequence
 
@@ -522,7 +566,7 @@ Q4 variant/pairwise generator matrix
 Q5 engineering topology tests
 Q6 provenance/regeneration tests
 Q7 persistence/migration tests
-Q8 widget/accessibility tests
+Q8 navigator projection/current-location + widget/accessibility tests
 Q9 macOS native integration
 Q10 Windows/Linux native integration
 Q11 Android/iOS/iPadOS qualification as runners/devices become available
@@ -537,6 +581,7 @@ A future implementation PR should publish a compact qualification report such as
 Project Composition Qualification
 
 Structural scenarios          PASS
+Navigator current location    PASS
 Apartment variant matrix      PASS
 Cottage variants              PASS
 Building variants             PASS
@@ -557,6 +602,11 @@ The following are merge-blocking for the corresponding implementation stage:
 
 - invalid canonical graph can be committed;
 - duplicate/dangling persistent IDs;
+- navigator/editor disagree about active Building/Level;
+- same-number Levels in different Buildings are ambiguous;
+- current location remains hidden inside collapsed ancestors after explicit navigation;
+- authoring actions can target stale/hidden context;
+- delete/migration leaves dangling current/selected IDs;
 - preview mutates the live project;
 - generation loses manual edits silently;
 - regeneration crosses discipline boundaries without declared dependency;
@@ -570,4 +620,4 @@ The following are merge-blocking for the corresponding implementation stage:
 
 Variant qualification is part of the feature architecture, not an optional late QA activity.
 
-The implementation is considered robust only when project composition and generation are validated across representative structural, generator, engineering, persistence and native-platform combinations while preserving the same canonical ElecX project semantics.
+The implementation is considered robust only when project composition and generation are validated across representative structural, navigator, generator, engineering, persistence and native-platform combinations while preserving the same canonical ElecX project semantics.
