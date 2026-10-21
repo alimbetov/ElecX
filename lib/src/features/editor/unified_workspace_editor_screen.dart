@@ -3,6 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../domain/route_host.dart';
+import 'canonical_editor_production_runtime.dart';
+import 'canonical_editor_runtime_cutover.dart';
+import 'canonical_editor_screen_cutover_binding.dart';
+import 'canonical_editor_workspace_adapter.dart';
+import 'canonical_project_navigator.dart';
 import 'context_minimap.dart';
 import 'device_catalog_panel.dart';
 import 'editor_building_workspace.dart';
@@ -36,6 +41,7 @@ class UnifiedWorkspaceEditorScreen extends StatefulWidget {
     this.initialDocument,
     this.initialRecovery,
     this.initialMetadata,
+    this.canonicalRuntime,
   }) : assert(initialDocument == null || initialRecovery == null);
 
   /// Optional injection point used by tests and project-hub routing.
@@ -59,6 +65,10 @@ class UnifiedWorkspaceEditorScreen extends StatefulWidget {
   /// Identity for a newly created unsaved project. The physical site keeps
   /// its own ids; project identity is independent and immutable.
   final EditorProjectMetadata? initialMetadata;
+
+  /// Opt-in P5C canonical runtime. When resolution returns null for the current
+  /// legacy workspace, the screen remains on the legacy navigator fail-closed.
+  final CanonicalEditorProductionRuntimeConfig? canonicalRuntime;
 
   @override
   State<UnifiedWorkspaceEditorScreen> createState() =>
@@ -85,10 +95,14 @@ class _UnifiedWorkspaceEditorScreenState
   int _savedRevision = 0;
   int _lastP2CommittedRevision = 0;
   bool _allowPop = false;
+  CanonicalEditorScreenCutoverBinding? _canonicalCutoverBinding;
+  CanonicalEditorMaterializationResult? _canonicalBlocked;
 
   bool get _hasUnsavedChanges =>
       _projectRevision != _savedRevision ||
       _saveStatus == EditorProjectSaveStatus.saveFailed;
+
+  bool get _canonicalRuntimeActive => _canonicalCutoverBinding != null;
 
   @override
   void initState() {
@@ -128,6 +142,7 @@ class _UnifiedWorkspaceEditorScreenState
     controller.p2.addListener(_onP2Changed);
     siteInteraction = SiteMapInteractionController();
     shell = EditorShellState()..addListener(_refresh);
+    _installCanonicalRuntime(pushInitialCanonicalState: false);
     final injectedStore = widget.projectStore;
     if (injectedStore != null) {
       _projectStoreFuture = Future<EditorProjectStore>.value(injectedStore);
@@ -139,6 +154,7 @@ class _UnifiedWorkspaceEditorScreenState
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      _pushCanonicalToEditor();
       _scheduleAutosave();
       if (widget.initialRecovery == null) {
         _offerRecoveryIfNewer();
@@ -175,6 +191,10 @@ class _UnifiedWorkspaceEditorScreenState
   }
 
   void _onProjectChanged() {
+    if (_canonicalCutoverBinding?.coordinator.isSynchronizing == true) {
+      _refresh();
+      return;
+    }
     _projectRevision++;
     if (_saveStatus != EditorProjectSaveStatus.saving &&
         _saveStatus != EditorProjectSaveStatus.saveFailed) {
@@ -182,6 +202,121 @@ class _UnifiedWorkspaceEditorScreenState
     }
     _refresh();
     _scheduleAutosave();
+  }
+
+  void _installCanonicalRuntime({required bool pushInitialCanonicalState}) {
+    _canonicalCutoverBinding?.dispose();
+    _canonicalCutoverBinding = null;
+    _canonicalBlocked = null;
+
+    final config = widget.canonicalRuntime;
+    if (config == null) return;
+
+    try {
+      final resolved = config.resolveRuntime(workspace, _projectMetadata);
+      if (resolved == null) return;
+      final coordinator = CanonicalEditorRuntimeCutoverCoordinator(
+        session: resolved.session,
+        adapter: CanonicalEditorWorkspaceAdapter(
+          workspace: workspace,
+          binding: resolved.binding,
+        ),
+        materializer: resolved.materializer,
+      );
+      final binding = CanonicalEditorScreenCutoverBinding(
+        coordinator: coordinator,
+        onCanonicalNavigationChanged: (_) {
+          _canonicalBlocked = null;
+          _refresh();
+        },
+        onBlocked: _handleCanonicalBlocked,
+        onError: _reportCanonicalCutoverError,
+      );
+      binding.start(
+        pushInitialCanonicalState: pushInitialCanonicalState,
+      );
+      _canonicalCutoverBinding = binding;
+    } catch (error, stackTrace) {
+      _reportCanonicalCutoverError(error, stackTrace);
+      _canonicalCutoverBinding = null;
+    }
+  }
+
+  void _disposeCanonicalRuntime() {
+    _canonicalCutoverBinding?.dispose();
+    _canonicalCutoverBinding = null;
+    _canonicalBlocked = null;
+  }
+
+  void _handleCanonicalBlocked(CanonicalEditorMaterializationResult result) {
+    _canonicalBlocked = result;
+    _refresh();
+  }
+
+  void _reportCanonicalCutoverError(Object error, StackTrace stackTrace) {
+    FlutterError.reportError(
+      FlutterErrorDetails(
+        exception: error,
+        stack: stackTrace,
+        library: 'ElecX canonical editor cutover',
+      ),
+    );
+  }
+
+  CanonicalEditorMaterializationResult? _pushCanonicalToEditor() {
+    final binding = _canonicalCutoverBinding;
+    if (binding == null) return null;
+    try {
+      final result = binding.pushCanonicalToEditor();
+      if (result.canOpen && _canonicalBlocked != null) {
+        _canonicalBlocked = null;
+        _refresh();
+      }
+      return result;
+    } catch (error, stackTrace) {
+      _reportCanonicalCutoverError(error, stackTrace);
+      return null;
+    }
+  }
+
+  Widget _projectNavigator({required bool compact}) {
+    final cutover = _canonicalCutoverBinding;
+    final config = widget.canonicalRuntime;
+    if (cutover == null || config == null) {
+      return UnifiedSiteNavigator(
+        workspace: workspace,
+        interaction: siteInteraction,
+        onOpenSiteMap: _openMiniMap,
+        compact: compact,
+      );
+    }
+
+    final authoringEnabled = config.authoringEnabled;
+    return CanonicalProjectNavigator(
+      session: cutover.coordinator.session,
+      requestBuilding: authoringEnabled ? config.requestBuilding : null,
+      requestLevel: authoringEnabled ? config.requestLevel : null,
+      requestRoom: authoringEnabled ? config.requestRoom : null,
+      onNavigationChanged: (_) {
+        _pushCanonicalToEditor();
+        _refresh();
+      },
+      onAuthoringCommitted: authoringEnabled
+          ? (session, createdId) {
+              try {
+                config.onAuthoringCommitted?.call(session, createdId);
+              } finally {
+                _pushCanonicalToEditor();
+                _refresh();
+              }
+            }
+          : null,
+      onError: (error) => _reportCanonicalCutoverError(
+        error,
+        StackTrace.current,
+      ),
+      compact: compact,
+    );
   }
 
   void _scheduleAutosave() {
@@ -428,6 +563,7 @@ class _UnifiedWorkspaceEditorScreenState
     final previousController = controller;
     final previousWorkspace = workspace;
 
+    _disposeCanonicalRuntime();
     previousWorkspace.removeListener(_onProjectChanged);
     previousController.removeListener(_onProjectChanged);
     previousController.p2.removeListener(_onP2Changed);
@@ -448,6 +584,10 @@ class _UnifiedWorkspaceEditorScreenState
         : EditorProjectSaveStatus.modified;
     _saveFailureHint = null;
     siteInteraction.clear();
+    _installCanonicalRuntime(pushInitialCanonicalState: false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _pushCanonicalToEditor();
+    });
     setState(() {});
   }
 
@@ -556,6 +696,9 @@ class _UnifiedWorkspaceEditorScreenState
       context: context,
       workspace: workspace,
       siteInteraction: siteInteraction,
+      onEntityOpen: _canonicalRuntimeActive ? _openSiteEntity : null,
+      onSpaceSelected:
+          _canonicalRuntimeActive ? _selectLegacySpaceThroughCanonical : null,
     );
   }
 
@@ -565,11 +708,43 @@ class _UnifiedWorkspaceEditorScreenState
         final id = entity.targetId;
         if (id != null) workspace.selectOutdoorZone(id);
       case SiteMapEntityKind.building:
-        workspace.selectLevel(1);
+        final cutover = _canonicalCutoverBinding;
+        if (cutover == null) {
+          workspace.selectLevel(1);
+          return;
+        }
+        cutover.coordinator.session.activateBuilding(
+          cutover.coordinator.adapter.binding.buildingId,
+        );
+        _pushCanonicalToEditor();
+        _refresh();
       case SiteMapEntityKind.lot:
       case SiteMapEntityKind.network:
         break;
     }
+  }
+
+  void _selectLegacySpaceThroughCanonical(String legacySpaceId) {
+    final cutover = _canonicalCutoverBinding;
+    if (cutover == null) {
+      controller.selectSpace(legacySpaceId);
+      return;
+    }
+    final canonicalSpaceId = cutover.coordinator.adapter.binding
+        .canonicalSpaceIdForLegacy(legacySpaceId);
+    if (canonicalSpaceId == null) {
+      _handleCanonicalBlocked(
+        CanonicalEditorMaterializationResult(
+          status: CanonicalEditorMaterializationStatus
+              .blockedMissingRuntimeRepresentation,
+          message: 'Legacy Space $legacySpaceId has no canonical binding.',
+        ),
+      );
+      return;
+    }
+    cutover.coordinator.session.selectRoom(canonicalSpaceId);
+    _pushCanonicalToEditor();
+    _refresh();
   }
 
   void _followOutdoorTransition(RouteHostTransition transition) {
@@ -598,19 +773,25 @@ class _UnifiedWorkspaceEditorScreenState
         : workspace.site.connections
             .where((item) => item.id == connectionId)
             .firstOrNull;
-    if (connection != null) {
-      workspace.selectLevel(connection.levelNumber);
-    }
 
     final surface = indoor.surface;
     if (surface == null) return;
     final preferredSpaceId = connection?.targetSpaceId ?? surface.spaceId;
-    if (controller.level.spaces.any((space) => space.id == preferredSpaceId)) {
-      controller.selectSpace(preferredSpaceId);
-    } else if (controller.level.spaces.any(
-      (space) => space.id == surface.spaceId,
-    )) {
-      controller.selectSpace(surface.spaceId);
+
+    if (_canonicalRuntimeActive) {
+      _selectLegacySpaceThroughCanonical(preferredSpaceId);
+      if (controller.selectedSpaceId != preferredSpaceId) return;
+    } else {
+      if (connection != null) {
+        workspace.selectLevel(connection.levelNumber);
+      }
+      if (controller.level.spaces.any((space) => space.id == preferredSpaceId)) {
+        controller.selectSpace(preferredSpaceId);
+      } else if (controller.level.spaces.any(
+        (space) => space.id == surface.spaceId,
+      )) {
+        controller.selectSpace(surface.spaceId);
+      }
     }
 
     switch (surface.type) {
@@ -630,6 +811,7 @@ class _UnifiedWorkspaceEditorScreenState
   @override
   void dispose() {
     _autosaveTimer?.cancel();
+    _disposeCanonicalRuntime();
     shell.removeListener(_refresh);
     shell.dispose();
     siteInteraction.dispose();
@@ -701,12 +883,7 @@ class _UnifiedWorkspaceEditorScreenState
                   : Drawer(
                       width: EditorLayoutPolicy.navigatorWidth(mode),
                       child: SafeArea(
-                        child: UnifiedSiteNavigator(
-                          workspace: workspace,
-                          interaction: siteInteraction,
-                          onOpenSiteMap: _openMiniMap,
-                          compact: true,
-                        ),
+                        child: _projectNavigator(compact: true),
                       ),
                     ),
               endDrawer: desktop
@@ -744,6 +921,10 @@ class _UnifiedWorkspaceEditorScreenState
                     controller: controller,
                     compact: !desktop,
                   ),
+                  if (_canonicalBlocked != null)
+                    _CanonicalCutoverBlockedBanner(
+                      result: _canonicalBlocked!,
+                    ),
                   if (shell.contextBarVisible)
                     _ContextStrip(workspace: workspace),
                   Expanded(
@@ -754,6 +935,7 @@ class _UnifiedWorkspaceEditorScreenState
                             interaction: siteInteraction,
                             canvas: canvas,
                             onOpenMiniMap: _openMiniMap,
+                            navigator: _projectNavigator(compact: false),
                           )
                         : Stack(
                             children: [
@@ -783,6 +965,7 @@ class _DesktopWorkspace extends StatelessWidget {
     required this.interaction,
     required this.canvas,
     required this.onOpenMiniMap,
+    required this.navigator,
   });
 
   final EditorBuildingWorkspace workspace;
@@ -790,6 +973,7 @@ class _DesktopWorkspace extends StatelessWidget {
   final SiteMapInteractionController interaction;
   final Widget canvas;
   final VoidCallback onOpenMiniMap;
+  final Widget navigator;
 
   @override
   Widget build(BuildContext context) {
@@ -808,11 +992,7 @@ class _DesktopWorkspace extends StatelessWidget {
         if (shell.navigatorVisible)
           SizedBox(
             width: EditorUiTokens.desktopNavigatorWidth,
-            child: UnifiedSiteNavigator(
-              workspace: workspace,
-              interaction: interaction,
-              onOpenSiteMap: onOpenMiniMap,
-            ),
+            child: navigator,
           )
         else
           _SideRail(
@@ -846,6 +1026,37 @@ class _DesktopWorkspace extends StatelessWidget {
             onPressed: shell.toggleInspector,
           ),
       ],
+    );
+  }
+}
+
+class _CanonicalCutoverBlockedBanner extends StatelessWidget {
+  const _CanonicalCutoverBlockedBanner({required this.result});
+
+  final CanonicalEditorMaterializationResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      key: const ValueKey('canonical-cutover-blocked'),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      color: scheme.errorContainer,
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, size: 16, color: scheme.onErrorContainer),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              result.message ?? 'Текущий объект пока нельзя открыть на canvas.',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: scheme.onErrorContainer,
+                  ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
