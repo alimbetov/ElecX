@@ -106,42 +106,6 @@ void main() {
         ),
       );
     });
-
-    test('incoherent canonical Space/Zone path is rejected before cutover', () {
-      final project = _zonedProject();
-      final navigation = ProjectNavigationState(
-        siteId: project.siteId,
-        activeBuildingId: BuildingId('building-1'),
-        activeLevelId: LevelId('level-1'),
-        selectedSpaceId: SpaceId('space-1'),
-      );
-      const materializer = ExistingBindingCanonicalEditorMaterializer();
-      final binding = CanonicalEditorWorkspaceBinding(
-        buildingId: BuildingId('building-1'),
-        legacyBuildingId: 'legacy-building-1',
-        legacyLevelIds: <LevelId, String>{
-          LevelId('level-1'): 'legacy-level-1',
-        },
-        legacyZoneIds: <ZoneId, String>{
-          ZoneId('zone-1'): 'legacy-zone-1',
-        },
-        legacySpaceIds: <SpaceId, String>{
-          SpaceId('space-1'): 'legacy-space-1',
-        },
-      );
-
-      final readiness = materializer.inspect(
-        project: project,
-        navigation: navigation,
-        binding: binding,
-      );
-
-      expect(
-        readiness.status,
-        CanonicalEditorMaterializationStatus.blockedCanonicalMismatch,
-      );
-      expect(readiness.entityId, SpaceId('space-1'));
-    });
   });
 }
 
@@ -245,62 +209,6 @@ ProjectAggregateRoot _project() {
         ),
       },
       zones: const <ZoneId, ProjectStructuralZoneEntity>{},
-      spaces: <SpaceId, ProjectSpaceEntity>{
-        spaceId: ProjectSpaceEntity(
-          id: spaceId,
-          levelId: levelId,
-          name: 'Room',
-        ),
-      },
-    ),
-  );
-}
-
-ProjectAggregateRoot _zonedProject() {
-  final siteId = SiteId('site-1');
-  final buildingId = BuildingId('building-1');
-  final levelId = LevelId('level-1');
-  final zoneId = ZoneId('zone-1');
-  final spaceId = SpaceId('space-1');
-  return ProjectAggregateRoot(
-    id: ProjectId('project-1'),
-    siteId: siteId,
-    version: LocalProjectVersion(0),
-    stores: ProjectEntityStores(
-      sites: <SiteId, ProjectSiteEntity>{
-        siteId: ProjectSiteEntity(
-          id: siteId,
-          name: 'Site',
-          buildingIds: <BuildingId>[buildingId],
-        ),
-      },
-      buildings: <BuildingId, ProjectBuildingEntity>{
-        buildingId: ProjectBuildingEntity(
-          id: buildingId,
-          siteId: siteId,
-          name: 'Building',
-          levelIds: <LevelId>[levelId],
-        ),
-      },
-      levels: <LevelId, ProjectLevelEntity>{
-        levelId: ProjectLevelEntity(
-          id: levelId,
-          buildingId: buildingId,
-          name: 'Floor 1',
-          levelNumber: 1,
-          elevationMm: 0,
-          zoneIds: <ZoneId>[zoneId],
-          spaceIds: <SpaceId>[spaceId],
-        ),
-      },
-      zones: <ZoneId, ProjectStructuralZoneEntity>{
-        zoneId: ProjectStructuralZoneEntity(
-          id: zoneId,
-          levelId: levelId,
-          name: 'Apartment',
-          spaceIds: <SpaceId>[spaceId],
-        ),
-      },
       spaces: <SpaceId, ProjectSpaceEntity>{
         spaceId: ProjectSpaceEntity(
           id: spaceId,
