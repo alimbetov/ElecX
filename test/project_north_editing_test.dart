@@ -57,7 +57,8 @@ void main() {
       expect(session.project.version.value, 2);
     });
 
-    test('stale expected version fails closed before mutating Project North', () {
+    test('stale expected version fails closed before mutating Project North',
+        () {
       final mutations = ProjectMutationSession(_project());
       final session = ProjectStructureAuthoringSession(
         mutations: mutations,
