@@ -10,15 +10,20 @@ import 'project_compass_projection.dart';
 /// no dependency on the legacy `ProjectNorth`, canonical aggregate, workspace,
 /// or camera. Projection semantics must be resolved before the widget boundary.
 class ProjectCompassOverlay extends StatelessWidget {
-  const ProjectCompassOverlay({
-    CompassProjectionState? state,
-    @Deprecated('Use state. This compatibility sink is removed in P5D-F.')
-    Object? projectNorth,
+  ProjectCompassOverlay({
+    required this.state,
     this.size = 74,
     this.onTap,
     super.key,
-  })  : assert(state == null || projectNorth == null),
-        state = state ?? const CompassUnavailable();
+  }) {
+    if (!size.isFinite || size <= 0) {
+      throw ArgumentError.value(
+        size,
+        'size',
+        'Compass size must be finite and greater than zero.',
+      );
+    }
+  }
 
   final CompassProjectionState state;
   final double size;
@@ -26,13 +31,9 @@ class ProjectCompassOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!size.isFinite || size <= 0) {
-      throw ArgumentError.value(size, 'size', 'Compass size must be positive.');
-    }
-
     final state = this.state;
     if (state is CompassUnavailable) {
-      return const SizedBox.shrink();
+      return const SizedBox.shrink(key: ValueKey('project-compass-unavailable'));
     }
 
     final scheme = Theme.of(context).colorScheme;
