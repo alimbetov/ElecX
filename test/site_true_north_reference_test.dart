@@ -11,7 +11,8 @@ void main() {
       expect(reference.toTrueAzimuth(90), 60);
     });
 
-    test('normalizes explicit true-north input independently of Project North', () {
+    test('normalizes explicit true-north input independently of Project North',
+        () {
       final reference = SiteTrueNorthReference.fromDegrees(390);
 
       expect(reference.degreesClockwiseFromProjectPositiveY, 30);
