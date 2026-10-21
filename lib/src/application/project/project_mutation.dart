@@ -1,29 +1,66 @@
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
+import '../../domain/project_orientation.dart';
 
 /// Describes one semantic application command against the canonical project.
-///
-/// Commands build immutable candidate stores only. They never mutate the live
-/// [ProjectAggregateRoot] and never advance [LocalProjectVersion] themselves.
 abstract interface class ProjectCommand {
   String get commandType;
 
   ProjectCommandCandidate buildCandidate(ProjectAggregateRoot current);
 }
 
+/// All command-mutable canonical root state.
+///
+/// Project identity, root site identity and LocalProjectVersion deliberately do
+/// not participate here: a command may change engineering metadata and entity
+/// stores, but it cannot retarget the canonical project itself.
+final class ProjectMutableState {
+  const ProjectMutableState({
+    required this.engineeringMetadata,
+    required this.stores,
+  });
+
+  final ProjectEngineeringMetadata engineeringMetadata;
+  final ProjectEntityStores stores;
+
+  factory ProjectMutableState.fromProject(ProjectAggregateRoot project) =>
+      ProjectMutableState(
+        engineeringMetadata: project.engineeringMetadata,
+        stores: project.stores,
+      );
+}
+
 /// Immutable candidate produced by one [ProjectCommand].
 ///
-/// [affectedEntityIds] is a command-provided hint only. The mutation engine
-/// computes the authoritative [ProjectEntityDiff] from before/after stores and
-/// never trusts this hint for invalidation, persistence or Undo semantics.
+/// New commands should use [ProjectCommandCandidate.fromState]. The legacy
+/// stores-only constructor remains temporarily source-compatible with existing
+/// P3/P4 commands and means "preserve current engineering metadata".
 final class ProjectCommandCandidate {
   ProjectCommandCandidate({
-    required this.stores,
+    required ProjectEntityStores stores,
     Iterable<EntityId> affectedEntityIds = const <EntityId>[],
-  }) : affectedEntityIds = Set<EntityId>.unmodifiable(affectedEntityIds);
+  })  : _stores = stores,
+        state = null,
+        affectedEntityIds = Set<EntityId>.unmodifiable(affectedEntityIds);
 
-  final ProjectEntityStores stores;
+  ProjectCommandCandidate.fromState({
+    required this.state,
+    Iterable<EntityId> affectedEntityIds = const <EntityId>[],
+  })  : _stores = null,
+        affectedEntityIds = Set<EntityId>.unmodifiable(affectedEntityIds);
+
+  final ProjectMutableState? state;
+  final ProjectEntityStores? _stores;
   final Set<EntityId> affectedEntityIds;
+
+  ProjectEntityStores get stores => state?.stores ?? _stores!;
+
+  ProjectMutableState resolveState(ProjectAggregateRoot current) =>
+      state ??
+      ProjectMutableState(
+        engineeringMetadata: current.engineeringMetadata,
+        stores: _stores!,
+      );
 }
 
 /// Optimistic local mutation request.
@@ -44,9 +81,6 @@ enum ProjectChangeKind {
 }
 
 /// Authoritative semantic entity delta between two canonical store snapshots.
-///
-/// The three sets are disjoint. [affectedEntityIds] is derived from their union
-/// and is therefore safe for incremental projections and invalidation.
 final class ProjectEntityDiff {
   ProjectEntityDiff({
     Iterable<EntityId> addedEntityIds = const <EntityId>[],
@@ -140,6 +174,36 @@ final class ProjectEntityDiff {
   bool get isNotEmpty => !isEmpty;
 }
 
+/// Exact before/after engineering-root delta.
+///
+/// Root metadata changes intentionally do not fabricate an EntityId.
+final class ProjectEngineeringMetadataDiff {
+  const ProjectEngineeringMetadataDiff({
+    required this.beforeProjectNorth,
+    required this.afterProjectNorth,
+  });
+
+  const ProjectEngineeringMetadataDiff.empty()
+      : beforeProjectNorth = null,
+        afterProjectNorth = null;
+
+  factory ProjectEngineeringMetadataDiff.between(
+    ProjectEngineeringMetadata before,
+    ProjectEngineeringMetadata after,
+  ) =>
+      ProjectEngineeringMetadataDiff(
+        beforeProjectNorth: before.projectNorth,
+        afterProjectNorth: after.projectNorth,
+      );
+
+  final ProjectEngineeringNorth? beforeProjectNorth;
+  final ProjectEngineeringNorth? afterProjectNorth;
+
+  bool get projectNorthChanged => beforeProjectNorth != afterProjectNorth;
+  bool get isEmpty => !projectNorthChanged;
+  bool get isNotEmpty => projectNorthChanged;
+}
+
 /// One committed canonical change boundary.
 final class ProjectChangeSet {
   ProjectChangeSet({
@@ -147,8 +211,13 @@ final class ProjectChangeSet {
     required this.commandType,
     required this.beforeVersion,
     required this.afterVersion,
-    required this.diff,
-  }) {
+    ProjectEntityDiff? diff,
+    ProjectEntityDiff? entityDiff,
+    this.engineeringMetadataDiff = const ProjectEngineeringMetadataDiff.empty(),
+  }) : entityDiff = entityDiff ?? diff ?? ProjectEntityDiff() {
+    if (diff != null && entityDiff != null) {
+      throw ArgumentError('Specify either diff or entityDiff, not both.');
+    }
     if (commandType.trim().isEmpty) {
       throw ArgumentError.value(
         commandType,
@@ -162,9 +231,9 @@ final class ProjectChangeSet {
         'once: $beforeVersion -> $afterVersion.',
       );
     }
-    if (diff.isEmpty) {
+    if (this.entityDiff.isEmpty && engineeringMetadataDiff.isEmpty) {
       throw ArgumentError(
-        'A committed ProjectChangeSet must contain a non-empty entity diff.',
+        'A committed ProjectChangeSet must contain a non-empty canonical diff.',
       );
     }
   }
@@ -173,12 +242,17 @@ final class ProjectChangeSet {
   final String commandType;
   final LocalProjectVersion beforeVersion;
   final LocalProjectVersion afterVersion;
-  final ProjectEntityDiff diff;
+  final ProjectEntityDiff entityDiff;
+  final ProjectEngineeringMetadataDiff engineeringMetadataDiff;
 
-  Set<EntityId> get addedEntityIds => diff.addedEntityIds;
-  Set<EntityId> get updatedEntityIds => diff.updatedEntityIds;
-  Set<EntityId> get removedEntityIds => diff.removedEntityIds;
-  Set<EntityId> get affectedEntityIds => diff.affectedEntityIds;
+  /// Transitional alias retained for existing entity-diff consumers.
+  ProjectEntityDiff get diff => entityDiff;
+
+  Set<EntityId> get addedEntityIds => entityDiff.addedEntityIds;
+  Set<EntityId> get updatedEntityIds => entityDiff.updatedEntityIds;
+  Set<EntityId> get removedEntityIds => entityDiff.removedEntityIds;
+  Set<EntityId> get affectedEntityIds => entityDiff.affectedEntityIds;
+  bool get hasRootMetadataChanges => engineeringMetadataDiff.isNotEmpty;
 }
 
 /// Validated but uncommitted command result.
@@ -186,18 +260,27 @@ final class ProjectMutationPreview {
   ProjectMutationPreview({
     required this.candidate,
     required this.commandType,
-    required this.diff,
+    ProjectEntityDiff? diff,
+    ProjectEntityDiff? entityDiff,
+    this.engineeringMetadataDiff = const ProjectEngineeringMetadataDiff.empty(),
     Iterable<EntityId> declaredAffectedEntityIds = const <EntityId>[],
-  }) : declaredAffectedEntityIds =
-            Set<EntityId>.unmodifiable(declaredAffectedEntityIds);
+  })  : entityDiff = entityDiff ?? diff ?? ProjectEntityDiff(),
+        declaredAffectedEntityIds =
+            Set<EntityId>.unmodifiable(declaredAffectedEntityIds) {
+    if (diff != null && entityDiff != null) {
+      throw ArgumentError('Specify either diff or entityDiff, not both.');
+    }
+  }
 
   final ProjectAggregateRoot candidate;
   final String commandType;
-  final ProjectEntityDiff diff;
+  final ProjectEntityDiff entityDiff;
+  final ProjectEngineeringMetadataDiff engineeringMetadataDiff;
   final Set<EntityId> declaredAffectedEntityIds;
 
-  Set<EntityId> get affectedEntityIds => diff.affectedEntityIds;
-  bool get hasChanges => diff.isNotEmpty;
+  ProjectEntityDiff get diff => entityDiff;
+  Set<EntityId> get affectedEntityIds => entityDiff.affectedEntityIds;
+  bool get hasChanges => entityDiff.isNotEmpty || engineeringMetadataDiff.isNotEmpty;
 }
 
 /// Successful committed command/undo/redo result.
@@ -243,31 +326,45 @@ abstract final class CandidateGraphValidator {
     required ProjectAggregateRoot current,
     required ProjectCommandCandidate candidate,
   }) {
+    final state = candidate.resolveState(current);
     final issues = ProjectAggregateValidator.validate(
       rootSiteId: current.siteId,
-      stores: candidate.stores,
+      stores: state.stores,
     );
     if (issues.isNotEmpty) {
       throw ProjectCandidateValidationException(issues);
     }
 
-    final index = ProjectIndex.build(candidate.stores);
-    if (!index.isConsistentWith(candidate.stores)) {
+    final index = ProjectIndex.build(state.stores);
+    if (!index.isConsistentWith(state.stores)) {
       throw StateError('Candidate ProjectIndex is inconsistent with stores.');
     }
   }
 }
 
 /// One original command boundary retained for deterministic undo/redo.
-///
-/// P3 intentionally stores immutable before/after entity stores. Later stages
-/// may compact records, but undo semantics must remain one semantic command per
-/// record and must never restore an older LocalProjectVersion value.
 final class UndoRecord {
-  UndoRecord({
+  factory UndoRecord({
+    required String commandType,
+    required ProjectEntityStores beforeStores,
+    required ProjectEntityStores afterStores,
+  }) =>
+      UndoRecord.fromStates(
+        commandType: commandType,
+        beforeState: ProjectMutableState(
+          engineeringMetadata: const ProjectEngineeringMetadata(),
+          stores: beforeStores,
+        ),
+        afterState: ProjectMutableState(
+          engineeringMetadata: const ProjectEngineeringMetadata(),
+          stores: afterStores,
+        ),
+      );
+
+  UndoRecord.fromStates({
     required this.commandType,
-    required this.beforeStores,
-    required this.afterStores,
+    required this.beforeState,
+    required this.afterState,
   }) {
     if (commandType.trim().isEmpty) {
       throw ArgumentError.value(
@@ -276,24 +373,47 @@ final class UndoRecord {
         'Must be non-empty.',
       );
     }
-    if (ProjectEntityDiff.between(beforeStores, afterStores).isEmpty) {
+    final diff = _ProjectMutableStateDiff.between(beforeState, afterState);
+    if (diff.isEmpty) {
       throw ArgumentError(
-        'UndoRecord requires different before/after canonical stores.',
+        'UndoRecord requires different before/after canonical state.',
       );
     }
   }
 
   final String commandType;
-  final ProjectEntityStores beforeStores;
-  final ProjectEntityStores afterStores;
+  final ProjectMutableState beforeState;
+  final ProjectMutableState afterState;
+
+  ProjectEntityStores get beforeStores => beforeState.stores;
+  ProjectEntityStores get afterStores => afterState.stores;
+}
+
+final class _ProjectMutableStateDiff {
+  const _ProjectMutableStateDiff({
+    required this.entityDiff,
+    required this.engineeringMetadataDiff,
+  });
+
+  factory _ProjectMutableStateDiff.between(
+    ProjectMutableState before,
+    ProjectMutableState after,
+  ) =>
+      _ProjectMutableStateDiff(
+        entityDiff: ProjectEntityDiff.between(before.stores, after.stores),
+        engineeringMetadataDiff: ProjectEngineeringMetadataDiff.between(
+          before.engineeringMetadata,
+          after.engineeringMetadata,
+        ),
+      );
+
+  final ProjectEntityDiff entityDiff;
+  final ProjectEngineeringMetadataDiff engineeringMetadataDiff;
+
+  bool get isEmpty => entityDiff.isEmpty && engineeringMetadataDiff.isEmpty;
 }
 
 /// Atomic in-memory mutation boundary for one canonical project.
-///
-/// Protocol:
-/// read N -> build candidate -> validate -> compute authoritative diff ->
-/// verify N -> commit N+1 -> publish one ProjectChangeSet -> append one
-/// UndoRecord. A semantically empty candidate is suppressed as a no-op.
 final class ProjectMutationSession {
   ProjectMutationSession(ProjectAggregateRoot initial) : _current = initial;
 
@@ -313,60 +433,62 @@ final class ProjectMutationSession {
     final before = _current;
     final candidate = request.command.buildCandidate(before);
     CandidateGraphValidator.validate(current: before, candidate: candidate);
-    final diff = ProjectEntityDiff.between(before.stores, candidate.stores);
+    final candidateState = candidate.resolveState(before);
+    final beforeState = ProjectMutableState.fromProject(before);
+    final stateDiff = _ProjectMutableStateDiff.between(beforeState, candidateState);
 
     final previewRoot = ProjectAggregateRoot(
       id: before.id,
       siteId: before.siteId,
       version: before.version,
-      stores: candidate.stores,
+      engineeringMetadata: candidateState.engineeringMetadata,
+      stores: candidateState.stores,
     );
     return ProjectMutationPreview(
       candidate: previewRoot,
       commandType: commandType,
-      diff: diff,
+      entityDiff: stateDiff.entityDiff,
+      engineeringMetadataDiff: stateDiff.engineeringMetadataDiff,
       declaredAffectedEntityIds: candidate.affectedEntityIds,
     );
   }
 
   /// Commits one semantic command, or returns `null` for a semantic no-op.
-  ///
-  /// A no-op does not advance the local version and does not create Undo/Redo
-  /// history. This prevents redundant autosave/sync/projection invalidation.
   ProjectMutationResult? commit(ProjectMutationRequest request) {
     _requireVersion(request.expectedVersion);
     final commandType = _requireCommandType(request.command);
     final before = _current;
+    final beforeState = ProjectMutableState.fromProject(before);
     final candidate = request.command.buildCandidate(before);
     CandidateGraphValidator.validate(current: before, candidate: candidate);
-    final diff = ProjectEntityDiff.between(before.stores, candidate.stores);
-    if (diff.isEmpty) return null;
+    final candidateState = candidate.resolveState(before);
+    final stateDiff = _ProjectMutableStateDiff.between(beforeState, candidateState);
+    if (stateDiff.isEmpty) return null;
 
-    // Keep the optimistic guard explicit at the commit boundary. The current
-    // implementation is synchronous, but this invariant remains mandatory if
-    // candidate construction later moves across async/isolate boundaries.
     _requireVersion(request.expectedVersion);
 
     final committed = ProjectAggregateRoot(
       id: before.id,
       siteId: before.siteId,
       version: before.version.next(),
-      stores: candidate.stores,
+      engineeringMetadata: candidateState.engineeringMetadata,
+      stores: candidateState.stores,
     );
     final changeSet = ProjectChangeSet(
       kind: ProjectChangeKind.command,
       commandType: commandType,
       beforeVersion: before.version,
       afterVersion: committed.version,
-      diff: diff,
+      entityDiff: stateDiff.entityDiff,
+      engineeringMetadataDiff: stateDiff.engineeringMetadataDiff,
     );
 
     _current = committed;
     _undoStack.add(
-      UndoRecord(
+      UndoRecord.fromStates(
         commandType: commandType,
-        beforeStores: before.stores,
-        afterStores: committed.stores,
+        beforeState: beforeState,
+        afterState: ProjectMutableState.fromProject(committed),
       ),
     );
     _redoStack.clear();
@@ -379,20 +501,24 @@ final class ProjectMutationSession {
     if (_undoStack.isEmpty) return null;
 
     final before = _current;
+    final beforeState = ProjectMutableState.fromProject(before);
     final record = _undoStack.last;
-    final diff = ProjectEntityDiff.between(before.stores, record.beforeStores);
-    if (diff.isEmpty) return null;
-
-    final restored = _commitStoredState(
-      stores: record.beforeStores,
-      before: before,
+    final stateDiff = _ProjectMutableStateDiff.between(
+      beforeState,
+      record.beforeState,
     );
+    if (stateDiff.isEmpty) {
+      throw StateError('Undo history is inconsistent with current project state.');
+    }
+
+    final restored = _commitState(state: record.beforeState, before: before);
     final changeSet = ProjectChangeSet(
       kind: ProjectChangeKind.undo,
       commandType: record.commandType,
       beforeVersion: before.version,
       afterVersion: restored.version,
-      diff: diff,
+      entityDiff: stateDiff.entityDiff,
+      engineeringMetadataDiff: stateDiff.engineeringMetadataDiff,
     );
 
     _current = restored;
@@ -406,20 +532,24 @@ final class ProjectMutationSession {
     if (_redoStack.isEmpty) return null;
 
     final before = _current;
+    final beforeState = ProjectMutableState.fromProject(before);
     final record = _redoStack.last;
-    final diff = ProjectEntityDiff.between(before.stores, record.afterStores);
-    if (diff.isEmpty) return null;
-
-    final restored = _commitStoredState(
-      stores: record.afterStores,
-      before: before,
+    final stateDiff = _ProjectMutableStateDiff.between(
+      beforeState,
+      record.afterState,
     );
+    if (stateDiff.isEmpty) {
+      throw StateError('Redo history is inconsistent with current project state.');
+    }
+
+    final restored = _commitState(state: record.afterState, before: before);
     final changeSet = ProjectChangeSet(
       kind: ProjectChangeKind.redo,
       commandType: record.commandType,
       beforeVersion: before.version,
       afterVersion: restored.version,
-      diff: diff,
+      entityDiff: stateDiff.entityDiff,
+      engineeringMetadataDiff: stateDiff.engineeringMetadataDiff,
     );
 
     _current = restored;
@@ -428,13 +558,13 @@ final class ProjectMutationSession {
     return ProjectMutationResult(project: restored, changeSet: changeSet);
   }
 
-  ProjectAggregateRoot _commitStoredState({
-    required ProjectEntityStores stores,
+  ProjectAggregateRoot _commitState({
+    required ProjectMutableState state,
     required ProjectAggregateRoot before,
   }) {
     final issues = ProjectAggregateValidator.validate(
       rootSiteId: before.siteId,
-      stores: stores,
+      stores: state.stores,
     );
     if (issues.isNotEmpty) {
       throw ProjectCandidateValidationException(issues);
@@ -443,7 +573,8 @@ final class ProjectMutationSession {
       id: before.id,
       siteId: before.siteId,
       version: before.version.next(),
-      stores: stores,
+      engineeringMetadata: state.engineeringMetadata,
+      stores: state.stores,
     );
   }
 
