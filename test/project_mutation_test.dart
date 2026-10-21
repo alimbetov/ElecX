@@ -13,16 +13,33 @@ void main() {
           expectedVersion: LocalProjectVersion(4),
           command: const _RenameSiteCommand('Renamed Site'),
         ),
-      );
+      )!;
 
       expect(result.project.version, LocalProjectVersion(5));
       expect(result.project.index.site(SiteId('site-1'))?.name, 'Renamed Site');
       expect(result.changeSet.kind, ProjectChangeKind.command);
       expect(result.changeSet.beforeVersion, LocalProjectVersion(4));
       expect(result.changeSet.afterVersion, LocalProjectVersion(5));
-      expect(result.changeSet.affectedEntityIds, contains(SiteId('site-1')));
+      expect(result.changeSet.addedEntityIds, isEmpty);
+      expect(result.changeSet.removedEntityIds, isEmpty);
+      expect(result.changeSet.updatedEntityIds, <EntityId>{SiteId('site-1')});
+      expect(result.changeSet.affectedEntityIds, <EntityId>{SiteId('site-1')});
       expect(session.undoDepth, 1);
       expect(session.redoDepth, 0);
+    });
+
+    test('authoritative diff does not trust command affected-entity hints', () {
+      final session = ProjectMutationSession(_project());
+
+      final result = session.commit(
+        ProjectMutationRequest(
+          expectedVersion: session.current.version,
+          command: const _RenameSiteCommand('Renamed without hint'),
+        ),
+      )!;
+
+      expect(result.changeSet.updatedEntityIds, <EntityId>{SiteId('site-1')});
+      expect(result.changeSet.affectedEntityIds, <EntityId>{SiteId('site-1')});
     });
 
     test('preview validates candidate without mutating project or history', () {
@@ -41,9 +58,33 @@ void main() {
         preview.candidate.index.site(SiteId('site-1'))?.name,
         'Preview Site',
       );
+      expect(preview.hasChanges, isTrue);
+      expect(preview.updatedEntityIds, isNull);
+      expect(preview.affectedEntityIds, <EntityId>{SiteId('site-1')});
+      expect(preview.declaredAffectedEntityIds, isEmpty);
       expect(session.current, same(initial));
       expect(
-          session.current.index.site(SiteId('site-1'))?.name, 'Original Site');
+        session.current.index.site(SiteId('site-1'))?.name,
+        'Original Site',
+      );
+      expect(session.undoDepth, 0);
+      expect(session.redoDepth, 0);
+    });
+
+    test('semantic no-op does not advance version or create history', () {
+      final initial = _project();
+      final session = ProjectMutationSession(initial);
+
+      final result = session.commit(
+        ProjectMutationRequest(
+          expectedVersion: initial.version,
+          command: const _RenameSiteCommand('Original Site'),
+        ),
+      );
+
+      expect(result, isNull);
+      expect(session.current, same(initial));
+      expect(session.current.version, LocalProjectVersion(4));
       expect(session.undoDepth, 0);
       expect(session.redoDepth, 0);
     });
@@ -94,11 +135,12 @@ void main() {
           expectedVersion: LocalProjectVersion(4),
           command: const _RenameSiteCommand('Renamed Site'),
         ),
-      );
+      )!;
 
       final undone = session.undo(committed.project.version);
       expect(undone, isNotNull);
       expect(undone!.changeSet.kind, ProjectChangeKind.undo);
+      expect(undone.changeSet.updatedEntityIds, <EntityId>{SiteId('site-1')});
       expect(undone.project.version, LocalProjectVersion(6));
       expect(
         undone.project.index.site(SiteId('site-1'))?.name,
@@ -110,6 +152,7 @@ void main() {
       final redone = session.redo(undone.project.version);
       expect(redone, isNotNull);
       expect(redone!.changeSet.kind, ProjectChangeKind.redo);
+      expect(redone.changeSet.updatedEntityIds, <EntityId>{SiteId('site-1')});
       expect(redone.project.version, LocalProjectVersion(7));
       expect(
         redone.project.index.site(SiteId('site-1'))?.name,
@@ -126,7 +169,7 @@ void main() {
           expectedVersion: LocalProjectVersion(4),
           command: const _RenameSiteCommand('First'),
         ),
-      );
+      )!;
       final undone = session.undo(first.project.version)!;
 
       session.commit(
@@ -149,7 +192,7 @@ void main() {
           expectedVersion: LocalProjectVersion(4),
           command: const _RenameSiteCommand('Renamed'),
         ),
-      );
+      )!;
 
       expect(
         () => session.undo(LocalProjectVersion(4)),
@@ -174,6 +217,32 @@ void main() {
         commandType: 'test.jump',
         beforeVersion: LocalProjectVersion(1),
         afterVersion: LocalProjectVersion(3),
+        diff: ProjectEntityDiff(
+          updatedEntityIds: <EntityId>[SiteId('site-1')],
+        ),
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test('ProjectChangeSet rejects empty committed diffs', () {
+    expect(
+      () => ProjectChangeSet(
+        kind: ProjectChangeKind.command,
+        commandType: 'test.empty',
+        beforeVersion: LocalProjectVersion(1),
+        afterVersion: LocalProjectVersion(2),
+        diff: ProjectEntityDiff(),
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test('ProjectEntityDiff rejects overlapping change classifications', () {
+    expect(
+      () => ProjectEntityDiff(
+        addedEntityIds: <EntityId>[SiteId('site-1')],
+        updatedEntityIds: <EntityId>[SiteId('site-1')],
       ),
       throwsArgumentError,
     );
@@ -224,7 +293,6 @@ final class _RenameSiteCommand implements ProjectCommand {
         zones: current.stores.zones,
         spaces: current.stores.spaces,
       ),
-      affectedEntityIds: <EntityId>[site.id],
     );
   }
 }
