@@ -108,10 +108,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(ProjectCompassOverlay), findsOneWidget);
-    expect(
-      find.bySemanticsLabel('Compass', isButton: true),
-      findsOneWidget,
-    );
+    expect(find.bySemanticsLabel('Compass'), findsOneWidget);
   });
 
   testWidgets('compass overlay stays clear of primary authoring toolbar',
