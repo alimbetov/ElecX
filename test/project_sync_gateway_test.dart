@@ -46,40 +46,42 @@ void main() {
     expect(downloaded.document.toJson(), document.toJson());
   });
 
-  test('stale base revision is rejected instead of overwriting remote head',
-      () async {
-    final gateway = InMemoryProjectSyncGateway();
+  test(
+    'stale base revision is rejected instead of overwriting remote head',
+    () async {
+      final gateway = InMemoryProjectSyncGateway();
 
-    final first = await gateway.pushRevision(
-      PushRevisionRequest(
-        projectId: document.projectId,
-        baseRevision: 0,
-        schemaVersion: 1,
-        deviceId: 'windows-test',
-        document: document,
-      ),
-    );
-    expect(first, isA<PushRevisionAccepted>());
+      final first = await gateway.pushRevision(
+        PushRevisionRequest(
+          projectId: document.projectId,
+          baseRevision: 0,
+          schemaVersion: 1,
+          deviceId: 'windows-test',
+          document: document,
+        ),
+      );
+      expect(first, isA<PushRevisionAccepted>());
 
-    final stalePush = await gateway.pushRevision(
-      PushRevisionRequest(
-        projectId: document.projectId,
-        baseRevision: 0,
-        schemaVersion: 1,
-        deviceId: 'ipad-test',
-        document: document,
-      ),
-    );
+      final stalePush = await gateway.pushRevision(
+        PushRevisionRequest(
+          projectId: document.projectId,
+          baseRevision: 0,
+          schemaVersion: 1,
+          deviceId: 'ipad-test',
+          document: document,
+        ),
+      );
 
-    expect(stalePush, isA<PushRevisionConflict>());
-    final conflict = stalePush as PushRevisionConflict;
-    expect(conflict.baseRevision, 0);
-    expect(conflict.remoteRevision, 1);
+      expect(stalePush, isA<PushRevisionConflict>());
+      final conflict = stalePush as PushRevisionConflict;
+      expect(conflict.baseRevision, 0);
+      expect(conflict.remoteRevision, 1);
 
-    final head = await gateway.getHead(document.projectId);
-    expect(head, isNotNull);
-    expect(head!.revision, 1);
-  });
+      final head = await gateway.getHead(document.projectId);
+      expect(head, isNotNull);
+      expect(head!.revision, 1);
+    },
+  );
 
   test('matching base revision advances remote head monotonically', () async {
     final gateway = InMemoryProjectSyncGateway();
