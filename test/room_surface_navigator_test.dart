@@ -1,4 +1,6 @@
+import 'package:elecx/src/domain/geometry.dart';
 import 'package:elecx/src/domain/project_identity.dart';
+import 'package:elecx/src/domain/project_model.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
 import 'package:elecx/src/features/editor/editor_shell_state.dart';
@@ -73,6 +75,36 @@ void main() {
     expect(controller.viewMode, EditorViewMode.plan);
     expect(controller.activeSurface, isNull);
     expect(find.text('Current surface: Plan'), findsOneWidget);
+  });
+
+  testWidgets('L-shaped room exposes every real boundary wall', (tester) async {
+    final controller = _lShapedController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RoomSurfaceNavigator(
+          controller: controller,
+          canonicalSpaceId: SpaceId('canonical-l-room'),
+          legacySpaceId: 'l-room',
+          collapsed: false,
+          onToggleCollapsed: () {},
+        ),
+      ),
+    );
+
+    for (var index = 0; index < 6; index++) {
+      expect(
+        find.byKey(ValueKey('room-surface-wall-$index')),
+        findsOneWidget,
+      );
+    }
+    expect(find.byKey(const ValueKey('room-surface-wall-6')), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('room-surface-wall-5')));
+    await tester.pump();
+    expect(controller.activeSurface?.wallIndex, 5);
+    expect(find.text('Current surface: Wall 6'), findsOneWidget);
   });
 
   testWidgets('canvas/editor surface changes update navigator highlight',
@@ -163,4 +195,34 @@ void main() {
       findsNothing,
     );
   });
+}
+
+EditorController _lShapedController() {
+  final boundary = MmPolygon(const [
+    MmPoint(0, 0),
+    MmPoint(6000, 0),
+    MmPoint(6000, 2500),
+    MmPoint(3500, 2500),
+    MmPoint(3500, 5000),
+    MmPoint(0, 5000),
+  ]);
+  final controller = EditorController.restored(
+    level: BuildingLevel(
+      id: 'level-l',
+      name: 'L Level',
+      elevationMm: 0,
+      spaces: [
+        EngineeringSpace(
+          id: 'l-room',
+          name: 'L Room',
+          type: SpaceType.room,
+          boundary: boundary,
+          referenceFrame: RoomReferenceFrame(origin: boundary.bounds.center),
+        ),
+      ],
+    ),
+    openings: const [],
+  );
+  controller.selectSpace('l-room');
+  return controller;
 }
