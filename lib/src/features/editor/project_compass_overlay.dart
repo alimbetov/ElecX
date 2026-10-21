@@ -26,6 +26,10 @@ class ProjectCompassOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!size.isFinite || size <= 0) {
+      throw ArgumentError.value(size, 'size', 'Compass size must be positive.');
+    }
+
     final state = this.state;
     if (state is CompassUnavailable) {
       return const SizedBox.shrink();
@@ -39,6 +43,7 @@ class ProjectCompassOverlay extends StatelessWidget {
       child: SizedBox.square(
         dimension: size,
         child: CustomPaint(
+          key: const ValueKey('project-compass-paint'),
           painter: _ProjectCompassPainter(
             state: state,
             scheme: scheme,
@@ -50,12 +55,16 @@ class ProjectCompassOverlay extends StatelessWidget {
     if (onTap == null) {
       // Read-only compass must not steal pointer/touch/wheel input from the
       // canvas underneath it.
-      return IgnorePointer(child: compass);
+      return IgnorePointer(
+        key: const ValueKey('project-compass-read-only'),
+        child: compass,
+      );
     }
 
     return Tooltip(
       message: label,
       child: InkWell(
+        key: const ValueKey('project-compass-action'),
         customBorder: const CircleBorder(),
         onTap: onTap,
         child: compass,
@@ -118,8 +127,8 @@ final class _ProjectCompassPainter extends CustomPainter {
       return;
     }
 
-    final angle = -math.pi / 2 +
-        state.screenDegreesClockwiseFromUp * math.pi / 180.0;
+    final angle =
+        -math.pi / 2 + state.screenDegreesClockwiseFromUp * math.pi / 180.0;
     final vector = Offset(math.cos(angle), math.sin(angle));
     final tip = center + vector * math.max(0.0, radius - 10);
     final tail = center - vector * (radius * 0.42);
