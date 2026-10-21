@@ -56,7 +56,9 @@ void main() {
       expect(fixture.session.navigation.selectedSpaceId, fixture.spaceId);
       expect(find.text('Saved'), findsOneWidget);
 
-      await tester.tap(find.byKey(const ValueKey('room-surface-wall-1')));
+      await tester.tap(find.byKey(const ValueKey('room-surface-wall-next')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('room-surface-wall-next')));
       await tester.pumpAndSettle();
 
       expect(find.text('Current surface: Wall 2'), findsOneWidget);
