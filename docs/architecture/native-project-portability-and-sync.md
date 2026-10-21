@@ -77,7 +77,7 @@ ProjectRepository
     ↓
 Local database
     ↓
-Sync engine
+Sync boundary
     ↓
 Backend
 ```
@@ -100,14 +100,7 @@ Drift
 SQLite
 ```
 
-The same logical schema and migration chain MUST be used on:
-
-- macOS;
-- Windows;
-- Linux;
-- Android;
-- iOS;
-- iPadOS.
+The same logical schema and migration chain MUST be used on macOS, Windows, Linux, Android, iOS and iPadOS.
 
 Platform-specific code may select filesystem locations, database drivers, permissions and lifecycle integration, but MUST NOT duplicate domain or persistence semantics.
 
@@ -152,19 +145,31 @@ updatedAt
 
 A sync request MUST state the client's base revision. The server MUST reject or explicitly resolve stale-base writes; silent last-write-wins data loss is not acceptable for engineering projects.
 
-Example:
+## Sync Engine status
+
+The production Sync Engine is intentionally deferred. Its contract is fixed now so local persistence and UI do not become coupled to a future backend implementation.
+
+Current artifacts:
 
 ```text
-backend revision = 41
-Windows edits project
-local revision   = 42
-sync base        = 41
-server accepts   = 42
-
-iPad local       = 39
-backend           = 42
-iPad downloads   = 42
+lib/src/infrastructure/sync/project_sync_gateway.dart
+lib/src/infrastructure/sync/in_memory_project_sync_gateway.dart
+docs/backend/project-sync-api-v1.yaml
+test/project_sync_gateway_test.dart
 ```
+
+`ProjectSyncGateway` defines the client/backend boundary. `InMemoryProjectSyncGateway` is a deterministic backend mock for development and tests only. It performs no networking, authentication, retries, background scheduling, asset transfer or merge resolution.
+
+The mock MUST model the semantics that the real backend will preserve:
+
+- monotonic immutable revisions;
+- first remote upload uses `baseRevision = 0`;
+- each accepted push advances remote head by exactly one revision;
+- stale `baseRevision` returns an explicit conflict;
+- a conflict never overwrites the current remote head;
+- downloaded snapshots preserve `projectId`, entity IDs and `schemaVersion`.
+
+The HTTP draft is snapshot-first. Operation/change-set synchronization may be added later without changing stable project/entity identity or revision guarantees.
 
 ## Conflict policy
 
@@ -186,20 +191,7 @@ Two devices editing from the same base revision MUST NOT silently overwrite each
 
 UI code MUST depend on repository/application contracts rather than SQLite, filesystem APIs or HTTP clients directly.
 
-Conceptual contract:
-
-```dart
-abstract interface class ProjectRepository {
-  Future<ProjectDocument> createProject(...);
-  Future<ProjectDocument?> loadLocal(ProjectId id);
-  Future<void> saveLocal(ProjectDocument project);
-  Future<SyncResult> sync(ProjectId id);
-  Future<void> download(ProjectId id);
-  Future<void> deleteLocal(ProjectId id);
-}
-```
-
-The exact Dart API may evolve, but the dependency direction is mandatory.
+The production `ProjectRepository` will orchestrate local persistence and eventually call `ProjectSyncGateway`; current editor code remains local-first while the actual Sync Engine is deferred.
 
 ## Portable `.elecx` format
 
@@ -221,13 +213,7 @@ The package format MUST be versioned and derived from the same canonical project
 
 Desktop and mobile share the same engineering capabilities and project semantics.
 
-Differences are allowed only where interaction modality requires them, for example:
-
-- mouse/keyboard vs touch/stylus;
-- desktop panels vs adaptive mobile/tablet layouts;
-- platform file pickers;
-- lifecycle/background behavior;
-- permission handling.
+Differences are allowed only where interaction modality requires them, for example mouse/keyboard vs touch/stylus, desktop panels vs adaptive mobile/tablet layouts, platform file pickers, lifecycle/background behavior and permission handling.
 
 A feature is not considered cross-platform complete if it changes the persisted meaning of the project between desktop and mobile.
 
@@ -253,7 +239,7 @@ Implementation may be staged, but architecture parity is mandatory:
 3. Linux desktop
 4. Android
 5. iPadOS / iOS
-6. backend sync and revision hardening in parallel with native clients
+6. production Sync Engine after local persistence/contracts stabilize
 ```
 
 Desktop-first development MUST NOT introduce contracts that make mobile a separate product implementation.
