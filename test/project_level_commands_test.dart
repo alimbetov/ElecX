@@ -83,7 +83,8 @@ void main() {
       expect(result.changeSet.updatedEntityIds, <EntityId>{levelId});
     });
 
-    test('reorder changes display order without changing number or identity', () {
+    test('reorder changes display order without changing number or identity',
+        () {
       final session = ProjectMutationSession(_projectWithLevel());
       final levelId = LevelId('level-1');
 
@@ -128,13 +129,14 @@ void main() {
 
     test('rejects duplicate level number inside one building fail closed', () {
       final session = ProjectMutationSession(_projectWithLevel());
+      final newLevelId = LevelId('duplicate-number');
 
       expect(
         () => session.commit(
           ProjectMutationRequest(
             expectedVersion: session.current.version,
             command: CreateLevelCommand(
-              levelId: LevelId('duplicate-number'),
+              levelId: newLevelId,
               buildingId: BuildingId('building-a'),
               name: 'Duplicate Floor',
               levelNumber: 1,
@@ -143,14 +145,52 @@ void main() {
           ),
         ),
         throwsA(
-          isA<ProjectAuthoringException>().having(
-            (error) => error.code,
-            'code',
-            ProjectAuthoringIssueCode.duplicateLevelNumber,
-          ),
+          isA<ProjectAuthoringException>()
+              .having(
+                (error) => error.code,
+                'code',
+                ProjectAuthoringIssueCode.duplicateLevelNumber,
+              )
+              .having((error) => error.entityId, 'entityId', newLevelId)
+              .having(
+                (error) => error.relatedEntityId,
+                'relatedEntityId',
+                LevelId('level-1'),
+              ),
         ),
       );
       expect(session.current.version, LocalProjectVersion(0));
+      expect(session.undoDepth, 0);
+    });
+
+    test('rejects renumber collision and preserves current level state', () {
+      final session = ProjectMutationSession(_projectWithTwoLevels());
+      final level2 = LevelId('level-2');
+
+      expect(
+        () => session.commit(
+          ProjectMutationRequest(
+            expectedVersion: session.current.version,
+            command: RenumberLevelCommand(levelId: level2, levelNumber: 1),
+          ),
+        ),
+        throwsA(
+          isA<ProjectAuthoringException>()
+              .having(
+                (error) => error.code,
+                'code',
+                ProjectAuthoringIssueCode.duplicateLevelNumber,
+              )
+              .having((error) => error.entityId, 'entityId', level2)
+              .having(
+                (error) => error.relatedEntityId,
+                'relatedEntityId',
+                LevelId('level-1'),
+              ),
+        ),
+      );
+      expect(session.current.version, LocalProjectVersion(0));
+      expect(session.current.index.level(level2)!.levelNumber, 2);
       expect(session.undoDepth, 0);
     });
 
@@ -318,6 +358,54 @@ ProjectAggregateRoot _projectWithLevel() {
           levelNumber: 1,
           displayOrder: 10,
           elevationMm: 0,
+        ),
+      },
+    ),
+  );
+}
+
+ProjectAggregateRoot _projectWithTwoLevels() {
+  final siteId = SiteId('site-root');
+  final buildingId = BuildingId('building-a');
+  final level1 = LevelId('level-1');
+  final level2 = LevelId('level-2');
+  return ProjectAggregateRoot(
+    id: ProjectId('project-1'),
+    siteId: siteId,
+    version: LocalProjectVersion(0),
+    stores: ProjectEntityStores(
+      sites: <SiteId, ProjectSiteEntity>{
+        siteId: ProjectSiteEntity(
+          id: siteId,
+          name: 'Site',
+          buildingIds: <BuildingId>[buildingId],
+        ),
+      },
+      buildings: <BuildingId, ProjectBuildingEntity>{
+        buildingId: ProjectBuildingEntity(
+          id: buildingId,
+          siteId: siteId,
+          name: 'Building A',
+          displayOrder: 10,
+          levelIds: <LevelId>[level1, level2],
+        ),
+      },
+      levels: <LevelId, ProjectLevelEntity>{
+        level1: ProjectLevelEntity(
+          id: level1,
+          buildingId: buildingId,
+          name: 'Floor 1',
+          levelNumber: 1,
+          displayOrder: 10,
+          elevationMm: 0,
+        ),
+        level2: ProjectLevelEntity(
+          id: level2,
+          buildingId: buildingId,
+          name: 'Floor 2',
+          levelNumber: 2,
+          displayOrder: 20,
+          elevationMm: 3000,
         ),
       },
     ),
