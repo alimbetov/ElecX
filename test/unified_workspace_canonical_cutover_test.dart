@@ -84,6 +84,7 @@ void main() {
               onAuthoringCommitted: (session, createdId) {
                 published++;
                 publishedId = createdId;
+                return const CanonicalAuthoringOwnershipReceipt.accepted();
               },
             ),
           ),
