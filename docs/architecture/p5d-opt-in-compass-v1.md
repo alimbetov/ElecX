@@ -4,7 +4,13 @@
 
 Hardened architecture and implementation specification for `feat/p5d-opt-in-compass-design`.
 
-This document incorporates two repository-level architecture reviews performed on 2026-10-21. P5D follows P5C and must preserve the P5C canonical-navigation, controlled-hybrid, persistence-owner and fail-closed invariants.
+This document incorporates two repository-level architecture reviews performed on 2026-10-21. The second hard audit is authoritative for implementation readiness:
+
+```text
+docs/architecture/p5d-architecture-audit-v2-2026-10-21.md
+```
+
+P5D follows P5C and must preserve the P5C canonical-navigation, controlled-hybrid, persistence-owner and fail-closed invariants.
 
 ElecX remains native-only:
 
@@ -147,12 +153,7 @@ final class ProjectNorth {
 
   final int milliDegreesClockwiseFromPositiveY;
 
-  // Strict canonical constructor. Requires already-normalized persisted/domain
-  // value in [0, 360000). Never modulo-normalizes corruption.
   static ProjectNorth fromNormalizedMilliDegrees(int value);
-
-  // Boundary constructor for explicit user/import input. Rejects non-finite
-  // values, rounds to nearest milli-degree, then normalizes modulo 360000.
   static ProjectNorth fromDegrees(double value);
 
   double get degrees;
