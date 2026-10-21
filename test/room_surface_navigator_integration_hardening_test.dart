@@ -27,7 +27,9 @@ void main() {
       final versionBefore = fixture.session.project.version;
 
       await _pumpScreen(tester, fixture);
-      await tester.tap(find.byKey(const ValueKey('room-surface-wall-1')));
+      await tester.tap(find.byKey(const ValueKey('room-surface-wall-next')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('room-surface-wall-next')));
       await tester.pumpAndSettle();
 
       expect(fixture.session.navigation, same(navigationBefore));
@@ -51,11 +53,12 @@ void main() {
         findsOneWidget,
       );
 
-      await tester.tap(
-        find.byKey(
-          ValueKey('project-node-space-${fixture.corridorId.value}'),
-        ),
+      final corridorNode = find.byKey(
+        ValueKey('project-node-space-${fixture.corridorId.value}'),
       );
+      await tester.ensureVisible(corridorNode);
+      await tester.pumpAndSettle();
+      await tester.tap(corridorNode);
       await tester.pumpAndSettle();
 
       expect(fixture.session.navigation.selectedSpaceId, fixture.corridorId);
