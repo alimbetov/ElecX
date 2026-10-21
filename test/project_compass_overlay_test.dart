@@ -17,7 +17,14 @@ void main() {
       ),
     );
 
-    expect(find.byType(CustomPaint), findsNothing);
+    final overlay = find.byType(ProjectCompassOverlay);
+    expect(
+      find.descendant(
+        of: overlay,
+        matching: find.byKey(const ValueKey('project-compass-paint')),
+      ),
+      findsNothing,
+    );
     expect(find.bySemanticsLabel(RegExp('Compass')), findsNothing);
   });
 
@@ -37,8 +44,14 @@ void main() {
       find.bySemanticsLabel('Compass, Project North not set'),
       findsOneWidget,
     );
-    expect(find.byType(IgnorePointer), findsOneWidget);
-    expect(find.byType(InkWell), findsNothing);
+    expect(
+      find.byKey(const ValueKey('project-compass-read-only')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('project-compass-action')),
+      findsNothing,
+    );
   });
 
   testWidgets('defined north exposes canonical semantics and interaction',
@@ -66,11 +79,62 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.byType(InkWell), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('project-compass-action')),
+      findsOneWidget,
+    );
+    expect(
+      tester.getSize(find.byKey(const ValueKey('project-compass-paint'))),
+      const Size.square(74),
+    );
 
-    await tester.tap(find.byType(InkWell));
+    await tester.tap(find.byKey(const ValueKey('project-compass-action')));
     await tester.pump();
     expect(taps, 1);
+  });
+
+  testWidgets('defined compass renders in light and dark themes',
+      (tester) async {
+    final north = ProjectEngineeringNorth.fromDegrees(90);
+
+    for (final mode in <ThemeMode>[ThemeMode.light, ThemeMode.dark]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.light(),
+          darkTheme: ThemeData.dark(),
+          themeMode: mode,
+          home: Scaffold(
+            body: ProjectCompassOverlay(
+              state: CompassNorthDefined(
+                canonicalNorth: north,
+                screenMilliDegreesClockwiseFromUp: 90000,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(
+        find.byKey(const ValueKey('project-compass-paint')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  testWidgets('invalid overlay size fails closed', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: ProjectCompassOverlay(
+            state: CompassNorthUnspecified(),
+            size: 0,
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isA<ArgumentError>());
   });
 
   testWidgets('legacy compatibility input cannot fabricate a projection',
@@ -85,6 +149,13 @@ void main() {
       ),
     );
 
-    expect(find.byType(CustomPaint), findsNothing);
+    final overlay = find.byType(ProjectCompassOverlay);
+    expect(
+      find.descendant(
+        of: overlay,
+        matching: find.byKey(const ValueKey('project-compass-paint')),
+      ),
+      findsNothing,
+    );
   });
 }
