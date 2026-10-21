@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../application/project/project_structure_authoring.dart';
 import '../../domain/project_identity.dart';
 import 'canonical_editor_runtime_cutover.dart';
@@ -18,7 +20,7 @@ typedef CanonicalEditorRuntimeResolver = CanonicalEditorResolvedRuntime?
   EditorProjectMetadata metadata,
 );
 
-typedef CanonicalProductionAuthoringCommittedCallback = void Function(
+typedef CanonicalProductionAuthoringCommittedCallback = FutureOr<void> Function(
   ProjectStructureAuthoringSession session,
   EntityId createdId,
 );
@@ -45,6 +47,8 @@ final class CanonicalEditorResolvedRuntime {
 /// The existing screen Save path serializes the transitional editor document,
 /// not ProjectAggregateRoot, so enabling +Building/+Level/+Room without an
 /// external canonical persistence owner would otherwise create unsaved state.
+/// The callback may be asynchronous and is awaited by the canonical navigator
+/// before the authoring interaction is considered fully published.
 final class CanonicalEditorProductionRuntimeConfig {
   const CanonicalEditorProductionRuntimeConfig({
     required this.resolveRuntime,
