@@ -5,7 +5,9 @@ import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
 import 'package:elecx/src/features/editor/editor_shell_state.dart';
 import 'package:elecx/src/features/editor/room_surface_navigator.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -54,6 +56,9 @@ void main() {
     expect(find.byKey(const ValueKey('room-surface-wall-0')), findsOneWidget);
     expect(find.byKey(const ValueKey('room-surface-wall-3')), findsOneWidget);
     expect(find.byKey(const ValueKey('room-surface-wall-4')), findsNothing);
+    expect(find.text('Комната 101 · 4.20 × 3.20 m'), findsOneWidget);
+    expect(find.text('W1 · 4.20m'), findsOneWidget);
+    expect(find.text('W2 · 3.20m'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('room-surface-floor')));
     await tester.pump();
@@ -79,7 +84,7 @@ void main() {
     expect(find.text('Current surface: Plan'), findsOneWidget);
   });
 
-  testWidgets('mini-view wall plane selects the matching editor wall',
+  testWidgets('mini-view selects floor ceiling and matching wall surfaces',
       (tester) async {
     final controller = EditorController.demo();
     addTearDown(controller.dispose);
@@ -101,17 +106,131 @@ void main() {
     final preview = tester.getRect(
       find.byKey(const ValueKey('room-surface-mini-view')),
     );
+
     await tester.tapAt(
-      Offset(
-        preview.right - 22,
-        preview.center.dy,
-      ),
+      Offset(preview.center.dx - 8, preview.bottom - 48),
     );
     await tester.pump();
+    expect(controller.activeSurface?.type, SurfacePlaneType.floor);
 
+    await tester.tapAt(
+      Offset(preview.center.dx + 8, preview.top + 48),
+    );
+    await tester.pump();
+    expect(controller.activeSurface?.type, SurfacePlaneType.ceiling);
+
+    await tester.tapAt(
+      Offset(preview.right - 24, preview.center.dy),
+    );
+    await tester.pump();
     expect(controller.activeSurface?.type, SurfacePlaneType.wall);
     expect(controller.activeSurface?.wallIndex, 1);
-    expect(find.text('Current surface: Wall 2'), findsOneWidget);
+  });
+
+  testWidgets('hover preview never commits a surface change', (tester) async {
+    final controller = EditorController.demo();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RoomSurfaceNavigator(
+            controller: controller,
+            canonicalSpaceId: SpaceId('canonical-room-101'),
+            legacySpaceId: 'room-101',
+            collapsed: false,
+            onToggleCollapsed: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(controller.activeSurface, isNull);
+    final preview = tester.getRect(
+      find.byKey(const ValueKey('room-surface-mini-view')),
+    );
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: preview.center);
+    await mouse.moveTo(Offset(preview.right - 24, preview.center.dy));
+    await tester.pump();
+
+    expect(controller.activeSurface, isNull);
+    expect(controller.viewMode, EditorViewMode.plan);
+    await mouse.removePointer();
+  });
+
+  testWidgets('focused mini-view supports engineering keyboard navigation',
+      (tester) async {
+    final controller = EditorController.demo();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RoomSurfaceNavigator(
+            controller: controller,
+            canonicalSpaceId: SpaceId('canonical-room-101'),
+            legacySpaceId: 'room-101',
+            collapsed: false,
+            onToggleCollapsed: () {},
+          ),
+        ),
+      ),
+    );
+
+    final focus = tester.widget<Focus>(
+      find.byKey(const ValueKey('room-surface-mini-focus')),
+    );
+    focus.focusNode!.requestFocus();
+    await tester.pump();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    expect(controller.activeSurface?.wallIndex, 0);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    expect(controller.activeSurface?.wallIndex, 1);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    expect(controller.activeSurface?.type, SurfacePlaneType.ceiling);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(controller.activeSurface?.type, SurfacePlaneType.floor);
+  });
+
+  testWidgets('previous and next wall controls cycle real room boundary walls',
+      (tester) async {
+    final controller = EditorController.demo();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RoomSurfaceNavigator(
+            controller: controller,
+            canonicalSpaceId: SpaceId('canonical-room-101'),
+            legacySpaceId: 'room-101',
+            collapsed: false,
+            onToggleCollapsed: () {},
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('room-surface-wall-next')));
+    await tester.pump();
+    expect(controller.activeSurface?.wallIndex, 0);
+
+    await tester.tap(find.byKey(const ValueKey('room-surface-wall-next')));
+    await tester.pump();
+    expect(controller.activeSurface?.wallIndex, 1);
+
+    await tester.tap(find.byKey(const ValueKey('room-surface-wall-prev')));
+    await tester.pump();
+    expect(controller.activeSurface?.wallIndex, 0);
   });
 
   testWidgets('L-shaped room exposes every real boundary wall', (tester) async {
