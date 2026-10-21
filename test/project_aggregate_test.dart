@@ -124,7 +124,8 @@ void main() {
                 (error) => error.issues
                     .where(
                       (issue) =>
-                          issue.code == ProjectAggregateIssueCode.unexpectedSite,
+                          issue.code ==
+                          ProjectAggregateIssueCode.unexpectedSite,
                     )
                     .single
                     .entityId,
@@ -315,7 +316,9 @@ void main() {
           isA<ProjectAggregateValidationException>().having(
             (error) => error.issues.map((issue) => issue.code),
             'issue codes',
-            contains(ProjectAggregateIssueCode.siteBuildingBackReferenceMissing),
+            contains(
+              ProjectAggregateIssueCode.siteBuildingBackReferenceMissing,
+            ),
           ),
         ),
       );
