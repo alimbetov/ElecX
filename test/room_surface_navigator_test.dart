@@ -45,7 +45,8 @@ void main() {
       find.byKey(const ValueKey('room-surface-navigator')),
       findsOneWidget,
     );
-    expect(find.byKey(const ValueKey('room-surface-mini-view')), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('room-surface-mini-view')), findsOneWidget);
     expect(find.byKey(const ValueKey('room-surface-wall-0')), findsOneWidget);
     expect(find.byKey(const ValueKey('room-surface-wall-3')), findsOneWidget);
     expect(find.byKey(const ValueKey('room-surface-wall-4')), findsNothing);
@@ -136,7 +137,8 @@ void main() {
     await tester.pump();
 
     expect(shell.roomSurfaceNavigatorCollapsed, isFalse);
-    expect(find.byKey(const ValueKey('room-surface-mini-view')), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('room-surface-mini-view')), findsOneWidget);
     expect(find.text('Current surface: Wall 3'), findsOneWidget);
   });
 
