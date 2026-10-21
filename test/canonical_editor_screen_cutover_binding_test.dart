@@ -24,6 +24,7 @@ void main() {
 
       expect(fixture.workspace.editor.level.id, 'legacy-level-2');
       expect(fixture.binding.isStarted, isTrue);
+      expect(fixture.binding.isBoundTo(fixture.workspace), isTrue);
     });
 
     test('legacy room selection is pulled into canonical navigation once', () {
@@ -53,27 +54,44 @@ void main() {
       expect(observed, isEmpty);
     });
 
-    test('unmaterialized canonical target is reported without canvas mutation',
-        () {
-      CanonicalEditorMaterializationResult? blocked;
+    test(
+      'unmaterialized canonical target is reported without canvas mutation',
+      () {
+        CanonicalEditorMaterializationResult? blocked;
+        final fixture = _fixture(
+          bindSpace: false,
+          onBlocked: (result) => blocked = result,
+        );
+        fixture.binding.start(pushInitialCanonicalState: false);
+        fixture.session.selectRoom(SpaceId('space-1'));
+        final beforeLevel = fixture.workspace.editor.level.id;
+        final beforeSpace = fixture.workspace.editor.selectedSpaceId;
+
+        final readiness = fixture.binding.pushCanonicalToEditor();
+
+        expect(
+          readiness.status,
+          CanonicalEditorMaterializationStatus.blockedMissingGeometry,
+        );
+        expect(blocked, same(readiness));
+        expect(fixture.workspace.editor.level.id, beforeLevel);
+        expect(fixture.workspace.editor.selectedSpaceId, beforeSpace);
+      },
+    );
+
+    test('unexpected initial push failure rolls listeners back', () {
+      final errors = <Object>[];
       final fixture = _fixture(
-        bindSpace: false,
-        onBlocked: (result) => blocked = result,
+        legacyBuildingId: 'wrong-legacy-building',
+        onError: (error, _) => errors.add(error),
       );
-      fixture.binding.start(pushInitialCanonicalState: false);
-      fixture.session.selectRoom(SpaceId('space-1'));
-      final beforeLevel = fixture.workspace.editor.level.id;
-      final beforeSpace = fixture.workspace.editor.selectedSpaceId;
 
-      final readiness = fixture.binding.pushCanonicalToEditor();
+      expect(fixture.binding.start, throwsA(anything));
+      expect(fixture.binding.isStarted, isFalse);
+      expect(errors, hasLength(1));
 
-      expect(
-        readiness.status,
-        CanonicalEditorMaterializationStatus.blockedMissingGeometry,
-      );
-      expect(blocked, same(readiness));
-      expect(fixture.workspace.editor.level.id, beforeLevel);
-      expect(fixture.workspace.editor.selectedSpaceId, beforeSpace);
+      fixture.workspace.editor.notifyListeners();
+      expect(errors, hasLength(1));
     });
 
     test('dispose detaches legacy listeners', () {
@@ -106,8 +124,10 @@ final class _Fixture {
 _Fixture _fixture({
   String initialLevelId = 'level-1',
   bool bindSpace = true,
+  String legacyBuildingId = 'legacy-building-1',
   void Function(ProjectNavigationState navigation)? onNavigationChanged,
   void Function(CanonicalEditorMaterializationResult result)? onBlocked,
+  void Function(Object error, StackTrace stackTrace)? onError,
 }) {
   final project = _project();
   final initialNavigation = ProjectNavigationState.initial(project)
@@ -122,7 +142,7 @@ _Fixture _fixture({
     workspace: workspace,
     binding: CanonicalEditorWorkspaceBinding(
       buildingId: BuildingId('building-1'),
-      legacyBuildingId: 'legacy-building-1',
+      legacyBuildingId: legacyBuildingId,
       legacyLevelIds: <LevelId, String>{
         LevelId('level-1'): 'legacy-level-1',
         LevelId('level-2'): 'legacy-level-2',
@@ -140,6 +160,7 @@ _Fixture _fixture({
     coordinator: coordinator,
     onCanonicalNavigationChanged: onNavigationChanged,
     onBlocked: onBlocked,
+    onError: onError,
   );
   return _Fixture(session: session, workspace: workspace, binding: binding);
 }
