@@ -8,8 +8,10 @@ import 'package:elecx/src/serialization/project/canonical_project_document_codec
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('canonical JSON repository preserves multi-building identity graph', () async {
-    final root = await Directory.systemTemp.createTemp('elecx-canonical-project-');
+  test('canonical JSON repository preserves multi-building identity graph',
+      () async {
+    final root =
+        await Directory.systemTemp.createTemp('elecx-canonical-project-');
     addTearDown(() async {
       if (await root.exists()) await root.delete(recursive: true);
     });
