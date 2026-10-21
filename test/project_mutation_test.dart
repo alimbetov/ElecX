@@ -59,7 +59,7 @@ void main() {
         'Preview Site',
       );
       expect(preview.hasChanges, isTrue);
-      expect(preview.updatedEntityIds, isNull);
+      expect(preview.diff.updatedEntityIds, <EntityId>{SiteId('site-1')});
       expect(preview.affectedEntityIds, <EntityId>{SiteId('site-1')});
       expect(preview.declaredAffectedEntityIds, isEmpty);
       expect(session.current, same(initial));
