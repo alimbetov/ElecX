@@ -11,14 +11,16 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P5C canonical runtime navigator', () {
-    testWidgets('renders canonical tree, breadcrumb and labeled authoring actions',
+    testWidgets(
+        'renders canonical tree, breadcrumb and labeled authoring actions',
         (tester) async {
       final session = _session(_project());
 
       await tester.pumpWidget(_host(session));
       await tester.pump();
 
-      expect(find.byKey(const ValueKey('canonical-project-tree')), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('canonical-project-tree')), findsOneWidget);
       expect(
         find.byKey(const ValueKey('canonical-project-breadcrumb')),
         findsOneWidget,
@@ -92,7 +94,8 @@ void main() {
       expect(committedId, isA<BuildingId>());
       expect(session.navigation.activeBuildingId, committedId);
       expect(session.navigation.activeLevelId, isNull);
-      expect(session.project.index.building(committedId! as BuildingId), isNotNull);
+      expect(session.project.index.building(committedId! as BuildingId),
+          isNotNull);
       expect(find.text('Building C'), findsWidgets);
     });
 
@@ -197,7 +200,8 @@ void main() {
 
       expect(requestedParent, LevelId('a-level-1'));
       final selectedSpaceId = session.navigation.selectedSpaceId!;
-      expect(session.project.index.space(selectedSpaceId)!.levelId, requestedParent);
+      expect(session.project.index.space(selectedSpaceId)!.levelId,
+          requestedParent);
       expect(find.text('New room'), findsWidgets);
       expect(
         find.byKey(ValueKey('project-node-space-${selectedSpaceId.value}')),
