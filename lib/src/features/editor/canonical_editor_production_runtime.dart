@@ -1,3 +1,5 @@
+import '../../application/project/project_mutation.dart';
+import '../../application/project/project_north_editing.dart';
 import '../../application/project/project_structure_authoring.dart';
 import '../../domain/project_identity.dart';
 import 'canonical_editor_runtime_cutover.dart';
@@ -19,12 +21,12 @@ typedef CanonicalEditorRuntimeResolver = CanonicalEditorResolvedRuntime?
 );
 
 /// Explicit acknowledgement that the production host has synchronously taken
-/// ownership of a committed canonical structure mutation.
+/// ownership of a committed canonical mutation.
 ///
-/// This is deliberately not a durable-save acknowledgement. P5C does not own
-/// the final persistence backend. The host may persist through the canonical
-/// repository workflow later, but once this receipt is returned it owns the
-/// committed canonical state and must not treat it as a best-effort event.
+/// This is deliberately not a durable-save acknowledgement. The host may
+/// persist through the canonical repository workflow later, but once this
+/// receipt is returned it owns the committed canonical state and must not treat
+/// it as a best-effort event.
 final class CanonicalAuthoringOwnershipReceipt {
   const CanonicalAuthoringOwnershipReceipt.accepted();
 }
@@ -35,16 +37,34 @@ typedef CanonicalProductionAuthoringCommittedCallback
   EntityId createdId,
 );
 
+typedef CanonicalProductionProjectNorthCommittedCallback
+    = CanonicalAuthoringOwnershipReceipt Function(
+  ProjectNorthEditingPort editing,
+  ProjectMutationResult result,
+);
+
 final class CanonicalEditorResolvedRuntime {
   const CanonicalEditorResolvedRuntime({
     required this.session,
     required this.binding,
     this.materializer = const ExistingBindingCanonicalEditorMaterializer(),
+    this.projectNorthEditing,
+    this.persistenceOwnerProjectId,
   });
 
   final ProjectStructureAuthoringSession session;
   final CanonicalEditorWorkspaceBinding binding;
   final CanonicalEditorMaterializer materializer;
+
+  /// Optional narrow P5D edit capability. It must be backed by the same
+  /// canonical project represented by [session]. The screen verifies identity
+  /// and version affinity before enabling editing.
+  final ProjectNorthEditingPort? projectNorthEditing;
+
+  /// Exact canonical project for which the production host accepts persistence
+  /// ownership. Null keeps Project North read-only even when a canonical
+  /// runtime is available.
+  final ProjectId? persistenceOwnerProjectId;
 }
 
 /// Opt-in production cutover configuration for [UnifiedWorkspaceEditorScreen].
@@ -53,15 +73,14 @@ final class CanonicalEditorResolvedRuntime {
 /// replaced by open/recovery. This prevents a binding that points at a disposed
 /// workspace from surviving a project lifecycle transition.
 ///
-/// Canonical authoring is enabled only when [onAuthoringCommitted] is supplied.
-/// The existing screen Save path serializes the transitional editor document,
-/// not ProjectAggregateRoot, so enabling +Building/+Level/+Room without an
-/// external canonical persistence owner would otherwise create unsaved state.
+/// Canonical structure authoring is enabled only when [onAuthoringCommitted] is
+/// supplied. Project North editing is independently enabled only when the
+/// resolved runtime supplies [CanonicalEditorResolvedRuntime.projectNorthEditing],
+/// its persistence-owner identity matches the screen/canonical project, and
+/// [onProjectNorthCommitted] is supplied.
 ///
-/// The callback is a synchronous ownership-transfer boundary. It must return an
-/// explicit [CanonicalAuthoringOwnershipReceipt] after the host has accepted
-/// responsibility for the committed canonical state. Durable storage itself is
-/// outside P5C and remains behind the canonical repository / P16 boundary.
+/// Both callbacks are synchronous ownership-transfer boundaries. They do not
+/// claim durable disk/backend save completion.
 final class CanonicalEditorProductionRuntimeConfig {
   const CanonicalEditorProductionRuntimeConfig({
     required this.resolveRuntime,
@@ -69,6 +88,7 @@ final class CanonicalEditorProductionRuntimeConfig {
     this.requestLevel,
     this.requestRoom,
     this.onAuthoringCommitted,
+    this.onProjectNorthCommitted,
   });
 
   final CanonicalEditorRuntimeResolver resolveRuntime;
@@ -76,6 +96,8 @@ final class CanonicalEditorProductionRuntimeConfig {
   final LevelRequestResolver? requestLevel;
   final RoomRequestResolver? requestRoom;
   final CanonicalProductionAuthoringCommittedCallback? onAuthoringCommitted;
+  final CanonicalProductionProjectNorthCommittedCallback?
+      onProjectNorthCommitted;
 
   bool get authoringEnabled => onAuthoringCommitted != null;
 }
