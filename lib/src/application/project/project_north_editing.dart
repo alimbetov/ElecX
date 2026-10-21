@@ -15,8 +15,13 @@ abstract interface class ProjectNorthEditingPort {
   ProjectEngineeringNorth? get currentProjectNorth;
   bool get canEdit;
 
-  ProjectMutationResult? setProjectNorth(ProjectEngineeringNorth value);
-  ProjectMutationResult? clearProjectNorth();
+  ProjectMutationResult? setProjectNorth(
+    ProjectEngineeringNorth value, {
+    LocalProjectVersion? expectedVersion,
+  });
+  ProjectMutationResult? clearProjectNorth({
+    LocalProjectVersion? expectedVersion,
+  });
 }
 
 final class ProjectNorthEditingSession implements ProjectNorthEditingPort {
@@ -38,20 +43,25 @@ final class ProjectNorthEditingSession implements ProjectNorthEditingPort {
   bool get canEdit => true;
 
   @override
-  ProjectMutationResult? setProjectNorth(ProjectEngineeringNorth value) {
+  ProjectMutationResult? setProjectNorth(
+    ProjectEngineeringNorth value, {
+    LocalProjectVersion? expectedVersion,
+  }) {
     return _mutations.commit(
       ProjectMutationRequest(
-        expectedVersion: _mutations.current.version,
+        expectedVersion: expectedVersion ?? _mutations.current.version,
         command: SetProjectNorthCommand(value),
       ),
     );
   }
 
   @override
-  ProjectMutationResult? clearProjectNorth() {
+  ProjectMutationResult? clearProjectNorth({
+    LocalProjectVersion? expectedVersion,
+  }) {
     return _mutations.commit(
       ProjectMutationRequest(
-        expectedVersion: _mutations.current.version,
+        expectedVersion: expectedVersion ?? _mutations.current.version,
         command: const ClearProjectNorthCommand(),
       ),
     );
