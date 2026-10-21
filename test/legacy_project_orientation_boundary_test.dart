@@ -4,8 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('LegacyProjectOrientationBoundary', () {
     test('missing legacy orientation stays canonical unspecified', () {
-      final metadata =
-          LegacyProjectOrientationBoundary.canonicalMetadataFromUnprovenLegacy();
+      final metadata = LegacyProjectOrientationBoundary
+          .canonicalMetadataFromUnprovenLegacy();
 
       expect(metadata.projectNorth, isNull);
     });
