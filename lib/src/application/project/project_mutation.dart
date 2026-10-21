@@ -12,6 +12,10 @@ abstract interface class ProjectCommand {
 }
 
 /// Immutable candidate produced by one [ProjectCommand].
+///
+/// [affectedEntityIds] is a command-provided hint only. The mutation engine
+/// computes the authoritative [ProjectEntityDiff] from before/after stores and
+/// never trusts this hint for invalidation, persistence or Undo semantics.
 final class ProjectCommandCandidate {
   ProjectCommandCandidate({
     required this.stores,
@@ -39,6 +43,103 @@ enum ProjectChangeKind {
   redo,
 }
 
+/// Authoritative semantic entity delta between two canonical store snapshots.
+///
+/// The three sets are disjoint. [affectedEntityIds] is derived from their union
+/// and is therefore safe for incremental projections and invalidation.
+final class ProjectEntityDiff {
+  ProjectEntityDiff({
+    Iterable<EntityId> addedEntityIds = const <EntityId>[],
+    Iterable<EntityId> updatedEntityIds = const <EntityId>[],
+    Iterable<EntityId> removedEntityIds = const <EntityId>[],
+  })  : addedEntityIds = Set<EntityId>.unmodifiable(addedEntityIds),
+        updatedEntityIds = Set<EntityId>.unmodifiable(updatedEntityIds),
+        removedEntityIds = Set<EntityId>.unmodifiable(removedEntityIds) {
+    if (_hasOverlap(this.addedEntityIds, this.updatedEntityIds) ||
+        _hasOverlap(this.addedEntityIds, this.removedEntityIds) ||
+        _hasOverlap(this.updatedEntityIds, this.removedEntityIds)) {
+      throw ArgumentError(
+        'ProjectEntityDiff added/updated/removed entity sets must be disjoint.',
+      );
+    }
+  }
+
+  factory ProjectEntityDiff.between(
+    ProjectEntityStores before,
+    ProjectEntityStores after,
+  ) {
+    final added = <EntityId>{};
+    final updated = <EntityId>{};
+    final removed = <EntityId>{};
+
+    _diffMap<SiteId, ProjectSiteEntity>(
+      before.sites,
+      after.sites,
+      _sameSite,
+      added,
+      updated,
+      removed,
+    );
+    _diffMap<BuildingId, ProjectBuildingEntity>(
+      before.buildings,
+      after.buildings,
+      _sameBuilding,
+      added,
+      updated,
+      removed,
+    );
+    _diffMap<LevelId, ProjectLevelEntity>(
+      before.levels,
+      after.levels,
+      _sameLevel,
+      added,
+      updated,
+      removed,
+    );
+    _diffMap<ZoneId, ProjectStructuralZoneEntity>(
+      before.zones,
+      after.zones,
+      _sameZone,
+      added,
+      updated,
+      removed,
+    );
+    _diffMap<SpaceId, ProjectSpaceEntity>(
+      before.spaces,
+      after.spaces,
+      _sameSpace,
+      added,
+      updated,
+      removed,
+    );
+
+    return ProjectEntityDiff(
+      addedEntityIds: added,
+      updatedEntityIds: updated,
+      removedEntityIds: removed,
+    );
+  }
+
+  final Set<EntityId> addedEntityIds;
+  final Set<EntityId> updatedEntityIds;
+  final Set<EntityId> removedEntityIds;
+
+  Set<EntityId> get affectedEntityIds => Set<EntityId>.unmodifiable(
+        <EntityId>{
+          ...addedEntityIds,
+          ...updatedEntityIds,
+          ...removedEntityIds,
+        },
+      );
+
+  bool get isEmpty =>
+      addedEntityIds.isEmpty &&
+      updatedEntityIds.isEmpty &&
+      removedEntityIds.isEmpty;
+
+  bool get isNotEmpty => !isEmpty;
+}
+
 /// One committed canonical change boundary.
 final class ProjectChangeSet {
   ProjectChangeSet({
@@ -46,8 +147,8 @@ final class ProjectChangeSet {
     required this.commandType,
     required this.beforeVersion,
     required this.afterVersion,
-    Iterable<EntityId> affectedEntityIds = const <EntityId>[],
-  }) : affectedEntityIds = Set<EntityId>.unmodifiable(affectedEntityIds) {
+    required this.diff,
+  }) {
     if (commandType.trim().isEmpty) {
       throw ArgumentError.value(
         commandType,
@@ -61,26 +162,42 @@ final class ProjectChangeSet {
         'once: $beforeVersion -> $afterVersion.',
       );
     }
+    if (diff.isEmpty) {
+      throw ArgumentError(
+        'A committed ProjectChangeSet must contain a non-empty entity diff.',
+      );
+    }
   }
 
   final ProjectChangeKind kind;
   final String commandType;
   final LocalProjectVersion beforeVersion;
   final LocalProjectVersion afterVersion;
-  final Set<EntityId> affectedEntityIds;
+  final ProjectEntityDiff diff;
+
+  Set<EntityId> get addedEntityIds => diff.addedEntityIds;
+  Set<EntityId> get updatedEntityIds => diff.updatedEntityIds;
+  Set<EntityId> get removedEntityIds => diff.removedEntityIds;
+  Set<EntityId> get affectedEntityIds => diff.affectedEntityIds;
 }
 
 /// Validated but uncommitted command result.
 final class ProjectMutationPreview {
-  const ProjectMutationPreview({
+  ProjectMutationPreview({
     required this.candidate,
     required this.commandType,
-    required this.affectedEntityIds,
-  });
+    required this.diff,
+    Iterable<EntityId> declaredAffectedEntityIds = const <EntityId>[],
+  }) : declaredAffectedEntityIds =
+            Set<EntityId>.unmodifiable(declaredAffectedEntityIds);
 
   final ProjectAggregateRoot candidate;
   final String commandType;
-  final Set<EntityId> affectedEntityIds;
+  final ProjectEntityDiff diff;
+  final Set<EntityId> declaredAffectedEntityIds;
+
+  Set<EntityId> get affectedEntityIds => diff.affectedEntityIds;
+  bool get hasChanges => diff.isNotEmpty;
 }
 
 /// Successful committed command/undo/redo result.
@@ -151,8 +268,7 @@ final class UndoRecord {
     required this.commandType,
     required this.beforeStores,
     required this.afterStores,
-    Iterable<EntityId> affectedEntityIds = const <EntityId>[],
-  }) : affectedEntityIds = Set<EntityId>.unmodifiable(affectedEntityIds) {
+  }) {
     if (commandType.trim().isEmpty) {
       throw ArgumentError.value(
         commandType,
@@ -160,19 +276,24 @@ final class UndoRecord {
         'Must be non-empty.',
       );
     }
+    if (ProjectEntityDiff.between(beforeStores, afterStores).isEmpty) {
+      throw ArgumentError(
+        'UndoRecord requires different before/after canonical stores.',
+      );
+    }
   }
 
   final String commandType;
   final ProjectEntityStores beforeStores;
   final ProjectEntityStores afterStores;
-  final Set<EntityId> affectedEntityIds;
 }
 
 /// Atomic in-memory mutation boundary for one canonical project.
 ///
 /// Protocol:
-/// read N -> build candidate -> validate -> verify N -> commit N+1 ->
-/// publish one ProjectChangeSet -> append one UndoRecord.
+/// read N -> build candidate -> validate -> compute authoritative diff ->
+/// verify N -> commit N+1 -> publish one ProjectChangeSet -> append one
+/// UndoRecord. A semantically empty candidate is suppressed as a no-op.
 final class ProjectMutationSession {
   ProjectMutationSession(ProjectAggregateRoot initial) : _current = initial;
 
@@ -189,28 +310,37 @@ final class ProjectMutationSession {
   ProjectMutationPreview preview(ProjectMutationRequest request) {
     _requireVersion(request.expectedVersion);
     final commandType = _requireCommandType(request.command);
-    final candidate = request.command.buildCandidate(_current);
-    CandidateGraphValidator.validate(current: _current, candidate: candidate);
+    final before = _current;
+    final candidate = request.command.buildCandidate(before);
+    CandidateGraphValidator.validate(current: before, candidate: candidate);
+    final diff = ProjectEntityDiff.between(before.stores, candidate.stores);
 
     final previewRoot = ProjectAggregateRoot(
-      id: _current.id,
-      siteId: _current.siteId,
-      version: _current.version,
+      id: before.id,
+      siteId: before.siteId,
+      version: before.version,
       stores: candidate.stores,
     );
     return ProjectMutationPreview(
       candidate: previewRoot,
       commandType: commandType,
-      affectedEntityIds: candidate.affectedEntityIds,
+      diff: diff,
+      declaredAffectedEntityIds: candidate.affectedEntityIds,
     );
   }
 
-  ProjectMutationResult commit(ProjectMutationRequest request) {
+  /// Commits one semantic command, or returns `null` for a semantic no-op.
+  ///
+  /// A no-op does not advance the local version and does not create Undo/Redo
+  /// history. This prevents redundant autosave/sync/projection invalidation.
+  ProjectMutationResult? commit(ProjectMutationRequest request) {
     _requireVersion(request.expectedVersion);
     final commandType = _requireCommandType(request.command);
     final before = _current;
     final candidate = request.command.buildCandidate(before);
     CandidateGraphValidator.validate(current: before, candidate: candidate);
+    final diff = ProjectEntityDiff.between(before.stores, candidate.stores);
+    if (diff.isEmpty) return null;
 
     // Keep the optimistic guard explicit at the commit boundary. The current
     // implementation is synchronous, but this invariant remains mandatory if
@@ -228,7 +358,7 @@ final class ProjectMutationSession {
       commandType: commandType,
       beforeVersion: before.version,
       afterVersion: committed.version,
-      affectedEntityIds: candidate.affectedEntityIds,
+      diff: diff,
     );
 
     _current = committed;
@@ -237,7 +367,6 @@ final class ProjectMutationSession {
         commandType: commandType,
         beforeStores: before.stores,
         afterStores: committed.stores,
-        affectedEntityIds: candidate.affectedEntityIds,
       ),
     );
     _redoStack.clear();
@@ -251,6 +380,9 @@ final class ProjectMutationSession {
 
     final before = _current;
     final record = _undoStack.last;
+    final diff = ProjectEntityDiff.between(before.stores, record.beforeStores);
+    if (diff.isEmpty) return null;
+
     final restored = _commitStoredState(
       stores: record.beforeStores,
       before: before,
@@ -260,7 +392,7 @@ final class ProjectMutationSession {
       commandType: record.commandType,
       beforeVersion: before.version,
       afterVersion: restored.version,
-      affectedEntityIds: record.affectedEntityIds,
+      diff: diff,
     );
 
     _current = restored;
@@ -275,6 +407,9 @@ final class ProjectMutationSession {
 
     final before = _current;
     final record = _redoStack.last;
+    final diff = ProjectEntityDiff.between(before.stores, record.afterStores);
+    if (diff.isEmpty) return null;
+
     final restored = _commitStoredState(
       stores: record.afterStores,
       before: before,
@@ -284,7 +419,7 @@ final class ProjectMutationSession {
       commandType: record.commandType,
       beforeVersion: before.version,
       afterVersion: restored.version,
-      affectedEntityIds: record.affectedEntityIds,
+      diff: diff,
     );
 
     _current = restored;
@@ -333,3 +468,64 @@ final class ProjectMutationSession {
     }
   }
 }
+
+void _diffMap<K extends EntityId, V>(
+  Map<K, V> before,
+  Map<K, V> after,
+  bool Function(V before, V after) same,
+  Set<EntityId> added,
+  Set<EntityId> updated,
+  Set<EntityId> removed,
+) {
+  for (final entry in before.entries) {
+    final afterValue = after[entry.key];
+    if (afterValue == null) {
+      removed.add(entry.key);
+    } else if (!same(entry.value, afterValue)) {
+      updated.add(entry.key);
+    }
+  }
+  for (final key in after.keys) {
+    if (!before.containsKey(key)) added.add(key);
+  }
+}
+
+bool _sameSite(ProjectSiteEntity a, ProjectSiteEntity b) =>
+    a.id == b.id &&
+    a.name == b.name &&
+    _sameSet(a.buildingIds, b.buildingIds);
+
+bool _sameBuilding(ProjectBuildingEntity a, ProjectBuildingEntity b) =>
+    a.id == b.id &&
+    a.siteId == b.siteId &&
+    a.name == b.name &&
+    a.displayOrder == b.displayOrder &&
+    _sameSet(a.levelIds, b.levelIds);
+
+bool _sameLevel(ProjectLevelEntity a, ProjectLevelEntity b) =>
+    a.id == b.id &&
+    a.buildingId == b.buildingId &&
+    a.name == b.name &&
+    a.levelNumber == b.levelNumber &&
+    a.displayOrder == b.displayOrder &&
+    a.elevationMm == b.elevationMm &&
+    _sameSet(a.zoneIds, b.zoneIds) &&
+    _sameSet(a.spaceIds, b.spaceIds);
+
+bool _sameZone(
+  ProjectStructuralZoneEntity a,
+  ProjectStructuralZoneEntity b,
+) =>
+    a.id == b.id &&
+    a.levelId == b.levelId &&
+    a.name == b.name &&
+    _sameSet(a.spaceIds, b.spaceIds);
+
+bool _sameSpace(ProjectSpaceEntity a, ProjectSpaceEntity b) =>
+    a.id == b.id && a.levelId == b.levelId && a.name == b.name;
+
+bool _sameSet<T>(Set<T> a, Set<T> b) =>
+    a.length == b.length && a.containsAll(b);
+
+bool _hasOverlap(Set<EntityId> a, Set<EntityId> b) =>
+    a.any(b.contains);
