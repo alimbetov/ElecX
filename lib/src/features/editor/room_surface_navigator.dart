@@ -670,8 +670,7 @@ final class _RoomSurfaceMiniPainter extends CustomPainter {
       );
     }
 
-    final ceilingSelected =
-        projection.kind == RoomSurfaceNavigatorKind.ceiling;
+    final ceilingSelected = projection.kind == RoomSurfaceNavigatorKind.ceiling;
     final ceilingHovered =
         hoveredTarget?.kind == _RoomSurfaceMiniTargetKind.ceiling;
     canvas.drawPath(
