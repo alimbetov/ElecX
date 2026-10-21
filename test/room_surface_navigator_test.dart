@@ -237,6 +237,13 @@ void main() {
     final controller = _lShapedController();
     addTearDown(controller.dispose);
 
+    final projection = RoomSurfaceNavigatorProjection.fromEditor(
+      controller: controller,
+      canonicalSpaceId: SpaceId('canonical-l-room'),
+      legacySpaceId: 'l-room',
+    );
+    expect(projection?.wallCount, 6);
+
     await tester.pumpWidget(
       MaterialApp(
         home: RoomSurfaceNavigator(
@@ -250,16 +257,10 @@ void main() {
     );
 
     for (var index = 0; index < 6; index++) {
-      expect(
-        find.byKey(ValueKey('room-surface-wall-$index')),
-        findsOneWidget,
-      );
+      await tester.tap(find.byKey(const ValueKey('room-surface-wall-next')));
+      await tester.pump();
+      expect(controller.activeSurface?.wallIndex, index);
     }
-    expect(find.byKey(const ValueKey('room-surface-wall-6')), findsNothing);
-
-    await tester.tap(find.byKey(const ValueKey('room-surface-wall-5')));
-    await tester.pump();
-    expect(controller.activeSurface?.wallIndex, 5);
     expect(find.text('Current surface: Wall 6'), findsOneWidget);
   });
 
