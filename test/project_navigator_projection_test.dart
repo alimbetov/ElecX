@@ -30,7 +30,8 @@ void main() {
       );
     });
 
-    test('projection records canonical project identity and source version', () {
+    test('projection records canonical project identity and source version',
+        () {
       final project = _project(version: 7);
       final projection = ProjectNavigatorProjection.build(project);
 
@@ -39,7 +40,8 @@ void main() {
       expect(projection.isCurrentFor(project), isTrue);
       expect(projection.isCurrentFor(_project(version: 8)), isFalse);
       expect(
-        projection.isCurrentFor(_project(projectIdValue: 'project-2', version: 7)),
+        projection
+            .isCurrentFor(_project(projectIdValue: 'project-2', version: 7)),
         isFalse,
       );
     });
