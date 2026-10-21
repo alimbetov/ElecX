@@ -8,39 +8,72 @@ This document is subordinate to:
 
 - `docs/architecture/native-project-portability-and-sync.md`
 - `docs/architecture/project-composition-foundation-decisions-v1.md`
-- `docs/architecture/project-composition-generation-v1.md`
-- `docs/architecture/project-template-wizard-v1.md`
-- `docs/architecture/project-navigator-current-location-v1.md`
 
-ElecX remains native-only. Supported qualification targets are macOS, Windows, Linux, Android, iOS and iPadOS. Web/browser is out of scope.
+It complements the authoring, Wizard, Navigator and Room Surface Navigator specifications.
+
+ElecX remains native-only: macOS, Windows, Linux, Android, iOS and iPadOS. Web/browser is out of scope.
 
 ## Objective
 
-The feature must not be qualified only by one demo project or one golden journey.
+Qualification must prove the architecture across representative project shapes, topology families, navigation contexts, engineering profiles, persistence paths and regeneration scenarios.
 
-The goal is a repeatable variant smoke/qualification system that proves the architecture across representative project shapes, topology families, engineering profiles, persistence paths, navigator current-location behavior and regeneration scenarios.
+Do not qualify the subsystem through one demo project only.
 
-The qualification strategy intentionally avoids a full Cartesian product. Instead it uses:
+Use:
 
-- boundary-value scenarios;
-- representative scenarios;
+- boundary-value cases;
+- representative cases;
 - pairwise/combinatorial coverage;
 - risk-selected scenarios;
-- deterministic seeded fixtures;
-- stress scenarios kept separate from ordinary smoke.
+- deterministic fixtures;
+- stress suites separated from ordinary smoke.
 
 ## Qualification layers
 
-### L1 — Runtime smoke
+```text
+L0 foundation contract gates
+L1 runtime smoke
+L2 structural smoke
+L3 navigation/surface smoke
+L4 generator smoke
+L5 engineering starter smoke
+L6 regeneration safety
+L7 persistence/migration
+L8 native cross-platform
+L9 stress/performance
+```
 
-Minimum native application health:
+## L0 — foundation contract gates
+
+Before UI/Generator implementation may be considered qualified, prove:
+
+```text
+F01 ProjectId and SiteId are distinct
+F02 persistent IDs never derive from level number/list index/platform/local row id
+F03 LevelId survives rename/renumber
+F04 multi-building aggregate stores full semantics for every Building
+F05 active Level is referenced by LevelId
+F06 ProjectCommand commits through one atomic mutation boundary
+F07 failed mutation leaves canonical fingerprint unchanged
+F08 one semantic command yields one ProjectChangeSet + one UndoRecord
+F09 stale LocalProjectVersion cannot overwrite newer local state
+F10 ProjectRepository hides filesystem/SQLite/backend implementation details
+F11 SpaceUsage round-trips as canonical data
+F12 structural zones and overlay classifications are separate
+F13 stable BoundaryEdgeId/lineage exists before durable wall-host expansion
+F14 ProjectNavigationState is ID-backed
+F15 ProjectIndex provides direct entity lookup
+F16 no Web/browser architecture exists
+```
+
+## L1 — runtime smoke
 
 ```text
 launch
 open Project Hub
 create project
 open editor
-show valid current project location in navigator
+show valid current project location
 save
 close
 relaunch
@@ -50,45 +83,74 @@ reopen same project
 Pass criteria:
 
 - no MissingPluginException;
-- no Web/browser fallback;
+- no browser fallback;
 - project identity preserved;
 - save/reopen succeeds;
-- editor reaches an operable state;
-- navigator and editor agree on active Building/Level context.
+- editor and navigator agree on active Building/Level.
 
-### L2 — Structural smoke
+## L2 — structural smoke
 
-Exercise canonical composition primitives:
+Exercise:
 
 ```text
 Site
-Building
 multiple Buildings
-Level
-Basement
-Ground/plinth
-Technical level
-Roof
-Zone
-Room/Space
+Level / Basement / Ground / Technical / Roof
+StructuralZone
+Space
 Opening
 VerticalCore
 OutdoorZone
 ServiceEntry
 ```
 
-Pass criteria:
+Mandatory invariants:
 
 - unique stable IDs;
 - no dangling references;
-- project graph valid after each committed action;
-- navigator current location remains valid after mutation;
-- Undo/Redo restores valid graphs;
-- save/reopen preserves semantic equality.
+- valid graph after every committed action;
+- Undo/Redo returns valid graphs;
+- same-number Levels in different Buildings are unambiguous;
+- save/reopen preserves canonical semantic fingerprint.
 
-### L3 — Generator smoke
+## L3 — navigation and Room Surface Navigator smoke
 
-Exercise architectural generation families:
+### Project Navigator
+
+```text
+N01 current Site/Building/Level visible
+N02 selected Room does not erase active Level context
+N03 deep Room selection expands ancestors
+N04 explicit navigation scrolls current node into view
+N05 Building A/Floor 2 != Building B/Floor 2
+N06 +Building targets active Site
+N07 +Level targets active Building
+N08 +Room targets active Level
+N09 create Level makes it current
+N10 create Room selects/reveals it
+N11 delete active entity chooses deterministic fallback
+N12 breadcrumb/tree/editor derive from one navigation state
+N13 hover/focus do not silently mutate selection
+```
+
+### Room Surface Navigator
+
+```text
+RSN01 hidden when no Room selected
+RSN02 one lightweight navigator for selected Room only
+RSN03 Plan/Floor/Ceiling/Wall selection is bidirectional with Canvas
+RSN04 polygon/L-shaped rooms expose all canonical edges
+RSN05 current surface is accessible without color alone
+RSN06 collapse/expand does not dirty project
+RSN07 switching Room invalidates only local projection
+RSN08 wall removal/split cannot silently rebind to same numeric index
+RSN09 removed/ambiguous active wall falls back deterministically to Plan
+RSN10 keyboard/touch invoke same semantic surface command
+```
+
+## L4 — generator smoke
+
+Families:
 
 ```text
 Apartment
@@ -100,31 +162,20 @@ Residential complex
 Representative apartment set:
 
 ```text
-1-room  / compact
-2-room  / linear
-3-room  / dualAspect
-5-room  / splitDayNight
-10-room / multiWing
+1-room  compact
+2-room  linear
+3-room  dualAspect
+5-room  splitDayNight
+10-room multiWing
 ```
 
-Additional pairwise coverage rotates parameters such as:
+Additional pairwise dimensions include entry side, facade/window sides, kitchen mode, bathroom mode, balcony/loggia, area band and engineering profile.
 
-```text
-entry side
-facade/window sides
-kitchen mode
-bathroom mode
-balcony/loggia mode
-approximate area band
-shape/aspect ratio
-topology family
-```
+Unsupported combinations fail validation rather than being silently coerced.
 
-The generator test does not assert one exact pixel layout unless a case is explicitly golden. It asserts canonical invariants.
+## L5 — engineering starter smoke
 
-### L4 — Engineering starter smoke
-
-Representative engineering profiles:
+Representative profiles:
 
 ```text
 1-room Basic
@@ -144,25 +195,25 @@ ACS
 FIRE
 ```
 
-Pass criteria include logical connectivity, not merely rendered symbols.
-
-Examples:
+Qualification asserts logical relations as well as rendered symbols:
 
 ```text
 Switch controls Luminaire
 SocketGroup belongs to Circuit
-Circuit terminates at DistributionBoard/Protection role
-LAN outlet has a data path toward rack/patch role
-Fire detector participates in a fire loop/panel topology
+Circuit has distribution/protection path
+LAN outlet has media path to patch/rack role
+Fire detector belongs to fire loop/panel topology
 ```
 
-### L5 — Regeneration safety smoke
+Logical graph and physical route are tested as separate concepts.
+
+## L6 — regeneration safety
 
 Required sequence:
 
 ```text
 generate
-→ manually modify selected generated entity/field
+→ manually override selected generated properties
 → regenerate selected discipline
 → preview diff
 → commit
@@ -173,451 +224,284 @@ generate
 Pass criteria:
 
 - manual entities preserved;
-- overridden generated fields preserved by default;
+- overridden properties preserved by default;
 - unrelated disciplines unchanged;
-- unresolved conflicts explicitly surfaced;
-- stable identities preserved for logically unchanged entities;
-- one committed regeneration action is one Undo transaction.
+- conflicts explicit;
+- logically unchanged entities preserve IDs;
+- one regeneration commit is one Undo transaction;
+- stale LocalProjectVersion blocks commit.
 
-### L6 — Persistence/migration smoke
+## L7 — persistence/migration
 
 Required paths:
 
 ```text
 current schema save/reopen
+legacy JSON → migrated canonical document
 older supported schema → migrate → reopen
-JSON transitional project → future Drift import
+future Drift import/round-trip
 portable snapshot/export when introduced
 ```
 
 Pass criteria:
 
-- schemaVersion moves only through registered migrations;
-- projectId unchanged;
-- stable entity IDs unchanged where semantics are unchanged;
-- resume context never rebinds by matching label or level number;
-- no silent inferred engineering meaning;
-- migration failure is fail-closed.
+- schema migration is registered/versioned;
+- ProjectId unchanged;
+- SiteId not substituted for ProjectId;
+- LevelId/SpaceId/BoundaryEdgeId preserved where semantics survive;
+- resume state never rebinds by label/level number/wall index;
+- invalid migration is fail-closed;
+- multi-building semantics round-trip completely.
 
-### L7 — Cross-platform native smoke
+## L8 — cross-platform native smoke
 
-For the same committed project fixture:
+One committed project fixture is opened/edited/saved across supported native targets.
 
-```text
-macOS → save
-Windows → open/edit/save
-Linux → open/edit/save
-Android → open/edit/save
-iPadOS/iOS → open/edit/save
-```
+Exact UI layout may differ. Canonical engineering semantics may not.
 
-Exact UI layout may differ. Persisted engineering semantics must not.
+Byte-for-byte file equality is not required.
 
-## QualificationScenario contract
+## CanonicalProjectFingerprint oracle
 
-Variant cases should be data-driven rather than hand-written widget flows only.
+Qualification uses a normalized semantic fingerprint for round-trip and failure assertions.
 
-Conceptual contract:
-
-```dart
-final class QualificationScenario {
-  final String id;
-  final TemplateRef template;
-  final WizardParameters parameters;
-  final EngineeringGenerationProfile? engineeringProfile;
-  final Set<EngineeringDiscipline> disciplines;
-  final QualificationExpectation expectation;
-}
-```
-
-`QualificationExpectation` should primarily assert invariants and ranges rather than brittle exact counts unless the template contract guarantees exact counts.
-
-Conceptual expectations:
+Include:
 
 ```text
-required building count
-allowed level count/range
-minimum/maximum space count
-required SpaceUsage classes
-required vertical-core kinds
-required service-entry roles
-required discipline graph roots
-requires distribution board
-requires network rack
-requires fire panel
-maximum blocking validation issues = 0
+stable identities
+hierarchy
+geometry
+SpaceType/SpaceUsage
+BoundaryEdge hosts/openings
+engineering logical graph
+circuits/routes
+provenance/generation state
 ```
 
-## Invariant oracles
+Exclude:
 
-Every generated or mutated candidate should be checked by reusable qualification oracles.
+```text
+hover/focus
+navigator scroll
+panel visibility
+serialization key order
+local DB row ids
+non-semantic timestamps unless specifically under test
+```
+
+Required assertions:
+
+```text
+preview cancel         before == after
+failed command         before == after
+save/reopen            semantic fingerprint equal
+migration              expected semantic fingerprint
+cross-platform open    semantic fingerprint equivalent
+```
+
+## Reusable invariant oracles
 
 ### Identity oracle
 
 ```text
-all persistent IDs non-empty
-all persistent IDs unique in their identity scope
-no ID derived from list index/platform database row
-renames preserve identity
-logical regeneration preserves identity
+all persistent IDs non-empty and unique in scope
+renames/renumber preserve identity
+no ID derived from list index/level number/platform/local row id
+regeneration preserves logically unchanged identity
 ```
 
 ### Hierarchy oracle
 
 ```text
-all buildings belong to project/site
-all levels belong to exactly one building
-all zones reference existing spaces
-all openings reference valid hosts
-all vertical-core nodes reference valid levels
-all service entries reference valid site/building targets
+all Buildings belong to Site/Project
+all Levels belong to one Building
+all StructuralZones reference existing Spaces
+all openings reference valid BoundaryEdge hosts
+all VerticalCore nodes reference valid LevelIds
+all service entries reference existing targets
+```
+
+### Boundary topology oracle
+
+```text
+all persistent wall hosts reference BoundaryEdgeId
+polygon edit explicitly maps preserved/split/merged/removed edges
+removed edge never silently rebinds to same index
+hosted openings/components/routes are remapped or conflicted explicitly
 ```
 
 ### Geometry oracle
 
 ```text
 no degenerate room polygons
-no unintended room overlap
-spaces remain within expected level envelope when generator claims containment
-openings have valid wall/surface hosts
-all canonical coordinates use deterministic millimetre units
+no unintended overlap
+rooms remain inside promised envelopes
+canonical coordinates use deterministic mm units
 ```
 
 ### Engineering graph oracle
 
 ```text
 all endpoints exist
-all ports support connected media
-no dangling route endpoints
-required generated loads have a valid source/distribution path
-no discipline graph silently references removed structural entities
+ports/media are compatible
+logical relations are valid independently from physical routes
+no dangling route endpoint
+required loads have valid source/distribution topology
 ```
 
 ### Provenance oracle
 
 ```text
-manual objects have manual/import provenance as appropriate
-generated objects have generationId/template/generator context
-overridden fields are explicit
-lockedFromRegeneration is obeyed
-generationKey is unique within one generation semantic scope
-```
-
-### Persistence oracle
-
-```text
-capture/save/reopen preserves canonical graph
-semantic equality holds after round-trip
-transient UI state such as hover/compass visibility/scroll offset is not promoted to engineering meaning
-```
-
-### Sync-readiness oracle
-
-```text
-projectId preserved
-schemaVersion explicit
-stable entity IDs preserved
-no platform-local row ID leaks into canonical references
-candidate operations can be represented as deterministic change-sets later
+origin explicit
+GenerationId/template/generator metadata valid where applicable
+generationKey unique in semantic scope
+overriddenProperties explicit
+lockedFromRegeneration honored
 ```
 
 ### Transaction oracle
 
 ```text
-one semantic command produces one committed ProjectChangeSet
-failed validation commits nothing
-one committed structural/generation action produces one Undo record
-one committed action publishes one canonical change boundary
-cancel/preview leaves project semantic fingerprint unchanged
+one command → one committed ProjectChangeSet
+failed validation → zero commit
+one semantic action → one UndoRecord
+LocalProjectVersion increments once per commit
 ```
 
-### Navigator projection oracle
+### Projection oracle
 
 ```text
-current Site/Building/Level derives from canonical navigation state
-selected Zone/Room does not erase active Level context
-same-number Levels in different Buildings are unambiguous by stable IDs
-explicit navigation auto-expands required ancestors
-explicit navigation reveals current node in scroll view
-hover does not change current/selected project state
-+ Building targets active Site
-+ Level targets active Building
-+ Room targets active Level
-cancel/failure preserves previous current location
-delete never leaves dangling current/selected IDs
-canvas/editor selection and navigator path agree
-breadcrumb and tree derive from the same source of truth
+navigator/editor/breadcrumb agree
+active context distinct from selected entity
+ProjectIndex resolves current nodes directly
+hover/surface changes do not rebuild whole project tree
 ```
 
 ## Pairwise/combinatorial strategy
 
-Do not execute every possible combination of all wizard parameters in ordinary CI.
+Do not execute a full Cartesian product in ordinary CI.
 
-Instead build a deterministic pairwise matrix per generator family.
+Build deterministic pairwise matrices per family plus mandatory boundaries and risk-selected cases.
 
 Example apartment dimensions:
 
 ```text
-roomCount: 1, 2, 3, 5, 10
-topology: compact, linear, corner, dualAspect, splitDayNight, multiWing
-kitchen: separate, kitchenLiving
-bathroom: combined, split
-balcony: none, balcony, loggia
-engineering: none, Basic, Standard, Premium
+roomCount: 1,2,3,5,10
+topology: compact,linear,corner,dualAspect,splitDayNight,multiWing
+kitchen: separate,kitchenLiving
+bathroom: combined,split
+balcony: none,balcony,loggia
+engineering: none,Basic,Standard,Premium
 ```
 
-The qualification-case generator selects a minimal deterministic set covering parameter pairs and mandatory boundary cases.
-
-Unsupported combinations must fail validation before canonical commit rather than being silently coerced.
-
-## Building/ЖК matrix
-
-Representative building scenarios:
+## Multi-building matrix
 
 ```text
-B01 1 floor, no basement
-B02 2 floors + basement
-B03 5 floors, typical floors
-B04 20 floors, multiple apartment mixes
-B05 technical floor + roof
-B06 shared vertical cores
-B07 100-floor stress fixture (non-smoke performance suite)
-```
+B01 one building, one level
+B02 two buildings each with Floor 2
+B03 five-floor building with typical floors
+B04 twenty floors with mixed apartments
+B05 basement + technical + roof
+B06 shared service infrastructure
+B07 100-floor stress fixture
 
-Representative residential-complex scenarios:
-
-```text
-RC01 2 residential buildings on one site
-RC02 3 buildings + shared courtyard
-RC03 buildings + standalone parking/service block
+RC01 two residential buildings
+RC02 three buildings + courtyard
+RC03 standalone parking/service block
 RC04 shared electrical service entry
-RC05 mixed building heights and apartment mixes
-RC06 multi-building engineering backbone stress fixture
+RC05 mixed heights/apartment mixes
+RC06 multi-building engineering-backbone stress
 ```
 
-Mandatory navigator multi-building cases:
+## Wall topology matrix
 
 ```text
-NV01 Building A/Floor 2 and Building B/Floor 2 show distinct current paths
-NV02 switch Building A → Building B updates active Building and Level atomically
-NV03 create Level in Building B cannot appear under Building A
-NV04 selecting deep Room reveals full ancestor path
-NV05 deleting active Level chooses deterministic valid fallback
+WALL01 rectangle room stable wall references
+WALL02 L-shape >4 edges
+WALL03 insert vertex splitting one wall
+WALL04 remove/merge edge with opening host
+WALL05 selected wall removed → Plan fallback
+WALL06 route/component hosted on changed edge → remap or conflict
+WALL07 save/reopen preserves BoundaryEdgeId semantics
 ```
-
-## Engineering matrix
-
-Each discipline gets minimum semantic coverage.
-
-### POWER
-
-```text
-socket groups
-high-load dedicated circuit
-board assignment
-protection role
-service-entry/source path
-```
-
-### LIGHTING
-
-```text
-luminaire generation
-switch/control relation
-lighting circuit
-board assignment
-```
-
-### LAN
-
-```text
-data outlet
-media-compatible cable path
-rack/patch role
-```
-
-### CCTV
-
-```text
-camera placement role
-network/power or PoE dependency
-recording/network root role
-```
-
-### ACS
-
-```text
-reader/door relation
-controller role
-power/data/control topology
-```
-
-### FIRE
-
-```text
-detector/notification roles
-loop topology
-fire panel/root role
-```
-
-The current electrical-only compatibility model must not be treated as sufficient proof for non-power disciplines.
-
-## Preview/cancel qualification
-
-Every Wizard/regeneration path has tests proving:
-
-```text
-open preview
-→ generate candidate
-→ inspect diff
-→ cancel
-```
-
-Canonical project semantic fingerprint before and after cancel must be equal.
-
-No permanent IDs allocated during preview may leak into committed stores unless the design explicitly allocates them transactionally at commit.
-
-## Diff qualification
-
-Diff engine must classify at least:
-
-```text
-ADD
-UPDATE
-PRESERVE
-REMOVE
-CONFLICT
-```
-
-Tests cover:
-
-- new generated item;
-- generated item changed only by generator;
-- manually modified generated item;
-- manually created competing item;
-- removed template role;
-- locked entity;
-- unrelated discipline.
 
 ## Undo/Redo qualification
 
-Required transaction scenarios:
-
 ```text
-create one level → Undo → Redo
-generate apartment → Undo → Redo
+create level → Undo → Redo
+create room → Undo → Redo
 create floors 2..20 → Undo → Redo
+generate apartment → Undo → Redo
 regenerate Lighting → Undo → Redo
 remove dependency-safe structure → Undo → Redo
 ```
 
-Every intermediate state must satisfy canonical graph validation and leave navigator current location valid.
+Every intermediate state must validate and retain a valid navigation context.
 
-## Performance qualification
+## Performance/stress qualification
 
-Ordinary smoke is separated from stress/performance gates.
-
-Performance fixtures include:
+Stress fixtures:
 
 ```text
 100+ floors
 1000+ spaces
 multiple buildings
 5000+ engineering components
+large logical graph
 large route graph
 large navigator tree
 ```
 
-Measure at least:
+Measure:
 
-- command execution time;
-- candidate validation time;
-- navigator projection/update time;
-- current-node reveal/lookup time;
-- save/autosave serialization time;
-- memory growth during Wizard preview/regeneration;
-- rebuild counts for transient hover/selection changes.
+- command execution;
+- candidate validation;
+- ProjectIndex lookup;
+- navigator projection/current-node reveal;
+- persistence/autosave;
+- Wizard preview memory;
+- regeneration diff time;
+- repaint/rebuild counts for hover/surface selection.
 
-Reject designs that require full-project deep-copy for every pointer move, hover or parameter slider tick, or repeated O(N²) scans to reveal current tree location.
-
-## Native platform sequence
-
-Development qualification order:
-
-```text
-1 macOS
-2 Windows
-3 Linux
-4 Android
-5 iPadOS / iOS
-```
-
-A feature is not cross-platform complete merely because macOS passes. macOS is the first reference qualification platform.
+Reject architectures that deep-copy the entire project for pointer/hover/slider changes or repeatedly scan the complete tree for ordinary navigation.
 
 ## CI gate groups
 
-Recommended CI grouping:
-
 ```text
-Q1 domain/application invariants
-Q2 mutation/undo tests
-Q3 Wizard deterministic generator tests
-Q4 variant/pairwise generator matrix
-Q5 engineering topology tests
-Q6 provenance/regeneration tests
-Q7 persistence/migration tests
-Q8 navigator projection/current-location + widget/accessibility tests
-Q9 macOS native integration
-Q10 Windows/Linux native integration
-Q11 Android/iOS/iPadOS qualification as runners/devices become available
-Q12 stress/performance suite outside every-commit smoke when cost is high
+Q0 foundation contract tests
+Q1 identity/hierarchy/boundary topology
+Q2 mutation/version/change-set/undo
+Q3 ProjectRepository + codec + migration
+Q4 navigator + Room Surface Navigator
+Q5 deterministic Wizard + pairwise generator matrix
+Q6 engineering graph/connectivity
+Q7 provenance/regeneration
+Q8 macOS native integration
+Q9 Windows/Linux native integration
+Q10 Android/iOS/iPadOS qualification
+Q11 stress/performance outside every-commit smoke where necessary
 ```
-
-## Release/merge qualification summary
-
-A future implementation PR should publish a compact qualification report such as:
-
-```text
-Project Composition Qualification
-
-Structural scenarios          PASS
-Navigator current location    PASS
-Apartment variant matrix      PASS
-Cottage variants              PASS
-Building variants             PASS
-Residential complex variants  PASS
-Engineering profiles          PASS
-Regeneration safety           PASS
-Undo/Redo                     PASS
-Persistence/migrations        PASS
-Native platform gates         PASS/expected staged status
-Web dependency check          PASS (none)
-```
-
-Exact numeric counts are generated by the test catalog and should be reported by CI.
 
 ## Merge blockers
 
-The following are merge-blocking for the corresponding implementation stage:
+The applicable implementation stage is blocked if any of these are true:
 
-- invalid canonical graph can be committed;
-- duplicate/dangling persistent IDs;
-- navigator/editor disagree about active Building/Level;
-- same-number Levels in different Buildings are ambiguous;
-- current location remains hidden inside collapsed ancestors after explicit navigation;
-- authoring actions can target stale/hidden context;
-- delete/migration leaves dangling current/selected IDs;
+- duplicate authoritative copies of persistent entities are introduced;
+- Level identity depends on level number;
+- wall-host identity depends only on mutable wall index;
+- invalid graph can commit;
+- stale local candidate can overwrite newer state;
 - preview mutates the live project;
-- generation loses manual edits silently;
-- regeneration crosses discipline boundaries without declared dependency;
-- save/reopen changes engineering semantics;
-- migration loses identities silently;
-- one supported native platform creates semantics another cannot open;
-- any Web/browser-specific persistence or project semantics are introduced;
-- Wizard tests cover only one happy-path demo without boundary/variant qualification.
+- one command produces partial/multiple unintended commits;
+- navigator/editor disagree about active context;
+- same-number Levels across Buildings are ambiguous;
+- generation silently loses manual overrides;
+- migration changes semantic fingerprint unexpectedly;
+- one native platform creates semantics another cannot open;
+- Web/browser-specific persistence or project semantics are introduced.
 
 ## Non-negotiable conclusion
 
-Variant qualification is part of the feature architecture, not an optional late QA activity.
+Variant qualification is part of the architecture.
 
-The implementation is considered robust only when project composition and generation are validated across representative structural, navigator, generator, engineering, persistence and native-platform combinations while preserving the same canonical ElecX project semantics.
+The subsystem is robust only when identity, structural mutation, wall topology, navigation, generation, engineering graph, persistence and native-platform semantics are proven across representative variants rather than one happy-path demo.
