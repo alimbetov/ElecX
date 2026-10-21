@@ -25,7 +25,8 @@ void main() {
       expect(session.navigation.selectedSpaceId, SpaceId('space-1'));
     });
 
-    test('foreign Site navigation is rejected without partial state change', () {
+    test('foreign Site navigation is rejected without partial state change',
+        () {
       final project = _project('site-1');
       final foreignProject = _project('site-other');
       final session = ProjectStructureAuthoringSession(
