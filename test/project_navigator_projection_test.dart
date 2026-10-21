@@ -30,6 +30,20 @@ void main() {
       );
     });
 
+    test('projection records canonical project identity and source version', () {
+      final project = _project(version: 7);
+      final projection = ProjectNavigatorProjection.build(project);
+
+      expect(projection.projectId, ProjectId('project-1'));
+      expect(projection.sourceVersion, LocalProjectVersion(7));
+      expect(projection.isCurrentFor(project), isTrue);
+      expect(projection.isCurrentFor(_project(version: 8)), isFalse);
+      expect(
+        projection.isCurrentFor(_project(projectIdValue: 'project-2', version: 7)),
+        isFalse,
+      );
+    });
+
     test('breadcrumb uses the same indexed path as selected Space', () {
       final project = _project();
       final projection = ProjectNavigatorProjection.build(project);
@@ -190,6 +204,26 @@ void main() {
       );
     });
 
+    test('navigation from another Site is rejected instead of rendered', () {
+      final project = _project();
+      final projection = ProjectNavigatorProjection.build(project);
+      final otherProject = _project(siteIdValue: 'other-site');
+      final otherNavigation = ProjectNavigationState.initial(otherProject);
+
+      expect(
+        () => projection.breadcrumb(otherNavigation),
+        throwsA(isA<StateError>()),
+      );
+      expect(
+        () => projection.currentPathIds(otherNavigation),
+        throwsA(isA<StateError>()),
+      );
+      expect(
+        () => projection.requiredExpandedAncestorIds(otherNavigation),
+        throwsA(isA<StateError>()),
+      );
+    });
+
     test('level-only context produces Site Building Level breadcrumb', () {
       final project = _project();
       final projection = ProjectNavigatorProjection.build(project);
@@ -209,8 +243,13 @@ void main() {
   });
 }
 
-ProjectAggregateRoot _project({bool reverseInsertionOrder = false}) {
-  final siteId = SiteId('site-root');
+ProjectAggregateRoot _project({
+  bool reverseInsertionOrder = false,
+  int version = 0,
+  String projectIdValue = 'project-1',
+  String siteIdValue = 'site-root',
+}) {
+  final siteId = SiteId(siteIdValue);
   final buildingAId = BuildingId('building-a');
   final buildingBId = BuildingId('building-b');
   final aLevel1Id = LevelId('a-level-1');
@@ -278,9 +317,9 @@ ProjectAggregateRoot _project({bool reverseInsertionOrder = false}) {
   }
 
   return ProjectAggregateRoot(
-    id: ProjectId('project-1'),
+    id: ProjectId(projectIdValue),
     siteId: siteId,
-    version: LocalProjectVersion(0),
+    version: LocalProjectVersion(version),
     stores: ProjectEntityStores(
       sites: <SiteId, ProjectSiteEntity>{
         siteId: ProjectSiteEntity(
