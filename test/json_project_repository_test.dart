@@ -54,7 +54,8 @@ void main() {
     ]);
   });
 
-  test('canonical codec repository round-trip preserves Project North', () async {
+  test('canonical codec repository round-trip preserves Project North',
+      () async {
     final canonicalRepository = JsonProjectRepository(
       rootDirectory: root,
       codec: const CanonicalProjectDocumentCodec(),
@@ -73,7 +74,35 @@ void main() {
     expect(loaded, isNotNull);
     expect(loaded!.aggregate.engineeringMetadata.projectNorth, north);
     expect(loaded.localVersion, snapshot.localVersion);
-    expect(loaded.aggregate.index.site(loaded.siteId)?.name, 'Site project-north');
+    expect(
+      loaded.aggregate.index.site(loaded.siteId)?.name,
+      'Site project-north',
+    );
+  });
+
+  test('rejects a lossy codec before touching the project file', () async {
+    final lossyRepository = JsonProjectRepository(
+      rootDirectory: root,
+      codec: _DroppingProjectNorthCodec(),
+    );
+    final snapshot = _snapshot(
+      id: 'lossy-project',
+      name: 'Lossy Project',
+      updatedAt: DateTime.utc(2026, 10, 21, 10),
+      north: ProjectEngineeringNorth.fromDegrees(45),
+    );
+
+    await expectLater(
+      lossyRepository.save(snapshot),
+      throwsA(isA<StateError>()),
+    );
+
+    final projectFiles = await root
+        .list()
+        .where((entity) =>
+            entity is File && entity.path.endsWith('.elecx.project.json'))
+        .toList();
+    expect(projectFiles, isEmpty);
   });
 
   test('returns null for a project that has never been saved', () async {
@@ -202,6 +231,30 @@ final class _TestProjectDocumentCodec implements ProjectDocumentCodec {
       name: payload['name']! as String,
       createdAt: DateTime.parse(payload['createdAt']! as String),
       updatedAt: DateTime.parse(payload['updatedAt']! as String),
+    );
+  }
+}
+
+final class _DroppingProjectNorthCodec implements ProjectDocumentCodec {
+  static const _delegate = CanonicalProjectDocumentCodec();
+
+  @override
+  int get currentSchemaVersion => _delegate.currentSchemaVersion;
+
+  @override
+  ProjectDocument encode(ProjectSnapshot snapshot) => _delegate.encode(snapshot);
+
+  @override
+  ProjectSnapshot decode(ProjectDocument document) {
+    final decoded = _delegate.decode(document);
+    final aggregate = decoded.aggregate;
+    return decoded.copyWith(
+      aggregate: ProjectAggregateRoot(
+        id: aggregate.id,
+        siteId: aggregate.siteId,
+        version: aggregate.version,
+        stores: aggregate.stores,
+      ),
     );
   }
 }
