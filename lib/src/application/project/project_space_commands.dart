@@ -53,9 +53,10 @@ final class CreateSpaceCommand implements ProjectCommand {
       if (zone.levelId != level.id) {
         throw ProjectAuthoringException(
           code: ProjectAuthoringIssueCode.structuralZoneLevelMismatch,
-          entityId: structuralZoneId,
-          relatedEntityId: level.id,
-          message: 'Structural zone ${zone.id} belongs to level ${zone.levelId}, '
+          entityId: zone.id,
+          relatedEntityId: zone.levelId,
+          message:
+              'Structural zone ${zone.id} belongs to level ${zone.levelId}, '
               'not requested level ${level.id}.',
         );
       }
