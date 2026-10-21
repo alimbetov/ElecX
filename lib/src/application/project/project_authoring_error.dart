@@ -8,6 +8,9 @@ enum ProjectAuthoringIssueCode {
   duplicateLevelNumber,
   structuralZoneAlreadyExists,
   structuralZoneNotFound,
+  structuralZoneLevelMismatch,
+  spaceAlreadyExists,
+  spaceNotFound,
 }
 
 final class ProjectAuthoringException implements Exception {
