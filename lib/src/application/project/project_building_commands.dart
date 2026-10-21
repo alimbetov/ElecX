@@ -1,26 +1,7 @@
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
+import 'project_authoring_error.dart';
 import 'project_mutation.dart';
-
-enum ProjectAuthoringIssueCode {
-  buildingAlreadyExists,
-  buildingNotFound,
-}
-
-final class ProjectAuthoringException implements Exception {
-  const ProjectAuthoringException({
-    required this.code,
-    required this.message,
-    this.entityId,
-  });
-
-  final ProjectAuthoringIssueCode code;
-  final String message;
-  final EntityId? entityId;
-
-  @override
-  String toString() => '${code.name}: $message';
-}
 
 /// Creates one empty building under the canonical root site.
 ///
