@@ -6,6 +6,8 @@ enum ProjectAuthoringIssueCode {
   levelAlreadyExists,
   levelNotFound,
   duplicateLevelNumber,
+  structuralZoneAlreadyExists,
+  structuralZoneNotFound,
 }
 
 final class ProjectAuthoringException implements Exception {
