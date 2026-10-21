@@ -192,10 +192,10 @@ final class CanonicalEditorWorkspaceAdapter {
 
     if (legacySpaceId != null) {
       workspace.editor.selectSpace(legacySpaceId);
-    } else if (legacyZoneId != null) {
-      // A Zone may be the selected leaf. The old selectZone() API selects its
-      // first space as a side effect, so clear canvas room selection to keep
-      // the canonical leaf authoritative.
+    } else {
+      // selectLevel() selects the first legacy Space and selectZone() also
+      // selects its first Space. Canonical Level-only and Zone-only navigation
+      // must not inherit either legacy side effect.
       workspace.editor.selectSpace(null);
     }
   }
