@@ -1,17 +1,19 @@
 import '../../application/project/project_snapshot.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
+import '../../domain/project_orientation.dart';
 import 'project_document_codec.dart';
 
 /// Canonical multi-building persistence codec introduced by P2D-1.
 ///
-/// This schema is intentionally separate from the transitional editor JSON
-/// schema. It persists the authoritative P1 aggregate without duplicating
-/// building state inside both Site and Workspace representations.
+/// Schema v2 adds canonical project engineering orientation while retaining an
+/// explicit, deterministic migration from schema v1. This schema remains
+/// separate from the transitional editor JSON schema.
 final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
   const CanonicalProjectDocumentCodec();
 
-  static const int schemaVersion = 1;
+  static const int schemaVersion = 2;
+  static const int _legacySchemaVersion = 1;
 
   @override
   int get currentSchemaVersion => schemaVersion;
@@ -30,6 +32,10 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
           'updatedAt': snapshot.updatedAt.toUtc().toIso8601String(),
           'localVersion': snapshot.localVersion.value,
         },
+        'projectOrientation': <String, Object?>{
+          'projectNorthMilliDegrees': snapshot.aggregate.engineeringMetadata
+              .projectNorth?.milliDegreesClockwiseFromPositiveY,
+        },
         'sites': _encodeSites(stores),
         'buildings': _encodeBuildings(stores),
         'levels': _encodeLevels(stores),
@@ -41,15 +47,14 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
 
   @override
   ProjectSnapshot decode(ProjectDocument document) {
-    if (document.schemaVersion != schemaVersion) {
-      throw FormatException(
-        'Unsupported canonical ElecX project schema ${document.schemaVersion}; '
-        'expected $schemaVersion.',
-      );
-    }
+    final migrated = _migrateToCurrent(document);
 
     try {
-      final metadata = _map(document.payload['metadata'], 'metadata');
+      final metadata = _map(migrated.payload['metadata'], 'metadata');
+      final orientation = _map(
+        migrated.payload['projectOrientation'],
+        'projectOrientation',
+      );
       final projectId = ProjectId(_string(metadata['projectId'], 'projectId'));
       final siteId = SiteId(_string(metadata['siteId'], 'siteId'));
       final name = _string(metadata['name'], 'name');
@@ -58,9 +63,12 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
       final localVersion = LocalProjectVersion(
         _int(metadata['localVersion'], 'localVersion'),
       );
+      final projectNorth = _projectNorth(
+        orientation['projectNorthMilliDegrees'],
+      );
 
       final sites = <SiteId, ProjectSiteEntity>{};
-      for (final raw in _list(document.payload['sites'], 'sites')) {
+      for (final raw in _list(migrated.payload['sites'], 'sites')) {
         final json = _map(raw, 'site');
         final id = SiteId(_string(json['id'], 'site.id'));
         if (sites.containsKey(id)) {
@@ -77,7 +85,7 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
       }
 
       final buildings = <BuildingId, ProjectBuildingEntity>{};
-      for (final raw in _list(document.payload['buildings'], 'buildings')) {
+      for (final raw in _list(migrated.payload['buildings'], 'buildings')) {
         final json = _map(raw, 'building');
         final id = BuildingId(_string(json['id'], 'building.id'));
         if (buildings.containsKey(id)) {
@@ -96,7 +104,7 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
       }
 
       final levels = <LevelId, ProjectLevelEntity>{};
-      for (final raw in _list(document.payload['levels'], 'levels')) {
+      for (final raw in _list(migrated.payload['levels'], 'levels')) {
         final json = _map(raw, 'level');
         final id = LevelId(_string(json['id'], 'level.id'));
         if (levels.containsKey(id)) {
@@ -123,7 +131,7 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
       }
 
       final zones = <ZoneId, ProjectStructuralZoneEntity>{};
-      for (final raw in _list(document.payload['zones'], 'zones')) {
+      for (final raw in _list(migrated.payload['zones'], 'zones')) {
         final json = _map(raw, 'zone');
         final id = ZoneId(_string(json['id'], 'zone.id'));
         if (zones.containsKey(id)) {
@@ -141,7 +149,7 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
       }
 
       final spaces = <SpaceId, ProjectSpaceEntity>{};
-      for (final raw in _list(document.payload['spaces'], 'spaces')) {
+      for (final raw in _list(migrated.payload['spaces'], 'spaces')) {
         final json = _map(raw, 'space');
         final id = SpaceId(_string(json['id'], 'space.id'));
         if (spaces.containsKey(id)) {
@@ -158,6 +166,9 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
         id: projectId,
         siteId: siteId,
         version: localVersion,
+        engineeringMetadata: ProjectEngineeringMetadata(
+          projectNorth: projectNorth,
+        ),
         stores: ProjectEntityStores(
           sites: sites,
           buildings: buildings,
@@ -179,6 +190,45 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
       throw FormatException('Invalid canonical ElecX project value: $error');
     } on ProjectAggregateValidationException catch (error) {
       throw FormatException('Invalid canonical ElecX project graph: $error');
+    }
+  }
+
+  static ProjectDocument _migrateToCurrent(ProjectDocument document) {
+    switch (document.schemaVersion) {
+      case schemaVersion:
+        return document;
+      case _legacySchemaVersion:
+        return ProjectDocument(
+          schemaVersion: schemaVersion,
+          payload: <String, Object?>{
+            ...document.payload,
+            'projectOrientation': <String, Object?>{
+              'projectNorthMilliDegrees': null,
+            },
+          },
+        );
+      default:
+        throw FormatException(
+          'Unsupported canonical ElecX project schema '
+          '${document.schemaVersion}; supported versions are '
+          '$_legacySchemaVersion and $schemaVersion.',
+        );
+    }
+  }
+
+  static ProjectEngineeringNorth? _projectNorth(Object? value) {
+    if (value == null) return null;
+    if (value is! int) {
+      throw const FormatException(
+        'projectOrientation.projectNorthMilliDegrees must be an integer or null.',
+      );
+    }
+    try {
+      return ProjectEngineeringNorth.fromNormalizedMilliDegrees(value);
+    } on RangeError catch (error) {
+      throw FormatException(
+        'projectOrientation.projectNorthMilliDegrees is out of range: $error',
+      );
     }
   }
 
