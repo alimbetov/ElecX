@@ -13,26 +13,41 @@ This file is the current implementation tracker for P5D. Historical audit docume
 | P5D-B | P3 mutable root state, metadata diff, Set/Clear, Undo/Redo | DONE + HARDENED |
 | P5D-C | canonical codec v2, v1→v2 migration, semantic fingerprint, repository round-trip | DONE + HARDENED |
 | P5D-D | transient requested/effective visibility and Focus Mode semantics | DONE + HARDENED |
-| **P5D-E** | **presentation projection + `ProjectCompassOverlay` migration to defined / unspecified / unavailable** | **DONE + HARDENED** |
-| P5D-F | application edit port, runtime identity affinity, production screen cutover | IN PROGRESS |
-| P5D-G | full qualification matrix, regressions, closure | PENDING |
+| P5D-E | presentation projection + `ProjectCompassOverlay` migration to defined / unspecified / unavailable | DONE + HARDENED |
+| **P5D-F** | **application edit port, runtime identity affinity, production screen cutover** | **DONE + HARDENED** |
+| **P5D-G** | **full qualification matrix, regressions, closure** | **IN PROGRESS — FINAL HEAD CI GATE** |
 
-## P5D-E closure basis
+## P5D-F closure basis
 
-P5D-E is considered `DONE + HARDENED` because the implementation now satisfies these invariants:
+P5D-F is considered `DONE + HARDENED` because production wiring now satisfies these invariants:
 
-- `ProjectCompassOverlay` consumes presentation `CompassProjectionState`, not legacy `ProjectNorth`.
-- States are explicit: `CompassNorthDefined`, `CompassNorthUnspecified`, `CompassUnavailable`.
-- Cardinal projection is fixed for the current non-rotating `WorldCamera`: 0° up, 90° right, 180° down, 270° left.
-- Unsupported projection paths fail closed as `CompassUnavailable`.
-- `CompassNorthDefined` validates screen milli-degrees at runtime, not only through debug `assert`.
-- Unspecified North is not represented as 0° and does not render a directional `N` arrow.
-- Read-only overlay passes pointer/touch/wheel input through to the canvas.
-- Defined and unspecified accessibility semantics are explicit.
-- Light/dark theme smoke coverage exists.
-- Overlay size and projection invariants are guarded fail-closed.
-- Transitional legacy widget input has been removed as part of the following P5D-F cutover work; canonical production wiring no longer depends on the old overlay contract.
+- Project North editing is exposed through `ProjectNorthEditingPort` and shares the same P3 mutation timeline as structural authoring.
+- production editing is enabled only for exact screen/canonical/persistence-owner project identity affinity;
+- missing ownership callback or persistence-owner mismatch keeps the compass read-only;
+- canonical Project North commits never dirty the legacy editor document as a fallback persistence path;
+- same normalized Project North is a no-op and does not emit an ownership receipt;
+- stale dialog/version context fails closed before mutation;
+- open/workspace replacement re-resolves the canonical runtime rather than retaining stale bindings;
+- production canonical wiring contains no `workspace.updateProjectNorth()` fallback;
+- synchronous `CanonicalAuthoringOwnershipReceipt` is explicitly not a durable-save acknowledgement;
+- baseline HEAD `3fab65b49bee9fbc850d92bb564fdf6ac28940a3` passed Flutter #1911 and macOS Desktop #231.
 
-## Next gate
+## P5D-G qualification
 
-P5D-F must finish and be audited before P5D-G. P5D-G is the only stage allowed to mark the overall P5D package complete.
+P5D-G is now active. The authoritative qualification record is:
+
+```text
+docs/architecture/p5d-g-closure-note.md
+```
+
+Additional closure coverage is provided by:
+
+```text
+test/p5d_g_closure_test.dart
+```
+
+It explicitly qualifies schema-v2 null round-trip, canonical repository Project North persistence, presentation-only shell state, and same-number cross-building Level identity isolation.
+
+## Final gate
+
+P5D-G is the only stage allowed to mark the overall P5D package complete. It moves to `DONE + HARDENED` only after the final branch HEAD containing the qualification record passes the complete Flutter and macOS Desktop workflows.
