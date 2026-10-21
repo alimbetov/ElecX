@@ -73,9 +73,7 @@ void main() {
       );
       expect(session.undoDepth, 1);
 
-      final undone = session.undo(
-        expectedVersion: session.current.version,
-      )!;
+      final undone = session.undo(session.current.version)!;
       expect(undone.project.index.space(spaceId), isNull);
       expect(
         undone.project.index.level(LevelId('level-1'))!.spaceIds,
@@ -86,9 +84,7 @@ void main() {
         isNot(contains(spaceId)),
       );
 
-      final redone = session.redo(
-        expectedVersion: session.current.version,
-      )!;
+      final redone = session.redo(session.current.version)!;
       expect(redone.project.index.space(spaceId), isNotNull);
       expect(redone.project.index.structuralZoneBySpace[spaceId], zoneId);
     });
@@ -372,8 +368,7 @@ ProjectAggregateRoot _project({
             id: zoneId,
             levelId: levelOneId,
             name: 'Apartment A',
-            spaceIds:
-                spaceInZone ? <SpaceId>[spaceId] : const <SpaceId>[],
+            spaceIds: spaceInZone ? <SpaceId>[spaceId] : const <SpaceId>[],
           ),
       },
       spaces: <SpaceId, ProjectSpaceEntity>{
