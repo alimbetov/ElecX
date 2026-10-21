@@ -1,7 +1,7 @@
 /// Explicit geospatial/true-north compatibility reference.
 ///
 /// This preserves the legacy daylight conversion semantics while keeping them
-/// separate from canonical engineering [Project North]. P5D must not infer or
+/// separate from canonical engineering Project North. P5D must not infer or
 /// fabricate this value from the canonical compass orientation.
 final class SiteTrueNorthReference {
   const SiteTrueNorthReference._(this.degreesClockwiseFromProjectPositiveY);
