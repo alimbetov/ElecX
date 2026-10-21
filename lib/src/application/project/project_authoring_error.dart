@@ -3,12 +3,15 @@ import '../../domain/project_identity.dart';
 enum ProjectAuthoringIssueCode {
   buildingAlreadyExists,
   buildingNotFound,
+  buildingHasLevels,
   levelAlreadyExists,
   levelNotFound,
+  levelHasChildren,
   duplicateLevelNumber,
   structuralZoneAlreadyExists,
   structuralZoneNotFound,
   structuralZoneLevelMismatch,
+  structuralZoneHasSpaces,
   spaceAlreadyExists,
   spaceNotFound,
 }
