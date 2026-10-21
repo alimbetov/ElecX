@@ -39,12 +39,20 @@ final class CanonicalEditorScreenCutoverBinding {
 
   bool _started = false;
   bool _disposed = false;
-  String? _lastLegacySelectionFingerprint;
+  _LegacyNavigationFingerprint? _lastLegacySelectionFingerprint;
+  _LegacyNavigationFingerprint? _lastRejectedLegacySelectionFingerprint;
 
   bool get isStarted => _started;
 
+  bool isBoundTo(EditorBuildingWorkspace candidate) =>
+      identical(workspace, candidate);
+
   /// Attaches the legacy listeners and optionally projects the current
   /// canonical location into the canvas. Calling start twice is a no-op.
+  ///
+  /// Unexpected initial-push failures roll listener registration back so the
+  /// screen cannot remain half-started. Controlled materialization blockers do
+  /// not throw and keep the binding active for later valid navigation.
   void start({bool pushInitialCanonicalState = true}) {
     _requireNotDisposed();
     if (_started) return;
@@ -53,8 +61,13 @@ final class CanonicalEditorScreenCutoverBinding {
     workspace.editor.addListener(_onLegacyRuntimeChanged);
     _lastLegacySelectionFingerprint = _legacySelectionFingerprint();
 
-    if (pushInitialCanonicalState) {
+    if (!pushInitialCanonicalState) return;
+
+    try {
       pushCanonicalToEditor();
+    } catch (_) {
+      _detachListeners();
+      rethrow;
     }
   }
 
@@ -74,6 +87,7 @@ final class CanonicalEditorScreenCutoverBinding {
     try {
       coordinator.pushCanonicalToEditor();
       _lastLegacySelectionFingerprint = _legacySelectionFingerprint();
+      _lastRejectedLegacySelectionFingerprint = null;
       return readiness;
     } on CanonicalEditorCutoverBlockedException catch (error) {
       onBlocked?.call(error.result);
@@ -89,11 +103,7 @@ final class CanonicalEditorScreenCutoverBinding {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
-    if (_started) {
-      workspace.removeListener(_onLegacyRuntimeChanged);
-      workspace.editor.removeListener(_onLegacyRuntimeChanged);
-    }
-    _started = false;
+    _detachListeners();
   }
 
   void _onLegacyRuntimeChanged() {
@@ -105,23 +115,38 @@ final class CanonicalEditorScreenCutoverBinding {
     }
 
     final fingerprint = _legacySelectionFingerprint();
-    if (fingerprint == _lastLegacySelectionFingerprint) return;
+    if (fingerprint == _lastLegacySelectionFingerprint ||
+        fingerprint == _lastRejectedLegacySelectionFingerprint) {
+      return;
+    }
 
     try {
       final navigation = coordinator.pullLegacyToCanonical();
       if (navigation == null) return;
       _lastLegacySelectionFingerprint = fingerprint;
+      _lastRejectedLegacySelectionFingerprint = null;
       onCanonicalNavigationChanged?.call(navigation);
     } catch (error, stackTrace) {
+      // Suppress repeated reports for the same invalid legacy selection. A new
+      // navigation fingerprint is eligible for another pull attempt.
+      _lastRejectedLegacySelectionFingerprint = fingerprint;
       onError?.call(error, stackTrace);
     }
   }
 
-  String _legacySelectionFingerprint() {
-    final levelId = workspace.activeLevel?.level.id ?? '';
-    final zoneId = workspace.selectedZoneId ?? '';
-    final spaceId = workspace.editor.selectedSpaceId ?? '';
-    return '${workspace.context.name}|$levelId|$zoneId|$spaceId';
+  _LegacyNavigationFingerprint _legacySelectionFingerprint() =>
+      _LegacyNavigationFingerprint(
+        context: workspace.context,
+        levelId: workspace.activeLevel?.level.id,
+        zoneId: workspace.selectedZoneId,
+        spaceId: workspace.editor.selectedSpaceId,
+      );
+
+  void _detachListeners() {
+    if (!_started) return;
+    workspace.removeListener(_onLegacyRuntimeChanged);
+    workspace.editor.removeListener(_onLegacyRuntimeChanged);
+    _started = false;
   }
 
   void _requireNotDisposed() {
@@ -129,4 +154,29 @@ final class CanonicalEditorScreenCutoverBinding {
       throw StateError('Canonical editor screen cutover binding is disposed.');
     }
   }
+}
+
+final class _LegacyNavigationFingerprint {
+  const _LegacyNavigationFingerprint({
+    required this.context,
+    required this.levelId,
+    required this.zoneId,
+    required this.spaceId,
+  });
+
+  final EditorWorkspaceContext context;
+  final String? levelId;
+  final String? zoneId;
+  final String? spaceId;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _LegacyNavigationFingerprint &&
+      other.context == context &&
+      other.levelId == levelId &&
+      other.zoneId == zoneId &&
+      other.spaceId == spaceId;
+
+  @override
+  int get hashCode => Object.hash(context, levelId, zoneId, spaceId);
 }
