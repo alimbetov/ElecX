@@ -32,12 +32,14 @@ final class CreateStructuralZoneCommand implements ProjectCommand {
   @override
   ProjectCommandCandidate buildCandidate(ProjectAggregateRoot current) {
     final level = _requireLevel(current, levelId);
-    if (current.stores.zones.containsKey(zoneId)) {
+    final existingZone = current.index.zone(zoneId);
+    if (existingZone != null) {
       throw ProjectAuthoringException(
         code: ProjectAuthoringIssueCode.structuralZoneAlreadyExists,
         entityId: zoneId,
-        relatedEntityId: levelId,
-        message: 'Structural zone $zoneId already exists.',
+        relatedEntityId: existingZone.levelId,
+        message: 'Structural zone $zoneId already exists on level '
+            '${existingZone.levelId}; requested parent level is $levelId.',
       );
     }
 
