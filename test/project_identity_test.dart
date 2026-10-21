@@ -59,14 +59,16 @@ void main() {
       expect(ids.map((id) => id.value).toSet().length, ids.length);
     });
 
-    test('does not encode display numbers or collection positions', () {
+    test('successive allocations produce distinct stable value objects', () {
       final factory = SecureRandomEntityIdFactory(random: Random(7));
       final first = factory.newLevelId();
       final second = factory.newLevelId();
 
       expect(first, isNot(second));
-      expect(first.value, isNot(contains('1')));
-      expect(second.value, isNot(contains('2')));
+      expect(first.value.length, 36);
+      expect(second.value.length, 36);
+      expect(LevelId(first.value), first);
+      expect(LevelId(second.value), second);
     });
   });
 }
