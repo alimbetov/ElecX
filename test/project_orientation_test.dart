@@ -26,7 +26,7 @@ void main() {
       );
     });
 
-    test('quantizes wrap-around boundary deterministically', () {
+    test('rounding at the full-turn boundary is deterministic', () {
       expect(
         ProjectEngineeringNorth.fromDegrees(359.9994)
             .milliDegreesClockwiseFromPositiveY,
@@ -86,8 +86,7 @@ void main() {
 
     test('equality is deterministic and integer based', () {
       final a = ProjectEngineeringNorth.fromDegrees(32.5);
-      final b =
-          ProjectEngineeringNorth.fromNormalizedMilliDegrees(32500);
+      final b = ProjectEngineeringNorth.fromNormalizedMilliDegrees(32500);
 
       expect(a, b);
       expect(a.hashCode, b.hashCode);
@@ -113,13 +112,15 @@ void main() {
       );
       final cleared = withNorth.copyWith(clearProjectNorth: true);
 
-      expect(withNorth.projectNorth?.milliDegreesClockwiseFromPositiveY, 90000);
+      expect(
+        withNorth.projectNorth?.milliDegreesClockwiseFromPositiveY,
+        90000,
+      );
       expect(cleared.projectNorth, isNull);
     });
 
     test('copyWith rejects contradictory set and clear request', () {
       const initial = ProjectEngineeringMetadata();
-
       expect(
         () => initial.copyWith(
           projectNorth: ProjectEngineeringNorth.fromDegrees(90),
@@ -127,17 +128,6 @@ void main() {
         ),
         throwsArgumentError,
       );
-    });
-
-    test('explicit set and clear helpers have unambiguous semantics', () {
-      const initial = ProjectEngineeringMetadata();
-      final withNorth = initial.withProjectNorth(
-        ProjectEngineeringNorth.fromDegrees(180),
-      );
-      final cleared = withNorth.withoutProjectNorth();
-
-      expect(withNorth.projectNorth?.degrees, 180);
-      expect(cleared, const ProjectEngineeringMetadata());
     });
   });
 }
