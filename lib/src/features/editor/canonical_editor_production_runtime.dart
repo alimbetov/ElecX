@@ -12,7 +12,8 @@ import 'project_persistence_metadata.dart';
 /// Returning null keeps that workspace on the legacy navigator. This is the
 /// fail-closed path for documents/recovery snapshots that do not yet have a
 /// canonical project representation and explicit identity bindings.
-typedef CanonicalEditorRuntimeResolver = CanonicalEditorResolvedRuntime? Function(
+typedef CanonicalEditorRuntimeResolver = CanonicalEditorResolvedRuntime?
+    Function(
   EditorBuildingWorkspace workspace,
   EditorProjectMetadata metadata,
 );
