@@ -280,7 +280,8 @@ final class ProjectMutationPreview {
 
   ProjectEntityDiff get diff => entityDiff;
   Set<EntityId> get affectedEntityIds => entityDiff.affectedEntityIds;
-  bool get hasChanges => entityDiff.isNotEmpty || engineeringMetadataDiff.isNotEmpty;
+  bool get hasChanges =>
+      entityDiff.isNotEmpty || engineeringMetadataDiff.isNotEmpty;
 }
 
 /// Successful committed command/undo/redo result.
@@ -344,23 +345,6 @@ abstract final class CandidateGraphValidator {
 
 /// One original command boundary retained for deterministic undo/redo.
 final class UndoRecord {
-  factory UndoRecord({
-    required String commandType,
-    required ProjectEntityStores beforeStores,
-    required ProjectEntityStores afterStores,
-  }) =>
-      UndoRecord.fromStates(
-        commandType: commandType,
-        beforeState: ProjectMutableState(
-          engineeringMetadata: const ProjectEngineeringMetadata(),
-          stores: beforeStores,
-        ),
-        afterState: ProjectMutableState(
-          engineeringMetadata: const ProjectEngineeringMetadata(),
-          stores: afterStores,
-        ),
-      );
-
   UndoRecord.fromStates({
     required this.commandType,
     required this.beforeState,
@@ -384,9 +368,6 @@ final class UndoRecord {
   final String commandType;
   final ProjectMutableState beforeState;
   final ProjectMutableState afterState;
-
-  ProjectEntityStores get beforeStores => beforeState.stores;
-  ProjectEntityStores get afterStores => afterState.stores;
 }
 
 final class _ProjectMutableStateDiff {
@@ -435,7 +416,8 @@ final class ProjectMutationSession {
     CandidateGraphValidator.validate(current: before, candidate: candidate);
     final candidateState = candidate.resolveState(before);
     final beforeState = ProjectMutableState.fromProject(before);
-    final stateDiff = _ProjectMutableStateDiff.between(beforeState, candidateState);
+    final stateDiff =
+        _ProjectMutableStateDiff.between(beforeState, candidateState);
 
     final previewRoot = ProjectAggregateRoot(
       id: before.id,
@@ -462,7 +444,8 @@ final class ProjectMutationSession {
     final candidate = request.command.buildCandidate(before);
     CandidateGraphValidator.validate(current: before, candidate: candidate);
     final candidateState = candidate.resolveState(before);
-    final stateDiff = _ProjectMutableStateDiff.between(beforeState, candidateState);
+    final stateDiff =
+        _ProjectMutableStateDiff.between(beforeState, candidateState);
     if (stateDiff.isEmpty) return null;
 
     _requireVersion(request.expectedVersion);
@@ -508,7 +491,9 @@ final class ProjectMutationSession {
       record.beforeState,
     );
     if (stateDiff.isEmpty) {
-      throw StateError('Undo history is inconsistent with current project state.');
+      throw StateError(
+        'Undo history is inconsistent with current project state.',
+      );
     }
 
     final restored = _commitState(state: record.beforeState, before: before);
@@ -539,7 +524,9 @@ final class ProjectMutationSession {
       record.afterState,
     );
     if (stateDiff.isEmpty) {
-      throw StateError('Redo history is inconsistent with current project state.');
+      throw StateError(
+        'Redo history is inconsistent with current project state.',
+      );
     }
 
     final restored = _commitState(state: record.afterState, before: before);
