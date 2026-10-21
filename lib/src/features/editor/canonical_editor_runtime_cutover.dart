@@ -1,4 +1,3 @@
-import '../../application/project/project_navigation_state.dart';
 import '../../application/project/project_structure_authoring.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
@@ -9,6 +8,7 @@ enum CanonicalEditorCutoverPhase { idle, applyingCanonical, pullingLegacy }
 enum CanonicalEditorMaterializationStatus {
   alreadyMaterialized,
   materializable,
+  blockedCanonicalMismatch,
   blockedMissingGeometry,
   blockedMissingRuntimeRepresentation,
 }
@@ -24,12 +24,19 @@ final class CanonicalEditorMaterializationResult {
   final EntityId? entityId;
   final String? message;
 
+  /// Only an already-materialized target may be opened by the current
+  /// coordinator. `materializable` is intentionally not treated as openable:
+  /// no materialization mutation API exists in this P5C contract yet.
   bool get canOpen =>
-      status == CanonicalEditorMaterializationStatus.alreadyMaterialized ||
+      status == CanonicalEditorMaterializationStatus.alreadyMaterialized;
+
+  bool get canMaterialize =>
       status == CanonicalEditorMaterializationStatus.materializable;
 }
 
 abstract interface class CanonicalEditorMaterializer {
+  /// Pure readiness inspection. Implementations must not mutate canonical or
+  /// legacy runtime state from this method.
   CanonicalEditorMaterializationResult inspect({
     required ProjectAggregateRoot project,
     required ProjectNavigationState navigation,
@@ -51,18 +58,43 @@ final class ExistingBindingCanonicalEditorMaterializer
     required ProjectNavigationState navigation,
     required CanonicalEditorWorkspaceBinding binding,
   }) {
+    if (navigation.siteId != project.siteId) {
+      return CanonicalEditorMaterializationResult(
+        status: CanonicalEditorMaterializationStatus.blockedCanonicalMismatch,
+        entityId: navigation.siteId,
+        message: 'Navigation and canonical project belong to different Sites.',
+      );
+    }
+
     final buildingId = navigation.activeBuildingId;
-    if (buildingId == null || buildingId != binding.buildingId) {
+    final building =
+        buildingId == null ? null : project.index.building(buildingId);
+    if (buildingId == null ||
+        building == null ||
+        building.siteId != project.siteId ||
+        buildingId != binding.buildingId) {
       return CanonicalEditorMaterializationResult(
         status: CanonicalEditorMaterializationStatus
             .blockedMissingRuntimeRepresentation,
         entityId: buildingId,
-        message: 'Active canonical Building has no bound legacy workspace.',
+        message: 'Active canonical Building has no coherent bound legacy '
+            'workspace.',
       );
     }
 
     final levelId = navigation.activeLevelId;
-    if (levelId == null || binding.legacyLevelIds[levelId] == null) {
+    final level = levelId == null ? null : project.index.level(levelId);
+    if (levelId == null ||
+        level == null ||
+        level.buildingId != buildingId) {
+      return CanonicalEditorMaterializationResult(
+        status: CanonicalEditorMaterializationStatus.blockedCanonicalMismatch,
+        entityId: levelId,
+        message: 'Active canonical Level is missing or does not belong to the '
+            'active Building.',
+      );
+    }
+    if (binding.legacyLevelIds[levelId] == null) {
       return CanonicalEditorMaterializationResult(
         status: CanonicalEditorMaterializationStatus
             .blockedMissingRuntimeRepresentation,
@@ -72,22 +104,56 @@ final class ExistingBindingCanonicalEditorMaterializer
     }
 
     final zoneId = navigation.selectedZoneId;
-    if (zoneId != null && binding.legacyZoneIds[zoneId] == null) {
-      return CanonicalEditorMaterializationResult(
-        status: CanonicalEditorMaterializationStatus
-            .blockedMissingRuntimeRepresentation,
-        entityId: zoneId,
-        message: 'Selected canonical Zone has no legacy runtime representation.',
-      );
+    if (zoneId != null) {
+      final zone = project.index.zone(zoneId);
+      if (zone == null || zone.levelId != levelId) {
+        return CanonicalEditorMaterializationResult(
+          status: CanonicalEditorMaterializationStatus.blockedCanonicalMismatch,
+          entityId: zoneId,
+          message: 'Selected canonical Zone is missing or does not belong to '
+              'the active Level.',
+        );
+      }
+      if (binding.legacyZoneIds[zoneId] == null) {
+        return CanonicalEditorMaterializationResult(
+          status: CanonicalEditorMaterializationStatus
+              .blockedMissingRuntimeRepresentation,
+          entityId: zoneId,
+          message:
+              'Selected canonical Zone has no legacy runtime representation.',
+        );
+      }
     }
 
     final spaceId = navigation.selectedSpaceId;
-    if (spaceId != null && binding.legacySpaceIds[spaceId] == null) {
-      return CanonicalEditorMaterializationResult(
-        status: CanonicalEditorMaterializationStatus.blockedMissingGeometry,
-        entityId: spaceId,
-        message: 'Selected canonical Space has no materialized geometry.',
-      );
+    if (spaceId != null) {
+      final space = project.index.space(spaceId);
+      if (space == null || space.levelId != levelId) {
+        return CanonicalEditorMaterializationResult(
+          status: CanonicalEditorMaterializationStatus.blockedCanonicalMismatch,
+          entityId: spaceId,
+          message: 'Selected canonical Space is missing or does not belong to '
+              'the active Level.',
+        );
+      }
+
+      final owningZoneId = project.index.structuralZoneBySpace[spaceId];
+      if (owningZoneId != zoneId) {
+        return CanonicalEditorMaterializationResult(
+          status: CanonicalEditorMaterializationStatus.blockedCanonicalMismatch,
+          entityId: spaceId,
+          message: 'Selected canonical Space/Zone path is incoherent with the '
+              'canonical structural-zone membership.',
+        );
+      }
+
+      if (binding.legacySpaceIds[spaceId] == null) {
+        return CanonicalEditorMaterializationResult(
+          status: CanonicalEditorMaterializationStatus.blockedMissingGeometry,
+          entityId: spaceId,
+          message: 'Selected canonical Space has no materialized geometry.',
+        );
+      }
     }
 
     return const CanonicalEditorMaterializationResult(
