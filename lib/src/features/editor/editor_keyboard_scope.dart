@@ -192,10 +192,17 @@ class EditorKeyboardScope extends StatelessWidget {
         const SingleActivator(LogicalKeyboardKey.keyC): () =>
             controller.setTool(EditorTool.cableRoute),
         const SingleActivator(LogicalKeyboardKey.escape): _cancelActiveEdit,
-        const SingleActivator(LogicalKeyboardKey.tab): () =>
+        // Keep plain Tab/Shift+Tab available to Flutter's focus traversal so
+        // AppBar, navigator and inspector controls remain keyboard reachable.
+        // Scene-object cycling is an explicit CAD shortcut instead of a global
+        // accessibility override.
+        const SingleActivator(LogicalKeyboardKey.tab, control: true): () =>
             _cycleSceneSelection(reverse: false),
-        const SingleActivator(LogicalKeyboardKey.tab, shift: true): () =>
-            _cycleSceneSelection(reverse: true),
+        const SingleActivator(
+          LogicalKeyboardKey.tab,
+          control: true,
+          shift: true,
+        ): () => _cycleSceneSelection(reverse: true),
         const SingleActivator(LogicalKeyboardKey.enter): _commitActiveEdit,
         const SingleActivator(LogicalKeyboardKey.numpadEnter):
             _commitActiveEdit,
