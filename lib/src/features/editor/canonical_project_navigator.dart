@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../application/project/project_navigation_state.dart';
 import '../../application/project/project_navigator_projection.dart';
 import '../../application/project/project_structure_authoring.dart';
 import '../../domain/project_identity.dart';
@@ -58,14 +57,10 @@ class CanonicalProjectNavigator extends StatefulWidget {
 class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
   final Set<EntityId> _expanded = <EntityId>{};
   final Map<EntityId, GlobalKey> _nodeKeys = <EntityId, GlobalKey>{};
+  ProjectNavigatorProjection? _projection;
+  EntityId? _lastRenderedLeafId;
 
   ProjectStructureAuthoringSession get session => widget.session;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _revealCurrent());
-  }
 
   @override
   void didUpdateWidget(covariant CanonicalProjectNavigator oldWidget) {
@@ -73,18 +68,24 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
     if (!identical(oldWidget.session, widget.session)) {
       _expanded.clear();
       _nodeKeys.clear();
-      WidgetsBinding.instance.addPostFrameCallback((_) => _revealCurrent());
+      _projection = null;
+      _lastRenderedLeafId = null;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final projection = ProjectNavigatorProjection.build(session.project);
+    final projection = _projectionForCurrentProject();
     final navigation = session.navigation;
-    final requiredExpanded =
-        projection.requiredExpandedAncestorIds(navigation);
+    final requiredExpanded = projection.requiredExpandedAncestorIds(navigation);
     final currentPath = projection.currentPathIds(navigation);
     final availability = session.availability;
+    final currentLeafId = projection.currentLeafId(navigation);
+
+    if (_lastRenderedLeafId != currentLeafId) {
+      _lastRenderedLeafId = currentLeafId;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _revealCurrent());
+    }
 
     return Material(
       color: Theme.of(context).colorScheme.surface,
@@ -138,6 +139,20 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
         ],
       ),
     );
+  }
+
+  ProjectNavigatorProjection _projectionForCurrentProject() {
+    final current = session.project;
+    final cached = _projection;
+    if (cached != null && cached.isCurrentFor(current)) {
+      return cached;
+    }
+
+    final rebuilt = ProjectNavigatorProjection.build(current);
+    _projection = rebuilt;
+    _expanded.removeWhere((id) => rebuilt.node(id) == null);
+    _nodeKeys.removeWhere((id, _) => rebuilt.node(id) == null);
+    return rebuilt;
   }
 
   Widget _breadcrumb(
@@ -207,8 +222,7 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
             dense: true,
             minTileHeight: 34,
             selected: selected,
-            selectedTileColor:
-                Theme.of(context).colorScheme.secondaryContainer,
+            selectedTileColor: Theme.of(context).colorScheme.secondaryContainer,
             leading: hasChildren
                 ? IconButton(
                     tooltip: expanded ? 'Collapse' : 'Expand',
@@ -238,7 +252,7 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
                         : null,
             onTap: node.kind == ProjectNavigatorNodeKind.site
                 ? null
-                : () => _activateNode(projection, node),
+                : () => _activateNode(node),
           ),
         ),
         if (hasChildren && expanded)
@@ -259,86 +273,157 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
   void _activateId(ProjectNavigatorProjection projection, EntityId id) {
     final node = projection.node(id);
     if (node == null) return;
-    _activateNode(projection, node);
+    _activateNode(node);
   }
 
-  void _activateNode(
-    ProjectNavigatorProjection projection,
-    ProjectNavigatorNode node,
-  ) {
+  void _activateNode(ProjectNavigatorNode node) {
     try {
       switch (node.kind) {
         case ProjectNavigatorNodeKind.site:
           return;
         case ProjectNavigatorNodeKind.building:
           session.activateBuilding(node.id as BuildingId);
-          break;
         case ProjectNavigatorNodeKind.level:
           session.activateLevel(node.id as LevelId);
-          break;
         case ProjectNavigatorNodeKind.structuralZone:
           session.selectZone(node.id as ZoneId);
-          break;
         case ProjectNavigatorNodeKind.space:
           session.selectRoom(node.id as SpaceId);
-          break;
       }
-      setState(() {});
-      widget.onNavigationChanged?.call(session.navigation);
-      _scheduleRevealCurrent();
-    } catch (error) {
-      widget.onError?.call(error);
+    } catch (error, stackTrace) {
+      _reportOperationError(error, stackTrace);
+      return;
     }
+
+    setState(() {});
+    _notifyNavigationChanged();
+    _scheduleRevealCurrent();
   }
 
   Future<void> _addBuilding() async {
     final resolver = widget.requestBuilding;
     if (resolver == null) return;
+
+    ProjectStructureAuthoringResult<BuildingId> result;
     try {
       final request = await resolver(context);
       if (!mounted || request == null) return;
-      final result = session.createBuilding(request);
-      setState(() {});
-      widget.onNavigationChanged?.call(result.navigation);
-      widget.onAuthoringCommitted?.call(session, result.createdId);
-      _scheduleRevealCurrent();
-    } catch (error) {
-      widget.onError?.call(error);
+      result = session.createBuilding(request);
+    } catch (error, stackTrace) {
+      _reportOperationError(error, stackTrace);
+      return;
     }
+
+    if (!mounted) return;
+    setState(() {});
+    _notifyNavigationChanged();
+    _notifyAuthoringCommitted(result.createdId);
+    _scheduleRevealCurrent();
   }
 
   Future<void> _addLevel() async {
     final resolver = widget.requestLevel;
-    final buildingId = session.navigation.activeBuildingId;
-    if (resolver == null || buildingId == null) return;
+    final targetBuildingId = session.navigation.activeBuildingId;
+    if (resolver == null || targetBuildingId == null) return;
+
+    ProjectStructureAuthoringResult<LevelId> result;
     try {
-      final request = await resolver(context, buildingId);
+      final request = await resolver(context, targetBuildingId);
       if (!mounted || request == null) return;
-      final result = session.createLevel(request);
-      setState(() {});
-      widget.onNavigationChanged?.call(result.navigation);
-      widget.onAuthoringCommitted?.call(session, result.createdId);
-      _scheduleRevealCurrent();
-    } catch (error) {
-      widget.onError?.call(error);
+      result = session.createLevel(
+        request,
+        expectedActiveBuildingId: targetBuildingId,
+      );
+    } catch (error, stackTrace) {
+      _reportOperationError(error, stackTrace);
+      return;
     }
+
+    if (!mounted) return;
+    setState(() {});
+    _notifyNavigationChanged();
+    _notifyAuthoringCommitted(result.createdId);
+    _scheduleRevealCurrent();
   }
 
   Future<void> _addRoom() async {
     final resolver = widget.requestRoom;
-    final levelId = session.navigation.activeLevelId;
-    if (resolver == null || levelId == null) return;
+    final targetLevelId = session.navigation.activeLevelId;
+    if (resolver == null || targetLevelId == null) return;
+
+    ProjectStructureAuthoringResult<SpaceId> result;
     try {
-      final request = await resolver(context, levelId);
+      final request = await resolver(context, targetLevelId);
       if (!mounted || request == null) return;
-      final result = session.createRoom(request);
-      setState(() {});
-      widget.onNavigationChanged?.call(result.navigation);
-      widget.onAuthoringCommitted?.call(session, result.createdId);
-      _scheduleRevealCurrent();
-    } catch (error) {
-      widget.onError?.call(error);
+      result = session.createRoom(
+        request,
+        expectedActiveLevelId: targetLevelId,
+      );
+    } catch (error, stackTrace) {
+      _reportOperationError(error, stackTrace);
+      return;
     }
+
+    if (!mounted) return;
+    setState(() {});
+    _notifyNavigationChanged();
+    _notifyAuthoringCommitted(result.createdId);
+    _scheduleRevealCurrent();
+  }
+
+  void _notifyNavigationChanged() {
+    final callback = widget.onNavigationChanged;
+    if (callback == null) return;
+    try {
+      callback(session.navigation);
+    } catch (error, stackTrace) {
+      _reportCallbackError('onNavigationChanged', error, stackTrace);
+    }
+  }
+
+  void _notifyAuthoringCommitted(EntityId createdId) {
+    final callback = widget.onAuthoringCommitted;
+    if (callback == null) return;
+    try {
+      callback(session, createdId);
+    } catch (error, stackTrace) {
+      _reportCallbackError('onAuthoringCommitted', error, stackTrace);
+    }
+  }
+
+  void _reportOperationError(Object error, StackTrace stackTrace) {
+    final callback = widget.onError;
+    if (callback != null) {
+      try {
+        callback(error);
+        return;
+      } catch (callbackError, callbackStackTrace) {
+        _reportCallbackError('onError', callbackError, callbackStackTrace);
+      }
+    }
+    FlutterError.reportError(
+      FlutterErrorDetails(
+        exception: error,
+        stack: stackTrace,
+        library: 'ElecX canonical project navigator',
+        context: ErrorDescription('while applying a navigator operation'),
+      ),
+    );
+  }
+
+  void _reportCallbackError(
+    String callbackName,
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    FlutterError.reportError(
+      FlutterErrorDetails(
+        exception: error,
+        stack: stackTrace,
+        library: 'ElecX canonical project navigator',
+        context: ErrorDescription('while invoking $callbackName'),
+      ),
+    );
   }
 
   void _scheduleRevealCurrent() {
@@ -347,7 +432,7 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
 
   void _revealCurrent() {
     if (!mounted) return;
-    final projection = ProjectNavigatorProjection.build(session.project);
+    final projection = _projectionForCurrentProject();
     final key = _nodeKeys[projection.currentLeafId(session.navigation)];
     final targetContext = key?.currentContext;
     if (targetContext == null) return;
