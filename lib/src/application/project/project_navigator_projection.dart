@@ -312,7 +312,8 @@ final class ProjectNavigatorProjection {
         '$rootSiteId.',
       );
     }
-    if (navigation.activeLevelId != null && navigation.activeBuildingId == null) {
+    if (navigation.activeLevelId != null &&
+        navigation.activeBuildingId == null) {
       throw StateError('Active Level requires an active Building.');
     }
     if ((navigation.selectedZoneId != null ||
