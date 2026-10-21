@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../domain/project_orientation.dart';
 import '../../domain/route_host.dart';
 import 'canonical_editor_production_runtime.dart';
 import 'canonical_editor_runtime_cutover.dart';
@@ -25,6 +26,7 @@ import 'editor_shell_state.dart';
 import 'editor_ui_tokens.dart';
 import 'engineering_placement_cursor_hud.dart';
 import 'project_compass_overlay.dart';
+import 'project_compass_projection.dart';
 import 'site_map_canvas.dart';
 import 'site_map_interaction.dart';
 import 'spatial_canvas.dart';
@@ -95,6 +97,7 @@ class _UnifiedWorkspaceEditorScreenState
   int _savedRevision = 0;
   int _lastP2CommittedRevision = 0;
   bool _allowPop = false;
+  CanonicalEditorResolvedRuntime? _canonicalResolvedRuntime;
   CanonicalEditorScreenCutoverBinding? _canonicalCutoverBinding;
   CanonicalEditorMaterializationResult? _canonicalBlocked;
 
@@ -103,6 +106,43 @@ class _UnifiedWorkspaceEditorScreenState
       _saveStatus == EditorProjectSaveStatus.saveFailed;
 
   bool get _canonicalRuntimeActive => _canonicalCutoverBinding != null;
+
+  bool get _canonicalProjectMatchesScreen {
+    final resolved = _canonicalResolvedRuntime;
+    return resolved != null &&
+        resolved.session.project.id.value == _projectMetadata.projectId;
+  }
+
+  bool get _canEditProjectNorth {
+    final resolved = _canonicalResolvedRuntime;
+    final config = widget.canonicalRuntime;
+    if (resolved == null || config?.onProjectNorthCommitted == null) {
+      return false;
+    }
+    if (!_canonicalProjectMatchesScreen) return false;
+
+    final canonicalProject = resolved.session.project;
+    final editing = resolved.session.projectNorthEditing;
+    return editing.canEdit &&
+        editing.projectId == canonicalProject.id &&
+        editing.version == canonicalProject.version &&
+        resolved.persistenceOwnerProjectId == canonicalProject.id;
+  }
+
+  CompassProjectionState _compassProjectionState() {
+    if (_canonicalBlocked != null ||
+        workspace.context == EditorWorkspaceContext.siteOutdoor ||
+        controller.viewMode != EditorViewMode.plan ||
+        !_canonicalProjectMatchesScreen) {
+      return ProjectCompassProjection.unavailable;
+    }
+
+    final resolved = _canonicalResolvedRuntime;
+    if (resolved == null) return ProjectCompassProjection.unavailable;
+    return ProjectCompassProjection.forPlan(
+      resolved.session.project.engineeringMetadata.projectNorth,
+    );
+  }
 
   @override
   void initState() {
@@ -217,6 +257,7 @@ class _UnifiedWorkspaceEditorScreenState
 
   void _installCanonicalRuntime({required bool pushInitialCanonicalState}) {
     _canonicalCutoverBinding?.dispose();
+    _canonicalResolvedRuntime = null;
     _canonicalCutoverBinding = null;
     _canonicalBlocked = null;
 
@@ -246,15 +287,18 @@ class _UnifiedWorkspaceEditorScreenState
       binding.start(
         pushInitialCanonicalState: pushInitialCanonicalState,
       );
+      _canonicalResolvedRuntime = resolved;
       _canonicalCutoverBinding = binding;
     } catch (error, stackTrace) {
       _reportCanonicalCutoverError(error, stackTrace);
+      _canonicalResolvedRuntime = null;
       _canonicalCutoverBinding = null;
     }
   }
 
   void _disposeCanonicalRuntime() {
     _canonicalCutoverBinding?.dispose();
+    _canonicalResolvedRuntime = null;
     _canonicalCutoverBinding = null;
     _canonicalBlocked = null;
   }
@@ -656,51 +700,120 @@ class _UnifiedWorkspaceEditorScreenState
   }
 
   Future<void> _editProjectNorth() async {
-    final current = workspace.site.site.projectNorth;
+    if (!_canEditProjectNorth) {
+      _showProjectMessage(
+        'Редактирование Project North недоступно без canonical persistence owner.',
+        isError: true,
+      );
+      return;
+    }
+
+    final resolved = _canonicalResolvedRuntime!;
+    final editing = resolved.session.projectNorthEditing;
+    final current = editing.currentProjectNorth;
     final input = TextEditingController(
-      text: current.northAzimuthDegrees.toStringAsFixed(1),
+      text: current?.degrees.toStringAsFixed(3) ?? '',
     );
-    final value = await showDialog<double>(
+    final value = await showDialog<ProjectEngineeringNorth>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Ориентация проекта'),
-        content: TextField(
-          controller: input,
-          autofocus: true,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(
-            labelText: 'Азимут севера',
-            suffixText: '°',
-            helperText: '0° = север вверх по плану, угол по часовой стрелке',
+      builder: (dialogContext) {
+        String? validationError;
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) => AlertDialog(
+            key: const ValueKey('project-north-dialog'),
+            title: const Text('Project North'),
+            content: TextField(
+              key: const ValueKey('project-north-angle-input'),
+              controller: input,
+              autofocus: true,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: 'Угол',
+                suffixText: '°',
+                helperText:
+                    '0° = вверх по плану; положительное направление по часовой стрелке',
+                errorText: validationError,
+              ),
+              onSubmitted: (_) => _submitProjectNorthDialog(
+                dialogContext,
+                input.text,
+                setDialogState,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Отмена'),
+              ),
+              FilledButton(
+                key: const ValueKey('apply-project-north'),
+                onPressed: () => _submitProjectNorthDialog(
+                  dialogContext,
+                  input.text,
+                  setDialogState,
+                ),
+                child: const Text('Применить'),
+              ),
+            ],
           ),
-          onSubmitted: (text) {
-            final parsed = double.tryParse(text.replaceAll(',', '.'));
-            if (parsed != null && parsed >= 0 && parsed < 360) {
-              Navigator.of(dialogContext).pop(parsed);
-            }
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final parsed = double.tryParse(input.text.replaceAll(',', '.'));
-              if (parsed == null || parsed < 0 || parsed >= 360) return;
-              Navigator.of(dialogContext).pop(parsed);
-            },
-            child: const Text('Применить'),
-          ),
-        ],
-      ),
+        );
+      },
     );
     input.dispose();
     if (value == null || !mounted) return;
-    workspace.updateProjectNorth(
-      current.copyWith(northAzimuthDegrees: value),
-    );
+
+    final beforeVersion = resolved.session.project.version;
+    ProjectMutationResult? result;
+    try {
+      result = editing.setProjectNorth(value);
+    } catch (error) {
+      _showProjectMessage('Не удалось изменить Project North: $error', isError: true);
+      return;
+    }
+
+    if (result == null) {
+      _refresh();
+      return;
+    }
+
+    final afterProject = resolved.session.project;
+    if (afterProject.version.value != beforeVersion.value + 1 ||
+        editing.version != afterProject.version ||
+        editing.currentProjectNorth != afterProject.engineeringMetadata.projectNorth) {
+      _showProjectMessage(
+        'Project North committed, но canonical runtime потерял mutation affinity.',
+        isError: true,
+      );
+      _refresh();
+      return;
+    }
+
+    try {
+      widget.canonicalRuntime!.onProjectNorthCommitted!(editing, result);
+    } catch (error) {
+      _showProjectMessage(
+        'Project North committed, но persistence owner не подтвердил владение: $error',
+        isError: true,
+      );
+      _refresh();
+      return;
+    }
+
+    _refresh();
+  }
+
+  void _submitProjectNorthDialog(
+    BuildContext dialogContext,
+    String raw,
+    StateSetter setDialogState,
+  ) {
+    final parsed = double.tryParse(raw.trim().replaceAll(',', '.'));
+    if (parsed == null || !parsed.isFinite) {
+      setDialogState(() {});
+      return;
+    }
+    Navigator.of(dialogContext).pop(ProjectEngineeringNorth.fromDegrees(parsed));
   }
 
   void _openMiniMap() {
@@ -865,19 +978,17 @@ class _UnifiedWorkspaceEditorScreenState
                             controller: controller,
                             onOutdoorTransition: _followOutdoorTransition,
                           );
-            final planContext =
-                workspace.context == EditorWorkspaceContext.siteOutdoor ||
-                    controller.viewMode == EditorViewMode.plan;
+            final compassProjection = _compassProjectionState();
             final canvas = Stack(
               children: [
                 Positioned.fill(child: rawCanvas),
-                if (planContext)
+                if (shell.compassVisible)
                   Positioned(
                     right: 12,
                     top: 12,
                     child: ProjectCompassOverlay(
-                      projectNorth: workspace.site.site.projectNorth,
-                      onTap: _editProjectNorth,
+                      state: compassProjection,
+                      onTap: _canEditProjectNorth ? _editProjectNorth : null,
                     ),
                   ),
                 if (workspace.context != EditorWorkspaceContext.siteOutdoor)
@@ -1145,6 +1256,23 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.save_outlined),
+        ),
+        Semantics(
+          label: 'Compass',
+          checked: shell.compassRequestedVisible,
+          button: true,
+          child: IconButton(
+            key: const ValueKey('project-compass-toggle'),
+            tooltip: shell.compassRequestedVisible
+                ? 'Скрыть компас'
+                : 'Показать компас',
+            onPressed: shell.toggleCompass,
+            icon: Icon(
+              shell.compassRequestedVisible
+                  ? Icons.explore
+                  : Icons.explore_outlined,
+            ),
+          ),
         ),
         IconButton(
           tooltip: 'Контекстная карта',
