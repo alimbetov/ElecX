@@ -10,10 +10,17 @@ import 'room_world_overlay.dart';
 import 'site_map_canvas.dart';
 import 'site_map_interaction.dart';
 
+typedef ContextMiniMapEntityOpenCallback = void Function(SiteMapEntity entity);
+typedef ContextMiniMapSpaceSelectedCallback = void Function(
+  String legacySpaceId,
+);
+
 Future<void> showContextMiniMapSheet({
   required BuildContext context,
   required EditorBuildingWorkspace workspace,
   required SiteMapInteractionController siteInteraction,
+  ContextMiniMapEntityOpenCallback? onEntityOpen,
+  ContextMiniMapSpaceSelectedCallback? onSpaceSelected,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -31,6 +38,8 @@ Future<void> showContextMiniMapSheet({
         workspace: workspace,
         siteInteraction: siteInteraction,
         scrollController: scrollController,
+        onEntityOpen: onEntityOpen,
+        onSpaceSelected: onSpaceSelected,
       ),
     ),
   );
@@ -41,11 +50,15 @@ class _MiniMapSheet extends StatelessWidget {
     required this.workspace,
     required this.siteInteraction,
     required this.scrollController,
+    this.onEntityOpen,
+    this.onSpaceSelected,
   });
 
   final EditorBuildingWorkspace workspace;
   final SiteMapInteractionController siteInteraction;
   final ScrollController scrollController;
+  final ContextMiniMapEntityOpenCallback? onEntityOpen;
+  final ContextMiniMapSpaceSelectedCallback? onSpaceSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -116,15 +129,20 @@ class _MiniMapSheet extends StatelessWidget {
                     entities: SiteMapProjection.tower(workspace),
                     interaction: siteInteraction,
                     onEntityOpen: (entity) {
-                      switch (entity.kind) {
-                        case SiteMapEntityKind.outdoorZone:
-                          final id = entity.targetId;
-                          if (id != null) workspace.selectOutdoorZone(id);
-                        case SiteMapEntityKind.building:
-                          workspace.selectLevel(1);
-                        case SiteMapEntityKind.lot:
-                        case SiteMapEntityKind.network:
-                          break;
+                      final callback = onEntityOpen;
+                      if (callback != null) {
+                        callback(entity);
+                      } else {
+                        switch (entity.kind) {
+                          case SiteMapEntityKind.outdoorZone:
+                            final id = entity.targetId;
+                            if (id != null) workspace.selectOutdoorZone(id);
+                          case SiteMapEntityKind.building:
+                            workspace.selectLevel(1);
+                          case SiteMapEntityKind.lot:
+                          case SiteMapEntityKind.network:
+                            break;
+                        }
                       }
                       Navigator.of(context).pop();
                     },
@@ -132,6 +150,7 @@ class _MiniMapSheet extends StatelessWidget {
                 : _LevelMiniMap(
                     workspace: workspace,
                     zoneSpaceIds: zone?.spaceIds,
+                    onSpaceSelected: onSpaceSelected,
                   ),
           ),
           const SizedBox(height: 10),
@@ -234,10 +253,15 @@ class _SurfaceQuickNav extends StatelessWidget {
 }
 
 class _LevelMiniMap extends StatefulWidget {
-  const _LevelMiniMap({required this.workspace, this.zoneSpaceIds});
+  const _LevelMiniMap({
+    required this.workspace,
+    this.zoneSpaceIds,
+    this.onSpaceSelected,
+  });
 
   final EditorBuildingWorkspace workspace;
   final Set<String>? zoneSpaceIds;
+  final ContextMiniMapSpaceSelectedCallback? onSpaceSelected;
 
   @override
   State<_LevelMiniMap> createState() => _LevelMiniMapState();
@@ -280,7 +304,7 @@ class _LevelMiniMapState extends State<_LevelMiniMap> {
                 bounds,
                 spaces,
               );
-              if (hit != null) widget.workspace.editor.selectSpace(hit.id);
+              if (hit != null) _selectSpace(hit.id);
             },
             onDoubleTapDown: (details) {
               final hit = _hitSpace(
@@ -290,7 +314,8 @@ class _LevelMiniMapState extends State<_LevelMiniMap> {
                 spaces,
               );
               if (hit != null) {
-                widget.workspace.editor.selectSpace(hit.id);
+                _selectSpace(hit.id);
+                if (widget.workspace.editor.selectedSpaceId != hit.id) return;
                 Navigator.of(context).pop();
                 showRoomWorldOverlay(context, widget.workspace.editor);
               }
@@ -309,6 +334,15 @@ class _LevelMiniMapState extends State<_LevelMiniMap> {
         );
       },
     );
+  }
+
+  void _selectSpace(String legacySpaceId) {
+    final callback = widget.onSpaceSelected;
+    if (callback != null) {
+      callback(legacySpaceId);
+    } else {
+      widget.workspace.editor.selectSpace(legacySpaceId);
+    }
   }
 
   MmBounds _unionBounds(List<EngineeringSpace> spaces) {
