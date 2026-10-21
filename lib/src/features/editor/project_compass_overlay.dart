@@ -2,25 +2,37 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../../domain/site_orientation.dart';
+import 'project_compass_projection.dart';
 
+/// P5D presentation-only compass overlay.
+///
+/// The widget consumes a resolved [CompassProjectionState]. It deliberately has
+/// no dependency on the legacy `ProjectNorth`, canonical aggregate, workspace,
+/// or camera. Projection semantics must be resolved before the widget boundary.
 class ProjectCompassOverlay extends StatelessWidget {
   const ProjectCompassOverlay({
-    required this.projectNorth,
+    CompassProjectionState? state,
+    @Deprecated('Use state. This compatibility sink is removed in P5D-F.')
+    Object? projectNorth,
     this.size = 74,
     this.onTap,
     super.key,
-  });
+  })  : assert(state == null || projectNorth == null),
+        state = state ?? const CompassUnavailable();
 
-  final ProjectNorth projectNorth;
+  final CompassProjectionState state;
   final double size;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final state = this.state;
+    if (state is CompassUnavailable) {
+      return const SizedBox.shrink();
+    }
+
     final scheme = Theme.of(context).colorScheme;
-    final label =
-        'Север проекта: ${projectNorth.northAzimuthDegrees.toStringAsFixed(1)}°';
+    final label = _semanticLabel(state);
     final compass = Semantics(
       label: label,
       button: onTap != null,
@@ -28,13 +40,19 @@ class ProjectCompassOverlay extends StatelessWidget {
         dimension: size,
         child: CustomPaint(
           painter: _ProjectCompassPainter(
-            projectNorth: projectNorth,
+            state: state,
             scheme: scheme,
           ),
         ),
       ),
     );
-    if (onTap == null) return IgnorePointer(child: compass);
+
+    if (onTap == null) {
+      // Read-only compass must not steal pointer/touch/wheel input from the
+      // canvas underneath it.
+      return IgnorePointer(child: compass);
+    }
+
     return Tooltip(
       message: label,
       child: InkWell(
@@ -44,21 +62,32 @@ class ProjectCompassOverlay extends StatelessWidget {
       ),
     );
   }
+
+  String _semanticLabel(CompassProjectionState state) {
+    if (state is CompassNorthDefined) {
+      return 'Compass, Project North '
+          '${state.canonicalNorth.degrees.toStringAsFixed(1)} degrees clockwise '
+          'from project up';
+    }
+    return 'Compass, Project North not set';
+  }
 }
 
 final class _ProjectCompassPainter extends CustomPainter {
   const _ProjectCompassPainter({
-    required this.projectNorth,
+    required this.state,
     required this.scheme,
   });
 
-  final ProjectNorth projectNorth;
+  final CompassProjectionState state;
   final ColorScheme scheme;
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = size.center(Offset.zero);
-    final radius = math.min(size.width, size.height) / 2 - 4;
+    final radius = math.max(0.0, math.min(size.width, size.height) / 2 - 4);
+    if (radius <= 0) return;
+
     canvas.drawCircle(
       center,
       radius,
@@ -73,9 +102,26 @@ final class _ProjectCompassPainter extends CustomPainter {
         ..color = scheme.outlineVariant,
     );
 
-    final angle = -math.pi / 2 + projectNorth.northAzimuthRadians;
+    final state = this.state;
+    if (state is CompassNorthUnspecified) {
+      _label(
+        canvas,
+        'NOT SET',
+        center,
+        scheme.onSurfaceVariant,
+        fontSize: 8,
+        bold: true,
+      );
+      return;
+    }
+    if (state is! CompassNorthDefined) {
+      return;
+    }
+
+    final angle = -math.pi / 2 +
+        state.screenDegreesClockwiseFromUp * math.pi / 180.0;
     final vector = Offset(math.cos(angle), math.sin(angle));
-    final tip = center + vector * (radius - 10);
+    final tip = center + vector * math.max(0.0, radius - 10);
     final tail = center - vector * (radius * 0.42);
     final perpendicular = Offset(-vector.dy, vector.dx);
     final color = scheme.primary;
@@ -104,7 +150,7 @@ final class _ProjectCompassPainter extends CustomPainter {
     _label(canvas, 'N', tip + vector * 6, color, bold: true);
     _label(
       canvas,
-      '${projectNorth.northAzimuthDegrees.toStringAsFixed(0)}°',
+      '${state.canonicalNorth.degrees.toStringAsFixed(0)}°',
       center + Offset(0, radius * 0.45),
       scheme.onSurfaceVariant,
     );
@@ -116,13 +162,14 @@ final class _ProjectCompassPainter extends CustomPainter {
     Offset center,
     Color color, {
     bool bold = false,
+    double fontSize = 10,
   }) {
     final painter = TextPainter(
       text: TextSpan(
         text: text,
         style: TextStyle(
           color: color,
-          fontSize: 10,
+          fontSize: fontSize,
           fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
         ),
       ),
@@ -135,8 +182,17 @@ final class _ProjectCompassPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _ProjectCompassPainter oldDelegate) =>
-      oldDelegate.projectNorth.northAzimuthDegrees !=
-          projectNorth.northAzimuthDegrees ||
-      oldDelegate.scheme != scheme;
+  bool shouldRepaint(covariant _ProjectCompassPainter oldDelegate) {
+    if (oldDelegate.scheme != scheme ||
+        oldDelegate.state.runtimeType != state.runtimeType) {
+      return true;
+    }
+    final current = state;
+    final previous = oldDelegate.state;
+    return current is CompassNorthDefined &&
+        previous is CompassNorthDefined &&
+        (current.screenMilliDegreesClockwiseFromUp !=
+                previous.screenMilliDegreesClockwiseFromUp ||
+            current.canonicalNorth != previous.canonicalNorth);
+  }
 }
