@@ -38,9 +38,27 @@ void main() {
       final projected = ProjectCompassProjection.forPlan(north);
 
       expect(
-        (projected as CompassNorthDefined)
-            .screenMilliDegreesClockwiseFromUp,
+        (projected as CompassNorthDefined).screenMilliDegreesClockwiseFromUp,
         32501,
+      );
+    });
+
+    test('defined projection rejects malformed screen angles at runtime', () {
+      final north = ProjectEngineeringNorth.fromDegrees(0);
+
+      expect(
+        () => CompassNorthDefined(
+          canonicalNorth: north,
+          screenMilliDegreesClockwiseFromUp: -1,
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => CompassNorthDefined(
+          canonicalNorth: north,
+          screenMilliDegreesClockwiseFromUp: 360000,
+        ),
+        throwsArgumentError,
       );
     });
 
