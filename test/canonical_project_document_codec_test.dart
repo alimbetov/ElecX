@@ -55,6 +55,45 @@ void main() {
       );
     });
 
+    test('rejects duplicate relationship ids instead of silently normalizing', () {
+      final document = codec.encode(_multiBuildingSnapshot());
+      final mutablePayload = jsonDecode(jsonEncode(document.payload)) as Map;
+      final sites = mutablePayload['sites']! as List;
+      final firstSite = sites.first! as Map;
+      firstSite['buildingIds'] = <Object?>['building-a', 'building-a'];
+
+      expect(
+        () => codec.decode(
+          ProjectDocument(
+            schemaVersion: document.schemaVersion,
+            payload: mutablePayload.map(
+              (key, value) => MapEntry(key.toString(), value),
+            ),
+          ),
+        ),
+        throwsFormatException,
+      );
+    });
+
+    test('rejects timestamps without an explicit zone', () {
+      final document = codec.encode(_multiBuildingSnapshot());
+      final mutablePayload = jsonDecode(jsonEncode(document.payload)) as Map;
+      final metadata = mutablePayload['metadata']! as Map;
+      metadata['createdAt'] = '2026-10-21T06:00:00.000';
+
+      expect(
+        () => codec.decode(
+          ProjectDocument(
+            schemaVersion: document.schemaVersion,
+            payload: mutablePayload.map(
+              (key, value) => MapEntry(key.toString(), value),
+            ),
+          ),
+        ),
+        throwsFormatException,
+      );
+    });
+
     test('project document deeply freezes nested payload collections', () {
       final document = codec.encode(_multiBuildingSnapshot());
       final metadata = document.payload['metadata']! as Map<String, Object?>;
