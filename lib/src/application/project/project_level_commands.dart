@@ -1,0 +1,232 @@
+import '../../domain/project_aggregate.dart';
+import '../../domain/project_identity.dart';
+import 'project_authoring_error.dart';
+import 'project_mutation.dart';
+
+/// Creates one canonical level under an existing building.
+///
+/// [levelId] is the persistent identity. [levelNumber], [displayOrder] and
+/// [elevationMm] are mutable attributes and must never be used as foreign keys.
+final class CreateLevelCommand implements ProjectCommand {
+  CreateLevelCommand({
+    required this.levelId,
+    required this.buildingId,
+    required this.name,
+    required this.levelNumber,
+    required this.elevationMm,
+    this.displayOrder = 0,
+  }) {
+    if (name.trim().isEmpty) {
+      throw ArgumentError.value(name, 'name', 'Level name must be non-empty.');
+    }
+  }
+
+  final LevelId levelId;
+  final BuildingId buildingId;
+  final String name;
+  final int levelNumber;
+  final int displayOrder;
+  final int elevationMm;
+
+  @override
+  String get commandType => 'project.level.create';
+
+  @override
+  ProjectCommandCandidate buildCandidate(ProjectAggregateRoot current) {
+    final building = _requireBuilding(current, buildingId);
+    if (current.stores.levels.containsKey(levelId)) {
+      throw ProjectAuthoringException(
+        code: ProjectAuthoringIssueCode.levelAlreadyExists,
+        entityId: levelId,
+        relatedEntityId: buildingId,
+        message: 'Level $levelId already exists.',
+      );
+    }
+    _ensureLevelNumberAvailable(
+      current,
+      building: building,
+      levelNumber: levelNumber,
+    );
+
+    final buildings =
+        Map<BuildingId, ProjectBuildingEntity>.from(current.stores.buildings);
+    final levels = Map<LevelId, ProjectLevelEntity>.from(current.stores.levels);
+
+    buildings[building.id] = ProjectBuildingEntity(
+      id: building.id,
+      siteId: building.siteId,
+      name: building.name,
+      displayOrder: building.displayOrder,
+      levelIds: <LevelId>{...building.levelIds, levelId},
+    );
+    levels[levelId] = ProjectLevelEntity(
+      id: levelId,
+      buildingId: building.id,
+      name: name,
+      levelNumber: levelNumber,
+      displayOrder: displayOrder,
+      elevationMm: elevationMm,
+    );
+
+    return ProjectCommandCandidate(
+      stores: ProjectEntityStores(
+        sites: current.stores.sites,
+        buildings: buildings,
+        levels: levels,
+        zones: current.stores.zones,
+        spaces: current.stores.spaces,
+      ),
+      affectedEntityIds: <EntityId>[building.id, levelId],
+    );
+  }
+}
+
+/// Renames a level while preserving identity, numbering, ordering and height.
+final class RenameLevelCommand implements ProjectCommand {
+  RenameLevelCommand({required this.levelId, required this.name}) {
+    if (name.trim().isEmpty) {
+      throw ArgumentError.value(name, 'name', 'Level name must be non-empty.');
+    }
+  }
+
+  final LevelId levelId;
+  final String name;
+
+  @override
+  String get commandType => 'project.level.rename';
+
+  @override
+  ProjectCommandCandidate buildCandidate(ProjectAggregateRoot current) {
+    final level = _requireLevel(current, levelId);
+    return _replaceLevel(current, level, name: name);
+  }
+}
+
+/// Changes user-visible level numbering without changing [LevelId].
+final class RenumberLevelCommand implements ProjectCommand {
+  const RenumberLevelCommand({
+    required this.levelId,
+    required this.levelNumber,
+  });
+
+  final LevelId levelId;
+  final int levelNumber;
+
+  @override
+  String get commandType => 'project.level.renumber';
+
+  @override
+  ProjectCommandCandidate buildCandidate(ProjectAggregateRoot current) {
+    final level = _requireLevel(current, levelId);
+    final building = _requireBuilding(current, level.buildingId);
+    _ensureLevelNumberAvailable(
+      current,
+      building: building,
+      levelNumber: levelNumber,
+      excludingLevelId: level.id,
+    );
+    return _replaceLevel(current, level, levelNumber: levelNumber);
+  }
+}
+
+/// Changes structural navigator ordering without changing numbering or identity.
+final class ReorderLevelCommand implements ProjectCommand {
+  const ReorderLevelCommand({
+    required this.levelId,
+    required this.displayOrder,
+  });
+
+  final LevelId levelId;
+  final int displayOrder;
+
+  @override
+  String get commandType => 'project.level.reorder';
+
+  @override
+  ProjectCommandCandidate buildCandidate(ProjectAggregateRoot current) {
+    final level = _requireLevel(current, levelId);
+    return _replaceLevel(current, level, displayOrder: displayOrder);
+  }
+}
+
+ProjectBuildingEntity _requireBuilding(
+  ProjectAggregateRoot current,
+  BuildingId buildingId,
+) {
+  final building = current.index.building(buildingId);
+  if (building == null) {
+    throw ProjectAuthoringException(
+      code: ProjectAuthoringIssueCode.buildingNotFound,
+      entityId: buildingId,
+      message: 'Building $buildingId does not exist.',
+    );
+  }
+  return building;
+}
+
+ProjectLevelEntity _requireLevel(
+  ProjectAggregateRoot current,
+  LevelId levelId,
+) {
+  final level = current.index.level(levelId);
+  if (level == null) {
+    throw ProjectAuthoringException(
+      code: ProjectAuthoringIssueCode.levelNotFound,
+      entityId: levelId,
+      message: 'Level $levelId does not exist.',
+    );
+  }
+  return level;
+}
+
+void _ensureLevelNumberAvailable(
+  ProjectAggregateRoot current, {
+  required ProjectBuildingEntity building,
+  required int levelNumber,
+  LevelId? excludingLevelId,
+}) {
+  for (final candidateId in building.levelIds) {
+    if (candidateId == excludingLevelId) continue;
+    final candidate = current.index.level(candidateId);
+    if (candidate?.levelNumber == levelNumber) {
+      throw ProjectAuthoringException(
+        code: ProjectAuthoringIssueCode.duplicateLevelNumber,
+        entityId: excludingLevelId,
+        relatedEntityId: candidateId,
+        message: 'Building ${building.id} already contains level number '
+            '$levelNumber at $candidateId.',
+      );
+    }
+  }
+}
+
+ProjectCommandCandidate _replaceLevel(
+  ProjectAggregateRoot current,
+  ProjectLevelEntity level, {
+  String? name,
+  int? levelNumber,
+  int? displayOrder,
+}) {
+  final levels = Map<LevelId, ProjectLevelEntity>.from(current.stores.levels);
+  levels[level.id] = ProjectLevelEntity(
+    id: level.id,
+    buildingId: level.buildingId,
+    name: name ?? level.name,
+    levelNumber: levelNumber ?? level.levelNumber,
+    displayOrder: displayOrder ?? level.displayOrder,
+    elevationMm: level.elevationMm,
+    zoneIds: level.zoneIds,
+    spaceIds: level.spaceIds,
+  );
+
+  return ProjectCommandCandidate(
+    stores: ProjectEntityStores(
+      sites: current.stores.sites,
+      buildings: current.stores.buildings,
+      levels: levels,
+      zones: current.stores.zones,
+      spaces: current.stores.spaces,
+    ),
+    affectedEntityIds: <EntityId>[level.id],
+  );
+}
