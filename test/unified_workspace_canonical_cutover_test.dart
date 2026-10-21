@@ -9,6 +9,7 @@ import 'package:elecx/src/features/editor/canonical_editor_workspace_adapter.dar
 import 'package:elecx/src/features/editor/canonical_project_navigator.dart';
 import 'package:elecx/src/features/editor/editor_building_workspace.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
+import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:elecx/src/features/editor/editor_project_document.dart';
 import 'package:elecx/src/features/editor/project_persistence_metadata.dart';
 import 'package:elecx/src/features/editor/unified_site_navigator.dart';
