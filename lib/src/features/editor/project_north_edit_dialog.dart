@@ -17,8 +17,7 @@ final class ProjectNorthEditDialog extends StatefulWidget {
   final ProjectEngineeringNorth? initialValue;
 
   @override
-  State<ProjectNorthEditDialog> createState() =>
-      _ProjectNorthEditDialogState();
+  State<ProjectNorthEditDialog> createState() => _ProjectNorthEditDialogState();
 }
 
 final class _ProjectNorthEditDialogState extends State<ProjectNorthEditDialog> {
