@@ -5,6 +5,7 @@ import 'project_building_commands.dart';
 import 'project_level_commands.dart';
 import 'project_mutation.dart';
 import 'project_navigation_state.dart';
+import 'project_north_editing.dart';
 import 'project_space_commands.dart';
 
 export 'project_navigation_state.dart';
@@ -120,15 +121,22 @@ final class ProjectStructureAuthoringSession {
     required EntityIdFactory idFactory,
     ProjectNavigationState? navigation,
   })  : _mutations = mutations,
+        _projectNorthEditing = ProjectNorthEditingSession(mutations),
         _idFactory = idFactory,
         _navigation = _initialNavigation(mutations.current, navigation);
 
   final ProjectMutationSession _mutations;
+  final ProjectNorthEditingPort _projectNorthEditing;
   final EntityIdFactory _idFactory;
   ProjectNavigationState _navigation;
 
   ProjectAggregateRoot get project => _mutations.current;
   ProjectNavigationState get navigation => _navigation;
+
+  /// Narrow P5D edit capability backed by the exact same P3 mutation session as
+  /// structural authoring. This prevents two canonical mutation timelines from
+  /// silently diverging inside one production runtime.
+  ProjectNorthEditingPort get projectNorthEditing => _projectNorthEditing;
 
   /// Canonical navigation transitions used by Navigator/tree/breadcrumb UI.
   ///
