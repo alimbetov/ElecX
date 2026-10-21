@@ -162,6 +162,17 @@ class _UnifiedWorkspaceEditorScreenState
     });
   }
 
+  @override
+  void didUpdateWidget(covariant UnifiedWorkspaceEditorScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.canonicalRuntime, widget.canonicalRuntime)) {
+      _installCanonicalRuntime(pushInitialCanonicalState: false);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _pushCanonicalToEditor();
+      });
+    }
+  }
+
   Future<EditorProjectStore> _projectStore() =>
       _projectStoreFuture ??= JsonFileEditorProjectStore.openDefault();
 
@@ -273,8 +284,9 @@ class _UnifiedWorkspaceEditorScreenState
         _refresh();
       }
       return result;
-    } catch (error, stackTrace) {
-      _reportCanonicalCutoverError(error, stackTrace);
+    } catch (_) {
+      // CanonicalEditorScreenCutoverBinding reports unexpected failures through
+      // onError before rethrowing. Do not double-report the same exception.
       return null;
     }
   }
@@ -378,7 +390,7 @@ class _UnifiedWorkspaceEditorScreenState
       final snapshot = await store.load(_projectMetadata.projectId);
       if (!mounted || snapshot == null) return;
       if (!snapshot.capturedAt.isAfter(_projectMetadata.updatedAt)) {
-        await store.discard(_projectMetadata.projectId);
+        await store.discard(snapshot.projectId);
         return;
       }
       final restore = await showDialog<bool>(
@@ -785,7 +797,8 @@ class _UnifiedWorkspaceEditorScreenState
       if (connection != null) {
         workspace.selectLevel(connection.levelNumber);
       }
-      if (controller.level.spaces.any((space) => space.id == preferredSpaceId)) {
+      if (controller.level.spaces
+          .any((space) => space.id == preferredSpaceId)) {
         controller.selectSpace(preferredSpaceId);
       } else if (controller.level.spaces.any(
         (space) => space.id == surface.spaceId,
@@ -932,9 +945,7 @@ class _UnifiedWorkspaceEditorScreenState
                         ? _DesktopWorkspace(
                             workspace: workspace,
                             shell: shell,
-                            interaction: siteInteraction,
                             canvas: canvas,
-                            onOpenMiniMap: _openMiniMap,
                             navigator: _projectNavigator(compact: false),
                           )
                         : Stack(
@@ -962,17 +973,13 @@ class _DesktopWorkspace extends StatelessWidget {
   const _DesktopWorkspace({
     required this.workspace,
     required this.shell,
-    required this.interaction,
     required this.canvas,
-    required this.onOpenMiniMap,
     required this.navigator,
   });
 
   final EditorBuildingWorkspace workspace;
   final EditorShellState shell;
-  final SiteMapInteractionController interaction;
   final Widget canvas;
-  final VoidCallback onOpenMiniMap;
   final Widget navigator;
 
   @override
