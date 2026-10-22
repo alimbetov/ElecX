@@ -152,7 +152,8 @@ final class ProjectEngineeringMetadata {
     for (final entry in entries) {
       result = Object.hash(result, entry.key, entry.value);
     }
-    final hostedEntries = boundaryHostedObjectRegistry.references.entries.toList()
+    final hostedEntries = boundaryHostedObjectRegistry.references.entries
+        .toList()
       ..sort((a, b) => a.key.compareTo(b.key));
     for (final entry in hostedEntries) {
       final reference = entry.value;
