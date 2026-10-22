@@ -59,14 +59,7 @@ final class ProjectOpeningEntity {
     required this.widthMm,
     required this.heightMm,
     this.baseElevationMm = 0,
-  }) : connectedSpaceIds = Set.unmodifiable(connectedSpaceIds) {
-    if (this.connectedSpaceIds.isEmpty || this.connectedSpaceIds.length > 2) {
-      throw ArgumentError.value(
-        this.connectedSpaceIds,
-        'connectedSpaceIds',
-        'Opening must connect one or two spaces.',
-      );
-    }
+  }) : connectedSpaceIds = _validateConnectedSpaces(connectedSpaceIds) {
     if (widthMm <= 0 || heightMm <= 0 || baseElevationMm < 0) {
       throw ArgumentError('Opening dimensions/elevation must be positive.');
     }
@@ -79,9 +72,29 @@ final class ProjectOpeningEntity {
   final int widthMm;
   final int heightMm;
   final int baseElevationMm;
+
+  static Set<SpaceId> _validateConnectedSpaces(Iterable<SpaceId> source) {
+    final values = List<SpaceId>.of(source);
+    if (values.isEmpty || values.length > 2) {
+      throw ArgumentError.value(
+        values,
+        'connectedSpaceIds',
+        'Opening must connect one or two spaces.',
+      );
+    }
+    final unique = Set<SpaceId>.of(values);
+    if (unique.length != values.length) {
+      throw ArgumentError.value(
+        values,
+        'connectedSpaceIds',
+        'Opening connectivity cannot contain the same space twice.',
+      );
+    }
+    return Set<SpaceId>.unmodifiable(unique);
+  }
 }
 
-enum SpaceAdjacencyKind { sharedBoundary, opening, openPassage }
+enum SpaceAdjacencyKind { sharedBoundary, opening, openPassage, vertical }
 
 /// Symmetric semantic adjacency between exactly two spaces.
 final class ProjectSpaceAdjacencyEntity {
@@ -100,6 +113,11 @@ final class ProjectSpaceAdjacencyEntity {
     if (kind == SpaceAdjacencyKind.opening && openingId == null) {
       throw ArgumentError('Opening adjacency requires openingId.');
     }
+    if (kind != SpaceAdjacencyKind.opening && openingId != null) {
+      throw ArgumentError(
+        'Only opening adjacency may reference openingId.',
+      );
+    }
   }
 
   final SpaceAdjacencyId id;
@@ -117,15 +135,22 @@ enum OverlayDiscipline {
   security,
   electrical,
   telecom,
+  lighting,
   custom,
 }
 
 enum OverlayClassificationKind {
   fireCompartment,
+  smokeZone,
+  evacuationZone,
   accessControlZone,
   securityZone,
+  restrictedArea,
   electricalZone,
+  emergencySupplyZone,
   telecomZone,
+  networkZone,
+  lightingControlZone,
   custom,
 }
 
@@ -145,6 +170,12 @@ final class ProjectOverlayClassificationEntity {
         'Overlay name must be non-empty.',
       );
     }
+    if (!_supportsKind(discipline, kind)) {
+      throw ArgumentError(
+        'Overlay kind ${kind.name} is incompatible with discipline '
+        '${discipline.name}.',
+      );
+    }
   }
 
   final OverlayClassificationId id;
@@ -152,4 +183,34 @@ final class ProjectOverlayClassificationEntity {
   final OverlayDiscipline discipline;
   final OverlayClassificationKind kind;
   final Set<SpaceId> spaceIds;
+
+  static bool _supportsKind(
+    OverlayDiscipline discipline,
+    OverlayClassificationKind kind,
+  ) {
+    if (kind == OverlayClassificationKind.custom) {
+      return true;
+    }
+    return switch (discipline) {
+      OverlayDiscipline.fireSafety =>
+        kind == OverlayClassificationKind.fireCompartment ||
+            kind == OverlayClassificationKind.smokeZone ||
+            kind == OverlayClassificationKind.evacuationZone,
+      OverlayDiscipline.accessControl =>
+        kind == OverlayClassificationKind.accessControlZone ||
+            kind == OverlayClassificationKind.restrictedArea,
+      OverlayDiscipline.security =>
+        kind == OverlayClassificationKind.securityZone ||
+            kind == OverlayClassificationKind.restrictedArea,
+      OverlayDiscipline.electrical =>
+        kind == OverlayClassificationKind.electricalZone ||
+            kind == OverlayClassificationKind.emergencySupplyZone,
+      OverlayDiscipline.telecom =>
+        kind == OverlayClassificationKind.telecomZone ||
+            kind == OverlayClassificationKind.networkZone,
+      OverlayDiscipline.lighting =>
+        kind == OverlayClassificationKind.lightingControlZone,
+      OverlayDiscipline.custom => false,
+    };
+  }
 }
