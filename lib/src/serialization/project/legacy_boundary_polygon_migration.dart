@@ -17,9 +17,8 @@ abstract final class LegacyBoundaryPolygonMigration {
     required Iterable<BoundaryPointMm> polygon,
   }) {
     final points = _normalizePolygon(polygon);
-    final polygonSeed = points
-        .map((point) => '${point.xMm},${point.yMm}')
-        .join(';');
+    final polygonSeed =
+        points.map((point) => '${point.xMm},${point.yMm}').join(';');
 
     final edgeIds = <BoundaryEdgeId>[];
     final edges = <BoundaryEdgeId, ProjectBoundaryEdge>{};
