@@ -1,6 +1,5 @@
 import '../../domain/boundary_host_migration.dart';
 import '../../domain/boundary_host_registry.dart';
-import '../../domain/boundary_topology.dart';
 import '../../domain/electrical_routing.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/project_model.dart';
