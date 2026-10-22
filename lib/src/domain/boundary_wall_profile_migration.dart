@@ -97,8 +97,10 @@ abstract final class BoundaryWallProfileMigration {
     if (first == null && second == null) return Map.unmodifiable(profiles);
     if (first == null || second == null) {
       throw const BoundaryWallProfileMigrationException(
-        code: BoundaryWallProfileMigrationIssueCode.mergeProfileShapeUnsupported,
-        message: 'Cannot merge one explicit wall profile with one implicit wall '
+        code:
+            BoundaryWallProfileMigrationIssueCode.mergeProfileShapeUnsupported,
+        message:
+            'Cannot merge one explicit wall profile with one implicit wall '
             'profile without an explicit default-height contract.',
       );
     }
@@ -110,7 +112,8 @@ abstract final class BoundaryWallProfileMigration {
     }
     if (!_isRectangle(first) || !_isRectangle(second)) {
       throw const BoundaryWallProfileMigrationException(
-        code: BoundaryWallProfileMigrationIssueCode.mergeProfileShapeUnsupported,
+        code:
+            BoundaryWallProfileMigrationIssueCode.mergeProfileShapeUnsupported,
         message: 'Only lossless equal-height rectangular profile merge is '
             'currently supported.',
       );
