@@ -104,7 +104,9 @@ class _UnifiedWorkspaceEditorScreenState
   bool get _canEditProjectNorth {
     final resolved = _canonicalResolvedRuntime;
     final config = widget.canonicalRuntime;
-    if (resolved == null || config?.onProjectNorthCommitted == null) {
+    if (resolved == null ||
+        config?.onCanonicalMutationCommitted == null ||
+        config?.onProjectNorthCommitted == null) {
       return false;
     }
     if (!_canonicalProjectMatchesScreen) return false;
@@ -120,7 +122,9 @@ class _UnifiedWorkspaceEditorScreenState
   bool get _canEditSpaceSemantics {
     final resolved = _canonicalResolvedRuntime;
     final config = widget.canonicalRuntime;
-    if (resolved == null || config?.onSpaceSemanticsCommitted == null) {
+    if (resolved == null ||
+        config?.onCanonicalMutationCommitted == null ||
+        config?.onSpaceSemanticsCommitted == null) {
       return false;
     }
     if (!_canonicalProjectMatchesScreen) return false;
@@ -282,21 +286,30 @@ class _UnifiedWorkspaceEditorScreenState
         ),
         materializer: resolved.materializer,
       );
-      final topologyOwner = resolved.persistenceOwnerProjectId ==
-                  resolved.session.project.id &&
-              resolved.session.project.id.value == _projectMetadata.projectId
-          ? config.onBoundaryTopologyCommitted
-          : null;
+      final ownsExactProject = resolved.persistenceOwnerProjectId ==
+              resolved.session.project.id &&
+          resolved.session.project.id.value == _projectMetadata.projectId;
+      final canonicalOwner =
+          ownsExactProject ? config.onCanonicalMutationCommitted : null;
+      final topologyHook =
+          ownsExactProject ? config.onBoundaryTopologyCommitted : null;
       final binding = CanonicalEditorScreenCutoverBinding(
         coordinator: coordinator,
         onCanonicalNavigationChanged: (_) {
           _canonicalBlocked = null;
           _refresh();
         },
-        onBoundaryTopologyCommitted: topologyOwner == null
+        onCanonicalMutationReplayed: canonicalOwner == null
+            ? null
+            : (result) {
+                canonicalOwner(resolved.session, result);
+                _refresh();
+              },
+        onBoundaryTopologyCommitted: canonicalOwner == null
             ? null
             : (editing, result) {
-                topologyOwner(editing, result);
+                canonicalOwner(resolved.session, result);
+                topologyHook?.call(editing, result);
                 _refresh();
               },
         onBlocked: _handleCanonicalBlocked,
@@ -386,6 +399,7 @@ class _UnifiedWorkspaceEditorScreenState
                 },
               );
               try {
+                config.onCanonicalMutationCommitted!(resolved.session, result);
                 config.onSpaceSemanticsCommitted?.call(editing, result);
               } finally {
                 _refresh();
@@ -437,16 +451,21 @@ class _UnifiedWorkspaceEditorScreenState
         _refresh();
       },
       onAuthoringCommitted: authoringEnabled
-          ? (session, createdId) {
+          ? (session, result) {
+              final mutation = ProjectMutationResult(
+                project: result.project,
+                changeSet: result.changeSet,
+              );
               controller.documentHistory.recordCanonicalCommit(
                 session: session,
-                label: 'Edit project structure',
+                label: result.changeSet.commandType,
                 rematerialize: () {
                   _pushCanonicalToEditor();
                 },
               );
               try {
-                config.onAuthoringCommitted?.call(session, createdId);
+                config.onCanonicalMutationCommitted!(session, mutation);
+                config.onAuthoringCommitted?.call(session, result.createdId);
               } finally {
                 _pushCanonicalToEditor();
                 _refresh();
@@ -812,7 +831,8 @@ class _UnifiedWorkspaceEditorScreenState
     final editing = resolved.session.projectNorthEditing;
     final capturedProjectId = editing.projectId;
     final capturedVersion = editing.version;
-    final ownerCallback = config.onProjectNorthCommitted!;
+    final canonicalOwner = config.onCanonicalMutationCommitted!;
+    final featureCallback = config.onProjectNorthCommitted!;
 
     final value = await showDialog<ProjectEngineeringNorth>(
       context: context,
@@ -834,6 +854,7 @@ class _UnifiedWorkspaceEditorScreenState
         currentEditing.projectId == capturedProjectId &&
         currentEditing.version == capturedVersion &&
         resolved.persistenceOwnerProjectId == capturedProjectId &&
+        currentConfig?.onCanonicalMutationCommitted != null &&
         currentConfig?.onProjectNorthCommitted != null;
     if (!affinityValid) {
       _showProjectMessage(
@@ -890,7 +911,8 @@ class _UnifiedWorkspaceEditorScreenState
     );
 
     try {
-      ownerCallback(currentEditing, result);
+      canonicalOwner(resolved.session, result);
+      featureCallback(currentEditing, result);
     } catch (error) {
       _showProjectMessage(
         'Project North committed, но persistence owner не подтвердил владение: $error',
