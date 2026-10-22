@@ -27,8 +27,7 @@ abstract final class CanonicalRoomSurfaceRuntimeRegistry {
   static final Expando<CanonicalRoomSurfaceResume> _stagedResumes =
       Expando<CanonicalRoomSurfaceResume>('ElecX canonical surface resume');
   static final Expando<CanonicalBoundaryTopologyOwnershipCallback>
-      _topologyOwnership =
-      Expando<CanonicalBoundaryTopologyOwnershipCallback>(
+      _topologyOwnership = Expando<CanonicalBoundaryTopologyOwnershipCallback>(
     'ElecX canonical boundary topology ownership',
   );
 
