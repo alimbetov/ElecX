@@ -259,7 +259,8 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
   }) {
     final context = _context(controller);
     if (context == null) return false;
-    if (context.coordinator.session.project.index.boundaryEdge(edgeId) == null) {
+    if (context.coordinator.session.project.index.boundaryEdge(edgeId) ==
+        null) {
       return false;
     }
     final ids = idFactory ?? SecureRandomEntityIdFactory();
