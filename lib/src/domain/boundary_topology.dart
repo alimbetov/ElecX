@@ -283,7 +283,9 @@ final class BoundaryEdgeLineage {
   void _validateShape() {
     if (sourceEdgeIds.toSet().length != sourceEdgeIds.length ||
         resultEdgeIds.toSet().length != resultEdgeIds.length) {
-      throw ArgumentError('A lineage record cannot contain duplicate edge ids.');
+      throw ArgumentError(
+        'A lineage record cannot contain duplicate edge ids.',
+      );
     }
 
     switch (kind) {
