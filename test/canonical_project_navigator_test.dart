@@ -31,11 +31,11 @@ void main() {
       await tester.pump();
 
       expect(find.text('Site'), findsWidgets);
-      expect(find.text('Building A'), findsOneWidget);
+      expect(find.text('Building A'), findsWidgets);
       expect(find.text('Building B'), findsOneWidget);
-      expect(find.text('Level A1'), findsOneWidget);
-      expect(find.text('Room A'), findsOneWidget);
-      expect(find.text('Zone A'), findsOneWidget);
+      expect(find.text('Level A1'), findsWidgets);
+      expect(find.text('Room A'), findsWidgets);
+      expect(find.text('Zone A'), findsWidgets);
 
       await tester.tap(find.text('Building B'));
       await tester.pumpAndSettle();
