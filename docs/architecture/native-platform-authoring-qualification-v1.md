@@ -6,7 +6,7 @@ Branch: `feat/project-structure-authoring`
 
 This document defines the cross-platform authoring contract for the project-structure roadmap without turning every platform runtime into a blocking gate for each architecture stage.
 
-ElecX remains a native application with one canonical engineering model and platform-adaptive interaction layers.
+ElecX remains a native application with one canonical engineering model and platform-adaptive interaction/runtime boundaries.
 
 Supported native targets:
 
@@ -23,6 +23,30 @@ Mobile / tablet
 ```
 
 Web/browser remains out of scope.
+
+## No platform stubs
+
+The architecture MUST NOT introduce placeholder domain services, fake platform implementations, duplicate project models or no-op adapters merely to claim platform coverage.
+
+Platform readiness is achieved by keeping engineering semantics platform-neutral and placing real OS/device differences behind narrow runtime/input/persistence boundaries when those capabilities are implemented.
+
+Therefore:
+
+```text
+NOT ALLOWED
+macProjectModel / windowsProjectModel / mobileProjectModel
+MacBoundaryTopology / AndroidBoundaryTopology
+if (Platform.isMacOS) { engineering meaning A }
+if (Platform.isAndroid) { engineering meaning B }
+no-op "future Windows" service in domain/application
+
+ALLOWED
+one ProjectAggregate
+one BoundaryEdgeId / lineage model
+one command + version + validation path
+platform adapters for real OS integration concerns
+adaptive UI shells invoking the same commands
+```
 
 ## Delivery rule
 
@@ -73,7 +97,7 @@ A stage may be `DONE + HARDENED` for domain/application semantics while some tar
 
 All native targets MUST use the same:
 
-- `ProjectId`, `SiteId`, `BuildingId`, `LevelId`, `ZoneId`, `SpaceId` and later stable topology identities;
+- `ProjectId`, `SiteId`, `BuildingId`, `LevelId`, `ZoneId`, `SpaceId` and stable topology identities;
 - canonical project aggregate semantics;
 - project mutation/version rules;
 - `ProjectChangeSet` and undo/redo semantics;
@@ -114,6 +138,86 @@ The following are forbidden in domain/application semantics:
 - platform-specific project schemas or migrations.
 
 `dart:io`, path-provider integration and native filesystem concerns remain outside domain/application code.
+
+## Native capability architecture
+
+The six supported targets have different runtime characteristics. These differences are architectural inputs, not reasons to fork engineering semantics.
+
+| Concern | macOS | Windows | Linux | Android | iOS | iPadOS | Architectural owner |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| canonical project/topology | same | same | same | same | same | same | domain/application |
+| mouse/trackpad | primary | primary | primary | optional | optional | supported | input adapter/UI |
+| keyboard shortcuts | Cmd conventions | Ctrl conventions | Ctrl conventions | optional HW keyboard | optional HW keyboard | first-class HW keyboard | shortcut mapping only |
+| touch | optional | device-dependent | device-dependent | primary | primary | primary | gesture adapter/UI |
+| stylus | device-dependent | pen capable | device-dependent | stylus capable | limited device profile | Apple Pencil first-class | pointer/gesture adapter |
+| window resize | desktop window | desktop window | desktop window | activity/window classes | scene/window lifecycle | scene + multitasking | adaptive shell |
+| split/multitasking | desktop windows | desktop windows | desktop windows | multi-window/device-dependent | limited by device mode | first-class split/stage manager | adaptive shell |
+| file picker/share | desktop APIs | desktop APIs | desktop APIs | SAF/content URI | security-scoped/document picker | document picker/share | storage/share adapter |
+| application storage | filesystem/app support | filesystem/app data | XDG/app data | sandbox/app storage | sandbox/container | sandbox/container | persistence adapter |
+| lifecycle interruption | window/app lifecycle | window/app lifecycle | window/app lifecycle | activity/process lifecycle | scene/app lifecycle | scene/app lifecycle | session/autosave coordinator |
+| permissions | limited app-specific | app/system-specific | distro/runtime-specific | runtime permissions | entitlement/runtime permissions | entitlement/runtime permissions | platform service boundary |
+| canonical persistence schema | same | same | same | same | same | same | serialization/domain |
+
+The final column is the controlling rule: platform variation is handled where the variation actually exists.
+
+## Input normalization contract
+
+Engineering gestures must be normalized before mutation logic.
+
+```text
+mouse drag ───────┐
+touch drag ───────┤
+stylus drag ──────┤
+keyboard nudge ───┼──> normalized edit intent/session
+trackpad gesture ─┘             │
+                                ▼
+                     shared validation + command
+                                │
+                                ▼
+                         canonical mutation
+```
+
+Pointer IDs, buttons, pressure, hover and platform gesture recognizers may differ. The resulting engineering edit session must not.
+
+For P7 topology work this means the same split/move/delete operation must produce the same candidate boundary graph and `BoundaryEdgeId` lineage on every target.
+
+## Lifecycle and interruption contract
+
+Mobile/tablet targets can suspend or kill the process more aggressively than desktop targets. Desktop targets can lose focus, close windows, or terminate during active edits.
+
+Every long-lived authoring interaction therefore follows a common rule:
+
+```text
+begin -> preview -> validate -> commit
+                    └---------> cancel
+```
+
+Transient previews are not canonical state.
+
+On focus loss, route change, app pause, window close request, OS interruption or pointer cancellation, the UI/session layer must either:
+
+1. complete an already-authorized atomic commit; or
+2. cancel the transient edit and leave canonical state unchanged.
+
+No platform is allowed to persist half of a topology mutation.
+
+## Persistence and filesystem contract
+
+The serialized engineering document is platform-neutral.
+
+Platform adapters may differ in how bytes are obtained or stored:
+
+```text
+macOS/Windows/Linux -> filesystem/native picker
+Android             -> app storage / Storage Access Framework/content URI
+Apple platforms     -> sandbox/document picker/security-scoped access where needed
+```
+
+But the codec receives/produces the same canonical document bytes and schema.
+
+No canonical entity may persist native file handles, content URIs, security-scoped bookmarks, absolute local paths or platform database row ids as engineering identity.
+
+If external-document access requires a platform token/bookmark, it belongs in local runtime metadata outside the canonical project payload.
 
 ## Desktop interaction contract
 
@@ -339,4 +443,4 @@ This is a UX prioritization rule, not a domain capability fork.
 
 ElecX has one engineering project model.
 
-Platforms adapt how users interact with it; platforms do not redefine what the project means.
+Platforms adapt input, lifecycle, filesystem, windowing and presentation around that model; platforms do not redefine what the project means.
