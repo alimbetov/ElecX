@@ -209,7 +209,8 @@ final class ProjectChangeSet {
       throw ArgumentError('Specify either diff or entityDiff, not both.');
     }
     if (commandType.trim().isEmpty) {
-      throw ArgumentError.value(commandType, 'commandType', 'Must be non-empty.');
+      throw ArgumentError.value(
+          commandType, 'commandType', 'Must be non-empty.');
     }
     if (afterVersion.value != beforeVersion.value + 1) {
       throw ArgumentError(
@@ -263,7 +264,8 @@ final class ProjectMutationPreview {
 
   ProjectEntityDiff get diff => entityDiff;
   Set<EntityId> get affectedEntityIds => entityDiff.affectedEntityIds;
-  bool get hasChanges => entityDiff.isNotEmpty || engineeringMetadataDiff.isNotEmpty;
+  bool get hasChanges =>
+      entityDiff.isNotEmpty || engineeringMetadataDiff.isNotEmpty;
 }
 
 final class ProjectMutationResult {
@@ -326,7 +328,8 @@ final class UndoRecord {
     required this.afterState,
   }) {
     if (commandType.trim().isEmpty) {
-      throw ArgumentError.value(commandType, 'commandType', 'Must be non-empty.');
+      throw ArgumentError.value(
+          commandType, 'commandType', 'Must be non-empty.');
     }
     if (_ProjectMutableStateDiff.between(beforeState, afterState).isEmpty) {
       throw ArgumentError(
@@ -412,7 +415,8 @@ final class ProjectMutationSession {
     final candidate = request.command.buildCandidate(before);
     CandidateGraphValidator.validate(current: before, candidate: candidate);
     final candidateState = candidate.resolveState(before);
-    final stateDiff = _ProjectMutableStateDiff.between(beforeState, candidateState);
+    final stateDiff =
+        _ProjectMutableStateDiff.between(beforeState, candidateState);
     if (stateDiff.isEmpty) return null;
     _requireVersion(request.expectedVersion);
 
@@ -454,7 +458,8 @@ final class ProjectMutationSession {
       record.beforeState,
     );
     if (stateDiff.isEmpty) {
-      throw StateError('Undo history is inconsistent with current project state.');
+      throw StateError(
+          'Undo history is inconsistent with current project state.');
     }
     final restored = _commitState(state: record.beforeState, before: before);
     final changeSet = ProjectChangeSet(
@@ -482,7 +487,8 @@ final class ProjectMutationSession {
       record.afterState,
     );
     if (stateDiff.isEmpty) {
-      throw StateError('Redo history is inconsistent with current project state.');
+      throw StateError(
+          'Redo history is inconsistent with current project state.');
     }
     final restored = _commitState(state: record.afterState, before: before);
     final changeSet = ProjectChangeSet(
