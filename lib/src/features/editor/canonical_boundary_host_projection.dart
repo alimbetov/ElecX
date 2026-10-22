@@ -269,8 +269,8 @@ abstract final class CanonicalBoundaryHostProjection {
     for (final route in p2State.routes) {
       final materialized = _materializeRoute(
         route: route,
-        constraints: p2State.routeConstraints[route.id] ??
-            CableRouteConstraints.empty,
+        constraints:
+            p2State.routeConstraints[route.id] ?? CableRouteConstraints.empty,
         canonicalSpaceId: canonicalSpaceId,
         legacySpace: legacySpace,
         registry: registry,
@@ -304,7 +304,8 @@ abstract final class CanonicalBoundaryHostProjection {
     if (reference == null) return opening;
     if (reference.objectKind != BoundaryHostedObjectKind.opening ||
         reference.geometryKind != BoundaryHostGeometryKind.interval) {
-      throw StateError('Opening ${opening.id} has incompatible hosted metadata.');
+      throw StateError(
+          'Opening ${opening.id} has incompatible hosted metadata.');
     }
     final start = reference.startOffsetMm!;
     final end = reference.endOffsetMm!;
@@ -452,8 +453,8 @@ abstract final class CanonicalBoundaryHostProjection {
         for (final source in pendingSourceLocations) {
           final anchorIndex = currentAnchorIds.indexOf(source.anchorId);
           oldPointToNew[
-            '${source.sourceSegmentIndex}:${source.sourcePointIndex}'
-          ] = _RoutePointLocation(newIndex, anchorIndex);
+                  '${source.sourceSegmentIndex}:${source.sourcePointIndex}'] =
+              _RoutePointLocation(newIndex, anchorIndex);
         }
         currentPoints = <SurfacePointMm>[];
         currentAnchorIds = <RouteAnchorId>[];
@@ -551,9 +552,8 @@ abstract final class CanonicalBoundaryHostProjection {
     final waypoints = <CableMandatoryWaypoint>[];
     for (final waypoint in constraints.mandatoryWaypoints) {
       if (waypoint.segmentIndex >= sourceRoute.segments.length) continue;
-      final location = oldPointToNew[
-        '${waypoint.segmentIndex}:${waypoint.pointIndex}'
-      ];
+      final location =
+          oldPointToNew['${waypoint.segmentIndex}:${waypoint.pointIndex}'];
       if (location == null || location.segmentIndex >= resultSegments.length) {
         throw StateError(
           'Mandatory waypoint could not be rebound through P7A-5 route split.',
@@ -685,7 +685,8 @@ abstract final class CanonicalBoundaryHostProjection {
     }
     final ordinal = surface.wallIndex;
     if (ordinal == null) {
-      throw StateError('Wall surface has neither BoundaryEdgeId nor wallIndex.');
+      throw StateError(
+          'Wall surface has neither BoundaryEdgeId nor wallIndex.');
     }
     return _edgeAtOrdinal(orderedEdgeIds, ordinal);
   }

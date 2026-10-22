@@ -141,8 +141,8 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
     if (topology == null) return false;
     final index = topology.orderedEdgeIds.indexOf(edgeId);
     if (index < 0) return false;
-    final next = topology
-        .orderedEdgeIds[(index + 1) % topology.orderedEdgeIds.length];
+    final next =
+        topology.orderedEdgeIds[(index + 1) % topology.orderedEdgeIds.length];
     final ids = idFactory ?? SecureRandomEntityIdFactory();
     final edit = context.coordinator.session.boundaryTopologyMigration.begin(
       spaceId: context.spaceId,
@@ -285,7 +285,8 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
       openings: controller.openings,
       p2State: p2,
     );
-    final capturedProfiles = CanonicalBoundaryHostProjection.captureWallProfiles(
+    final capturedProfiles =
+        CanonicalBoundaryHostProjection.captureWallProfiles(
       canonicalSpaceId: context.spaceId,
       legacySpace: legacySpace,
       orderedEdgeIds: sourceTopology.orderedEdgeIds,
@@ -300,8 +301,8 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
         reference.objectKey: reference,
     });
     final canonicalProfiles = BoundaryWallProfileRegistry({
-      for (final entry in project.engineeringMetadata.boundaryWallProfileRegistry
-          .profiles.entries)
+      for (final entry in project
+          .engineeringMetadata.boundaryWallProfileRegistry.profiles.entries)
         if (entry.key.spaceId == context.spaceId) entry.key: entry.value,
     });
     final projectedProfiles = BoundaryWallProfileRegistry({
@@ -327,7 +328,8 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
     final spaceId = coordinator?.session.navigation.selectedSpaceId;
     if (coordinator == null || owner == null || spaceId == null) return null;
     final legacySpaceId = coordinator.adapter.binding.legacySpaceIds[spaceId];
-    if (legacySpaceId == null || controller.selectedSpace?.id != legacySpaceId) {
+    if (legacySpaceId == null ||
+        controller.selectedSpace?.id != legacySpaceId) {
       return null;
     }
     return _MigrationContext(

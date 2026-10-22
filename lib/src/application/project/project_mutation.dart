@@ -207,8 +207,7 @@ final class ProjectEngineeringMetadataDiff {
         boundaryHostedObjectRegistryChanged: !before
             .boundaryHostedObjectRegistry
             .sameAs(after.boundaryHostedObjectRegistry),
-        boundaryWallProfileRegistryChanged: !before
-            .boundaryWallProfileRegistry
+        boundaryWallProfileRegistryChanged: !before.boundaryWallProfileRegistry
             .sameAs(after.boundaryWallProfileRegistry),
       );
 

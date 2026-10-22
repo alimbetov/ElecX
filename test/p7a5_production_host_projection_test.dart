@@ -39,7 +39,8 @@ void main() {
           },
         );
 
-    test('captures hosted objects and wall profiles in separate registries', () {
+    test('captures hosted objects and wall profiles in separate registries',
+        () {
       final legacyRoom = room();
       final wall = RoomSurfaceRef.wall(legacyRoom.id, 0);
       final componentA = ElectricalComponentPlacement(
@@ -138,9 +139,7 @@ void main() {
         isFalse,
       );
       expect(
-        profiles[
-          BoundaryEdgeHostRef(spaceId: canonicalSpaceId, edgeId: e0)
-        ],
+        profiles[BoundaryEdgeHostRef(spaceId: canonicalSpaceId, edgeId: e0)],
         isNotNull,
       );
     });
@@ -289,7 +288,8 @@ void main() {
       expect(materialized.space.boundaryEdgeWallProfiles[e0], isNotNull);
     });
 
-    test('topology-aware materialization reconstructs wall count after split', () {
+    test('topology-aware materialization reconstructs wall count after split',
+        () {
       final legacyRoom = room();
       final bottomA = BoundaryEdgeId('bottom-a');
       final bottomB = BoundaryEdgeId('bottom-b');
@@ -339,7 +339,8 @@ void main() {
       expect(materialized.space.wallProfiles, isEmpty);
     });
 
-    test('collinear split materializes one route segment as two losslessly', () {
+    test('collinear split materializes one route segment as two losslessly',
+        () {
       final legacyRoom = room();
       final bottomA = BoundaryEdgeId('bottom-a');
       final bottomB = BoundaryEdgeId('bottom-b');

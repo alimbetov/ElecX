@@ -58,8 +58,8 @@ void main() {
         isEmpty,
       );
       expect(
-        restored.aggregate.engineeringMetadata.boundaryWallProfileRegistry
-            .profiles,
+        restored
+            .aggregate.engineeringMetadata.boundaryWallProfileRegistry.profiles,
         isEmpty,
       );
 
@@ -109,8 +109,8 @@ void main() {
         isEmpty,
       );
       expect(
-        restored.aggregate.engineeringMetadata.boundaryWallProfileRegistry
-            .profiles,
+        restored
+            .aggregate.engineeringMetadata.boundaryWallProfileRegistry.profiles,
         isEmpty,
       );
 
@@ -157,8 +157,8 @@ void main() {
         isEmpty,
       );
       expect(
-        restored.aggregate.engineeringMetadata.boundaryWallProfileRegistry
-            .profiles,
+        restored
+            .aggregate.engineeringMetadata.boundaryWallProfileRegistry.profiles,
         isEmpty,
       );
     });
@@ -187,8 +187,8 @@ void main() {
         isEmpty,
       );
       expect(
-        restored.aggregate.engineeringMetadata.boundaryWallProfileRegistry
-            .profiles,
+        restored
+            .aggregate.engineeringMetadata.boundaryWallProfileRegistry.profiles,
         isEmpty,
       );
       expect(codec.encode(restored).schemaVersion, 6);
@@ -210,8 +210,8 @@ void main() {
         isEmpty,
       );
       expect(
-        restored.aggregate.engineeringMetadata.boundaryWallProfileRegistry
-            .profiles,
+        restored
+            .aggregate.engineeringMetadata.boundaryWallProfileRegistry.profiles,
         isEmpty,
       );
       expect(codec.encode(restored).schemaVersion, 6);
@@ -227,8 +227,8 @@ void main() {
       );
 
       expect(
-        restored.aggregate.engineeringMetadata.boundaryWallProfileRegistry
-            .profiles,
+        restored
+            .aggregate.engineeringMetadata.boundaryWallProfileRegistry.profiles,
         isEmpty,
       );
       expect(codec.encode(restored).schemaVersion, 6);

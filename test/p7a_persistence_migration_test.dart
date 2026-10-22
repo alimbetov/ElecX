@@ -145,7 +145,8 @@ void main() {
       );
     });
 
-    test('schema v6 round-trip preserves ids hosts profiles and tombstones', () {
+    test('schema v6 round-trip preserves ids hosts profiles and tombstones',
+        () {
       final fixture = _BoundarySnapshotFixture.valid();
       const codec = CanonicalProjectDocumentCodec();
 
@@ -153,7 +154,8 @@ void main() {
       final restored = codec.decode(encoded);
       final reencoded = codec.encode(restored);
 
-      expect(encoded.schemaVersion, CanonicalProjectDocumentCodec.schemaVersion);
+      expect(
+          encoded.schemaVersion, CanonicalProjectDocumentCodec.schemaVersion);
       expect(
         restored.aggregate.index.boundary(fixture.spaceId)?.orderedEdgeIds,
         fixture.migrated.topology.orderedEdgeIds,
@@ -173,12 +175,10 @@ void main() {
       expect(restoredOpening.startOffsetMm, 1200);
       expect(restoredOpening.endOffsetMm, 2000);
       final restoredProfile = restored.aggregate.engineeringMetadata
-          .boundaryWallProfileRegistry[
-        BoundaryEdgeHostRef(
-          spaceId: fixture.spaceId,
-          edgeId: fixture.firstEdgeId,
-        )
-      ];
+          .boundaryWallProfileRegistry[BoundaryEdgeHostRef(
+        spaceId: fixture.spaceId,
+        edgeId: fixture.firstEdgeId,
+      )];
       expect(restoredProfile, isNotNull);
       expect(restoredProfile!.maxX, 4000);
       expect(restoredProfile.maxY, 3000);
@@ -304,7 +304,8 @@ void main() {
 
     test('registry rejects edge re-parent after tombstone restoration', () {
       final edgeId = BoundaryEdgeId('edge-stable');
-      final registry = BoundaryEdgeIdentityRegistry({edgeId: SpaceId('space-a')});
+      final registry =
+          BoundaryEdgeIdentityRegistry({edgeId: SpaceId('space-a')});
       final foreignTopology = _triangleTopology(SpaceId('space-b'), edgeId);
       expect(
         () => registry.registerActiveBoundaries({

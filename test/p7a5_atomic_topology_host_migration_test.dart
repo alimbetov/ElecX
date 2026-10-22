@@ -116,9 +116,7 @@ void main() {
         );
         expect(
           mutations.current.engineeringMetadata
-              .boundaryHostedObjectRegistry[fixture.openingKey]!
-              .host
-              .edgeId,
+              .boundaryHostedObjectRegistry[fixture.openingKey]!.host.edgeId,
           fixture.bottomB,
         );
 
@@ -131,9 +129,7 @@ void main() {
         );
         expect(
           undone.project.engineeringMetadata
-              .boundaryHostedObjectRegistry[fixture.openingKey]!
-              .host
-              .edgeId,
+              .boundaryHostedObjectRegistry[fixture.openingKey]!.host.edgeId,
           fixture.bottom,
         );
         expect(
@@ -163,9 +159,7 @@ void main() {
         expect(redone!.project.version, LocalProjectVersion(3));
         expect(
           redone.project.engineeringMetadata
-              .boundaryHostedObjectRegistry[fixture.openingKey]!
-              .host
-              .edgeId,
+              .boundaryHostedObjectRegistry[fixture.openingKey]!.host.edgeId,
           fixture.bottomB,
         );
         expect(
