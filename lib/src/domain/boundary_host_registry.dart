@@ -79,9 +79,18 @@ final class BoundaryHostedObjectRegistry {
   /// two adjacent legacy wall segments. That point is a projection seam, not a
   /// durable engineering anchor and cannot be represented by the canonical
   /// one-object/one-host registry without inventing a second ownership model.
-  static bool isProjectionOnlyRouteAnchor(BoundaryHostedReference reference) =>
-      reference.objectKind == BoundaryHostedObjectKind.routeAnchor &&
-      reference.objectKey.contains(':anchor:p7a-transition:');
+  static bool isProjectionOnlyRouteAnchor(BoundaryHostedReference reference) {
+    if (reference.objectKind != BoundaryHostedObjectKind.routeAnchor) {
+      return false;
+    }
+    const marker = ':anchor:';
+    final markerIndex = reference.objectKey.lastIndexOf(marker);
+    if (markerIndex < 0) return false;
+    final anchorPart = reference.objectKey.substring(
+      markerIndex + marker.length,
+    );
+    return anchorPart.startsWith('p7a-transition:');
+  }
 
   BoundaryHostedReference? operator [](String objectKey) =>
       references[objectKey];
@@ -94,6 +103,16 @@ final class BoundaryHostedObjectRegistry {
 
   BoundaryHostedObjectRegistry put(BoundaryHostedReference reference) {
     if (isProjectionOnlyRouteAnchor(reference)) return this;
+    final existing = references[reference.objectKey];
+    if (existing != null &&
+        !_sameReference(existing, reference) &&
+        (existing.objectKind == BoundaryHostedObjectKind.routeAnchor ||
+            reference.objectKind == BoundaryHostedObjectKind.routeAnchor)) {
+      throw StateError(
+        'Canonical route-anchor key ${reference.objectKey} resolves to '
+        'multiple hosted references.',
+      );
+    }
     return BoundaryHostedObjectRegistry({
       ...references,
       reference.objectKey: reference,
@@ -202,13 +221,16 @@ final class BoundaryHostedObjectRegistry {
 
   bool sameAs(BoundaryHostedObjectRegistry other) {
     if (identical(this, other)) return true;
-    if (references.length != other.references.length) return false;
+    if (profilesLengthMismatch(other)) return false;
     for (final entry in references.entries) {
       final right = other.references[entry.key];
       if (right == null || !_sameReference(entry.value, right)) return false;
     }
     return true;
   }
+
+  bool profilesLengthMismatch(BoundaryHostedObjectRegistry other) =>
+      references.length != other.references.length;
 
   static BoundaryHostedReference _rebuild(BoundaryHostedRemap result) =>
       switch (result.source.geometryKind) {
