@@ -327,7 +327,7 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
     } on BoundaryHostedRegistryException catch (error) {
       throw FormatException('Invalid boundary hosted-object registry: $error');
     } on BoundaryOpeningProfileException catch (error) {
-      throw FormatException('Invalid boundary opening/profile ownership: $error');
+      throw FormatException('Invalid opening/profile ownership: $error');
     } on BoundaryWallProfileRegistryException catch (error) {
       throw FormatException('Invalid boundary wall-profile registry: $error');
     } on BoundaryTopologyValidationException catch (error) {
