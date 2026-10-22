@@ -56,8 +56,26 @@ final class BoundaryHostedObjectRegistry {
 
   final Map<String, BoundaryHostedReference> references;
 
+  static String openingObjectKey(OpeningId openingId, SpaceId spaceId) =>
+      'opening:${openingId.value}:${spaceId.value}';
+
+  static String componentObjectKey(String componentId) =>
+      'component:$componentId';
+
+  static String cableSourceObjectKey(String routeId) =>
+      'cable:$routeId:source';
+
+  static String cableTargetObjectKey(String routeId) =>
+      'cable:$routeId:target';
+
+  static String routeAnchorObjectKey(RouteAnchorId anchorId) =>
+      'route-anchor:${anchorId.value}';
+
   BoundaryHostedReference? operator [](String objectKey) =>
       references[objectKey];
+
+  BoundaryHostedReference? openingHost(OpeningId openingId, SpaceId spaceId) =>
+      references[openingObjectKey(openingId, spaceId)];
 
   Iterable<BoundaryHostedReference> forSpace(SpaceId spaceId) =>
       references.values.where((reference) => reference.host.spaceId == spaceId);
@@ -67,6 +85,22 @@ final class BoundaryHostedObjectRegistry {
         ...references,
         reference.objectKey: reference,
       });
+
+  BoundaryHostedObjectRegistry putOpening({
+    required OpeningId openingId,
+    required BoundaryEdgeHostRef host,
+    required int startOffsetMm,
+    required int endOffsetMm,
+  }) =>
+      put(
+        BoundaryHostedReference.interval(
+          objectKey: openingObjectKey(openingId, host.spaceId),
+          objectKind: BoundaryHostedObjectKind.opening,
+          host: host,
+          startOffsetMm: startOffsetMm,
+          endOffsetMm: endOffsetMm,
+        ),
+      );
 
   BoundaryHostedObjectRegistry remove(String objectKey) {
     if (!references.containsKey(objectKey)) return this;
