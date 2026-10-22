@@ -1,5 +1,7 @@
 import '../../application/project/project_snapshot.dart';
 import '../../domain/boundary_edge_identity_registry.dart';
+import '../../domain/boundary_host_migration.dart';
+import '../../domain/boundary_host_registry.dart';
 import '../../domain/boundary_topology.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
@@ -13,14 +15,16 @@ import 'project_document_codec.dart';
 /// - v1: structural multi-building aggregate;
 /// - v2: canonical project engineering orientation;
 /// - v3: P6 SpaceUsage, openings, adjacency and overlay classifications;
-/// - v4: P7A stable boundary topology and durable edge-owner tombstones.
+/// - v4: P7A stable boundary topology and durable edge-owner tombstones;
+/// - v5: P7A-5 durable hosted-object ownership by BoundaryEdgeId.
 final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
   const CanonicalProjectDocumentCodec();
 
-  static const int schemaVersion = 4;
+  static const int schemaVersion = 5;
   static const int _schemaV1 = 1;
   static const int _schemaV2 = 2;
   static const int _schemaV3 = 3;
+  static const int _schemaV4 = 4;
 
   @override
   int get currentSchemaVersion => schemaVersion;
@@ -31,6 +35,9 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
     final identityRegistry = snapshot
         .aggregate.engineeringMetadata.boundaryEdgeIdentityRegistry
         .registerActiveBoundaries(stores.boundaries);
+    final hostedRegistry =
+        snapshot.aggregate.engineeringMetadata.boundaryHostedObjectRegistry;
+    hostedRegistry.validateAgainst(stores.boundaries);
     return ProjectDocument(
       schemaVersion: schemaVersion,
       payload: <String, Object?>{
@@ -48,6 +55,9 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
         },
         'boundaryEdgeIdentityRegistry': _encodeBoundaryIdentityRegistry(
           identityRegistry,
+        ),
+        'boundaryHostedObjectRegistry': _encodeBoundaryHostedObjectRegistry(
+          hostedRegistry,
         ),
         'sites': _encodeSites(stores),
         'buildings': _encodeBuildings(stores),
@@ -261,6 +271,10 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
         migrated.payload['boundaryEdgeIdentityRegistry'],
       );
       _requireRegistryCoversActiveBoundaries(identityRegistry, boundaries);
+      final hostedRegistry = _decodeBoundaryHostedObjectRegistry(
+        migrated.payload['boundaryHostedObjectRegistry'],
+      );
+      hostedRegistry.validateAgainst(boundaries);
 
       final aggregate = ProjectAggregateRoot(
         id: projectId,
@@ -269,6 +283,7 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
         engineeringMetadata: ProjectEngineeringMetadata(
           projectNorth: projectNorth,
           boundaryEdgeIdentityRegistry: identityRegistry,
+          boundaryHostedObjectRegistry: hostedRegistry,
         ),
         stores: ProjectEntityStores(
           sites: sites,
@@ -293,6 +308,8 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
       rethrow;
     } on BoundaryEdgeIdentityOwnershipException catch (error) {
       throw FormatException('Invalid boundary edge identity registry: $error');
+    } on BoundaryHostedRegistryException catch (error) {
+      throw FormatException('Invalid boundary hosted-object registry: $error');
     } on BoundaryTopologyValidationException catch (error) {
       throw FormatException('Invalid persisted boundary topology: $error');
     } on ArgumentError catch (error) {
@@ -324,6 +341,9 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
     }
     if (migrated.schemaVersion == _schemaV3) {
       migrated = _migrateV3ToV4(migrated);
+    }
+    if (migrated.schemaVersion == _schemaV4) {
+      migrated = _migrateV4ToV5(migrated);
     }
     return migrated;
   }
@@ -361,11 +381,20 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
 
   static ProjectDocument _migrateV3ToV4(ProjectDocument document) =>
       ProjectDocument(
-        schemaVersion: schemaVersion,
+        schemaVersion: _schemaV4,
         payload: <String, Object?>{
           ...document.payload,
           'boundaries': const <Object?>[],
           'boundaryEdgeIdentityRegistry': const <Object?>[],
+        },
+      );
+
+  static ProjectDocument _migrateV4ToV5(ProjectDocument document) =>
+      ProjectDocument(
+        schemaVersion: schemaVersion,
+        payload: <String, Object?>{
+          ...document.payload,
+          'boundaryHostedObjectRegistry': const <Object?>[],
         },
       );
 
@@ -558,6 +587,25 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
     ];
   }
 
+  static List<Object?> _encodeBoundaryHostedObjectRegistry(
+    BoundaryHostedObjectRegistry registry,
+  ) {
+    final entries = registry.references.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    return <Object?>[
+      for (final entry in entries)
+        <String, Object?>{
+          'objectKey': entry.key,
+          'objectKind': entry.value.objectKind.name,
+          'spaceId': entry.value.host.spaceId.value,
+          'edgeId': entry.value.host.edgeId.value,
+          'geometryKind': entry.value.geometryKind.name,
+          'startOffsetMm': entry.value.startOffsetMm,
+          'endOffsetMm': entry.value.endOffsetMm,
+        },
+    ];
+  }
+
   static Map<SpaceId, SpaceBoundaryTopology> _decodeBoundaries(Object? value) {
     final result = <SpaceId, SpaceBoundaryTopology>{};
     for (final raw in _list(value, 'boundaries')) {
@@ -620,6 +668,94 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
       owners[edgeId] = spaceId;
     }
     return BoundaryEdgeIdentityRegistry(owners);
+  }
+
+  static BoundaryHostedObjectRegistry _decodeBoundaryHostedObjectRegistry(
+    Object? value,
+  ) {
+    final references = <String, BoundaryHostedReference>{};
+    for (final raw in _list(value, 'boundaryHostedObjectRegistry')) {
+      final json = _map(raw, 'boundaryHostedObjectRegistry.entry');
+      final objectKey = _string(
+        json['objectKey'],
+        'boundaryHostedObjectRegistry.objectKey',
+      );
+      if (references.containsKey(objectKey)) {
+        throw FormatException(
+          'boundaryHostedObjectRegistry contains duplicate object key '
+          '$objectKey.',
+        );
+      }
+      final objectKind = _enumByName(
+        BoundaryHostedObjectKind.values,
+        json['objectKind'],
+        'boundaryHostedObjectRegistry.objectKind',
+      );
+      final geometryKind = _enumByName(
+        BoundaryHostGeometryKind.values,
+        json['geometryKind'],
+        'boundaryHostedObjectRegistry.geometryKind',
+      );
+      final host = BoundaryEdgeHostRef(
+        spaceId: SpaceId(
+          _string(json['spaceId'], 'boundaryHostedObjectRegistry.spaceId'),
+        ),
+        edgeId: BoundaryEdgeId(
+          _string(json['edgeId'], 'boundaryHostedObjectRegistry.edgeId'),
+        ),
+      );
+      final startOffset = _nullableInt(
+        json['startOffsetMm'],
+        'boundaryHostedObjectRegistry.startOffsetMm',
+      );
+      final endOffset = _nullableInt(
+        json['endOffsetMm'],
+        'boundaryHostedObjectRegistry.endOffsetMm',
+      );
+      references[objectKey] = switch (geometryKind) {
+        BoundaryHostGeometryKind.point => () {
+            if (startOffset == null || endOffset != null) {
+              throw FormatException(
+                'Point hosted object $objectKey requires startOffsetMm and '
+                'forbids endOffsetMm.',
+              );
+            }
+            return BoundaryHostedReference.point(
+              objectKey: objectKey,
+              objectKind: objectKind,
+              host: host,
+              offsetMm: startOffset,
+            );
+          }(),
+        BoundaryHostGeometryKind.interval => () {
+            if (startOffset == null || endOffset == null) {
+              throw FormatException(
+                'Interval hosted object $objectKey requires both offsets.',
+              );
+            }
+            return BoundaryHostedReference.interval(
+              objectKey: objectKey,
+              objectKind: objectKind,
+              host: host,
+              startOffsetMm: startOffset,
+              endOffsetMm: endOffset,
+            );
+          }(),
+        BoundaryHostGeometryKind.wholeEdge => () {
+            if (startOffset != null || endOffset != null) {
+              throw FormatException(
+                'Whole-edge hosted object $objectKey cannot carry offsets.',
+              );
+            }
+            return BoundaryHostedReference.wholeEdge(
+              objectKey: objectKey,
+              objectKind: objectKind,
+              host: host,
+            );
+          }(),
+      };
+    }
+    return BoundaryHostedObjectRegistry(references);
   }
 
   static void _requireRegistryCoversActiveBoundaries(
@@ -700,6 +836,11 @@ T _enumByName<T extends Enum>(List<T> values, Object? value, String field) {
 String? _nullableString(Object? value, String field) {
   if (value == null) return null;
   return _string(value, field);
+}
+
+int? _nullableInt(Object? value, String field) {
+  if (value == null) return null;
+  return _int(value, field);
 }
 
 String _string(Object? value, String field) {
