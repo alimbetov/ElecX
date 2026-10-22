@@ -19,47 +19,64 @@ final class SpaceSemanticsInspector extends StatelessWidget {
     return Semantics(
       container: true,
       label: 'Room semantics inspector',
-      child: Material(
-        type: MaterialType.transparency,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('ROOM SEMANTICS', style: theme.textTheme.labelLarge),
-              const SizedBox(height: 4),
-              Text(projection.space.name, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 12),
-              _UsageField(usage: projection.usage, onChanged: onUsageChanged),
-              const SizedBox(height: 16),
-              _Section(
-                title: 'Openings',
-                emptyLabel: 'No canonical openings',
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 220),
+        child: SingleChildScrollView(
+          child: Material(
+            type: MaterialType.transparency,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  for (final opening in projection.openings)
-                    _OpeningRow(projection: projection, opening: opening),
+                  Text('ROOM SEMANTICS', style: theme.textTheme.labelLarge),
+                  const SizedBox(height: 4),
+                  Text(
+                    projection.space.name,
+                    style: theme.textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 12),
+                  _UsageField(
+                    usage: projection.usage,
+                    onChanged: onUsageChanged,
+                  ),
+                  const SizedBox(height: 16),
+                  _Section(
+                    title: 'Openings',
+                    emptyLabel: 'No canonical openings',
+                    children: [
+                      for (final opening in projection.openings)
+                        _OpeningRow(
+                          projection: projection,
+                          opening: opening,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _Section(
+                    title: 'Adjacent spaces',
+                    emptyLabel: 'No canonical adjacency',
+                    children: [
+                      for (final adjacency in projection.adjacencies)
+                        _AdjacencyRow(
+                          projection: projection,
+                          adjacency: adjacency,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _Section(
+                    title: 'Classifications',
+                    emptyLabel: 'No overlay classifications',
+                    children: [
+                      for (final overlay in projection.overlays)
+                        _OverlayRow(overlay: overlay),
+                    ],
+                  ),
                 ],
               ),
-              const SizedBox(height: 12),
-              _Section(
-                title: 'Adjacent spaces',
-                emptyLabel: 'No canonical adjacency',
-                children: [
-                  for (final adjacency in projection.adjacencies)
-                    _AdjacencyRow(projection: projection, adjacency: adjacency),
-                ],
-              ),
-              const SizedBox(height: 12),
-              _Section(
-                title: 'Classifications',
-                emptyLabel: 'No overlay classifications',
-                children: [
-                  for (final overlay in projection.overlays)
-                    _OverlayRow(overlay: overlay),
-                ],
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -81,6 +98,7 @@ final class _UsageField extends StatelessWidget {
     return DropdownButtonFormField<SpaceUsage>(
       key: const ValueKey('space-semantics-usage'),
       initialValue: usage,
+      isExpanded: true,
       decoration: const InputDecoration(
         labelText: 'Usage',
         border: OutlineInputBorder(),
@@ -90,7 +108,11 @@ final class _UsageField extends StatelessWidget {
         for (final value in SpaceUsage.values)
           DropdownMenuItem<SpaceUsage>(
             value: value,
-            child: Text(spaceUsageLabel(value)),
+            child: Text(
+              spaceUsageLabel(value),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
       ],
       onChanged: (value) {
@@ -144,6 +166,7 @@ final class _OpeningRow extends StatelessWidget {
         ? 'Exterior / unbound side'
         : otherNames.join(', ');
     return _SemanticRow(
+      key: ValueKey('space-semantics-opening-${opening.id.value}'),
       icon: Icons.door_front_door_outlined,
       title:
           '${openingKindLabel(opening.kind)} · '
@@ -163,6 +186,7 @@ final class _AdjacencyRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final adjacent = projection.adjacentSpaceFor(adjacency);
     return _SemanticRow(
+      key: ValueKey('space-semantics-adjacency-${adjacency.id.value}'),
       icon: adjacency.kind == SpaceAdjacencyKind.vertical
           ? Icons.swap_vert
           : Icons.compare_arrows,
@@ -189,6 +213,7 @@ final class _OverlayRow extends StatelessWidget {
 
 final class _SemanticRow extends StatelessWidget {
   const _SemanticRow({
+    super.key,
     required this.icon,
     required this.title,
     required this.subtitle,
