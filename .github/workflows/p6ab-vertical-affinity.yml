@@ -1,0 +1,52 @@
+name: P6AB Vertical Affinity Patch
+
+on:
+  push:
+    branches:
+      - feat/project-structure-authoring
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: feat/project-structure-authoring
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Apply vertical building affinity invariant
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          path = Path('lib/src/domain/project_aggregate.dart')
+          text = path.read_text()
+          text = text.replace(
+              '  verticalAdjacencyLevelMismatch,\n  duplicateAdjacencyPair,',
+              '  verticalAdjacencyLevelMismatch,\n  verticalAdjacencyBuildingMismatch,\n  duplicateAdjacencyPair,',
+              1,
+          )
+          needle = '''        } else if (adjacency.kind != SpaceAdjacencyKind.vertical &&\n            !sameLevel) {\n          issues.add(\n            ProjectAggregateValidationIssue(\n              code: ProjectAggregateIssueCode.adjacencyLevelMismatch,\n              entityId: adjacency.id,\n              relatedEntityId: b.id,\n              message:\n                  'Horizontal adjacency ${adjacency.id} spans levels '\n                  '${a.levelId} and ${b.levelId}.',\n            ),\n          );\n        }\n'''
+          replacement = '''        } else if (adjacency.kind != SpaceAdjacencyKind.vertical &&\n            !sameLevel) {\n          issues.add(\n            ProjectAggregateValidationIssue(\n              code: ProjectAggregateIssueCode.adjacencyLevelMismatch,\n              entityId: adjacency.id,\n              relatedEntityId: b.id,\n              message:\n                  'Horizontal adjacency ${adjacency.id} spans levels '\n                  '${a.levelId} and ${b.levelId}.',\n            ),\n          );\n        } else if (adjacency.kind == SpaceAdjacencyKind.vertical &&\n            !sameLevel) {\n          final levelA = stores.levels[a.levelId];\n          final levelB = stores.levels[b.levelId];\n          if (levelA != null &&\n              levelB != null &&\n              levelA.buildingId != levelB.buildingId) {\n            issues.add(\n              ProjectAggregateValidationIssue(\n                code:\n                    ProjectAggregateIssueCode.verticalAdjacencyBuildingMismatch,\n                entityId: adjacency.id,\n                relatedEntityId: b.id,\n                message:\n                    'Vertical adjacency ${adjacency.id} connects spaces from '\n                    'different buildings ${levelA.buildingId} and '\n                    '${levelB.buildingId}.',\n              ),\n            );\n          }\n        }\n'''
+          if needle not in text:
+              raise SystemExit('vertical adjacency block not found')
+          text = text.replace(needle, replacement, 1)
+          path.write_text(text)
+          PY
+          dart format \
+            lib/src/domain/project_aggregate.dart \
+            test/p6ab_vertical_affinity_test.dart
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/src/domain/project_aggregate.dart test/p6ab_vertical_affinity_test.dart
+          git commit -m "fix(p6b): constrain vertical adjacency to one building"
+          git push origin "HEAD:feat/project-structure-authoring"
