@@ -145,6 +145,34 @@ final class ProjectStructureAuthoringSession {
   ProjectBoundaryTopologyEditingPort get boundaryTopologyEditing =>
       _boundaryTopologyEditing;
 
+  /// Production history replay is deliberately exposed only through this
+  /// session so all canonical capabilities keep one P3 undo/redo stack and the
+  /// canonical navigation can be reconciled after structural replay.
+  bool get canUndoCanonicalMutation => _mutations.canUndo;
+  bool get canRedoCanonicalMutation => _mutations.canRedo;
+
+  ProjectMutationResult? undoCanonicalMutation() {
+    final before = project;
+    final result = _mutations.undo(before.version);
+    if (result == null) return null;
+    _navigation = _navigation.reconcileAfterMutation(
+      before: before,
+      after: result.project,
+    );
+    return result;
+  }
+
+  ProjectMutationResult? redoCanonicalMutation() {
+    final before = project;
+    final result = _mutations.redo(before.version);
+    if (result == null) return null;
+    _navigation = _navigation.reconcileAfterMutation(
+      before: before,
+      after: result.project,
+    );
+    return result;
+  }
+
   void activateBuilding(BuildingId buildingId) {
     _navigation = _navigation.activateBuilding(project, buildingId);
   }
