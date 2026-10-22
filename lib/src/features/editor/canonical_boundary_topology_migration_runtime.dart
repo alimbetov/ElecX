@@ -67,8 +67,47 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
     }
   }
 
+  /// Returns an exact integer-mm split point nearest the geometric midpoint.
+  ///
+  /// Canonical boundary coordinates are integer millimetres. A diagonal edge
+  /// whose delta components are coprime has no interior lattice point at all;
+  /// such an edge cannot be split losslessly without introducing sub-mm
+  /// coordinates, so this helper deliberately returns null instead of rounding
+  /// a point off the segment.
+  static BoundaryPointMm? representableInteriorSplitPoint(
+    ProjectBoundaryEdge edge,
+  ) {
+    final dx = edge.end.xMm - edge.start.xMm;
+    final dy = edge.end.yMm - edge.start.yMm;
+    final latticeSteps = _gcd(dx.abs(), dy.abs());
+    if (latticeSteps <= 1) return null;
+
+    final stepX = dx ~/ latticeSteps;
+    final stepY = dy ~/ latticeSteps;
+    final midpointStep = latticeSteps ~/ 2;
+    return BoundaryPointMm(
+      xMm: edge.start.xMm + stepX * midpointStep,
+      yMm: edge.start.yMm + stepY * midpointStep,
+    );
+  }
+
+  /// Split readiness includes both canonical-host adoption and exact geometric
+  /// representability in the integer-mm topology model.
+  static bool canSplitLegacyWall(
+    EditorController controller,
+    int wallOrdinal,
+  ) {
+    if (!canChangeLegacyWallIdentity(controller, wallOrdinal)) return false;
+    final context = _context(controller);
+    final edgeId = edgeIdAtLegacyWallOrdinal(controller, wallOrdinal);
+    if (context == null || edgeId == null) return false;
+    final edge = context.coordinator.session.project.index.boundaryEdge(edgeId);
+    return edge != null && representableInteriorSplitPoint(edge) != null;
+  }
+
   /// UI convenience that resolves transient ordinal -> BoundaryEdgeId first,
   /// then delegates to the exact same stable-id split path used by all inputs.
+  /// The chosen point is the nearest exact integer-mm lattice point to midpoint.
   static bool splitLegacyWallAtMidpoint({
     required EditorController controller,
     required int wallOrdinal,
@@ -79,10 +118,8 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
     if (context == null || edgeId == null) return false;
     final edge = context.coordinator.session.project.index.boundaryEdge(edgeId);
     if (edge == null) return false;
-    final splitPoint = BoundaryPointMm(
-      xMm: (edge.start.xMm + edge.end.xMm) ~/ 2,
-      yMm: (edge.start.yMm + edge.end.yMm) ~/ 2,
-    );
+    final splitPoint = representableInteriorSplitPoint(edge);
+    if (splitPoint == null) return false;
     try {
       return splitEdge(
         controller: controller,
@@ -449,6 +486,17 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
       owner: owner,
     );
   }
+}
+
+int _gcd(int a, int b) {
+  var left = a;
+  var right = b;
+  while (right != 0) {
+    final remainder = left % right;
+    left = right;
+    right = remainder;
+  }
+  return left;
 }
 
 final class _MigrationContext {
