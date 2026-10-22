@@ -61,9 +61,7 @@ void main() {
         CanonicalRoomSurfaceRuntimeRegistry.resolve(
           controller,
           fixture.spaceId,
-        )
-            ?.current()
-            .boundaryEdgeId,
+        )?.current().boundaryEdgeId,
         fixture.edgeIds[1],
       );
       expect(fixture.session.navigation.selectedSpaceId, fixture.spaceId);
@@ -86,9 +84,7 @@ void main() {
         CanonicalRoomSurfaceRuntimeRegistry.resolve(
           controller,
           fixture.spaceId,
-        )
-            ?.current()
-            .boundaryEdgeId,
+        )?.current().boundaryEdgeId,
         fixture.edgeIds[2],
       );
 
@@ -104,9 +100,7 @@ void main() {
         CanonicalRoomSurfaceRuntimeRegistry.resolve(
           controller,
           fixture.spaceId,
-        )
-            ?.current()
-            .boundaryEdgeId,
+        )?.current().boundaryEdgeId,
         fixture.edgeIds[3],
       );
 
@@ -116,9 +110,7 @@ void main() {
         CanonicalRoomSurfaceRuntimeRegistry.resolve(
           controller,
           fixture.spaceId,
-        )
-            ?.current()
-            .boundaryEdgeId,
+        )?.current().boundaryEdgeId,
         fixture.edgeIds[2],
       );
     },
@@ -206,8 +198,9 @@ Future<void> _pumpScreen(WidgetTester tester, _Fixture fixture) async {
   await tester.pumpAndSettle();
 }
 
-EditorController _navigatorController(WidgetTester tester) =>
-    tester.widget<RoomSurfaceNavigator>(find.byType(RoomSurfaceNavigator)).controller;
+EditorController _navigatorController(WidgetTester tester) => tester
+    .widget<RoomSurfaceNavigator>(find.byType(RoomSurfaceNavigator))
+    .controller;
 
 void _useDesktopSurface(WidgetTester tester) {
   tester.view.physicalSize = const Size(1440, 900);
