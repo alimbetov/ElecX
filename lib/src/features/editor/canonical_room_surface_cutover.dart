@@ -7,7 +7,11 @@ import 'editor_controller.dart';
 
 enum CanonicalRoomSurfaceCutoverIssueCode {
   canonicalSpaceMissing,
+  canonicalLevelMissing,
+  canonicalSpaceOutsideBoundBuilding,
   boundaryTopologyMissing,
+  legacyLevelBindingMissing,
+  legacyLevelNotActive,
   legacySpaceBindingMissing,
   legacySpaceNotSelected,
 }
@@ -30,9 +34,9 @@ final class CanonicalRoomSurfaceCutoverException implements Exception {
 /// Production-facing P7A-4 resolver for one selected canonical room.
 ///
 /// It refuses to manufacture topology for rooms that have not yet crossed the
-/// P7A persistence/materialization boundary. The selected legacy editor room
-/// must be the exact space bound to [spaceId], and its polygon must match the
-/// canonical topology through [CanonicalRoomBoundaryProjection].
+/// P7A persistence/materialization boundary. The complete canonical
+/// Space -> Level -> Building ownership chain and the matching legacy Level +
+/// Space bindings must be coherent before a wall ordinal can be projected.
 abstract final class CanonicalRoomSurfaceCutover {
   static CanonicalRoomSurfaceSelectionAdapter resolve({
     required ProjectAggregateRoot project,
@@ -49,12 +53,50 @@ abstract final class CanonicalRoomSurfaceCutover {
       );
     }
 
+    final canonicalLevel = project.index.level(canonicalSpace.levelId);
+    if (canonicalLevel == null) {
+      throw CanonicalRoomSurfaceCutoverException(
+        code: CanonicalRoomSurfaceCutoverIssueCode.canonicalLevelMissing,
+        spaceId: spaceId,
+        message: 'Canonical space $spaceId references missing level '
+            '${canonicalSpace.levelId}.',
+      );
+    }
+    if (canonicalLevel.buildingId != binding.buildingId) {
+      throw CanonicalRoomSurfaceCutoverException(
+        code:
+            CanonicalRoomSurfaceCutoverIssueCode.canonicalSpaceOutsideBoundBuilding,
+        spaceId: spaceId,
+        message: 'Canonical space $spaceId belongs to building '
+            '${canonicalLevel.buildingId}, not editor binding '
+            '${binding.buildingId}.',
+      );
+    }
+
     final topology = project.index.boundary(spaceId);
     if (topology == null) {
       throw CanonicalRoomSurfaceCutoverException(
         code: CanonicalRoomSurfaceCutoverIssueCode.boundaryTopologyMissing,
         spaceId: spaceId,
         message: 'Canonical space $spaceId has no P7A boundary topology.',
+      );
+    }
+
+    final legacyLevelId = binding.legacyLevelIds[canonicalSpace.levelId];
+    if (legacyLevelId == null) {
+      throw CanonicalRoomSurfaceCutoverException(
+        code: CanonicalRoomSurfaceCutoverIssueCode.legacyLevelBindingMissing,
+        spaceId: spaceId,
+        message: 'Canonical level ${canonicalSpace.levelId} has no legacy '
+            'editor binding for space $spaceId.',
+      );
+    }
+    if (controller.level.id != legacyLevelId) {
+      throw CanonicalRoomSurfaceCutoverException(
+        code: CanonicalRoomSurfaceCutoverIssueCode.legacyLevelNotActive,
+        spaceId: spaceId,
+        message: 'Legacy editor level ${controller.level.id} is active, but '
+            'canonical space $spaceId is bound to level $legacyLevelId.',
       );
     }
 
