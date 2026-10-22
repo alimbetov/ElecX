@@ -183,12 +183,16 @@ final class ProjectEngineeringMetadataDiff {
     required this.beforeProjectNorth,
     required this.afterProjectNorth,
     this.boundaryEdgeIdentityRegistryChanged = false,
+    this.boundaryHostedObjectRegistryChanged = false,
+    this.boundaryWallProfileRegistryChanged = false,
   });
 
   const ProjectEngineeringMetadataDiff.empty()
       : beforeProjectNorth = null,
         afterProjectNorth = null,
-        boundaryEdgeIdentityRegistryChanged = false;
+        boundaryEdgeIdentityRegistryChanged = false,
+        boundaryHostedObjectRegistryChanged = false,
+        boundaryWallProfileRegistryChanged = false;
 
   factory ProjectEngineeringMetadataDiff.between(
     ProjectEngineeringMetadata before,
@@ -200,15 +204,26 @@ final class ProjectEngineeringMetadataDiff {
         boundaryEdgeIdentityRegistryChanged: !before
             .boundaryEdgeIdentityRegistry
             .sameAs(after.boundaryEdgeIdentityRegistry),
+        boundaryHostedObjectRegistryChanged: !before
+            .boundaryHostedObjectRegistry
+            .sameAs(after.boundaryHostedObjectRegistry),
+        boundaryWallProfileRegistryChanged: !before
+            .boundaryWallProfileRegistry
+            .sameAs(after.boundaryWallProfileRegistry),
       );
 
   final ProjectEngineeringNorth? beforeProjectNorth;
   final ProjectEngineeringNorth? afterProjectNorth;
   final bool boundaryEdgeIdentityRegistryChanged;
+  final bool boundaryHostedObjectRegistryChanged;
+  final bool boundaryWallProfileRegistryChanged;
 
   bool get projectNorthChanged => beforeProjectNorth != afterProjectNorth;
   bool get isEmpty =>
-      !projectNorthChanged && !boundaryEdgeIdentityRegistryChanged;
+      !projectNorthChanged &&
+      !boundaryEdgeIdentityRegistryChanged &&
+      !boundaryHostedObjectRegistryChanged &&
+      !boundaryWallProfileRegistryChanged;
   bool get isNotEmpty => !isEmpty;
 }
 
