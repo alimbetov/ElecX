@@ -42,10 +42,10 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
     EditorDocumentHistory history,
   ) {
     final p2 = controller.p2;
-    final activeWallOrdinal = controller.activeSurface?.type ==
-            SurfacePlaneType.wall
-        ? controller.activeSurface?.wallIndex
-        : null;
+    final activeWallOrdinal =
+        controller.activeSurface?.type == SurfacePlaneType.wall
+            ? controller.activeSurface?.wallIndex
+            : null;
     final stableEdgeId = activeWallOrdinal == null
         ? null
         : CanonicalBoundaryTopologyMigrationRuntime.edgeIdAtLegacyWallOrdinal(
@@ -538,23 +538,6 @@ String _routePreferenceName(RoutePreference preference) => switch (preference) {
       RoutePreference.preferWall => 'Предпочитать стены',
       RoutePreference.preferCeiling => 'Предпочитать потолок',
       RoutePreference.preferFloor => 'Предпочитать пол',
-    };
-
-IconData _catalogIcon(EngineeringSystemClass systemClass) =>
-    switch (systemClass) {
-      EngineeringSystemClass.powerAc ||
-      EngineeringSystemClass.powerDc =>
-        Icons.electrical_services,
-      EngineeringSystemClass.lighting => Icons.lightbulb_outline,
-      EngineeringSystemClass.structuredCabling => Icons.lan_outlined,
-      EngineeringSystemClass.poeNetwork => Icons.wifi_outlined,
-      EngineeringSystemClass.fiberOptic => Icons.cable_outlined,
-      EngineeringSystemClass.cctv => Icons.videocam_outlined,
-      EngineeringSystemClass.accessControl => Icons.badge_outlined,
-      EngineeringSystemClass.fireAlarm => Icons.local_fire_department_outlined,
-      EngineeringSystemClass.automationBus => Icons.account_tree_outlined,
-      EngineeringSystemClass.dryContact => Icons.sensors_outlined,
-      EngineeringSystemClass.custom => Icons.add_box_outlined,
     };
 
 IconData _catalogIcon(EngineeringSystemClass systemClass) =>

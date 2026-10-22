@@ -1,4 +1,5 @@
 import '../../application/project/project_boundary_topology_migration.dart';
+import '../../domain/boundary_host_migration.dart';
 import '../../domain/boundary_host_registry.dart';
 import '../../domain/boundary_topology.dart';
 import '../../domain/boundary_wall_profile_registry.dart';
