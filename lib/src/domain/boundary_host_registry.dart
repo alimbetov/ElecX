@@ -221,16 +221,13 @@ final class BoundaryHostedObjectRegistry {
 
   bool sameAs(BoundaryHostedObjectRegistry other) {
     if (identical(this, other)) return true;
-    if (profilesLengthMismatch(other)) return false;
+    if (references.length != other.references.length) return false;
     for (final entry in references.entries) {
       final right = other.references[entry.key];
       if (right == null || !_sameReference(entry.value, right)) return false;
     }
     return true;
   }
-
-  bool profilesLengthMismatch(BoundaryHostedObjectRegistry other) =>
-      references.length != other.references.length;
 
   static BoundaryHostedReference _rebuild(BoundaryHostedRemap result) =>
       switch (result.source.geometryKind) {
