@@ -2,6 +2,7 @@ import 'package:elecx/src/domain/boundary_topology.dart';
 import 'package:elecx/src/domain/geometry.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_model.dart';
+import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/features/editor/canonical_room_boundary_projection.dart';
 import 'package:elecx/src/features/editor/canonical_room_surface_selection.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
@@ -55,8 +56,7 @@ void main() {
       expect(fixture.adapter.current().boundaryEdgeId, fixture.edgeIds[1]);
     });
 
-    test('stale legacy wall ordinal projects to Plan rather than another edge',
-        () {
+    test('ordinary Plan selection stays Plan without fallback mutation', () {
       final fixture = _Fixture();
       fixture.controller.restoreResumeState(
         selectedSpaceId: fixture.legacySpace.id,
@@ -74,6 +74,29 @@ void main() {
       expect(fixture.adapter.current().kind, CanonicalRoomSurfaceKind.plan);
       expect(fixture.adapter.current().boundaryEdgeId, isNull);
       expect(fixture.adapter.fallbackToPlanIfStale(), isFalse);
+    });
+
+    test('out-of-range legacy wall ordinal fails closed to Plan', () {
+      final fixture = _Fixture();
+      fixture.controller.restoreResumeState(
+        selectedSpaceId: fixture.legacySpace.id,
+        selectedOpeningId: null,
+        activeSurface: RoomSurfaceRef.wall(fixture.legacySpace.id, 99),
+        viewMode: EditorViewMode.surface,
+        snapEnabled: true,
+        dimensionsVisible: true,
+        floorGridMm: 500,
+        zoom: 1,
+        roomSequence: 1,
+        openingSequence: 1,
+      );
+
+      final selection = fixture.adapter.current();
+      expect(selection.kind, CanonicalRoomSurfaceKind.plan);
+      expect(selection.boundaryEdgeId, isNull);
+      expect(fixture.adapter.fallbackToPlanIfStale(), isTrue);
+      expect(fixture.controller.viewMode, EditorViewMode.plan);
+      expect(fixture.controller.activeSurface, isNull);
     });
 
     test('legacy polygon drift invalidates previously resolved edge mapping',
