@@ -1,4 +1,5 @@
 import 'boundary_edge_identity_registry.dart';
+import 'boundary_host_registry.dart';
 
 /// Canonical engineering orientation for ElecX project-space coordinates.
 ///
@@ -82,20 +83,28 @@ final class ProjectEngineeringNorth {
 /// [boundaryEdgeIdentityRegistry] is a durable tombstone ledger, not editor
 /// session state. It survives save/reopen and guarantees that a BoundaryEdgeId
 /// can never be re-parented to another SpaceId later in the project lifecycle.
+///
+/// [boundaryHostedObjectRegistry] is the P7A-5 authoritative wall-host
+/// ownership map. Discipline payloads may still be materialized by legacy
+/// editor models during cutover, but durable host identity lives here.
 final class ProjectEngineeringMetadata {
   const ProjectEngineeringMetadata({
     this.projectNorth,
     this.boundaryEdgeIdentityRegistry =
         const BoundaryEdgeIdentityRegistry.empty(),
+    this.boundaryHostedObjectRegistry =
+        const BoundaryHostedObjectRegistry.empty(),
   });
 
   final ProjectEngineeringNorth? projectNorth;
   final BoundaryEdgeIdentityRegistry boundaryEdgeIdentityRegistry;
+  final BoundaryHostedObjectRegistry boundaryHostedObjectRegistry;
 
   ProjectEngineeringMetadata copyWith({
     ProjectEngineeringNorth? projectNorth,
     bool clearProjectNorth = false,
     BoundaryEdgeIdentityRegistry? boundaryEdgeIdentityRegistry,
+    BoundaryHostedObjectRegistry? boundaryHostedObjectRegistry,
   }) {
     if (clearProjectNorth && projectNorth != null) {
       throw ArgumentError(
@@ -107,6 +116,8 @@ final class ProjectEngineeringMetadata {
           clearProjectNorth ? null : projectNorth ?? this.projectNorth,
       boundaryEdgeIdentityRegistry:
           boundaryEdgeIdentityRegistry ?? this.boundaryEdgeIdentityRegistry,
+      boundaryHostedObjectRegistry:
+          boundaryHostedObjectRegistry ?? this.boundaryHostedObjectRegistry,
     );
   }
 
@@ -121,11 +132,17 @@ final class ProjectEngineeringMetadata {
   ) =>
       copyWith(boundaryEdgeIdentityRegistry: registry);
 
+  ProjectEngineeringMetadata withBoundaryHostedObjectRegistry(
+    BoundaryHostedObjectRegistry registry,
+  ) =>
+      copyWith(boundaryHostedObjectRegistry: registry);
+
   @override
   bool operator ==(Object other) =>
       other is ProjectEngineeringMetadata &&
       other.projectNorth == projectNorth &&
-      other.boundaryEdgeIdentityRegistry.sameAs(boundaryEdgeIdentityRegistry);
+      other.boundaryEdgeIdentityRegistry.sameAs(boundaryEdgeIdentityRegistry) &&
+      other.boundaryHostedObjectRegistry.sameAs(boundaryHostedObjectRegistry);
 
   @override
   int get hashCode {
@@ -134,6 +151,20 @@ final class ProjectEngineeringMetadata {
       ..sort((a, b) => a.key.value.compareTo(b.key.value));
     for (final entry in entries) {
       result = Object.hash(result, entry.key, entry.value);
+    }
+    final hostedEntries = boundaryHostedObjectRegistry.references.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    for (final entry in hostedEntries) {
+      final reference = entry.value;
+      result = Object.hash(
+        result,
+        entry.key,
+        reference.objectKind,
+        reference.host,
+        reference.geometryKind,
+        reference.startOffsetMm,
+        reference.endOffsetMm,
+      );
     }
     return result;
   }
