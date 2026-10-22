@@ -2,8 +2,12 @@ import 'dart:math';
 
 import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/project_structure_authoring.dart';
+import 'package:elecx/src/domain/boundary_edge_identity_registry.dart';
+import 'package:elecx/src/domain/boundary_topology.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
+import 'package:elecx/src/domain/project_model.dart';
+import 'package:elecx/src/domain/project_orientation.dart';
 import 'package:elecx/src/features/editor/canonical_editor_production_runtime.dart';
 import 'package:elecx/src/features/editor/canonical_editor_workspace_adapter.dart';
 import 'package:elecx/src/features/editor/editor_building_workspace.dart';
@@ -190,6 +194,12 @@ _Fixture _fixture() {
   );
 
   final legacyController = EditorController.demo();
+  final legacyRoom = legacyController.level.spaces.firstWhere(
+    (space) => space.id == 'room-101',
+  );
+  final legacyCorridor = legacyController.level.spaces.firstWhere(
+    (space) => space.id == 'corridor-1',
+  );
   final legacyWorkspace = EditorBuildingWorkspace.blank(
     legacyController,
     projectId: projectId,
@@ -199,19 +209,36 @@ _Fixture _fixture() {
     legacyWorkspace,
     metadata: metadata,
   );
-  legacyWorkspace.dispose();
-  legacyController.disposeP2State();
-  legacyController.dispose();
 
   final siteId = SiteId('canonical-site');
   final buildingId = BuildingId('canonical-building');
   final levelId = LevelId('canonical-level');
   final roomId = SpaceId('canonical-room-101');
   final corridorId = SpaceId('canonical-corridor-1');
+  final roomTopology = _topologyFor(
+    spaceId: roomId,
+    legacySpace: legacyRoom,
+    edgePrefix: 'hardening-room-edge',
+  );
+  final corridorTopology = _topologyFor(
+    spaceId: corridorId,
+    legacySpace: legacyCorridor,
+    edgePrefix: 'hardening-corridor-edge',
+  );
+  final boundaries = <SpaceId, SpaceBoundaryTopology>{
+    roomId: roomTopology,
+    corridorId: corridorTopology,
+  };
+  final registry = const BoundaryEdgeIdentityRegistry.empty()
+      .registerActiveBoundaries(boundaries);
+
   final project = ProjectAggregateRoot(
     id: ProjectId(projectId),
     siteId: siteId,
     version: LocalProjectVersion(0),
+    engineeringMetadata: ProjectEngineeringMetadata(
+      boundaryEdgeIdentityRegistry: registry,
+    ),
     stores: ProjectEntityStores(
       sites: <SiteId, ProjectSiteEntity>{
         siteId: ProjectSiteEntity(
@@ -250,6 +277,7 @@ _Fixture _fixture() {
           name: 'Corridor',
         ),
       },
+      boundaries: boundaries,
     ),
   );
   final navigation = ProjectNavigationState.restore(
@@ -278,6 +306,10 @@ _Fixture _fixture() {
     persistenceOwnerProjectId: ProjectId(projectId),
   );
 
+  legacyWorkspace.dispose();
+  legacyController.disposeP2State();
+  legacyController.dispose();
+
   return _Fixture(
     document: document,
     store: _MemoryProjectStore(document),
@@ -285,6 +317,34 @@ _Fixture _fixture() {
     runtime: runtime,
     roomId: roomId,
     corridorId: corridorId,
+  );
+}
+
+SpaceBoundaryTopology _topologyFor({
+  required SpaceId spaceId,
+  required EngineeringSpace legacySpace,
+  required String edgePrefix,
+}) {
+  final points = <BoundaryPointMm>[
+    for (final point in legacySpace.boundary.vertices)
+      BoundaryPointMm(xMm: point.x, yMm: point.y),
+  ];
+  final edgeIds = <BoundaryEdgeId>[
+    for (var index = 0; index < points.length; index++)
+      BoundaryEdgeId('$edgePrefix-$index'),
+  ];
+  return SpaceBoundaryTopology(
+    spaceId: spaceId,
+    orderedEdgeIds: edgeIds,
+    edges: <BoundaryEdgeId, ProjectBoundaryEdge>{
+      for (var index = 0; index < edgeIds.length; index++)
+        edgeIds[index]: ProjectBoundaryEdge(
+          id: edgeIds[index],
+          spaceId: spaceId,
+          start: points[index],
+          end: points[(index + 1) % points.length],
+        ),
+    },
   );
 }
 
