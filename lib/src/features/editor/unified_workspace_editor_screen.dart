@@ -286,9 +286,9 @@ class _UnifiedWorkspaceEditorScreenState
         ),
         materializer: resolved.materializer,
       );
-      final ownsExactProject = resolved.persistenceOwnerProjectId ==
-              resolved.session.project.id &&
-          resolved.session.project.id.value == _projectMetadata.projectId;
+      final ownsExactProject =
+          resolved.persistenceOwnerProjectId == resolved.session.project.id &&
+              resolved.session.project.id.value == _projectMetadata.projectId;
       final canonicalOwner =
           ownsExactProject ? config.onCanonicalMutationCommitted : null;
       final topologyHook =
