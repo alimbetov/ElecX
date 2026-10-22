@@ -5,6 +5,7 @@ import '../../domain/engineering_graph.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/editor_layers.dart';
 import '../../engine/route_engine.dart';
+import 'canonical_boundary_topology_migration_runtime.dart';
 import 'component_catalog_session.dart';
 import 'editor_controller.dart';
 import 'editor_document_history.dart';
@@ -41,6 +42,23 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
     EditorDocumentHistory history,
   ) {
     final p2 = controller.p2;
+    final activeWallOrdinal = controller.activeSurface?.type ==
+            SurfacePlaneType.wall
+        ? controller.activeSurface?.wallIndex
+        : null;
+    final stableEdgeId = activeWallOrdinal == null
+        ? null
+        : CanonicalBoundaryTopologyMigrationRuntime.edgeIdAtLegacyWallOrdinal(
+            controller,
+            activeWallOrdinal,
+          );
+    final identityChangeReady = activeWallOrdinal != null &&
+        stableEdgeId != null &&
+        CanonicalBoundaryTopologyMigrationRuntime.canChangeLegacyWallIdentity(
+          controller,
+          activeWallOrdinal,
+        );
+
     final buttons = <Widget>[
       _toolButton(
         context,
@@ -67,6 +85,56 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
         icon: Icons.alt_route,
         tooltip: 'Ручная кабельная трасса (C)',
       ),
+      if (stableEdgeId != null) ...[
+        const _ToolbarDivider(),
+        if (!identityChangeReady)
+          _iconButton(
+            context,
+            buttonKey: const ValueKey('boundary-adopt-hosts'),
+            icon: Icons.link,
+            tooltip: 'Подготовить стабильные привязки стены (Alt+A)',
+            onPressed: () => _invokeBoundaryAction(
+              context,
+              () => CanonicalBoundaryTopologyMigrationRuntime.adoptLegacyHosts(
+                controller: controller,
+              ),
+              failureMessage:
+                  'Не удалось подготовить стабильные привязки стены.',
+            ),
+          )
+        else ...[
+          _iconButton(
+            context,
+            buttonKey: const ValueKey('boundary-split-edge'),
+            icon: Icons.call_split,
+            tooltip: 'Разделить стену пополам (Alt+S)',
+            onPressed: () => _invokeBoundaryAction(
+              context,
+              () => CanonicalBoundaryTopologyMigrationRuntime
+                  .splitLegacyWallAtMidpoint(
+                controller: controller,
+                wallOrdinal: activeWallOrdinal,
+              ),
+              failureMessage: 'Разделение стены отклонено проверками проекта.',
+            ),
+          ),
+          _iconButton(
+            context,
+            buttonKey: const ValueKey('boundary-merge-edge'),
+            icon: Icons.merge_type,
+            tooltip: 'Объединить со следующей стеной (Alt+M)',
+            onPressed: () => _invokeBoundaryAction(
+              context,
+              () => CanonicalBoundaryTopologyMigrationRuntime
+                  .mergeLegacyWallWithNext(
+                controller: controller,
+                wallOrdinal: activeWallOrdinal,
+              ),
+              failureMessage: 'Объединение стены отклонено проверками проекта.',
+            ),
+          ),
+        ],
+      ],
       const _ToolbarDivider(),
       _ComponentCatalogPaletteButton(controller: controller, target: _target),
       _toggleButton(
@@ -161,6 +229,20 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
     );
   }
 
+  void _invokeBoundaryAction(
+    BuildContext context,
+    bool Function() action, {
+    required String failureMessage,
+  }) {
+    try {
+      if (action()) return;
+    } catch (_) {
+      // Domain/runtime errors are rendered as one fail-closed editor action.
+    }
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    messenger?.showSnackBar(SnackBar(content: Text(failureMessage)));
+  }
+
   ButtonStyle _commandStyle(BuildContext context, {bool selected = false}) =>
       IconButton.styleFrom(
         minimumSize: Size(_target, _target),
@@ -208,6 +290,7 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
 
   Widget _iconButton(
     BuildContext context, {
+    Key? buttonKey,
     required IconData icon,
     required String tooltip,
     required VoidCallback? onPressed,
@@ -215,6 +298,7 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 1),
         child: IconButton(
+          key: buttonKey,
           onPressed: onPressed,
           tooltip: tooltip,
           icon: Icon(icon, size: 20),
@@ -454,6 +538,23 @@ String _routePreferenceName(RoutePreference preference) => switch (preference) {
       RoutePreference.preferWall => 'Предпочитать стены',
       RoutePreference.preferCeiling => 'Предпочитать потолок',
       RoutePreference.preferFloor => 'Предпочитать пол',
+    };
+
+IconData _catalogIcon(EngineeringSystemClass systemClass) =>
+    switch (systemClass) {
+      EngineeringSystemClass.powerAc ||
+      EngineeringSystemClass.powerDc =>
+        Icons.electrical_services,
+      EngineeringSystemClass.lighting => Icons.lightbulb_outline,
+      EngineeringSystemClass.structuredCabling => Icons.lan_outlined,
+      EngineeringSystemClass.poeNetwork => Icons.wifi_outlined,
+      EngineeringSystemClass.fiberOptic => Icons.cable_outlined,
+      EngineeringSystemClass.cctv => Icons.videocam_outlined,
+      EngineeringSystemClass.accessControl => Icons.badge_outlined,
+      EngineeringSystemClass.fireAlarm => Icons.local_fire_department_outlined,
+      EngineeringSystemClass.automationBus => Icons.account_tree_outlined,
+      EngineeringSystemClass.dryContact => Icons.sensors_outlined,
+      EngineeringSystemClass.custom => Icons.add_box_outlined,
     };
 
 IconData _catalogIcon(EngineeringSystemClass systemClass) =>
