@@ -38,6 +38,8 @@ final class CanonicalSpaceSemanticsException implements Exception {
 /// opening host is promoted back into the canonical project graph.
 final class CanonicalSpaceSemanticsProjection {
   CanonicalSpaceSemanticsProjection({
+    required this.projectId,
+    required this.projectVersion,
     required this.space,
     required this.legacySpace,
     required Iterable<ProjectOpeningEntity> openings,
@@ -49,6 +51,8 @@ final class CanonicalSpaceSemanticsProjection {
         overlays = List.unmodifiable(overlays),
         adjacentSpaces = Map.unmodifiable(adjacentSpaces);
 
+  final ProjectId projectId;
+  final LocalProjectVersion projectVersion;
   final ProjectSpaceEntity space;
   final EngineeringSpace legacySpace;
   final List<ProjectOpeningEntity> openings;
@@ -182,6 +186,8 @@ final class CanonicalSpaceSemanticsAdapter {
     }
 
     return CanonicalSpaceSemanticsProjection(
+      projectId: project.id,
+      projectVersion: project.version,
       space: space,
       legacySpace: legacySpace,
       openings: openings,
