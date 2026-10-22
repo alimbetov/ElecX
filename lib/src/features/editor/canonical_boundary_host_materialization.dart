@@ -1,6 +1,7 @@
 import 'canonical_boundary_host_projection.dart';
 import 'editor_controller.dart';
 import 'editor_document_history.dart';
+import 'editor_p2_session.dart';
 
 /// Applies one already-calculated canonical hosted-object projection to the
 /// transitional editor without manufacturing architecture/P2 history entries.
@@ -10,6 +11,7 @@ import 'editor_document_history.dart';
 abstract final class CanonicalBoundaryHostMaterializer {
   static void apply(
     EditorController controller,
+    EditorP2Session p2,
     CanonicalBoundaryHostMaterialization materialization,
   ) {
     final selected = controller.selectedSpace;
@@ -42,7 +44,7 @@ abstract final class CanonicalBoundaryHostMaterializer {
       // This is a projection replacement, not an electrical authoring command.
       // Keep the P2 command stack intact; EditorDocumentHistory suppresses the
       // resulting mutation revision while inside runCanonicalProjection().
-      controller.p2.history.replaceState(
+      p2.history.replaceState(
         materialization.p2State,
         clearHistory: false,
       );
@@ -50,7 +52,7 @@ abstract final class CanonicalBoundaryHostMaterializer {
       // EditorP2Session intentionally keeps ChangeNotifier encapsulation. A
       // same-value presentation setter emits one notification without creating
       // history, allowing existing P2 widgets to rebuild from projected state.
-      controller.p2.setPlacementType(controller.p2.placementType);
+      p2.setPlacementType(p2.placementType);
     });
   }
 }
