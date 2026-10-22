@@ -57,6 +57,12 @@ abstract final class RouteAnchorIdentityMigration {
     final seen = <RouteAnchorId>{};
     for (final segment in route.segments) {
       for (final anchorId in segment.anchorIds) {
+        if (anchorId.value.startsWith('p7a-transition:')) {
+          throw StateError(
+            'Route ${route.id} uses reserved projection-only RouteAnchorId '
+            '${anchorId.value}.',
+          );
+        }
         if (!seen.add(anchorId)) {
           throw StateError(
             'Route ${route.id} contains duplicate durable RouteAnchorId '
