@@ -5,16 +5,18 @@ import 'package:flutter/services.dart';
 
 import '../../domain/project_identity.dart';
 import '../../domain/surfaces.dart';
+import 'canonical_room_surface_runtime_registry.dart';
+import 'canonical_room_surface_selection.dart';
 import 'editor_controller.dart';
 
 enum RoomSurfaceNavigatorKind { plan, floor, ceiling, wall }
 
-/// P5E read-only projection of the single canonical-selected Room into the
-/// transitional editor surface model.
+/// Read-only projection of the selected Room into navigator presentation.
 ///
-/// The projection owns no geometry. [wallCount] is derived from the currently
-/// materialized room polygon and wall indices remain a cutover detail until P7
-/// introduces stable BoundaryEdgeId ownership.
+/// In canonical production mode [boundaryEdgeIds] owns wall identity and
+/// [wallIndex] is only a presentation ordinal for W1/W2 labels and geometry.
+/// Legacy-only workspaces keep the old ordinal projection until they enter the
+/// canonical cutover runtime.
 final class RoomSurfaceNavigatorProjection {
   const RoomSurfaceNavigatorProjection({
     required this.canonicalSpaceId,
@@ -22,6 +24,8 @@ final class RoomSurfaceNavigatorProjection {
     required this.wallCount,
     required this.kind,
     required this.wallIndex,
+    this.boundaryEdgeId,
+    this.boundaryEdgeIds = const <BoundaryEdgeId>[],
   });
 
   final SpaceId canonicalSpaceId;
@@ -29,6 +33,10 @@ final class RoomSurfaceNavigatorProjection {
   final int wallCount;
   final RoomSurfaceNavigatorKind kind;
   final int? wallIndex;
+  final BoundaryEdgeId? boundaryEdgeId;
+  final List<BoundaryEdgeId> boundaryEdgeIds;
+
+  bool get usesStableBoundaryIdentity => boundaryEdgeIds.length == wallCount;
 
   String get currentLabel => switch (kind) {
         RoomSurfaceNavigatorKind.plan => 'Plan',
@@ -37,7 +45,37 @@ final class RoomSurfaceNavigatorProjection {
         RoomSurfaceNavigatorKind.wall => 'Wall ${(wallIndex ?? 0) + 1}',
       };
 
-  static RoomSurfaceNavigatorProjection? fromEditor({
+  BoundaryEdgeId? edgeIdAtOrdinal(int ordinal) =>
+      ordinal >= 0 && ordinal < boundaryEdgeIds.length
+          ? boundaryEdgeIds[ordinal]
+          : null;
+
+  static RoomSurfaceNavigatorProjection fromCanonical({
+    required CanonicalRoomSurfaceSelectionAdapter adapter,
+  }) {
+    final selection = adapter.current();
+    final wallCount = adapter.projection.wallCount;
+    final edgeIds = <BoundaryEdgeId>[
+      for (var ordinal = 0; ordinal < wallCount; ordinal++)
+        adapter.projection.edgeIdAtOrdinal(ordinal),
+    ];
+    return RoomSurfaceNavigatorProjection(
+      canonicalSpaceId: adapter.projection.canonicalSpaceId,
+      legacySpaceId: adapter.projection.legacySpaceId,
+      wallCount: wallCount,
+      kind: switch (selection.kind) {
+        CanonicalRoomSurfaceKind.plan => RoomSurfaceNavigatorKind.plan,
+        CanonicalRoomSurfaceKind.floor => RoomSurfaceNavigatorKind.floor,
+        CanonicalRoomSurfaceKind.ceiling => RoomSurfaceNavigatorKind.ceiling,
+        CanonicalRoomSurfaceKind.wall => RoomSurfaceNavigatorKind.wall,
+      },
+      wallIndex: selection.wallOrdinal,
+      boundaryEdgeId: selection.boundaryEdgeId,
+      boundaryEdgeIds: List<BoundaryEdgeId>.unmodifiable(edgeIds),
+    );
+  }
+
+  static RoomSurfaceNavigatorProjection? fromLegacyEditor({
     required EditorController controller,
     required SpaceId? canonicalSpaceId,
     required String? legacySpaceId,
@@ -71,7 +109,7 @@ final class RoomSurfaceNavigatorProjection {
     );
   }
 
-  static bool hasStaleWallSelection({
+  static bool hasLegacyStaleWallSelection({
     required EditorController controller,
     required SpaceId? canonicalSpaceId,
     required String? legacySpaceId,
@@ -122,11 +160,21 @@ class _RoomSurfaceNavigatorState extends State<RoomSurfaceNavigator> {
 
   EditorController get controller => widget.controller;
 
+  bool get _canonicalRuntimeActive =>
+      CanonicalRoomSurfaceRuntimeRegistry.hasCanonicalRuntime(controller);
+
+  CanonicalRoomSurfaceSelectionAdapter? _stableAdapter() {
+    final spaceId = widget.canonicalSpaceId;
+    if (spaceId == null) return null;
+    return CanonicalRoomSurfaceRuntimeRegistry.resolve(controller, spaceId);
+  }
+
   @override
   void didUpdateWidget(covariant RoomSurfaceNavigator oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.canonicalSpaceId != widget.canonicalSpaceId ||
-        oldWidget.legacySpaceId != widget.legacySpaceId) {
+        oldWidget.legacySpaceId != widget.legacySpaceId ||
+        !identical(oldWidget.controller, widget.controller)) {
       _hoveredTarget = null;
       _staleFallbackScheduled = false;
     }
@@ -143,24 +191,42 @@ class _RoomSurfaceNavigatorState extends State<RoomSurfaceNavigator> {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
-        if (RoomSurfaceNavigatorProjection.hasStaleWallSelection(
+        final stableAdapter = _stableAdapter();
+        final canonicalRuntime = _canonicalRuntimeActive;
+
+        if (canonicalRuntime && widget.canonicalSpaceId != null) {
+          // Canonical runtime never falls back to ordinal wall identity. A
+          // missing topology/binding is a controlled fail-closed state.
+          if (stableAdapter == null) return const SizedBox.shrink();
+          if (!stableAdapter.isMaterializationCurrent) {
+            _scheduleStaleWallFallback(stable: true);
+            return const SizedBox.shrink();
+          }
+        } else if (RoomSurfaceNavigatorProjection.hasLegacyStaleWallSelection(
           controller: controller,
           canonicalSpaceId: widget.canonicalSpaceId,
           legacySpaceId: widget.legacySpaceId,
         )) {
-          _scheduleStaleWallFallback();
+          _scheduleStaleWallFallback(stable: false);
           return const SizedBox.shrink();
         }
         _staleFallbackScheduled = false;
 
-        final projection = RoomSurfaceNavigatorProjection.fromEditor(
-          controller: controller,
-          canonicalSpaceId: widget.canonicalSpaceId,
-          legacySpaceId: widget.legacySpaceId,
-        );
+        final projection = stableAdapter != null
+            ? RoomSurfaceNavigatorProjection.fromCanonical(
+                adapter: stableAdapter,
+              )
+            : RoomSurfaceNavigatorProjection.fromLegacyEditor(
+                controller: controller,
+                canonicalSpaceId: widget.canonicalSpaceId,
+                legacySpaceId: widget.legacySpaceId,
+              );
         if (projection == null) return const SizedBox.shrink();
 
-        final space = controller.selectedSpace!;
+        final space = controller.selectedSpace;
+        if (space == null || space.id != projection.legacySpaceId) {
+          return const SizedBox.shrink();
+        }
         final bounds = space.boundary.bounds;
         final roomSummary =
             '${space.name} · ${_formatMeters(bounds.width)} × ${_formatMeters(bounds.height)} m';
@@ -246,7 +312,7 @@ class _RoomSurfaceNavigatorState extends State<RoomSurfaceNavigator> {
                     );
                     return MouseRegion(
                       onHover: (event) => _setHoveredTarget(
-                        geometry.targetAt(event.localPosition),
+                        geometry.targetAt(event.localPosition, projection),
                       ),
                       onExit: (_) => _setHoveredTarget(null),
                       child: GestureDetector(
@@ -256,6 +322,7 @@ class _RoomSurfaceNavigatorState extends State<RoomSurfaceNavigator> {
                           _miniViewFocusNode.requestFocus();
                           final target = geometry.targetAt(
                             details.localPosition,
+                            projection,
                           );
                           if (target != null) _activateTarget(target);
                         },
@@ -311,7 +378,7 @@ class _RoomSurfaceNavigatorState extends State<RoomSurfaceNavigator> {
                 IconButton(
                   key: const ValueKey('room-surface-wall-prev'),
                   tooltip: 'Предыдущая стена',
-                  onPressed: controller.previousWall,
+                  onPressed: _previousWall,
                   icon: const Icon(Icons.chevron_left),
                 ),
                 Expanded(
@@ -325,8 +392,11 @@ class _RoomSurfaceNavigatorState extends State<RoomSurfaceNavigator> {
                       final length = index < walls.length
                           ? _formatMeters(walls[index].lengthMm)
                           : null;
-                      final selected =
-                          projection.kind == RoomSurfaceNavigatorKind.wall &&
+                      final edgeId = projection.edgeIdAtOrdinal(index);
+                      final selected = projection.usesStableBoundaryIdentity
+                          ? projection.kind == RoomSurfaceNavigatorKind.wall &&
+                              projection.boundaryEdgeId == edgeId
+                          : projection.kind == RoomSurfaceNavigatorKind.wall &&
                               projection.wallIndex == index;
                       return Tooltip(
                         message: length == null
@@ -341,7 +411,10 @@ class _RoomSurfaceNavigatorState extends State<RoomSurfaceNavigator> {
                               ? 'Wall ${index + 1}, current surface'
                               : 'Wall ${index + 1}',
                           selected: selected,
-                          onPressed: () => controller.showWall(index),
+                          onPressed: () => _showWall(
+                            presentationOrdinal: index,
+                            boundaryEdgeId: edgeId,
+                          ),
                         ),
                       );
                     },
@@ -350,7 +423,7 @@ class _RoomSurfaceNavigatorState extends State<RoomSurfaceNavigator> {
                 IconButton(
                   key: const ValueKey('room-surface-wall-next'),
                   tooltip: 'Следующая стена',
-                  onPressed: controller.nextWall,
+                  onPressed: _nextWall,
                   icon: const Icon(Icons.chevron_right),
                 ),
               ],
@@ -367,13 +440,18 @@ class _RoomSurfaceNavigatorState extends State<RoomSurfaceNavigator> {
     );
   }
 
-  void _scheduleStaleWallFallback() {
+  void _scheduleStaleWallFallback({required bool stable}) {
     if (_staleFallbackScheduled) return;
     _staleFallbackScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _staleFallbackScheduled = false;
       if (!mounted) return;
-      if (RoomSurfaceNavigatorProjection.hasStaleWallSelection(
+      if (stable) {
+        final adapter = _stableAdapter();
+        if (adapter != null) adapter.fallbackToPlanIfStale();
+        return;
+      }
+      if (RoomSurfaceNavigatorProjection.hasLegacyStaleWallSelection(
         controller: controller,
         canonicalSpaceId: widget.canonicalSpaceId,
         legacySpaceId: widget.legacySpaceId,
@@ -383,14 +461,51 @@ class _RoomSurfaceNavigatorState extends State<RoomSurfaceNavigator> {
     });
   }
 
+  void _showWall({
+    required int presentationOrdinal,
+    BoundaryEdgeId? boundaryEdgeId,
+  }) {
+    if (_canonicalRuntimeActive) {
+      final edgeId = boundaryEdgeId;
+      final adapter = _stableAdapter();
+      if (edgeId == null || adapter == null || !adapter.showBoundaryEdge(edgeId)) {
+        adapter?.fallbackToPlanIfStale();
+      }
+      return;
+    }
+    controller.showWall(presentationOrdinal);
+  }
+
+  void _previousWall() {
+    if (_canonicalRuntimeActive) {
+      final adapter = _stableAdapter();
+      if (adapter == null || !adapter.previousWall()) {
+        adapter?.fallbackToPlanIfStale();
+      }
+      return;
+    }
+    controller.previousWall();
+  }
+
+  void _nextWall() {
+    if (_canonicalRuntimeActive) {
+      final adapter = _stableAdapter();
+      if (adapter == null || !adapter.nextWall()) {
+        adapter?.fallbackToPlanIfStale();
+      }
+      return;
+    }
+    controller.nextWall();
+  }
+
   KeyEventResult _handleMiniViewKey(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
     if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-      controller.previousWall();
+      _previousWall();
       return KeyEventResult.handled;
     }
     if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-      controller.nextWall();
+      _nextWall();
       return KeyEventResult.handled;
     }
     if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
@@ -420,8 +535,10 @@ class _RoomSurfaceNavigatorState extends State<RoomSurfaceNavigator> {
       case _RoomSurfaceMiniTargetKind.ceiling:
         controller.showCeiling();
       case _RoomSurfaceMiniTargetKind.wall:
-        final wallIndex = target.wallIndex;
-        if (wallIndex != null) controller.showWall(wallIndex);
+        _showWall(
+          presentationOrdinal: target.presentationOrdinal!,
+          boundaryEdgeId: target.boundaryEdgeId,
+        );
     }
   }
 
@@ -467,26 +584,38 @@ class _RoomSurfaceNavigatorState extends State<RoomSurfaceNavigator> {
 enum _RoomSurfaceMiniTargetKind { floor, ceiling, wall }
 
 final class _RoomSurfaceMiniTarget {
-  const _RoomSurfaceMiniTarget._(this.kind, [this.wallIndex]);
+  const _RoomSurfaceMiniTarget._(
+    this.kind, {
+    this.presentationOrdinal,
+    this.boundaryEdgeId,
+  });
 
   const _RoomSurfaceMiniTarget.floor()
       : this._(_RoomSurfaceMiniTargetKind.floor);
   const _RoomSurfaceMiniTarget.ceiling()
       : this._(_RoomSurfaceMiniTargetKind.ceiling);
-  const _RoomSurfaceMiniTarget.wall(int wallIndex)
-      : this._(_RoomSurfaceMiniTargetKind.wall, wallIndex);
+  const _RoomSurfaceMiniTarget.wall({
+    required int presentationOrdinal,
+    BoundaryEdgeId? boundaryEdgeId,
+  }) : this._(
+          _RoomSurfaceMiniTargetKind.wall,
+          presentationOrdinal: presentationOrdinal,
+          boundaryEdgeId: boundaryEdgeId,
+        );
 
   final _RoomSurfaceMiniTargetKind kind;
-  final int? wallIndex;
+  final int? presentationOrdinal;
+  final BoundaryEdgeId? boundaryEdgeId;
 
   @override
   bool operator ==(Object other) =>
       other is _RoomSurfaceMiniTarget &&
       other.kind == kind &&
-      other.wallIndex == wallIndex;
+      other.presentationOrdinal == presentationOrdinal &&
+      other.boundaryEdgeId == boundaryEdgeId;
 
   @override
-  int get hashCode => Object.hash(kind, wallIndex);
+  int get hashCode => Object.hash(kind, presentationOrdinal, boundaryEdgeId);
 }
 
 final class _RoomSurfaceMiniGeometry {
@@ -543,10 +672,16 @@ final class _RoomSurfaceMiniGeometry {
   Path get floorPath => Path()..addPolygon(floor, true);
   Path get ceilingPath => Path()..addPolygon(ceiling, true);
 
-  _RoomSurfaceMiniTarget? targetAt(Offset point) {
+  _RoomSurfaceMiniTarget? targetAt(
+    Offset point,
+    RoomSurfaceNavigatorProjection projection,
+  ) {
     for (var index = walls.length - 1; index >= 0; index--) {
       if (walls[index].contains(point)) {
-        return _RoomSurfaceMiniTarget.wall(index);
+        return _RoomSurfaceMiniTarget.wall(
+          presentationOrdinal: index,
+          boundaryEdgeId: projection.edgeIdAtOrdinal(index),
+        );
       }
     }
 
@@ -639,10 +774,16 @@ final class _RoomSurfaceMiniPainter extends CustomPainter {
     );
 
     for (var i = 0; i < geometry.walls.length; i++) {
-      final selected = projection.kind == RoomSurfaceNavigatorKind.wall &&
-          projection.wallIndex == i;
+      final edgeId = projection.edgeIdAtOrdinal(i);
+      final selected = projection.usesStableBoundaryIdentity
+          ? projection.kind == RoomSurfaceNavigatorKind.wall &&
+              projection.boundaryEdgeId == edgeId
+          : projection.kind == RoomSurfaceNavigatorKind.wall &&
+              projection.wallIndex == i;
       final hovered = hoveredTarget?.kind == _RoomSurfaceMiniTargetKind.wall &&
-          hoveredTarget?.wallIndex == i;
+          (projection.usesStableBoundaryIdentity
+              ? hoveredTarget?.boundaryEdgeId == edgeId
+              : hoveredTarget?.presentationOrdinal == i);
       canvas.drawPath(
         geometry.walls[i],
         selected
@@ -717,6 +858,7 @@ final class _RoomSurfaceMiniPainter extends CustomPainter {
       oldDelegate.geometry.ceiling != geometry.ceiling ||
       oldDelegate.projection.kind != projection.kind ||
       oldDelegate.projection.wallIndex != projection.wallIndex ||
+      oldDelegate.projection.boundaryEdgeId != projection.boundaryEdgeId ||
       oldDelegate.hoveredTarget != hoveredTarget ||
       oldDelegate.scheme != scheme;
 }
