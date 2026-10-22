@@ -207,7 +207,7 @@ ProjectAggregateRoot _project() {
           name: 'Level A1',
           levelNumber: 1,
           elevationMm: 0,
-          structuralZoneIds: <ZoneId>[zoneA],
+          zoneIds: <ZoneId>[zoneA],
           spaceIds: <SpaceId>[roomA],
         ),
         levelB: ProjectLevelEntity(
@@ -231,7 +231,6 @@ ProjectAggregateRoot _project() {
           id: roomA,
           levelId: levelA,
           name: 'Room A',
-          structuralZoneId: zoneA,
         ),
       },
     ),
