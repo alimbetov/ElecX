@@ -1,3 +1,4 @@
+import '../../domain/boundary_topology.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import 'project_authoring_error.dart';
@@ -59,8 +60,9 @@ final class RemoveSpaceCommand implements ProjectCommand {
     );
     final spaces = Map<SpaceId, ProjectSpaceEntity>.from(current.stores.spaces)
       ..remove(space.id);
-    final boundaries = Map<SpaceId, dynamic>.from(current.stores.boundaries)
-      ..remove(space.id);
+    final boundaries = Map<SpaceId, SpaceBoundaryTopology>.from(
+      current.stores.boundaries,
+    )..remove(space.id);
 
     levels[level.id] = ProjectLevelEntity(
       id: level.id,
@@ -95,7 +97,7 @@ final class RemoveSpaceCommand implements ProjectCommand {
           openings: current.stores.openings,
           adjacencies: current.stores.adjacencies,
           overlays: current.stores.overlays,
-          boundaries: boundaries.cast(),
+          boundaries: boundaries,
         ),
       ),
       affectedEntityIds: <EntityId>[
