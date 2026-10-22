@@ -1,3 +1,5 @@
+import 'boundary_edge_identity_registry.dart';
+
 /// Canonical engineering orientation for ElecX project-space coordinates.
 ///
 /// This value deliberately does not imply geographic, magnetic or device
@@ -76,14 +78,23 @@ final class ProjectEngineeringNorth {
 ///
 /// Null Project North means the engineer has not confirmed project orientation.
 /// It must never be interpreted as an implicit 0°.
+///
+/// [boundaryEdgeIdentityRegistry] is a durable tombstone ledger, not editor
+/// session state. It survives save/reopen and guarantees that a BoundaryEdgeId
+/// can never be re-parented to another SpaceId later in the project lifecycle.
 final class ProjectEngineeringMetadata {
-  const ProjectEngineeringMetadata({this.projectNorth});
+  const ProjectEngineeringMetadata({
+    this.projectNorth,
+    this.boundaryEdgeIdentityRegistry = const BoundaryEdgeIdentityRegistry.empty(),
+  });
 
   final ProjectEngineeringNorth? projectNorth;
+  final BoundaryEdgeIdentityRegistry boundaryEdgeIdentityRegistry;
 
   ProjectEngineeringMetadata copyWith({
     ProjectEngineeringNorth? projectNorth,
     bool clearProjectNorth = false,
+    BoundaryEdgeIdentityRegistry? boundaryEdgeIdentityRegistry,
   }) {
     if (clearProjectNorth && projectNorth != null) {
       throw ArgumentError(
@@ -93,19 +104,36 @@ final class ProjectEngineeringMetadata {
     return ProjectEngineeringMetadata(
       projectNorth:
           clearProjectNorth ? null : projectNorth ?? this.projectNorth,
+      boundaryEdgeIdentityRegistry:
+          boundaryEdgeIdentityRegistry ?? this.boundaryEdgeIdentityRegistry,
     );
   }
 
   ProjectEngineeringMetadata withProjectNorth(ProjectEngineeringNorth north) =>
-      ProjectEngineeringMetadata(projectNorth: north);
+      copyWith(projectNorth: north);
 
   ProjectEngineeringMetadata withoutProjectNorth() =>
-      const ProjectEngineeringMetadata();
+      copyWith(clearProjectNorth: true);
+
+  ProjectEngineeringMetadata withBoundaryEdgeIdentityRegistry(
+    BoundaryEdgeIdentityRegistry registry,
+  ) =>
+      copyWith(boundaryEdgeIdentityRegistry: registry);
 
   @override
   bool operator ==(Object other) =>
-      other is ProjectEngineeringMetadata && other.projectNorth == projectNorth;
+      other is ProjectEngineeringMetadata &&
+      other.projectNorth == projectNorth &&
+      other.boundaryEdgeIdentityRegistry.sameAs(boundaryEdgeIdentityRegistry);
 
   @override
-  int get hashCode => projectNorth.hashCode;
+  int get hashCode {
+    var result = projectNorth.hashCode;
+    final entries = boundaryEdgeIdentityRegistry.owners.entries.toList()
+      ..sort((a, b) => a.key.value.compareTo(b.key.value));
+    for (final entry in entries) {
+      result = Object.hash(result, entry.key, entry.value);
+    }
+    return result;
+  }
 }
