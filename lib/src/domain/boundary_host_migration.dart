@@ -229,7 +229,8 @@ abstract final class BoundaryHostedObjectRemapper {
       final match = startMatches.single;
       return BoundaryHostedRemap(
         source: reference,
-        host: BoundaryEdgeHostRef(spaceId: after.spaceId, edgeId: match.edge.id),
+        host:
+            BoundaryEdgeHostRef(spaceId: after.spaceId, edgeId: match.edge.id),
         startOffsetMm: match.offsetMm,
       );
     }
@@ -256,7 +257,8 @@ abstract final class BoundaryHostedObjectRemapper {
     final resultId = commonIds.single;
     final mappedStart =
         startMatches.singleWhere((match) => match.edge.id == resultId);
-    final mappedEnd = endMatches.singleWhere((match) => match.edge.id == resultId);
+    final mappedEnd =
+        endMatches.singleWhere((match) => match.edge.id == resultId);
     final low = math.min(mappedStart.offsetMm, mappedEnd.offsetMm);
     final high = math.max(mappedStart.offsetMm, mappedEnd.offsetMm);
     return BoundaryHostedRemap(
@@ -283,7 +285,8 @@ abstract final class BoundaryHostedObjectRemapper {
     }
   }
 
-  static BoundaryPointMm _pointAtOffset(ProjectBoundaryEdge edge, int offsetMm) {
+  static BoundaryPointMm _pointAtOffset(
+      ProjectBoundaryEdge edge, int offsetMm) {
     final length = _edgeLength(edge);
     final t = length == 0 ? 0.0 : offsetMm / length;
     return BoundaryPointMm(
@@ -338,8 +341,7 @@ abstract final class BoundaryHostedObjectRemapper {
     final projectedX = edge.start.xMm + dx * clamped;
     final projectedY = edge.start.yMm + dy * clamped;
     final distance = math.sqrt(
-      math.pow(point.xMm - projectedX, 2) +
-          math.pow(point.yMm - projectedY, 2),
+      math.pow(point.xMm - projectedX, 2) + math.pow(point.yMm - projectedY, 2),
     );
     if (distance > 1.0) return null;
     return _EdgePointMatch(
