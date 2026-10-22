@@ -10,7 +10,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P6 semantic mutations', () {
-    test('SetSpaceUsage is one canonical mutation and same value is a no-op', () {
+    test('SetSpaceUsage is one canonical mutation and same value is a no-op',
+        () {
       final session = ProjectMutationSession(_baseProject());
       final roomA = SpaceId('room-a');
 
@@ -161,7 +162,8 @@ void main() {
           isA<ProjectCandidateValidationException>().having(
             (error) => error.issues.any(
               (issue) =>
-                  issue.code == ProjectAggregateIssueCode.duplicateAdjacencyPair,
+                  issue.code ==
+                  ProjectAggregateIssueCode.duplicateAdjacencyPair,
             ),
             'duplicate adjacency issue',
             isTrue,
@@ -177,7 +179,8 @@ void main() {
       final roomB = SpaceId('room-b');
       final roomC = SpaceId('room-c');
       final openingId = OpeningId('door-1');
-      final session = ProjectMutationSession(_baseProject(withThirdSpace: true));
+      final session =
+          ProjectMutationSession(_baseProject(withThirdSpace: true));
 
       session.commit(
         ProjectMutationRequest(
@@ -213,7 +216,8 @@ void main() {
         throwsA(
           isA<ProjectCandidateValidationException>().having(
             (error) => error.issues.any(
-              (issue) => issue.code ==
+              (issue) =>
+                  issue.code ==
                   ProjectAggregateIssueCode.adjacencyOpeningSpaceMismatch,
             ),
             'opening mismatch issue',
@@ -249,8 +253,7 @@ void main() {
             openingId: openingId,
           ),
         },
-        overlays:
-            <OverlayClassificationId, ProjectOverlayClassificationEntity>{
+        overlays: <OverlayClassificationId, ProjectOverlayClassificationEntity>{
           overlayId: ProjectOverlayClassificationEntity(
             id: overlayId,
             name: 'FC-01',
@@ -273,10 +276,10 @@ void main() {
         throwsA(
           isA<ProjectAuthoringException>()
               .having(
-                (error) => error.code,
-                'code',
-                ProjectAuthoringIssueCode.spaceHasSemanticDependencies,
-              )
+            (error) => error.code,
+            'code',
+            ProjectAuthoringIssueCode.spaceHasSemanticDependencies,
+          )
               .having(
             (error) => error.blockingEntityIds,
             'blockingEntityIds',
