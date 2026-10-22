@@ -285,20 +285,22 @@ abstract final class BoundaryHostedObjectRemapper {
     }
   }
 
-  static BoundaryPointMm _pointAtOffset(
-      ProjectBoundaryEdge edge, int offsetMm) {
+  static _BoundaryPointDouble _pointAtOffset(
+    ProjectBoundaryEdge edge,
+    int offsetMm,
+  ) {
     final length = _edgeLength(edge);
     final t = length == 0 ? 0.0 : offsetMm / length;
-    return BoundaryPointMm(
-      xMm: (edge.start.xMm + (edge.end.xMm - edge.start.xMm) * t).round(),
-      yMm: (edge.start.yMm + (edge.end.yMm - edge.start.yMm) * t).round(),
+    return _BoundaryPointDouble(
+      x: edge.start.xMm + (edge.end.xMm - edge.start.xMm) * t,
+      y: edge.start.yMm + (edge.end.yMm - edge.start.yMm) * t,
     );
   }
 
   static List<_EdgePointMatch> _candidateMatches({
     required SpaceBoundaryTopology after,
     required Iterable<BoundaryEdgeId> candidateIds,
-    required BoundaryPointMm point,
+    required _BoundaryPointDouble point,
     required BoundaryHostedReference reference,
   }) {
     final matches = <_EdgePointMatch>[];
@@ -326,14 +328,14 @@ abstract final class BoundaryHostedObjectRemapper {
 
   static _EdgePointMatch? _projectPoint(
     ProjectBoundaryEdge edge,
-    BoundaryPointMm point,
+    _BoundaryPointDouble point,
   ) {
     final dx = (edge.end.xMm - edge.start.xMm).toDouble();
     final dy = (edge.end.yMm - edge.start.yMm).toDouble();
     final lengthSquared = dx * dx + dy * dy;
     if (lengthSquared == 0) return null;
-    final px = (point.xMm - edge.start.xMm).toDouble();
-    final py = (point.yMm - edge.start.yMm).toDouble();
+    final px = point.x - edge.start.xMm;
+    final py = point.y - edge.start.yMm;
     final t = (px * dx + py * dy) / lengthSquared;
     const epsilon = 1e-9;
     if (t < -epsilon || t > 1 + epsilon) return null;
@@ -341,9 +343,9 @@ abstract final class BoundaryHostedObjectRemapper {
     final projectedX = edge.start.xMm + dx * clamped;
     final projectedY = edge.start.yMm + dy * clamped;
     final distance = math.sqrt(
-      math.pow(point.xMm - projectedX, 2) + math.pow(point.yMm - projectedY, 2),
+      math.pow(point.x - projectedX, 2) + math.pow(point.y - projectedY, 2),
     );
-    if (distance > 1.0) return null;
+    if (distance > epsilon) return null;
     return _EdgePointMatch(
       edge: edge,
       offsetMm: (_edgeLength(edge) * clamped).round(),
@@ -355,6 +357,13 @@ abstract final class BoundaryHostedObjectRemapper {
     final dy = (edge.end.yMm - edge.start.yMm).toDouble();
     return math.sqrt(dx * dx + dy * dy);
   }
+}
+
+final class _BoundaryPointDouble {
+  const _BoundaryPointDouble({required this.x, required this.y});
+
+  final double x;
+  final double y;
 }
 
 final class _EdgePointMatch {
