@@ -73,6 +73,7 @@ void main() {
 
       expect(fixture.adapter.current().kind, CanonicalRoomSurfaceKind.plan);
       expect(fixture.adapter.current().boundaryEdgeId, isNull);
+      expect(fixture.adapter.fallbackToPlanIfStale(), isFalse);
     });
 
     test('legacy polygon drift invalidates previously resolved edge mapping', () {
@@ -97,6 +98,7 @@ void main() {
         ],
       );
 
+      expect(fixture.adapter.isMaterializationCurrent, isFalse);
       expect(fixture.adapter.current().kind, CanonicalRoomSurfaceKind.plan);
       expect(
         fixture.adapter.showBoundaryEdge(fixture.edgeIds[2]),
@@ -105,6 +107,11 @@ void main() {
       expect(fixture.adapter.nextWall(), isFalse);
       expect(fixture.adapter.previousWall(), isFalse);
       expect(fixture.controller.activeSurface, before);
+
+      expect(fixture.adapter.fallbackToPlanIfStale(), isTrue);
+      expect(fixture.controller.viewMode, EditorViewMode.plan);
+      expect(fixture.controller.activeSurface, isNull);
+      expect(fixture.adapter.fallbackToPlanIfStale(), isFalse);
     });
   });
 }
