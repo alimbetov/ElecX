@@ -1,4 +1,5 @@
 import '../../domain/project_identity.dart';
+import '../../domain/surfaces.dart';
 import 'canonical_editor_runtime_cutover.dart';
 import 'canonical_room_surface_cutover.dart';
 import 'canonical_room_surface_resume.dart';
@@ -20,7 +21,17 @@ abstract final class CanonicalRoomSurfaceRuntimeRegistry {
       Expando<CanonicalRoomSurfaceResume>('ElecX canonical surface resume');
 
   static void attach(CanonicalEditorRuntimeCutoverCoordinator coordinator) {
-    _coordinators[coordinator.adapter.workspace.editor] = coordinator;
+    final controller = coordinator.adapter.workspace.editor;
+    _coordinators[controller] = coordinator;
+
+    // A legacy document may have restored RoomSurfaceRef.wall(..., wallIndex).
+    // Once this controller enters canonical runtime that ordinal is not trusted
+    // as durable identity. Only an explicitly staged BoundaryEdgeId resume may
+    // restore a wall after canonical materialization.
+    if (_stagedResumes[controller] == null &&
+        controller.activeSurface?.type == SurfacePlaneType.wall) {
+      controller.showPlan();
+    }
   }
 
   static void detach(CanonicalEditorRuntimeCutoverCoordinator coordinator) {
