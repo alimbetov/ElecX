@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../domain/boundary_edge_identity_registry.dart';
+import '../../domain/boundary_geometry_integrity.dart';
 import '../../domain/boundary_topology.dart';
 import '../../domain/project_identity.dart';
 
@@ -19,8 +20,6 @@ abstract final class LegacyBoundaryPolygonMigration {
     required Iterable<BoundaryPointMm> polygon,
   }) {
     final points = _normalizePolygon(polygon);
-    final polygonSeed =
-        points.map((point) => '${point.xMm},${point.yMm}').join(';');
 
     final edgeIds = <BoundaryEdgeId>[];
     final edges = <BoundaryEdgeId, ProjectBoundaryEdge>{};
@@ -31,7 +30,7 @@ abstract final class LegacyBoundaryPolygonMigration {
         _deterministicId(
           projectId: projectId,
           spaceId: spaceId,
-          polygonSeed: polygonSeed,
+          points: points,
           edgeOrdinal: index,
         ),
       );
@@ -50,6 +49,7 @@ abstract final class LegacyBoundaryPolygonMigration {
       edges: edges,
     );
     topology.validateOrThrow();
+    BoundaryGeometryIntegrity.validateOrThrow(topology);
 
     final registry = const BoundaryEdgeIdentityRegistry.empty()
         .registerActiveBoundaries(<SpaceId, SpaceBoundaryTopology>{
@@ -93,17 +93,22 @@ abstract final class LegacyBoundaryPolygonMigration {
   static String _deterministicId({
     required ProjectId projectId,
     required SpaceId spaceId,
-    required String polygonSeed,
+    required List<BoundaryPointMm> points,
     required int edgeOrdinal,
   }) {
-    final seed = [
-      'elecx-p7a-legacy-boundary-v1',
+    final components = <String>[
+      'elecx-p7a-legacy-boundary-v2',
       projectId.value,
       spaceId.value,
-      polygonSeed,
+      points.length.toString(),
+      for (final point in points) ...[
+        point.xMm.toString(),
+        point.yMm.toString(),
+      ],
       edgeOrdinal.toString(),
-    ].join('|');
-    final bytes = utf8.encode(seed);
+    ];
+    final canonicalSeed = components.map(_lengthPrefixed).join();
+    final bytes = utf8.encode(canonicalSeed);
     final digest = <int>[
       0x243f6a88,
       0x85a308d3,
@@ -112,6 +117,9 @@ abstract final class LegacyBoundaryPolygonMigration {
     ].map((salt) => _fnv1a64Hex(bytes, salt)).join();
     return 'be_$digest';
   }
+
+  static String _lengthPrefixed(String value) =>
+      '${utf8.encode(value).length}:$value';
 
   static String _fnv1a64Hex(List<int> bytes, int salt) {
     final mask = (BigInt.one << 64) - BigInt.one;
