@@ -3,13 +3,14 @@ import '../../domain/project_identity.dart';
 import 'canonical_editor_workspace_adapter.dart';
 import 'canonical_room_boundary_projection.dart';
 import 'canonical_room_surface_selection.dart';
-import 'editor_controller.dart';
+import 'editor_building_workspace.dart';
 
 enum CanonicalRoomSurfaceCutoverIssueCode {
   canonicalSpaceMissing,
   canonicalLevelMissing,
   canonicalSpaceOutsideBoundBuilding,
   boundaryTopologyMissing,
+  legacyBuildingMismatch,
   legacyLevelBindingMissing,
   legacyLevelNotActive,
   legacySpaceBindingMissing,
@@ -35,13 +36,14 @@ final class CanonicalRoomSurfaceCutoverException implements Exception {
 ///
 /// It refuses to manufacture topology for rooms that have not yet crossed the
 /// P7A persistence/materialization boundary. The complete canonical
-/// Space -> Level -> Building ownership chain and the matching legacy Level +
-/// Space bindings must be coherent before a wall ordinal can be projected.
+/// Space -> Level -> Building ownership chain and the matching legacy Building,
+/// Level and Space bindings must be coherent before a wall ordinal can be
+/// projected.
 abstract final class CanonicalRoomSurfaceCutover {
   static CanonicalRoomSurfaceSelectionAdapter resolve({
     required ProjectAggregateRoot project,
     required CanonicalEditorWorkspaceBinding binding,
-    required EditorController controller,
+    required EditorBuildingWorkspace workspace,
     required SpaceId spaceId,
   }) {
     final canonicalSpace = project.index.space(spaceId);
@@ -73,6 +75,16 @@ abstract final class CanonicalRoomSurfaceCutover {
       );
     }
 
+    if (workspace.building.building.id != binding.legacyBuildingId) {
+      throw CanonicalRoomSurfaceCutoverException(
+        code: CanonicalRoomSurfaceCutoverIssueCode.legacyBuildingMismatch,
+        spaceId: spaceId,
+        message: 'Legacy workspace building '
+            '${workspace.building.building.id} does not match binding '
+            '${binding.legacyBuildingId}.',
+      );
+    }
+
     final topology = project.index.boundary(spaceId);
     if (topology == null) {
       throw CanonicalRoomSurfaceCutoverException(
@@ -91,12 +103,17 @@ abstract final class CanonicalRoomSurfaceCutover {
             'editor binding for space $spaceId.',
       );
     }
-    if (controller.level.id != legacyLevelId) {
+
+    final activeLegacyLevel = workspace.activeLevel;
+    final controller = workspace.editor;
+    if (workspace.context != EditorWorkspaceContext.buildingLevel ||
+        activeLegacyLevel?.level.id != legacyLevelId ||
+        controller.level.id != legacyLevelId) {
       throw CanonicalRoomSurfaceCutoverException(
         code: CanonicalRoomSurfaceCutoverIssueCode.legacyLevelNotActive,
         spaceId: spaceId,
-        message: 'Legacy editor level ${controller.level.id} is active, but '
-            'canonical space $spaceId is bound to level $legacyLevelId.',
+        message: 'Legacy workspace/editor active Level does not match '
+            'canonical space $spaceId binding $legacyLevelId.',
       );
     }
 
