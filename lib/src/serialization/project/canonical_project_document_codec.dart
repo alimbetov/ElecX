@@ -2,6 +2,7 @@ import '../../application/project/project_snapshot.dart';
 import '../../domain/boundary_edge_identity_registry.dart';
 import '../../domain/boundary_host_migration.dart';
 import '../../domain/boundary_host_registry.dart';
+import '../../domain/boundary_opening_profile_validation.dart';
 import '../../domain/boundary_topology.dart';
 import '../../domain/boundary_wall_profile_registry.dart';
 import '../../domain/project_aggregate.dart';
@@ -325,6 +326,8 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
       throw FormatException('Invalid boundary edge identity registry: $error');
     } on BoundaryHostedRegistryException catch (error) {
       throw FormatException('Invalid boundary hosted-object registry: $error');
+    } on BoundaryOpeningProfileException catch (error) {
+      throw FormatException('Invalid boundary opening/profile ownership: $error');
     } on BoundaryWallProfileRegistryException catch (error) {
       throw FormatException('Invalid boundary wall-profile registry: $error');
     } on BoundaryTopologyValidationException catch (error) {
