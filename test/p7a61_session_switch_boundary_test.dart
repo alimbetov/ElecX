@@ -52,7 +52,8 @@ void main() {
       expect(
         fixture.session.project.index.boundary(fixture.spaceId)!.orderedEdgeIds,
         hasLength(5),
-        reason: 'the canonical split committed before the owner switched session',
+        reason:
+            'the canonical split committed before the owner switched session',
       );
       expect(
         fixture.controller.documentHistory
@@ -64,7 +65,8 @@ void main() {
         fixture.controller.documentHistory
             .hasCanonicalSessionAffinity(fixture.session),
         isFalse,
-        reason: 'history must never silently reattach the committed old session',
+        reason:
+            'history must never silently reattach the committed old session',
       );
       expect(fixture.controller.documentHistory.undoDepth, 0);
       expect(fixture.controller.documentHistory.redoDepth, 0);
@@ -113,7 +115,8 @@ void main() {
         session: session,
         label: 'Version one',
         rematerialize: () {
-          fail('old-session rematerialization must not run after session switch');
+          fail(
+              'old-session rematerialization must not run after session switch');
         },
       );
 
