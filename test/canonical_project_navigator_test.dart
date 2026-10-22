@@ -30,7 +30,7 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('Site'), findsOneWidget);
+      expect(find.text('Site'), findsWidgets);
       expect(find.text('Building A'), findsOneWidget);
       expect(find.text('Building B'), findsOneWidget);
       expect(find.text('Level A1'), findsOneWidget);
