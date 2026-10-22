@@ -223,14 +223,27 @@ abstract final class RoomSurfaceResolver {
     final legacy = walls(space, defaultHeightMm: defaultHeightMm);
     return List.unmodifiable([
       for (var i = 0; i < legacy.length; i++)
-        RoomWallSurface(
-          ref: RoomSurfaceRef.wallByBoundaryEdge(space.id, orderedEdgeIds[i]),
-          start: legacy[i].start,
-          end: legacy[i].end,
-          heightMm: legacy[i].heightMm,
-          profile: legacy[i].profile,
+        _canonicalWall(
+          space: space,
+          legacy: legacy[i],
+          edgeId: orderedEdgeIds[i],
         ),
     ]);
+  }
+
+  static RoomWallSurface _canonicalWall({
+    required EngineeringSpace space,
+    required RoomWallSurface legacy,
+    required BoundaryEdgeId edgeId,
+  }) {
+    final profile = space.boundaryEdgeWallProfiles[edgeId] ?? legacy.profile;
+    return RoomWallSurface(
+      ref: RoomSurfaceRef.wallByBoundaryEdge(space.id, edgeId),
+      start: legacy.start,
+      end: legacy.end,
+      heightMm: profile.maxY,
+      profile: profile,
+    );
   }
 
   static RoomWallSurface _wallForIndex(
