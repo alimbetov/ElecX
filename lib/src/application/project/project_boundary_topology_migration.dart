@@ -60,6 +60,7 @@ enum BoundaryTopologyMigrationIssueCode {
   lineageSourceCoverageMismatch,
   lineageResultCoverageMismatch,
   wallProfileScopeViolation,
+  preservedWallProfileOrientationReversed,
 }
 
 final class BoundaryTopologyMigrationException implements Exception {
@@ -333,6 +334,12 @@ final class CanonicalBoundaryTopologyMigrationSession {
       candidate: profiles,
       editedSpaceId: spaceId,
     );
+    _requirePreservedProfileOrientation(
+      before: _source,
+      after: topology,
+      lineage: lineage,
+      profiles: _sourceProfiles,
+    );
     final boundaries = <SpaceId, SpaceBoundaryTopology>{
       ..._mutations.current.stores.boundaries,
       spaceId: topology,
@@ -515,6 +522,32 @@ void _requireWallProfileScopePreserved({
       message: 'A topology migration for $editedSpaceId cannot add, remove or '
           'modify wall profiles owned by another Space.',
     );
+  }
+}
+
+void _requirePreservedProfileOrientation({
+  required SpaceBoundaryTopology before,
+  required SpaceBoundaryTopology after,
+  required BoundaryTopologyChangeSet lineage,
+  required BoundaryWallProfileRegistry profiles,
+}) {
+  for (final record in lineage.lineage) {
+    if (record.kind != BoundaryEdgeLineageKind.preserved) continue;
+    final edgeId = record.sourceEdgeIds.single;
+    final host = BoundaryEdgeHostRef(spaceId: before.spaceId, edgeId: edgeId);
+    if (profiles[host] == null) continue;
+    final source = before.edges[edgeId];
+    final result = after.edges[edgeId];
+    if (source == null || result == null) continue;
+    if (source.start == result.end && source.end == result.start) {
+      throw BoundaryTopologyMigrationException(
+        code: BoundaryTopologyMigrationIssueCode
+            .preservedWallProfileOrientationReversed,
+        message: 'Preserved boundary edge $edgeId reverses start/end while '
+            'owning an orientation-dependent WallProfile. An explicit '
+            'lossless profile transform is required.',
+      );
+    }
   }
 }
 
