@@ -58,10 +58,19 @@ final class CanonicalEditorScreenCutoverBinding {
     _requireNotDisposed();
     if (_started) return;
     _started = true;
-    workspace.editor.documentHistory.attachCanonicalSession(coordinator.session);
+    final topologyOwner = onBoundaryTopologyCommitted;
+    workspace.editor.documentHistory.attachCanonicalSession(
+      coordinator.session,
+      onReplayed: topologyOwner == null
+          ? null
+          : (result) => topologyOwner(
+                coordinator.session.boundaryTopologyEditing,
+                result,
+              ),
+    );
     CanonicalRoomSurfaceRuntimeRegistry.attach(
       coordinator,
-      onBoundaryTopologyCommitted: onBoundaryTopologyCommitted,
+      onBoundaryTopologyCommitted: topologyOwner,
     );
     workspace.addListener(_onLegacyRuntimeChanged);
     workspace.editor.addListener(_onLegacyRuntimeChanged);
