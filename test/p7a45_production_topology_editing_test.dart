@@ -17,6 +17,7 @@ import 'package:elecx/src/features/editor/canonical_editor_screen_cutover_bindin
 import 'package:elecx/src/features/editor/canonical_editor_workspace_adapter.dart';
 import 'package:elecx/src/features/editor/editor_building_workspace.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
+import 'package:elecx/src/features/editor/editor_document_history.dart';
 import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:elecx/src/features/editor/plan_geometry_editor_actions.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -56,6 +57,57 @@ void main() {
     },
   );
 
+  test('unified history preserves P3 and P2 chronological undo redo', () {
+    final fixture = _Fixture();
+    addTearDown(fixture.dispose);
+    final binding = fixture.bind();
+    addTearDown(binding.dispose);
+    final history = fixture.controller.documentHistory;
+
+    final source = fixture.controller.selectedSpace!.boundary;
+    final candidate = PlanGeometryEditing.moveEdge(
+      boundary: source,
+      edgeIndex: 0,
+      dragStart: const MmPoint(2000, 0),
+      dragCurrent: const MmPoint(2000, 500),
+    )!;
+    expect(fixture.controller.commitSelectedBoundary(candidate), isTrue);
+    expect(history.undoDepth, 1);
+
+    fixture.controller.showWall(2);
+    final component = fixture.controller.p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: fixture.controller.activeSurface!,
+      position: const SurfacePointMm(1000, 1200),
+    );
+    expect(history.undoDepth, 2);
+
+    expect(history.undo(), isTrue);
+    expect(fixture.controller.p2.components, isEmpty);
+    expect(
+      fixture.controller.selectedSpace!.boundary.vertices,
+      candidate.vertices,
+    );
+
+    expect(history.undo(), isTrue);
+    final undoneTopology =
+        fixture.session.project.index.boundary(fixture.spaceId)!;
+    expect(undoneTopology.edges[fixture.edgeIds[0]]!.start.yMm, 0);
+    expect(undoneTopology.edges[fixture.edgeIds[0]]!.end.yMm, 0);
+    expect(
+      fixture.controller.selectedSpace!.boundary.vertices,
+      source.vertices,
+    );
+
+    expect(history.redo(), isTrue);
+    expect(
+      fixture.controller.selectedSpace!.boundary.vertices,
+      candidate.vertices,
+    );
+    expect(history.redo(), isTrue);
+    expect(fixture.controller.p2.components.single.id, component.id);
+  });
+
   test('wall-hosted component blocks topology edit until P7A-5', () {
     final fixture = _Fixture();
     addTearDown(fixture.dispose);
@@ -80,7 +132,32 @@ void main() {
     expect(fixture.controller.commitSelectedBoundary(candidate!), isFalse);
     expect(fixture.session.project, same(before));
     expect(
-        fixture.controller.selectedSpace!.boundary.vertices, source.vertices);
+      fixture.controller.selectedSpace!.boundary.vertices,
+      source.vertices,
+    );
+  });
+
+  test('canonical topology is read-only without persistence ownership', () {
+    final fixture = _Fixture();
+    addTearDown(fixture.dispose);
+    final binding = fixture.bind(withTopologyOwner: false);
+    addTearDown(binding.dispose);
+
+    final before = fixture.session.project;
+    final source = fixture.controller.selectedSpace!.boundary;
+    final candidate = PlanGeometryEditing.moveEdge(
+      boundary: source,
+      edgeIndex: 0,
+      dragStart: const MmPoint(2000, 0),
+      dragCurrent: const MmPoint(2000, 500),
+    )!;
+
+    expect(fixture.controller.commitSelectedBoundary(candidate), isFalse);
+    expect(fixture.session.project, same(before));
+    expect(
+      fixture.controller.selectedSpace!.boundary.vertices,
+      source.vertices,
+    );
   });
 
   test(
@@ -214,7 +291,7 @@ final class _Fixture {
     );
   }
 
-  CanonicalEditorScreenCutoverBinding bind() {
+  CanonicalEditorScreenCutoverBinding bind({bool withTopologyOwner = true}) {
     final coordinator = CanonicalEditorRuntimeCutoverCoordinator(
       session: session,
       adapter: CanonicalEditorWorkspaceAdapter(
@@ -229,12 +306,15 @@ final class _Fixture {
     );
     final binding = CanonicalEditorScreenCutoverBinding(
       coordinator: coordinator,
+      onBoundaryTopologyCommitted:
+          withTopologyOwner ? (_, __) {} : null,
     );
     binding.start();
     return binding;
   }
 
   void dispose() {
+    controller.disposeDocumentHistory();
     controller.disposeP2State();
     workspace.dispose();
     controller.dispose();
