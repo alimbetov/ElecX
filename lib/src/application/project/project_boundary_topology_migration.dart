@@ -52,6 +52,7 @@ enum BoundaryTopologyMigrationIssueCode {
   edgeNotFound,
   splitPointNotInterior,
   mergeEdgesNotAdjacent,
+  mergeEdgesNotCollinear,
   tooFewResultEdges,
   lineageSourceCoverageMismatch,
   lineageResultCoverageMismatch,
@@ -241,6 +242,13 @@ final class CanonicalBoundaryTopologyMigrationSession {
         code: BoundaryTopologyMigrationIssueCode.mergeEdgesNotAdjacent,
         message: '$firstSourceEdgeId and $secondSourceEdgeId are not an '
             'ordered adjacent pair.',
+      );
+    }
+    if (!_areCollinearAndForward(first, second)) {
+      throw BoundaryTopologyMigrationException(
+        code: BoundaryTopologyMigrationIssueCode.mergeEdgesNotCollinear,
+        message: '$firstSourceEdgeId and $secondSourceEdgeId form a corner or '
+            'reverse direction and cannot be losslessly merged.',
       );
     }
     if (_source.edges.containsKey(resultEdgeId)) {
@@ -461,4 +469,17 @@ bool _pointOnSegment(ProjectBoundaryEdge edge, BoundaryPointMm point) {
   final dot = px * dx + py * dy;
   final lengthSquared = dx * dx + dy * dy;
   return dot > 0 && dot < lengthSquared;
+}
+
+bool _areCollinearAndForward(
+  ProjectBoundaryEdge first,
+  ProjectBoundaryEdge second,
+) {
+  final firstDx = first.end.xMm - first.start.xMm;
+  final firstDy = first.end.yMm - first.start.yMm;
+  final secondDx = second.end.xMm - second.start.xMm;
+  final secondDy = second.end.yMm - second.start.yMm;
+  final cross = firstDx * secondDy - firstDy * secondDx;
+  final dot = firstDx * secondDx + firstDy * secondDy;
+  return cross == 0 && dot > 0;
 }
