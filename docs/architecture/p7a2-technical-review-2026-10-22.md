@@ -19,31 +19,15 @@ P7A-3 persistence/migration, P7A-4 production editor cutover and P7A-5 hosted-ob
 
 ## Disposition
 
-**P7A-2 architecture is sound after hardening, but qualification is not yet closed.**
+**P7A-2H1 and P7A-2H2 are closed.**
 
-The review found one concrete correctness defect that is now fixed and one transition invariant that must be enforced before public topology mutation is introduced.
+The review found one concrete destructive-operation defect and one historical identity invariant. Both are now enforced in the canonical mutation path. The final Flutter quality/verification run on HEAD `9119cdd2f57c1de510fc37d70baf3bc618cc0743` passes formatting, analyze and tests. macOS Desktop qualification for the same HEAD remains an independent current-run gate and does not alter the H1/H2 result.
 
 ## Findings
 
 ### HIGH — RemoveSpace could orphan owned boundary topology — FIXED
 
 Before hardening, legacy stores-only command compatibility intentionally preserved `current.stores.boundaries`. That was correct for ordinary P3/P4 mutations but incorrect for `RemoveSpaceCommand`.
-
-The old sequence was effectively:
-
-```text
-remove SpaceId from spaces
-        |
-compatibility resolver preserves boundaries
-        |
-BoundaryTopology still references removed SpaceId
-        |
-aggregate validation rejects candidate
-```
-
-This meant a valid room with canonical P7A topology could no longer be removed even after all independent P6 semantic dependencies were cleared.
-
-Boundary topology is owned state of the space itself. It is not an independent semantic dependency.
 
 The corrected removal contract is:
 
@@ -59,33 +43,46 @@ RemoveSpaceCommand
 
 Openings, adjacency, overlays and future hosted engineering objects remain dependency blockers. Owned boundary topology itself cascades with its space.
 
-Regression qualification now verifies that removal clears the space, topology and stable edge identities and that Undo restores all of them atomically.
+Regression qualification verifies that removal clears the space, topology and stable edge identities and that Undo restores all of them atomically.
 
-### HIGH — BoundaryEdgeId must not change owning SpaceId across a mutation — CONTRACT REQUIRED
+### HIGH — BoundaryEdgeId must never change owning SpaceId — FIXED (H1)
 
-A single aggregate snapshot already rejects duplicate `BoundaryEdgeId` ownership across two spaces. That is necessary but not sufficient for historical identity stability.
+A single aggregate snapshot already rejects duplicate `BoundaryEdgeId` ownership across two spaces. P7A-2 now additionally enforces historical ownership inside `ProjectMutationSession`.
 
-A candidate could theoretically contain:
-
-```text
-before: BoundaryEdgeId E -> Space A
-after:  BoundaryEdgeId E -> Space B
-```
-
-where each individual snapshot is internally valid.
-
-This is forbidden. A stable boundary identity represents one logical boundary lineage and must never be re-parented to another `SpaceId`.
-
-Required transition invariant:
+The invariant is stronger than adjacent-version comparison:
 
 ```text
-if BoundaryEdgeId E exists before and after a mutation:
-    before.ownerSpaceId MUST equal after.ownerSpaceId
+BoundaryEdgeId E first observed at Space A
+        |
+        +-- geometry/order edit at Space A    ALLOWED
+        +-- remove E                           ALLOWED
+        +-- undo/redo at Space A              ALLOWED
+        +-- later reuse E at Space A           ALLOWED by identity ownership
+        `-- later reuse E at Space B           REJECTED
 ```
 
-If geometry changes ownership because of split/merge/reconstruction, the operation must allocate new edge identities and describe the relationship through `BoundaryTopologyChangeSet` lineage.
+`ProjectMutationSession` records the first canonical owner of every observed `BoundaryEdgeId` and never reassigns that owner. Preview, commit, Undo and Redo restoration validate candidate stores against the historical owner map before authoritative state replacement.
 
-This invariant must be enforced before any production/public topology mutation command is exposed. It is an application/domain transition rule, not a UI rule and not a platform rule.
+A cross-space reassignment throws `BoundaryEdgeOwnershipException` before `_current`, `LocalProjectVersion` or Undo history can be mutated.
+
+Split/merge/reconstruction that produces a different logical edge must therefore allocate new identities and describe the relationship through `BoundaryTopologyChangeSet` lineage.
+
+#### Persistence hand-off to P7A-3
+
+The P7A-2 owner history is intentionally mutation-session state. P7A-3 must make retired-edge ownership durable across save/reopen so a process restart cannot weaken the same invariant.
+
+P7A-3 therefore has an explicit requirement:
+
+```text
+save
+ -> persist active boundary topology
+ -> persist/reconstruct retired BoundaryEdgeId ownership tombstones
+reopen
+ -> seed ProjectMutationSession ownership history
+ -> forbid reuse of retired ID under another SpaceId
+```
+
+The persistence representation may evolve, but the semantic invariant may not.
 
 ### MEDIUM — compatibility preservation must remain explicit for newer canonical stores — VERIFIED
 
@@ -105,30 +102,27 @@ Current canonical diff behavior is appropriate:
 - edge order/topology changes -> owner `SpaceId` updated;
 - simultaneous Space + boundary creation/removal keeps added/updated/removed sets disjoint.
 
-This is sufficient for later cache/projection invalidation and production editor refresh without using `wallIndex`.
-
 ### MEDIUM — failed candidate and Undo/Redo atomicity — VERIFIED
 
 Boundary topology is inside `ProjectMutableState.stores`, therefore candidate validation occurs before `_current` replacement and Undo/Redo captures topology with the same canonical state boundary.
 
-An invalid topology candidate leaves:
+An invalid topology or historical ownership candidate leaves:
 
 - current aggregate unchanged;
 - local version unchanged;
 - undo depth unchanged.
 
-### LOW — formatter qualification debt — OPEN
+### LOW — formatter qualification debt — CLOSED (H2)
 
-The first P7A-2 Flutter workflow showed:
+Final Flutter quality run on HEAD `9119cdd2f57c1de510fc37d70baf3bc618cc0743` passes:
 
 ```text
-flutter analyze PASS
-flutter test    PASS
-macOS Desktop  PASS
-formatter gate FAIL
+dart format --output=none --set-exit-if-changed lib test  PASS
+flutter analyze                                             PASS
+flutter test                                                PASS
 ```
 
-The formatter identified P7A files only. This is not a runtime correctness failure, but P7A-2 must not be called qualified until `dart format --output=none --set-exit-if-changed lib test` is green on the final HEAD.
+No formatter diff artifact is produced because the formatting check is clean.
 
 ## Platform architecture review
 
@@ -149,31 +143,18 @@ Input modality, filesystem access, lifecycle and adaptive presentation remain ou
 
 No platform stub or separate mobile/desktop topology model is required or allowed.
 
-## Required closure conditions for P7A-2
+## P7A-2 hardening result
 
-P7A-2 may be marked `DONE + HARDENED` when all of the following are true:
-
-1. owned boundary removal regression remains green;
-2. stable `BoundaryEdgeId` cross-space re-parenting is rejected at mutation-transition validation before public topology edit commands land;
-3. formatter gate is green;
-4. `flutter analyze` is green;
-5. `flutter test` is green;
-6. current macOS Desktop qualification is green;
-7. no platform-specific engineering state is introduced.
+```text
+P7A-2H1 BoundaryEdgeId historical SpaceId ownership  DONE
+P7A-2H2 Dart format gate on final HEAD               PASS
+Flutter analyze                                      PASS
+Flutter test                                         PASS
+macOS Desktop final-head qualification               RUNNING
+```
 
 Windows/Linux/Android/iOS/iPadOS runners remain non-blocking for P7A-2 architecture closure under the native-platform portability contract.
 
 ## Recommendation
 
-Do not proceed directly to production editor cutover yet.
-
-The safe order remains:
-
-```text
-P7A-2 review hardening
-  -> close formatter + transition invariant
-  -> P7A-3 persistence / deterministic legacy migration
-  -> P7A-4 production editor cutover
-  -> P7A-5 hosted-object migration
-  -> P7A-6 qualification
-```
+Proceed next to P7A-3 persistence / deterministic legacy migration after the current macOS final-head qualification completes. P7A-3 must persist or deterministically reconstruct retired-edge ownership tombstones so H1 survives save/reopen and application restart.
