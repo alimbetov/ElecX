@@ -6,9 +6,11 @@ import '../../domain/boundary_wall_profile_registry.dart';
 import '../../domain/project_identity.dart';
 import 'canonical_boundary_host_materialization.dart';
 import 'canonical_boundary_host_projection.dart';
+import 'canonical_editor_runtime_cutover.dart';
 import 'canonical_room_surface_runtime_registry.dart';
 import 'canonical_route_anchor_rehydration.dart';
 import 'editor_controller.dart';
+import 'editor_p2_session.dart';
 
 /// Production P7A-5 gateway for identity-changing boundary topology edits.
 ///
@@ -58,7 +60,8 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
     if (topology == null) return false;
     final index = topology.orderedEdgeIds.indexOf(edgeId);
     if (index < 0) return false;
-    final next = topology.orderedEdgeIds[(index + 1) % topology.orderedEdgeIds.length];
+    final next = topology
+        .orderedEdgeIds[(index + 1) % topology.orderedEdgeIds.length];
     final ids = idFactory ?? SecureRandomEntityIdFactory();
     final edit = context.coordinator.session.boundaryTopologyMigration.begin(
       spaceId: context.spaceId,
@@ -134,7 +137,8 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
           'P7A-5 history replay lost selected room/topology affinity.',
         );
       }
-      final materialization = CanonicalBoundaryHostProjection.materializeTopology(
+      final materialization =
+          CanonicalBoundaryHostProjection.materializeTopology(
         canonicalSpaceId: context.spaceId,
         legacySpace: legacySpace,
         topology: topology,
@@ -173,7 +177,8 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
       throw StateError('P7A-5 migration requires a selected legacy room.');
     }
     final project = context.coordinator.session.project;
-    final canonicalRegistry = project.engineeringMetadata.boundaryHostedObjectRegistry;
+    final canonicalRegistry =
+        project.engineeringMetadata.boundaryHostedObjectRegistry;
     final p2 = CanonicalRouteAnchorRehydration.rehydrate(
       p2State: controller.p2.state,
       legacySpace: legacySpace,
@@ -248,7 +253,7 @@ final class _MigrationContext {
     required this.owner,
   });
 
-  final dynamic coordinator;
+  final CanonicalEditorRuntimeCutoverCoordinator coordinator;
   final SpaceId spaceId;
   final CanonicalMutationOwnershipCallback owner;
 }
