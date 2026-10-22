@@ -191,6 +191,7 @@ enum ProjectAggregateIssueCode {
   danglingAdjacencySpace,
   adjacencyLevelMismatch,
   verticalAdjacencyLevelMismatch,
+  verticalAdjacencyBuildingMismatch,
   duplicateAdjacencyPair,
   danglingAdjacencyOpening,
   adjacencyOpeningSpaceMismatch,
@@ -683,6 +684,26 @@ abstract final class ProjectAggregateValidator {
                   '${a.levelId} and ${b.levelId}.',
             ),
           );
+        } else if (adjacency.kind == SpaceAdjacencyKind.vertical &&
+            !sameLevel) {
+          final levelA = stores.levels[a.levelId];
+          final levelB = stores.levels[b.levelId];
+          if (levelA != null &&
+              levelB != null &&
+              levelA.buildingId != levelB.buildingId) {
+            issues.add(
+              ProjectAggregateValidationIssue(
+                code:
+                    ProjectAggregateIssueCode.verticalAdjacencyBuildingMismatch,
+                entityId: adjacency.id,
+                relatedEntityId: b.id,
+                message:
+                    'Vertical adjacency ${adjacency.id} connects spaces from '
+                    'different buildings ${levelA.buildingId} and '
+                    '${levelB.buildingId}.',
+              ),
+            );
+          }
         }
       }
 
