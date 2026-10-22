@@ -22,33 +22,39 @@ import 'package:elecx/src/features/editor/plan_geometry_editor_actions.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('production edge edit commits canonically then rematerializes legacy room', () {
-    final fixture = _Fixture();
-    addTearDown(fixture.dispose);
-    final binding = fixture.bind();
-    addTearDown(binding.dispose);
+  test(
+    'production edge edit commits canonically then rematerializes legacy room',
+    () {
+      final fixture = _Fixture();
+      addTearDown(fixture.dispose);
+      final binding = fixture.bind();
+      addTearDown(binding.dispose);
 
-    final beforeVersion = fixture.session.project.version;
-    final beforeUndo = fixture.mutations.undoDepth;
-    final source = fixture.controller.selectedSpace!.boundary;
-    final candidate = PlanGeometryEditing.moveEdge(
-      boundary: source,
-      edgeIndex: 0,
-      dragStart: const MmPoint(2000, 0),
-      dragCurrent: const MmPoint(2000, 500),
-    );
-    expect(candidate, isNotNull);
+      final beforeVersion = fixture.session.project.version;
+      final beforeUndo = fixture.mutations.undoDepth;
+      final source = fixture.controller.selectedSpace!.boundary;
+      final candidate = PlanGeometryEditing.moveEdge(
+        boundary: source,
+        edgeIndex: 0,
+        dragStart: const MmPoint(2000, 0),
+        dragCurrent: const MmPoint(2000, 500),
+      );
+      expect(candidate, isNotNull);
 
-    expect(fixture.controller.commitSelectedBoundary(candidate!), isTrue);
-    expect(fixture.session.project.version, beforeVersion.next());
-    expect(fixture.mutations.undoDepth, beforeUndo + 1);
-    expect(fixture.controller.selectedSpace!.boundary.vertices, candidate.vertices);
+      expect(fixture.controller.commitSelectedBoundary(candidate!), isTrue);
+      expect(fixture.session.project.version, beforeVersion.next());
+      expect(fixture.mutations.undoDepth, beforeUndo + 1);
+      expect(
+        fixture.controller.selectedSpace!.boundary.vertices,
+        candidate.vertices,
+      );
 
-    final topology = fixture.session.project.index.boundary(fixture.spaceId)!;
-    expect(topology.orderedEdgeIds, fixture.edgeIds);
-    expect(topology.edges[fixture.edgeIds[0]]!.start.yMm, 500);
-    expect(topology.edges[fixture.edgeIds[0]]!.end.yMm, 500);
-  });
+      final topology = fixture.session.project.index.boundary(fixture.spaceId)!;
+      expect(topology.orderedEdgeIds, fixture.edgeIds);
+      expect(topology.edges[fixture.edgeIds[0]]!.start.yMm, 500);
+      expect(topology.edges[fixture.edgeIds[0]]!.end.yMm, 500);
+    },
+  );
 
   test('wall-hosted component blocks topology edit until P7A-5', () {
     final fixture = _Fixture();
@@ -76,22 +82,28 @@ void main() {
     expect(fixture.controller.selectedSpace!.boundary.vertices, source.vertices);
   });
 
-  test('legacy workspace without canonical runtime keeps transitional edit path', () {
-    final fixture = _Fixture();
-    addTearDown(fixture.dispose);
-    final beforeVersion = fixture.session.project.version;
-    final source = fixture.controller.selectedSpace!.boundary;
-    final candidate = PlanGeometryEditing.moveEdge(
-      boundary: source,
-      edgeIndex: 0,
-      dragStart: const MmPoint(2000, 0),
-      dragCurrent: const MmPoint(2000, 500),
-    );
+  test(
+    'legacy workspace without canonical runtime keeps transitional edit path',
+    () {
+      final fixture = _Fixture();
+      addTearDown(fixture.dispose);
+      final beforeVersion = fixture.session.project.version;
+      final source = fixture.controller.selectedSpace!.boundary;
+      final candidate = PlanGeometryEditing.moveEdge(
+        boundary: source,
+        edgeIndex: 0,
+        dragStart: const MmPoint(2000, 0),
+        dragCurrent: const MmPoint(2000, 500),
+      );
 
-    expect(fixture.controller.commitSelectedBoundary(candidate!), isTrue);
-    expect(fixture.session.project.version, beforeVersion);
-    expect(fixture.controller.selectedSpace!.boundary.vertices, candidate.vertices);
-  });
+      expect(fixture.controller.commitSelectedBoundary(candidate!), isTrue);
+      expect(fixture.session.project.version, beforeVersion);
+      expect(
+        fixture.controller.selectedSpace!.boundary.vertices,
+        candidate.vertices,
+      );
+    },
+  );
 }
 
 final class _Fixture {
@@ -214,7 +226,9 @@ final class _Fixture {
         ),
       ),
     );
-    final binding = CanonicalEditorScreenCutoverBinding(coordinator: coordinator);
+    final binding = CanonicalEditorScreenCutoverBinding(
+      coordinator: coordinator,
+    );
     binding.start();
     return binding;
   }
