@@ -121,38 +121,89 @@ void main() {
       expect(result.project.index.boundaryEdge(fixture.edgeA), isNotNull);
     });
 
-    test('removing a space atomically removes its owned boundary and undo restores it', () {
-      final fixture = _Fixture();
-      final initial = fixture.project(boundary: fixture.initialBoundary());
-      final session = ProjectMutationSession(initial);
+    test(
+      'removing a space atomically removes its owned boundary and undo restores it',
+      () {
+        final fixture = _Fixture();
+        final initial = fixture.project(boundary: fixture.initialBoundary());
+        final session = ProjectMutationSession(initial);
 
-      final result = session.commit(
-        ProjectMutationRequest(
-          expectedVersion: initial.version,
-          command: RemoveSpaceCommand(spaceId: fixture.spaceId),
-        ),
-      );
+        final result = session.commit(
+          ProjectMutationRequest(
+            expectedVersion: initial.version,
+            command: RemoveSpaceCommand(spaceId: fixture.spaceId),
+          ),
+        );
 
-      expect(result, isNotNull);
-      expect(result!.project.index.space(fixture.spaceId), isNull);
-      expect(result.project.index.boundary(fixture.spaceId), isNull);
-      for (final edgeId in fixture.edgeIds) {
-        expect(result.project.index.boundaryEdge(edgeId), isNull);
-        expect(result.changeSet.removedEntityIds, contains(edgeId));
-      }
-      expect(result.changeSet.removedEntityIds, contains(fixture.spaceId));
+        expect(result, isNotNull);
+        expect(result!.project.index.space(fixture.spaceId), isNull);
+        expect(result.project.index.boundary(fixture.spaceId), isNull);
+        for (final edgeId in fixture.edgeIds) {
+          expect(result.project.index.boundaryEdge(edgeId), isNull);
+          expect(result.changeSet.removedEntityIds, contains(edgeId));
+        }
+        expect(result.changeSet.removedEntityIds, contains(fixture.spaceId));
 
-      final undone = session.undo(result.project.version);
-      expect(undone, isNotNull);
-      expect(undone!.project.index.space(fixture.spaceId), isNotNull);
-      expect(
-        undone.project.index.boundary(fixture.spaceId)?.orderedEdgeIds,
-        fixture.edgeIds,
-      );
-      for (final edgeId in fixture.edgeIds) {
-        expect(undone.project.index.boundaryEdge(edgeId), isNotNull);
-      }
-    });
+        final undone = session.undo(result.project.version);
+        expect(undone, isNotNull);
+        expect(undone!.project.index.space(fixture.spaceId), isNotNull);
+        expect(
+          undone.project.index.boundary(fixture.spaceId)?.orderedEdgeIds,
+          fixture.edgeIds,
+        );
+        for (final edgeId in fixture.edgeIds) {
+          expect(undone.project.index.boundaryEdge(edgeId), isNotNull);
+        }
+      },
+    );
+
+    test(
+      'BoundaryEdgeId cannot be reused under another SpaceId after removal',
+      () {
+        final fixture = _Fixture();
+        final initial = fixture.projectWithSecondSpace();
+        final session = ProjectMutationSession(initial);
+
+        final removed = session.commit(
+          ProjectMutationRequest(
+            expectedVersion: initial.version,
+            command: const _SetBoundariesCommand({}),
+          ),
+        );
+        expect(removed, isNotNull);
+        expect(removed!.project.index.boundary(fixture.spaceId), isNull);
+
+        final reassigned = fixture.boundaryFor(fixture.secondSpaceId);
+        expect(
+          () => session.commit(
+            ProjectMutationRequest(
+              expectedVersion: removed.project.version,
+              command: _SetBoundariesCommand({
+                fixture.secondSpaceId: reassigned,
+              }),
+            ),
+          ),
+          throwsA(
+            isA<BoundaryEdgeOwnershipException>()
+                .having((error) => error.edgeId, 'edgeId', fixture.edgeA)
+                .having(
+                  (error) => error.expectedSpaceId,
+                  'expectedSpaceId',
+                  fixture.spaceId,
+                )
+                .having(
+                  (error) => error.actualSpaceId,
+                  'actualSpaceId',
+                  fixture.secondSpaceId,
+                ),
+          ),
+        );
+
+        expect(session.current.version, removed.project.version);
+        expect(session.current.index.boundary(fixture.secondSpaceId), isNull);
+        expect(session.undoDepth, 1);
+      },
+    );
   });
 }
 
@@ -182,6 +233,35 @@ final class _ReplaceBoundaryCommand implements ProjectCommand {
             ...current.stores.boundaries,
             current.stores.spaces.keys.single: boundary,
           },
+        ),
+      ),
+    );
+  }
+}
+
+final class _SetBoundariesCommand implements ProjectCommand {
+  const _SetBoundariesCommand(this.boundaries);
+
+  final Map<SpaceId, SpaceBoundaryTopology> boundaries;
+
+  @override
+  String get commandType => 'setBoundaries';
+
+  @override
+  ProjectCommandCandidate buildCandidate(ProjectAggregateRoot current) {
+    return ProjectCommandCandidate.fromState(
+      state: ProjectMutableState(
+        engineeringMetadata: current.engineeringMetadata,
+        stores: ProjectEntityStores(
+          sites: current.stores.sites,
+          buildings: current.stores.buildings,
+          levels: current.stores.levels,
+          zones: current.stores.zones,
+          spaces: current.stores.spaces,
+          openings: current.stores.openings,
+          adjacencies: current.stores.adjacencies,
+          overlays: current.stores.overlays,
+          boundaries: boundaries,
         ),
       ),
     );
@@ -225,6 +305,7 @@ final class _Fixture {
   final buildingId = BuildingId('building-p7a');
   final levelId = LevelId('level-p7a');
   final spaceId = SpaceId('space-p7a');
+  final secondSpaceId = SpaceId('space-p7a-second');
 
   final edgeA = BoundaryEdgeId('edge-a');
   final edgeB = BoundaryEdgeId('edge-b');
@@ -272,6 +353,54 @@ final class _Fixture {
           ),
         },
         boundaries: {spaceId: boundary},
+      ),
+    );
+  }
+
+  ProjectAggregateRoot projectWithSecondSpace() {
+    return ProjectAggregateRoot(
+      id: projectId,
+      siteId: siteId,
+      version: LocalProjectVersion(0),
+      stores: ProjectEntityStores(
+        sites: {
+          siteId: ProjectSiteEntity(
+            id: siteId,
+            name: 'Site',
+            buildingIds: [buildingId],
+          ),
+        },
+        buildings: {
+          buildingId: ProjectBuildingEntity(
+            id: buildingId,
+            siteId: siteId,
+            name: 'Building',
+            levelIds: [levelId],
+          ),
+        },
+        levels: {
+          levelId: ProjectLevelEntity(
+            id: levelId,
+            buildingId: buildingId,
+            name: 'Level',
+            levelNumber: 1,
+            elevationMm: 0,
+            spaceIds: [spaceId, secondSpaceId],
+          ),
+        },
+        spaces: {
+          spaceId: ProjectSpaceEntity(
+            id: spaceId,
+            levelId: levelId,
+            name: 'Room',
+          ),
+          secondSpaceId: ProjectSpaceEntity(
+            id: secondSpaceId,
+            levelId: levelId,
+            name: 'Room 2',
+          ),
+        },
+        boundaries: {spaceId: initialBoundary()},
       ),
     );
   }
