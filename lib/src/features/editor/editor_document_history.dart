@@ -65,6 +65,20 @@ final class EditorDocumentHistory extends ChangeNotifier {
     _clearTimeline();
   }
 
+  /// A canonical mutation has already advanced the in-memory project, but the
+  /// production persistence owner failed to acknowledge it. The transition
+  /// must not remain on the unified Undo/Redo journal because its durability
+  /// cannot be proven. Keep only the new canonical version baseline and clear
+  /// the chronological timeline fail-closed.
+  void invalidateAfterUnownedCanonicalCommit(
+    ProjectStructureAuthoringSession session,
+  ) {
+    if (!identical(_canonicalSession, session)) return;
+    _canonicalObservedVersion = session.project.version;
+    _clearTimeline();
+    notifyListeners();
+  }
+
   /// Records one already-committed P3 mutation in the same chronological
   /// journal as legacy architecture and P2 electrical edits.
   ///
