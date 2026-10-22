@@ -1,6 +1,30 @@
+import 'dart:math' as math;
+
 import 'boundary_host_migration.dart';
 import 'boundary_topology.dart';
 import 'project_identity.dart';
+
+enum BoundaryHostedRegistryIssueCode {
+  missingSpaceTopology,
+  missingBoundaryEdge,
+  boundaryOwnerMismatch,
+  geometryOutsideEdge,
+}
+
+final class BoundaryHostedRegistryException implements Exception {
+  const BoundaryHostedRegistryException({
+    required this.code,
+    required this.reference,
+    required this.message,
+  });
+
+  final BoundaryHostedRegistryIssueCode code;
+  final BoundaryHostedReference reference;
+  final String message;
+
+  @override
+  String toString() => '${code.name}: $message';
+}
 
 /// Canonical project-level ownership of engineering objects hosted by walls.
 ///
@@ -44,6 +68,51 @@ final class BoundaryHostedObjectRegistry {
     final next = Map<String, BoundaryHostedReference>.from(references)
       ..remove(objectKey);
     return BoundaryHostedObjectRegistry(next);
+  }
+
+  /// Validates that every canonical host points to an active edge owned by the
+  /// declared Space and that its local geometry fits the active edge length.
+  void validateAgainst(Map<SpaceId, SpaceBoundaryTopology> boundaries) {
+    for (final reference in references.values) {
+      final topology = boundaries[reference.host.spaceId];
+      if (topology == null) {
+        throw BoundaryHostedRegistryException(
+          code: BoundaryHostedRegistryIssueCode.missingSpaceTopology,
+          reference: reference,
+          message: 'Hosted object ${reference.objectKey} references Space '
+              '${reference.host.spaceId} without active boundary topology.',
+        );
+      }
+      final edge = topology.edges[reference.host.edgeId];
+      if (edge == null) {
+        throw BoundaryHostedRegistryException(
+          code: BoundaryHostedRegistryIssueCode.missingBoundaryEdge,
+          reference: reference,
+          message: 'Hosted object ${reference.objectKey} references inactive '
+              'boundary edge ${reference.host.edgeId}.',
+        );
+      }
+      if (edge.spaceId != reference.host.spaceId) {
+        throw BoundaryHostedRegistryException(
+          code: BoundaryHostedRegistryIssueCode.boundaryOwnerMismatch,
+          reference: reference,
+          message: 'Hosted object ${reference.objectKey} references edge '
+              '${edge.id} owned by ${edge.spaceId}.',
+        );
+      }
+      final length = _edgeLength(edge);
+      final start = reference.startOffsetMm;
+      final end = reference.endOffsetMm;
+      if ((start != null && start > length + 0.5) ||
+          (end != null && end > length + 0.5)) {
+        throw BoundaryHostedRegistryException(
+          code: BoundaryHostedRegistryIssueCode.geometryOutsideEdge,
+          reference: reference,
+          message: 'Hosted object ${reference.objectKey} exceeds active edge '
+              '${edge.id} length ${length.toStringAsFixed(1)}mm.',
+        );
+      }
+    }
   }
 
   /// Remaps every hosted reference owned by [before.spaceId] as one fail-closed
@@ -110,4 +179,10 @@ final class BoundaryHostedObjectRegistry {
       left.geometryKind == right.geometryKind &&
       left.startOffsetMm == right.startOffsetMm &&
       left.endOffsetMm == right.endOffsetMm;
+
+  static double _edgeLength(ProjectBoundaryEdge edge) {
+    final dx = (edge.end.xMm - edge.start.xMm).toDouble();
+    final dy = (edge.end.yMm - edge.start.yMm).toDouble();
+    return math.sqrt(dx * dx + dy * dy);
+  }
 }
