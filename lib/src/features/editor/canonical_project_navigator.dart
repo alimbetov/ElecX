@@ -20,7 +20,7 @@ typedef RoomRequestResolver = Future<CreateRoomRequest?> Function(
 );
 typedef ProjectAuthoringCommittedCallback = FutureOr<void> Function(
   ProjectStructureAuthoringSession session,
-  EntityId createdId,
+  ProjectStructureAuthoringResult<EntityId> result,
 );
 
 /// Canonical P5C runtime surface for Project Navigator + breadcrumb + authoring.
@@ -319,7 +319,7 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
     if (!mounted) return;
     setState(() {});
     _notifyNavigationChanged();
-    await _notifyAuthoringCommitted(result.createdId);
+    await _notifyAuthoringCommitted(result);
     _scheduleRevealCurrent();
   }
 
@@ -344,7 +344,7 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
     if (!mounted) return;
     setState(() {});
     _notifyNavigationChanged();
-    await _notifyAuthoringCommitted(result.createdId);
+    await _notifyAuthoringCommitted(result);
     _scheduleRevealCurrent();
   }
 
@@ -369,7 +369,7 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
     if (!mounted) return;
     setState(() {});
     _notifyNavigationChanged();
-    await _notifyAuthoringCommitted(result.createdId);
+    await _notifyAuthoringCommitted(result);
     _scheduleRevealCurrent();
   }
 
@@ -383,11 +383,13 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
     }
   }
 
-  Future<void> _notifyAuthoringCommitted(EntityId createdId) async {
+  Future<void> _notifyAuthoringCommitted(
+    ProjectStructureAuthoringResult<EntityId> result,
+  ) async {
     final callback = widget.onAuthoringCommitted;
     if (callback == null) return;
     try {
-      await callback(session, createdId);
+      await callback(session, result);
     } catch (error, stackTrace) {
       _reportCallbackError('onAuthoringCommitted', error, stackTrace);
     }
