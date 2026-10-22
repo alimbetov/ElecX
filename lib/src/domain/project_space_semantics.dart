@@ -104,7 +104,8 @@ final class ProjectSpaceAdjacencyEntity {
     this.openingId,
   }) {
     if (spaceAId == spaceBId) {
-      throw ArgumentError('Space adjacency cannot reference the same space twice.');
+      throw ArgumentError(
+          'Space adjacency cannot reference the same space twice.');
     }
     if (kind == SpaceAdjacencyKind.opening && openingId == null) {
       throw ArgumentError('Opening adjacency requires openingId.');
@@ -148,7 +149,8 @@ final class ProjectOverlayClassificationEntity {
     Iterable<SpaceId> spaceIds = const <SpaceId>[],
   }) : spaceIds = Set.unmodifiable(spaceIds) {
     if (name.trim().isEmpty) {
-      throw ArgumentError.value(name, 'name', 'Overlay name must be non-empty.');
+      throw ArgumentError.value(
+          name, 'name', 'Overlay name must be non-empty.');
     }
   }
 
