@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../../domain/boundary_host_migration.dart';
 import '../../domain/boundary_host_registry.dart';
 import '../../domain/boundary_topology.dart';
@@ -9,6 +11,7 @@ import '../../domain/project_identity.dart';
 import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
 import '../../domain/wall_profile.dart';
+import 'cable_route_constraints.dart';
 import 'editor_p2_session.dart';
 
 /// P7A-5 bridge between legacy editor materialization and canonical wall-host
@@ -34,17 +37,15 @@ abstract final class CanonicalBoundaryHostProjection {
         continue;
       }
       final edgeId = _edgeForSurface(surface, orderedEdgeIds);
-      registry = registry.put(
-        BoundaryHostedReference.interval(
-          objectKey: _openingKey(opening.id, canonicalSpaceId),
-          objectKind: BoundaryHostedObjectKind.opening,
-          host: BoundaryEdgeHostRef(
-            spaceId: canonicalSpaceId,
-            edgeId: edgeId,
-          ),
-          startOffsetMm: opening.offsetFromStartMm,
-          endOffsetMm: opening.endOffsetMm,
+      final openingId = OpeningId(opening.id);
+      registry = registry.putOpening(
+        openingId: openingId,
+        host: BoundaryEdgeHostRef(
+          spaceId: canonicalSpaceId,
+          edgeId: edgeId,
         ),
+        startOffsetMm: opening.offsetFromStartMm,
+        endOffsetMm: opening.endOffsetMm,
       );
     }
 
@@ -57,7 +58,8 @@ abstract final class CanonicalBoundaryHostProjection {
       final edgeId = _edgeForSurface(surface, orderedEdgeIds);
       registry = registry.put(
         BoundaryHostedReference.point(
-          objectKey: _componentKey(component.id),
+          objectKey:
+              BoundaryHostedObjectRegistry.componentObjectKey(component.id),
           objectKind: BoundaryHostedObjectKind.component,
           host: BoundaryEdgeHostRef(
             spaceId: canonicalSpaceId,
@@ -90,15 +92,18 @@ abstract final class CanonicalBoundaryHostProjection {
               ? BoundaryHostedObjectKind.cableEndpoint
               : BoundaryHostedObjectKind.routeAnchor;
           final key = isRouteStart
-              ? _cableSourceKey(route.id)
+              ? BoundaryHostedObjectRegistry.cableSourceObjectKey(route.id)
               : isRouteEnd
-                  ? _cableTargetKey(route.id)
-                  : _routeAnchorKey(_requireRouteAnchorId(
+                  ? BoundaryHostedObjectRegistry.cableTargetObjectKey(route.id)
+                  : _routeAnchorKey(
                       route.id,
-                      segmentIndex,
-                      pointIndex,
-                      segment,
-                    ));
+                      _requireRouteAnchorId(
+                        route.id,
+                        segmentIndex,
+                        pointIndex,
+                        segment,
+                      ),
+                    );
           registry = registry.put(
             BoundaryHostedReference.point(
               objectKey: key,
@@ -217,8 +222,6 @@ abstract final class CanonicalBoundaryHostProjection {
       return ordinal;
     }
 
-    // Once P7A-5 is active, the canonical profile registry is authoritative.
-    // Do not carry retired edge profiles forward from a stale legacy projection.
     final stableProfiles = wallProfiles.forSpace(canonicalSpaceId);
     final ordinalProfiles = <int, WallProfile>{};
     for (final entry in stableProfiles.entries) {
@@ -242,7 +245,10 @@ abstract final class CanonicalBoundaryHostProjection {
         else
           _materializeOpening(
             opening: opening,
-            reference: registry[_openingKey(opening.id, canonicalSpaceId)],
+            reference: registry.openingHost(
+              OpeningId(opening.id),
+              canonicalSpaceId,
+            ),
             legacySpaceId: legacySpace.id,
             ordinalFor: ordinalFor,
           ),
@@ -252,23 +258,36 @@ abstract final class CanonicalBoundaryHostProjection {
       for (final component in p2State.components)
         _materializeComponent(
           component: component,
-          reference: registry[_componentKey(component.id)],
+          reference: registry[
+              BoundaryHostedObjectRegistry.componentObjectKey(component.id)],
           canonicalSpaceId: canonicalSpaceId,
           legacySpaceId: legacySpace.id,
           ordinalFor: ordinalFor,
         ),
     ];
 
-    final nextRoutes = <ElectricalCableRoute>[
-      for (final route in p2State.routes)
-        _materializeRoute(
-          route: route,
-          canonicalSpaceId: canonicalSpaceId,
-          legacySpaceId: legacySpace.id,
-          registry: registry,
-          ordinalFor: ordinalFor,
-        ),
-    ];
+    final nextRoutes = <ElectricalCableRoute>[];
+    final nextConstraints = Map<String, CableRouteConstraints>.of(
+      p2State.routeConstraints,
+    );
+    for (final route in p2State.routes) {
+      final materialized = _materializeRoute(
+        route: route,
+        constraints: p2State.routeConstraints[route.id] ??
+            CableRouteConstraints.empty,
+        canonicalSpaceId: canonicalSpaceId,
+        legacySpace: legacySpace,
+        orderedEdgeIds: orderedEdgeIds,
+        registry: registry,
+        ordinalFor: ordinalFor,
+      );
+      nextRoutes.add(materialized.route);
+      if (materialized.constraints.isEmpty) {
+        nextConstraints.remove(route.id);
+      } else {
+        nextConstraints[route.id] = materialized.constraints;
+      }
+    }
 
     return CanonicalBoundaryHostMaterialization(
       space: materializedSpace,
@@ -276,6 +295,7 @@ abstract final class CanonicalBoundaryHostProjection {
       p2State: p2State.copyWith(
         components: List.unmodifiable(nextComponents),
         routes: List.unmodifiable(nextRoutes),
+        routeConstraints: Map.unmodifiable(nextConstraints),
       ),
     );
   }
@@ -328,46 +348,66 @@ abstract final class CanonicalBoundaryHostProjection {
     );
   }
 
-  static ElectricalCableRoute _materializeRoute({
+  static _RouteMaterialization _materializeRoute({
     required ElectricalCableRoute route,
+    required CableRouteConstraints constraints,
     required SpaceId canonicalSpaceId,
-    required String legacySpaceId,
+    required EngineeringSpace legacySpace,
+    required List<BoundaryEdgeId> orderedEdgeIds,
     required BoundaryHostedObjectRegistry registry,
     required int Function(BoundaryHostedReference) ordinalFor,
   }) {
     final segments = <ElectricalRouteSegment>[];
+    final oldSegmentToNew = <int, List<int>>{};
+    final oldPointToNew = <String, _RoutePointLocation>{};
+
     for (var segmentIndex = 0;
         segmentIndex < route.segments.length;
         segmentIndex++) {
       final segment = route.segments[segmentIndex];
-      if (segment.surface.spaceId != legacySpaceId ||
+      if (segment.surface.spaceId != legacySpace.id ||
           segment.surface.type != SurfacePlaneType.wall ||
           segment.points.isEmpty) {
+        final newIndex = segments.length;
         segments.add(segment);
+        oldSegmentToNew[segmentIndex] = [newIndex];
+        for (var pointIndex = 0;
+            pointIndex < segment.points.length;
+            pointIndex++) {
+          oldPointToNew['$segmentIndex:$pointIndex'] =
+              _RoutePointLocation(newIndex, pointIndex);
+        }
         continue;
       }
-      final points = <SurfacePointMm>[];
-      BoundaryHostedReference? surfaceReference;
+
+      final resolved = <_HostedRoutePoint>[];
       for (var pointIndex = 0;
           pointIndex < segment.points.length;
           pointIndex++) {
         final isRouteStart = segmentIndex == 0 && pointIndex == 0;
         final isRouteEnd = segmentIndex == route.segments.length - 1 &&
             pointIndex == segment.points.length - 1;
-        final key = isRouteStart
-            ? _cableSourceKey(route.id)
+        final anchorId = isRouteStart
+            ? _endpointAnchorId(route, source: true)
             : isRouteEnd
-                ? _cableTargetKey(route.id)
-                : _routeAnchorKey(_requireRouteAnchorId(
+                ? _endpointAnchorId(route, source: false)
+                : _requireRouteAnchorId(
                     route.id,
                     segmentIndex,
                     pointIndex,
                     segment,
-                  ));
+                  );
+        final key = isRouteStart
+            ? BoundaryHostedObjectRegistry.cableSourceObjectKey(route.id)
+            : isRouteEnd
+                ? BoundaryHostedObjectRegistry.cableTargetObjectKey(route.id)
+                : _routeAnchorKey(route.id, anchorId);
         final reference = registry[key];
         if (reference == null) {
-          points.add(segment.points[pointIndex]);
-          continue;
+          throw StateError(
+            'Route $key has no canonical hosted reference during P7A-5 '
+            'materialization.',
+          );
         }
         if (reference.host.spaceId != canonicalSpaceId ||
             (reference.objectKind != BoundaryHostedObjectKind.routeAnchor &&
@@ -376,45 +416,167 @@ abstract final class CanonicalBoundaryHostProjection {
             reference.geometryKind != BoundaryHostGeometryKind.point) {
           throw StateError('Route $key has incompatible hosted metadata.');
         }
-        surfaceReference ??= reference;
-        if (surfaceReference.host.edgeId != reference.host.edgeId) {
-          throw StateError(
-            'Route segment ${route.id}:$segmentIndex spans multiple canonical '
-            'boundary edges and must be split with explicit crossing geometry '
-            'before legacy materialization.',
-          );
-        }
-        points.add(
-          SurfacePointMm(
-            reference.startOffsetMm!,
-            segment.points[pointIndex].yMm,
+        resolved.add(
+          _HostedRoutePoint(
+            sourceSegmentIndex: segmentIndex,
+            sourcePointIndex: pointIndex,
+            sourcePoint: segment.points[pointIndex],
+            anchorId: anchorId,
+            reference: reference,
           ),
         );
       }
-      final resolved = surfaceReference;
-      if (resolved == null) {
-        segments.add(segment);
-      } else {
+
+      final produced = <int>[];
+      var currentEdgeId = resolved.first.reference.host.edgeId;
+      var currentOrdinal = ordinalFor(resolved.first.reference);
+      var currentPoints = <SurfacePointMm>[];
+      var currentAnchorIds = <RouteAnchorId>[];
+      var pendingSourceLocations = <_HostedRoutePoint>[];
+
+      void appendSourcePoint(_HostedRoutePoint point) {
+        currentPoints.add(
+          SurfacePointMm(
+            point.reference.startOffsetMm!,
+            point.sourcePoint.yMm,
+          ),
+        );
+        currentAnchorIds.add(point.anchorId);
+        pendingSourceLocations.add(point);
+      }
+
+      void finishSegment() {
+        final newIndex = segments.length;
         segments.add(
           ElectricalRouteSegment(
-            surface: RoomSurfaceRef.wall(
-              legacySpaceId,
-              ordinalFor(resolved),
-            ),
-            points: points,
-            anchorIds: segment.anchorIds,
+            surface: RoomSurfaceRef.wall(legacySpace.id, currentOrdinal),
+            points: List.unmodifiable(currentPoints),
+            anchorIds: List.unmodifiable(currentAnchorIds),
           ),
         );
+        produced.add(newIndex);
+        for (var index = 0; index < pendingSourceLocations.length; index++) {
+          final source = pendingSourceLocations[index];
+          final anchorIndex = currentAnchorIds.indexOf(source.anchorId);
+          oldPointToNew[
+            '${source.sourceSegmentIndex}:${source.sourcePointIndex}'
+          ] = _RoutePointLocation(newIndex, anchorIndex);
+        }
+        currentPoints = <SurfacePointMm>[];
+        currentAnchorIds = <RouteAnchorId>[];
+        pendingSourceLocations = <_HostedRoutePoint>[];
       }
+
+      appendSourcePoint(resolved.first);
+      for (var index = 1; index < resolved.length; index++) {
+        final previous = resolved[index - 1];
+        final point = resolved[index];
+        final nextEdgeId = point.reference.host.edgeId;
+        if (nextEdgeId == currentEdgeId) {
+          appendSourcePoint(point);
+          continue;
+        }
+
+        final nextOrdinal = ordinalFor(point.reference);
+        if (!_isLosslessCollinearTransition(
+          legacySpace.boundary,
+          currentOrdinal,
+          nextOrdinal,
+        )) {
+          throw StateError(
+            'Route ${route.id} crosses canonical edges $currentEdgeId and '
+            '$nextEdgeId without a lossless collinear wall transition.',
+          );
+        }
+        if (previous.sourcePoint.yMm != point.sourcePoint.yMm) {
+          throw StateError(
+            'Route ${route.id} changes height while crossing a split boundary; '
+            'explicit reroute is required.',
+          );
+        }
+
+        final transitionY = point.sourcePoint.yMm;
+        final transitionId = _transitionAnchorId(
+          routeId: route.id,
+          fromEdgeId: currentEdgeId,
+          toEdgeId: nextEdgeId,
+          leftAnchorId: previous.anchorId,
+          rightAnchorId: point.anchorId,
+        );
+        final wallLength = _wallLengthMm(legacySpace.boundary, currentOrdinal);
+        currentPoints.add(SurfacePointMm(wallLength, transitionY));
+        currentAnchorIds.add(transitionId);
+        finishSegment();
+
+        currentEdgeId = nextEdgeId;
+        currentOrdinal = nextOrdinal;
+        currentPoints.add(SurfacePointMm(0, transitionY));
+        currentAnchorIds.add(transitionId);
+        appendSourcePoint(point);
+      }
+      finishSegment();
+      oldSegmentToNew[segmentIndex] = List.unmodifiable(produced);
     }
-    return ElectricalCableRoute(
-      id: route.id,
-      source: route.source,
-      target: route.target,
-      segments: List.unmodifiable(segments),
-      cableType: route.cableType,
-      medium: route.medium,
-      reservePercent: route.reservePercent,
+
+    final nextConstraints = _remapConstraints(
+      constraints: constraints,
+      sourceRoute: route,
+      resultSegments: segments,
+      oldSegmentToNew: oldSegmentToNew,
+      oldPointToNew: oldPointToNew,
+    );
+    return _RouteMaterialization(
+      route: ElectricalCableRoute(
+        id: route.id,
+        source: route.source,
+        target: route.target,
+        segments: List.unmodifiable(segments),
+        cableType: route.cableType,
+        medium: route.medium,
+        reservePercent: route.reservePercent,
+      ),
+      constraints: nextConstraints,
+    );
+  }
+
+  static CableRouteConstraints _remapConstraints({
+    required CableRouteConstraints constraints,
+    required ElectricalCableRoute sourceRoute,
+    required List<ElectricalRouteSegment> resultSegments,
+    required Map<int, List<int>> oldSegmentToNew,
+    required Map<String, _RoutePointLocation> oldPointToNew,
+  }) {
+    if (constraints.isEmpty) return constraints;
+    final locks = <int>{};
+    for (final sourceIndex in constraints.lockedSegments) {
+      locks.addAll(oldSegmentToNew[sourceIndex] ?? const <int>[]);
+    }
+    final waypoints = <CableMandatoryWaypoint>[];
+    for (final waypoint in constraints.mandatoryWaypoints) {
+      if (waypoint.segmentIndex >= sourceRoute.segments.length) continue;
+      final location = oldPointToNew[
+        '${waypoint.segmentIndex}:${waypoint.pointIndex}'
+      ];
+      if (location == null || location.segmentIndex >= resultSegments.length) {
+        throw StateError(
+          'Mandatory waypoint could not be rebound through P7A-5 route split.',
+        );
+      }
+      final points = resultSegments[location.segmentIndex].points;
+      if (location.pointIndex >= points.length) {
+        throw StateError('Rebound route waypoint index is invalid.');
+      }
+      waypoints.add(
+        CableMandatoryWaypoint(
+          segmentIndex: location.segmentIndex,
+          pointIndex: location.pointIndex,
+          point: points[location.pointIndex],
+        ),
+      );
+    }
+    return CableRouteConstraints(
+      lockedSegments: locks,
+      mandatoryWaypoints: waypoints,
     );
   }
 
@@ -432,6 +594,55 @@ abstract final class CanonicalBoundaryHostProjection {
       );
     }
     return anchorId;
+  }
+
+  static RouteAnchorId _endpointAnchorId(
+    ElectricalCableRoute route, {
+    required bool source,
+  }) =>
+      RouteAnchorId(
+        source
+            ? 'p7a-endpoint:${route.id}:source:${route.source.componentId}:${route.source.portId}'
+            : 'p7a-endpoint:${route.id}:target:${route.target.componentId}:${route.target.portId}',
+      );
+
+  static RouteAnchorId _transitionAnchorId({
+    required String routeId,
+    required BoundaryEdgeId fromEdgeId,
+    required BoundaryEdgeId toEdgeId,
+    required RouteAnchorId leftAnchorId,
+    required RouteAnchorId rightAnchorId,
+  }) =>
+      RouteAnchorId(
+        'p7a-transition:$routeId:${fromEdgeId.value}:${toEdgeId.value}:'
+        '${leftAnchorId.value}:${rightAnchorId.value}',
+      );
+
+  static bool _isLosslessCollinearTransition(
+    MmPolygon boundary,
+    int fromOrdinal,
+    int toOrdinal,
+  ) {
+    final count = boundary.vertices.length;
+    if (count < 3 || toOrdinal != (fromOrdinal + 1) % count) return false;
+    final a = boundary.vertices[fromOrdinal];
+    final b = boundary.vertices[(fromOrdinal + 1) % count];
+    final c = boundary.vertices[(toOrdinal + 1) % count];
+    final firstDx = b.x - a.x;
+    final firstDy = b.y - a.y;
+    final secondDx = c.x - b.x;
+    final secondDy = c.y - b.y;
+    final cross = firstDx * secondDy - firstDy * secondDx;
+    final dot = firstDx * secondDx + firstDy * secondDy;
+    return cross == 0 && dot > 0;
+  }
+
+  static int _wallLengthMm(MmPolygon boundary, int ordinal) {
+    final a = boundary.vertices[ordinal];
+    final b = boundary.vertices[(ordinal + 1) % boundary.vertices.length];
+    final dx = (b.x - a.x).toDouble();
+    final dy = (b.y - a.y).toDouble();
+    return math.sqrt(dx * dx + dy * dy).round();
   }
 
   static void _requireAffinity(
@@ -475,13 +686,8 @@ abstract final class CanonicalBoundaryHostProjection {
     return orderedEdgeIds[ordinal];
   }
 
-  static String _openingKey(String openingId, SpaceId spaceId) =>
-      'opening:$openingId:${spaceId.value}';
-  static String _componentKey(String componentId) => 'component:$componentId';
-  static String _cableSourceKey(String routeId) => 'cable:$routeId:source';
-  static String _cableTargetKey(String routeId) => 'cable:$routeId:target';
-  static String _routeAnchorKey(RouteAnchorId anchorId) =>
-      'route-anchor:${anchorId.value}';
+  static String _routeAnchorKey(String routeId, RouteAnchorId anchorId) =>
+      'route:$routeId:anchor:${anchorId.value}';
 }
 
 final class CanonicalBoundaryHostMaterialization {
@@ -494,4 +700,37 @@ final class CanonicalBoundaryHostMaterialization {
   final EngineeringSpace space;
   final List<ArchitecturalOpening> openings;
   final EditorP2State p2State;
+}
+
+final class _HostedRoutePoint {
+  const _HostedRoutePoint({
+    required this.sourceSegmentIndex,
+    required this.sourcePointIndex,
+    required this.sourcePoint,
+    required this.anchorId,
+    required this.reference,
+  });
+
+  final int sourceSegmentIndex;
+  final int sourcePointIndex;
+  final SurfacePointMm sourcePoint;
+  final RouteAnchorId anchorId;
+  final BoundaryHostedReference reference;
+}
+
+final class _RoutePointLocation {
+  const _RoutePointLocation(this.segmentIndex, this.pointIndex);
+
+  final int segmentIndex;
+  final int pointIndex;
+}
+
+final class _RouteMaterialization {
+  const _RouteMaterialization({
+    required this.route,
+    required this.constraints,
+  });
+
+  final ElectricalCableRoute route;
+  final CableRouteConstraints constraints;
 }
