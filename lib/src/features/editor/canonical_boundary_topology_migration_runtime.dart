@@ -233,13 +233,18 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
       );
     }
 
-    controller.documentHistory.recordCanonicalCommit(
-      session: context.coordinator.session,
-      label: 'Adopt stable boundary hosts',
-      rematerialize: rematerializeCurrentCanonicalState,
-    );
     try {
       context.owner(result);
+      controller.documentHistory.recordCanonicalCommit(
+        session: context.coordinator.session,
+        label: 'Adopt stable boundary hosts',
+        rematerialize: rematerializeCurrentCanonicalState,
+      );
+    } catch (_) {
+      controller.documentHistory.invalidateAfterUnownedCanonicalCommit(
+        context.coordinator.session,
+      );
+      rethrow;
     } finally {
       rematerializeCurrentCanonicalState();
     }
@@ -363,13 +368,18 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
       );
     }
 
-    controller.documentHistory.recordCanonicalCommit(
-      session: context.coordinator.session,
-      label: label,
-      rematerialize: rematerializeCurrentCanonicalState,
-    );
     try {
       context.owner(committed.mutation);
+      controller.documentHistory.recordCanonicalCommit(
+        session: context.coordinator.session,
+        label: label,
+        rematerialize: rematerializeCurrentCanonicalState,
+      );
+    } catch (_) {
+      controller.documentHistory.invalidateAfterUnownedCanonicalCommit(
+        context.coordinator.session,
+      );
+      rethrow;
     } finally {
       rematerializeCurrentCanonicalState();
     }
