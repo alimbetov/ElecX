@@ -1,6 +1,7 @@
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import 'project_authoring_error.dart';
+import 'project_boundary_topology_editing.dart';
 import 'project_building_commands.dart';
 import 'project_level_commands.dart';
 import 'project_mutation.dart';
@@ -103,13 +104,7 @@ final class ProjectStructureAuthoringResult<T extends EntityId> {
   final ProjectChangeSet changeSet;
 }
 
-/// P5C application/session boundary for +Building / +Level / +Room.
-///
-/// Each successful operation is exactly one P3 mutation and then one navigation
-/// transition. Navigation for the post-commit state is prepared against the
-/// validated preview candidate before the live commit, so presentation logic
-/// cannot turn a successful canonical commit into an apparent authoring
-/// failure afterwards.
+/// P5C structural authoring boundary shared by all canonical editor capabilities.
 final class ProjectStructureAuthoringSession {
   ProjectStructureAuthoringSession({
     required ProjectMutationSession mutations,
@@ -118,12 +113,15 @@ final class ProjectStructureAuthoringSession {
   })  : _mutations = mutations,
         _projectNorthEditing = ProjectNorthEditingSession(mutations),
         _spaceSemanticsEditing = ProjectSpaceSemanticsEditingSession(mutations),
+        _boundaryTopologyEditing =
+            ProjectBoundaryTopologyEditingService(mutations),
         _idFactory = idFactory,
         _navigation = _initialNavigation(mutations.current, navigation);
 
   final ProjectMutationSession _mutations;
   final ProjectNorthEditingPort _projectNorthEditing;
   final ProjectSpaceSemanticsEditingPort _spaceSemanticsEditing;
+  final ProjectBoundaryTopologyEditingPort _boundaryTopologyEditing;
   final EntityIdFactory _idFactory;
   ProjectNavigationState _navigation;
 
@@ -141,11 +139,12 @@ final class ProjectStructureAuthoringSession {
   ProjectSpaceSemanticsEditingPort get spaceSemanticsEditing =>
       _spaceSemanticsEditing;
 
-  /// Canonical navigation transitions used by Navigator/tree/breadcrumb UI.
-  ///
-  /// These methods never mutate engineering state and never identify a Level
-  /// by number, label, list index, or widget key. The shared navigation state
-  /// remains the single source for active/current/selected presentation.
+  /// P7A-4.5 geometry capability backed by the same P3 mutation timeline.
+  /// Input surfaces normalize mouse/touch/stylus/keyboard interactions before
+  /// entering this port; no durable wall ordinal is accepted here.
+  ProjectBoundaryTopologyEditingPort get boundaryTopologyEditing =>
+      _boundaryTopologyEditing;
+
   void activateBuilding(BuildingId buildingId) {
     _navigation = _navigation.activateBuilding(project, buildingId);
   }
@@ -166,9 +165,6 @@ final class ProjectStructureAuthoringSession {
     _navigation = _navigation.clearSelection();
   }
 
-  /// Atomically adopts a complete canonical navigation state produced by a
-  /// trusted projection/adapter boundary. The supplied state must already be
-  /// coherent with the current project; this method never repairs it silently.
   void adoptNavigation(ProjectNavigationState next) {
     if (next.siteId != project.siteId) {
       throw ProjectStructureAuthoringException(
@@ -196,9 +192,6 @@ final class ProjectStructureAuthoringSession {
     _navigation = next;
   }
 
-  /// Pure availability derived from the exact navigation state that the action
-  /// methods will use. It deliberately does not auto-repair stale navigation;
-  /// external structural mutations must call [reconcileNavigation] explicitly.
   ProjectStructureAuthoringAvailability get availability {
     final current = _mutations.current;
     final buildingId = _navigation.activeBuildingId;
@@ -349,10 +342,6 @@ final class ProjectStructureAuthoringSession {
     );
   }
 
-  /// Reconciles current location after one external structural mutation,
-  /// Undo, or Redo that has already committed through the shared mutation
-  /// session. Unrelated or skipped snapshots are rejected fail-closed because
-  /// neighbor fallback depends on the immediate before/after graph pair.
   void reconcileNavigation({
     required ProjectAggregateRoot before,
     required ProjectAggregateRoot after,
