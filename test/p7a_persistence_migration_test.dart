@@ -10,7 +10,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P7A-3 boundary persistence foundation', () {
-    test('legacy polygon migration is deterministic and validates topology', () {
+    test('legacy polygon migration is deterministic and validates topology',
+        () {
       final first = LegacyBoundaryPolygonMigration.migrate(
         projectId: ProjectId('project-a'),
         spaceId: SpaceId('space-a'),
