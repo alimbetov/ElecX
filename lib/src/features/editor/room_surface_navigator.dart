@@ -468,7 +468,9 @@ class _RoomSurfaceNavigatorState extends State<RoomSurfaceNavigator> {
     if (_canonicalRuntimeActive) {
       final edgeId = boundaryEdgeId;
       final adapter = _stableAdapter();
-      if (edgeId == null || adapter == null || !adapter.showBoundaryEdge(edgeId)) {
+      if (edgeId == null ||
+          adapter == null ||
+          !adapter.showBoundaryEdge(edgeId)) {
         adapter?.fallbackToPlanIfStale();
       }
       return;
