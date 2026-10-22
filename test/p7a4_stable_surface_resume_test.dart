@@ -24,6 +24,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('stable wall resume survives save reopen by BoundaryEdgeId only', () {
     final fixture = _Fixture();
+    addTearDown(fixture.dispose);
     final runtime = fixture.bind(fixture.workspace);
     addTearDown(runtime.dispose);
 
@@ -90,6 +91,7 @@ void main() {
 
   test('unknown stable resume edge fails closed to Plan after attach', () {
     final fixture = _Fixture();
+    addTearDown(fixture.dispose);
     CanonicalRoomSurfaceRuntimeRegistry.stageResume(
       fixture.controller,
       CanonicalRoomSurfaceResume(
@@ -106,8 +108,39 @@ void main() {
     expect(fixture.controller.activeSurface, isNull);
   });
 
+  test('projection is reconstructed after canonical project version changes', () {
+    final fixture = _Fixture();
+    addTearDown(fixture.dispose);
+    final runtime = fixture.bind(fixture.workspace);
+    addTearDown(runtime.dispose);
+
+    final first = CanonicalRoomSurfaceRuntimeRegistry.resolve(
+      fixture.controller,
+      fixture.spaceId,
+    );
+    expect(first, isNotNull);
+    expect(first!.showBoundaryEdge(fixture.edgeIds[1]), isTrue);
+    final versionBefore = fixture.session.project.version;
+
+    final mutation = fixture.session.projectNorthEditing.setProjectNorth(
+      ProjectEngineeringNorth.fromDegrees(17),
+      expectedVersion: versionBefore,
+    );
+    expect(mutation, isNotNull);
+    expect(fixture.session.project.version, versionBefore.next());
+
+    final second = CanonicalRoomSurfaceRuntimeRegistry.resolve(
+      fixture.controller,
+      fixture.spaceId,
+    );
+    expect(second, isNotNull);
+    expect(identical(first, second), isFalse);
+    expect(second!.current().boundaryEdgeId, fixture.edgeIds[1]);
+  });
+
   test('schema v4 migration never invents BoundaryEdgeId from wallIndex', () {
     final fixture = _Fixture();
+    addTearDown(fixture.dispose);
     fixture.controller.showWall(1);
     final legacy = EditorProjectDocument.capture(
       fixture.workspace,
@@ -236,12 +269,6 @@ final class _Fixture {
       idFactory: SecureRandomEntityIdFactory(random: Random(704)),
       navigation: navigation,
     );
-    binding = CanonicalEditorWorkspaceBinding(
-      buildingId: buildingId,
-      legacyBuildingId: workspace.building.building.id,
-      legacyLevelIds: <LevelId, String>{levelId: legacyLevelId},
-      legacySpaceIds: <SpaceId, String>{spaceId: legacySpaceId},
-    );
     metadata = EditorProjectMetadata(
       projectId: legacyProjectId,
       projectName: 'Stable Resume',
@@ -271,6 +298,12 @@ final class _Fixture {
     return result;
   }
 
+  void dispose() {
+    workspace.dispose();
+    controller.disposeP2State();
+    controller.dispose();
+  }
+
   static const String legacyProjectId = 'legacy-project';
   final ProjectId projectId = ProjectId('project');
   final SiteId siteId = SiteId('site');
@@ -291,6 +324,5 @@ final class _Fixture {
   late final ProjectAggregateRoot project;
   late final ProjectNavigationState navigation;
   late final ProjectStructureAuthoringSession session;
-  late final CanonicalEditorWorkspaceBinding binding;
   late final EditorProjectMetadata metadata;
 }
