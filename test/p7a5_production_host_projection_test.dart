@@ -85,6 +85,11 @@ void main() {
               SurfacePointMm(1700, 1200),
               SurfacePointMm(3000, 300),
             ],
+            anchorIds: [
+              RouteAnchorId('route-source'),
+              RouteAnchorId('anchor-1'),
+              RouteAnchorId('route-target'),
+            ],
           ),
         ],
       );
@@ -122,11 +127,12 @@ void main() {
       expect(hosted['component:c1']!.host.edgeId, e0);
       expect(hosted['component:c2']!.host.edgeId, e0);
       expect(hosted['cable:r1:source']!.host.edgeId, e0);
-      expect(hosted['route:r1:segment:0:point:1']!.host.edgeId, e0);
+      expect(hosted['route-anchor:anchor-1']!.host.edgeId, e0);
       expect(hosted['cable:r1:target']!.host.edgeId, e0);
       expect(
         hosted.references.values.any(
-          (reference) => reference.objectKind == BoundaryHostedObjectKind.wallProfile,
+          (reference) =>
+              reference.objectKind == BoundaryHostedObjectKind.wallProfile,
         ),
         isFalse,
       );
@@ -135,6 +141,37 @@ void main() {
           BoundaryEdgeHostRef(spaceId: canonicalSpaceId, edgeId: e0)
         ],
         isNotNull,
+      );
+    });
+
+    test('legacy route interior point without RouteAnchorId fails closed', () {
+      final legacyRoom = room();
+      final wall = RoomSurfaceRef.wall(legacyRoom.id, 0);
+      final route = ElectricalCableRoute(
+        id: 'legacy-route',
+        source: const ElectricalEndpointRef(componentId: 'c1', portId: 'out'),
+        target: const ElectricalEndpointRef(componentId: 'c2', portId: 'in'),
+        segments: [
+          ElectricalRouteSegment(
+            surface: wall,
+            points: const [
+              SurfacePointMm(500, 500),
+              SurfacePointMm(1500, 500),
+              SurfacePointMm(2500, 500),
+            ],
+          ),
+        ],
+      );
+
+      expect(
+        () => CanonicalBoundaryHostProjection.capture(
+          canonicalSpaceId: canonicalSpaceId,
+          legacySpace: legacyRoom,
+          orderedEdgeIds: ordered,
+          openings: const [],
+          p2State: EditorP2State(routes: [route]),
+        ),
+        throwsStateError,
       );
     });
 
@@ -344,6 +381,11 @@ void main() {
               SurfacePointMm(2000, 500),
               SurfacePointMm(3500, 500),
             ],
+            anchorIds: [
+              RouteAnchorId('route-source'),
+              RouteAnchorId('crossing-anchor'),
+              RouteAnchorId('route-target'),
+            ],
           ),
         ],
       );
@@ -369,7 +411,7 @@ void main() {
           )
           .put(
             BoundaryHostedReference.point(
-              objectKey: 'route:r1:segment:0:point:1',
+              objectKey: 'route-anchor:crossing-anchor',
               objectKind: BoundaryHostedObjectKind.routeAnchor,
               host: BoundaryEdgeHostRef(
                 spaceId: canonicalSpaceId,
