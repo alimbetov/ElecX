@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import '../../application/project/project_boundary_topology_editing.dart';
 import '../../domain/boundary_topology.dart';
 import '../../domain/geometry.dart';
 import '../../domain/project_model.dart';
@@ -65,8 +64,7 @@ abstract final class CanonicalBoundaryTopologyEditingRuntime {
     if (changed.length == 1) {
       final vertexIndex = changed.single;
       final outgoingEdgeId = projection.projection.edgeIdAtOrdinal(vertexIndex);
-      if (outgoingEdgeId == null ||
-          !_vertexEditAllowed(controller, legacySpace, vertexIndex)) {
+      if (!_vertexEditAllowed(controller, legacySpace, vertexIndex)) {
         return false;
       }
       final target = candidate.vertices[vertexIndex];
@@ -85,7 +83,6 @@ abstract final class CanonicalBoundaryTopologyEditingRuntime {
         return false;
       }
       final edgeId = projection.projection.edgeIdAtOrdinal(edgeIndex);
-      if (edgeId == null) return false;
       final distanceMm = _signedNormalDistance(
         appSession.previewTopology.edges[edgeId]!,
         legacySpace.boundary.vertices[edgeIndex],
@@ -119,8 +116,8 @@ abstract final class CanonicalBoundaryTopologyEditingRuntime {
   ) {
     final count = space.boundary.vertices.length;
     final incoming = (vertexIndex - 1 + count) % count;
-    return controller.isSelectedWallExternal(incoming) &&
-        controller.isSelectedWallExternal(vertexIndex) &&
+    return _isExternalWall(controller, space, incoming) &&
+        _isExternalWall(controller, space, vertexIndex) &&
         !_hasUnsupportedHosts(controller, space, <int>{incoming, vertexIndex});
   }
 
@@ -129,8 +126,30 @@ abstract final class CanonicalBoundaryTopologyEditingRuntime {
     EngineeringSpace space,
     int edgeIndex,
   ) =>
-      controller.isSelectedWallExternal(edgeIndex) &&
+      _isExternalWall(controller, space, edgeIndex) &&
       !_hasUnsupportedHosts(controller, space, <int>{edgeIndex});
+
+  static bool _isExternalWall(
+    EditorController controller,
+    EngineeringSpace space,
+    int wallOrdinal,
+  ) {
+    final vertices = space.boundary.vertices;
+    if (wallOrdinal < 0 || wallOrdinal >= vertices.length) return false;
+    final a = vertices[wallOrdinal];
+    final b = vertices[(wallOrdinal + 1) % vertices.length];
+
+    for (final neighbor in controller.level.spaces) {
+      if (neighbor.id == space.id) continue;
+      final other = neighbor.boundary.vertices;
+      for (var index = 0; index < other.length; index++) {
+        final c = other[index];
+        final d = other[(index + 1) % other.length];
+        if (_collinearOverlap(a, b, c, d)) return false;
+      }
+    }
+    return true;
+  }
 
   /// Until P7A-5 migrates host ownership, any object whose correctness depends
   /// on the edited wall (or room floor/ceiling extent) blocks the canonical edit.
@@ -201,13 +220,15 @@ abstract final class CanonicalBoundaryTopologyEditingRuntime {
     return (moveX * (-dy / length) + moveY * (dx / length)).round();
   }
 
-  static MmPolygon _toPolygon(SpaceBoundaryTopology topology) => MmPolygon(<MmPoint>[
-        for (final edgeId in topology.orderedEdgeIds)
-          MmPoint(
-            topology.edges[edgeId]!.start.xMm,
-            topology.edges[edgeId]!.start.yMm,
-          ),
-      ]);
+  static MmPolygon _toPolygon(SpaceBoundaryTopology topology) => MmPolygon(
+        <MmPoint>[
+          for (final edgeId in topology.orderedEdgeIds)
+            MmPoint(
+              topology.edges[edgeId]!.start.xMm,
+              topology.edges[edgeId]!.start.yMm,
+            ),
+        ],
+      );
 
   static bool _samePolygon(MmPolygon left, MmPolygon right) {
     if (left.vertices.length != right.vertices.length) return false;
@@ -215,5 +236,18 @@ abstract final class CanonicalBoundaryTopologyEditingRuntime {
       if (left.vertices[index] != right.vertices[index]) return false;
     }
     return true;
+  }
+
+  static bool _collinearOverlap(MmPoint a, MmPoint b, MmPoint c, MmPoint d) {
+    int cross(MmPoint p, MmPoint q, MmPoint r) =>
+        (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+    if (cross(a, b, c) != 0 || cross(a, b, d) != 0) return false;
+    final useX = (b.x - a.x).abs() >= (b.y - a.y).abs();
+    int axis(MmPoint point) => useX ? point.x : point.y;
+    final aMin = math.min(axis(a), axis(b));
+    final aMax = math.max(axis(a), axis(b));
+    final bMin = math.min(axis(c), axis(d));
+    final bMax = math.max(axis(c), axis(d));
+    return math.min(aMax, bMax) > math.max(aMin, bMin);
   }
 }
