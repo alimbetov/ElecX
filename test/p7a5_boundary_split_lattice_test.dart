@@ -16,8 +16,8 @@ void main() {
         );
 
     test('chooses an exact interior point for a diagonal lattice edge', () {
-      final split =
-          CanonicalBoundaryTopologyMigrationRuntime.representableInteriorSplitPoint(
+      final split = CanonicalBoundaryTopologyMigrationRuntime
+          .representableInteriorSplitPoint(
         edge(
           const BoundaryPointMm(xMm: 0, yMm: 0),
           const BoundaryPointMm(xMm: 6000, yMm: 4000),
@@ -28,8 +28,8 @@ void main() {
     });
 
     test('keeps odd axis-aligned split exactly on the source edge', () {
-      final split =
-          CanonicalBoundaryTopologyMigrationRuntime.representableInteriorSplitPoint(
+      final split = CanonicalBoundaryTopologyMigrationRuntime
+          .representableInteriorSplitPoint(
         edge(
           const BoundaryPointMm(xMm: 0, yMm: 0),
           const BoundaryPointMm(xMm: 5, yMm: 0),
@@ -40,8 +40,8 @@ void main() {
     });
 
     test('rejects a primitive diagonal with no interior integer-mm point', () {
-      final split =
-          CanonicalBoundaryTopologyMigrationRuntime.representableInteriorSplitPoint(
+      final split = CanonicalBoundaryTopologyMigrationRuntime
+          .representableInteriorSplitPoint(
         edge(
           const BoundaryPointMm(xMm: 0, yMm: 0),
           const BoundaryPointMm(xMm: 4001, yMm: 3000),
