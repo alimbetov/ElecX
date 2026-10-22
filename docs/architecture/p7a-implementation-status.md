@@ -6,7 +6,7 @@ Branch: `feat/project-structure-authoring`
 
 **P7A: IN PROGRESS.**
 
-The first executable domain slice has landed. P7A is not yet closed because canonical aggregate ownership, persistence/migration, production editor cutover and hosted-object migration are still pending.
+P7A-1 domain foundation and P7A-2 canonical aggregate ownership have landed. P7A is not yet closed because persistence/migration, production editor cutover, hosted-object migration and final hardening are still pending.
 
 ## Landed
 
@@ -36,10 +36,36 @@ Primary qualification:
 test/p7a_boundary_topology_test.dart
 ```
 
-Architecture contract:
+### P7A-2 canonical aggregate ownership
+
+Implemented:
+
+- `ProjectEntityStores.boundaries` is now authoritative canonical state keyed by `SpaceId`;
+- aggregate validation rejects dangling boundary owners and store-key/owner mismatches;
+- aggregate validation includes `SpaceBoundaryTopology.validate()` failures;
+- duplicate `BoundaryEdgeId` ownership across spaces is rejected;
+- `ProjectIndex` exposes `boundary(SpaceId)`, `boundaryEdge(BoundaryEdgeId)` and `spaceByBoundaryEdgeId`;
+- boundary state participates in `ProjectEntityDiff`;
+- edge geometry changes report affected stable `BoundaryEdgeId` values;
+- boundary order/topology changes report the owning `SpaceId` as updated;
+- simultaneous Space + boundary creation/removal keeps added/updated/removed diff sets disjoint;
+- undo/redo captures boundary topology because it is part of `ProjectMutableState.stores`;
+- invalid topology candidates fail before `_current` is replaced;
+- legacy stores-only commands preserve existing boundary topology;
+- P6 semantic commands preserve existing boundary topology when rebuilding canonical stores.
+
+Primary implementation:
 
 ```text
-docs/architecture/p7a-stable-boundary-topology-v1.md
+lib/src/domain/project_aggregate.dart
+lib/src/application/project/project_mutation.dart
+lib/src/application/project/project_space_semantics_commands.dart
+```
+
+Primary qualification:
+
+```text
+test/p7a_aggregate_ownership_test.dart
 ```
 
 ## Safety invariant now established
@@ -62,16 +88,26 @@ removed   -> detached/conflict
 unknown   -> fail closed
 ```
 
-This prevents opening/component/cable hosts from silently moving to a physically different wall after polygon mutation.
+Aggregate ownership adds a second invariant:
+
+```text
+ProjectAggregateRoot
+  -> ProjectEntityStores.boundaries[SpaceId]
+      -> SpaceBoundaryTopology
+          -> BoundaryEdgeId...
+```
+
+There is no platform-specific copy of topology and no durable wall-index ownership path.
 
 ## Remaining P7A slices
 
 ```text
-P7A-2 canonical aggregate ownership   PENDING
-P7A-3 persistence + legacy migration  PENDING
-P7A-4 production editor cutover       PENDING
-P7A-5 hosted-object migration          PENDING
-P7A-6 full hardening/qualification    PENDING
+P7A-1 domain foundation             IMPLEMENTED
+P7A-2 canonical aggregate ownership IMPLEMENTED / qualification running
+P7A-3 persistence + legacy migration PENDING
+P7A-4 production editor cutover      PENDING
+P7A-5 hosted-object migration        PENDING
+P7A-6 full hardening/qualification   PENDING
 ```
 
 ## Boundary with later stages
@@ -83,14 +119,15 @@ Not part of P7A:
 - P8 Wizard/generation;
 - Windows/Linux/Android/iOS/iPadOS runner setup.
 
-Pending platform runners do not block P7A development. P7A domain semantics remain platform-independent.
+Pending platform runners do not block P7A development. P7A domain semantics remain platform-independent across macOS, Windows, Linux, Android, iOS and iPadOS.
 
 ## Next implementation target
 
-Proceed with **P7A-2 canonical aggregate ownership**:
+After P7A-2 qualification is green, proceed with **P7A-3 persistence + legacy migration**:
 
-1. add boundary edge/topology stores to canonical project state;
-2. index them by stable identity/space ownership;
-3. extend graph validation;
-4. include topology in fingerprint/change detection;
-5. prove failed/stale mutations leave authoritative topology unchanged.
+1. extend canonical document codec with stable boundary topology;
+2. persist exact `BoundaryEdgeId` values and ordered edge membership;
+3. deterministically migrate legacy room polygons into boundary identities;
+4. prove migration runs once and save/reopen preserves IDs;
+5. reject corrupt topology documents fail-closed;
+6. keep the document schema identical across all supported native platforms.
