@@ -1,0 +1,38 @@
+name: P6 Format Normalize Once
+
+on:
+  push:
+    branches:
+      - feat/project-structure-authoring
+    paths:
+      - .github/workflows/p6-format-normalize-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/project-structure-authoring
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - name: Normalize Dart formatting
+        run: dart format lib test
+      - name: Commit normalized formatting
+        shell: bash
+        run: |
+          if git diff --quiet -- lib test; then
+            echo "No formatting changes required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib test
+          git commit -m "style(p6): normalize Dart formatting"
+          git push origin HEAD:feat/project-structure-authoring
