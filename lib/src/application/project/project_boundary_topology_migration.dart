@@ -59,6 +59,7 @@ enum BoundaryTopologyMigrationIssueCode {
   tooFewResultEdges,
   lineageSourceCoverageMismatch,
   lineageResultCoverageMismatch,
+  wallProfileScopeViolation,
 }
 
 final class BoundaryTopologyMigrationException implements Exception {
@@ -327,6 +328,11 @@ final class CanonicalBoundaryTopologyMigrationSession {
       lineage: lineage,
     );
     final profiles = wallProfiles ?? _sourceProfiles;
+    _requireWallProfileScopePreserved(
+      source: _sourceProfiles,
+      candidate: profiles,
+      editedSpaceId: spaceId,
+    );
     final boundaries = <SpaceId, SpaceBoundaryTopology>{
       ..._mutations.current.stores.boundaries,
       spaceId: topology,
@@ -422,6 +428,11 @@ final class _ReplaceBoundaryTopologyWithHostsCommand implements ProjectCommand {
       ...stores.boundaries,
       spaceId: topology,
     };
+    _requireWallProfileScopePreserved(
+      source: current.engineeringMetadata.boundaryWallProfileRegistry,
+      candidate: wallProfiles,
+      editedSpaceId: spaceId,
+    );
     hostedObjects.validateAgainst(boundaries);
     wallProfiles.validateAgainst(boundaries);
     BoundaryOpeningProfileValidator.validateSpace(
@@ -481,6 +492,28 @@ void _requireLineageCoverage(
     throw const BoundaryTopologyMigrationException(
       code: BoundaryTopologyMigrationIssueCode.lineageResultCoverageMismatch,
       message: 'Lineage must cover every result boundary edge exactly.',
+    );
+  }
+}
+
+void _requireWallProfileScopePreserved({
+  required BoundaryWallProfileRegistry source,
+  required BoundaryWallProfileRegistry candidate,
+  required SpaceId editedSpaceId,
+}) {
+  final sourceOutside = BoundaryWallProfileRegistry({
+    for (final entry in source.profiles.entries)
+      if (entry.key.spaceId != editedSpaceId) entry.key: entry.value,
+  });
+  final candidateOutside = BoundaryWallProfileRegistry({
+    for (final entry in candidate.profiles.entries)
+      if (entry.key.spaceId != editedSpaceId) entry.key: entry.value,
+  });
+  if (!sourceOutside.sameAs(candidateOutside)) {
+    throw BoundaryTopologyMigrationException(
+      code: BoundaryTopologyMigrationIssueCode.wallProfileScopeViolation,
+      message: 'A topology migration for $editedSpaceId cannot add, remove or '
+          'modify wall profiles owned by another Space.',
     );
   }
 }
