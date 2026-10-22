@@ -123,8 +123,7 @@ abstract final class BoundaryGeometryIntegrity {
   }
 
   static int _cross(BoundaryPointMm a, BoundaryPointMm b, BoundaryPointMm c) =>
-      (b.xMm - a.xMm) * (c.yMm - a.yMm) -
-      (b.yMm - a.yMm) * (c.xMm - a.xMm);
+      (b.xMm - a.xMm) * (c.yMm - a.yMm) - (b.yMm - a.yMm) * (c.xMm - a.xMm);
 
   static bool _onSegment(
     BoundaryPointMm a,
