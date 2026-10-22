@@ -84,7 +84,10 @@ void main() {
       final codes = topology.validate().map((issue) => issue.code).toSet();
       expect(codes, contains(BoundaryTopologyIssueCode.discontinuousLoop));
       expect(codes, contains(BoundaryTopologyIssueCode.openLoop));
-      expect(topology.validateOrThrow, throwsA(isA<BoundaryTopologyValidationException>()));
+      expect(
+        topology.validateOrThrow,
+        throwsA(isA<BoundaryTopologyValidationException>()),
+      );
     });
 
     test('preserved edge keeps identity and allows direct host retention', () {
