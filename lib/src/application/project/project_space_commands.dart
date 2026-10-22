@@ -1,20 +1,17 @@
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
+import '../../domain/project_space_semantics.dart';
 import 'project_authoring_error.dart';
 import 'project_mutation.dart';
 
 /// Creates one canonical space under an existing level.
-///
-/// [spaceId] is the persistent identity. Optional [structuralZoneId] assigns
-/// the new space to one exclusive structural zone on the same level. Semantic
-/// usage/classification is intentionally not introduced here; that belongs to
-/// the later SpaceUsage/overlay stage.
 final class CreateSpaceCommand implements ProjectCommand {
   CreateSpaceCommand({
     required this.spaceId,
     required this.levelId,
     required this.name,
     this.structuralZoneId,
+    this.usage = SpaceUsage.unknown,
   }) {
     if (name.trim().isEmpty) {
       throw ArgumentError.value(
@@ -29,6 +26,7 @@ final class CreateSpaceCommand implements ProjectCommand {
   final LevelId levelId;
   final String name;
   final ZoneId? structuralZoneId;
+  final SpaceUsage usage;
 
   @override
   String get commandType => 'project.space.create';
@@ -55,8 +53,7 @@ final class CreateSpaceCommand implements ProjectCommand {
           code: ProjectAuthoringIssueCode.structuralZoneLevelMismatch,
           entityId: zone.id,
           relatedEntityId: zone.levelId,
-          message:
-              'Structural zone ${zone.id} belongs to level ${zone.levelId}, '
+          message: 'Structural zone ${zone.id} belongs to level ${zone.levelId}, '
               'not requested level ${level.id}.',
         );
       }
@@ -92,6 +89,7 @@ final class CreateSpaceCommand implements ProjectCommand {
       id: spaceId,
       levelId: level.id,
       name: name,
+      usage: usage,
     );
 
     return ProjectCommandCandidate(
@@ -111,12 +109,9 @@ final class CreateSpaceCommand implements ProjectCommand {
   }
 }
 
-/// Renames a space while preserving stable identity and level ownership.
+/// Renames a space while preserving identity, ownership and semantic usage.
 final class RenameSpaceCommand implements ProjectCommand {
-  RenameSpaceCommand({
-    required this.spaceId,
-    required this.name,
-  }) {
+  RenameSpaceCommand({required this.spaceId, required this.name}) {
     if (name.trim().isEmpty) {
       throw ArgumentError.value(
         name,
@@ -140,6 +135,7 @@ final class RenameSpaceCommand implements ProjectCommand {
       id: space.id,
       levelId: space.levelId,
       name: name,
+      usage: space.usage,
     );
 
     return ProjectCommandCandidate(
