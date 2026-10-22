@@ -49,6 +49,11 @@ final class EditorDocumentHistory extends ChangeNotifier {
   String? get undoLabel => canUndo ? _undo.last.label : null;
   String? get redoLabel => canRedo ? _redo.last.label : null;
 
+  bool hasCanonicalSessionAffinity(
+    ProjectStructureAuthoringSession session,
+  ) =>
+      identical(_canonicalSession, session);
+
   void attachCanonicalSession(
     ProjectStructureAuthoringSession session, {
     CanonicalHistoryReplayOwner? onReplayed,
@@ -113,14 +118,15 @@ final class EditorDocumentHistory extends ChangeNotifier {
     required String label,
     required CanonicalHistoryRematerializer rematerialize,
   }) {
-    if (_replaying) return;
+    if (_replaying) {
+      throw StateError(
+        'Canonical production history cannot register a new commit during replay.',
+      );
+    }
     if (!identical(_canonicalSession, session)) {
-      _clearTimeline();
-      _canonicalSession = session;
-      _canonicalObservedVersion = session.project.version;
-      _canonicalReplayOwner = null;
-      notifyListeners();
-      return;
+      throw StateError(
+        'Canonical production history lost session affinity before commit registration.',
+      );
     }
 
     final observed = _canonicalObservedVersion;
@@ -349,6 +355,11 @@ final class EditorDocumentHistory extends ChangeNotifier {
     ProjectStructureAuthoringSession session,
     ProjectMutationResult result,
   ) {
+    if (!identical(_canonicalSession, session)) {
+      throw StateError(
+        'Canonical production history switched sessions during replay.',
+      );
+    }
     if (session.project.version != result.project.version) {
       throw StateError(
         'Canonical project advanced re-entrantly during history replay.',
