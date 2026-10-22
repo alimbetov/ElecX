@@ -45,6 +45,7 @@ void main() {
       expect(fixture.controller.commitSelectedBoundary(candidate!), isTrue);
       expect(fixture.session.project.version, beforeVersion.next());
       expect(fixture.mutations.undoDepth, beforeUndo + 1);
+      expect(fixture.ownershipCommitCount, 1);
       expect(
         fixture.controller.selectedSpace!.boundary.vertices,
         candidate.vertices,
@@ -73,6 +74,7 @@ void main() {
     )!;
     expect(fixture.controller.commitSelectedBoundary(candidate), isTrue);
     expect(history.undoDepth, 1);
+    expect(fixture.ownershipCommitCount, 1);
 
     fixture.controller.showWall(2);
     final component = fixture.controller.p2.placeComponent(
@@ -84,12 +86,14 @@ void main() {
 
     expect(history.undo(), isTrue);
     expect(fixture.controller.p2.components, isEmpty);
+    expect(fixture.ownershipCommitCount, 1);
     expect(
       fixture.controller.selectedSpace!.boundary.vertices,
       candidate.vertices,
     );
 
     expect(history.undo(), isTrue);
+    expect(fixture.ownershipCommitCount, 2);
     final undoneTopology =
         fixture.session.project.index.boundary(fixture.spaceId)!;
     expect(undoneTopology.edges[fixture.edgeIds[0]]!.start.yMm, 0);
@@ -100,11 +104,13 @@ void main() {
     );
 
     expect(history.redo(), isTrue);
+    expect(fixture.ownershipCommitCount, 3);
     expect(
       fixture.controller.selectedSpace!.boundary.vertices,
       candidate.vertices,
     );
     expect(history.redo(), isTrue);
+    expect(fixture.ownershipCommitCount, 3);
     expect(fixture.controller.p2.components.single.id, component.id);
   });
 
@@ -306,8 +312,11 @@ final class _Fixture {
     );
     final binding = CanonicalEditorScreenCutoverBinding(
       coordinator: coordinator,
-      onBoundaryTopologyCommitted:
-          withTopologyOwner ? (_, __) {} : null,
+      onBoundaryTopologyCommitted: withTopologyOwner
+          ? (_, __) {
+              ownershipCommitCount++;
+            }
+          : null,
     );
     binding.start();
     return binding;
@@ -333,6 +342,7 @@ final class _Fixture {
     BoundaryEdgeId('edge-d'),
   ];
 
+  int ownershipCommitCount = 0;
   late final EditorController controller;
   late final EditorBuildingWorkspace workspace;
   late final ProjectMutationSession mutations;
