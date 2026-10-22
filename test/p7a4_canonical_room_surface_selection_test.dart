@@ -20,7 +20,8 @@ void main() {
       expect(selection.wallOrdinal, 2);
     });
 
-    test('BoundaryEdgeId selection resolves ordinal only at legacy boundary', () {
+    test('BoundaryEdgeId selection resolves ordinal only at legacy boundary',
+        () {
       final fixture = _Fixture();
 
       expect(fixture.adapter.showBoundaryEdge(fixture.edgeIds[3]), isTrue);
