@@ -78,6 +78,7 @@ void main() {
       final incompleteBinding = CanonicalEditorWorkspaceBinding(
         buildingId: fixture.buildingId,
         legacyBuildingId: 'legacy-building',
+        legacyLevelIds: const {},
         legacySpaceIds: {fixture.spaceId: fixture.legacySpaceId},
       );
 
