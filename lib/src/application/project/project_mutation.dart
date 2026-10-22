@@ -595,19 +595,19 @@ void _diffBoundaries(
     final next = after[spaceId];
 
     if (previous == null && next != null) {
-      updated.add(spaceId);
+      _markBoundaryOwnerUpdated(spaceId, added, updated, removed);
       added.addAll(next.edges.keys);
       continue;
     }
     if (previous != null && next == null) {
-      updated.add(spaceId);
+      _markBoundaryOwnerUpdated(spaceId, added, updated, removed);
       removed.addAll(previous.edges.keys);
       continue;
     }
     if (previous == null || next == null) continue;
 
     if (!_sameBoundaryTopology(previous, next)) {
-      updated.add(spaceId);
+      _markBoundaryOwnerUpdated(spaceId, added, updated, removed);
     }
 
     for (final entry in previous.edges.entries) {
@@ -621,6 +621,17 @@ void _diffBoundaries(
     for (final edgeId in next.edges.keys) {
       if (!previous.edges.containsKey(edgeId)) added.add(edgeId);
     }
+  }
+}
+
+void _markBoundaryOwnerUpdated(
+  SpaceId spaceId,
+  Set<EntityId> added,
+  Set<EntityId> updated,
+  Set<EntityId> removed,
+) {
+  if (!added.contains(spaceId) && !removed.contains(spaceId)) {
+    updated.add(spaceId);
   }
 }
 
