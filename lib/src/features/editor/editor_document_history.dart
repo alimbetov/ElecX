@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../application/project/project_structure_authoring.dart';
-import '../../domain/project_identity.dart';
+import '../../domain/project_aggregate.dart';
 import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/command_history.dart';
