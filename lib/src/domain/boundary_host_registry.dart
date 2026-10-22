@@ -9,6 +9,7 @@ enum BoundaryHostedRegistryIssueCode {
   missingBoundaryEdge,
   boundaryOwnerMismatch,
   geometryOutsideEdge,
+  wallProfileMustUseDedicatedRegistry,
 }
 
 final class BoundaryHostedRegistryException implements Exception {
@@ -31,6 +32,10 @@ final class BoundaryHostedRegistryException implements Exception {
 /// Object payloads may still live in discipline-specific models during the
 /// migration, but durable wall ownership lives here exactly once. Legacy
 /// wallIndex values are projections and are never accepted by this registry.
+///
+/// Wall-profile payloads are intentionally excluded. They are owned by
+/// BoundaryWallProfileRegistry because split/merge transforms the profile
+/// geometry itself rather than remapping one generic hosted reference.
 final class BoundaryHostedObjectRegistry {
   BoundaryHostedObjectRegistry(Map<String, BoundaryHostedReference> references)
       : references = Map.unmodifiable(references) {
@@ -74,6 +79,15 @@ final class BoundaryHostedObjectRegistry {
   /// declared Space and that its local geometry fits the active edge length.
   void validateAgainst(Map<SpaceId, SpaceBoundaryTopology> boundaries) {
     for (final reference in references.values) {
+      if (reference.objectKind == BoundaryHostedObjectKind.wallProfile) {
+        throw BoundaryHostedRegistryException(
+          code: BoundaryHostedRegistryIssueCode.wallProfileMustUseDedicatedRegistry,
+          reference: reference,
+          message: 'Wall profile ${reference.objectKey} must be owned by '
+              'BoundaryWallProfileRegistry, not the generic hosted-object '
+              'registry.',
+        );
+      }
       final topology = boundaries[reference.host.spaceId];
       if (topology == null) {
         throw BoundaryHostedRegistryException(
