@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/project_structure_authoring.dart';
 import 'package:elecx/src/domain/electrical_placement.dart';
-import 'package:elecx/src/domain/geometry.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/surfaces.dart';
