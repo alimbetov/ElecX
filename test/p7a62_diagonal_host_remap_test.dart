@@ -5,7 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P7A-6.2 diagonal hosted-object remap', () {
-    test('integer-mm point before non-integer split arc length is not ambiguous',
+    test(
+        'integer-mm point before non-integer split arc length is not ambiguous',
         () {
       final fixture = _DiagonalSplitFixture();
 
@@ -30,7 +31,8 @@ void main() {
       expect(result.startOffsetMm, 424);
     });
 
-    test('integer-mm point after non-integer split arc length maps second child',
+    test(
+        'integer-mm point after non-integer split arc length maps second child',
         () {
       final fixture = _DiagonalSplitFixture();
 
