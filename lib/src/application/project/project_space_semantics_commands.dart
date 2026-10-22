@@ -237,9 +237,11 @@ final class CreateOverlayClassificationCommand implements ProjectCommand {
 }
 
 final class RenameOverlayClassificationCommand implements ProjectCommand {
-  RenameOverlayClassificationCommand({required this.overlayId, required this.name}) {
+  RenameOverlayClassificationCommand(
+      {required this.overlayId, required this.name}) {
     if (name.trim().isEmpty) {
-      throw ArgumentError.value(name, 'name', 'Overlay name must be non-empty.');
+      throw ArgumentError.value(
+          name, 'name', 'Overlay name must be non-empty.');
     }
   }
 
@@ -400,7 +402,8 @@ ProjectSpaceEntity _requireSpace(ProjectAggregateRoot current, SpaceId id) {
   return value;
 }
 
-ProjectOpeningEntity _requireOpening(ProjectAggregateRoot current, OpeningId id) {
+ProjectOpeningEntity _requireOpening(
+    ProjectAggregateRoot current, OpeningId id) {
   final value = current.index.opening(id);
   if (value == null) {
     throw ProjectAuthoringException(
