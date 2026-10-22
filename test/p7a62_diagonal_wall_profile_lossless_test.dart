@@ -6,7 +6,8 @@ import 'package:elecx/src/domain/wall_profile.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('diagonal profile split fails closed when integer widths are non-additive',
+  test(
+      'diagonal profile split fails closed when integer widths are non-additive',
       () {
     final spaceId = SpaceId('diagonal-profile-space');
     final source = BoundaryEdgeId('source');
