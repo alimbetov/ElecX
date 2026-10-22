@@ -452,6 +452,7 @@ final class ProjectMutationSession {
       ProjectMutableState.fromProject(before),
       candidateState,
     );
+    _requireVersion(request.expectedVersion);
     final previewRoot = ProjectAggregateRoot(
       id: before.id,
       siteId: before.siteId,
@@ -482,8 +483,8 @@ final class ProjectMutationSession {
       beforeState,
       candidateState,
     );
-    if (stateDiff.isEmpty) return null;
     _requireVersion(request.expectedVersion);
+    if (stateDiff.isEmpty) return null;
 
     final committed = ProjectAggregateRoot(
       id: before.id,
