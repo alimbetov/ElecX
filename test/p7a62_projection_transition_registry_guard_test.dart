@@ -4,10 +4,11 @@ import 'package:elecx/src/domain/project_identity.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('projection transition cannot be constructed as canonical host state',
+  test('generic registry does not infer projection semantics from opaque key',
       () {
     final reference = BoundaryHostedReference.point(
-      objectKey: 'route:r1:anchor:p7a-transition:r1:a:b:left:right',
+      objectKey:
+          'route:r1:anchor:user:anchor:p7a-transition:literal-but-durable',
       objectKind: BoundaryHostedObjectKind.routeAnchor,
       host: BoundaryEdgeHostRef(
         spaceId: SpaceId('space'),
@@ -16,13 +17,14 @@ void main() {
       offsetMm: 100,
     );
 
-    expect(
-      () => BoundaryHostedObjectRegistry({reference.objectKey: reference}),
-      throwsArgumentError,
-    );
+    final registry = BoundaryHostedObjectRegistry({
+      reference.objectKey: reference,
+    });
+
+    expect(registry[reference.objectKey], same(reference));
   });
 
-  test('capture-style put ignores projection transition without mutation', () {
+  test('put preserves durable anchor containing transition text internally', () {
     final original = BoundaryHostedObjectRegistry({
       'component:c1': BoundaryHostedReference.point(
         objectKey: 'component:c1',
@@ -34,8 +36,8 @@ void main() {
         offsetMm: 50,
       ),
     });
-    final transition = BoundaryHostedReference.point(
-      objectKey: 'route:r1:anchor:p7a-transition:r1:a:b:left:right',
+    final durable = BoundaryHostedReference.point(
+      objectKey: 'route:r1:anchor:user:anchor:p7a-transition:still-durable',
       objectKind: BoundaryHostedObjectKind.routeAnchor,
       host: BoundaryEdgeHostRef(
         spaceId: SpaceId('space'),
@@ -44,10 +46,9 @@ void main() {
       offsetMm: 100,
     );
 
-    final result = original.put(transition);
+    final result = original.put(durable);
 
-    expect(result, same(original));
-    expect(result.references, hasLength(1));
-    expect(result[transition.objectKey], isNull);
+    expect(result.references, hasLength(2));
+    expect(result[durable.objectKey], same(durable));
   });
 }
