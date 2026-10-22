@@ -89,9 +89,8 @@ void _validateAdoptedOpeningOwnership({
   required BoundaryWallProfileRegistry wallProfiles,
 }) {
   for (final spaceId in aggregate.stores.spaces.keys) {
-    final hasCanonicalOwnership =
-        hostedObjects.forSpace(spaceId).isNotEmpty ||
-            wallProfiles.forSpace(spaceId).isNotEmpty;
+    final hasCanonicalOwnership = hostedObjects.forSpace(spaceId).isNotEmpty ||
+        wallProfiles.forSpace(spaceId).isNotEmpty;
     if (!hasCanonicalOwnership) continue;
     BoundaryOpeningProfileValidator.validateSpace(
       spaceId: spaceId,
