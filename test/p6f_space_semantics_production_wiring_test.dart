@@ -169,7 +169,6 @@ _Fixture _fixture({
     metadata: metadata,
   );
   legacyWorkspace.dispose();
-  legacyController.disposeP2State();
   legacyController.dispose();
 
   final siteId = SiteId('canonical-site');
