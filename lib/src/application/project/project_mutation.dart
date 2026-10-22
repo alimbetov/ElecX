@@ -1,19 +1,14 @@
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/project_orientation.dart';
+import '../../domain/project_space_semantics.dart';
 
-/// Describes one semantic application command against the canonical project.
 abstract interface class ProjectCommand {
   String get commandType;
 
   ProjectCommandCandidate buildCandidate(ProjectAggregateRoot current);
 }
 
-/// All command-mutable canonical root state.
-///
-/// Project identity, root site identity and LocalProjectVersion deliberately do
-/// not participate here: a command may change engineering metadata and entity
-/// stores, but it cannot retarget the canonical project itself.
 final class ProjectMutableState {
   const ProjectMutableState({
     required this.engineeringMetadata,
@@ -32,9 +27,10 @@ final class ProjectMutableState {
 
 /// Immutable candidate produced by one [ProjectCommand].
 ///
-/// New commands should use [ProjectCommandCandidate.fromState]. The legacy
-/// stores-only constructor remains temporarily source-compatible with existing
-/// P3/P4 commands and means "preserve current engineering metadata".
+/// New P6+ commands must use [ProjectCommandCandidate.fromState]. The legacy
+/// stores-only constructor remains source-compatible with P3/P4 commands and
+/// preserves root engineering metadata plus all P6 semantic stores. This keeps
+/// older structural commands from accidentally erasing P6 state.
 final class ProjectCommandCandidate {
   ProjectCommandCandidate({
     required ProjectEntityStores stores,
@@ -55,15 +51,25 @@ final class ProjectCommandCandidate {
 
   ProjectEntityStores get stores => state?.stores ?? _stores!;
 
-  ProjectMutableState resolveState(ProjectAggregateRoot current) =>
-      state ??
-      ProjectMutableState(
-        engineeringMetadata: current.engineeringMetadata,
-        stores: _stores!,
-      );
+  ProjectMutableState resolveState(ProjectAggregateRoot current) {
+    if (state != null) return state!;
+    final legacy = _stores!;
+    return ProjectMutableState(
+      engineeringMetadata: current.engineeringMetadata,
+      stores: ProjectEntityStores(
+        sites: legacy.sites,
+        buildings: legacy.buildings,
+        levels: legacy.levels,
+        zones: legacy.zones,
+        spaces: legacy.spaces,
+        openings: current.stores.openings,
+        adjacencies: current.stores.adjacencies,
+        overlays: current.stores.overlays,
+      ),
+    );
+  }
 }
 
-/// Optimistic local mutation request.
 final class ProjectMutationRequest {
   const ProjectMutationRequest({
     required this.expectedVersion,
@@ -74,13 +80,8 @@ final class ProjectMutationRequest {
   final ProjectCommand command;
 }
 
-enum ProjectChangeKind {
-  command,
-  undo,
-  redo,
-}
+enum ProjectChangeKind { command, undo, redo }
 
-/// Authoritative semantic entity delta between two canonical store snapshots.
 final class ProjectEntityDiff {
   ProjectEntityDiff({
     Iterable<EntityId> addedEntityIds = const <EntityId>[],
@@ -106,15 +107,8 @@ final class ProjectEntityDiff {
     final updated = <EntityId>{};
     final removed = <EntityId>{};
 
-    _diffMap<SiteId, ProjectSiteEntity>(
-      before.sites,
-      after.sites,
-      _sameSite,
-      added,
-      updated,
-      removed,
-    );
-    _diffMap<BuildingId, ProjectBuildingEntity>(
+    _diffMap(before.sites, after.sites, _sameSite, added, updated, removed);
+    _diffMap(
       before.buildings,
       after.buildings,
       _sameBuilding,
@@ -122,26 +116,29 @@ final class ProjectEntityDiff {
       updated,
       removed,
     );
-    _diffMap<LevelId, ProjectLevelEntity>(
-      before.levels,
-      after.levels,
-      _sameLevel,
+    _diffMap(before.levels, after.levels, _sameLevel, added, updated, removed);
+    _diffMap(before.zones, after.zones, _sameZone, added, updated, removed);
+    _diffMap(before.spaces, after.spaces, _sameSpace, added, updated, removed);
+    _diffMap(
+      before.openings,
+      after.openings,
+      _sameOpening,
       added,
       updated,
       removed,
     );
-    _diffMap<ZoneId, ProjectStructuralZoneEntity>(
-      before.zones,
-      after.zones,
-      _sameZone,
+    _diffMap(
+      before.adjacencies,
+      after.adjacencies,
+      _sameAdjacency,
       added,
       updated,
       removed,
     );
-    _diffMap<SpaceId, ProjectSpaceEntity>(
-      before.spaces,
-      after.spaces,
-      _sameSpace,
+    _diffMap(
+      before.overlays,
+      after.overlays,
+      _sameOverlay,
       added,
       updated,
       removed,
@@ -158,25 +155,19 @@ final class ProjectEntityDiff {
   final Set<EntityId> updatedEntityIds;
   final Set<EntityId> removedEntityIds;
 
-  Set<EntityId> get affectedEntityIds => Set<EntityId>.unmodifiable(
-        <EntityId>{
-          ...addedEntityIds,
-          ...updatedEntityIds,
-          ...removedEntityIds,
-        },
-      );
+  Set<EntityId> get affectedEntityIds => Set<EntityId>.unmodifiable({
+        ...addedEntityIds,
+        ...updatedEntityIds,
+        ...removedEntityIds,
+      });
 
   bool get isEmpty =>
       addedEntityIds.isEmpty &&
       updatedEntityIds.isEmpty &&
       removedEntityIds.isEmpty;
-
   bool get isNotEmpty => !isEmpty;
 }
 
-/// Exact before/after engineering-root delta.
-///
-/// Root metadata changes intentionally do not fabricate an EntityId.
 final class ProjectEngineeringMetadataDiff {
   const ProjectEngineeringMetadataDiff({
     required this.beforeProjectNorth,
@@ -204,7 +195,6 @@ final class ProjectEngineeringMetadataDiff {
   bool get isNotEmpty => projectNorthChanged;
 }
 
-/// One committed canonical change boundary.
 final class ProjectChangeSet {
   ProjectChangeSet({
     required this.kind,
@@ -219,11 +209,7 @@ final class ProjectChangeSet {
       throw ArgumentError('Specify either diff or entityDiff, not both.');
     }
     if (commandType.trim().isEmpty) {
-      throw ArgumentError.value(
-        commandType,
-        'commandType',
-        'Must be non-empty.',
-      );
+      throw ArgumentError.value(commandType, 'commandType', 'Must be non-empty.');
     }
     if (afterVersion.value != beforeVersion.value + 1) {
       throw ArgumentError(
@@ -245,9 +231,7 @@ final class ProjectChangeSet {
   final ProjectEntityDiff entityDiff;
   final ProjectEngineeringMetadataDiff engineeringMetadataDiff;
 
-  /// Transitional alias retained for existing entity-diff consumers.
   ProjectEntityDiff get diff => entityDiff;
-
   Set<EntityId> get addedEntityIds => entityDiff.addedEntityIds;
   Set<EntityId> get updatedEntityIds => entityDiff.updatedEntityIds;
   Set<EntityId> get removedEntityIds => entityDiff.removedEntityIds;
@@ -255,7 +239,6 @@ final class ProjectChangeSet {
   bool get hasRootMetadataChanges => engineeringMetadataDiff.isNotEmpty;
 }
 
-/// Validated but uncommitted command result.
 final class ProjectMutationPreview {
   ProjectMutationPreview({
     required this.candidate,
@@ -280,16 +263,11 @@ final class ProjectMutationPreview {
 
   ProjectEntityDiff get diff => entityDiff;
   Set<EntityId> get affectedEntityIds => entityDiff.affectedEntityIds;
-  bool get hasChanges =>
-      entityDiff.isNotEmpty || engineeringMetadataDiff.isNotEmpty;
+  bool get hasChanges => entityDiff.isNotEmpty || engineeringMetadataDiff.isNotEmpty;
 }
 
-/// Successful committed command/undo/redo result.
 final class ProjectMutationResult {
-  const ProjectMutationResult({
-    required this.project,
-    required this.changeSet,
-  });
+  const ProjectMutationResult({required this.project, required this.changeSet});
 
   final ProjectAggregateRoot project;
   final ProjectChangeSet changeSet;
@@ -321,7 +299,6 @@ final class ProjectCandidateValidationException implements Exception {
       'Invalid project mutation candidate:\n${issues.join('\n')}';
 }
 
-/// Application-level candidate graph gate used before canonical commit.
 abstract final class CandidateGraphValidator {
   static void validate({
     required ProjectAggregateRoot current,
@@ -335,7 +312,6 @@ abstract final class CandidateGraphValidator {
     if (issues.isNotEmpty) {
       throw ProjectCandidateValidationException(issues);
     }
-
     final index = ProjectIndex.build(state.stores);
     if (!index.isConsistentWith(state.stores)) {
       throw StateError('Candidate ProjectIndex is inconsistent with stores.');
@@ -343,7 +319,6 @@ abstract final class CandidateGraphValidator {
   }
 }
 
-/// One original command boundary retained for deterministic undo/redo.
 final class UndoRecord {
   UndoRecord.fromStates({
     required this.commandType,
@@ -351,14 +326,9 @@ final class UndoRecord {
     required this.afterState,
   }) {
     if (commandType.trim().isEmpty) {
-      throw ArgumentError.value(
-        commandType,
-        'commandType',
-        'Must be non-empty.',
-      );
+      throw ArgumentError.value(commandType, 'commandType', 'Must be non-empty.');
     }
-    final diff = _ProjectMutableStateDiff.between(beforeState, afterState);
-    if (diff.isEmpty) {
+    if (_ProjectMutableStateDiff.between(beforeState, afterState).isEmpty) {
       throw ArgumentError(
         'UndoRecord requires different before/after canonical state.',
       );
@@ -394,7 +364,6 @@ final class _ProjectMutableStateDiff {
   bool get isEmpty => entityDiff.isEmpty && engineeringMetadataDiff.isEmpty;
 }
 
-/// Atomic in-memory mutation boundary for one canonical project.
 final class ProjectMutationSession {
   ProjectMutationSession(ProjectAggregateRoot initial) : _current = initial;
 
@@ -415,10 +384,10 @@ final class ProjectMutationSession {
     final candidate = request.command.buildCandidate(before);
     CandidateGraphValidator.validate(current: before, candidate: candidate);
     final candidateState = candidate.resolveState(before);
-    final beforeState = ProjectMutableState.fromProject(before);
-    final stateDiff =
-        _ProjectMutableStateDiff.between(beforeState, candidateState);
-
+    final stateDiff = _ProjectMutableStateDiff.between(
+      ProjectMutableState.fromProject(before),
+      candidateState,
+    );
     final previewRoot = ProjectAggregateRoot(
       id: before.id,
       siteId: before.siteId,
@@ -435,7 +404,6 @@ final class ProjectMutationSession {
     );
   }
 
-  /// Commits one semantic command, or returns `null` for a semantic no-op.
   ProjectMutationResult? commit(ProjectMutationRequest request) {
     _requireVersion(request.expectedVersion);
     final commandType = _requireCommandType(request.command);
@@ -444,10 +412,8 @@ final class ProjectMutationSession {
     final candidate = request.command.buildCandidate(before);
     CandidateGraphValidator.validate(current: before, candidate: candidate);
     final candidateState = candidate.resolveState(before);
-    final stateDiff =
-        _ProjectMutableStateDiff.between(beforeState, candidateState);
+    final stateDiff = _ProjectMutableStateDiff.between(beforeState, candidateState);
     if (stateDiff.isEmpty) return null;
-
     _requireVersion(request.expectedVersion);
 
     final committed = ProjectAggregateRoot(
@@ -465,7 +431,6 @@ final class ProjectMutationSession {
       entityDiff: stateDiff.entityDiff,
       engineeringMetadataDiff: stateDiff.engineeringMetadataDiff,
     );
-
     _current = committed;
     _undoStack.add(
       UndoRecord.fromStates(
@@ -475,14 +440,12 @@ final class ProjectMutationSession {
       ),
     );
     _redoStack.clear();
-
     return ProjectMutationResult(project: committed, changeSet: changeSet);
   }
 
   ProjectMutationResult? undo(LocalProjectVersion expectedVersion) {
     _requireVersion(expectedVersion);
     if (_undoStack.isEmpty) return null;
-
     final before = _current;
     final beforeState = ProjectMutableState.fromProject(before);
     final record = _undoStack.last;
@@ -491,11 +454,8 @@ final class ProjectMutationSession {
       record.beforeState,
     );
     if (stateDiff.isEmpty) {
-      throw StateError(
-        'Undo history is inconsistent with current project state.',
-      );
+      throw StateError('Undo history is inconsistent with current project state.');
     }
-
     final restored = _commitState(state: record.beforeState, before: before);
     final changeSet = ProjectChangeSet(
       kind: ProjectChangeKind.undo,
@@ -505,7 +465,6 @@ final class ProjectMutationSession {
       entityDiff: stateDiff.entityDiff,
       engineeringMetadataDiff: stateDiff.engineeringMetadataDiff,
     );
-
     _current = restored;
     _undoStack.removeLast();
     _redoStack.add(record);
@@ -515,7 +474,6 @@ final class ProjectMutationSession {
   ProjectMutationResult? redo(LocalProjectVersion expectedVersion) {
     _requireVersion(expectedVersion);
     if (_redoStack.isEmpty) return null;
-
     final before = _current;
     final beforeState = ProjectMutableState.fromProject(before);
     final record = _redoStack.last;
@@ -524,11 +482,8 @@ final class ProjectMutationSession {
       record.afterState,
     );
     if (stateDiff.isEmpty) {
-      throw StateError(
-        'Redo history is inconsistent with current project state.',
-      );
+      throw StateError('Redo history is inconsistent with current project state.');
     }
-
     final restored = _commitState(state: record.afterState, before: before);
     final changeSet = ProjectChangeSet(
       kind: ProjectChangeKind.redo,
@@ -538,7 +493,6 @@ final class ProjectMutationSession {
       entityDiff: stateDiff.entityDiff,
       engineeringMetadataDiff: stateDiff.engineeringMetadataDiff,
     );
-
     _current = restored;
     _redoStack.removeLast();
     _undoStack.add(record);
@@ -638,7 +592,39 @@ bool _sameZone(
     _sameSet(a.spaceIds, b.spaceIds);
 
 bool _sameSpace(ProjectSpaceEntity a, ProjectSpaceEntity b) =>
-    a.id == b.id && a.levelId == b.levelId && a.name == b.name;
+    a.id == b.id &&
+    a.levelId == b.levelId &&
+    a.name == b.name &&
+    a.usage == b.usage;
+
+bool _sameOpening(ProjectOpeningEntity a, ProjectOpeningEntity b) =>
+    a.id == b.id &&
+    a.levelId == b.levelId &&
+    a.kind == b.kind &&
+    _sameSet(a.connectedSpaceIds, b.connectedSpaceIds) &&
+    a.widthMm == b.widthMm &&
+    a.heightMm == b.heightMm &&
+    a.baseElevationMm == b.baseElevationMm;
+
+bool _sameAdjacency(
+  ProjectSpaceAdjacencyEntity a,
+  ProjectSpaceAdjacencyEntity b,
+) =>
+    a.id == b.id &&
+    a.spaceAId == b.spaceAId &&
+    a.spaceBId == b.spaceBId &&
+    a.kind == b.kind &&
+    a.openingId == b.openingId;
+
+bool _sameOverlay(
+  ProjectOverlayClassificationEntity a,
+  ProjectOverlayClassificationEntity b,
+) =>
+    a.id == b.id &&
+    a.name == b.name &&
+    a.discipline == b.discipline &&
+    a.kind == b.kind &&
+    _sameSet(a.spaceIds, b.spaceIds);
 
 bool _sameSet<T>(Set<T> a, Set<T> b) =>
     a.length == b.length && a.containsAll(b);
