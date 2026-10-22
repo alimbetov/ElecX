@@ -1,4 +1,5 @@
 import 'boundary_topology.dart';
+import 'project_identity.dart';
 
 enum BoundaryGeometryIssueCode {
   degenerateArea,
@@ -15,8 +16,8 @@ final class BoundaryGeometryIssue {
 
   final BoundaryGeometryIssueCode code;
   final String message;
-  final Object? firstEdgeId;
-  final Object? secondEdgeId;
+  final BoundaryEdgeId? firstEdgeId;
+  final BoundaryEdgeId? secondEdgeId;
 
   @override
   String toString() => '${code.name}: $message';
