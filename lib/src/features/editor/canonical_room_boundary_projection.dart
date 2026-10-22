@@ -188,4 +188,29 @@ final class CanonicalRoomBoundaryProjection {
 
   CanonicalEditorWallProjection? wallForEdgeId(BoundaryEdgeId edgeId) =>
       _wallByEdgeId[edgeId];
+
+  /// Re-checks that the mutable legacy editor still materializes the exact
+  /// polygon for which this stable-id projection was built.
+  ///
+  /// This guard is intentionally strict. If the legacy polygon changes after
+  /// projection creation, callers must resolve a fresh canonical cutover rather
+  /// than reusing stale ordinal mappings.
+  bool matchesLegacySpace(EngineeringSpace legacySpace) {
+    if (legacySpace.id != legacySpaceId) return false;
+    final vertices = legacySpace.boundary.vertices;
+    if (vertices.length != walls.length) return false;
+
+    for (var ordinal = 0; ordinal < walls.length; ordinal++) {
+      final wall = walls[ordinal];
+      final start = vertices[ordinal];
+      final end = vertices[(ordinal + 1) % vertices.length];
+      if (wall.start.xMm != start.x ||
+          wall.start.yMm != start.y ||
+          wall.end.xMm != end.x ||
+          wall.end.yMm != end.y) {
+        return false;
+      }
+    }
+    return true;
+  }
 }
