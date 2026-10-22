@@ -15,6 +15,24 @@ import 'editor_controller.dart';
 import 'editor_document_history.dart';
 import 'editor_p2_session.dart';
 
+/// Raised only after an authoritative canonical transition has already
+/// committed. Callers must never translate this into a simple `false` result,
+/// because doing so would claim that an operation was rejected when canonical
+/// state has in fact changed.
+final class CanonicalBoundaryPostCommitException implements Exception {
+  const CanonicalBoundaryPostCommitException({
+    required this.phase,
+    required this.cause,
+  });
+
+  final String phase;
+  final Object cause;
+
+  @override
+  String toString() =>
+      'Canonical boundary mutation committed, but $phase failed: $cause';
+}
+
 /// Production P7A-5 gateway for canonical hosted-object adoption and
 /// identity-changing boundary topology edits.
 ///
@@ -233,21 +251,18 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
       );
     }
 
-    try {
-      context.owner(result);
-      controller.documentHistory.recordCanonicalCommit(
+    _finishCommittedTransition(
+      controller: controller,
+      context: context,
+      resultVersion: result.project.version,
+      ownerMutation: () => context.owner(result),
+      recordHistory: () => controller.documentHistory.recordCanonicalCommit(
         session: context.coordinator.session,
         label: 'Adopt stable boundary hosts',
         rematerialize: rematerializeCurrentCanonicalState,
-      );
-    } catch (_) {
-      controller.documentHistory.invalidateAfterUnownedCanonicalCommit(
-        context.coordinator.session,
-      );
-      rethrow;
-    } finally {
-      rematerializeCurrentCanonicalState();
-    }
+      ),
+      rematerialize: rematerializeCurrentCanonicalState,
+    );
     return true;
   }
 
@@ -372,22 +387,119 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
       );
     }
 
-    try {
-      context.owner(committed.mutation);
-      controller.documentHistory.recordCanonicalCommit(
+    _finishCommittedTransition(
+      controller: controller,
+      context: context,
+      resultVersion: committed.mutation.project.version,
+      ownerMutation: () => context.owner(committed.mutation),
+      recordHistory: () => controller.documentHistory.recordCanonicalCommit(
         session: context.coordinator.session,
         label: label,
         rematerialize: rematerializeCurrentCanonicalState,
-      );
-    } catch (_) {
-      controller.documentHistory.invalidateAfterUnownedCanonicalCommit(
-        context.coordinator.session,
-      );
-      rethrow;
-    } finally {
-      rematerializeCurrentCanonicalState();
-    }
+      ),
+      rematerialize: rematerializeCurrentCanonicalState,
+    );
     return true;
+  }
+
+  static void _finishCommittedTransition({
+    required EditorController controller,
+    required _MigrationContext context,
+    required LocalProjectVersion resultVersion,
+    required void Function() ownerMutation,
+    required void Function() recordHistory,
+    required void Function() rematerialize,
+  }) {
+    final session = context.coordinator.session;
+
+    try {
+      ownerMutation();
+    } catch (_) {
+      controller.documentHistory.invalidateAfterUnownedCanonicalCommit(session);
+      _bestEffortRematerialize(rematerialize);
+      rethrow;
+    }
+
+    _requireCommittedVersionCurrent(
+      controller: controller,
+      context: context,
+      expectedVersion: resultVersion,
+      phase: 'persistence ownership acknowledgement',
+      rematerialize: rematerialize,
+    );
+
+    try {
+      recordHistory();
+    } catch (error) {
+      controller.documentHistory
+          .invalidateAfterCommittedCanonicalDivergence(session);
+      _bestEffortRematerialize(rematerialize);
+      throw CanonicalBoundaryPostCommitException(
+        phase: 'unified history registration',
+        cause: error,
+      );
+    }
+
+    _requireCommittedVersionCurrent(
+      controller: controller,
+      context: context,
+      expectedVersion: resultVersion,
+      phase: 'unified history registration',
+      rematerialize: rematerialize,
+    );
+
+    try {
+      rematerialize();
+    } catch (error) {
+      controller.documentHistory
+          .invalidateAfterCommittedCanonicalDivergence(session);
+      throw CanonicalBoundaryPostCommitException(
+        phase: 'legacy/P2 rematerialization',
+        cause: error,
+      );
+    }
+
+    _requireCommittedVersionCurrent(
+      controller: controller,
+      context: context,
+      expectedVersion: resultVersion,
+      phase: 'legacy/P2 rematerialization',
+      rematerialize: rematerialize,
+    );
+  }
+
+  static void _requireCommittedVersionCurrent({
+    required EditorController controller,
+    required _MigrationContext context,
+    required LocalProjectVersion expectedVersion,
+    required String phase,
+    required void Function() rematerialize,
+  }) {
+    final session = context.coordinator.session;
+    final currentVersion = session.project.version;
+    if (currentVersion == expectedVersion) return;
+
+    controller.documentHistory.invalidateAfterCommittedCanonicalDivergence(
+      session,
+    );
+    _bestEffortRematerialize(rematerialize);
+    throw CanonicalBoundaryPostCommitException(
+      phase: '$phase re-entrancy check',
+      cause: StateError(
+        'Expected committed version $expectedVersion but canonical project '
+        'advanced to $currentVersion.',
+      ),
+    );
+  }
+
+  static void _bestEffortRematerialize(void Function() rematerialize) {
+    try {
+      rematerialize();
+    } catch (_) {
+      // Canonical state remains authoritative. The timeline was already
+      // invalidated by the caller; a second projection failure must not mask
+      // the original ownership/divergence exception.
+    }
   }
 
   static void _materialize({
