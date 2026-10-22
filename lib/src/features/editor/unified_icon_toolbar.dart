@@ -234,13 +234,19 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
     bool Function() action, {
     required String failureMessage,
   }) {
+    String? message;
     try {
       if (action()) return;
+      message = failureMessage;
+    } on CanonicalBoundaryPostCommitException {
+      message = 'Изменение уже применено к модели проекта, но его '
+          'сохранение или синхронизация представления завершились ошибкой. '
+          'История отмены очищена; проверьте текущее состояние проекта.';
     } catch (_) {
-      // Domain/runtime errors are rendered as one fail-closed editor action.
+      message = failureMessage;
     }
     final messenger = ScaffoldMessenger.maybeOf(context);
-    messenger?.showSnackBar(SnackBar(content: Text(failureMessage)));
+    messenger?.showSnackBar(SnackBar(content: Text(message)));
   }
 
   ButtonStyle _commandStyle(BuildContext context, {bool selected = false}) =>
@@ -322,77 +328,51 @@ class _ComponentCatalogPaletteButton extends StatelessWidget {
     return ListenableBuilder(
       listenable: catalog,
       builder: (context, _) {
-        final selectedId = controller.placementCursor.activeComponentTypeId;
-        final selected = selectedId == null ? null : catalog.byId(selectedId);
-        final scheme = Theme.of(context).colorScheme;
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 1),
-          child: PopupMenuButton<String>(
-            enabled: catalog.loaded && catalog.entries.isNotEmpty,
-            tooltip: catalog.loading
-                ? 'Загрузка каталога…'
-                : selected == null
-                    ? 'Добавить инженерный компонент'
-                    : 'Размещение: ${selected.name}',
-            onSelected: (componentTypeId) {
-              final entry = catalog.require(componentTypeId);
-              _ensureCompatibleSurface(entry);
-              controller.setTool(EditorTool.select);
-              controller.placementCursor.beginCatalogPlacement(componentTypeId);
-            },
-            itemBuilder: (context) => [
-              for (final entry in catalog.entries)
-                PopupMenuItem(
-                  value: entry.id,
-                  child: ListTile(
-                    dense: true,
-                    leading: Icon(_catalogIcon(entry.systemClass)),
-                    title: Text(entry.name),
-                    subtitle: Text(
-                      '${entry.discipline.name} · ${entry.systemClass.name}',
-                    ),
-                  ),
-                ),
-            ],
-            child: SizedBox(
-              width: target,
-              height: target,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: selected == null
-                      ? scheme.surfaceContainerHigh
-                      : scheme.secondaryContainer,
-                  borderRadius: BorderRadius.circular(7),
-                ),
-                child: Icon(
-                  selected == null
-                      ? Icons.widgets_outlined
-                      : _catalogIcon(selected.systemClass),
-                  size: 20,
-                ),
+        final selected = catalog.selectedDefinition;
+        return PopupMenuButton<String>(
+          key: const ValueKey('component-catalog-palette'),
+          tooltip: selected == null
+              ? 'Каталог компонентов'
+              : 'Компонент: ${selected.localizedName('ru')}',
+          onSelected: (definitionId) {
+            catalog.selectDefinition(definitionId);
+            controller.placementCursor.armSelectedDefinition();
+          },
+          itemBuilder: (context) => [
+            for (final definition in catalog.definitions)
+              PopupMenuItem<String>(
+                value: definition.id,
+                child: Text(definition.localizedName('ru')),
               ),
+          ],
+          child: SizedBox(
+            width: target,
+            height: target,
+            child: Icon(
+              selected == null
+                  ? Icons.electrical_services_outlined
+                  : Icons.electrical_services,
+              size: 20,
             ),
           ),
         );
       },
     );
   }
+}
 
-  void _ensureCompatibleSurface(ComponentCatalogEntryV2 entry) {
-    final active = controller.activeSurface;
-    if (active != null && entry.mounting.allows(active)) return;
-    if (entry.mounting.allowedSurfaces.contains(SurfacePlaneType.wall)) {
-      controller.showWall(0);
-      return;
-    }
-    if (entry.mounting.allowedSurfaces.contains(SurfacePlaneType.ceiling)) {
-      controller.showCeiling();
-      return;
-    }
-    if (entry.mounting.allowedSurfaces.contains(SurfacePlaneType.floor)) {
-      controller.showFloor();
-    }
-  }
+class _ToolbarDivider extends StatelessWidget {
+  const _ToolbarDivider();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: VerticalDivider(
+          width: 1,
+          thickness: 1,
+          color: Theme.of(context).dividerColor,
+        ),
+      );
 }
 
 class _LayerMenuButton extends StatelessWidget {
@@ -403,156 +383,64 @@ class _LayerMenuButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      tooltip: 'Слои: видимость и блокировка',
-      onPressed: () => _showLayers(context),
-      icon: const Icon(Icons.layers_outlined, size: 20),
-      style: IconButton.styleFrom(
-        minimumSize: Size(target, target),
-        maximumSize: Size(target, target),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
-        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
-      ),
-    );
-  }
-
-  Future<void> _showLayers(BuildContext context) async {
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => ListenableBuilder(
-        listenable: controller.p2,
-        builder: (context, _) => AlertDialog(
-          title: const Text('Слои'),
-          content: SizedBox(
-            width: 420,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+    final p2 = controller.p2;
+    return PopupMenuButton<String>(
+      tooltip: 'Слои',
+      itemBuilder: (context) => [
+        for (final layer in p2.layers)
+          PopupMenuItem<String>(
+            value: layer.id,
+            onTap: () => p2.toggleLayerVisibility(layer.id),
+            child: Row(
               children: [
-                for (final layer in EditorLayerId.values)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: IconButton(
-                      tooltip: controller.p2.layers.isVisible(layer)
-                          ? 'Скрыть слой'
-                          : 'Показать слой',
-                      onPressed: () => controller.p2.setLayerVisible(
-                        layer,
-                        !controller.p2.layers.isVisible(layer),
-                      ),
-                      icon: Icon(
-                        controller.p2.layers.isVisible(layer)
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                      ),
-                    ),
-                    title: Text(_layerName(layer)),
-                    trailing: IconButton(
-                      tooltip: controller.p2.layers.isLocked(layer)
-                          ? 'Разблокировать слой'
-                          : 'Заблокировать слой',
-                      onPressed: () => controller.p2.setLayerLocked(
-                        layer,
-                        !controller.p2.layers.isLocked(layer),
-                      ),
-                      icon: Icon(
-                        controller.p2.layers.isLocked(layer)
-                            ? Icons.lock_outline
-                            : Icons.lock_open_outlined,
-                      ),
-                    ),
-                  ),
+                Icon(layer.visible ? Icons.visibility : Icons.visibility_off),
+                const SizedBox(width: 8),
+                Text(layer.name),
               ],
             ),
           ),
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Готово'),
-            ),
-          ],
-        ),
+      ],
+      child: SizedBox(
+        width: target,
+        height: target,
+        child: const Icon(Icons.layers_outlined, size: 20),
       ),
     );
   }
 }
 
 class _RoutePreferenceButton extends StatelessWidget {
-  const _RoutePreferenceButton({
-    required this.controller,
-    required this.target,
-  });
+  const _RoutePreferenceButton({required this.controller, required this.target});
 
   final EditorController controller;
   final double target;
 
   @override
   Widget build(BuildContext context) {
+    final p2 = controller.p2;
     return PopupMenuButton<RoutePreference>(
-      tooltip: 'Режим автотрассировки',
-      onSelected: controller.p2.setRoutePreference,
-      itemBuilder: (context) => [
-        for (final preference in RoutePreference.values)
-          CheckedPopupMenuItem(
-            value: preference,
-            checked: controller.p2.routePreference == preference,
-            child: Text(_routePreferenceName(preference)),
-          ),
+      tooltip: 'Предпочтение автотрассы',
+      initialValue: p2.routePreference,
+      onSelected: p2.setRoutePreference,
+      itemBuilder: (context) => const [
+        PopupMenuItem(
+          value: RoutePreference.shortest,
+          child: Text('Кратчайшая'),
+        ),
+        PopupMenuItem(
+          value: RoutePreference.horizontalFirst,
+          child: Text('Сначала горизонталь'),
+        ),
+        PopupMenuItem(
+          value: RoutePreference.verticalFirst,
+          child: Text('Сначала вертикаль'),
+        ),
       ],
       child: SizedBox(
         width: target,
         height: target,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(7),
-          ),
-          child: const Icon(Icons.route_outlined, size: 20),
-        ),
+        child: const Icon(Icons.route_outlined, size: 20),
       ),
     );
   }
 }
-
-class _ToolbarDivider extends StatelessWidget {
-  const _ToolbarDivider();
-
-  @override
-  Widget build(BuildContext context) => const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-        child: VerticalDivider(width: 1),
-      );
-}
-
-String _layerName(EditorLayerId layer) => switch (layer) {
-      EditorLayerId.architecture => 'Архитектура',
-      EditorLayerId.openings => 'Проёмы',
-      EditorLayerId.electrical => 'Электрика',
-      EditorLayerId.cableRoutes => 'Кабельные трассы',
-      EditorLayerId.dimensions => 'Размеры',
-      EditorLayerId.guides => 'Направляющие',
-    };
-
-String _routePreferenceName(RoutePreference preference) => switch (preference) {
-      RoutePreference.shortest => 'Кратчайший путь',
-      RoutePreference.orthogonal => 'Ортогонально',
-      RoutePreference.preferWall => 'Предпочитать стены',
-      RoutePreference.preferCeiling => 'Предпочитать потолок',
-      RoutePreference.preferFloor => 'Предпочитать пол',
-    };
-
-IconData _catalogIcon(EngineeringSystemClass systemClass) =>
-    switch (systemClass) {
-      EngineeringSystemClass.powerAc ||
-      EngineeringSystemClass.powerDc =>
-        Icons.electrical_services,
-      EngineeringSystemClass.lighting => Icons.lightbulb_outline,
-      EngineeringSystemClass.structuredCabling => Icons.lan_outlined,
-      EngineeringSystemClass.poeNetwork => Icons.wifi_outlined,
-      EngineeringSystemClass.fiberOptic => Icons.cable_outlined,
-      EngineeringSystemClass.cctv => Icons.videocam_outlined,
-      EngineeringSystemClass.accessControl => Icons.badge_outlined,
-      EngineeringSystemClass.fireAlarm => Icons.local_fire_department_outlined,
-      EngineeringSystemClass.automationBus => Icons.account_tree_outlined,
-      EngineeringSystemClass.dryContact => Icons.sensors_outlined,
-      EngineeringSystemClass.custom => Icons.add_box_outlined,
-    };
