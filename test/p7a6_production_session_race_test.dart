@@ -21,7 +21,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P7A-6.1 production session races', () {
-    test('ordinal resolution rebuilds after split and never returns retired edge',
+    test(
+        'ordinal resolution rebuilds after split and never returns retired edge',
         () {
       final fixture = _Fixture();
       addTearDown(fixture.dispose);
@@ -73,7 +74,8 @@ void main() {
       expect(fixture.controller.documentHistory.undoDepth, 1);
     });
 
-    test('out-of-band canonical version gap invalidates unsafe unified undo', () {
+    test('out-of-band canonical version gap invalidates unsafe unified undo',
+        () {
       final fixture = _Fixture();
       addTearDown(fixture.dispose);
       final binding = fixture.bind();
