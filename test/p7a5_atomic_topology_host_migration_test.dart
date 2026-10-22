@@ -3,18 +3,22 @@ import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/domain/boundary_host_migration.dart';
 import 'package:elecx/src/domain/boundary_host_registry.dart';
 import 'package:elecx/src/domain/boundary_topology.dart';
+import 'package:elecx/src/domain/boundary_wall_profile_registry.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_orientation.dart';
+import 'package:elecx/src/domain/wall_profile.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P7A-5 atomic topology + hosted object migration', () {
-    test('split commits topology and all hosted references as one undo record',
+    test(
+        'split commits topology hosted references and wall profile as one undo record',
         () {
       final fixture = _Fixture();
       final initial = fixture.project(
         hostedObjects: fixture.hostedObjectsOnBottom(),
+        wallProfiles: fixture.wallProfilesOnBottom(),
       );
       final mutations = ProjectMutationSession(initial);
       final migration = ProjectBoundaryTopologyMigrationService(mutations);
@@ -50,8 +54,35 @@ void main() {
         fixture.bottomB,
       );
       expect(
-        preview.hostedObjects['route:r1:anchor:1']!.host.edgeId,
+        preview.hostedObjects['route-anchor:anchor-1']!.host.edgeId,
         fixture.bottomB,
+      );
+      expect(
+        preview.wallProfiles[
+          BoundaryEdgeHostRef(
+            spaceId: fixture.spaceId,
+            edgeId: fixture.bottom,
+          )
+        ],
+        isNull,
+      );
+      expect(
+        preview.wallProfiles[
+          BoundaryEdgeHostRef(
+            spaceId: fixture.spaceId,
+            edgeId: fixture.bottomA,
+          )
+        ]!.maxX,
+        2000,
+      );
+      expect(
+        preview.wallProfiles[
+          BoundaryEdgeHostRef(
+            spaceId: fixture.spaceId,
+            edgeId: fixture.bottomB,
+          )
+        ]!.maxX,
+        2000,
       );
 
       final committed = edit.commit();
@@ -59,13 +90,23 @@ void main() {
       expect(committed!.mutation.project.version, LocalProjectVersion(1));
       expect(mutations.undoDepth, 1);
       expect(
+        committed.mutation.changeSet.engineeringMetadataDiff
+            .boundaryHostedObjectRegistryChanged,
+        isTrue,
+      );
+      expect(
+        committed.mutation.changeSet.engineeringMetadataDiff
+            .boundaryWallProfileRegistryChanged,
+        isTrue,
+      );
+      expect(
         mutations.current.index.boundary(fixture.spaceId)!.orderedEdgeIds,
         [
           fixture.bottomA,
           fixture.bottomB,
           fixture.east,
           fixture.north,
-          fixture.west
+          fixture.west,
         ],
       );
       expect(
@@ -87,6 +128,15 @@ void main() {
         fixture.bottom,
       );
       expect(
+        undone.project.engineeringMetadata.boundaryWallProfileRegistry[
+          BoundaryEdgeHostRef(
+            spaceId: fixture.spaceId,
+            edgeId: fixture.bottom,
+          )
+        ]!.maxX,
+        4000,
+      );
+      expect(
         undone.project.engineeringMetadata.boundaryEdgeIdentityRegistry.ownerOf(
           fixture.bottomA,
         ),
@@ -106,6 +156,15 @@ void main() {
         redone.project.engineeringMetadata
             .boundaryHostedObjectRegistry['opening:o1']!.host.edgeId,
         fixture.bottomB,
+      );
+      expect(
+        redone.project.engineeringMetadata.boundaryWallProfileRegistry[
+          BoundaryEdgeHostRef(
+            spaceId: fixture.spaceId,
+            edgeId: fixture.bottomA,
+          )
+        ]!.maxX,
+        2000,
       );
     });
 
@@ -147,51 +206,38 @@ void main() {
       );
       expect(mutations.current.version, LocalProjectVersion(0));
       expect(mutations.undoDepth, 0);
-      expect(
-        mutations.current.index.boundary(fixture.spaceId)!.orderedEdgeIds,
-        [fixture.bottom, fixture.east, fixture.north, fixture.west],
-      );
     });
 
-    test('whole-edge wall profile blocks identity-changing split', () {
+    test('generic hosted registry rejects wall profile dual ownership', () {
       final fixture = _Fixture();
-      final registry = BoundaryHostedObjectRegistry({
-        'wall-profile:bottom': BoundaryHostedReference.wholeEdge(
-          objectKey: 'wall-profile:bottom',
-          objectKind: BoundaryHostedObjectKind.wallProfile,
-          host: BoundaryEdgeHostRef(
-            spaceId: fixture.spaceId,
-            edgeId: fixture.bottom,
-          ),
+      final reference = BoundaryHostedReference.wholeEdge(
+        objectKey: 'wall-profile:bottom',
+        objectKind: BoundaryHostedObjectKind.wallProfile,
+        host: BoundaryEdgeHostRef(
+          spaceId: fixture.spaceId,
+          edgeId: fixture.bottom,
         ),
-      });
-      final initial = fixture.project(hostedObjects: registry);
-      final mutations = ProjectMutationSession(initial);
-      final edit = ProjectBoundaryTopologyMigrationService(mutations).begin(
-        spaceId: fixture.spaceId,
-        expectedVersion: initial.version,
       );
+      final registry = BoundaryHostedObjectRegistry({
+        reference.objectKey: reference,
+      });
 
       expect(
-        () => edit.previewSplitEdge(
-          sourceEdgeId: fixture.bottom,
-          splitPoint: const BoundaryPointMm(xMm: 2000, yMm: 0),
-          firstResultEdgeId: fixture.bottomA,
-          secondResultEdgeId: fixture.bottomB,
-        ),
+        () => registry.validateAgainst({
+          fixture.spaceId: fixture.initialBoundary(),
+        }),
         throwsA(
-          isA<BoundaryHostMigrationException>().having(
+          isA<BoundaryHostedRegistryException>().having(
             (error) => error.code,
             'code',
-            BoundaryHostMigrationIssueCode.wholeEdgeRequiresDomainTransform,
+            BoundaryHostedRegistryIssueCode.wallProfileMustUseDedicatedRegistry,
           ),
         ),
       );
-      expect(mutations.current.version, LocalProjectVersion(0));
-      expect(mutations.undoDepth, 0);
     });
 
-    test('merge rebases point and interval hosts onto one new edge', () {
+    test('merge rebases point interval and compatible profiles onto new edge',
+        () {
       final fixture = _Fixture();
       final initial = fixture.project(
         boundary: fixture.splitBoundary(),
@@ -215,6 +261,16 @@ void main() {
             startOffsetMm: 400,
             endOffsetMm: 1200,
           ),
+        }),
+        wallProfiles: BoundaryWallProfileRegistry({
+          BoundaryEdgeHostRef(
+            spaceId: fixture.spaceId,
+            edgeId: fixture.bottomA,
+          ): WallProfile.rectangle(widthMm: 2000, heightMm: 3000),
+          BoundaryEdgeHostRef(
+            spaceId: fixture.spaceId,
+            edgeId: fixture.bottomB,
+          ): WallProfile.rectangle(widthMm: 2000, heightMm: 3000),
         }),
       );
       final mutations = ProjectMutationSession(initial);
@@ -240,11 +296,47 @@ void main() {
       );
       expect(preview.hostedObjects['opening:o1']!.startOffsetMm, 2400);
       expect(preview.hostedObjects['opening:o1']!.endOffsetMm, 3200);
+      expect(
+        preview.wallProfiles[
+          BoundaryEdgeHostRef(
+            spaceId: fixture.spaceId,
+            edgeId: fixture.bottomMerged,
+          )
+        ]!.maxX,
+        4000,
+      );
 
       final committed = edit.commit();
       expect(committed, isNotNull);
       expect(mutations.current.version, LocalProjectVersion(1));
       expect(mutations.undoDepth, 1);
+    });
+
+    test('corner merge is rejected before topology can change shape', () {
+      final fixture = _Fixture();
+      final initial = fixture.project();
+      final mutations = ProjectMutationSession(initial);
+      final edit = ProjectBoundaryTopologyMigrationService(mutations).begin(
+        spaceId: fixture.spaceId,
+        expectedVersion: initial.version,
+      );
+
+      expect(
+        () => edit.previewMergeAdjacentEdges(
+          firstSourceEdgeId: fixture.bottom,
+          secondSourceEdgeId: fixture.east,
+          resultEdgeId: fixture.bottomMerged,
+        ),
+        throwsA(
+          isA<BoundaryTopologyMigrationException>().having(
+            (error) => error.code,
+            'code',
+            BoundaryTopologyMigrationIssueCode.mergeEdgesNotCollinear,
+          ),
+        ),
+      );
+      expect(mutations.current.version, LocalProjectVersion(0));
+      expect(mutations.undoDepth, 0);
     });
   });
 }
@@ -268,6 +360,8 @@ final class _Fixture {
     SpaceBoundaryTopology? boundary,
     BoundaryHostedObjectRegistry hostedObjects =
         const BoundaryHostedObjectRegistry.empty(),
+    BoundaryWallProfileRegistry wallProfiles =
+        const BoundaryWallProfileRegistry.empty(),
   }) {
     final topology = boundary ?? initialBoundary();
     return ProjectAggregateRoot(
@@ -276,6 +370,7 @@ final class _Fixture {
       version: LocalProjectVersion(0),
       engineeringMetadata: ProjectEngineeringMetadata(
         boundaryHostedObjectRegistry: hostedObjects,
+        boundaryWallProfileRegistry: wallProfiles,
       ),
       stores: ProjectEntityStores(
         sites: {
@@ -336,12 +431,18 @@ final class _Fixture {
           host: BoundaryEdgeHostRef(spaceId: spaceId, edgeId: bottom),
           offsetMm: 3000,
         ),
-        'route:r1:anchor:1': BoundaryHostedReference.point(
-          objectKey: 'route:r1:anchor:1',
+        'route-anchor:anchor-1': BoundaryHostedReference.point(
+          objectKey: 'route-anchor:anchor-1',
           objectKind: BoundaryHostedObjectKind.routeAnchor,
           host: BoundaryEdgeHostRef(spaceId: spaceId, edgeId: bottom),
           offsetMm: 3500,
         ),
+      });
+
+  BoundaryWallProfileRegistry wallProfilesOnBottom() =>
+      BoundaryWallProfileRegistry({
+        BoundaryEdgeHostRef(spaceId: spaceId, edgeId: bottom):
+            WallProfile.rectangle(widthMm: 4000, heightMm: 3000),
       });
 
   SpaceBoundaryTopology initialBoundary() => _topology(
