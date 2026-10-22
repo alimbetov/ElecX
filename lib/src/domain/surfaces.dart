@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'geometry.dart';
+import 'project_identity.dart';
 import 'project_model.dart';
 import 'wall_profile.dart';
 
@@ -8,16 +9,17 @@ enum SurfacePlaneType { floor, ceiling, wall }
 
 enum ArchitecturalOpeningType { door, window, passage, technicalOpening }
 
-/// Stable reference to an editable plane of a room.
+/// Reference to an editable plane of a room.
 ///
-/// Wall surfaces are addressed by the boundary edge index so the same physical
-/// wall can be resolved from plan and elevation views without duplicating
-/// geometry.
+/// Canonical wall surfaces are addressed by [boundaryEdgeId]. [wallIndex] is
+/// retained only as an explicitly transitional legacy projection and must not
+/// be treated as durable engineering identity.
 final class RoomSurfaceRef {
   const RoomSurfaceRef._({
     required this.spaceId,
     required this.type,
     this.wallIndex,
+    this.boundaryEdgeId,
   });
 
   factory RoomSurfaceRef.floor(String spaceId) =>
@@ -26,6 +28,8 @@ final class RoomSurfaceRef {
   factory RoomSurfaceRef.ceiling(String spaceId) =>
       RoomSurfaceRef._(spaceId: spaceId, type: SurfacePlaneType.ceiling);
 
+  /// Transitional legacy wall reference. New canonical code should use
+  /// [wallByBoundaryEdge].
   factory RoomSurfaceRef.wall(String spaceId, int wallIndex) {
     if (wallIndex < 0) {
       throw ArgumentError.value(
@@ -41,13 +45,35 @@ final class RoomSurfaceRef {
     );
   }
 
+  factory RoomSurfaceRef.wallByBoundaryEdge(
+    String spaceId,
+    BoundaryEdgeId boundaryEdgeId,
+  ) =>
+      RoomSurfaceRef._(
+        spaceId: spaceId,
+        type: SurfacePlaneType.wall,
+        boundaryEdgeId: boundaryEdgeId,
+      );
+
   final String spaceId;
   final SurfacePlaneType type;
+
+  /// Legacy projection only. Never persist this as canonical wall identity.
   final int? wallIndex;
+
+  /// Durable canonical wall identity.
+  final BoundaryEdgeId? boundaryEdgeId;
+
+  bool get isCanonicalWall =>
+      type == SurfacePlaneType.wall && boundaryEdgeId != null;
+
+  bool get isLegacyWall => type == SurfacePlaneType.wall && wallIndex != null;
 
   String get id => switch (type) {
         SurfacePlaneType.floor => '$spaceId:floor',
         SurfacePlaneType.ceiling => '$spaceId:ceiling',
+        SurfacePlaneType.wall when boundaryEdgeId != null =>
+          '$spaceId:boundary:${boundaryEdgeId!.value}',
         SurfacePlaneType.wall => '$spaceId:wall:$wallIndex',
       };
 
@@ -56,10 +82,11 @@ final class RoomSurfaceRef {
       other is RoomSurfaceRef &&
       other.spaceId == spaceId &&
       other.type == type &&
-      other.wallIndex == wallIndex;
+      other.wallIndex == wallIndex &&
+      other.boundaryEdgeId == boundaryEdgeId;
 
   @override
-  int get hashCode => Object.hash(spaceId, type, wallIndex);
+  int get hashCode => Object.hash(spaceId, type, wallIndex, boundaryEdgeId);
 }
 
 final class RoomWallSurface {
@@ -181,6 +208,31 @@ abstract final class RoomSurfaceResolver {
     ]);
   }
 
+  /// Canonical wall projection using stable boundary identities while reusing
+  /// the existing legacy geometry/materialization model.
+  static List<RoomWallSurface> wallsByBoundaryEdges(
+    EngineeringSpace space,
+    List<BoundaryEdgeId> orderedEdgeIds, {
+    int defaultHeightMm = 3000,
+  }) {
+    if (orderedEdgeIds.length != space.boundary.vertices.length) {
+      throw ArgumentError(
+        'Boundary edge count must match materialized room wall count.',
+      );
+    }
+    final legacy = walls(space, defaultHeightMm: defaultHeightMm);
+    return List.unmodifiable([
+      for (var i = 0; i < legacy.length; i++)
+        RoomWallSurface(
+          ref: RoomSurfaceRef.wallByBoundaryEdge(space.id, orderedEdgeIds[i]),
+          start: legacy[i].start,
+          end: legacy[i].end,
+          heightMm: legacy[i].heightMm,
+          profile: legacy[i].profile,
+        ),
+    ]);
+  }
+
   static RoomWallSurface _wallForIndex(
     EngineeringSpace space,
     int wallIndex,
@@ -211,6 +263,23 @@ abstract final class RoomSurfaceResolver {
       throw RangeError.index(wallIndex, allWalls, 'wallIndex');
     }
     return allWalls[wallIndex];
+  }
+
+  static RoomWallSurface wallByBoundaryEdge(
+    EngineeringSpace space,
+    List<BoundaryEdgeId> orderedEdgeIds,
+    BoundaryEdgeId edgeId, {
+    int defaultHeightMm = 3000,
+  }) {
+    final index = orderedEdgeIds.indexOf(edgeId);
+    if (index < 0) {
+      throw StateError('Boundary edge $edgeId is not active for ${space.id}.');
+    }
+    return wallsByBoundaryEdges(
+      space,
+      orderedEdgeIds,
+      defaultHeightMm: defaultHeightMm,
+    )[index];
   }
 
   static bool openingFitsWall({
