@@ -6,6 +6,7 @@ import 'package:elecx/src/domain/boundary_host_registry.dart';
 import 'package:elecx/src/domain/boundary_topology.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
+import 'package:elecx/src/domain/project_orientation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -37,15 +38,12 @@ void main() {
     expect(mutations.undoDepth, 1);
     expect(
       mutations.current.engineeringMetadata
-          .boundaryHostedObjectRegistry['component:diagonal']!
-          .host
-          .edgeId,
+          .boundaryHostedObjectRegistry['component:diagonal']!.host.edgeId,
       fixture.first,
     );
     expect(
       mutations.current.engineeringMetadata
-          .boundaryHostedObjectRegistry['component:diagonal']!
-          .startOffsetMm,
+          .boundaryHostedObjectRegistry['component:diagonal']!.startOffsetMm,
       424,
     );
   });
