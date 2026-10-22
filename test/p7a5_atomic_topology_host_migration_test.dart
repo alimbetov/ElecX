@@ -10,7 +10,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P7A-5 atomic topology + hosted object migration', () {
-    test('split commits topology and all hosted references as one undo record', () {
+    test('split commits topology and all hosted references as one undo record',
+        () {
       final fixture = _Fixture();
       final initial = fixture.project(
         hostedObjects: fixture.hostedObjectsOnBottom(),
@@ -59,13 +60,17 @@ void main() {
       expect(mutations.undoDepth, 1);
       expect(
         mutations.current.index.boundary(fixture.spaceId)!.orderedEdgeIds,
-        [fixture.bottomA, fixture.bottomB, fixture.east, fixture.north, fixture.west],
+        [
+          fixture.bottomA,
+          fixture.bottomB,
+          fixture.east,
+          fixture.north,
+          fixture.west
+        ],
       );
       expect(
-        mutations.current.engineeringMetadata.boundaryHostedObjectRegistry[
-                'opening:o1']!
-            .host
-            .edgeId,
+        mutations.current.engineeringMetadata
+            .boundaryHostedObjectRegistry['opening:o1']!.host.edgeId,
         fixture.bottomB,
       );
 
@@ -77,10 +82,8 @@ void main() {
         [fixture.bottom, fixture.east, fixture.north, fixture.west],
       );
       expect(
-        undone.project.engineeringMetadata.boundaryHostedObjectRegistry[
-                'opening:o1']!
-            .host
-            .edgeId,
+        undone.project.engineeringMetadata
+            .boundaryHostedObjectRegistry['opening:o1']!.host.edgeId,
         fixture.bottom,
       );
       expect(
@@ -100,10 +103,8 @@ void main() {
       expect(redone, isNotNull);
       expect(redone!.project.version, LocalProjectVersion(3));
       expect(
-        redone.project.engineeringMetadata.boundaryHostedObjectRegistry[
-                'opening:o1']!
-            .host
-            .edgeId,
+        redone.project.engineeringMetadata
+            .boundaryHostedObjectRegistry['opening:o1']!.host.edgeId,
         fixture.bottomB,
       );
     });
