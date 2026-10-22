@@ -1,5 +1,6 @@
 import 'boundary_edge_identity_registry.dart';
 import 'boundary_host_registry.dart';
+import 'boundary_wall_profile_registry.dart';
 
 /// Canonical engineering orientation for ElecX project-space coordinates.
 ///
@@ -85,8 +86,11 @@ final class ProjectEngineeringNorth {
 /// can never be re-parented to another SpaceId later in the project lifecycle.
 ///
 /// [boundaryHostedObjectRegistry] is the P7A-5 authoritative wall-host
-/// ownership map. Discipline payloads may still be materialized by legacy
-/// editor models during cutover, but durable host identity lives here.
+/// ownership map for openings, components, cable endpoints and route anchors.
+///
+/// [boundaryWallProfileRegistry] owns non-default wall profile payloads by the
+/// same stable `(SpaceId, BoundaryEdgeId)` identity so split/merge can transform
+/// profile geometry inside the same canonical mutation.
 final class ProjectEngineeringMetadata {
   const ProjectEngineeringMetadata({
     this.projectNorth,
@@ -94,17 +98,21 @@ final class ProjectEngineeringMetadata {
         const BoundaryEdgeIdentityRegistry.empty(),
     this.boundaryHostedObjectRegistry =
         const BoundaryHostedObjectRegistry.empty(),
+    this.boundaryWallProfileRegistry =
+        const BoundaryWallProfileRegistry.empty(),
   });
 
   final ProjectEngineeringNorth? projectNorth;
   final BoundaryEdgeIdentityRegistry boundaryEdgeIdentityRegistry;
   final BoundaryHostedObjectRegistry boundaryHostedObjectRegistry;
+  final BoundaryWallProfileRegistry boundaryWallProfileRegistry;
 
   ProjectEngineeringMetadata copyWith({
     ProjectEngineeringNorth? projectNorth,
     bool clearProjectNorth = false,
     BoundaryEdgeIdentityRegistry? boundaryEdgeIdentityRegistry,
     BoundaryHostedObjectRegistry? boundaryHostedObjectRegistry,
+    BoundaryWallProfileRegistry? boundaryWallProfileRegistry,
   }) {
     if (clearProjectNorth && projectNorth != null) {
       throw ArgumentError(
@@ -118,6 +126,8 @@ final class ProjectEngineeringMetadata {
           boundaryEdgeIdentityRegistry ?? this.boundaryEdgeIdentityRegistry,
       boundaryHostedObjectRegistry:
           boundaryHostedObjectRegistry ?? this.boundaryHostedObjectRegistry,
+      boundaryWallProfileRegistry:
+          boundaryWallProfileRegistry ?? this.boundaryWallProfileRegistry,
     );
   }
 
@@ -137,12 +147,18 @@ final class ProjectEngineeringMetadata {
   ) =>
       copyWith(boundaryHostedObjectRegistry: registry);
 
+  ProjectEngineeringMetadata withBoundaryWallProfileRegistry(
+    BoundaryWallProfileRegistry registry,
+  ) =>
+      copyWith(boundaryWallProfileRegistry: registry);
+
   @override
   bool operator ==(Object other) =>
       other is ProjectEngineeringMetadata &&
       other.projectNorth == projectNorth &&
       other.boundaryEdgeIdentityRegistry.sameAs(boundaryEdgeIdentityRegistry) &&
-      other.boundaryHostedObjectRegistry.sameAs(boundaryHostedObjectRegistry);
+      other.boundaryHostedObjectRegistry.sameAs(boundaryHostedObjectRegistry) &&
+      other.boundaryWallProfileRegistry.sameAs(boundaryWallProfileRegistry);
 
   @override
   int get hashCode {
@@ -166,6 +182,18 @@ final class ProjectEngineeringMetadata {
         reference.startOffsetMm,
         reference.endOffsetMm,
       );
+    }
+    final profileEntries = boundaryWallProfileRegistry.profiles.entries.toList()
+      ..sort((a, b) {
+        final bySpace = a.key.spaceId.value.compareTo(b.key.spaceId.value);
+        if (bySpace != 0) return bySpace;
+        return a.key.edgeId.value.compareTo(b.key.edgeId.value);
+      });
+    for (final entry in profileEntries) {
+      result = Object.hash(result, entry.key);
+      for (final point in entry.value.vertices) {
+        result = Object.hash(result, point.xMm, point.yMm);
+      }
     }
     return result;
   }
