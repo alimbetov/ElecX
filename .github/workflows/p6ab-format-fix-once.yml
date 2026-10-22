@@ -1,0 +1,44 @@
+name: P6AB Format Fix Once
+
+on:
+  push:
+    branches:
+      - feat/project-structure-authoring
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: feat/project-structure-authoring
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Apply exact formatter diff
+        run: |
+          dart format \
+            lib/src/application/project/project_destructive_commands.dart \
+            lib/src/application/project/project_mutation.dart \
+            lib/src/application/project/project_space_commands.dart \
+            lib/src/application/project/project_space_semantics_commands.dart \
+            lib/src/domain/project_aggregate.dart \
+            lib/src/domain/project_identity.dart \
+            lib/src/serialization/project/canonical_project_document_codec.dart \
+            test/canonical_project_document_codec_test.dart \
+            test/p5d_g_closure_test.dart \
+            test/p6_semantic_mutation_test.dart \
+            test/p6ab_domain_hardening_test.dart
+          git rm .github/workflows/p6ab-format-fix-once.yml
+      - name: Commit formatter output
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "style(p6ab): apply canonical dart format"
+          git push origin HEAD:feat/project-structure-authoring
