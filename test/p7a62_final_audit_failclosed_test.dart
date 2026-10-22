@@ -67,48 +67,51 @@ void main() {
       );
     });
 
-    test('colliding route-anchor object keys fail closed instead of overwriting',
-        () {
-      final legacySpace = EngineeringSpace(
-        id: 'legacy-room',
-        name: 'Room',
-        type: SpaceType.room,
-        boundary: MmPolygon.rectangle(
-          const MmPoint(0, 0),
-          const MmPoint(4000, 3000),
-        ),
-        referenceFrame: const RoomReferenceFrame(origin: MmPoint(2000, 1500)),
-      );
-      final wall = RoomSurfaceRef.wall(legacySpace.id, 0);
-      final routeA = _route(
-        id: 'x',
-        wall: wall,
-        middleOffset: 1000,
-        middleAnchor: RouteAnchorId('y:anchor:z'),
-      );
-      final routeB = _route(
-        id: 'x:anchor:y',
-        wall: wall,
-        middleOffset: 2000,
-        middleAnchor: RouteAnchorId('z'),
-      );
+    test(
+      'colliding route-anchor object keys fail closed instead of overwriting',
+      () {
+        final legacySpace = EngineeringSpace(
+          id: 'legacy-room',
+          name: 'Room',
+          type: SpaceType.room,
+          boundary: MmPolygon.rectangle(
+            const MmPoint(0, 0),
+            const MmPoint(4000, 3000),
+          ),
+          referenceFrame:
+              const RoomReferenceFrame(origin: MmPoint(2000, 1500)),
+        );
+        final wall = RoomSurfaceRef.wall(legacySpace.id, 0);
+        final routeA = _route(
+          id: 'x',
+          wall: wall,
+          middleOffset: 1000,
+          middleAnchor: RouteAnchorId('y:anchor:z'),
+        );
+        final routeB = _route(
+          id: 'x:anchor:y',
+          wall: wall,
+          middleOffset: 2000,
+          middleAnchor: RouteAnchorId('z'),
+        );
 
-      expect(
-        () => CanonicalBoundaryHostProjection.capture(
-          canonicalSpaceId: SpaceId('space'),
-          legacySpace: legacySpace,
-          orderedEdgeIds: [
-            BoundaryEdgeId('bottom'),
-            BoundaryEdgeId('east'),
-            BoundaryEdgeId('north'),
-            BoundaryEdgeId('west'),
-          ],
-          openings: const [],
-          p2State: EditorP2State(routes: [routeA, routeB]),
-        ),
-        throwsStateError,
-      );
-    });
+        expect(
+          () => CanonicalBoundaryHostProjection.capture(
+            canonicalSpaceId: SpaceId('space'),
+            legacySpace: legacySpace,
+            orderedEdgeIds: [
+              BoundaryEdgeId('bottom'),
+              BoundaryEdgeId('east'),
+              BoundaryEdgeId('north'),
+              BoundaryEdgeId('west'),
+            ],
+            openings: const [],
+            p2State: EditorP2State(routes: [routeA, routeB]),
+          ),
+          throwsStateError,
+        );
+      },
+    );
   });
 }
 
