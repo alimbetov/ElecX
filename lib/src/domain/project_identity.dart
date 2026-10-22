@@ -31,32 +31,20 @@ abstract base class EntityId {
   String toString() => value;
 }
 
-final class ProjectId extends EntityId {
-  ProjectId(super.value);
-}
+final class ProjectId extends EntityId { ProjectId(super.value); }
+final class SiteId extends EntityId { SiteId(super.value); }
+final class BuildingId extends EntityId { BuildingId(super.value); }
+final class LevelId extends EntityId { LevelId(super.value); }
+final class ZoneId extends EntityId { ZoneId(super.value); }
+final class SpaceId extends EntityId { SpaceId(super.value); }
+final class OpeningId extends EntityId { OpeningId(super.value); }
 
-final class SiteId extends EntityId {
-  SiteId(super.value);
-}
+/// Stable identity for one symmetric semantic relationship between two spaces.
+final class SpaceAdjacencyId extends EntityId { SpaceAdjacencyId(super.value); }
 
-final class BuildingId extends EntityId {
-  BuildingId(super.value);
-}
-
-final class LevelId extends EntityId {
-  LevelId(super.value);
-}
-
-final class ZoneId extends EntityId {
-  ZoneId(super.value);
-}
-
-final class SpaceId extends EntityId {
-  SpaceId(super.value);
-}
-
-final class OpeningId extends EntityId {
-  OpeningId(super.value);
+/// Stable identity for one cross-discipline overlay classification.
+final class OverlayClassificationId extends EntityId {
+  OverlayClassificationId(super.value);
 }
 
 /// Stable identity for one logical polygon boundary edge.
@@ -64,54 +52,23 @@ final class OpeningId extends EntityId {
 /// This is distinct from a transient boundary-array index. The concrete wall
 /// lineage/migration model lands in P7, but introducing the type now prevents
 /// new APIs from cementing `wallIndex` as a persistent identity.
-final class BoundaryEdgeId extends EntityId {
-  BoundaryEdgeId(super.value);
-}
-
-final class VerticalCoreId extends EntityId {
-  VerticalCoreId(super.value);
-}
-
-final class ServiceEntryId extends EntityId {
-  ServiceEntryId(super.value);
-}
-
-final class ComponentId extends EntityId {
-  ComponentId(super.value);
-}
-
-final class PortId extends EntityId {
-  PortId(super.value);
-}
-
-final class CircuitId extends EntityId {
-  CircuitId(super.value);
-}
-
-final class RouteId extends EntityId {
-  RouteId(super.value);
-}
-
-final class GenerationId extends EntityId {
-  GenerationId(super.value);
-}
-
-final class TemplateId extends EntityId {
-  TemplateId(super.value);
-}
-
+final class BoundaryEdgeId extends EntityId { BoundaryEdgeId(super.value); }
+final class VerticalCoreId extends EntityId { VerticalCoreId(super.value); }
+final class ServiceEntryId extends EntityId { ServiceEntryId(super.value); }
+final class ComponentId extends EntityId { ComponentId(super.value); }
+final class PortId extends EntityId { PortId(super.value); }
+final class CircuitId extends EntityId { CircuitId(super.value); }
+final class RouteId extends EntityId { RouteId(super.value); }
+final class GenerationId extends EntityId { GenerationId(super.value); }
+final class TemplateId extends EntityId { TemplateId(super.value); }
 final class TypicalFloorDefinitionId extends EntityId {
   TypicalFloorDefinitionId(super.value);
 }
-
 final class EngineeringConnectionId extends EntityId {
   EngineeringConnectionId(super.value);
 }
 
 /// Allocates stable persistent identities at the application/domain boundary.
-///
-/// Preview/draft generators may use separate draft-local identities, but those
-/// identities must never leak into committed persistence.
 abstract interface class EntityIdFactory {
   ProjectId newProjectId();
   SiteId newSiteId();
@@ -120,6 +77,8 @@ abstract interface class EntityIdFactory {
   ZoneId newZoneId();
   SpaceId newSpaceId();
   OpeningId newOpeningId();
+  SpaceAdjacencyId newSpaceAdjacencyId();
+  OverlayClassificationId newOverlayClassificationId();
   BoundaryEdgeId newBoundaryEdgeId();
   VerticalCoreId newVerticalCoreId();
   ServiceEntryId newServiceEntryId();
@@ -133,81 +92,41 @@ abstract interface class EntityIdFactory {
   EngineeringConnectionId newEngineeringConnectionId();
 }
 
-/// Native-safe default identity allocator.
-///
-/// Generates RFC 4122 variant UUID v4 values using [Random.secure] by default.
-/// A [Random] may be injected only for deterministic tests/fixtures.
+/// Native-safe default identity allocator using RFC 4122 variant UUID v4.
 final class SecureRandomEntityIdFactory implements EntityIdFactory {
-  SecureRandomEntityIdFactory({Random? random})
-      : _random = random ?? Random.secure();
+  SecureRandomEntityIdFactory({Random? random}) : _random = random ?? Random.secure();
 
   final Random _random;
 
-  @override
-  ProjectId newProjectId() => ProjectId(_nextUuidV4());
-
-  @override
-  SiteId newSiteId() => SiteId(_nextUuidV4());
-
-  @override
-  BuildingId newBuildingId() => BuildingId(_nextUuidV4());
-
-  @override
-  LevelId newLevelId() => LevelId(_nextUuidV4());
-
-  @override
-  ZoneId newZoneId() => ZoneId(_nextUuidV4());
-
-  @override
-  SpaceId newSpaceId() => SpaceId(_nextUuidV4());
-
-  @override
-  OpeningId newOpeningId() => OpeningId(_nextUuidV4());
-
-  @override
-  BoundaryEdgeId newBoundaryEdgeId() => BoundaryEdgeId(_nextUuidV4());
-
-  @override
-  VerticalCoreId newVerticalCoreId() => VerticalCoreId(_nextUuidV4());
-
-  @override
-  ServiceEntryId newServiceEntryId() => ServiceEntryId(_nextUuidV4());
-
-  @override
-  ComponentId newComponentId() => ComponentId(_nextUuidV4());
-
-  @override
-  PortId newPortId() => PortId(_nextUuidV4());
-
-  @override
-  CircuitId newCircuitId() => CircuitId(_nextUuidV4());
-
-  @override
-  RouteId newRouteId() => RouteId(_nextUuidV4());
-
-  @override
-  GenerationId newGenerationId() => GenerationId(_nextUuidV4());
-
-  @override
-  TemplateId newTemplateId() => TemplateId(_nextUuidV4());
-
-  @override
-  TypicalFloorDefinitionId newTypicalFloorDefinitionId() =>
+  @override ProjectId newProjectId() => ProjectId(_nextUuidV4());
+  @override SiteId newSiteId() => SiteId(_nextUuidV4());
+  @override BuildingId newBuildingId() => BuildingId(_nextUuidV4());
+  @override LevelId newLevelId() => LevelId(_nextUuidV4());
+  @override ZoneId newZoneId() => ZoneId(_nextUuidV4());
+  @override SpaceId newSpaceId() => SpaceId(_nextUuidV4());
+  @override OpeningId newOpeningId() => OpeningId(_nextUuidV4());
+  @override SpaceAdjacencyId newSpaceAdjacencyId() => SpaceAdjacencyId(_nextUuidV4());
+  @override OverlayClassificationId newOverlayClassificationId() =>
+      OverlayClassificationId(_nextUuidV4());
+  @override BoundaryEdgeId newBoundaryEdgeId() => BoundaryEdgeId(_nextUuidV4());
+  @override VerticalCoreId newVerticalCoreId() => VerticalCoreId(_nextUuidV4());
+  @override ServiceEntryId newServiceEntryId() => ServiceEntryId(_nextUuidV4());
+  @override ComponentId newComponentId() => ComponentId(_nextUuidV4());
+  @override PortId newPortId() => PortId(_nextUuidV4());
+  @override CircuitId newCircuitId() => CircuitId(_nextUuidV4());
+  @override RouteId newRouteId() => RouteId(_nextUuidV4());
+  @override GenerationId newGenerationId() => GenerationId(_nextUuidV4());
+  @override TemplateId newTemplateId() => TemplateId(_nextUuidV4());
+  @override TypicalFloorDefinitionId newTypicalFloorDefinitionId() =>
       TypicalFloorDefinitionId(_nextUuidV4());
-
-  @override
-  EngineeringConnectionId newEngineeringConnectionId() =>
+  @override EngineeringConnectionId newEngineeringConnectionId() =>
       EngineeringConnectionId(_nextUuidV4());
 
   String _nextUuidV4() {
     final bytes = List<int>.generate(16, (_) => _random.nextInt(256));
-
-    // RFC 4122 version 4 and variant bits.
     bytes[6] = (bytes[6] & 0x0f) | 0x40;
     bytes[8] = (bytes[8] & 0x3f) | 0x80;
-
-    final hex =
-        bytes.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
+    final hex = bytes.map((byte) => byte.toRadixString(16).padLeft(2, '0')).join();
     return '${hex.substring(0, 8)}-'
         '${hex.substring(8, 12)}-'
         '${hex.substring(12, 16)}-'
