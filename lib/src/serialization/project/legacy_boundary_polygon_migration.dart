@@ -1,7 +1,5 @@
 import 'dart:convert';
 
-import 'package:crypto/crypto.dart';
-
 import '../../domain/boundary_edge_identity_registry.dart';
 import '../../domain/boundary_topology.dart';
 import '../../domain/project_identity.dart';
@@ -12,7 +10,7 @@ import '../../domain/project_identity.dart';
 /// The migration never uses wallIndex as durable identity. The old polygon
 /// order is only an input to deterministic ID allocation during the one-time
 /// conversion. Once created, BoundaryEdgeId is persisted and reused verbatim.
-/// Generated ids are opaque SHA-256 digests so their textual representation
+/// Generated ids are fixed-width opaque digests so their textual representation
 /// does not encode project, space or geometry semantics.
 abstract final class LegacyBoundaryPolygonMigration {
   static LegacyBoundaryMigrationResult migrate({
@@ -105,8 +103,25 @@ abstract final class LegacyBoundaryPolygonMigration {
       polygonSeed,
       edgeOrdinal.toString(),
     ].join('|');
-    final digest = sha256.convert(utf8.encode(seed));
-    return 'be_${digest.toString()}';
+    final bytes = utf8.encode(seed);
+    final digest = <int>[
+      0x243f6a88,
+      0x85a308d3,
+      0x13198a2e,
+      0x03707344,
+    ].map((salt) => _fnv1a64Hex(bytes, salt)).join();
+    return 'be_$digest';
+  }
+
+  static String _fnv1a64Hex(List<int> bytes, int salt) {
+    final mask = (BigInt.one << 64) - BigInt.one;
+    final prime = BigInt.from(0x100000001b3);
+    var hash = BigInt.parse('cbf29ce484222325', radix: 16) ^ BigInt.from(salt);
+    for (final byte in bytes) {
+      hash ^= BigInt.from(byte);
+      hash = (hash * prime) & mask;
+    }
+    return hash.toRadixString(16).padLeft(16, '0');
   }
 }
 
