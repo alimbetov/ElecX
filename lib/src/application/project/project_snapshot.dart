@@ -1,3 +1,4 @@
+import '../../domain/boundary_geometry_integrity.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 
@@ -21,6 +22,12 @@ final class ProjectSnapshot {
         'updatedAt',
         'Must not be before createdAt.',
       );
+    }
+
+    aggregate.engineeringMetadata.boundaryEdgeIdentityRegistry
+        .requireCoversActiveBoundaries(aggregate.stores.boundaries);
+    for (final topology in aggregate.stores.boundaries.values) {
+      BoundaryGeometryIntegrity.validateOrThrow(topology);
     }
   }
 
