@@ -20,7 +20,8 @@ import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('production split merge and history use one canonical ownership path', () {
+  test('production split merge and history use one canonical ownership path',
+      () {
     final fixture = _Fixture();
     addTearDown(fixture.dispose);
     final binding = fixture.bind();
@@ -55,7 +56,8 @@ void main() {
     expect(fixture.ownershipCount, 2);
 
     expect(fixture.controller.documentHistory.redo(), isTrue);
-    final splitTopology = fixture.session.project.index.boundary(fixture.spaceId)!;
+    final splitTopology =
+        fixture.session.project.index.boundary(fixture.spaceId)!;
     expect(splitTopology.orderedEdgeIds, hasLength(5));
     expect(fixture.controller.selectedSpace!.boundary.vertices, hasLength(5));
     expect(fixture.ownershipCount, 3);
