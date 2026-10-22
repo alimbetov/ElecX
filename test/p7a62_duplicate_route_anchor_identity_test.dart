@@ -40,4 +40,36 @@ void main() {
       throwsStateError,
     );
   });
+
+  test('legacy durable anchor cannot occupy projection transition namespace',
+      () {
+    final route = ElectricalCableRoute(
+      id: 'route-reserved-anchor',
+      source: const ElectricalEndpointRef(componentId: 's', portId: 'out'),
+      target: const ElectricalEndpointRef(componentId: 't', portId: 'in'),
+      segments: [
+        ElectricalRouteSegment(
+          surface: RoomSurfaceRef.wall('room', 0),
+          points: const [
+            SurfacePointMm(500, 400),
+            SurfacePointMm(1500, 400),
+            SurfacePointMm(2500, 400),
+          ],
+          anchorIds: [
+            RouteAnchorId('source-placeholder'),
+            RouteAnchorId('p7a-transition:user-supplied'),
+            RouteAnchorId('target-placeholder'),
+          ],
+        ),
+      ],
+    );
+
+    expect(
+      () => RouteAnchorIdentityMigration.migrate(
+        route,
+        SecureRandomEntityIdFactory(random: Random(6203)),
+      ),
+      throwsStateError,
+    );
+  });
 }
