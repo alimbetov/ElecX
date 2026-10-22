@@ -2,6 +2,7 @@ import '../../application/project/project_structure_authoring.dart';
 import 'canonical_editor_runtime_cutover.dart';
 import 'canonical_room_surface_runtime_registry.dart';
 import 'editor_building_workspace.dart';
+import 'editor_document_history.dart';
 
 typedef CanonicalEditorCutoverBlockedCallback = void Function(
   CanonicalEditorMaterializationResult result,
@@ -50,17 +51,14 @@ final class CanonicalEditorScreenCutoverBinding {
   bool isBoundTo(EditorBuildingWorkspace candidate) =>
       identical(workspace, candidate);
 
-  /// Attaches the legacy listeners and the runtime-only stable-surface bridge,
-  /// then optionally projects the current canonical location into the canvas.
-  /// Calling start twice is a no-op.
-  ///
-  /// Unexpected initial-push failures roll listener/registry ownership back so
-  /// the screen cannot remain half-started. Controlled materialization blockers
-  /// do not throw and keep the binding active for later valid navigation.
+  /// Attaches legacy listeners, unified document history and the runtime-only
+  /// stable-surface bridge, then optionally projects the current canonical
+  /// location into the canvas. Calling start twice is a no-op.
   void start({bool pushInitialCanonicalState = true}) {
     _requireNotDisposed();
     if (_started) return;
     _started = true;
+    workspace.editor.documentHistory.attachCanonicalSession(coordinator.session);
     CanonicalRoomSurfaceRuntimeRegistry.attach(
       coordinator,
       onBoundaryTopologyCommitted: onBoundaryTopologyCommitted,
@@ -81,9 +79,9 @@ final class CanonicalEditorScreenCutoverBinding {
 
   /// Entry point for Project Navigator / breadcrumb transitions.
   ///
-  /// A blocked materialization is reported as controlled state and does not
-  /// mutate the canvas. Unexpected adapter/runtime failures are reported
-  /// separately and are not reclassified as materialization blockers.
+  /// Canonical projection is suppressed from the legacy architecture journal:
+  /// the authoritative P3 mutation is the history entry, not the materialized
+  /// compatibility copy in EditorController.
   CanonicalEditorMaterializationResult pushCanonicalToEditor() {
     _requireNotDisposed();
     final readiness = coordinator.inspectCurrentTarget();
@@ -93,10 +91,12 @@ final class CanonicalEditorScreenCutoverBinding {
     }
 
     try {
-      coordinator.pushCanonicalToEditor();
-      _lastLegacySelectionFingerprint = _legacySelectionFingerprint();
-      _lastRejectedLegacySelectionFingerprint = null;
-      CanonicalRoomSurfaceRuntimeRegistry.applyStagedResume(workspace.editor);
+      workspace.editor.documentHistory.runCanonicalProjection(() {
+        coordinator.pushCanonicalToEditor();
+        _lastLegacySelectionFingerprint = _legacySelectionFingerprint();
+        _lastRejectedLegacySelectionFingerprint = null;
+        CanonicalRoomSurfaceRuntimeRegistry.applyStagedResume(workspace.editor);
+      });
       return readiness;
     } on CanonicalEditorCutoverBlockedException catch (error) {
       onBlocked?.call(error.result);
@@ -107,9 +107,9 @@ final class CanonicalEditorScreenCutoverBinding {
     }
   }
 
-  /// Detaches all listeners and runtime-only stable-surface ownership. The
-  /// coordinator/session are externally owned and are deliberately not disposed
-  /// by this transitional binding.
+  /// Detaches all listeners and runtime-only ownership. The canonical session
+  /// remains externally owned, but its history entries are invalid after this
+  /// exact production binding disappears, so the unified journal fails closed.
   void dispose() {
     if (_disposed) return;
     _disposed = true;
@@ -152,6 +152,7 @@ final class CanonicalEditorScreenCutoverBinding {
 
   void _detachListeners() {
     CanonicalRoomSurfaceRuntimeRegistry.detach(coordinator);
+    workspace.editor.documentHistory.detachCanonicalSession(coordinator.session);
     if (!_started) return;
     workspace.removeListener(_onLegacyRuntimeChanged);
     workspace.editor.removeListener(_onLegacyRuntimeChanged);
