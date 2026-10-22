@@ -18,6 +18,8 @@ import '../../domain/surfaces.dart';
 import '../../domain/wall_profile.dart';
 import '../../engine/selection_engine.dart';
 import 'cable_route_constraints.dart';
+import 'canonical_room_surface_resume.dart';
+import 'canonical_room_surface_runtime_registry.dart';
 import 'circuit_sizing_evidence.dart';
 import 'editor_building_workspace.dart';
 import 'editor_controller.dart';
@@ -38,11 +40,16 @@ final class EditorProjectResumeState {
     required this.zoom,
     required this.roomSequence,
     required this.openingSequence,
+    this.canonicalSurface,
   });
 
   final String? selectedSpaceId;
   final String? selectedOpeningId;
+
+  /// Legacy-only resume address. Canonical runtime writes this as null and
+  /// persists [canonicalSurface] instead, so wallIndex cannot survive Save.
   final RoomSurfaceRef? activeSurface;
+  final CanonicalRoomSurfaceResume? canonicalSurface;
   final EditorViewMode viewMode;
   final bool snapEnabled;
   final bool dimensionsVisible;
@@ -124,6 +131,12 @@ final class EditorProjectDocument {
           projectId: workspace.site.site.id,
           now: now,
         );
+    final canonicalRuntime =
+        CanonicalRoomSurfaceRuntimeRegistry.hasCanonicalRuntime(editor);
+    final canonicalSurface = canonicalRuntime
+        ? CanonicalRoomSurfaceRuntimeRegistry.capture(editor)
+        : null;
+
     return EditorProjectDocument(
       schemaVersion: currentSchemaVersion,
       metadata: projectMetadata,
@@ -137,8 +150,11 @@ final class EditorProjectDocument {
       resume: EditorProjectResumeState(
         selectedSpaceId: editor.selectedSpaceId,
         selectedOpeningId: editor.selectedOpeningId,
-        activeSurface: editor.activeSurface,
-        viewMode: editor.viewMode,
+        // Once canonical runtime owns the workspace we never serialize a wall
+        // ordinal. If stable resolution is blocked, Save resumes at Plan.
+        activeSurface: canonicalRuntime ? null : editor.activeSurface,
+        canonicalSurface: canonicalSurface,
+        viewMode: canonicalRuntime ? EditorViewMode.plan : editor.viewMode,
         snapEnabled: editor.snapEnabled,
         dimensionsVisible: editor.dimensionsVisible,
         floorGridMm: editor.floorGridMm,
@@ -171,11 +187,12 @@ final class EditorProjectDocument {
       selectedZoneId: selectedZoneId,
       activeOutdoorZoneId: activeOutdoorZoneId,
     );
+    final stableResume = resume.canonicalSurface;
     editor.restoreResumeState(
       selectedSpaceId: resume.selectedSpaceId,
       selectedOpeningId: resume.selectedOpeningId,
-      activeSurface: resume.activeSurface,
-      viewMode: resume.viewMode,
+      activeSurface: stableResume == null ? resume.activeSurface : null,
+      viewMode: stableResume == null ? resume.viewMode : EditorViewMode.plan,
       snapEnabled: resume.snapEnabled,
       dimensionsVisible: resume.dimensionsVisible,
       floorGridMm: resume.floorGridMm,
@@ -183,6 +200,9 @@ final class EditorProjectDocument {
       roomSequence: resume.roomSequence,
       openingSequence: resume.openingSequence,
     );
+    if (stableResume != null) {
+      CanonicalRoomSurfaceRuntimeRegistry.stageResume(editor, stableResume);
+    }
     editor.restoreP2State(p2State);
     return RestoredEditorProject(editor: editor, workspace: workspace);
   }
@@ -415,6 +435,7 @@ Map<String, Object?> _resumeToJson(EditorProjectResumeState value) => {
       'activeSurface': value.activeSurface == null
           ? null
           : _surfaceToJson(value.activeSurface!),
+      'canonicalSurface': value.canonicalSurface?.toJson(),
       'viewMode': value.viewMode.name,
       'snapEnabled': value.snapEnabled,
       'dimensionsVisible': value.dimensionsVisible,
@@ -424,25 +445,32 @@ Map<String, Object?> _resumeToJson(EditorProjectResumeState value) => {
       'openingSequence': value.openingSequence,
     };
 
-EditorProjectResumeState _resumeFromJson(Map<String, Object?> json) =>
-    EditorProjectResumeState(
-      selectedSpaceId: _nullableString(json['selectedSpaceId']),
-      selectedOpeningId: _nullableString(json['selectedOpeningId']),
-      activeSurface: json['activeSurface'] == null
-          ? null
-          : _surfaceFromJson(_map(json['activeSurface'], 'activeSurface')),
-      viewMode: _enumValue(
-        EditorViewMode.values,
-        _string(json['viewMode'], 'viewMode'),
-        'viewMode',
-      ),
-      snapEnabled: _bool(json['snapEnabled'], 'snapEnabled'),
-      dimensionsVisible: _bool(json['dimensionsVisible'], 'dimensionsVisible'),
-      floorGridMm: _int(json['floorGridMm'], 'floorGridMm'),
-      zoom: _double(json['zoom'], 'zoom'),
-      roomSequence: _int(json['roomSequence'], 'roomSequence'),
-      openingSequence: _int(json['openingSequence'], 'openingSequence'),
-    );
+EditorProjectResumeState _resumeFromJson(Map<String, Object?> json) {
+  final canonicalRaw = json['canonicalSurface'];
+  return EditorProjectResumeState(
+    selectedSpaceId: _nullableString(json['selectedSpaceId']),
+    selectedOpeningId: _nullableString(json['selectedOpeningId']),
+    activeSurface: json['activeSurface'] == null
+        ? null
+        : _surfaceFromJson(_map(json['activeSurface'], 'activeSurface')),
+    canonicalSurface: canonicalRaw == null
+        ? null
+        : CanonicalRoomSurfaceResume.fromJson(
+            _map(canonicalRaw, 'canonicalSurface'),
+          ),
+    viewMode: _enumValue(
+      EditorViewMode.values,
+      _string(json['viewMode'], 'viewMode'),
+      'viewMode',
+    ),
+    snapEnabled: _bool(json['snapEnabled'], 'snapEnabled'),
+    dimensionsVisible: _bool(json['dimensionsVisible'], 'dimensionsVisible'),
+    floorGridMm: _int(json['floorGridMm'], 'floorGridMm'),
+    zoom: _double(json['zoom'], 'zoom'),
+    roomSequence: _int(json['roomSequence'], 'roomSequence'),
+    openingSequence: _int(json['openingSequence'], 'openingSequence'),
+  );
+}
 
 Map<String, Object?> _buildingToJson(ComposedBuilding value) => {
       'building': _plainBuildingToJson(value.building),
