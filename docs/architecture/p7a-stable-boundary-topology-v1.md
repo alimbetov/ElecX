@@ -8,6 +8,8 @@ P7A establishes durable horizontal boundary identity before vertical topology (P
 
 This stage starts from the P6-qualified canonical project baseline. Windows/Linux/Android/iOS/iPadOS executable runners are not prerequisites for P7A, but every P7A domain contract is platform-independent from its first implementation.
 
+P7A does not create platform stubs. The canonical topology implementation is real production domain code shared by all native targets. Platform-specific code is introduced only where a real platform capability differs: pointer/gesture input, lifecycle/interruption, filesystem/document access, windowing/adaptive layout, shortcuts and packaging.
+
 ## Problem being removed
 
 The transitional editor can address room walls by polygon/list index:
@@ -223,6 +225,50 @@ No P7A identity depends on:
 - wall list index;
 - translated display text.
 
+### Native platform ownership matrix
+
+P7A explicitly accounts for the native platforms without forking topology semantics:
+
+| Layer/concern | macOS / Windows / Linux | Android / iOS / iPadOS | P7A rule |
+| --- | --- | --- | --- |
+| boundary graph | identical canonical model | identical canonical model | one `SpaceBoundaryTopology` |
+| edge identity | identical | identical | one `BoundaryEdgeId` contract |
+| split/merge lineage | identical | identical | one deterministic change set |
+| topology validation | identical | identical | domain-owned |
+| pointer input | mouse/trackpad/keyboard | touch/stylus + optional mouse/keyboard | normalized before mutation |
+| cancellation | pointer cancel/focus/window events | gesture cancel/app lifecycle/route change | transient edit cancels atomically |
+| shortcuts | Cmd/Ctrl/platform conventions | optional hardware keyboard | presentation accelerator only |
+| file/document access | native desktop filesystem/picker | sandbox/document/content URI APIs | outside canonical topology |
+| persistence schema | identical | identical | no platform-specific topology codec |
+| adaptive UI | windows/panels/hover affordances | sheets/split view/touch targets | UI only; never identity ownership |
+
+### Input normalization
+
+P7A must receive semantic topology intents, not raw platform gestures:
+
+```text
+mouse drag ───────┐
+touch drag ───────┤
+stylus drag ──────┤
+keyboard nudge ───┼──> BoundaryEditSession / semantic operation
+trackpad gesture ─┘                     │
+                                       ▼
+                          topology candidate + lineage
+                                       │
+                                       ▼
+                              canonical mutation
+```
+
+Raw pointer IDs, button numbers, pressure and hover state never become canonical project data.
+
+### Lifecycle safety
+
+An in-progress boundary edit is transient on every target.
+
+On window focus loss, pointer cancel, route change, Android/iOS lifecycle interruption, iPadOS multitasking transition or desktop close request, the session must either complete an already-authorized atomic commit or cancel without changing the canonical boundary graph.
+
+Half-applied split/merge operations are forbidden.
+
 ## P7A implementation slices
 
 ### P7A-1 — domain identity foundation
@@ -253,7 +299,8 @@ No P7A identity depends on:
 - adapt Room Surface Navigator from durable wall index assumptions to `BoundaryEdgeId` projection;
 - route boundary geometry edits through canonical mutation;
 - preserve current UI wall labels as presentation only;
-- fail closed on stale selected/hosted edges.
+- fail closed on stale selected/hosted edges;
+- normalize desktop/touch/stylus interactions into the same boundary edit operation rather than platform-specific mutation code.
 
 ### P7A-5 — hosted-object migration
 
@@ -272,7 +319,8 @@ No P7A identity depends on:
 - corrupt/legacy migration cases;
 - Flutter qualification;
 - current macOS Desktop qualification;
-- portability invariants retained for pending native platform runners.
+- architecture portability review for Windows/Linux/Android/iOS/iPadOS;
+- later executable qualification on those targets when their real runners are introduced.
 
 ## Explicit non-goals
 
@@ -281,7 +329,7 @@ P7A does not implement:
 - P7B vertical cores/risers/level transition topology;
 - P7C typical-floor definition/instance lineage;
 - P8 Project Wizard generation;
-- Windows/Linux/mobile runner setup;
+- fake/no-op Windows/Linux/mobile platform services;
 - browser/Web behavior;
 - automatic arbitrary host relocation after destructive geometry edits.
 
@@ -299,7 +347,9 @@ P7A is `DONE + HARDENED` only when:
 - legacy polygon migration is deterministic;
 - undo/redo preserves/reverts topology identity atomically;
 - production wall navigation resolves through stable identity;
-- current Flutter + macOS qualification gates pass.
+- no platform-specific topology semantics or no-op portability stubs exist;
+- current Flutter + macOS qualification gates pass;
+- Windows/Linux/Android/iOS/iPadOS architecture invariants remain satisfied.
 ```
 
 P7B may be designed in parallel, but P7A identity rules must not be bypassed by vertical or generated topology.
