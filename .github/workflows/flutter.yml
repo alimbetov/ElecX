@@ -18,8 +18,10 @@ jobs:
         id: format
         continue-on-error: true
         run: |
+          set +e
           dart format --output=none --set-exit-if-changed lib test
           status=$?
+          set -e
           if [ "$status" -ne 0 ]; then
             dart format lib test
             git diff -- lib test > dart-format.diff
