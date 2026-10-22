@@ -1,5 +1,7 @@
 import '../../domain/boundary_geometry_integrity.dart';
+import '../../domain/boundary_host_registry.dart';
 import '../../domain/boundary_opening_profile_validation.dart';
+import '../../domain/boundary_wall_profile_registry.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 
@@ -83,8 +85,8 @@ final class ProjectSnapshot {
 
 void _validateAdoptedOpeningOwnership({
   required ProjectAggregateRoot aggregate,
-  required dynamic hostedObjects,
-  required dynamic wallProfiles,
+  required BoundaryHostedObjectRegistry hostedObjects,
+  required BoundaryWallProfileRegistry wallProfiles,
 }) {
   for (final spaceId in aggregate.stores.spaces.keys) {
     final hasCanonicalOwnership =
