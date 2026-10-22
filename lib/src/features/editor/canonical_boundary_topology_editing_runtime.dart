@@ -131,6 +131,10 @@ abstract final class CanonicalBoundaryTopologyEditingRuntime {
       session: coordinator.session,
       label: 'Edit boundary topology',
       rematerialize: rematerializeCurrentCanonicalState,
+      onReplayed: (result) => ownership(
+        coordinator.session.boundaryTopologyEditing,
+        result,
+      ),
     );
 
     try {
