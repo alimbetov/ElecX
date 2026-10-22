@@ -312,6 +312,11 @@ final class _Fixture {
     );
     final binding = CanonicalEditorScreenCutoverBinding(
       coordinator: coordinator,
+      onCanonicalMutationReplayed: withTopologyOwner
+          ? (_) {
+              ownershipCommitCount++;
+            }
+          : null,
       onBoundaryTopologyCommitted: withTopologyOwner
           ? (_, __) {
               ownershipCommitCount++;
