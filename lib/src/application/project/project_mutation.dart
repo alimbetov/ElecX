@@ -1,3 +1,4 @@
+import '../../domain/boundary_edge_identity_registry.dart';
 import '../../domain/boundary_topology.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
@@ -181,11 +182,13 @@ final class ProjectEngineeringMetadataDiff {
   const ProjectEngineeringMetadataDiff({
     required this.beforeProjectNorth,
     required this.afterProjectNorth,
+    this.boundaryEdgeIdentityRegistryChanged = false,
   });
 
   const ProjectEngineeringMetadataDiff.empty()
       : beforeProjectNorth = null,
-        afterProjectNorth = null;
+        afterProjectNorth = null,
+        boundaryEdgeIdentityRegistryChanged = false;
 
   factory ProjectEngineeringMetadataDiff.between(
     ProjectEngineeringMetadata before,
@@ -194,14 +197,19 @@ final class ProjectEngineeringMetadataDiff {
       ProjectEngineeringMetadataDiff(
         beforeProjectNorth: before.projectNorth,
         afterProjectNorth: after.projectNorth,
+        boundaryEdgeIdentityRegistryChanged: !before
+            .boundaryEdgeIdentityRegistry
+            .sameAs(after.boundaryEdgeIdentityRegistry),
       );
 
   final ProjectEngineeringNorth? beforeProjectNorth;
   final ProjectEngineeringNorth? afterProjectNorth;
+  final bool boundaryEdgeIdentityRegistryChanged;
 
   bool get projectNorthChanged => beforeProjectNorth != afterProjectNorth;
-  bool get isEmpty => !projectNorthChanged;
-  bool get isNotEmpty => projectNorthChanged;
+  bool get isEmpty =>
+      !projectNorthChanged && !boundaryEdgeIdentityRegistryChanged;
+  bool get isNotEmpty => !isEmpty;
 }
 
 final class ProjectChangeSet {
@@ -402,10 +410,12 @@ final class _ProjectMutableStateDiff {
 final class ProjectMutationSession {
   ProjectMutationSession(ProjectAggregateRoot initial)
       : _current = initial,
-        _boundaryOwnerHistory = _collectBoundaryOwners(initial.stores);
+        _boundaryIdentityRegistry = initial
+            .engineeringMetadata.boundaryEdgeIdentityRegistry
+            .registerActiveBoundaries(initial.stores.boundaries);
 
   ProjectAggregateRoot _current;
-  final Map<BoundaryEdgeId, SpaceId> _boundaryOwnerHistory;
+  BoundaryEdgeIdentityRegistry _boundaryIdentityRegistry;
   final List<UndoRecord> _undoStack = <UndoRecord>[];
   final List<UndoRecord> _redoStack = <UndoRecord>[];
 
@@ -421,8 +431,9 @@ final class ProjectMutationSession {
     final before = _current;
     final candidate = request.command.buildCandidate(before);
     CandidateGraphValidator.validate(current: before, candidate: candidate);
-    final candidateState = candidate.resolveState(before);
-    _validateBoundaryOwnerHistory(candidateState.stores);
+    final candidateState = _withDurableBoundaryRegistry(
+      candidate.resolveState(before),
+    );
     final stateDiff = _ProjectMutableStateDiff.between(
       ProjectMutableState.fromProject(before),
       candidateState,
@@ -450,8 +461,9 @@ final class ProjectMutationSession {
     final beforeState = ProjectMutableState.fromProject(before);
     final candidate = request.command.buildCandidate(before);
     CandidateGraphValidator.validate(current: before, candidate: candidate);
-    final candidateState = candidate.resolveState(before);
-    _validateBoundaryOwnerHistory(candidateState.stores);
+    final candidateState = _withDurableBoundaryRegistry(
+      candidate.resolveState(before),
+    );
     final stateDiff = _ProjectMutableStateDiff.between(
       beforeState,
       candidateState,
@@ -475,6 +487,8 @@ final class ProjectMutationSession {
       engineeringMetadataDiff: stateDiff.engineeringMetadataDiff,
     );
     _current = committed;
+    _boundaryIdentityRegistry =
+        committed.engineeringMetadata.boundaryEdgeIdentityRegistry;
     _undoStack.add(
       UndoRecord.fromStates(
         commandType: commandType,
@@ -483,7 +497,6 @@ final class ProjectMutationSession {
       ),
     );
     _redoStack.clear();
-    _recordBoundaryOwners(committed.stores);
     return ProjectMutationResult(project: committed, changeSet: changeSet);
   }
 
@@ -493,16 +506,17 @@ final class ProjectMutationSession {
     final before = _current;
     final beforeState = ProjectMutableState.fromProject(before);
     final record = _undoStack.last;
+    final targetState = _withDurableBoundaryRegistry(record.beforeState);
     final stateDiff = _ProjectMutableStateDiff.between(
       beforeState,
-      record.beforeState,
+      targetState,
     );
     if (stateDiff.isEmpty) {
       throw StateError(
         'Undo history is inconsistent with current project state.',
       );
     }
-    final restored = _commitState(state: record.beforeState, before: before);
+    final restored = _commitState(state: targetState, before: before);
     final changeSet = ProjectChangeSet(
       kind: ProjectChangeKind.undo,
       commandType: record.commandType,
@@ -512,6 +526,8 @@ final class ProjectMutationSession {
       engineeringMetadataDiff: stateDiff.engineeringMetadataDiff,
     );
     _current = restored;
+    _boundaryIdentityRegistry =
+        restored.engineeringMetadata.boundaryEdgeIdentityRegistry;
     _undoStack.removeLast();
     _redoStack.add(record);
     return ProjectMutationResult(project: restored, changeSet: changeSet);
@@ -523,16 +539,17 @@ final class ProjectMutationSession {
     final before = _current;
     final beforeState = ProjectMutableState.fromProject(before);
     final record = _redoStack.last;
+    final targetState = _withDurableBoundaryRegistry(record.afterState);
     final stateDiff = _ProjectMutableStateDiff.between(
       beforeState,
-      record.afterState,
+      targetState,
     );
     if (stateDiff.isEmpty) {
       throw StateError(
         'Redo history is inconsistent with current project state.',
       );
     }
-    final restored = _commitState(state: record.afterState, before: before);
+    final restored = _commitState(state: targetState, before: before);
     final changeSet = ProjectChangeSet(
       kind: ProjectChangeKind.redo,
       commandType: record.commandType,
@@ -542,6 +559,8 @@ final class ProjectMutationSession {
       engineeringMetadataDiff: stateDiff.engineeringMetadataDiff,
     );
     _current = restored;
+    _boundaryIdentityRegistry =
+        restored.engineeringMetadata.boundaryEdgeIdentityRegistry;
     _redoStack.removeLast();
     _undoStack.add(record);
     return ProjectMutationResult(project: restored, changeSet: changeSet);
@@ -551,39 +570,39 @@ final class ProjectMutationSession {
     required ProjectMutableState state,
     required ProjectAggregateRoot before,
   }) {
+    final durableState = _withDurableBoundaryRegistry(state);
     final issues = ProjectAggregateValidator.validate(
       rootSiteId: before.siteId,
-      stores: state.stores,
+      stores: durableState.stores,
     );
     if (issues.isNotEmpty) {
       throw ProjectCandidateValidationException(issues);
     }
-    _validateBoundaryOwnerHistory(state.stores);
     return ProjectAggregateRoot(
       id: before.id,
       siteId: before.siteId,
       version: before.version.next(),
-      engineeringMetadata: state.engineeringMetadata,
-      stores: state.stores,
+      engineeringMetadata: durableState.engineeringMetadata,
+      stores: durableState.stores,
     );
   }
 
-  void _validateBoundaryOwnerHistory(ProjectEntityStores stores) {
-    for (final entry in _collectBoundaryOwners(stores).entries) {
-      final expectedOwner = _boundaryOwnerHistory[entry.key];
-      if (expectedOwner != null && expectedOwner != entry.value) {
-        throw BoundaryEdgeOwnershipException(
-          edgeId: entry.key,
-          expectedSpaceId: expectedOwner,
-          actualSpaceId: entry.value,
-        );
-      }
-    }
-  }
-
-  void _recordBoundaryOwners(ProjectEntityStores stores) {
-    for (final entry in _collectBoundaryOwners(stores).entries) {
-      _boundaryOwnerHistory.putIfAbsent(entry.key, () => entry.value);
+  ProjectMutableState _withDurableBoundaryRegistry(ProjectMutableState state) {
+    try {
+      final registry = _boundaryIdentityRegistry.registerActiveBoundaries(
+        state.stores.boundaries,
+      );
+      return ProjectMutableState(
+        engineeringMetadata: state.engineeringMetadata
+            .withBoundaryEdgeIdentityRegistry(registry),
+        stores: state.stores,
+      );
+    } on BoundaryEdgeIdentityOwnershipException catch (error) {
+      throw BoundaryEdgeOwnershipException(
+        edgeId: error.edgeId,
+        expectedSpaceId: error.expectedSpaceId,
+        actualSpaceId: error.actualSpaceId,
+      );
     }
   }
 
@@ -607,18 +626,6 @@ final class ProjectMutationSession {
       );
     }
   }
-}
-
-Map<BoundaryEdgeId, SpaceId> _collectBoundaryOwners(
-  ProjectEntityStores stores,
-) {
-  final owners = <BoundaryEdgeId, SpaceId>{};
-  for (final topology in stores.boundaries.values) {
-    for (final edgeId in topology.edges.keys) {
-      owners[edgeId] = topology.spaceId;
-    }
-  }
-  return owners;
 }
 
 void _diffMap<K extends EntityId, V>(
