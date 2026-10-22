@@ -151,7 +151,8 @@ void main() {
       }
     });
 
-    test('rejects missing or malformed orientation object in current schema', () {
+    test('rejects missing or malformed orientation object in current schema',
+        () {
       final document = codec.encode(_multiBuildingSnapshot());
 
       final missing = _mutablePayload(document)..remove('projectOrientation');
