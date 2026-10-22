@@ -55,6 +55,30 @@ void main() {
       expect(result.startOffsetMm, 1);
     });
 
+    test('rounded source endpoint maps to exact end of second child', () {
+      final fixture = _DiagonalSplitFixture();
+
+      final result = BoundaryHostedObjectRemapper.remapAll(
+        before: fixture.before,
+        after: fixture.after,
+        lineage: fixture.lineage,
+        references: [
+          BoundaryHostedReference.point(
+            objectKey: 'cable:rounded-endpoint',
+            objectKind: BoundaryHostedObjectKind.cableEndpoint,
+            host: BoundaryEdgeHostRef(
+              spaceId: fixture.spaceId,
+              edgeId: fixture.source,
+            ),
+            offsetMm: 849,
+          ),
+        ],
+      ).single;
+
+      expect(result.host.edgeId, fixture.second);
+      expect(result.startOffsetMm, 424);
+    });
+
     test('interval ending before non-integer split remains on first child', () {
       final fixture = _DiagonalSplitFixture();
 
