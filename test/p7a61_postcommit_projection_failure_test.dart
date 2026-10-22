@@ -221,7 +221,7 @@ final class _Fixture {
       });
 
   CanonicalEditorScreenCutoverBinding _bind(
-    CanonicalMutationOwnershipCallback owner,
+    void Function(ProjectMutationResult result) owner,
   ) {
     final coordinator = CanonicalEditorRuntimeCutoverCoordinator(
       session: session,
