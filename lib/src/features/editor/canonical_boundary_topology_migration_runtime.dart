@@ -264,12 +264,20 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
       spaceId: context.spaceId,
       expectedVersion: context.coordinator.session.project.version,
     );
-    edit.previewSplitEdge(
-      sourceEdgeId: edgeId,
-      splitPoint: splitPoint,
-      firstResultEdgeId: ids.newBoundaryEdgeId(),
-      secondResultEdgeId: ids.newBoundaryEdgeId(),
-    );
+    try {
+      edit.previewSplitEdge(
+        sourceEdgeId: edgeId,
+        splitPoint: splitPoint,
+        firstResultEdgeId: ids.newBoundaryEdgeId(),
+        secondResultEdgeId: ids.newBoundaryEdgeId(),
+      );
+    } catch (_) {
+      // Preview is pre-commit and therefore safe to reject as a boolean
+      // production operation. `_commit` intentionally stays outside this
+      // catch: persistence-owner failures after an authoritative commit must
+      // continue to propagate rather than masquerading as a rejected edit.
+      return false;
+    }
     return _commit(
       controller: controller,
       context: context,
@@ -298,11 +306,15 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
       spaceId: context.spaceId,
       expectedVersion: context.coordinator.session.project.version,
     );
-    edit.previewMergeAdjacentEdges(
-      firstSourceEdgeId: edgeId,
-      secondSourceEdgeId: next,
-      resultEdgeId: ids.newBoundaryEdgeId(),
-    );
+    try {
+      edit.previewMergeAdjacentEdges(
+        firstSourceEdgeId: edgeId,
+        secondSourceEdgeId: next,
+        resultEdgeId: ids.newBoundaryEdgeId(),
+      );
+    } catch (_) {
+      return false;
+    }
     return _commit(
       controller: controller,
       context: context,
@@ -327,11 +339,15 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
       spaceId: context.spaceId,
       expectedVersion: context.coordinator.session.project.version,
     );
-    edit.previewReplaceTopology(
-      topology: topology,
-      lineage: lineage,
-      wallProfiles: wallProfiles,
-    );
+    try {
+      edit.previewReplaceTopology(
+        topology: topology,
+        lineage: lineage,
+        wallProfiles: wallProfiles,
+      );
+    } catch (_) {
+      return false;
+    }
     return _commit(
       controller: controller,
       context: context,
@@ -424,99 +440,81 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
   }) {
     final legacySpace = controller.selectedSpace;
     if (legacySpace == null) {
-      throw StateError('P7A-5 migration requires a selected legacy room.');
+      throw StateError('P7A-5 migration requires the selected legacy room.');
     }
-    final project = context.coordinator.session.project;
-    final canonicalRegistry =
-        project.engineeringMetadata.boundaryHostedObjectRegistry;
-    final p2 = CanonicalRouteAnchorRehydration.rehydrate(
+    final currentP2 = CanonicalRouteAnchorRehydration.rehydrate(
       p2State: controller.p2.state,
-      legacySpace: legacySpace,
+      canonicalRegistry: context.coordinator.session.project.engineeringMetadata
+          .boundaryHostedObjectRegistry,
       canonicalSpaceId: context.spaceId,
-      orderedEdgeIds: sourceTopology.orderedEdgeIds,
-      registry: canonicalRegistry,
+      legacySpaceId: legacySpace.id,
     );
-    final capturedHosts = CanonicalBoundaryHostProjection.capture(
+    final projected = CanonicalBoundaryHostProjection.capture(
       canonicalSpaceId: context.spaceId,
       legacySpace: legacySpace,
       orderedEdgeIds: sourceTopology.orderedEdgeIds,
       openings: controller.openings,
-      p2State: p2,
+      p2State: currentP2,
     );
-    final capturedProfiles =
+    final canonical = context.coordinator.session.project.engineeringMetadata
+        .boundaryHostedObjectRegistry;
+    if (!projected.sameSpaceSlice(canonical, context.spaceId)) {
+      throw StateError(
+        'P7A-5 identity-changing edit requires exact canonical host adoption.',
+      );
+    }
+    final projectedProfiles =
         CanonicalBoundaryHostProjection.captureWallProfiles(
       canonicalSpaceId: context.spaceId,
       legacySpace: legacySpace,
       orderedEdgeIds: sourceTopology.orderedEdgeIds,
     );
-
-    final canonicalHosts = BoundaryHostedObjectRegistry({
-      for (final reference in canonicalRegistry.forSpace(context.spaceId))
-        reference.objectKey: reference,
-    });
-    final projectedHosts = BoundaryHostedObjectRegistry({
-      for (final reference in capturedHosts.forSpace(context.spaceId))
-        reference.objectKey: reference,
-    });
-    final canonicalProfiles = BoundaryWallProfileRegistry({
-      for (final entry in project
-          .engineeringMetadata.boundaryWallProfileRegistry.profiles.entries)
-        if (entry.key.spaceId == context.spaceId) entry.key: entry.value,
-    });
-    final projectedProfiles = BoundaryWallProfileRegistry({
-      for (final entry in capturedProfiles.profiles.entries)
-        if (entry.key.spaceId == context.spaceId) entry.key: entry.value,
-    });
-    if (!canonicalHosts.sameAs(projectedHosts) ||
-        !canonicalProfiles.sameAs(projectedProfiles)) {
+    final canonicalProfiles = context.coordinator.session.project
+        .engineeringMetadata.boundaryWallProfileRegistry;
+    if (!projectedProfiles.sameSpaceSlice(canonicalProfiles, context.spaceId)) {
       throw StateError(
-        'Legacy hosted objects for ${context.spaceId} have not been adopted '
-        'exactly into canonical P7A-5 ownership.',
+        'P7A-5 identity-changing edit requires exact canonical wall profiles.',
       );
     }
-    return p2;
+    return currentP2;
   }
 
   static _MigrationContext? _context(EditorController controller) {
-    final coordinator =
-        CanonicalRoomSurfaceRuntimeRegistry.coordinatorFor(controller);
-    final owner = CanonicalRoomSurfaceRuntimeRegistry.canonicalOwnershipFor(
+    final coordinator = CanonicalRoomSurfaceRuntimeRegistry.coordinatorOf(
       controller,
     );
-    final spaceId = coordinator?.session.navigation.selectedSpaceId;
-    if (coordinator == null || owner == null || spaceId == null) return null;
-    final legacySpaceId = coordinator.adapter.binding.legacySpaceIds[spaceId];
-    if (legacySpaceId == null ||
-        controller.selectedSpace?.id != legacySpaceId) {
-      return null;
-    }
+    final owner = CanonicalRoomSurfaceRuntimeRegistry.mutationOwnerOf(controller);
+    if (coordinator == null || owner == null) return null;
+    final spaceId = coordinator.session.navigation.state.selectedSpaceId;
+    final legacySpace = controller.selectedSpace;
+    if (spaceId == null || legacySpace == null) return null;
+    final boundLegacyId = coordinator.adapter.binding.legacySpaceIdOf(spaceId);
+    if (boundLegacyId != legacySpace.id) return null;
     return _MigrationContext(
       coordinator: coordinator,
-      spaceId: spaceId,
       owner: owner,
+      spaceId: spaceId,
     );
   }
-}
 
-int _gcd(int a, int b) {
-  var left = a;
-  var right = b;
-  while (right != 0) {
-    final remainder = left % right;
-    left = right;
-    right = remainder;
+  static int _gcd(int a, int b) {
+    while (b != 0) {
+      final remainder = a % b;
+      a = b;
+      b = remainder;
+    }
+    return a;
   }
-  return left;
 }
 
 final class _MigrationContext {
   const _MigrationContext({
     required this.coordinator,
-    required this.spaceId,
     required this.owner,
+    required this.spaceId,
   });
 
   final CanonicalEditorRuntimeCutoverCoordinator coordinator;
+  final CanonicalProjectMutationOwner owner;
   final SpaceId spaceId;
-  final CanonicalMutationOwnershipCallback owner;
 }
