@@ -390,6 +390,7 @@ ProjectCommandCandidate _candidate(
           openings: openings ?? current.stores.openings,
           adjacencies: adjacencies ?? current.stores.adjacencies,
           overlays: overlays ?? current.stores.overlays,
+          boundaries: current.stores.boundaries,
         ),
       ),
       affectedEntityIds: affected,
