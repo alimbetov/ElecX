@@ -79,7 +79,8 @@ void main() {
 
     expect(fixture.controller.commitSelectedBoundary(candidate!), isFalse);
     expect(fixture.session.project, same(before));
-    expect(fixture.controller.selectedSpace!.boundary.vertices, source.vertices);
+    expect(
+        fixture.controller.selectedSpace!.boundary.vertices, source.vertices);
   });
 
   test(
