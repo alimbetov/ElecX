@@ -5,6 +5,7 @@ import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_space_semantics.dart';
 import 'package:elecx/src/serialization/project/canonical_project_document_codec.dart';
+import 'package:elecx/src/serialization/project/project_document_codec.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
