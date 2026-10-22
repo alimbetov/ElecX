@@ -259,9 +259,8 @@ final class EditorDocumentHistory extends ChangeNotifier {
     final observed = _canonicalObservedVersion;
     if (observed != null && session.project.version == observed) return false;
 
-    final topEntry = _undo.isNotEmpty
-        ? _undo.last
-        : (_redo.isNotEmpty ? _redo.last : null);
+    final topEntry =
+        _undo.isNotEmpty ? _undo.last : (_redo.isNotEmpty ? _redo.last : null);
     if (topEntry is _CanonicalEntry) {
       _reconcileCanonicalAfterHistoryFailure(topEntry);
     }
