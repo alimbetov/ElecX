@@ -171,8 +171,7 @@ final class SecureRandomEntityIdFactory implements EntityIdFactory {
   OpeningId newOpeningId() => OpeningId(_nextUuidV4());
 
   @override
-  SpaceAdjacencyId newSpaceAdjacencyId() =>
-      SpaceAdjacencyId(_nextUuidV4());
+  SpaceAdjacencyId newSpaceAdjacencyId() => SpaceAdjacencyId(_nextUuidV4());
 
   @override
   OverlayClassificationId newOverlayClassificationId() =>
