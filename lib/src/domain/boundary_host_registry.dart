@@ -49,12 +49,6 @@ final class BoundaryHostedObjectRegistry {
           'reference key ${entry.value.objectKey}.',
         );
       }
-      if (isProjectionOnlyRouteAnchor(entry.value)) {
-        throw ArgumentError(
-          'Projection-only route transition ${entry.key} cannot be stored in '
-          'the canonical hosted-object registry.',
-        );
-      }
     }
   }
 
@@ -75,23 +69,6 @@ final class BoundaryHostedObjectRegistry {
   static String routeAnchorObjectKey(RouteAnchorId anchorId) =>
       'route-anchor:${anchorId.value}';
 
-  /// Split/merge materialization may insert a duplicate transition point on the
-  /// two adjacent legacy wall segments. That point is a projection seam, not a
-  /// durable engineering anchor and cannot be represented by the canonical
-  /// one-object/one-host registry without inventing a second ownership model.
-  static bool isProjectionOnlyRouteAnchor(BoundaryHostedReference reference) {
-    if (reference.objectKind != BoundaryHostedObjectKind.routeAnchor) {
-      return false;
-    }
-    const marker = ':anchor:';
-    final markerIndex = reference.objectKey.lastIndexOf(marker);
-    if (markerIndex < 0) return false;
-    final anchorPart = reference.objectKey.substring(
-      markerIndex + marker.length,
-    );
-    return anchorPart.startsWith('p7a-transition:');
-  }
-
   BoundaryHostedReference? operator [](String objectKey) =>
       references[objectKey];
 
@@ -102,7 +79,6 @@ final class BoundaryHostedObjectRegistry {
       references.values.where((reference) => reference.host.spaceId == spaceId);
 
   BoundaryHostedObjectRegistry put(BoundaryHostedReference reference) {
-    if (isProjectionOnlyRouteAnchor(reference)) return this;
     final existing = references[reference.objectKey];
     if (existing != null &&
         !_sameReference(existing, reference) &&
