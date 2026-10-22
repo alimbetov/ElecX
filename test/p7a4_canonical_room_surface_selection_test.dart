@@ -74,6 +74,38 @@ void main() {
       expect(fixture.adapter.current().kind, CanonicalRoomSurfaceKind.plan);
       expect(fixture.adapter.current().boundaryEdgeId, isNull);
     });
+
+    test('legacy polygon drift invalidates previously resolved edge mapping', () {
+      final fixture = _Fixture();
+      fixture.adapter.showBoundaryEdge(fixture.edgeIds[1]);
+      final before = fixture.controller.activeSurface;
+
+      final changedPolygon = MmPolygon(const [
+        MmPoint(0, 0),
+        MmPoint(4500, 0),
+        MmPoint(4000, 3000),
+        MmPoint(0, 3000),
+      ]);
+      fixture.controller.level = fixture.controller.level.copyWith(
+        spaces: [
+          fixture.legacySpace.copyWith(
+            boundary: changedPolygon,
+            referenceFrame: RoomReferenceFrame(
+              origin: changedPolygon.bounds.center,
+            ),
+          ),
+        ],
+      );
+
+      expect(fixture.adapter.current().kind, CanonicalRoomSurfaceKind.plan);
+      expect(
+        fixture.adapter.showBoundaryEdge(fixture.edgeIds[2]),
+        isFalse,
+      );
+      expect(fixture.adapter.nextWall(), isFalse);
+      expect(fixture.adapter.previousWall(), isFalse);
+      expect(fixture.controller.activeSurface, before);
+    });
   });
 }
 
