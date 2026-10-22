@@ -122,6 +122,9 @@ void main() {
     expect(segments[0].points.last, const SurfacePointMm(0, 700));
     expect(segments[1].surface.wallIndex, 0);
     expect(segments[1].points.first, const SurfacePointMm(2000, 700));
-    expect(segments[1].anchorIds.last, RouteAnchorId('target'));
+    expect(
+      segments[1].anchorIds.last,
+      RouteAnchorId('p7a-endpoint:reverse:target:t:in'),
+    );
   });
 }
