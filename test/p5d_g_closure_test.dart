@@ -12,12 +12,12 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P5D-G closure qualification', () {
-    test('canonical v2 explicit null round-trips as unspecified', () {
+    test('canonical explicit null round-trips as unspecified', () {
       const codec = CanonicalProjectDocumentCodec();
       final source = _snapshot();
 
       final encoded = codec.encode(source);
-      expect(encoded.schemaVersion, 2);
+      expect(encoded.schemaVersion, CanonicalProjectDocumentCodec.schemaVersion);
       expect(
         encoded.payload['projectOrientation'],
         <String, Object?>{'projectNorthMilliDegrees': null},
