@@ -24,7 +24,7 @@ void main() {
       final restored = codec.decode(first);
       final second = codec.encode(restored);
 
-      expect(first.schemaVersion, 3);
+      expect(first.schemaVersion, 4);
       expect(restored.id, snapshot.id);
       expect(restored.siteId, snapshot.siteId);
       expect(restored.localVersion, snapshot.localVersion);
@@ -46,17 +46,25 @@ void main() {
         restored.aggregate.stores.spaces[SpaceId('room-a')]!.usage,
         SpaceUsage.bedroom,
       );
+      expect(restored.aggregate.stores.boundaries, isEmpty);
+      expect(
+        restored.aggregate.engineeringMetadata.boundaryEdgeIdentityRegistry
+            .owners,
+        isEmpty,
+      );
 
       expect(jsonEncode(second.payload), jsonEncode(first.payload));
     });
 
-    test('migrates canonical v1 to v3 with safe P6 defaults', () {
+    test('migrates canonical v1 to v4 with safe defaults', () {
       final current = codec.encode(_multiBuildingSnapshot());
       final v1Payload = Map<String, Object?>.from(current.payload)
         ..remove('projectOrientation')
         ..remove('openings')
         ..remove('adjacencies')
-        ..remove('overlays');
+        ..remove('overlays')
+        ..remove('boundaries')
+        ..remove('boundaryEdgeIdentityRegistry');
       final oldSpaces = <Object?>[
         for (final raw in v1Payload['spaces']! as List<Object?>)
           Map<String, Object?>.from(raw! as Map)..remove('usage'),
@@ -77,20 +85,28 @@ void main() {
       expect(restored.aggregate.stores.openings, isEmpty);
       expect(restored.aggregate.stores.adjacencies, isEmpty);
       expect(restored.aggregate.stores.overlays, isEmpty);
+      expect(restored.aggregate.stores.boundaries, isEmpty);
+      expect(
+        restored.aggregate.engineeringMetadata.boundaryEdgeIdentityRegistry
+            .owners,
+        isEmpty,
+      );
 
       final reencoded = codec.encode(restored);
-      expect(reencoded.schemaVersion, 3);
+      expect(reencoded.schemaVersion, 4);
       expect(reencoded.payload['projectOrientation'], <String, Object?>{
         'projectNorthMilliDegrees': null,
       });
     });
 
-    test('migrates canonical v2 to v3 without inferring usage from names', () {
+    test('migrates canonical v2 to v4 without inferring usage from names', () {
       final current = codec.encode(_multiBuildingSnapshot());
       final v2Payload = _mutablePayload(current)
         ..remove('openings')
         ..remove('adjacencies')
-        ..remove('overlays');
+        ..remove('overlays')
+        ..remove('boundaries')
+        ..remove('boundaryEdgeIdentityRegistry');
       for (final raw in v2Payload['spaces']! as List) {
         (raw as Map).remove('usage');
       }
@@ -110,6 +126,26 @@ void main() {
       expect(restored.aggregate.stores.openings, isEmpty);
       expect(restored.aggregate.stores.adjacencies, isEmpty);
       expect(restored.aggregate.stores.overlays, isEmpty);
+      expect(restored.aggregate.stores.boundaries, isEmpty);
+    });
+
+    test('migrates canonical v3 to v4 with empty P7A state', () {
+      final current = codec.encode(_multiBuildingSnapshot());
+      final v3Payload = _mutablePayload(current)
+        ..remove('boundaries')
+        ..remove('boundaryEdgeIdentityRegistry');
+
+      final restored = codec.decode(
+        ProjectDocument(schemaVersion: 3, payload: _stringKeyed(v3Payload)),
+      );
+
+      expect(restored.aggregate.stores.boundaries, isEmpty);
+      expect(
+        restored.aggregate.engineeringMetadata.boundaryEdgeIdentityRegistry
+            .owners,
+        isEmpty,
+      );
+      expect(codec.encode(restored).schemaVersion, 4);
     });
 
     test('rejects unsupported canonical schema fail closed', () {
@@ -234,6 +270,9 @@ void main() {
       final buildings = document.payload['buildings']! as List<Object?>;
       final firstBuilding = buildings.first! as Map<String, Object?>;
       final levelIds = firstBuilding['levelIds']! as List<Object?>;
+      final boundaries = document.payload['boundaries']! as List<Object?>;
+      final registry = document.payload['boundaryEdgeIdentityRegistry']!
+          as List<Object?>;
 
       expect(() => metadata['name'] = 'Changed', throwsUnsupportedError);
       expect(
@@ -243,6 +282,8 @@ void main() {
       expect(() => buildings.clear(), throwsUnsupportedError);
       expect(() => firstBuilding['name'] = 'Changed', throwsUnsupportedError);
       expect(() => levelIds.clear(), throwsUnsupportedError);
+      expect(() => boundaries.clear(), throwsUnsupportedError);
+      expect(() => registry.clear(), throwsUnsupportedError);
     });
   });
 
