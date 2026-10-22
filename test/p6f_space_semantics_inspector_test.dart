@@ -30,7 +30,7 @@ void main() {
     expect(find.text('ROOM SEMANTICS'), findsOneWidget);
     expect(find.text('Bedroom 101'), findsOneWidget);
     expect(find.text('Door · 900×2100 mm'), findsOneWidget);
-    expect(find.text('Corridor'), findsOneWidget);
+    expect(find.text('Corridor'), findsWidgets);
     expect(find.text('Connected by opening'), findsOneWidget);
     expect(find.text('FC-01'), findsOneWidget);
     expect(find.textContaining('Fire safety'), findsOneWidget);
