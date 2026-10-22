@@ -16,21 +16,11 @@ final class ElectricalEndpointRef {
 }
 
 final class ElectricalRouteSegment {
-  ElectricalRouteSegment({
+  const ElectricalRouteSegment({
     required this.surface,
     required this.points,
-    Iterable<RouteAnchorId> anchorIds = const <RouteAnchorId>[],
-  }) : anchorIds = List<RouteAnchorId>.unmodifiable(anchorIds) {
-    if (this.anchorIds.isNotEmpty && this.anchorIds.length != points.length) {
-      throw ArgumentError(
-        'Stable route anchor ids must be supplied for every segment point or '
-        'omitted entirely for a legacy segment.',
-      );
-    }
-    if (this.anchorIds.toSet().length != this.anchorIds.length) {
-      throw ArgumentError('Route segment anchor ids must be unique.');
-    }
-  }
+    this.anchorIds = const <RouteAnchorId>[],
+  }) : assert(anchorIds.length == 0 || anchorIds.length == points.length);
 
   final RoomSurfaceRef surface;
   final List<SurfacePointMm> points;
@@ -44,9 +34,8 @@ final class ElectricalRouteSegment {
   bool get hasStableAnchorIdentity =>
       points.isEmpty || anchorIds.length == points.length;
 
-  RouteAnchorId? anchorIdAt(int pointIndex) => anchorIds.isEmpty
-      ? null
-      : anchorIds[pointIndex];
+  RouteAnchorId? anchorIdAt(int pointIndex) =>
+      anchorIds.isEmpty ? null : anchorIds[pointIndex];
 
   double get lengthMm {
     var length = 0.0;
