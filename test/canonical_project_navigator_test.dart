@@ -66,8 +66,7 @@ void main() {
               name: 'Building C',
               displayOrder: 2,
             ),
-            onAuthoringCommitted: (_, result) =>
-                committedId = result.createdId,
+            onAuthoringCommitted: (_, result) => committedId = result.createdId,
           ),
         );
         await tester.pump();
