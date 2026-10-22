@@ -69,35 +69,35 @@ class _RoomWorldOverlayState extends State<_RoomWorldOverlay> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          toolbarHeight: 44,
-          leading: IconButton(
-            tooltip: 'Назад на план',
-            onPressed: () {
-              controller.showPlan();
-              Navigator.of(context).pop();
-            },
-            icon: const Icon(Icons.arrow_back, size: 19),
-          ),
-          title: Text(
-            controller.selectedSpace == null
-                ? 'ROOM WORLD'
-                : '${controller.selectedSpace!.name} · ROOM WORLD',
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-          ),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: Center(
-                child: Text(
-                  'Потолок ↑   стены ↔   пол ↓',
-                  style: Theme.of(context).textTheme.labelSmall,
-                ),
-              ),
+    appBar: AppBar(
+      automaticallyImplyLeading: false,
+      toolbarHeight: 44,
+      leading: IconButton(
+        tooltip: 'Назад на план',
+        onPressed: () {
+          controller.showPlan();
+          Navigator.of(context).pop();
+        },
+        icon: const Icon(Icons.arrow_back, size: 19),
+      ),
+      title: Text(
+        controller.selectedSpace == null
+            ? 'ROOM WORLD'
+            : '${controller.selectedSpace!.name} · ROOM WORLD',
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+      ),
+      actions: [
+        Padding(
+          padding: const EdgeInsets.only(right: 10),
+          child: Center(
+            child: Text(
+              'Потолок ↑   стены ↔   пол ↓',
+              style: Theme.of(context).textTheme.labelSmall,
             ),
-          ],
+          ),
         ),
-        body: RoomWorldCanvas(controller: controller),
-      );
+      ],
+    ),
+    body: RoomWorldCanvas(controller: controller),
+  );
 }

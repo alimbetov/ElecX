@@ -43,14 +43,7 @@ enum SpaceUsage {
   commonArea,
 }
 
-enum OpeningKind {
-  door,
-  window,
-  openPassage,
-  hatch,
-  serviceOpening,
-  other,
-}
+enum OpeningKind { door, window, openPassage, hatch, serviceOpening, other }
 
 /// Canonical opening semantics before P7 durable wall hosting.
 ///
@@ -88,11 +81,7 @@ final class ProjectOpeningEntity {
   final int baseElevationMm;
 }
 
-enum SpaceAdjacencyKind {
-  sharedBoundary,
-  opening,
-  openPassage,
-}
+enum SpaceAdjacencyKind { sharedBoundary, opening, openPassage }
 
 /// Symmetric semantic adjacency between exactly two spaces.
 final class ProjectSpaceAdjacencyEntity {
@@ -105,7 +94,8 @@ final class ProjectSpaceAdjacencyEntity {
   }) {
     if (spaceAId == spaceBId) {
       throw ArgumentError(
-          'Space adjacency cannot reference the same space twice.');
+        'Space adjacency cannot reference the same space twice.',
+      );
     }
     if (kind == SpaceAdjacencyKind.opening && openingId == null) {
       throw ArgumentError('Opening adjacency requires openingId.');
@@ -150,7 +140,10 @@ final class ProjectOverlayClassificationEntity {
   }) : spaceIds = Set.unmodifiable(spaceIds) {
     if (name.trim().isEmpty) {
       throw ArgumentError.value(
-          name, 'name', 'Overlay name must be non-empty.');
+        name,
+        'name',
+        'Overlay name must be non-empty.',
+      );
     }
   }
 

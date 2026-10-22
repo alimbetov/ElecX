@@ -17,11 +17,11 @@ export '../../application/project/project_mutation.dart'
 /// Returning null keeps that workspace on the legacy navigator. This is the
 /// fail-closed path for documents/recovery snapshots that do not yet have a
 /// canonical project representation and explicit identity bindings.
-typedef CanonicalEditorRuntimeResolver = CanonicalEditorResolvedRuntime?
-    Function(
-  EditorBuildingWorkspace workspace,
-  EditorProjectMetadata metadata,
-);
+typedef CanonicalEditorRuntimeResolver =
+    CanonicalEditorResolvedRuntime? Function(
+      EditorBuildingWorkspace workspace,
+      EditorProjectMetadata metadata,
+    );
 
 /// Explicit acknowledgement that the production host has synchronously taken
 /// ownership of a committed canonical mutation.
@@ -34,17 +34,17 @@ final class CanonicalAuthoringOwnershipReceipt {
   const CanonicalAuthoringOwnershipReceipt.accepted();
 }
 
-typedef CanonicalProductionAuthoringCommittedCallback
-    = CanonicalAuthoringOwnershipReceipt Function(
-  ProjectStructureAuthoringSession session,
-  EntityId createdId,
-);
+typedef CanonicalProductionAuthoringCommittedCallback =
+    CanonicalAuthoringOwnershipReceipt Function(
+      ProjectStructureAuthoringSession session,
+      EntityId createdId,
+    );
 
-typedef CanonicalProductionProjectNorthCommittedCallback
-    = CanonicalAuthoringOwnershipReceipt Function(
-  ProjectNorthEditingPort editing,
-  ProjectMutationResult result,
-);
+typedef CanonicalProductionProjectNorthCommittedCallback =
+    CanonicalAuthoringOwnershipReceipt Function(
+      ProjectNorthEditingPort editing,
+      ProjectMutationResult result,
+    );
 
 final class CanonicalEditorResolvedRuntime {
   const CanonicalEditorResolvedRuntime({
@@ -95,7 +95,7 @@ final class CanonicalEditorProductionRuntimeConfig {
   final RoomRequestResolver? requestRoom;
   final CanonicalProductionAuthoringCommittedCallback? onAuthoringCommitted;
   final CanonicalProductionProjectNorthCommittedCallback?
-      onProjectNorthCommitted;
+  onProjectNorthCommitted;
 
   bool get authoringEnabled => onAuthoringCommitted != null;
 }

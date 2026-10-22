@@ -49,8 +49,9 @@ final class CreateLevelCommand implements ProjectCommand {
       subjectLevelId: levelId,
     );
 
-    final buildings =
-        Map<BuildingId, ProjectBuildingEntity>.from(current.stores.buildings);
+    final buildings = Map<BuildingId, ProjectBuildingEntity>.from(
+      current.stores.buildings,
+    );
     final levels = Map<LevelId, ProjectLevelEntity>.from(current.stores.levels);
 
     buildings[building.id] = ProjectBuildingEntity(
@@ -196,7 +197,8 @@ void _ensureLevelNumberAvailable(
         code: ProjectAuthoringIssueCode.duplicateLevelNumber,
         entityId: subjectLevelId,
         relatedEntityId: candidateId,
-        message: 'Building ${building.id} already contains level number '
+        message:
+            'Building ${building.id} already contains level number '
             '$levelNumber at $candidateId.',
       );
     }

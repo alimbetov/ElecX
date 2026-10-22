@@ -50,9 +50,9 @@ final class CanonicalEditorWorkspaceBinding {
     required Map<LevelId, String> legacyLevelIds,
     Map<ZoneId, String> legacyZoneIds = const {},
     Map<SpaceId, String> legacySpaceIds = const {},
-  })  : legacyLevelIds = Map.unmodifiable(legacyLevelIds),
-        legacyZoneIds = Map.unmodifiable(legacyZoneIds),
-        legacySpaceIds = Map.unmodifiable(legacySpaceIds) {
+  }) : legacyLevelIds = Map.unmodifiable(legacyLevelIds),
+       legacyZoneIds = Map.unmodifiable(legacyZoneIds),
+       legacySpaceIds = Map.unmodifiable(legacySpaceIds) {
     if (legacyBuildingId.isEmpty) {
       throw const CanonicalEditorWorkspaceException(
         code: CanonicalEditorWorkspaceIssueCode.invalidLegacyBinding,
@@ -220,7 +220,8 @@ final class CanonicalEditorWorkspaceAdapter {
       throw CanonicalEditorWorkspaceException(
         code: CanonicalEditorWorkspaceIssueCode.unsupportedBuilding,
         entityId: binding.buildingId,
-        message: 'The editor workspace is not the legacy Building bound to '
+        message:
+            'The editor workspace is not the legacy Building bound to '
             '${binding.buildingId}.',
       );
     }
@@ -233,15 +234,17 @@ final class CanonicalEditorWorkspaceAdapter {
       );
     }
     final levelId = binding.canonicalLevelIdForLegacy(legacyLevel.level.id);
-    final canonicalLevel =
-        levelId == null ? null : project.index.level(levelId);
+    final canonicalLevel = levelId == null
+        ? null
+        : project.index.level(levelId);
     if (levelId == null ||
         canonicalLevel == null ||
         canonicalLevel.buildingId != binding.buildingId) {
       throw CanonicalEditorWorkspaceException(
         code: CanonicalEditorWorkspaceIssueCode.legacyLevelBindingMissing,
         entityId: levelId,
-        message: 'Active legacy Level ${legacyLevel.level.id} has no coherent '
+        message:
+            'Active legacy Level ${legacyLevel.level.id} has no coherent '
             'canonical binding in Building ${binding.buildingId}.',
       );
     }
@@ -251,8 +254,9 @@ final class CanonicalEditorWorkspaceAdapter {
     final legacySpaceId = workspace.editor.selectedSpaceId;
     if (legacySpaceId != null) {
       final spaceId = binding.canonicalSpaceIdForLegacy(legacySpaceId);
-      final canonicalSpace =
-          spaceId == null ? null : project.index.space(spaceId);
+      final canonicalSpace = spaceId == null
+          ? null
+          : project.index.space(spaceId);
       if (spaceId == null) {
         throw CanonicalEditorWorkspaceException(
           code: CanonicalEditorWorkspaceIssueCode.legacySpaceBindingMissing,
@@ -264,7 +268,8 @@ final class CanonicalEditorWorkspaceAdapter {
         throw CanonicalEditorWorkspaceException(
           code: CanonicalEditorWorkspaceIssueCode.canonicalSpaceMissing,
           entityId: spaceId,
-          message: 'Legacy Space $legacySpaceId maps to canonical Space '
+          message:
+              'Legacy Space $legacySpaceId maps to canonical Space '
               '$spaceId outside active canonical Level $levelId.',
         );
       }
@@ -278,7 +283,8 @@ final class CanonicalEditorWorkspaceAdapter {
       if (zoneId == null) {
         throw CanonicalEditorWorkspaceException(
           code: CanonicalEditorWorkspaceIssueCode.legacyZoneBindingMissing,
-          message: 'Selected legacy Zone $legacyZoneId has no canonical '
+          message:
+              'Selected legacy Zone $legacyZoneId has no canonical '
               'binding.',
         );
       }
@@ -286,7 +292,8 @@ final class CanonicalEditorWorkspaceAdapter {
         throw CanonicalEditorWorkspaceException(
           code: CanonicalEditorWorkspaceIssueCode.canonicalZoneMissing,
           entityId: zoneId,
-          message: 'Legacy Zone $legacyZoneId maps to canonical Zone $zoneId '
+          message:
+              'Legacy Zone $legacyZoneId maps to canonical Zone $zoneId '
               'outside active canonical Level $levelId.',
         );
       }
@@ -322,7 +329,8 @@ final class CanonicalEditorWorkspaceAdapter {
       throw CanonicalEditorWorkspaceException(
         code: CanonicalEditorWorkspaceIssueCode.unsupportedBuilding,
         entityId: activeBuildingId,
-        message: 'Canonical Building $activeBuildingId is not bound to this '
+        message:
+            'Canonical Building $activeBuildingId is not bound to this '
             'editor workspace.',
       );
     }
@@ -354,9 +362,8 @@ final class CanonicalEditorWorkspaceAdapter {
     final legacyLevel = workspace.building.levels
         .where((candidate) => candidate.level.id == legacyLevelId)
         .firstOrNull;
-    final exists = legacyLevel?.zones.any(
-          (candidate) => candidate.id == legacyZoneId,
-        ) ??
+    final exists =
+        legacyLevel?.zones.any((candidate) => candidate.id == legacyZoneId) ??
         false;
     if (!exists) {
       throw CanonicalEditorWorkspaceException(
@@ -389,7 +396,8 @@ final class CanonicalEditorWorkspaceAdapter {
       throw CanonicalEditorWorkspaceException(
         code: CanonicalEditorWorkspaceIssueCode.canonicalSelectionMismatch,
         entityId: spaceId,
-        message: 'Canonical navigation Zone $expectedZoneId does not match '
+        message:
+            'Canonical navigation Zone $expectedZoneId does not match '
             'Space $spaceId owner Zone $actualZoneId.',
       );
     }
@@ -405,9 +413,8 @@ final class CanonicalEditorWorkspaceAdapter {
     final legacyLevel = workspace.building.levels
         .where((candidate) => candidate.level.id == legacyLevelId)
         .firstOrNull;
-    final exists = legacyLevel?.level.spaces.any(
-          (space) => space.id == legacySpaceId,
-        ) ??
+    final exists =
+        legacyLevel?.level.spaces.any((space) => space.id == legacySpaceId) ??
         false;
     if (!exists) {
       throw CanonicalEditorWorkspaceException(

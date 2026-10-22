@@ -9,43 +9,44 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   final surface = RoomSurfaceRef.wall('room-1', 0);
   ElectricalCableRoute route({int endX = 10000}) => ElectricalCableRoute(
-        id: 'route-1',
-        source: const ElectricalEndpointRef(
-          componentId: 'board-1',
-          portId: 'power-out',
-        ),
-        target: const ElectricalEndpointRef(
-          componentId: 'load-1',
-          portId: 'power-in',
-        ),
-        segments: [
-          ElectricalRouteSegment(
-            surface: surface,
-            points: [const SurfacePointMm(0, 1000), SurfacePointMm(endX, 1000)],
-          ),
-        ],
-        cableType: 'cable-3x2.5',
-        medium: RouteMediumProfile.acPower,
-      );
+    id: 'route-1',
+    source: const ElectricalEndpointRef(
+      componentId: 'board-1',
+      portId: 'power-out',
+    ),
+    target: const ElectricalEndpointRef(
+      componentId: 'load-1',
+      portId: 'power-in',
+    ),
+    segments: [
+      ElectricalRouteSegment(
+        surface: surface,
+        points: [const SurfacePointMm(0, 1000), SurfacePointMm(endX, 1000)],
+      ),
+    ],
+    cableType: 'cable-3x2.5',
+    medium: RouteMediumProfile.acPower,
+  );
 
   CableSpec cable() => const CableSpec(
-        id: 'cable-3x2.5',
-        name: '3x2.5',
-        medium: RouteMediumProfile.acPower,
-        outerDiameterMm: 10,
-        segregationClass: CableSegregationClass.power,
-        conductorMaterial: ConductorMaterial.copper,
-        conductorCount: 3,
-        conductorCrossSectionMm2: 2.5,
-        ratedVoltageV: 230,
-      );
+    id: 'cable-3x2.5',
+    name: '3x2.5',
+    medium: RouteMediumProfile.acPower,
+    outerDiameterMm: 10,
+    segregationClass: CableSegregationClass.power,
+    conductorMaterial: ConductorMaterial.copper,
+    conductorCount: 3,
+    conductorCrossSectionMm2: 2.5,
+    ratedVoltageV: 230,
+  );
 
   test('complete evidence produces actual CableSizingEngine PASS', () {
     final actualRoute = route();
     final evidence = CircuitSizingEvidence(
       routeId: actualRoute.id,
-      routeGeometrySignature:
-          CircuitSizingEvidence.geometrySignature(actualRoute),
+      routeGeometrySignature: CircuitSizingEvidence.geometrySignature(
+        actualRoute,
+      ),
       cable: cable(),
       phaseSystem: CircuitPhaseSystem.singlePhaseAc,
       designCurrentA: 10,
@@ -56,9 +57,7 @@ void main() {
         SectionAmpacityEvidence(
           sectionId: 'whole-route',
           baseAmpacityA: 20,
-          factors: const [
-            ThermalCorrectionFactor(id: 'k', factor: 1),
-          ],
+          factors: const [ThermalCorrectionFactor(id: 'k', factor: 1)],
           sourceKey: 'engineer-table-A',
         ),
       ],
@@ -77,8 +76,9 @@ void main() {
     final actualRoute = route();
     final evidence = CircuitSizingEvidence(
       routeId: actualRoute.id,
-      routeGeometrySignature:
-          CircuitSizingEvidence.geometrySignature(actualRoute),
+      routeGeometrySignature: CircuitSizingEvidence.geometrySignature(
+        actualRoute,
+      ),
       cable: cable(),
       phaseSystem: CircuitPhaseSystem.singlePhaseAc,
       designCurrentA: 10,
@@ -120,8 +120,9 @@ void main() {
     final actualRoute = route();
     final source = CircuitSizingEvidence(
       routeId: actualRoute.id,
-      routeGeometrySignature:
-          CircuitSizingEvidence.geometrySignature(actualRoute),
+      routeGeometrySignature: CircuitSizingEvidence.geometrySignature(
+        actualRoute,
+      ),
       cable: cable(),
       phaseSystem: CircuitPhaseSystem.singlePhaseAc,
       designCurrentA: 12,

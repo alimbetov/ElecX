@@ -38,7 +38,8 @@ final class CreateStructuralZoneCommand implements ProjectCommand {
         code: ProjectAuthoringIssueCode.structuralZoneAlreadyExists,
         entityId: zoneId,
         relatedEntityId: existingZone.levelId,
-        message: 'Structural zone $zoneId already exists on level '
+        message:
+            'Structural zone $zoneId already exists on level '
             '${existingZone.levelId}; requested parent level is $levelId.',
       );
     }
@@ -81,10 +82,7 @@ final class CreateStructuralZoneCommand implements ProjectCommand {
 /// Renames one structural zone without changing identity, level ownership or
 /// current space membership.
 final class RenameStructuralZoneCommand implements ProjectCommand {
-  RenameStructuralZoneCommand({
-    required this.zoneId,
-    required this.name,
-  }) {
+  RenameStructuralZoneCommand({required this.zoneId, required this.name}) {
     if (name.trim().isEmpty) {
       throw ArgumentError.value(
         name,

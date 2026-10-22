@@ -29,10 +29,7 @@ void main() {
         expect(result.project.index.zone(zoneId)!.spaceIds, isEmpty);
         expect(result.project.index.structuralZoneBySpace[spaceId], isNull);
         expect(result.changeSet.removedEntityIds, <EntityId>{spaceId});
-        expect(
-          result.changeSet.updatedEntityIds,
-          <EntityId>{levelId, zoneId},
-        );
+        expect(result.changeSet.updatedEntityIds, <EntityId>{levelId, zoneId});
         expect(result.project.version, LocalProjectVersion(1));
         expect(session.undoDepth, 1);
 
@@ -159,21 +156,17 @@ void main() {
                 'code',
                 ProjectAuthoringIssueCode.structuralZoneHasSpaces,
               )
-              .having(
-                (error) => error.entityId,
-                'entityId',
-                ZoneId('zone-a'),
-              )
+              .having((error) => error.entityId, 'entityId', ZoneId('zone-a'))
               .having(
                 (error) => error.relatedEntityId,
                 'relatedEntityId',
                 SpaceId('space-1'),
               )
               .having(
-            (error) => error.blockingEntityIds,
-            'blockingEntityIds',
-            <EntityId>{SpaceId('space-1')},
-          ),
+                (error) => error.blockingEntityIds,
+                'blockingEntityIds',
+                <EntityId>{SpaceId('space-1')},
+              ),
         ),
       );
 
@@ -202,16 +195,12 @@ void main() {
                 'code',
                 ProjectAuthoringIssueCode.levelHasChildren,
               )
+              .having((error) => error.entityId, 'entityId', LevelId('level-1'))
               .having(
-                (error) => error.entityId,
-                'entityId',
-                LevelId('level-1'),
-              )
-              .having(
-            (error) => error.blockingEntityIds,
-            'blockingEntityIds',
-            <EntityId>{ZoneId('zone-a'), SpaceId('space-1')},
-          ),
+                (error) => error.blockingEntityIds,
+                'blockingEntityIds',
+                <EntityId>{ZoneId('zone-a'), SpaceId('space-1')},
+              ),
         ),
       );
 
@@ -246,10 +235,10 @@ void main() {
                 BuildingId('building-a'),
               )
               .having(
-            (error) => error.blockingEntityIds,
-            'blockingEntityIds',
-            <EntityId>{LevelId('level-1'), LevelId('level-2')},
-          ),
+                (error) => error.blockingEntityIds,
+                'blockingEntityIds',
+                <EntityId>{LevelId('level-1'), LevelId('level-2')},
+              ),
         ),
       );
 

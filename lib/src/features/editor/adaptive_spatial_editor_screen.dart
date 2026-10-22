@@ -298,14 +298,13 @@ class _SurfaceStrip extends StatelessWidget {
     IconData icon,
     bool selected,
     VoidCallback onTap,
-  ) =>
-      ChoiceChip(
-        selected: selected,
-        onSelected: (_) => onTap(),
-        avatar: Icon(icon, size: 16),
-        label: Text(label),
-        visualDensity: VisualDensity.compact,
-      );
+  ) => ChoiceChip(
+    selected: selected,
+    onSelected: (_) => onTap(),
+    avatar: Icon(icon, size: 16),
+    label: Text(label),
+    visualDensity: VisualDensity.compact,
+  );
 }
 
 class _ProjectNavigator extends StatelessWidget {
@@ -631,8 +630,9 @@ class _Inspector extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => controller
-                        .addOpeningGuarded(ArchitecturalOpeningType.door),
+                    onPressed: () => controller.addOpeningGuarded(
+                      ArchitecturalOpeningType.door,
+                    ),
                     icon: const Icon(Icons.door_front_door_outlined),
                     label: const Text('Дверь'),
                   ),
@@ -640,8 +640,9 @@ class _Inspector extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => controller
-                        .addOpeningGuarded(ArchitecturalOpeningType.window),
+                    onPressed: () => controller.addOpeningGuarded(
+                      ArchitecturalOpeningType.window,
+                    ),
                     icon: const Icon(Icons.window_outlined),
                     label: const Text('Окно'),
                   ),
@@ -839,7 +840,8 @@ class _OpeningEditor extends StatelessWidget {
             label: 'Позиция от начала стены',
             value: opening.offsetFromStartMm,
             onSubmit: (value) => controller.updateSelectedOpeningGuarded(
-                offsetFromStartMm: value),
+              offsetFromStartMm: value,
+            ),
           ),
           const SizedBox(height: 8),
           _SubmitIntField(
@@ -1036,28 +1038,28 @@ class _StatusBar extends StatelessWidget {
 }
 
 String _surfaceName(RoomSurfaceRef surface) => switch (surface.type) {
-      SurfacePlaneType.floor => 'Пол',
-      SurfacePlaneType.ceiling => 'Потолок',
-      SurfacePlaneType.wall => 'Стена ${(surface.wallIndex ?? 0) + 1}',
-    };
+  SurfacePlaneType.floor => 'Пол',
+  SurfacePlaneType.ceiling => 'Потолок',
+  SurfacePlaneType.wall => 'Стена ${(surface.wallIndex ?? 0) + 1}',
+};
 
 String _openingName(ArchitecturalOpening opening) => switch (opening.type) {
-      ArchitecturalOpeningType.door => 'Дверь',
-      ArchitecturalOpeningType.window => 'Окно',
-      ArchitecturalOpeningType.passage => 'Проход',
-      ArchitecturalOpeningType.technicalOpening => 'Тех. проём',
-    };
+  ArchitecturalOpeningType.door => 'Дверь',
+  ArchitecturalOpeningType.window => 'Окно',
+  ArchitecturalOpeningType.passage => 'Проход',
+  ArchitecturalOpeningType.technicalOpening => 'Тех. проём',
+};
 
 String _toolName(EditorTool tool) => switch (tool) {
-      EditorTool.select => 'Выбор',
-      EditorTool.roomRectangle => 'Комната',
-      EditorTool.guide => 'Направляющая',
-      EditorTool.cableRoute => 'Трасса',
-    };
+  EditorTool.select => 'Выбор',
+  EditorTool.roomRectangle => 'Комната',
+  EditorTool.guide => 'Направляющая',
+  EditorTool.cableRoute => 'Трасса',
+};
 
 IconData _toolIcon(EditorTool tool) => switch (tool) {
-      EditorTool.select => Icons.near_me_outlined,
-      EditorTool.roomRectangle => Icons.crop_square,
-      EditorTool.guide => Icons.straighten,
-      EditorTool.cableRoute => Icons.alt_route,
-    };
+  EditorTool.select => Icons.near_me_outlined,
+  EditorTool.roomRectangle => Icons.crop_square,
+  EditorTool.guide => Icons.straighten,
+  EditorTool.cableRoute => Icons.alt_route,
+};

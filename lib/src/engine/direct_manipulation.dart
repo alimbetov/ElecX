@@ -38,10 +38,10 @@ final class ManipulationSession {
   int get deltaY => currentWorld.y - startWorld.y;
 
   ManipulationSession update(MmPoint point) => ManipulationSession(
-        handle: handle,
-        startWorld: startWorld,
-        currentWorld: point,
-      );
+    handle: handle,
+    startWorld: startWorld,
+    currentWorld: point,
+  );
 }
 
 abstract final class DirectManipulationEngine {
@@ -65,10 +65,9 @@ abstract final class DirectManipulationEngine {
   static ManipulationSession begin({
     required ManipulationHandle handle,
     required MmPoint startWorld,
-  }) =>
-      ManipulationSession(
-        handle: handle,
-        startWorld: startWorld,
-        currentWorld: startWorld,
-      );
+  }) => ManipulationSession(
+    handle: handle,
+    startWorld: startWorld,
+    currentWorld: startWorld,
+  );
 }

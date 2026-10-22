@@ -28,10 +28,7 @@ void main() {
       expect(result, isNotNull);
       expect(session.project.version.value, 1);
       expect(editing.version, session.project.version);
-      expect(
-        session.project.engineeringMetadata.projectNorth?.degrees,
-        32.5,
-      );
+      expect(session.project.engineeringMetadata.projectNorth?.degrees, 32.5);
     });
 
     test('same normalized value is a no-op and clear is canonical', () {
@@ -57,35 +54,37 @@ void main() {
       expect(session.project.version.value, 2);
     });
 
-    test('stale expected version fails closed before mutating Project North',
-        () {
-      final mutations = ProjectMutationSession(_project());
-      final session = ProjectStructureAuthoringSession(
-        mutations: mutations,
-        idFactory: SecureRandomEntityIdFactory(random: Random(13)),
-      );
-      final editing = session.projectNorthEditing;
-      final capturedVersion = editing.version;
+    test(
+      'stale expected version fails closed before mutating Project North',
+      () {
+        final mutations = ProjectMutationSession(_project());
+        final session = ProjectStructureAuthoringSession(
+          mutations: mutations,
+          idFactory: SecureRandomEntityIdFactory(random: Random(13)),
+        );
+        final editing = session.projectNorthEditing;
+        final capturedVersion = editing.version;
 
-      expect(
-        editing.setProjectNorth(
-          ProjectEngineeringNorth.fromDegrees(15),
-          expectedVersion: capturedVersion,
-        ),
-        isNotNull,
-      );
-      expect(session.project.version.value, 1);
+        expect(
+          editing.setProjectNorth(
+            ProjectEngineeringNorth.fromDegrees(15),
+            expectedVersion: capturedVersion,
+          ),
+          isNotNull,
+        );
+        expect(session.project.version.value, 1);
 
-      expect(
-        () => editing.setProjectNorth(
-          ProjectEngineeringNorth.fromDegrees(30),
-          expectedVersion: capturedVersion,
-        ),
-        throwsA(isA<StaleProjectMutationException>()),
-      );
-      expect(session.project.version.value, 1);
-      expect(editing.currentProjectNorth?.degrees, 15);
-    });
+        expect(
+          () => editing.setProjectNorth(
+            ProjectEngineeringNorth.fromDegrees(30),
+            expectedVersion: capturedVersion,
+          ),
+          throwsA(isA<StaleProjectMutationException>()),
+        );
+        expect(session.project.version.value, 1);
+        expect(editing.currentProjectNorth?.degrees, 15);
+      },
+    );
   });
 }
 

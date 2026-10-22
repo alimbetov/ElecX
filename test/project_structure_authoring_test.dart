@@ -42,28 +42,30 @@ void main() {
       expect(result.project.index.building(result.createdId)!.displayOrder, 3);
     });
 
-    test('create Level targets active Building and makes new Level current',
-        () {
-      final session = _session(_project(includeBuilding: true));
-      final buildingId = session.navigation.activeBuildingId!;
+    test(
+      'create Level targets active Building and makes new Level current',
+      () {
+        final session = _session(_project(includeBuilding: true));
+        final buildingId = session.navigation.activeBuildingId!;
 
-      final result = session.createLevel(
-        const CreateLevelRequest(
-          name: 'Floor 1',
-          levelNumber: 1,
-          elevationMm: 0,
-          displayOrder: 4,
-        ),
-      );
+        final result = session.createLevel(
+          const CreateLevelRequest(
+            name: 'Floor 1',
+            levelNumber: 1,
+            elevationMm: 0,
+            displayOrder: 4,
+          ),
+        );
 
-      final level = result.project.index.level(result.createdId)!;
-      expect(level.buildingId, buildingId);
-      expect(level.displayOrder, 4);
-      expect(result.navigation.activeBuildingId, buildingId);
-      expect(result.navigation.activeLevelId, result.createdId);
-      expect(result.navigation.selectedSpaceId, isNull);
-      expect(result.changeSet.addedEntityIds, contains(result.createdId));
-    });
+        final level = result.project.index.level(result.createdId)!;
+        expect(level.buildingId, buildingId);
+        expect(level.displayOrder, 4);
+        expect(result.navigation.activeBuildingId, buildingId);
+        expect(result.navigation.activeLevelId, result.createdId);
+        expect(result.navigation.selectedSpaceId, isNull);
+        expect(result.changeSet.addedEntityIds, contains(result.createdId));
+      },
+    );
 
     test('create Room keeps Level active and selects created Space', () {
       final project = _project(
@@ -112,41 +114,43 @@ void main() {
       expect(session.navigation, beforeNavigation);
     });
 
-    test('Room zone outside active Level is rejected with typed domain error',
-        () {
-      final project = _twoLevelProjectWithZoneOnSecond();
-      final navigation = ProjectNavigationState.initial(project)
-          .activateLevel(project, LevelId('level-1'));
-      final session = _session(project, navigation: navigation);
-      final beforeVersion = session.project.version;
-      final beforeNavigation = session.navigation;
+    test(
+      'Room zone outside active Level is rejected with typed domain error',
+      () {
+        final project = _twoLevelProjectWithZoneOnSecond();
+        final navigation = ProjectNavigationState.initial(project)
+            .activateLevel(project, LevelId('level-1'));
+        final session = _session(project, navigation: navigation);
+        final beforeVersion = session.project.version;
+        final beforeNavigation = session.navigation;
 
-      expect(
-        () => session.createRoom(
-          CreateRoomRequest(
-            name: 'Invalid room',
-            structuralZoneId: ZoneId('zone-level-2'),
+        expect(
+          () => session.createRoom(
+            CreateRoomRequest(
+              name: 'Invalid room',
+              structuralZoneId: ZoneId('zone-level-2'),
+            ),
           ),
-        ),
-        throwsA(
-          isA<ProjectAuthoringException>()
-              .having(
-                (error) => error.code,
-                'code',
-                ProjectAuthoringIssueCode.structuralZoneLevelMismatch,
-              )
-              .having(
-                (error) => error.relatedEntityId,
-                'actual owner level',
-                LevelId('level-2'),
-              ),
-        ),
-      );
+          throwsA(
+            isA<ProjectAuthoringException>()
+                .having(
+                  (error) => error.code,
+                  'code',
+                  ProjectAuthoringIssueCode.structuralZoneLevelMismatch,
+                )
+                .having(
+                  (error) => error.relatedEntityId,
+                  'actual owner level',
+                  LevelId('level-2'),
+                ),
+          ),
+        );
 
-      expect(session.project.version, beforeVersion);
-      expect(session.navigation, beforeNavigation);
-      expect(session.project.stores.spaces, isEmpty);
-    });
+        expect(session.project.version, beforeVersion);
+        expect(session.navigation, beforeNavigation);
+        expect(session.project.stores.spaces, isEmpty);
+      },
+    );
 
     test('authoring session rejects navigation from another Site', () {
       final current = _project(includeBuilding: true);
@@ -181,9 +185,7 @@ void main() {
       final removal = mutations.commit(
         ProjectMutationRequest(
           expectedVersion: mutations.current.version,
-          command: RemoveBuildingCommand(
-            buildingId: BuildingId('building-a'),
-          ),
+          command: RemoveBuildingCommand(buildingId: BuildingId('building-a')),
         ),
       )!;
 
@@ -223,9 +225,7 @@ void main() {
       final removal = mutations.commit(
         ProjectMutationRequest(
           expectedVersion: mutations.current.version,
-          command: RemoveBuildingCommand(
-            buildingId: BuildingId('building-a'),
-          ),
+          command: RemoveBuildingCommand(buildingId: BuildingId('building-a')),
         ),
       )!;
 

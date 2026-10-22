@@ -14,8 +14,8 @@ enum SpaceType {
 
 final class GridDefinition {
   const GridDefinition({this.minorStepMm = 100, this.majorEvery = 10})
-      : assert(minorStepMm > 0),
-        assert(majorEvery > 0);
+    : assert(minorStepMm > 0),
+      assert(majorEvery > 0);
 
   final int minorStepMm;
   final int majorEvery;
@@ -62,16 +62,15 @@ final class EngineeringSpace {
     MmPolygon? boundary,
     RoomReferenceFrame? referenceFrame,
     Map<int, WallProfile>? wallProfiles,
-  }) =>
-      EngineeringSpace(
-        id: id,
-        name: name,
-        type: type,
-        boundary: boundary ?? this.boundary,
-        referenceFrame: referenceFrame ?? this.referenceFrame,
-        grid: grid ?? this.grid,
-        wallProfiles: wallProfiles ?? this.wallProfiles,
-      );
+  }) => EngineeringSpace(
+    id: id,
+    name: name,
+    type: type,
+    boundary: boundary ?? this.boundary,
+    referenceFrame: referenceFrame ?? this.referenceFrame,
+    grid: grid ?? this.grid,
+    wallProfiles: wallProfiles ?? this.wallProfiles,
+  );
 
   EngineeringSpace withWallProfile(int wallIndex, WallProfile profile) {
     if (wallIndex < 0 || wallIndex >= boundary.vertices.length) {
@@ -101,11 +100,11 @@ final class BuildingLevel {
   final List<EngineeringSpace> spaces;
 
   BuildingLevel copyWith({List<EngineeringSpace>? spaces}) => BuildingLevel(
-        id: id,
-        name: name,
-        elevationMm: elevationMm,
-        spaces: spaces ?? this.spaces,
-      );
+    id: id,
+    name: name,
+    elevationMm: elevationMm,
+    spaces: spaces ?? this.spaces,
+  );
 }
 
 final class Building {
@@ -142,15 +141,13 @@ final class ProjectSite {
     ProjectNorth? projectNorth,
     SolarSiteContext? solarContext,
     bool clearSolarContext = false,
-  }) =>
-      ProjectSite(
-        id: id,
-        name: name,
-        buildings: buildings ?? this.buildings,
-        projectNorth: projectNorth ?? this.projectNorth,
-        solarContext:
-            clearSolarContext ? null : solarContext ?? this.solarContext,
-      );
+  }) => ProjectSite(
+    id: id,
+    name: name,
+    buildings: buildings ?? this.buildings,
+    projectNorth: projectNorth ?? this.projectNorth,
+    solarContext: clearSolarContext ? null : solarContext ?? this.solarContext,
+  );
 }
 
 final class EngineeringProject {

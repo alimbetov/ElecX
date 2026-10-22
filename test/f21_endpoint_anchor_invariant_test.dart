@@ -21,17 +21,13 @@ ElectricalCableRoute _route({
     source: ElectricalEndpointRef(
       componentId: source.id,
       portId: source.ports
-          .firstWhere(
-            (port) => port.kind == ElectricalPortKind.powerOut,
-          )
+          .firstWhere((port) => port.kind == ElectricalPortKind.powerOut)
           .id,
     ),
     target: ElectricalEndpointRef(
       componentId: target.id,
       portId: target.ports
-          .firstWhere(
-            (port) => port.kind == ElectricalPortKind.powerIn,
-          )
+          .firstWhere((port) => port.kind == ElectricalPortKind.powerIn)
           .id,
     ),
     segments: [
@@ -48,61 +44,63 @@ ElectricalCableRoute _route({
 }
 
 void main() {
-  test('F21 physical anchor validator rejects detached point and wrong surface',
-      () {
-    final wall = RoomSurfaceRef.wall('room-1', 0);
-    final source = ElectricalComponentPlacement(
-      id: 'source',
-      type: ElectricalComponentType.powerSource,
-      surface: wall,
-      position: const SurfacePointMm(200, 1000),
-      label: 'Source',
-      ports: ElectricalComponentDefaults.portsFor(
-        ElectricalComponentType.powerSource,
-      ),
-    );
-    final target = ElectricalComponentPlacement(
-      id: 'target',
-      type: ElectricalComponentType.socketOutlet,
-      surface: wall,
-      position: const SurfacePointMm(2800, 1000),
-      label: 'Target',
-      ports: ElectricalComponentDefaults.portsFor(
-        ElectricalComponentType.socketOutlet,
-      ),
-    );
-    final components = [source, target];
+  test(
+    'F21 physical anchor validator rejects detached point and wrong surface',
+    () {
+      final wall = RoomSurfaceRef.wall('room-1', 0);
+      final source = ElectricalComponentPlacement(
+        id: 'source',
+        type: ElectricalComponentType.powerSource,
+        surface: wall,
+        position: const SurfacePointMm(200, 1000),
+        label: 'Source',
+        ports: ElectricalComponentDefaults.portsFor(
+          ElectricalComponentType.powerSource,
+        ),
+      );
+      final target = ElectricalComponentPlacement(
+        id: 'target',
+        type: ElectricalComponentType.socketOutlet,
+        surface: wall,
+        position: const SurfacePointMm(2800, 1000),
+        label: 'Target',
+        ports: ElectricalComponentDefaults.portsFor(
+          ElectricalComponentType.socketOutlet,
+        ),
+      );
+      final components = [source, target];
 
-    expect(
-      ElectricalConnectivityValidator.routeIsPhysicallyAnchored(
-        route: _route(source: source, target: target),
-        components: components,
-      ),
-      isTrue,
-    );
-    expect(
-      ElectricalConnectivityValidator.routeIsPhysicallyAnchored(
-        route: _route(
-          source: source,
-          target: target,
-          first: const SurfacePointMm(300, 1000),
+      expect(
+        ElectricalConnectivityValidator.routeIsPhysicallyAnchored(
+          route: _route(source: source, target: target),
+          components: components,
         ),
-        components: components,
-      ),
-      isFalse,
-    );
-    expect(
-      ElectricalConnectivityValidator.routeIsPhysicallyAnchored(
-        route: _route(
-          source: source,
-          target: target,
-          lastSurface: RoomSurfaceRef.wall('room-1', 1),
+        isTrue,
+      );
+      expect(
+        ElectricalConnectivityValidator.routeIsPhysicallyAnchored(
+          route: _route(
+            source: source,
+            target: target,
+            first: const SurfacePointMm(300, 1000),
+          ),
+          components: components,
         ),
-        components: components,
-      ),
-      isFalse,
-    );
-  });
+        isFalse,
+      );
+      expect(
+        ElectricalConnectivityValidator.routeIsPhysicallyAnchored(
+          route: _route(
+            source: source,
+            target: target,
+            lastSurface: RoomSurfaceRef.wall('room-1', 1),
+          ),
+          components: components,
+        ),
+        isFalse,
+      );
+    },
+  );
 
   test('F21 replace rejects detached geometry before history mutation', () {
     final controller = EditorController.demo();
@@ -138,10 +136,7 @@ void main() {
       segments: [
         ElectricalRouteSegment(
           surface: segment.surface,
-          points: [
-            const SurfacePointMm(300, 1000),
-            ...segment.points.skip(1),
-          ],
+          points: [const SurfacePointMm(300, 1000), ...segment.points.skip(1)],
         ),
       ],
       cableType: before.cableType,
@@ -151,8 +146,10 @@ void main() {
 
     expect(controller.p2.replaceCableRoute(before, detached), isFalse);
     expect(controller.p2.history.undoDepth, undoDepth);
-    expect(controller.p2.routes.single.segments.first.points.first,
-        source.position);
+    expect(
+      controller.p2.routes.single.segments.first.points.first,
+      source.position,
+    );
   });
 
   test('F21 legacy direct move rejects connected component', () {
@@ -175,8 +172,10 @@ void main() {
     );
     controller.p2.select(source.id);
     controller.p2.select(target.id, mode: SelectionMode.add);
-    expect(controller.p2.autoRouteSelectedPair(space: controller.selectedSpace),
-        isTrue);
+    expect(
+      controller.p2.autoRouteSelectedPair(space: controller.selectedSpace),
+      isTrue,
+    );
     controller.p2.select(source.id);
 
     expect(
@@ -184,8 +183,10 @@ void main() {
       isFalse,
     );
     expect(controller.p2.selectedComponent!.position, source.position);
-    expect(controller.p2.routes.single.segments.first.points.first,
-        source.position);
+    expect(
+      controller.p2.routes.single.segments.first.points.first,
+      source.position,
+    );
   });
 
   test('F21 save diagnostics reject imported detached endpoint geometry', () {
@@ -220,9 +221,11 @@ void main() {
 
     final issues = EditorProjectSaveDiagnostics.validate(workspace);
     expect(
-      issues.any((issue) =>
-          issue.code == EditorProjectSaveIssueCode.disconnectedRoute &&
-          issue.routeId == broken.id),
+      issues.any(
+        (issue) =>
+            issue.code == EditorProjectSaveIssueCode.disconnectedRoute &&
+            issue.routeId == broken.id,
+      ),
       isTrue,
     );
   });

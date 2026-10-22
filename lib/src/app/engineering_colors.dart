@@ -15,24 +15,24 @@ final class EngineeringColors extends ThemeExtension<EngineeringColors> {
   });
 
   factory EngineeringColors.dark() => const EngineeringColors(
-        info: AlienCockpitTokens.signalCyan,
-        active: AlienCockpitTokens.signalAqua,
-        registered: AlienCockpitTokens.signalAqua,
-        warning: AlienCockpitTokens.signalWarning,
-        fault: AlienCockpitTokens.signalFault,
-        category: AlienCockpitTokens.signalViolet,
-        onStatus: AlienCockpitTokens.darkVoid,
-      );
+    info: AlienCockpitTokens.signalCyan,
+    active: AlienCockpitTokens.signalAqua,
+    registered: AlienCockpitTokens.signalAqua,
+    warning: AlienCockpitTokens.signalWarning,
+    fault: AlienCockpitTokens.signalFault,
+    category: AlienCockpitTokens.signalViolet,
+    onStatus: AlienCockpitTokens.darkVoid,
+  );
 
   factory EngineeringColors.light() => const EngineeringColors(
-        info: Color(0xFF00505F),
-        active: Color(0xFF005B4A),
-        registered: Color(0xFF00624F),
-        warning: Color(0xFF654800),
-        fault: Color(0xFF9F1239),
-        category: Color(0xFF4C3F99),
-        onStatus: Colors.white,
-      );
+    info: Color(0xFF00505F),
+    active: Color(0xFF005B4A),
+    registered: Color(0xFF00624F),
+    warning: Color(0xFF654800),
+    fault: Color(0xFF9F1239),
+    category: Color(0xFF4C3F99),
+    onStatus: Colors.white,
+  );
 
   final Color info;
   final Color active;
@@ -59,16 +59,15 @@ final class EngineeringColors extends ThemeExtension<EngineeringColors> {
     Color? fault,
     Color? category,
     Color? onStatus,
-  }) =>
-      EngineeringColors(
-        info: info ?? this.info,
-        active: active ?? this.active,
-        registered: registered ?? this.registered,
-        warning: warning ?? this.warning,
-        fault: fault ?? this.fault,
-        category: category ?? this.category,
-        onStatus: onStatus ?? this.onStatus,
-      );
+  }) => EngineeringColors(
+    info: info ?? this.info,
+    active: active ?? this.active,
+    registered: registered ?? this.registered,
+    warning: warning ?? this.warning,
+    fault: fault ?? this.fault,
+    category: category ?? this.category,
+    onStatus: onStatus ?? this.onStatus,
+  );
 
   @override
   EngineeringColors lerp(covariant EngineeringColors? other, double t) {

@@ -62,9 +62,10 @@ abstract final class ConstraintEngine {
     final dy = (lineB.y - lineA.y).toDouble();
     final lengthSquared = dx * dx + dy * dy;
     if (lengthSquared == 0) return lineA;
-    final t = (((rawPoint.x - lineA.x) * dx + (rawPoint.y - lineA.y) * dy) /
-            lengthSquared)
-        .clamp(0.0, 1.0);
+    final t =
+        (((rawPoint.x - lineA.x) * dx + (rawPoint.y - lineA.y) * dy) /
+                lengthSquared)
+            .clamp(0.0, 1.0);
     return MmPoint((lineA.x + dx * t).round(), (lineA.y + dy * t).round());
   }
 }

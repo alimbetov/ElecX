@@ -49,8 +49,8 @@ abstract final class CadVisualTokens {
 
   static Color warning(ColorScheme scheme) =>
       scheme.brightness == Brightness.dark
-          ? const Color(0xFFFFC857)
-          : const Color(0xFF8B5E00);
+      ? const Color(0xFFFFC857)
+      : const Color(0xFF8B5E00);
 
   static Color locked(ColorScheme scheme) =>
       scheme.onSurfaceVariant.withValues(alpha: 0.48);

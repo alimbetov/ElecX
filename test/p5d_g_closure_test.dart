@@ -17,11 +17,13 @@ void main() {
       final source = _snapshot();
 
       final encoded = codec.encode(source);
-      expect(encoded.schemaVersion, CanonicalProjectDocumentCodec.schemaVersion);
       expect(
-        encoded.payload['projectOrientation'],
-        <String, Object?>{'projectNorthMilliDegrees': null},
+        encoded.schemaVersion,
+        CanonicalProjectDocumentCodec.schemaVersion,
       );
+      expect(encoded.payload['projectOrientation'], <String, Object?>{
+        'projectNorthMilliDegrees': null,
+      });
 
       final restored = codec.decode(encoded);
       expect(restored.aggregate.engineeringMetadata.projectNorth, isNull);
@@ -51,9 +53,8 @@ void main() {
     });
 
     test('compass visibility remains presentation-only canonical state', () {
-      final project = _snapshot(
-        north: ProjectEngineeringNorth.fromDegrees(90),
-      ).aggregate;
+      final project = _snapshot(north: ProjectEngineeringNorth.fromDegrees(90))
+          .aggregate;
       final mutations = ProjectMutationSession(project);
       final shell = EditorShellState();
       final versionBefore = mutations.current.version;
@@ -80,18 +81,9 @@ void main() {
 
       expect(project.index.level(levelA)?.levelNumber, 1);
       expect(project.index.level(levelB)?.levelNumber, 1);
-      expect(
-        project.index.buildingByLevel[levelA],
-        BuildingId('building-a'),
-      );
-      expect(
-        project.index.buildingByLevel[levelB],
-        BuildingId('building-b'),
-      );
-      expect(
-        project.engineeringMetadata.projectNorth?.degrees,
-        15,
-      );
+      expect(project.index.buildingByLevel[levelA], BuildingId('building-a'));
+      expect(project.index.buildingByLevel[levelB], BuildingId('building-b'));
+      expect(project.engineeringMetadata.projectNorth?.degrees, 15);
     });
   });
 }

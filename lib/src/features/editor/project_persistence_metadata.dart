@@ -22,7 +22,10 @@ final class EditorProjectMetadata {
     final normalizedName = projectName.trim();
     if (normalizedName.isEmpty) {
       throw ArgumentError.value(
-          projectName, 'projectName', 'Must be non-empty.');
+        projectName,
+        'projectName',
+        'Must be non-empty.',
+      );
     }
     return EditorProjectMetadata(
       projectId: projectId ?? _ProjectIdGenerator.generate(timestamp),
@@ -32,14 +35,14 @@ final class EditorProjectMetadata {
     );
   }
 
-  EditorProjectMetadata copyWith({
-    String? projectName,
-    DateTime? updatedAt,
-  }) {
+  EditorProjectMetadata copyWith({String? projectName, DateTime? updatedAt}) {
     final nextName = (projectName ?? this.projectName).trim();
     if (nextName.isEmpty) {
       throw ArgumentError.value(
-          projectName, 'projectName', 'Must be non-empty.');
+        projectName,
+        'projectName',
+        'Must be non-empty.',
+      );
     }
     final nextUpdatedAt = (updatedAt ?? this.updatedAt).toUtc();
     if (nextUpdatedAt.isBefore(createdAt)) {
@@ -57,25 +60,19 @@ final class EditorProjectMetadata {
     );
   }
 
-  EditorProjectMetadata touch([DateTime? now]) => copyWith(
-        updatedAt: (now ?? DateTime.now()).toUtc(),
-      );
+  EditorProjectMetadata touch([DateTime? now]) =>
+      copyWith(updatedAt: (now ?? DateTime.now()).toUtc());
 }
 
-enum EditorProjectSaveStatus {
-  saved,
-  modified,
-  saving,
-  saveFailed,
-}
+enum EditorProjectSaveStatus { saved, modified, saving, saveFailed }
 
 extension EditorProjectSaveStatusText on EditorProjectSaveStatus {
   String get label => switch (this) {
-        EditorProjectSaveStatus.saved => 'Saved',
-        EditorProjectSaveStatus.modified => 'Modified',
-        EditorProjectSaveStatus.saving => 'Saving…',
-        EditorProjectSaveStatus.saveFailed => 'Save failed',
-      };
+    EditorProjectSaveStatus.saved => 'Saved',
+    EditorProjectSaveStatus.modified => 'Modified',
+    EditorProjectSaveStatus.saving => 'Saving…',
+    EditorProjectSaveStatus.saveFailed => 'Save failed',
+  };
 }
 
 abstract final class _ProjectIdGenerator {

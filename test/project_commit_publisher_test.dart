@@ -22,10 +22,9 @@ void main() {
     expect(result, isNotNull);
     expect(publisher.events, hasLength(1));
     expect(publisher.events.single.project.version, LocalProjectVersion(5));
-    expect(
-      publisher.events.single.changeSet.updatedEntityIds,
-      <EntityId>{SiteId('site-1')},
-    );
+    expect(publisher.events.single.changeSet.updatedEntityIds, <EntityId>{
+      SiteId('site-1'),
+    });
   });
 
   test('does not publish preview, no-op or failed mutation', () {

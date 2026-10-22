@@ -14,11 +14,7 @@ final class CreateSpaceCommand implements ProjectCommand {
     this.usage = SpaceUsage.unknown,
   }) {
     if (name.trim().isEmpty) {
-      throw ArgumentError.value(
-        name,
-        'name',
-        'Space name must be non-empty.',
-      );
+      throw ArgumentError.value(name, 'name', 'Space name must be non-empty.');
     }
   }
 
@@ -40,7 +36,8 @@ final class CreateSpaceCommand implements ProjectCommand {
         code: ProjectAuthoringIssueCode.spaceAlreadyExists,
         entityId: spaceId,
         relatedEntityId: existing.levelId,
-        message: 'Space $spaceId already exists on level ${existing.levelId}; '
+        message:
+            'Space $spaceId already exists on level ${existing.levelId}; '
             'requested parent level is $levelId.',
       );
     }
@@ -114,11 +111,7 @@ final class CreateSpaceCommand implements ProjectCommand {
 final class RenameSpaceCommand implements ProjectCommand {
   RenameSpaceCommand({required this.spaceId, required this.name}) {
     if (name.trim().isEmpty) {
-      throw ArgumentError.value(
-        name,
-        'name',
-        'Space name must be non-empty.',
-      );
+      throw ArgumentError.value(name, 'name', 'Space name must be non-empty.');
     }
   }
 

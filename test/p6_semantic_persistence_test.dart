@@ -24,10 +24,10 @@ void main() {
 
       final opening = stores.openings[OpeningId('door-1')]!;
       expect(opening.kind, OpeningKind.door);
-      expect(
-        opening.connectedSpaceIds,
-        <SpaceId>{SpaceId('room-a'), SpaceId('room-b')},
-      );
+      expect(opening.connectedSpaceIds, <SpaceId>{
+        SpaceId('room-a'),
+        SpaceId('room-b'),
+      });
       expect(opening.widthMm, 900);
       expect(opening.heightMm, 2100);
 
@@ -39,10 +39,7 @@ void main() {
           stores.overlays[OverlayClassificationId('fire-compartment-1')]!;
       expect(overlay.discipline, OverlayDiscipline.fireSafety);
       expect(overlay.kind, OverlayClassificationKind.fireCompartment);
-      expect(
-        overlay.spaceIds,
-        <SpaceId>{SpaceId('room-a'), SpaceId('room-b')},
-      );
+      expect(overlay.spaceIds, <SpaceId>{SpaceId('room-a'), SpaceId('room-b')});
 
       expect(
         jsonEncode(codec.encode(restored).payload),

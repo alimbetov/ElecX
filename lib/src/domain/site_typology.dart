@@ -22,8 +22,8 @@ final class PropertyLot {
     required this.boundary,
     required Iterable<String> buildingIds,
     Iterable<String> outdoorZoneIds = const {},
-  })  : buildingIds = Set.unmodifiable(buildingIds),
-        outdoorZoneIds = Set.unmodifiable(outdoorZoneIds) {
+  }) : buildingIds = Set.unmodifiable(buildingIds),
+       outdoorZoneIds = Set.unmodifiable(outdoorZoneIds) {
     if (id.isEmpty) {
       throw ArgumentError('Lot id must be non-empty.');
     }

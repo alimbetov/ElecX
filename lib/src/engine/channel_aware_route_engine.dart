@@ -82,15 +82,15 @@ final class ChannelRouteCostVector {
   final double normativeRiskPenalty;
 
   ChannelRouteCostVector add(ChannelRouteEdge edge) => ChannelRouteCostVector(
-        lengthMm: lengthMm + edge.lengthMm,
-        materialCost: materialCost + edge.materialCost,
-        laborCost: laborCost + edge.laborCost,
-        transitionCount: transitionCount + edge.transitionCount,
-        bendCount: bendCount + edge.bendCount,
-        maintainabilityPenalty:
-            maintainabilityPenalty + edge.maintainabilityPenalty,
-        normativeRiskPenalty: normativeRiskPenalty + edge.normativeRiskPenalty,
-      );
+    lengthMm: lengthMm + edge.lengthMm,
+    materialCost: materialCost + edge.materialCost,
+    laborCost: laborCost + edge.laborCost,
+    transitionCount: transitionCount + edge.transitionCount,
+    bendCount: bendCount + edge.bendCount,
+    maintainabilityPenalty:
+        maintainabilityPenalty + edge.maintainabilityPenalty,
+    normativeRiskPenalty: normativeRiskPenalty + edge.normativeRiskPenalty,
+  );
 
   double score(ChannelRouteCostWeights weights) =>
       lengthMm * weights.length +

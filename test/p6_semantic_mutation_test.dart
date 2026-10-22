@@ -10,47 +10,49 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P6 semantic mutations', () {
-    test('SetSpaceUsage is one canonical mutation and same value is a no-op',
-        () {
-      final session = ProjectMutationSession(_baseProject());
-      final roomA = SpaceId('room-a');
+    test(
+      'SetSpaceUsage is one canonical mutation and same value is a no-op',
+      () {
+        final session = ProjectMutationSession(_baseProject());
+        final roomA = SpaceId('room-a');
 
-      final result = session.commit(
-        ProjectMutationRequest(
-          expectedVersion: session.current.version,
-          command: SetSpaceUsageCommand(
-            spaceId: roomA,
-            usage: SpaceUsage.bedroom,
+        final result = session.commit(
+          ProjectMutationRequest(
+            expectedVersion: session.current.version,
+            command: SetSpaceUsageCommand(
+              spaceId: roomA,
+              usage: SpaceUsage.bedroom,
+            ),
           ),
-        ),
-      )!;
+        )!;
 
-      expect(result.project.index.space(roomA)!.usage, SpaceUsage.bedroom);
-      expect(result.project.version, LocalProjectVersion(1));
-      expect(result.changeSet.updatedEntityIds, <EntityId>{roomA});
-      expect(session.undoDepth, 1);
+        expect(result.project.index.space(roomA)!.usage, SpaceUsage.bedroom);
+        expect(result.project.version, LocalProjectVersion(1));
+        expect(result.changeSet.updatedEntityIds, <EntityId>{roomA});
+        expect(session.undoDepth, 1);
 
-      final noOp = session.commit(
-        ProjectMutationRequest(
-          expectedVersion: session.current.version,
-          command: SetSpaceUsageCommand(
-            spaceId: roomA,
-            usage: SpaceUsage.bedroom,
+        final noOp = session.commit(
+          ProjectMutationRequest(
+            expectedVersion: session.current.version,
+            command: SetSpaceUsageCommand(
+              spaceId: roomA,
+              usage: SpaceUsage.bedroom,
+            ),
           ),
-        ),
-      );
-      expect(noOp, isNull);
-      expect(session.current.version, LocalProjectVersion(1));
-      expect(session.undoDepth, 1);
+        );
+        expect(noOp, isNull);
+        expect(session.current.version, LocalProjectVersion(1));
+        expect(session.undoDepth, 1);
 
-      final undone = session.undo(session.current.version)!;
-      expect(undone.project.index.space(roomA)!.usage, SpaceUsage.unknown);
-      expect(undone.project.version, LocalProjectVersion(2));
+        final undone = session.undo(session.current.version)!;
+        expect(undone.project.index.space(roomA)!.usage, SpaceUsage.unknown);
+        expect(undone.project.version, LocalProjectVersion(2));
 
-      final redone = session.redo(session.current.version)!;
-      expect(redone.project.index.space(roomA)!.usage, SpaceUsage.bedroom);
-      expect(redone.project.version, LocalProjectVersion(3));
-    });
+        final redone = session.redo(session.current.version)!;
+        expect(redone.project.index.space(roomA)!.usage, SpaceUsage.bedroom);
+        expect(redone.project.version, LocalProjectVersion(3));
+      },
+    );
 
     test('opening, adjacency and overlay participate in diff and indexes', () {
       final session = ProjectMutationSession(_baseProject());
@@ -75,10 +77,9 @@ void main() {
         ),
       )!;
       expect(openingResult.changeSet.addedEntityIds, contains(openingId));
-      expect(
-        openingResult.project.index.openingsBySpaceId[roomA],
-        <OpeningId>{openingId},
-      );
+      expect(openingResult.project.index.openingsBySpaceId[roomA], <OpeningId>{
+        openingId,
+      });
 
       final adjacency = ProjectSpaceAdjacencyEntity(
         id: adjacencyId,
@@ -179,8 +180,9 @@ void main() {
       final roomB = SpaceId('room-b');
       final roomC = SpaceId('room-c');
       final openingId = OpeningId('door-1');
-      final session =
-          ProjectMutationSession(_baseProject(withThirdSpace: true));
+      final session = ProjectMutationSession(
+        _baseProject(withThirdSpace: true),
+      );
 
       session.commit(
         ProjectMutationRequest(
@@ -276,15 +278,15 @@ void main() {
         throwsA(
           isA<ProjectAuthoringException>()
               .having(
-            (error) => error.code,
-            'code',
-            ProjectAuthoringIssueCode.spaceHasSemanticDependencies,
-          )
+                (error) => error.code,
+                'code',
+                ProjectAuthoringIssueCode.spaceHasSemanticDependencies,
+              )
               .having(
-            (error) => error.blockingEntityIds,
-            'blockingEntityIds',
-            <EntityId>{openingId, adjacencyId, overlayId},
-          ),
+                (error) => error.blockingEntityIds,
+                'blockingEntityIds',
+                <EntityId>{openingId, adjacencyId, overlayId},
+              ),
         ),
       );
       expect(session.current, same(before));
@@ -338,11 +340,7 @@ ProjectAggregateRoot _baseProject({
   final roomA = SpaceId('room-a');
   final roomB = SpaceId('room-b');
   final roomC = SpaceId('room-c');
-  final spaceIds = <SpaceId>[
-    roomA,
-    roomB,
-    if (withThirdSpace) roomC,
-  ];
+  final spaceIds = <SpaceId>[roomA, roomB, if (withThirdSpace) roomC];
 
   return ProjectAggregateRoot(
     id: ProjectId('project-1'),
@@ -381,11 +379,7 @@ ProjectAggregateRoot _baseProject({
           name: 'Room A',
           usage: roomAUsage,
         ),
-        roomB: ProjectSpaceEntity(
-          id: roomB,
-          levelId: levelId,
-          name: 'Room B',
-        ),
+        roomB: ProjectSpaceEntity(id: roomB, levelId: levelId, name: 'Room B'),
         if (withThirdSpace)
           roomC: ProjectSpaceEntity(
             id: roomC,

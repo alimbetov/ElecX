@@ -127,12 +127,12 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
               compact: widget.compact,
               onAddBuilding:
                   availability.canAddBuilding && widget.requestBuilding != null
-                      ? _addBuilding
-                      : null,
+                  ? _addBuilding
+                  : null,
               onAddLevel:
                   availability.canAddLevel && widget.requestLevel != null
-                      ? _addLevel
-                      : null,
+                  ? _addLevel
+                  : null,
               onAddRoom: availability.canAddRoom && widget.requestRoom != null
                   ? _addRoom
                   : null,
@@ -205,11 +205,13 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
     required int depth,
   }) {
     final hasChildren = node.childIds.isNotEmpty;
-    final expanded = node.kind == ProjectNavigatorNodeKind.site ||
+    final expanded =
+        node.kind == ProjectNavigatorNodeKind.site ||
         _expanded.contains(node.id) ||
         requiredExpanded.contains(node.id);
     final selected = projection.isSelected(node, navigation);
-    final active = projection.isActiveBuilding(node, navigation) ||
+    final active =
+        projection.isActiveBuilding(node, navigation) ||
         projection.isActiveLevel(node, navigation);
     final inCurrentPath = currentPath.contains(node.id);
     final nodeKey = _nodeKeys.putIfAbsent(node.id, GlobalKey.new);
@@ -248,10 +250,10 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
             trailing: selected
                 ? const Icon(Icons.check_circle_outline, size: 16)
                 : active
-                    ? const Icon(Icons.my_location, size: 15)
-                    : inCurrentPath
-                        ? const Icon(Icons.more_horiz, size: 15)
-                        : null,
+                ? const Icon(Icons.my_location, size: 15)
+                : inCurrentPath
+                ? const Icon(Icons.more_horiz, size: 15)
+                : null,
             onTap: node.kind == ProjectNavigatorNodeKind.site
                 ? null
                 : () => _activateNode(node),
@@ -447,10 +449,10 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
   }
 
   IconData _iconFor(ProjectNavigatorNodeKind kind) => switch (kind) {
-        ProjectNavigatorNodeKind.site => Icons.location_on_outlined,
-        ProjectNavigatorNodeKind.building => Icons.apartment_outlined,
-        ProjectNavigatorNodeKind.level => Icons.layers_outlined,
-        ProjectNavigatorNodeKind.structuralZone => Icons.home_work_outlined,
-        ProjectNavigatorNodeKind.space => Icons.crop_square,
-      };
+    ProjectNavigatorNodeKind.site => Icons.location_on_outlined,
+    ProjectNavigatorNodeKind.building => Icons.apartment_outlined,
+    ProjectNavigatorNodeKind.level => Icons.layers_outlined,
+    ProjectNavigatorNodeKind.structuralZone => Icons.home_work_outlined,
+    ProjectNavigatorNodeKind.space => Icons.crop_square,
+  };
 }

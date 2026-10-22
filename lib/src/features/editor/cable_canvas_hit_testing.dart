@@ -225,9 +225,7 @@ abstract final class CableCanvasHitTesting {
     return _compactOrthogonal(result);
   }
 
-  static List<SurfacePointMm> _compactOrthogonal(
-    List<SurfacePointMm> points,
-  ) {
+  static List<SurfacePointMm> _compactOrthogonal(List<SurfacePointMm> points) {
     final result = <SurfacePointMm>[];
     for (final point in points) {
       if (result.isNotEmpty &&
@@ -260,10 +258,7 @@ abstract final class CableCanvasHitTesting {
     final px = (point.xMm - a.xMm).toDouble();
     final py = (point.yMm - a.yMm).toDouble();
     final t = ((px * dx + py * dy) / lengthSquared).clamp(0.0, 1.0);
-    return SurfacePointMm(
-      (a.xMm + dx * t).round(),
-      (a.yMm + dy * t).round(),
-    );
+    return SurfacePointMm((a.xMm + dx * t).round(), (a.yMm + dy * t).round());
   }
 
   static double _distance(SurfacePointMm a, SurfacePointMm b) {

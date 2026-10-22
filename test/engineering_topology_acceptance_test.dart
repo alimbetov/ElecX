@@ -8,9 +8,7 @@ import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test(
-      'two different components connect through junction node to distribution board',
-      () {
+  test('two different components connect through junction node to distribution board', () {
     final controller = EditorController.demo();
     addTearDown(controller.dispose);
 

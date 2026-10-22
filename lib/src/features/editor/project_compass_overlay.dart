@@ -47,10 +47,7 @@ class ProjectCompassOverlay extends StatelessWidget {
         dimension: size,
         child: CustomPaint(
           key: const ValueKey('project-compass-paint'),
-          painter: _ProjectCompassPainter(
-            state: state,
-            scheme: scheme,
-          ),
+          painter: _ProjectCompassPainter(state: state, scheme: scheme),
         ),
       ),
     );
@@ -86,10 +83,7 @@ class ProjectCompassOverlay extends StatelessWidget {
 }
 
 final class _ProjectCompassPainter extends CustomPainter {
-  const _ProjectCompassPainter({
-    required this.state,
-    required this.scheme,
-  });
+  const _ProjectCompassPainter({required this.state, required this.scheme});
 
   final CompassProjectionState state;
   final ColorScheme scheme;

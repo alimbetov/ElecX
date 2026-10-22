@@ -112,10 +112,7 @@ void main() {
       );
       final cleared = withNorth.copyWith(clearProjectNorth: true);
 
-      expect(
-        withNorth.projectNorth?.milliDegreesClockwiseFromPositiveY,
-        90000,
-      );
+      expect(withNorth.projectNorth?.milliDegreesClockwiseFromPositiveY, 90000);
       expect(cleared.projectNorth, isNull);
     });
 

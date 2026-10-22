@@ -77,10 +77,9 @@ List<ElectricalPortDefinition> _legacyPortsFor(
     'lighting.switch.general' ||
     'lighting.luminaire.general' ||
     'power.junction-box.general' ||
-    'power.distribution-board.general' =>
-      ElectricalComponentDefaults.portsFor(
-        visualType,
-      ),
+    'power.distribution-board.general' => ElectricalComponentDefaults.portsFor(
+      visualType,
+    ),
     _ => const <ElectricalPortDefinition>[],
   };
 }
@@ -100,8 +99,8 @@ final class _AddCatalogComponentCommand
 
   @override
   EditorP2State undo(EditorP2State state) => state.copyWith(
-        components: state.components
-            .where((item) => item.id != component.id)
-            .toList(growable: false),
-      );
+    components: state.components
+        .where((item) => item.id != component.id)
+        .toList(growable: false),
+  );
 }

@@ -39,8 +39,11 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
           'localVersion': snapshot.localVersion.value,
         },
         'projectOrientation': <String, Object?>{
-          'projectNorthMilliDegrees': snapshot.aggregate.engineeringMetadata
-              .projectNorth?.milliDegreesClockwiseFromPositiveY,
+          'projectNorthMilliDegrees': snapshot
+              .aggregate
+              .engineeringMetadata
+              .projectNorth
+              ?.milliDegreesClockwiseFromPositiveY,
         },
         'sites': _encodeSites(stores),
         'buildings': _encodeBuildings(stores),
@@ -168,11 +171,7 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
           id: id,
           levelId: LevelId(_string(json['levelId'], 'space.levelId')),
           name: _string(json['name'], 'space.name'),
-          usage: _enumByName(
-            SpaceUsage.values,
-            json['usage'],
-            'space.usage',
-          ),
+          usage: _enumByName(SpaceUsage.values, json['usage'], 'space.usage'),
         );
       }
 
@@ -186,11 +185,7 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
         openings[id] = ProjectOpeningEntity(
           id: id,
           levelId: LevelId(_string(json['levelId'], 'opening.levelId')),
-          kind: _enumByName(
-            OpeningKind.values,
-            json['kind'],
-            'opening.kind',
-          ),
+          kind: _enumByName(OpeningKind.values, json['kind'], 'opening.kind'),
           connectedSpaceIds: _uniqueStringList(
             json['connectedSpaceIds'],
             'opening.connectedSpaceIds',
@@ -522,11 +517,7 @@ List<String> _uniqueStringList(Object? value, String field) {
   return result;
 }
 
-T _enumByName<T extends Enum>(
-  List<T> values,
-  Object? value,
-  String field,
-) {
+T _enumByName<T extends Enum>(List<T> values, Object? value, String field) {
   final raw = _string(value, field);
   for (final candidate in values) {
     if (candidate.name == raw) return candidate;
@@ -555,7 +546,8 @@ int _int(Object? value, String field) {
 
 DateTime _dateTime(Object? value, String field) {
   final raw = _string(value, field);
-  final hasExplicitZone = raw.endsWith('Z') ||
+  final hasExplicitZone =
+      raw.endsWith('Z') ||
       raw.endsWith('z') ||
       RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(raw);
   if (!hasExplicitZone) {

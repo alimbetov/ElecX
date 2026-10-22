@@ -22,8 +22,9 @@ void main() {
       controller.dispose();
     });
     controller.showWall(1);
-    final entry =
-        controller.componentCatalog.forSurface(SurfacePlaneType.wall).first;
+    final entry = controller.componentCatalog
+        .forSurface(SurfacePlaneType.wall)
+        .first;
     controller.p2.setLayerLocked(EditorLayerId.electrical, true);
     controller.placementCursor.beginCatalogPlacement(entry.id);
 
@@ -96,8 +97,9 @@ void main() {
     expect(controller.p2.routes.single.target.componentId, load.id);
   });
 
-  testWidgets('F11 first Escape clears manual draft, second exits tool',
-      (tester) async {
+  testWidgets('F11 first Escape clears manual draft, second exits tool', (
+    tester,
+  ) async {
     final controller = EditorController.demo();
     addTearDown(() {
       controller.disposeP2State();
@@ -127,8 +129,9 @@ void main() {
     expect(controller.tool, EditorTool.select);
   });
 
-  testWidgets('F13 invalid component target remains visible and uncommitted',
-      (tester) async {
+  testWidgets('F13 invalid component target remains visible and uncommitted', (
+    tester,
+  ) async {
     final controller = EditorController.demo();
     addTearDown(() {
       controller.disposeP2State();
@@ -141,7 +144,9 @@ void main() {
       position: const SurfacePointMm(1000, 500),
     );
     await tester.pumpWidget(
-      MaterialApp(home: Scaffold(body: SurfaceCanvas(controller: controller))),
+      MaterialApp(
+        home: Scaffold(body: SurfaceCanvas(controller: controller)),
+      ),
     );
     await tester.pump();
 
@@ -155,10 +160,14 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byKey(const ValueKey('component-preview-invalid')),
-        findsOneWidget);
-    expect(controller.componentTransform.previewState!.position,
-        const SurfacePointMm(5000, 500));
+    expect(
+      find.byKey(const ValueKey('component-preview-invalid')),
+      findsOneWidget,
+    );
+    expect(
+      controller.componentTransform.previewState!.position,
+      const SurfacePointMm(5000, 500),
+    );
     expect(
       controller.p2.components
           .singleWhere((item) => item.id == component.id)

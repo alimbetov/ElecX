@@ -16,13 +16,13 @@ abstract final class SurfaceNavigationResolver {
       WallNavigationEdge.floor => RoomSurfaceRef.floor(space.id),
       WallNavigationEdge.ceiling => RoomSurfaceRef.ceiling(space.id),
       WallNavigationEdge.start => RoomSurfaceRef.wall(
-          space.id,
-          (wallIndex - 1 + wallCount) % wallCount,
-        ),
+        space.id,
+        (wallIndex - 1 + wallCount) % wallCount,
+      ),
       WallNavigationEdge.end => RoomSurfaceRef.wall(
-          space.id,
-          (wallIndex + 1) % wallCount,
-        ),
+        space.id,
+        (wallIndex + 1) % wallCount,
+      ),
     };
   }
 

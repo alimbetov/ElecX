@@ -39,11 +39,11 @@ final class WallPlanBody {
   final int thicknessMm;
 
   List<MmPoint> get polygon => [
-        interiorStart,
-        interiorEnd,
-        exteriorEnd,
-        exteriorStart,
-      ];
+    interiorStart,
+    interiorEnd,
+    exteriorEnd,
+    exteriorStart,
+  ];
 }
 
 abstract final class WallPlanGeometry {

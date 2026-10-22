@@ -6,11 +6,7 @@ import '../editor/project_persistence_metadata.dart';
 import '../editor/unified_workspace_editor_screen.dart';
 
 class ProjectHubScreen extends StatefulWidget {
-  const ProjectHubScreen({
-    super.key,
-    this.projectStore,
-    this.recoveryStore,
-  });
+  const ProjectHubScreen({super.key, this.projectStore, this.recoveryStore});
 
   final EditorProjectStore? projectStore;
   final EditorProjectRecoveryStore? recoveryStore;
@@ -33,8 +29,8 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
     _recoveryStoreFuture = widget.recoveryStore != null
         ? Future<EditorProjectRecoveryStore?>.value(widget.recoveryStore)
         : widget.projectStore == null
-            ? JsonFileEditorProjectRecoveryStore.openDefault()
-            : Future<EditorProjectRecoveryStore?>.value(null);
+        ? JsonFileEditorProjectRecoveryStore.openDefault()
+        : Future<EditorProjectRecoveryStore?>.value(null);
     _projectsFuture = _loadProjects();
   }
 
@@ -216,8 +212,10 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
                   ),
                 ),
               const SizedBox(height: 28),
-              Text('Мои проекты',
-                  style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                'Мои проекты',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 12),
               if (projects.isEmpty)
                 const Card(
@@ -247,10 +245,7 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
 }
 
 final class _ProjectHubData {
-  const _ProjectHubData({
-    this.projects = const [],
-    this.recoveries = const [],
-  });
+  const _ProjectHubData({this.projects = const [], this.recoveries = const []});
 
   final List<EditorProjectDocument> projects;
   final List<EditorProjectRecoverySnapshot> recoveries;
@@ -269,24 +264,24 @@ class _RecoveryProjectCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-        key: ValueKey('recovery-project-${recovery.projectId}'),
-        child: ListTile(
-          leading: const Icon(Icons.restore_page_outlined),
-          title: Text(recovery.document.projectName),
-          subtitle: Text(
-            'Автокопия · ${recovery.capturedAt.toLocal()} · '
-            '${recovery.document.p2State.components.length} компонентов · '
-            '${recovery.document.p2State.routes.length} трасс',
-          ),
-          onTap: onRestore,
-          trailing: IconButton(
-            key: ValueKey('discard-recovery-${recovery.projectId}'),
-            tooltip: 'Удалить аварийную копию',
-            onPressed: onDiscard,
-            icon: const Icon(Icons.delete_outline),
-          ),
-        ),
-      );
+    key: ValueKey('recovery-project-${recovery.projectId}'),
+    child: ListTile(
+      leading: const Icon(Icons.restore_page_outlined),
+      title: Text(recovery.document.projectName),
+      subtitle: Text(
+        'Автокопия · ${recovery.capturedAt.toLocal()} · '
+        '${recovery.document.p2State.components.length} компонентов · '
+        '${recovery.document.p2State.routes.length} трасс',
+      ),
+      onTap: onRestore,
+      trailing: IconButton(
+        key: ValueKey('discard-recovery-${recovery.projectId}'),
+        tooltip: 'Удалить аварийную копию',
+        onPressed: onDiscard,
+        icon: const Icon(Icons.delete_outline),
+      ),
+    ),
+  );
 }
 
 class _ProjectCard extends StatelessWidget {
@@ -302,22 +297,21 @@ class _ProjectCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-        key: ValueKey(
-          '${prominent ? 'continue-project' : 'saved-project'}-${document.projectId}',
-        ),
-        child: ListTile(
-          leading:
-              Icon(prominent ? Icons.play_circle_outline : Icons.apartment),
-          title: Text(document.projectName),
-          subtitle: Text(
-            'Уровень ${document.activeLevelNumber} · '
-            '${document.p2State.components.length} компонентов · '
-            '${document.p2State.routes.length} трасс',
-          ),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: onTap,
-        ),
-      );
+    key: ValueKey(
+      '${prominent ? 'continue-project' : 'saved-project'}-${document.projectId}',
+    ),
+    child: ListTile(
+      leading: Icon(prominent ? Icons.play_circle_outline : Icons.apartment),
+      title: Text(document.projectName),
+      subtitle: Text(
+        'Уровень ${document.activeLevelNumber} · '
+        '${document.p2State.components.length} компонентов · '
+        '${document.p2State.routes.length} трасс',
+      ),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: onTap,
+    ),
+  );
 }
 
 class _ProjectLoadFailure extends StatelessWidget {
@@ -328,29 +322,29 @@ class _ProjectLoadFailure extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.error_outline, size: 32),
-                  const SizedBox(height: 12),
-                  const Text('Не удалось прочитать сохранённые проекты'),
-                  const SizedBox(height: 8),
-                  Text(error.toString(), textAlign: TextAlign.center),
-                  const SizedBox(height: 12),
-                  FilledButton.icon(
-                    onPressed: onRetry,
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Повторить'),
-                  ),
-                ],
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 520),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, size: 32),
+              const SizedBox(height: 12),
+              const Text('Не удалось прочитать сохранённые проекты'),
+              const SizedBox(height: 8),
+              Text(error.toString(), textAlign: TextAlign.center),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Повторить'),
               ),
-            ),
+            ],
           ),
         ),
-      );
+      ),
+    ),
+  );
 }

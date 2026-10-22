@@ -15,99 +15,96 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test(
-      'save close open restores canonical engineering state and continues edit',
-      () async {
-    final root = await Directory.systemTemp.createTemp('elecx-project-store-');
-    addTearDown(() async {
-      if (await root.exists()) await root.delete(recursive: true);
-    });
+    'save close open restores canonical engineering state and continues edit',
+    () async {
+      final root = await Directory.systemTemp.createTemp(
+        'elecx-project-store-',
+      );
+      addTearDown(() async {
+        if (await root.exists()) await root.delete(recursive: true);
+      });
 
-    final editor = EditorController.demo();
-    final workspace = EditorBuildingWorkspace.demo(editor);
-    workspace.updateProjectNorth(const ProjectNorth(northAzimuthDegrees: 90));
+      final editor = EditorController.demo();
+      final workspace = EditorBuildingWorkspace.demo(editor);
+      workspace.updateProjectNorth(const ProjectNorth(northAzimuthDegrees: 90));
 
-    final space = editor.selectedSpace!;
-    editor.showWall(0);
-    editor.addOpeningGuarded(ArchitecturalOpeningType.door);
-    final wall = editor.activeSurface!;
-    final source = editor.p2.placeComponent(
-      type: ElectricalComponentType.powerSource,
-      surface: wall,
-      position: const SurfacePointMm(200, 1200),
-    );
-    final target = editor.p2.placeComponent(
-      type: ElectricalComponentType.socketOutlet,
-      surface: wall,
-      position: const SurfacePointMm(1600, 2400),
-    );
-    editor.p2.select(source.id);
-    editor.p2.select(
-      target.id,
-      mode: SelectionMode.add,
-    );
-    expect(editor.p2.autoRouteSelectedPair(), isTrue);
-    final route = editor.p2.routes.single;
-    final interiorPoint = route.segments.single.points.length > 2
-        ? route.segments.single.points[1]
-        : route.segments.single.points.first;
-    final pointIndex = route.segments.single.points.indexOf(interiorPoint);
-    expect(
-      editor.p2.toggleRouteWaypoint(
-        routeId: route.id,
-        segmentIndex: 0,
-        pointIndex: pointIndex,
-        point: interiorPoint,
-      ),
-      isTrue,
-    );
+      final space = editor.selectedSpace!;
+      editor.showWall(0);
+      editor.addOpeningGuarded(ArchitecturalOpeningType.door);
+      final wall = editor.activeSurface!;
+      final source = editor.p2.placeComponent(
+        type: ElectricalComponentType.powerSource,
+        surface: wall,
+        position: const SurfacePointMm(200, 1200),
+      );
+      final target = editor.p2.placeComponent(
+        type: ElectricalComponentType.socketOutlet,
+        surface: wall,
+        position: const SurfacePointMm(1600, 2400),
+      );
+      editor.p2.select(source.id);
+      editor.p2.select(target.id, mode: SelectionMode.add);
+      expect(editor.p2.autoRouteSelectedPair(), isTrue);
+      final route = editor.p2.routes.single;
+      final interiorPoint = route.segments.single.points.length > 2
+          ? route.segments.single.points[1]
+          : route.segments.single.points.first;
+      final pointIndex = route.segments.single.points.indexOf(interiorPoint);
+      expect(
+        editor.p2.toggleRouteWaypoint(
+          routeId: route.id,
+          segmentIndex: 0,
+          pointIndex: pointIndex,
+          point: interiorPoint,
+        ),
+        isTrue,
+      );
 
-    final savedSpaceId = space.id;
-    final document = EditorProjectDocument.capture(workspace);
-    final store = JsonFileEditorProjectStore(root);
-    await store.save(document);
+      final savedSpaceId = space.id;
+      final document = EditorProjectDocument.capture(workspace);
+      final store = JsonFileEditorProjectStore(root);
+      await store.save(document);
 
-    editor.disposeP2State();
-    workspace.dispose();
-    editor.dispose();
+      editor.disposeP2State();
+      workspace.dispose();
+      editor.dispose();
 
-    final loaded = await store.load(document.projectId);
-    expect(loaded, isNotNull);
-    final restored = loaded!.restore();
-    addTearDown(() {
-      restored.editor.disposeP2State();
-      restored.workspace.dispose();
-      restored.editor.dispose();
-    });
+      final loaded = await store.load(document.projectId);
+      expect(loaded, isNotNull);
+      final restored = loaded!.restore();
+      addTearDown(() {
+        restored.editor.disposeP2State();
+        restored.workspace.dispose();
+        restored.editor.dispose();
+      });
 
-    expect(
-      restored.workspace.site.site.projectNorth.northAzimuthDegrees,
-      90,
-    );
-    expect(restored.editor.selectedSpaceId, savedSpaceId);
-    expect(restored.editor.openings, hasLength(1));
-    expect(restored.editor.p2.components, hasLength(2));
-    expect(restored.editor.p2.routes, hasLength(1));
-    expect(
-      restored.editor.p2.routeConstraintsFor(route.id).mandatoryWaypoints,
-      hasLength(1),
-    );
+      expect(restored.workspace.site.site.projectNorth.northAzimuthDegrees, 90);
+      expect(restored.editor.selectedSpaceId, savedSpaceId);
+      expect(restored.editor.openings, hasLength(1));
+      expect(restored.editor.p2.components, hasLength(2));
+      expect(restored.editor.p2.routes, hasLength(1));
+      expect(
+        restored.editor.p2.routeConstraintsFor(route.id).mandatoryWaypoints,
+        hasLength(1),
+      );
 
-    // Reopen starts a fresh history, but continued edits remain undoable and
-    // restored id sequences must never collide with persisted identities.
-    final newComponent = restored.editor.p2.placeComponent(
-      type: ElectricalComponentType.junctionBox,
-      surface: wall,
-      position: const SurfacePointMm(1700, 1800),
-    );
-    expect(newComponent.id, isNot(source.id));
-    expect(newComponent.id, isNot(target.id));
-    expect(restored.editor.p2.canUndo, isTrue);
-    restored.editor.p2.undo();
-    expect(
-      restored.editor.p2.components.any((item) => item.id == newComponent.id),
-      isFalse,
-    );
-  });
+      // Reopen starts a fresh history, but continued edits remain undoable and
+      // restored id sequences must never collide with persisted identities.
+      final newComponent = restored.editor.p2.placeComponent(
+        type: ElectricalComponentType.junctionBox,
+        surface: wall,
+        position: const SurfacePointMm(1700, 1800),
+      );
+      expect(newComponent.id, isNot(source.id));
+      expect(newComponent.id, isNot(target.id));
+      expect(restored.editor.p2.canUndo, isTrue);
+      restored.editor.p2.undo();
+      expect(
+        restored.editor.p2.components.any((item) => item.id == newComponent.id),
+        isFalse,
+      );
+    },
+  );
 
   test('workspace level switch persists edited geometry and openings', () {
     final editor = EditorController.demo();
@@ -154,19 +151,13 @@ void main() {
     );
     editor.p2.select(component.id);
     expect(editor.p2.beginMoveSelectedComponent(), isTrue);
-    expect(
-      () => EditorProjectDocument.capture(workspace),
-      throwsStateError,
-    );
+    expect(() => EditorProjectDocument.capture(workspace), throwsStateError);
     editor.p2.cancelMoveSelectedComponent();
 
     editor.showWall(0);
     editor.setTool(EditorTool.cableRoute);
     editor.surfaceTap(const SurfacePointMm(100, 100));
-    expect(
-      () => EditorProjectDocument.capture(workspace),
-      throwsStateError,
-    );
+    expect(() => EditorProjectDocument.capture(workspace), throwsStateError);
   });
 
   test('file store lists saved projects for application restart', () async {
@@ -194,10 +185,14 @@ void main() {
 
   test('project identity is independent from physical site identity', () {
     final now = DateTime.utc(2026, 10, 20, 8);
-    final first =
-        EditorProjectMetadata.create(projectName: 'Проект A', now: now);
-    final second =
-        EditorProjectMetadata.create(projectName: 'Проект B', now: now);
+    final first = EditorProjectMetadata.create(
+      projectName: 'Проект A',
+      now: now,
+    );
+    final second = EditorProjectMetadata.create(
+      projectName: 'Проект B',
+      now: now,
+    );
 
     expect(first.projectId, isNot(second.projectId));
     expect(first.projectId, isNot('site-1'));
@@ -236,43 +231,46 @@ void main() {
 
   test('unsupported schema is rejected explicitly', () {
     expect(
-      () => EditorProjectDocument.fromJson(const {
-        'schemaVersion': 99,
-      }),
+      () => EditorProjectDocument.fromJson(const {'schemaVersion': 99}),
       throwsFormatException,
     );
   });
 
   test(
-      'project listing isolates corrupt files and recovers backup-only project',
-      () async {
-    final temp = await Directory.systemTemp.createTemp('elecx-listing-');
-    addTearDown(() async {
-      if (await temp.exists()) await temp.delete(recursive: true);
-    });
-    final controller = EditorController.demo();
-    final workspace = EditorBuildingWorkspace.demo(controller);
-    final document = EditorProjectDocument.capture(
-      workspace,
-      metadata: EditorProjectMetadata.create(projectName: 'Healthy project'),
-    );
-    final store = JsonFileEditorProjectStore(temp);
-    await store.save(document);
+    'project listing isolates corrupt files and recovers backup-only project',
+    () async {
+      final temp = await Directory.systemTemp.createTemp('elecx-listing-');
+      addTearDown(() async {
+        if (await temp.exists()) await temp.delete(recursive: true);
+      });
+      final controller = EditorController.demo();
+      final workspace = EditorBuildingWorkspace.demo(controller);
+      final document = EditorProjectDocument.capture(
+        workspace,
+        metadata: EditorProjectMetadata.create(projectName: 'Healthy project'),
+      );
+      final store = JsonFileEditorProjectStore(temp);
+      await store.save(document);
 
-    final primary = (await temp
-        .list()
-        .where(
-            (entity) => entity is File && entity.path.endsWith('.elecx.json'))
-        .first) as File;
-    final backup = File('${primary.path}.bak');
-    await primary.rename(backup.path);
-    await File('${temp.path}/corrupt.elecx.json').writeAsString('{broken');
+      final primary =
+          (await temp
+                  .list()
+                  .where(
+                    (entity) =>
+                        entity is File && entity.path.endsWith('.elecx.json'),
+                  )
+                  .first)
+              as File;
+      final backup = File('${primary.path}.bak');
+      await primary.rename(backup.path);
+      await File('${temp.path}/corrupt.elecx.json').writeAsString('{broken');
 
-    final listed = await store.list();
-    expect(listed.map((item) => item.projectId), [document.projectId]);
+      final listed = await store.list();
+      expect(listed.map((item) => item.projectId), [document.projectId]);
 
-    workspace.dispose();
-    controller.disposeP2State();
-    controller.dispose();
-  });
+      workspace.dispose();
+      controller.disposeP2State();
+      controller.dispose();
+    },
+  );
 }

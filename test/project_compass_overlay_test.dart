@@ -5,14 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('unavailable projection renders no directional overlay',
-      (tester) async {
+  testWidgets('unavailable projection renders no directional overlay', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: ProjectCompassOverlay(
-            state: const CompassUnavailable(),
-          ),
+          body: ProjectCompassOverlay(state: const CompassUnavailable()),
         ),
       ),
     );
@@ -28,14 +27,13 @@ void main() {
     expect(find.bySemanticsLabel(RegExp('Compass')), findsNothing);
   });
 
-  testWidgets('unspecified north is explicit and read-only passes pointers',
-      (tester) async {
+  testWidgets('unspecified north is explicit and read-only passes pointers', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: ProjectCompassOverlay(
-            state: const CompassNorthUnspecified(),
-          ),
+          body: ProjectCompassOverlay(state: const CompassNorthUnspecified()),
         ),
       ),
     );
@@ -48,14 +46,12 @@ void main() {
       find.byKey(const ValueKey('project-compass-read-only')),
       findsOneWidget,
     );
-    expect(
-      find.byKey(const ValueKey('project-compass-action')),
-      findsNothing,
-    );
+    expect(find.byKey(const ValueKey('project-compass-action')), findsNothing);
   });
 
-  testWidgets('defined north exposes canonical semantics and interaction',
-      (tester) async {
+  testWidgets('defined north exposes canonical semantics and interaction', (
+    tester,
+  ) async {
     var taps = 0;
     final north = ProjectEngineeringNorth.fromDegrees(32.5);
 
@@ -93,8 +89,9 @@ void main() {
     expect(taps, 1);
   });
 
-  testWidgets('defined compass renders in light and dark themes',
-      (tester) async {
+  testWidgets('defined compass renders in light and dark themes', (
+    tester,
+  ) async {
     final north = ProjectEngineeringNorth.fromDegrees(90);
 
     for (final mode in <ThemeMode>[ThemeMode.light, ThemeMode.dark]) {

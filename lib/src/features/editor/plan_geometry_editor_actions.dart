@@ -147,7 +147,8 @@ extension PlanGeometryEditorActions on EditorController {
       for (var i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
         final a = polygon[j];
         final b = polygon[i];
-        final cross = (b.xMm - a.xMm) * (point.yMm - a.yMm) -
+        final cross =
+            (b.xMm - a.xMm) * (point.yMm - a.yMm) -
             (b.yMm - a.yMm) * (point.xMm - a.xMm);
         if (cross == 0 &&
             point.xMm >= math.min(a.xMm, b.xMm) &&
@@ -323,7 +324,9 @@ extension PlanGeometryEditorActions on EditorController {
       return false;
     }
     return updateSelectedOpeningGuarded(
-        offsetFromStartMm: newStartMm, widthMm: width);
+      offsetFromStartMm: newStartMm,
+      widthMm: width,
+    );
   }
 
   bool resizeSelectedOpeningFromEnd(int newEndMm) {

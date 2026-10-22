@@ -12,7 +12,7 @@ final class WallProfilePoint {
 /// steps, sloped tops, niches or other non-rectangular boundaries.
 final class WallProfile {
   WallProfile({required List<WallProfilePoint> vertices})
-      : vertices = List.unmodifiable(vertices) {
+    : vertices = List.unmodifiable(vertices) {
     if (vertices.length < 4) {
       throw ArgumentError('Wall profile must contain at least four vertices.');
     }
@@ -107,7 +107,8 @@ final class WallProfile {
     for (var i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
       final a = vertices[i];
       final b = vertices[j];
-      final intersects = ((a.yMm > yMm) != (b.yMm > yMm)) &&
+      final intersects =
+          ((a.yMm > yMm) != (b.yMm > yMm)) &&
           (xMm < (b.xMm - a.xMm) * (yMm - a.yMm) / (b.yMm - a.yMm) + a.xMm);
       if (intersects) inside = !inside;
     }

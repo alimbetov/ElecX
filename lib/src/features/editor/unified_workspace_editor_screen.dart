@@ -152,7 +152,8 @@ class _UnifiedWorkspaceEditorScreenState
     final initialRecovery = widget.initialRecovery;
     final initialDocument = initialRecovery?.document ?? widget.initialDocument;
     if (initialDocument == null) {
-      _projectMetadata = widget.initialMetadata ??
+      _projectMetadata =
+          widget.initialMetadata ??
           EditorProjectMetadata.create(projectName: 'Новый проект');
       _saveStatus = EditorProjectSaveStatus.modified;
       _projectRevision = 1;
@@ -171,8 +172,9 @@ class _UnifiedWorkspaceEditorScreenState
         _saveStatus = EditorProjectSaveStatus.saved;
       } else {
         _saveStatus = EditorProjectSaveStatus.modified;
-        _projectRevision =
-            initialRecovery.revision > 0 ? initialRecovery.revision : 1;
+        _projectRevision = initialRecovery.revision > 0
+            ? initialRecovery.revision
+            : 1;
         _savedRevision = 0;
         _lastAutosavedRevision = _projectRevision;
       }
@@ -191,8 +193,9 @@ class _UnifiedWorkspaceEditorScreenState
     }
     final injectedRecoveryStore = widget.recoveryStore;
     if (injectedRecoveryStore != null) {
-      _recoveryStoreFuture =
-          Future<EditorProjectRecoveryStore>.value(injectedRecoveryStore);
+      _recoveryStoreFuture = Future<EditorProjectRecoveryStore>.value(
+        injectedRecoveryStore,
+      );
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -292,9 +295,7 @@ class _UnifiedWorkspaceEditorScreenState
         onBlocked: _handleCanonicalBlocked,
         onError: _reportCanonicalCutoverError,
       );
-      binding.start(
-        pushInitialCanonicalState: pushInitialCanonicalState,
-      );
+      binding.start(pushInitialCanonicalState: pushInitialCanonicalState);
       _canonicalResolvedRuntime = resolved;
       _canonicalCutoverBinding = binding;
     } catch (error, stackTrace) {
@@ -359,8 +360,11 @@ class _UnifiedWorkspaceEditorScreenState
     final selectedCanonicalSpaceId = session.navigation.selectedSpaceId;
     final selectedLegacySpaceId = selectedCanonicalSpaceId == null
         ? null
-        : cutover.coordinator.adapter.binding
-            .legacySpaceIds[selectedCanonicalSpaceId];
+        : cutover
+              .coordinator
+              .adapter
+              .binding
+              .legacySpaceIds[selectedCanonicalSpaceId];
     final authoringEnabled = config.authoringEnabled;
     final navigator = CanonicalProjectNavigator(
       session: session,
@@ -381,10 +385,8 @@ class _UnifiedWorkspaceEditorScreenState
               }
             }
           : null,
-      onError: (error) => _reportCanonicalCutoverError(
-        error,
-        StackTrace.current,
-      ),
+      onError: (error) =>
+          _reportCanonicalCutoverError(error, StackTrace.current),
       compact: compact,
     );
 
@@ -592,8 +594,9 @@ class _UnifiedWorkspaceEditorScreenState
       );
     } catch (error) {
       if (!mounted) return;
-      final detail =
-          EditorProjectSaveDiagnostics.unexpectedPersistenceMessage(error);
+      final detail = EditorProjectSaveDiagnostics.unexpectedPersistenceMessage(
+        error,
+      );
       await _showSaveFailure(
         title: 'Не удалось сохранить проект',
         detail: detail,
@@ -659,8 +662,9 @@ class _UnifiedWorkspaceEditorScreenState
     _lastP2CommittedRevision = controller.p2.history.mutationRevision;
     controller.p2.addListener(_onP2Changed);
     _projectMetadata = metadata;
-    _projectRevision =
-        markSaved ? 0 : (recoveryRevision <= 0 ? 1 : recoveryRevision);
+    _projectRevision = markSaved
+        ? 0
+        : (recoveryRevision <= 0 ? 1 : recoveryRevision);
     _savedRevision = 0;
     _saveStatus = markSaved
         ? EditorProjectSaveStatus.saved
@@ -720,8 +724,9 @@ class _UnifiedWorkspaceEditorScreenState
       ..showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor:
-              isError ? Theme.of(context).colorScheme.errorContainer : null,
+          backgroundColor: isError
+              ? Theme.of(context).colorScheme.errorContainer
+              : null,
         ),
       );
   }
@@ -744,9 +749,8 @@ class _UnifiedWorkspaceEditorScreenState
 
     final value = await showDialog<ProjectEngineeringNorth>(
       context: context,
-      builder: (_) => ProjectNorthEditDialog(
-        initialValue: editing.currentProjectNorth,
-      ),
+      builder: (_) =>
+          ProjectNorthEditDialog(initialValue: editing.currentProjectNorth),
     );
     if (value == null || !mounted) return;
 
@@ -754,7 +758,8 @@ class _UnifiedWorkspaceEditorScreenState
     final currentConfig = widget.canonicalRuntime;
     final currentEditing = resolved.session.projectNorthEditing;
     final currentProject = resolved.session.project;
-    final affinityValid = identical(currentResolved, resolved) &&
+    final affinityValid =
+        identical(currentResolved, resolved) &&
         identical(currentConfig, config) &&
         _canonicalProjectMatchesScreen &&
         currentProject.id == capturedProjectId &&
@@ -830,8 +835,9 @@ class _UnifiedWorkspaceEditorScreenState
       workspace: workspace,
       siteInteraction: siteInteraction,
       onEntityOpen: _canonicalRuntimeActive ? _openSiteEntity : null,
-      onSpaceSelected:
-          _canonicalRuntimeActive ? _selectLegacySpaceThroughCanonical : null,
+      onSpaceSelected: _canonicalRuntimeActive
+          ? _selectLegacySpaceThroughCanonical
+          : null,
     );
   }
 
@@ -884,8 +890,8 @@ class _UnifiedWorkspaceEditorScreenState
     final outdoor = transition.fromHost.kind == RouteHostKind.outdoorZone
         ? transition.fromHost
         : transition.toHost.kind == RouteHostKind.outdoorZone
-            ? transition.toHost
-            : null;
+        ? transition.toHost
+        : null;
     final zoneId = outdoor?.outdoorZoneId;
     if (zoneId == null) return;
     workspace.selectOutdoorZone(zoneId);
@@ -896,16 +902,16 @@ class _UnifiedWorkspaceEditorScreenState
     final indoor = transition.fromHost.kind == RouteHostKind.indoorSurface
         ? transition.fromHost
         : transition.toHost.kind == RouteHostKind.indoorSurface
-            ? transition.toHost
-            : null;
+        ? transition.toHost
+        : null;
     if (indoor == null) return;
 
     final connectionId = transition.siteConnectionId;
     final connection = connectionId == null
         ? null
         : workspace.site.connections
-            .where((item) => item.id == connectionId)
-            .firstOrNull;
+              .where((item) => item.id == connectionId)
+              .firstOrNull;
 
     final surface = indoor.surface;
     if (surface == null) return;
@@ -918,8 +924,9 @@ class _UnifiedWorkspaceEditorScreenState
       if (connection != null) {
         workspace.selectLevel(connection.levelNumber);
       }
-      if (controller.level.spaces
-          .any((space) => space.id == preferredSpaceId)) {
+      if (controller.level.spaces.any(
+        (space) => space.id == preferredSpaceId,
+      )) {
         controller.selectSpace(preferredSpaceId);
       } else if (controller.level.spaces.any(
         (space) => space.id == surface.spaceId,
@@ -976,19 +983,19 @@ class _UnifiedWorkspaceEditorScreenState
               builder: (context, _) {
                 final rawCanvas =
                     workspace.context == EditorWorkspaceContext.siteOutdoor
-                        ? SiteMapCanvas(
-                            entities: SiteMapProjection.tower(workspace),
-                            interaction: siteInteraction,
-                            routeController: controller,
-                            onRouteTransitionTap: _followSiteTransition,
-                            onEntityOpen: _openSiteEntity,
-                          )
-                        : controller.viewMode == EditorViewMode.plan
-                            ? SpatialCanvas(controller: controller)
-                            : SurfaceCanvas(
-                                controller: controller,
-                                onOutdoorTransition: _followOutdoorTransition,
-                              );
+                    ? SiteMapCanvas(
+                        entities: SiteMapProjection.tower(workspace),
+                        interaction: siteInteraction,
+                        routeController: controller,
+                        onRouteTransitionTap: _followSiteTransition,
+                        onEntityOpen: _openSiteEntity,
+                      )
+                    : controller.viewMode == EditorViewMode.plan
+                    ? SpatialCanvas(controller: controller)
+                    : SurfaceCanvas(
+                        controller: controller,
+                        onOutdoorTransition: _followOutdoorTransition,
+                      );
                 final compassProjection = _compassProjectionState();
                 return Stack(
                   children: [
@@ -999,8 +1006,9 @@ class _UnifiedWorkspaceEditorScreenState
                         top: 12,
                         child: ProjectCompassOverlay(
                           state: compassProjection,
-                          onTap:
-                              _canEditProjectNorth ? _editProjectNorth : null,
+                          onTap: _canEditProjectNorth
+                              ? _editProjectNorth
+                              : null,
                         ),
                       ),
                     if (workspace.context != EditorWorkspaceContext.siteOutdoor)
@@ -1021,9 +1029,7 @@ class _UnifiedWorkspaceEditorScreenState
                   ? null
                   : Drawer(
                       width: EditorLayoutPolicy.navigatorWidth(mode),
-                      child: SafeArea(
-                        child: _projectNavigator(compact: true),
-                      ),
+                      child: SafeArea(child: _projectNavigator(compact: true)),
                     ),
               endDrawer: desktop
                   ? null
@@ -1061,9 +1067,7 @@ class _UnifiedWorkspaceEditorScreenState
                     compact: !desktop,
                   ),
                   if (_canonicalBlocked != null)
-                    _CanonicalCutoverBlockedBanner(
-                      result: _canonicalBlocked!,
-                    ),
+                    _CanonicalCutoverBlockedBanner(result: _canonicalBlocked!),
                   if (shell.contextBarVisible)
                     _ContextStrip(workspace: workspace),
                   Expanded(
@@ -1183,9 +1187,8 @@ class _CanonicalCutoverBlockedBanner extends StatelessWidget {
           Expanded(
             child: Text(
               result.message ?? 'Текущий объект пока нельзя открыть на canvas.',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: scheme.onErrorContainer,
-                  ),
+              style: Theme.of(context).textTheme.labelMedium
+                  ?.copyWith(color: scheme.onErrorContainer),
             ),
           ),
         ],
@@ -1322,7 +1325,7 @@ class _ContextStrip extends StatelessWidget {
     final label = workspace.context == EditorWorkspaceContext.siteOutdoor
         ? 'Площадка · ${workspace.site.site.name}'
         : 'Уровень ${workspace.activeLevel?.displayName ?? ''} · '
-            '${workspace.selectedZone?.name ?? workspace.editor.selectedSpace?.name ?? 'без выбора'}';
+              '${workspace.selectedZone?.name ?? workspace.editor.selectedSpace?.name ?? 'без выбора'}';
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -1342,7 +1345,7 @@ class _ContextBadge extends StatelessWidget {
     final label = workspace.context == EditorWorkspaceContext.siteOutdoor
         ? workspace.site.site.name
         : '${workspace.activeLevel?.displayName ?? ''} · '
-            '${workspace.editor.selectedSpace?.name ?? 'без помещения'}';
+              '${workspace.editor.selectedSpace?.name ?? 'без помещения'}';
     return Material(
       color: Theme.of(context).colorScheme.surfaceContainerHigh,
       elevation: 2,
@@ -1368,19 +1371,19 @@ class _SideRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        width: 38,
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: IconButton(
-              tooltip: tooltip,
-              onPressed: onPressed,
-              icon: Icon(icon),
-            ),
-          ),
+    width: 38,
+    child: Align(
+      alignment: Alignment.topCenter,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: IconButton(
+          tooltip: tooltip,
+          onPressed: onPressed,
+          icon: Icon(icon),
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class _CatalogPanel extends StatelessWidget {
@@ -1391,21 +1394,21 @@ class _CatalogPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        children: [
-          ListTile(
-            dense: true,
-            title: const Text('Компоненты'),
-            trailing: IconButton(
-              tooltip: 'Свернуть каталог',
-              onPressed: onCollapse,
-              icon: Icon(Icons.chevron_right),
-            ),
-          ),
-          const Divider(height: 1),
-          RoomCircuitOverviewPanel(controller: controller),
-          RoomCircuitPanel(controller: controller),
-          const Divider(height: 1),
-          Expanded(child: DeviceCatalogPanel(controller: controller)),
-        ],
-      );
+    children: [
+      ListTile(
+        dense: true,
+        title: const Text('Компоненты'),
+        trailing: IconButton(
+          tooltip: 'Свернуть каталог',
+          onPressed: onCollapse,
+          icon: Icon(Icons.chevron_right),
+        ),
+      ),
+      const Divider(height: 1),
+      RoomCircuitOverviewPanel(controller: controller),
+      RoomCircuitPanel(controller: controller),
+      const Divider(height: 1),
+      Expanded(child: DeviceCatalogPanel(controller: controller)),
+    ],
+  );
 }
