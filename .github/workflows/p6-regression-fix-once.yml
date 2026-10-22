@@ -1,0 +1,133 @@
+name: P6 Regression Fix Once
+
+on:
+  push:
+    branches: [feat/project-structure-authoring]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/project-structure-authoring
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Apply targeted P6F regression fixes
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path('lib/src/features/editor/space_semantics_inspector.dart')
+          text = path.read_text()
+          text = text.replace(
+              '      initialValue: usage,\n      decoration:',
+              '      initialValue: usage,\n      isExpanded: true,\n      decoration:',
+          )
+          text = text.replace(
+              '            child: Text(spaceUsageLabel(value)),',
+              """            child: Text(
+              spaceUsageLabel(value),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),""",
+          )
+          text = text.replace(
+              '    return _SemanticRow(\n      icon: Icons.door_front_door_outlined,',
+              "    return _SemanticRow(\n      key: ValueKey('space-semantics-opening-${opening.id.value}'),\n      icon: Icons.door_front_door_outlined,",
+          )
+          text = text.replace(
+              '    return _SemanticRow(\n      icon: adjacency.kind == SpaceAdjacencyKind.vertical',
+              "    return _SemanticRow(\n      key: ValueKey('space-semantics-adjacency-${adjacency.id.value}'),\n      icon: adjacency.kind == SpaceAdjacencyKind.vertical",
+          )
+          text = text.replace(
+              '  const _SemanticRow({\n    required this.icon,',
+              '  const _SemanticRow({\n    super.key,\n    required this.icon,',
+          )
+          path.write_text(text)
+
+          path = Path('lib/src/features/editor/unified_workspace_editor_screen.dart')
+          text = path.read_text()
+          old = """      if (semanticsInspector != null) ...[
+        semanticsInspector!,
+        const Divider(height: 1),
+      ],
+      RoomCircuitOverviewPanel(controller: controller),
+      RoomCircuitPanel(controller: controller),
+      const Divider(height: 1),
+      Expanded(child: DeviceCatalogPanel(controller: controller)),
+"""
+          new = """      Flexible(
+        flex: 2,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (semanticsInspector != null) ...[
+                semanticsInspector!,
+                const Divider(height: 1),
+              ],
+              RoomCircuitOverviewPanel(controller: controller),
+              RoomCircuitPanel(controller: controller),
+              const Divider(height: 1),
+            ],
+          ),
+        ),
+      ),
+      Expanded(
+        flex: 3,
+        child: DeviceCatalogPanel(controller: controller),
+      ),
+"""
+          if old not in text:
+              raise SystemExit('desktop catalog panel block not found')
+          path.write_text(text.replace(old, new, 1))
+
+          path = Path('test/p6f_space_semantics_inspector_test.dart')
+          text = path.read_text()
+          old = """    expect(find.text('Corridor'), findsOneWidget);
+    expect(find.text('Connected by opening'), findsOneWidget);
+"""
+          new = """    final openingRow = find.byKey(
+      const ValueKey('space-semantics-opening-door-1'),
+    );
+    final adjacencyRow = find.byKey(
+      const ValueKey('space-semantics-adjacency-adj-1'),
+    );
+    expect(
+      find.descendant(of: openingRow, matching: find.text('Corridor')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: adjacencyRow, matching: find.text('Corridor')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: adjacencyRow,
+        matching: find.text('Connected by opening'),
+      ),
+      findsOneWidget,
+    );
+"""
+          if old not in text:
+              raise SystemExit('corridor assertion block not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Format only touched Dart files
+        run: dart format lib/src/features/editor/space_semantics_inspector.dart lib/src/features/editor/unified_workspace_editor_screen.dart test/p6f_space_semantics_inspector_test.dart
+      - name: Remove one-shot workflow
+        run: rm .github/workflows/p6-regression-fix-once.yml
+      - name: Commit targeted fixes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix(p6f): harden inspector layout and qualification'
+          git push origin HEAD:feat/project-structure-authoring
