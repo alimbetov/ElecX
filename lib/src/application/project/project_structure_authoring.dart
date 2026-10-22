@@ -1,6 +1,7 @@
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import 'project_authoring_error.dart';
+import 'project_boundary_host_adoption.dart';
 import 'project_boundary_topology_editing.dart';
 import 'project_boundary_topology_migration.dart';
 import 'project_building_commands.dart';
@@ -40,11 +41,6 @@ final class ProjectStructureAuthoringException implements Exception {
   String toString() => '${code.name}: $message';
 }
 
-/// Availability of the discoverable P5C primary authoring actions.
-///
-/// Targeting is derived only from the canonical project and the shared
-/// [ProjectNavigationState]. Widgets must not independently guess a parent from
-/// labels, level numbers or legacy workspace state.
 final class ProjectStructureAuthoringAvailability {
   const ProjectStructureAuthoringAvailability({
     required this.canAddBuilding,
@@ -59,7 +55,6 @@ final class ProjectStructureAuthoringAvailability {
 
 final class CreateBuildingRequest {
   const CreateBuildingRequest({required this.name, this.displayOrder = 0});
-
   final String name;
   final int displayOrder;
 }
@@ -71,22 +66,14 @@ final class CreateLevelRequest {
     required this.elevationMm,
     this.displayOrder = 0,
   });
-
   final String name;
   final int levelNumber;
   final int elevationMm;
   final int displayOrder;
 }
 
-/// P5C structural room request.
-///
-/// Geometry/type/usage fields are intentionally not invented here because the
-/// current canonical P4 Space entity does not own them yet. The existing plan
-/// rectangle interaction may collect geometry before this structural commit;
-/// canonical geometry/type/usage integration belongs to the later model stage.
 final class CreateRoomRequest {
   const CreateRoomRequest({required this.name, this.structuralZoneId});
-
   final String name;
   final ZoneId? structuralZoneId;
 }
@@ -105,7 +92,6 @@ final class ProjectStructureAuthoringResult<T extends EntityId> {
   final ProjectChangeSet changeSet;
 }
 
-/// P5C structural authoring boundary shared by all canonical editor capabilities.
 final class ProjectStructureAuthoringSession {
   ProjectStructureAuthoringSession({
     required ProjectMutationSession mutations,
@@ -118,6 +104,7 @@ final class ProjectStructureAuthoringSession {
             ProjectBoundaryTopologyEditingService(mutations),
         _boundaryTopologyMigration =
             ProjectBoundaryTopologyMigrationService(mutations),
+        _boundaryHostAdoption = ProjectBoundaryHostAdoptionService(mutations),
         _idFactory = idFactory,
         _navigation = _initialNavigation(mutations.current, navigation);
 
@@ -126,38 +113,25 @@ final class ProjectStructureAuthoringSession {
   final ProjectSpaceSemanticsEditingPort _spaceSemanticsEditing;
   final ProjectBoundaryTopologyEditingPort _boundaryTopologyEditing;
   final ProjectBoundaryTopologyMigrationService _boundaryTopologyMigration;
+  final ProjectBoundaryHostAdoptionService _boundaryHostAdoption;
   final EntityIdFactory _idFactory;
   ProjectNavigationState _navigation;
 
   ProjectAggregateRoot get project => _mutations.current;
   ProjectNavigationState get navigation => _navigation;
-
-  /// Narrow P5D edit capability backed by the exact same P3 mutation session as
-  /// structural authoring. This prevents two canonical mutation timelines from
-  /// silently diverging inside one production runtime.
   ProjectNorthEditingPort get projectNorthEditing => _projectNorthEditing;
-
-  /// P6 semantic editing capability backed by the same P3 timeline as
-  /// structural authoring and Project North. Production presentation must not
-  /// construct a second ProjectMutationSession for selected-space semantics.
   ProjectSpaceSemanticsEditingPort get spaceSemanticsEditing =>
       _spaceSemanticsEditing;
-
-  /// P7A-4.5 geometry capability backed by the same P3 mutation timeline.
-  /// Input surfaces normalize mouse/touch/stylus/keyboard interactions before
-  /// entering this port; no durable wall ordinal is accepted here.
   ProjectBoundaryTopologyEditingPort get boundaryTopologyEditing =>
       _boundaryTopologyEditing;
-
-  /// P7A-5 identity-changing topology capability. Split/merge/create/remove
-  /// host migration must use this service so topology, hosted references and
-  /// wall-profile payloads share the exact same P3 version and Undo/Redo stack.
   ProjectBoundaryTopologyMigrationService get boundaryTopologyMigration =>
       _boundaryTopologyMigration;
 
-  /// Production history replay is deliberately exposed only through this
-  /// session so all canonical capabilities keep one P3 undo/redo stack and the
-  /// canonical navigation can be reconciled after structural replay.
+  /// P7A-5 one-time legacy -> canonical hosted ownership adoption backed by the
+  /// exact same P3 mutation session as topology migration and document history.
+  ProjectBoundaryHostAdoptionService get boundaryHostAdoption =>
+      _boundaryHostAdoption;
+
   bool get canUndoCanonicalMutation => _mutations.canUndo;
   bool get canRedoCanonicalMutation => _mutations.canRedo;
 
@@ -213,7 +187,6 @@ final class ProjectStructureAuthoringSession {
             '${project.siteId}.',
       );
     }
-
     final validated = next.reconcile(project);
     if (validated != next) {
       throw ProjectStructureAuthoringException(
@@ -226,7 +199,6 @@ final class ProjectStructureAuthoringSession {
             'project and cannot be adopted without repair.',
       );
     }
-
     _navigation = next;
   }
 
@@ -234,14 +206,12 @@ final class ProjectStructureAuthoringSession {
     final current = _mutations.current;
     final buildingId = _navigation.activeBuildingId;
     final levelId = _navigation.activeLevelId;
-
     final building =
         buildingId == null ? null : current.index.building(buildingId);
     final level = levelId == null ? null : current.index.level(levelId);
     final hasBuilding = building != null && building.siteId == current.siteId;
     final hasLevel =
         level != null && hasBuilding && level.buildingId == building.id;
-
     return ProjectStructureAuthoringAvailability(
       canAddBuilding: current.index.site(current.siteId) != null,
       canAddLevel: hasBuilding,
@@ -262,12 +232,10 @@ final class ProjectStructureAuthoringSession {
       expectedVersion: project.version,
       command: command,
     );
-
     final preview = _mutations.preview(request);
     final nextNavigation = _navigation.activateBuilding(preview.candidate, id);
     final committed = _requireCommit(_mutations.commit(request), command);
     _navigation = nextNavigation;
-
     return ProjectStructureAuthoringResult<BuildingId>(
       createdId: id,
       project: committed.project,
@@ -291,7 +259,6 @@ final class ProjectStructureAuthoringSession {
             'progress.',
       );
     }
-
     final id = _idFactory.newLevelId();
     final command = CreateLevelCommand(
       levelId: id,
@@ -305,12 +272,10 @@ final class ProjectStructureAuthoringSession {
       expectedVersion: project.version,
       command: command,
     );
-
     final preview = _mutations.preview(request);
     final nextNavigation = _navigation.activateLevel(preview.candidate, id);
     final committed = _requireCommit(_mutations.commit(request), command);
     _navigation = nextNavigation;
-
     return ProjectStructureAuthoringResult<LevelId>(
       createdId: id,
       project: committed.project,
@@ -332,7 +297,6 @@ final class ProjectStructureAuthoringSession {
         message: 'Active Level changed while +Room authoring was in progress.',
       );
     }
-
     final zoneId = input.structuralZoneId;
     if (zoneId != null) {
       final zone = project.index.zone(zoneId);
@@ -354,7 +318,6 @@ final class ProjectStructureAuthoringSession {
         );
       }
     }
-
     final id = _idFactory.newSpaceId();
     final command = CreateSpaceCommand(
       spaceId: id,
@@ -366,12 +329,10 @@ final class ProjectStructureAuthoringSession {
       expectedVersion: project.version,
       command: command,
     );
-
     final preview = _mutations.preview(request);
     final nextNavigation = _navigation.selectSpace(preview.candidate, id);
     final committed = _requireCommit(_mutations.commit(request), command);
     _navigation = nextNavigation;
-
     return ProjectStructureAuthoringResult<SpaceId>(
       createdId: id,
       project: committed.project,
@@ -405,7 +366,6 @@ final class ProjectStructureAuthoringSession {
             'before/after versions ending at ${current.version}.',
       );
     }
-
     _navigation = _navigation.reconcileAfterMutation(
       before: before,
       after: after,
