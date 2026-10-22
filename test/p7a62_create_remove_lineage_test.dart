@@ -5,13 +5,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P7A-6.2 create/remove lineage', () {
-    test('hosted removed source fails closed without domain removal policy', () {
+    test('hosted removed source fails closed without domain removal policy',
+        () {
       final fixture = _Fixture();
       final after = fixture.topology(
         bottomIds: [fixture.created],
         bottomEdges: {
-          fixture.created:
-              fixture.edge(fixture.created, 0, 0, 4000, 0),
+          fixture.created: fixture.edge(fixture.created, 0, 0, 4000, 0),
         },
       );
       final lineage = BoundaryTopologyChangeSet([
