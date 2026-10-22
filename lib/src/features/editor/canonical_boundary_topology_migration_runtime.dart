@@ -417,14 +417,18 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
       ownerMutation();
     } catch (error) {
       controller.documentHistory.invalidateAfterUnownedCanonicalCommit(session);
-      _bestEffortRematerialize(rematerialize);
+      _bestEffortRematerializeIfStillAttached(
+        controller: controller,
+        session: session,
+        rematerialize: rematerialize,
+      );
       throw CanonicalBoundaryPostCommitException(
         phase: 'persistence ownership acknowledgement',
         cause: error,
       );
     }
 
-    _requireCommittedVersionCurrent(
+    _requireCommittedStateCurrent(
       controller: controller,
       context: context,
       expectedVersion: resultVersion,
@@ -437,14 +441,18 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
     } catch (error) {
       controller.documentHistory
           .invalidateAfterCommittedCanonicalDivergence(session);
-      _bestEffortRematerialize(rematerialize);
+      _bestEffortRematerializeIfStillAttached(
+        controller: controller,
+        session: session,
+        rematerialize: rematerialize,
+      );
       throw CanonicalBoundaryPostCommitException(
         phase: 'unified history registration',
         cause: error,
       );
     }
 
-    _requireCommittedVersionCurrent(
+    _requireCommittedStateCurrent(
       controller: controller,
       context: context,
       expectedVersion: resultVersion,
@@ -463,7 +471,7 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
       );
     }
 
-    _requireCommittedVersionCurrent(
+    _requireCommittedStateCurrent(
       controller: controller,
       context: context,
       expectedVersion: resultVersion,
@@ -472,7 +480,7 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
     );
   }
 
-  static void _requireCommittedVersionCurrent({
+  static void _requireCommittedStateCurrent({
     required EditorController controller,
     required _MigrationContext context,
     required LocalProjectVersion expectedVersion,
@@ -480,13 +488,26 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
     required void Function() rematerialize,
   }) {
     final session = context.coordinator.session;
+    if (!controller.documentHistory.hasCanonicalSessionAffinity(session)) {
+      throw CanonicalBoundaryPostCommitException(
+        phase: '$phase session-affinity check',
+        cause: StateError(
+          'Canonical document history switched sessions after commit.',
+        ),
+      );
+    }
+
     final currentVersion = session.project.version;
     if (currentVersion == expectedVersion) return;
 
     controller.documentHistory.invalidateAfterCommittedCanonicalDivergence(
       session,
     );
-    _bestEffortRematerialize(rematerialize);
+    _bestEffortRematerializeIfStillAttached(
+      controller: controller,
+      session: session,
+      rematerialize: rematerialize,
+    );
     throw CanonicalBoundaryPostCommitException(
       phase: '$phase re-entrancy check',
       cause: StateError(
@@ -496,7 +517,14 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
     );
   }
 
-  static void _bestEffortRematerialize(void Function() rematerialize) {
+  static void _bestEffortRematerializeIfStillAttached({
+    required EditorController controller,
+    required ProjectStructureAuthoringSession session,
+    required void Function() rematerialize,
+  }) {
+    if (!controller.documentHistory.hasCanonicalSessionAffinity(session)) {
+      return;
+    }
     try {
       rematerialize();
     } catch (_) {
@@ -512,7 +540,13 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
     required EditorP2State sourceP2,
     required bool showPlanAfter,
   }) {
-    final project = context.coordinator.session.project;
+    final session = context.coordinator.session;
+    if (!controller.documentHistory.hasCanonicalSessionAffinity(session)) {
+      throw StateError(
+        'P7A-5 materialization lost canonical session affinity.',
+      );
+    }
+    final project = session.project;
     final topology = project.index.boundary(context.spaceId);
     final legacySpace = controller.selectedSpace;
     if (topology == null || legacySpace == null) {
