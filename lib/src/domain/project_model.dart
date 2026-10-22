@@ -1,4 +1,5 @@
 import 'geometry.dart';
+import 'project_identity.dart';
 import 'site_orientation.dart';
 import 'wall_profile.dart';
 
@@ -44,6 +45,7 @@ final class EngineeringSpace {
     required this.referenceFrame,
     this.grid = const GridDefinition(),
     this.wallProfiles = const {},
+    this.boundaryEdgeWallProfiles = const {},
   });
 
   final String id;
@@ -53,15 +55,19 @@ final class EngineeringSpace {
   final RoomReferenceFrame referenceFrame;
   final GridDefinition grid;
 
-  /// Optional wall-elevation overrides by room boundary edge index.
-  /// Missing entries use a rectangular wall profile.
+  /// Transitional legacy wall-elevation overrides by boundary ordinal.
+  /// Canonical P7A-5 code must use [boundaryEdgeWallProfiles].
   final Map<int, WallProfile> wallProfiles;
+
+  /// Durable wall-elevation overrides keyed by stable boundary identity.
+  final Map<BoundaryEdgeId, WallProfile> boundaryEdgeWallProfiles;
 
   EngineeringSpace copyWith({
     GridDefinition? grid,
     MmPolygon? boundary,
     RoomReferenceFrame? referenceFrame,
     Map<int, WallProfile>? wallProfiles,
+    Map<BoundaryEdgeId, WallProfile>? boundaryEdgeWallProfiles,
   }) =>
       EngineeringSpace(
         id: id,
@@ -71,8 +77,11 @@ final class EngineeringSpace {
         referenceFrame: referenceFrame ?? this.referenceFrame,
         grid: grid ?? this.grid,
         wallProfiles: wallProfiles ?? this.wallProfiles,
+        boundaryEdgeWallProfiles:
+            boundaryEdgeWallProfiles ?? this.boundaryEdgeWallProfiles,
       );
 
+  /// Transitional legacy mutation by wall ordinal.
   EngineeringSpace withWallProfile(int wallIndex, WallProfile profile) {
     if (wallIndex < 0 || wallIndex >= boundary.vertices.length) {
       throw RangeError.index(wallIndex, boundary.vertices, 'wallIndex');
@@ -84,6 +93,25 @@ final class EngineeringSpace {
     if (!wallProfiles.containsKey(wallIndex)) return this;
     final updated = Map<int, WallProfile>.from(wallProfiles)..remove(wallIndex);
     return copyWith(wallProfiles: updated);
+  }
+
+  EngineeringSpace withBoundaryEdgeWallProfile(
+    BoundaryEdgeId edgeId,
+    WallProfile profile,
+  ) =>
+      copyWith(
+        boundaryEdgeWallProfiles: {
+          ...boundaryEdgeWallProfiles,
+          edgeId: profile,
+        },
+      );
+
+  EngineeringSpace withoutBoundaryEdgeWallProfile(BoundaryEdgeId edgeId) {
+    if (!boundaryEdgeWallProfiles.containsKey(edgeId)) return this;
+    final updated = Map<BoundaryEdgeId, WallProfile>.from(
+      boundaryEdgeWallProfiles,
+    )..remove(edgeId);
+    return copyWith(boundaryEdgeWallProfiles: updated);
   }
 }
 
