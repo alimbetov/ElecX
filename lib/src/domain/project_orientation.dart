@@ -85,7 +85,8 @@ final class ProjectEngineeringNorth {
 final class ProjectEngineeringMetadata {
   const ProjectEngineeringMetadata({
     this.projectNorth,
-    this.boundaryEdgeIdentityRegistry = const BoundaryEdgeIdentityRegistry.empty(),
+    this.boundaryEdgeIdentityRegistry =
+        const BoundaryEdgeIdentityRegistry.empty(),
   });
 
   final ProjectEngineeringNorth? projectNorth;
