@@ -6,9 +6,10 @@ import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
 import 'canonical_room_surface_runtime_registry.dart';
 import 'editor_controller.dart';
+import 'editor_document_history.dart';
 import 'editor_p2_session.dart';
 
-typedef LegacyBoundaryMaterializer = bool Function();
+typedef LegacyBoundaryMaterializer = bool Function(MmPolygon candidate);
 
 /// P7A-4.5 runtime gateway used by the transitional plan editor.
 ///
@@ -17,7 +18,7 @@ typedef LegacyBoundaryMaterializer = bool Function();
 /// gateway recognizes a single vertex or parallel-edge edit, resolves the
 /// affected stable BoundaryEdgeId against the current version-aware projection,
 /// commits through ProjectMutationSession, then materializes the committed
-/// geometry back into the legacy canvas.
+/// canonical geometry back into the legacy canvas.
 abstract final class CanonicalBoundaryTopologyEditingRuntime {
   static bool hasCanonicalRuntime(EditorController controller) =>
       CanonicalRoomSurfaceRuntimeRegistry.coordinatorFor(controller) != null;
@@ -30,7 +31,13 @@ abstract final class CanonicalBoundaryTopologyEditingRuntime {
     final coordinator =
         CanonicalRoomSurfaceRuntimeRegistry.coordinatorFor(controller);
     final canonicalSpaceId = coordinator?.session.navigation.selectedSpaceId;
-    if (coordinator == null || canonicalSpaceId == null) return false;
+    final ownership =
+        CanonicalRoomSurfaceRuntimeRegistry.topologyOwnershipFor(controller);
+    if (coordinator == null ||
+        canonicalSpaceId == null ||
+        ownership == null) {
+      return false;
+    }
 
     final legacySpace = controller.selectedSpace;
     final legacySpaceId =
@@ -99,12 +106,42 @@ abstract final class CanonicalBoundaryTopologyEditingRuntime {
 
     final committed = appSession.commit();
     if (committed == null) return true;
-    final materialized = materializeLegacy();
-    if (!materialized) {
-      throw StateError(
-        'Canonical boundary commit succeeded but legacy materialization failed. '
-        'The P7A projection contract has been violated.',
+
+    final history = controller.documentHistory;
+    void rematerializeCurrentCanonicalState() {
+      final topology = coordinator.session.project.index.boundary(canonicalSpaceId);
+      if (topology == null) {
+        throw StateError(
+          'Canonical Space $canonicalSpaceId lost boundary topology during '
+          'production history replay.',
+        );
+      }
+      final materialized = history.runCanonicalProjection(
+        () => materializeLegacy(_toPolygon(topology)),
       );
+      if (!materialized) {
+        throw StateError(
+          'Canonical boundary state could not be materialized into the legacy '
+          'editor. The P7A projection contract has been violated.',
+        );
+      }
+    }
+
+    history.recordCanonicalCommit(
+      session: coordinator.session,
+      label: 'Edit boundary topology',
+      rematerialize: rematerializeCurrentCanonicalState,
+    );
+
+    try {
+      ownership(
+        coordinator.session.boundaryTopologyEditing,
+        committed.mutation,
+      );
+    } finally {
+      // Even a persistence-owner acknowledgement failure must not leave the
+      // canonical aggregate and the visible legacy canvas divergent.
+      rematerializeCurrentCanonicalState();
     }
     return true;
   }
