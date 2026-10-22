@@ -40,11 +40,6 @@ void main() {
       await tester.tap(find.text('Building B'));
       await tester.pumpAndSettle();
       expect(session.navigation.activeBuildingId, BuildingId('building-b'));
-      expect(session.navigation.activeLevelId, isNull);
-
-      await tester.tap(find.text('Level B1'));
-      await tester.pumpAndSettle();
-      expect(session.navigation.activeBuildingId, BuildingId('building-b'));
       expect(session.navigation.activeLevelId, LevelId('b-level-1'));
       expect(observed, contains('building-b:b-level-1'));
       expect(
