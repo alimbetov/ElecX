@@ -1,3 +1,4 @@
+import 'boundary_topology.dart';
 import 'project_identity.dart';
 import 'project_orientation.dart';
 import 'project_space_semantics.dart';
@@ -147,6 +148,7 @@ final class ProjectEntityStores {
     Map<SpaceAdjacencyId, ProjectSpaceAdjacencyEntity> adjacencies = const {},
     Map<OverlayClassificationId, ProjectOverlayClassificationEntity> overlays =
         const {},
+    Map<SpaceId, SpaceBoundaryTopology> boundaries = const {},
   })  : sites = Map.unmodifiable(sites),
         buildings = Map.unmodifiable(buildings),
         levels = Map.unmodifiable(levels),
@@ -154,7 +156,8 @@ final class ProjectEntityStores {
         spaces = Map.unmodifiable(spaces),
         openings = Map.unmodifiable(openings),
         adjacencies = Map.unmodifiable(adjacencies),
-        overlays = Map.unmodifiable(overlays);
+        overlays = Map.unmodifiable(overlays),
+        boundaries = Map.unmodifiable(boundaries);
 
   final Map<SiteId, ProjectSiteEntity> sites;
   final Map<BuildingId, ProjectBuildingEntity> buildings;
@@ -165,6 +168,9 @@ final class ProjectEntityStores {
   final Map<SpaceAdjacencyId, ProjectSpaceAdjacencyEntity> adjacencies;
   final Map<OverlayClassificationId, ProjectOverlayClassificationEntity>
       overlays;
+
+  /// Authoritative P7A boundary topology keyed by its owning canonical space.
+  final Map<SpaceId, SpaceBoundaryTopology> boundaries;
 }
 
 enum ProjectAggregateIssueCode {
@@ -196,6 +202,10 @@ enum ProjectAggregateIssueCode {
   danglingAdjacencyOpening,
   adjacencyOpeningSpaceMismatch,
   danglingOverlaySpace,
+  danglingBoundarySpace,
+  boundarySpaceKeyMismatch,
+  invalidBoundaryTopology,
+  duplicateBoundaryEdgeIdentity,
 }
 
 final class ProjectAggregateValidationIssue {
@@ -227,7 +237,7 @@ final class ProjectAggregateValidationException implements Exception {
       'Invalid canonical project aggregate:\n${issues.join('\n')}';
 }
 
-/// Validates hierarchy plus P6 semantic/referential invariants.
+/// Validates hierarchy plus semantic and stable-topology referential invariants.
 abstract final class ProjectAggregateValidator {
   static List<ProjectAggregateValidationIssue> validate({
     required SiteId rootSiteId,
@@ -522,6 +532,7 @@ abstract final class ProjectAggregateValidator {
     _validateOpenings(stores, issues);
     _validateAdjacencies(stores, issues);
     _validateOverlays(stores, issues);
+    _validateBoundaries(stores, issues);
     return List.unmodifiable(issues);
   }
 
@@ -659,8 +670,7 @@ abstract final class ProjectAggregateValidator {
                   'different levels.',
             ),
           );
-        } else if (adjacency.kind != SpaceAdjacencyKind.vertical &&
-            !sameLevel) {
+        } else if (adjacency.kind != SpaceAdjacencyKind.vertical && !sameLevel) {
           issues.add(
             ProjectAggregateValidationIssue(
               code: ProjectAggregateIssueCode.adjacencyLevelMismatch,
@@ -670,8 +680,7 @@ abstract final class ProjectAggregateValidator {
                   '${a.levelId} and ${b.levelId}.',
             ),
           );
-        } else if (adjacency.kind == SpaceAdjacencyKind.vertical &&
-            !sameLevel) {
+        } else if (adjacency.kind == SpaceAdjacencyKind.vertical && !sameLevel) {
           final levelA = stores.levels[a.levelId];
           final levelB = stores.levels[b.levelId];
           if (levelA != null &&
@@ -760,6 +769,71 @@ abstract final class ProjectAggregateValidator {
       }
     }
   }
+
+  static void _validateBoundaries(
+    ProjectEntityStores stores,
+    List<ProjectAggregateValidationIssue> issues,
+  ) {
+    final owningSpaceByEdge = <BoundaryEdgeId, SpaceId>{};
+
+    for (final entry in stores.boundaries.entries) {
+      final spaceId = entry.key;
+      final topology = entry.value;
+
+      if (spaceId != topology.spaceId) {
+        issues.add(
+          ProjectAggregateValidationIssue(
+            code: ProjectAggregateIssueCode.boundarySpaceKeyMismatch,
+            entityId: topology.spaceId,
+            relatedEntityId: spaceId,
+            message: 'Boundary store key $spaceId does not match topology '
+                'owner ${topology.spaceId}.',
+          ),
+        );
+      }
+
+      if (!stores.spaces.containsKey(spaceId) ||
+          !stores.spaces.containsKey(topology.spaceId)) {
+        issues.add(
+          ProjectAggregateValidationIssue(
+            code: ProjectAggregateIssueCode.danglingBoundarySpace,
+            entityId: topology.spaceId,
+            relatedEntityId: spaceId,
+            message: 'Boundary topology for ${topology.spaceId} references '
+                'a space that is not present in the canonical space store.',
+          ),
+        );
+      }
+
+      for (final topologyIssue in topology.validate()) {
+        issues.add(
+          ProjectAggregateValidationIssue(
+            code: ProjectAggregateIssueCode.invalidBoundaryTopology,
+            entityId: topologyIssue.edgeId ?? topology.spaceId,
+            relatedEntityId: topology.spaceId,
+            message: topologyIssue.message,
+          ),
+        );
+      }
+
+      for (final edgeId in topology.edges.keys) {
+        final previousOwner = owningSpaceByEdge[edgeId];
+        if (previousOwner != null && previousOwner != topology.spaceId) {
+          issues.add(
+            ProjectAggregateValidationIssue(
+              code: ProjectAggregateIssueCode.duplicateBoundaryEdgeIdentity,
+              entityId: edgeId,
+              relatedEntityId: previousOwner,
+              message: 'Boundary edge $edgeId is owned by both '
+                  '$previousOwner and ${topology.spaceId}.',
+            ),
+          );
+        } else {
+          owningSpaceByEdge[edgeId] = topology.spaceId;
+        }
+      }
+    }
+  }
 }
 
 /// Read-optimized identity/relationship index built from one validated graph.
@@ -773,6 +847,8 @@ final class ProjectIndex {
     required this.openings,
     required this.adjacencies,
     required this.overlays,
+    required this.boundaries,
+    required this.boundaryEdges,
     required this.siteByBuilding,
     required this.buildingByLevel,
     required this.levelByZone,
@@ -781,6 +857,7 @@ final class ProjectIndex {
     required this.openingsBySpaceId,
     required this.adjacenciesBySpaceId,
     required this.overlaysBySpaceId,
+    required this.spaceByBoundaryEdgeId,
   });
 
   factory ProjectIndex.build(ProjectEntityStores stores) {
@@ -788,6 +865,8 @@ final class ProjectIndex {
     final openingsBySpaceId = <SpaceId, Set<OpeningId>>{};
     final adjacenciesBySpaceId = <SpaceId, Set<SpaceAdjacencyId>>{};
     final overlaysBySpaceId = <SpaceId, Set<OverlayClassificationId>>{};
+    final boundaryEdges = <BoundaryEdgeId, ProjectBoundaryEdge>{};
+    final spaceByBoundaryEdgeId = <BoundaryEdgeId, SpaceId>{};
 
     for (final zone in stores.zones.values) {
       for (final spaceId in zone.spaceIds) {
@@ -813,6 +892,12 @@ final class ProjectIndex {
         );
       }
     }
+    for (final topology in stores.boundaries.values) {
+      for (final edge in topology.edges.values) {
+        boundaryEdges[edge.id] = edge;
+        spaceByBoundaryEdgeId[edge.id] = topology.spaceId;
+      }
+    }
 
     return ProjectIndex._(
       sites: stores.sites,
@@ -823,6 +908,8 @@ final class ProjectIndex {
       openings: stores.openings,
       adjacencies: stores.adjacencies,
       overlays: stores.overlays,
+      boundaries: stores.boundaries,
+      boundaryEdges: Map.unmodifiable(boundaryEdges),
       siteByBuilding: Map.unmodifiable({
         for (final building in stores.buildings.values)
           building.id: building.siteId,
@@ -840,6 +927,7 @@ final class ProjectIndex {
       openingsBySpaceId: _freezeSetMap(openingsBySpaceId),
       adjacenciesBySpaceId: _freezeSetMap(adjacenciesBySpaceId),
       overlaysBySpaceId: _freezeSetMap(overlaysBySpaceId),
+      spaceByBoundaryEdgeId: Map.unmodifiable(spaceByBoundaryEdgeId),
     );
   }
 
@@ -852,6 +940,8 @@ final class ProjectIndex {
   final Map<SpaceAdjacencyId, ProjectSpaceAdjacencyEntity> adjacencies;
   final Map<OverlayClassificationId, ProjectOverlayClassificationEntity>
       overlays;
+  final Map<SpaceId, SpaceBoundaryTopology> boundaries;
+  final Map<BoundaryEdgeId, ProjectBoundaryEdge> boundaryEdges;
   final Map<BuildingId, SiteId> siteByBuilding;
   final Map<LevelId, BuildingId> buildingByLevel;
   final Map<ZoneId, LevelId> levelByZone;
@@ -860,6 +950,7 @@ final class ProjectIndex {
   final Map<SpaceId, Set<OpeningId>> openingsBySpaceId;
   final Map<SpaceId, Set<SpaceAdjacencyId>> adjacenciesBySpaceId;
   final Map<SpaceId, Set<OverlayClassificationId>> overlaysBySpaceId;
+  final Map<BoundaryEdgeId, SpaceId> spaceByBoundaryEdgeId;
 
   ProjectSiteEntity? site(SiteId id) => sites[id];
   ProjectBuildingEntity? building(BuildingId id) => buildings[id];
@@ -871,6 +962,8 @@ final class ProjectIndex {
       adjacencies[id];
   ProjectOverlayClassificationEntity? overlay(OverlayClassificationId id) =>
       overlays[id];
+  SpaceBoundaryTopology? boundary(SpaceId id) => boundaries[id];
+  ProjectBoundaryEdge? boundaryEdge(BoundaryEdgeId id) => boundaryEdges[id];
 
   bool isConsistentWith(ProjectEntityStores stores) {
     if (sites.length != stores.sites.length ||
@@ -880,7 +973,8 @@ final class ProjectIndex {
         spaces.length != stores.spaces.length ||
         openings.length != stores.openings.length ||
         adjacencies.length != stores.adjacencies.length ||
-        overlays.length != stores.overlays.length) {
+        overlays.length != stores.overlays.length ||
+        boundaries.length != stores.boundaries.length) {
       return false;
     }
     for (final building in stores.buildings.values) {
@@ -918,6 +1012,20 @@ final class ProjectIndex {
           return false;
         }
       }
+    }
+    var expectedBoundaryEdgeCount = 0;
+    for (final entry in stores.boundaries.entries) {
+      final indexed = boundaries[entry.key];
+      if (!identical(indexed, entry.value)) return false;
+      expectedBoundaryEdgeCount += entry.value.edges.length;
+      for (final edge in entry.value.edges.values) {
+        if (!identical(boundaryEdges[edge.id], edge)) return false;
+        if (spaceByBoundaryEdgeId[edge.id] != entry.key) return false;
+      }
+    }
+    if (boundaryEdges.length != expectedBoundaryEdgeCount ||
+        spaceByBoundaryEdgeId.length != expectedBoundaryEdgeCount) {
+      return false;
     }
 
     final expectedOpeningsBySpaceId = <SpaceId, Set<OpeningId>>{};
