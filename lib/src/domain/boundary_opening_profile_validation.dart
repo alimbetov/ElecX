@@ -6,6 +6,7 @@ import 'project_space_semantics.dart';
 
 enum BoundaryOpeningProfileIssueCode {
   missingHostedReference,
+  orphanHostedReference,
   incompatibleHostedReference,
   intervalWidthMismatch,
   profileRejectsOpening,
@@ -14,14 +15,14 @@ enum BoundaryOpeningProfileIssueCode {
 final class BoundaryOpeningProfileException implements Exception {
   const BoundaryOpeningProfileException({
     required this.code,
-    required this.openingId,
     required this.spaceId,
     required this.message,
+    this.openingId,
     this.edgeId,
   });
 
   final BoundaryOpeningProfileIssueCode code;
-  final OpeningId openingId;
+  final OpeningId? openingId;
   final SpaceId spaceId;
   final BoundaryEdgeId? edgeId;
   final String message;
@@ -44,10 +45,32 @@ abstract final class BoundaryOpeningProfileValidator {
     required BoundaryHostedObjectRegistry hostedObjects,
     required BoundaryWallProfileRegistry wallProfiles,
   }) {
-    for (final opening in openings) {
-      if (!opening.connectedSpaceIds.contains(spaceId)) continue;
-      if (!_requiresWallHost(opening.kind)) continue;
+    final wallOpenings = openings
+        .where(
+          (opening) =>
+              opening.connectedSpaceIds.contains(spaceId) &&
+              _requiresWallHost(opening.kind),
+        )
+        .toList(growable: false);
+    final expectedKeys = <String>{
+      for (final opening in wallOpenings)
+        BoundaryHostedObjectRegistry.openingObjectKey(opening.id, spaceId),
+    };
 
+    for (final reference in hostedObjects.forSpace(spaceId)) {
+      if (reference.objectKind != BoundaryHostedObjectKind.opening) continue;
+      if (!expectedKeys.contains(reference.objectKey)) {
+        throw BoundaryOpeningProfileException(
+          code: BoundaryOpeningProfileIssueCode.orphanHostedReference,
+          spaceId: spaceId,
+          edgeId: reference.host.edgeId,
+          message: 'Hosted opening ${reference.objectKey} has no matching '
+              'canonical ProjectOpeningEntity in Space $spaceId.',
+        );
+      }
+    }
+
+    for (final opening in wallOpenings) {
       final reference = hostedObjects.openingHost(opening.id, spaceId);
       if (reference == null) {
         throw BoundaryOpeningProfileException(
