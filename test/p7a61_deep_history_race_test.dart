@@ -131,6 +131,65 @@ void main() {
       expect(history.undoDepth, 0);
       expect(history.redoDepth, 0);
     });
+
+    test('reentrant replay owner cannot leave a false redo entry', () {
+      final controller = EditorController.demo();
+      addTearDown(controller.disposeDocumentHistory);
+      addTearDown(controller.disposeP2State);
+      addTearDown(controller.dispose);
+
+      final fixture = _Fixture();
+      final initial = fixture.project();
+      final mutations = ProjectMutationSession(initial);
+      final session = fixture.session(mutations, seed: 973);
+      final history = controller.documentHistory;
+
+      var ownerCalls = 0;
+      history.attachCanonicalSession(
+        session,
+        onReplayed: (result) {
+          ownerCalls++;
+          final nested = mutations.commit(
+            ProjectMutationRequest(
+              expectedVersion: result.project.version,
+              command: _RenameSpaceCommand(
+                spaceId: fixture.spaceId,
+                name: 'Owner nested winner',
+              ),
+            ),
+          );
+          expect(nested, isNotNull);
+        },
+      );
+
+      final committed = mutations.commit(
+        ProjectMutationRequest(
+          expectedVersion: initial.version,
+          command: _RenameSpaceCommand(
+            spaceId: fixture.spaceId,
+            name: 'Version one',
+          ),
+        ),
+      );
+      expect(committed, isNotNull);
+      history.recordCanonicalCommit(
+        session: session,
+        label: 'Version one',
+        rematerialize: () {},
+      );
+
+      expect(history.undo(), isFalse,
+          reason: 'nested owner mutation invalidates replay chronology');
+      expect(ownerCalls, 1);
+      expect(session.project.version, LocalProjectVersion(3));
+      expect(
+        session.project.stores.spaces[fixture.spaceId]!.name,
+        'Owner nested winner',
+      );
+      expect(history.undoDepth, 0);
+      expect(history.redoDepth, 0,
+          reason: 'redo must not advertise a replay invalidated by nested P3');
+    });
   });
 }
 
