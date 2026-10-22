@@ -125,7 +125,7 @@ Missing topology or identity affinity never falls back to durable ordinal semant
 
 #### P7A-4.4 — production Room Surface Navigator wiring
 
-**DONE + HARDENED; qualification running on current branch HEAD.**
+**DONE + HARDENED + QUALIFIED.**
 
 Production wall navigation now uses one stable action path:
 
@@ -169,7 +169,7 @@ lib/src/features/editor/canonical_editor_screen_cutover_binding.dart
 
 #### P7A-4 stable room-surface resume
 
-**DONE + HARDENED; qualification running on current branch HEAD.**
+**DONE + HARDENED + QUALIFIED.**
 
 The editor resume schema is now v5 and adds a canonical surface contract:
 
@@ -210,6 +210,18 @@ lib/src/features/editor/project_schema_migrator.dart
 The runtime registry stores the exact canonical cutover coordinator, **not** a cached wall projection. Every stable wall resolve reads the current `session.project` and rebuilds the projection. Therefore a `LocalProjectVersion N -> N+1` transition cannot reuse an old `BoundaryEdgeId <-> ordinal` mapping as authoritative state.
 
 Qualification includes a real P3 version transition through Project North editing and verifies that a fresh adapter is produced while the stable `BoundaryEdgeId` selection remains coherent.
+
+Qualification completed on code HEAD `c657b707ef1819cca96699705958858ae10d643a`:
+
+```text
+dart format gate           PASS
+flutter analyze            PASS
+flutter full test          PASS
+macOS analyze              PASS
+macOS full test            PASS
+macOS debug build          PASS
+runtime path_provider      PASS
+```
 
 ## Safety invariants
 
@@ -280,8 +292,8 @@ P7A-3 full legacy project migration     BLOCKED ON LOSSLESS DOMAIN COVERAGE
 P7A-4.1 strict wall projection          DONE + HARDENED
 P7A-4.2 stable selection adapter        DONE + HARDENED
 P7A-4.3 production cutover resolver     DONE + HARDENED
-P7A-4.4 Room Surface Navigator wiring   DONE + HARDENED
-P7A-4 stable surface resume             DONE + HARDENED
+P7A-4.4 Room Surface Navigator wiring   DONE + HARDENED + QUALIFIED
+P7A-4 stable surface resume             DONE + HARDENED + QUALIFIED
 P7A-4.5 canonical topology edit path    PENDING
 P7A-5 hosted-object migration           PENDING
 P7A-6 full hardening/qualification      PENDING
