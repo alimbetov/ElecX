@@ -14,6 +14,7 @@ import 'context_minimap.dart';
 import 'device_catalog_panel.dart';
 import 'editor_building_workspace.dart';
 import 'editor_controller.dart';
+import 'editor_document_history.dart';
 import 'editor_keyboard_scope.dart';
 import 'editor_layout_policy.dart';
 import 'editor_p2_session.dart';
@@ -51,30 +52,12 @@ class UnifiedWorkspaceEditorScreen extends StatefulWidget {
     this.canonicalRuntime,
   }) : assert(initialDocument == null || initialRecovery == null);
 
-  /// Optional injection point used by tests and project-hub routing.
-  /// Production lazily opens the application documents project store.
   final EditorProjectStore? projectStore;
-
-  /// Recovery storage is intentionally separate from explicit project files.
   final EditorProjectRecoveryStore? recoveryStore;
-
-  /// Debounce used by recovery autosave. Exposed for deterministic tests.
   final Duration autosaveDelay;
-
-  /// When provided, the screen starts from the persisted canonical document
-  /// instead of constructing the demo workspace.
   final EditorProjectDocument? initialDocument;
-
-  /// Explicit recovery entry opened from Project Hub. Recovery is never
-  /// treated as an explicit Save: the editor starts in Modified state.
   final EditorProjectRecoverySnapshot? initialRecovery;
-
-  /// Identity for a newly created unsaved project. The physical site keeps
-  /// its own ids; project identity is independent and immutable.
   final EditorProjectMetadata? initialMetadata;
-
-  /// Opt-in P5C canonical runtime. When resolution returns null for the current
-  /// legacy workspace, the screen remains on the legacy navigator fail-closed.
   final CanonicalEditorProductionRuntimeConfig? canonicalRuntime;
 
   @override
@@ -264,10 +247,6 @@ class _UnifiedWorkspaceEditorScreenState
   }
 
   void _onProjectChanged() {
-    // P5E surface switches are editor navigation/resume state, not an
-    // engineering mutation. The canvas and Room Surface Navigator listen to
-    // the controller directly, so the structural shell must neither become
-    // dirty nor rebuild the Project Navigator for this notification.
     if (controller.isSurfaceNavigationNotification) return;
 
     if (_canonicalCutoverBinding?.coordinator.isSynchronizing == true) {
@@ -303,12 +282,23 @@ class _UnifiedWorkspaceEditorScreenState
         ),
         materializer: resolved.materializer,
       );
+      final topologyOwner = resolved.persistenceOwnerProjectId ==
+                  resolved.session.project.id &&
+              resolved.session.project.id.value == _projectMetadata.projectId
+          ? config.onBoundaryTopologyCommitted
+          : null;
       final binding = CanonicalEditorScreenCutoverBinding(
         coordinator: coordinator,
         onCanonicalNavigationChanged: (_) {
           _canonicalBlocked = null;
           _refresh();
         },
+        onBoundaryTopologyCommitted: topologyOwner == null
+            ? null
+            : (editing, result) {
+                topologyOwner(editing, result);
+                _refresh();
+              },
         onBlocked: _handleCanonicalBlocked,
         onError: _reportCanonicalCutoverError,
       );
@@ -355,8 +345,6 @@ class _UnifiedWorkspaceEditorScreenState
       }
       return result;
     } catch (_) {
-      // CanonicalEditorScreenCutoverBinding reports unexpected failures through
-      // onError before rethrowing. Do not double-report the same exception.
       return null;
     }
   }
@@ -390,6 +378,13 @@ class _UnifiedWorkspaceEditorScreenState
             try {
               final result = coordinator.setUsage(projection, usage);
               if (result == null) return;
+              controller.documentHistory.recordCanonicalCommit(
+                session: resolved.session,
+                label: result.changeSet.commandType,
+                rematerialize: () {
+                  _pushCanonicalToEditor();
+                },
+              );
               try {
                 config.onSpaceSemanticsCommitted?.call(editing, result);
               } finally {
@@ -443,6 +438,13 @@ class _UnifiedWorkspaceEditorScreenState
       },
       onAuthoringCommitted: authoringEnabled
           ? (session, createdId) {
+              controller.documentHistory.recordCanonicalCommit(
+                session: session,
+                label: 'Edit project structure',
+                rematerialize: () {
+                  _pushCanonicalToEditor();
+                },
+              );
               try {
                 config.onAuthoringCommitted?.call(session, createdId);
               } finally {
@@ -719,6 +721,7 @@ class _UnifiedWorkspaceEditorScreenState
     previousWorkspace.removeListener(_onProjectChanged);
     previousController.removeListener(_onProjectChanged);
     previousController.p2.removeListener(_onP2Changed);
+    previousController.disposeDocumentHistory();
     previousController.disposeP2State();
     previousWorkspace.dispose();
     previousController.dispose();
@@ -878,6 +881,14 @@ class _UnifiedWorkspaceEditorScreenState
       return;
     }
 
+    controller.documentHistory.recordCanonicalCommit(
+      session: resolved.session,
+      label: result.changeSet.commandType,
+      rematerialize: () {
+        _pushCanonicalToEditor();
+      },
+    );
+
     try {
       ownerCallback(currentEditing, result);
     } catch (error) {
@@ -1022,6 +1033,7 @@ class _UnifiedWorkspaceEditorScreenState
     workspace.dispose();
     controller.removeListener(_onProjectChanged);
     controller.p2.removeListener(_onP2Changed);
+    controller.disposeDocumentHistory();
     controller.disposeP2State();
     controller.dispose();
     super.dispose();
