@@ -3,7 +3,6 @@ import '../../domain/boundary_host_registry.dart';
 import '../../domain/boundary_topology.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
-import '../../domain/project_orientation.dart';
 import 'project_mutation.dart';
 
 /// P7A-5 application boundary for identity-changing topology edits.
@@ -216,7 +215,9 @@ final class CanonicalBoundaryTopologyMigrationSession {
       );
     }
     final expectedSecond = (firstIndex + 1) % _source.orderedEdgeIds.length;
-    if (firstIndex < 0 || secondIndex != expectedSecond || first.end != second.start) {
+    if (firstIndex < 0 ||
+        secondIndex != expectedSecond ||
+        first.end != second.start) {
       throw BoundaryTopologyMigrationException(
         code: BoundaryTopologyMigrationIssueCode.mergeEdgesNotAdjacent,
         message: '$firstSourceEdgeId and $secondSourceEdgeId are not an '
@@ -355,7 +356,8 @@ final class _ReplaceBoundaryTopologyWithHostsCommand implements ProjectCommand {
     BoundaryGeometryIntegrity.validateOrThrow(topology);
 
     final stores = current.stores;
-    final metadata = current.engineeringMetadata.withBoundaryHostedObjectRegistry(
+    final metadata =
+        current.engineeringMetadata.withBoundaryHostedObjectRegistry(
       hostedObjects,
     );
     return ProjectCommandCandidate.fromState(
@@ -398,7 +400,8 @@ void _requireLineageCoverage(
   };
   final beforeIds = before.edges.keys.toSet();
   final afterIds = after.edges.keys.toSet();
-  if (sourceIds.length != beforeIds.length || !sourceIds.containsAll(beforeIds)) {
+  if (sourceIds.length != beforeIds.length ||
+      !sourceIds.containsAll(beforeIds)) {
     throw const BoundaryTopologyMigrationException(
       code: BoundaryTopologyMigrationIssueCode.lineageSourceCoverageMismatch,
       message: 'Lineage must cover every pre-mutation boundary edge exactly.',
