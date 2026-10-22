@@ -4,6 +4,7 @@ import 'project_identity.dart';
 enum BoundaryGeometryIssueCode {
   degenerateArea,
   selfIntersection,
+  adjacentOverlap,
 }
 
 final class BoundaryGeometryIssue {
@@ -24,7 +25,7 @@ final class BoundaryGeometryIssue {
 }
 
 final class BoundaryGeometryIntegrityException extends ArgumentError {
-  BoundaryGeometryIntegrityException(Iterable<BoundaryGeometryIssue> issues)
+  BoundaryGeometryIntegrityException(List<BoundaryGeometryIssue> issues)
       : issues = List.unmodifiable(issues),
         super.value(
           List<BoundaryGeometryIssue>.unmodifiable(issues),
@@ -73,9 +74,25 @@ abstract final class BoundaryGeometryIntegrity {
 
     for (var first = 0; first < edges.length; first++) {
       for (var second = first + 1; second < edges.length; second++) {
-        if (_areAdjacent(first, second, edges.length)) continue;
         final a = edges[first];
         final b = edges[second];
+        final adjacent = _areAdjacent(first, second, edges.length);
+        if (adjacent) {
+          final wraps = first == 0 && second == edges.length - 1;
+          if (_adjacentEdgesOverlap(a, b, wraps: wraps)) {
+            issues.add(
+              BoundaryGeometryIssue(
+                code: BoundaryGeometryIssueCode.adjacentOverlap,
+                firstEdgeId: a.id,
+                secondEdgeId: b.id,
+                message: 'Adjacent boundary edges ${a.id} and ${b.id} '
+                    'overlap by backtracking beyond their shared vertex.',
+              ),
+            );
+          }
+          continue;
+        }
+
         if (_segmentsIntersect(a.start, a.end, b.start, b.end)) {
           issues.add(
             BoundaryGeometryIssue(
@@ -102,6 +119,23 @@ abstract final class BoundaryGeometryIntegrity {
 
   static bool _areAdjacent(int first, int second, int count) =>
       second == first + 1 || (first == 0 && second == count - 1);
+
+  static bool _adjacentEdgesOverlap(
+    ProjectBoundaryEdge first,
+    ProjectBoundaryEdge second, {
+    required bool wraps,
+  }) {
+    final shared = wraps ? first.start : first.end;
+    final firstOther = wraps ? first.end : first.start;
+    final secondOther = wraps ? second.start : second.end;
+    if (_cross(shared, firstOther, secondOther) != 0) return false;
+
+    final firstDx = firstOther.xMm - shared.xMm;
+    final firstDy = firstOther.yMm - shared.yMm;
+    final secondDx = secondOther.xMm - shared.xMm;
+    final secondDy = secondOther.yMm - shared.yMm;
+    return firstDx * secondDx + firstDy * secondDy > 0;
+  }
 
   static bool _segmentsIntersect(
     BoundaryPointMm a,
