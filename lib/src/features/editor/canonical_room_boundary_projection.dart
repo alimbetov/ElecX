@@ -5,6 +5,7 @@ import '../../domain/project_model.dart';
 enum CanonicalRoomBoundaryProjectionIssueCode {
   canonicalSpaceMismatch,
   legacySpaceMismatch,
+  invalidCanonicalTopology,
   wallCountMismatch,
   edgeGeometryMismatch,
   duplicateBoundaryEdgeIdentity,
@@ -83,7 +84,16 @@ final class CanonicalRoomBoundaryProjection {
       );
     }
 
-    canonicalTopology.validateOrThrow();
+    try {
+      canonicalTopology.validateOrThrow();
+    } on BoundaryTopologyValidationException catch (error) {
+      throw CanonicalRoomBoundaryProjectionException(
+        code: CanonicalRoomBoundaryProjectionIssueCode.invalidCanonicalTopology,
+        message: 'Canonical topology for $canonicalSpaceId cannot be projected '
+            'into the legacy editor: $error',
+      );
+    }
+
     final legacyVertices = legacySpace.boundary.vertices;
     final edgeIds = canonicalTopology.orderedEdgeIds;
     if (legacyVertices.length != edgeIds.length) {
