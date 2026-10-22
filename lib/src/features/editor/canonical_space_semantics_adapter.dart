@@ -43,19 +43,29 @@ final class CanonicalSpaceSemanticsProjection {
     required Iterable<ProjectOpeningEntity> openings,
     required Iterable<ProjectSpaceAdjacencyEntity> adjacencies,
     required Iterable<ProjectOverlayClassificationEntity> overlays,
+    required Map<SpaceId, ProjectSpaceEntity> adjacentSpaces,
   })  : openings = List.unmodifiable(openings),
         adjacencies = List.unmodifiable(adjacencies),
-        overlays = List.unmodifiable(overlays);
+        overlays = List.unmodifiable(overlays),
+        adjacentSpaces = Map.unmodifiable(adjacentSpaces);
 
   final ProjectSpaceEntity space;
   final EngineeringSpace legacySpace;
   final List<ProjectOpeningEntity> openings;
   final List<ProjectSpaceAdjacencyEntity> adjacencies;
   final List<ProjectOverlayClassificationEntity> overlays;
+  final Map<SpaceId, ProjectSpaceEntity> adjacentSpaces;
 
   SpaceUsage get usage => space.usage;
   SpaceId get spaceId => space.id;
   LevelId get levelId => space.levelId;
+
+  ProjectSpaceEntity? adjacentSpaceFor(ProjectSpaceAdjacencyEntity adjacency) {
+    final otherId = adjacency.spaceAId == spaceId
+        ? adjacency.spaceBId
+        : adjacency.spaceAId;
+    return adjacentSpaces[otherId];
+  }
 }
 
 final class CanonicalSpaceSemanticsAdapter {
@@ -162,6 +172,14 @@ final class CanonicalSpaceSemanticsAdapter {
           const <ProjectOverlayClassificationEntity>[],
       (value) => value.id,
     );
+    final adjacentSpaces = <SpaceId, ProjectSpaceEntity>{};
+    for (final adjacency in adjacencies) {
+      final otherId = adjacency.spaceAId == spaceId
+          ? adjacency.spaceBId
+          : adjacency.spaceAId;
+      final other = project.index.space(otherId);
+      if (other != null) adjacentSpaces[other.id] = other;
+    }
 
     return CanonicalSpaceSemanticsProjection(
       space: space,
@@ -169,6 +187,7 @@ final class CanonicalSpaceSemanticsAdapter {
       openings: openings,
       adjacencies: adjacencies,
       overlays: overlays,
+      adjacentSpaces: adjacentSpaces,
     );
   }
 }
