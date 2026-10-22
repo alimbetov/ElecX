@@ -93,7 +93,12 @@ abstract final class CanonicalBoundaryHostProjection {
               ? _cableSourceKey(route.id)
               : isRouteEnd
                   ? _cableTargetKey(route.id)
-                  : _routeAnchorKey(route.id, segmentIndex, pointIndex);
+                  : _routeAnchorKey(_requireRouteAnchorId(
+                      route.id,
+                      segmentIndex,
+                      pointIndex,
+                      segment,
+                    ));
           registry = registry.put(
             BoundaryHostedReference.point(
               objectKey: key,
@@ -353,7 +358,12 @@ abstract final class CanonicalBoundaryHostProjection {
             ? _cableSourceKey(route.id)
             : isRouteEnd
                 ? _cableTargetKey(route.id)
-                : _routeAnchorKey(route.id, segmentIndex, pointIndex);
+                : _routeAnchorKey(_requireRouteAnchorId(
+                    route.id,
+                    segmentIndex,
+                    pointIndex,
+                    segment,
+                  ));
         final reference = registry[key];
         if (reference == null) {
           points.add(segment.points[pointIndex]);
@@ -392,6 +402,7 @@ abstract final class CanonicalBoundaryHostProjection {
               ordinalFor(resolved),
             ),
             points: points,
+            anchorIds: segment.anchorIds,
           ),
         );
       }
@@ -405,6 +416,22 @@ abstract final class CanonicalBoundaryHostProjection {
       medium: route.medium,
       reservePercent: route.reservePercent,
     );
+  }
+
+  static RouteAnchorId _requireRouteAnchorId(
+    String routeId,
+    int segmentIndex,
+    int pointIndex,
+    ElectricalRouteSegment segment,
+  ) {
+    final anchorId = segment.anchorIdAt(pointIndex);
+    if (anchorId == null) {
+      throw StateError(
+        'Route $routeId segment $segmentIndex point $pointIndex has no stable '
+        'RouteAnchorId. P7A-5 refuses to persist route anchors by list index.',
+      );
+    }
+    return anchorId;
   }
 
   static void _requireAffinity(
@@ -453,12 +480,8 @@ abstract final class CanonicalBoundaryHostProjection {
   static String _componentKey(String componentId) => 'component:$componentId';
   static String _cableSourceKey(String routeId) => 'cable:$routeId:source';
   static String _cableTargetKey(String routeId) => 'cable:$routeId:target';
-  static String _routeAnchorKey(
-    String routeId,
-    int segmentIndex,
-    int pointIndex,
-  ) =>
-      'route:$routeId:segment:$segmentIndex:point:$pointIndex';
+  static String _routeAnchorKey(RouteAnchorId anchorId) =>
+      'route-anchor:${anchorId.value}';
 }
 
 final class CanonicalBoundaryHostMaterialization {
