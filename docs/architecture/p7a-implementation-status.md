@@ -6,7 +6,7 @@ Branch: `feat/project-structure-authoring`
 
 **P7A: IN PROGRESS.**
 
-P7A-1 domain foundation and P7A-2 canonical aggregate ownership are implemented and hardened. P7A-3 persistence foundation is now implemented with canonical schema v4, durable `BoundaryEdgeId` owner tombstones and deterministic legacy polygon conversion. Full legacy editor cutover remains intentionally fail-closed until the remaining legacy engineering domains can be migrated losslessly.
+P7A-1 domain foundation, P7A-2 canonical aggregate ownership and the P7A-3 persistence foundation are implemented and hardened. Canonical schema v4 now persists stable boundary topology plus durable `BoundaryEdgeId` owner tombstones, and deterministic legacy polygon conversion produces fixed-width opaque identities. Full legacy editor cutover remains intentionally fail-closed until the remaining legacy engineering domains can be migrated losslessly.
 
 ## Landed
 
@@ -71,6 +71,8 @@ test/p7a_aggregate_ownership_test.dart
 
 ### P7A-3 persistence foundation
 
+**DONE + HARDENED.**
+
 Implemented:
 
 - canonical document schema advanced to **v4**;
@@ -82,9 +84,11 @@ Implemented:
 - decode fails closed when an active edge is missing from the registry or registry ownership conflicts with topology;
 - canonical v1/v2/v3 migrate to v4 with empty P7A state rather than inventing topology;
 - deterministic `LegacyBoundaryPolygonMigration` converts one legacy polygon to stable P7A topology;
+- generated migration identities are fixed-width and opaque: their textual form does not encode project, space or geometry semantics;
 - a duplicated closing polygon vertex is normalized without changing generated edge identities;
 - the same project/space/polygon produces exactly the same IDs on repeated migration;
 - the same geometry in another `SpaceId` produces different identities;
+- the migration path adds no platform-specific state or dependency fork;
 - full legacy editor v1..v4 migration remains fail-closed because engineering P2 state, wall-index resume state and other legacy domains are not yet losslessly represented.
 
 Primary implementation:
@@ -101,6 +105,19 @@ Primary qualification:
 ```text
 test/p7a_persistence_migration_test.dart
 test/canonical_project_document_codec_test.dart
+test/p6_semantic_persistence_test.dart
+```
+
+Qualification on code HEAD `652f2f56ead153dbdc36c135099c41de010bfeb9`:
+
+```text
+dart format gate           PASS
+flutter analyze            PASS
+flutter test               PASS
+macOS analyze              PASS
+macOS test                 PASS
+macOS debug build          PASS
+runtime path_provider      PASS
 ```
 
 ## Safety invariants now established
@@ -162,7 +179,7 @@ There is no platform-specific copy of topology, registry or persistence schema a
 ```text
 P7A-1 domain foundation              IMPLEMENTED
 P7A-2 canonical aggregate ownership  DONE + HARDENED
-P7A-3 persistence foundation         IMPLEMENTED / qualification running
+P7A-3 persistence foundation         DONE + HARDENED
 P7A-3 full legacy cutover            BLOCKED ON LOSSLESS DOMAIN COVERAGE
 P7A-4 production editor cutover      PENDING
 P7A-5 hosted-object migration        PENDING
@@ -182,7 +199,7 @@ Pending platform runners do not block P7A development. P7A domain semantics and 
 
 ## Next implementation target
 
-After P7A-3 qualification is green, proceed with **P7A-4 production editor cutover** in controlled slices:
+Proceed with **P7A-4 production editor cutover** in controlled slices:
 
 1. project existing room polygon geometry through canonical `SpaceBoundaryTopology`;
 2. replace durable wall-index references with `BoundaryEdgeId` where P7A ownership is available;
