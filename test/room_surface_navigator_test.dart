@@ -18,7 +18,7 @@ void main() {
       addTearDown(controller.dispose);
 
       expect(
-        RoomSurfaceNavigatorProjection.fromEditor(
+        RoomSurfaceNavigatorProjection.fromLegacyEditor(
           controller: controller,
           canonicalSpaceId: SpaceId('canonical-room'),
           legacySpaceId: 'another-room',
@@ -238,7 +238,7 @@ void main() {
     final controller = _lShapedController();
     addTearDown(controller.dispose);
 
-    final projection = RoomSurfaceNavigatorProjection.fromEditor(
+    final projection = RoomSurfaceNavigatorProjection.fromLegacyEditor(
       controller: controller,
       canonicalSpaceId: SpaceId('canonical-l-room'),
       legacySpaceId: 'l-room',
