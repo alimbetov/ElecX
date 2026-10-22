@@ -18,7 +18,7 @@ void main() {
       final restored = codec.decode(document);
       final stores = restored.aggregate.stores;
 
-      expect(document.schemaVersion, 4);
+      expect(document.schemaVersion, 5);
       expect(stores.spaces[SpaceId('room-a')]!.usage, SpaceUsage.bedroom);
       expect(stores.spaces[SpaceId('room-b')]!.usage, SpaceUsage.corridor);
 
@@ -54,6 +54,7 @@ void main() {
       expect(encoded, isNot(contains('wallIndex')));
       expect(document.payload['boundaries'], isEmpty);
       expect(document.payload['boundaryEdgeIdentityRegistry'], isEmpty);
+      expect(document.payload['boundaryHostedObjectRegistry'], isEmpty);
       expect(encoded, contains('"door-1"'));
     });
 
