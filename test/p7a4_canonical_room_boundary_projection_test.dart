@@ -68,7 +68,8 @@ void main() {
       );
     });
 
-    test('reordered stable ids cannot silently bind to legacy wall ordinal', () {
+    test('reordered stable ids cannot silently bind to legacy wall ordinal',
+        () {
       final fixture = _Fixture.rectangle();
       final reordered = SpaceBoundaryTopology(
         spaceId: fixture.spaceId,
