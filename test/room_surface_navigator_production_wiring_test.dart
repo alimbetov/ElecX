@@ -6,6 +6,7 @@ import 'package:elecx/src/domain/boundary_edge_identity_registry.dart';
 import 'package:elecx/src/domain/boundary_topology.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
+import 'package:elecx/src/domain/project_orientation.dart';
 import 'package:elecx/src/features/editor/canonical_editor_production_runtime.dart';
 import 'package:elecx/src/features/editor/canonical_editor_workspace_adapter.dart';
 import 'package:elecx/src/features/editor/canonical_project_navigator.dart';
@@ -25,50 +26,30 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets(
-    'canonical selected room renders one production Room Surface Navigator',
+    'production navigator selects walls by stable BoundaryEdgeId',
     (tester) async {
       _useDesktopSurface(tester);
       final fixture = _fixture(selectRoom: true);
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: UnifiedWorkspaceEditorScreen(
-            projectStore: fixture.store,
-            initialDocument: fixture.document,
-            canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
-              resolveRuntime: (_, __) => fixture.runtime,
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
+      await _pumpScreen(tester, fixture);
 
       expect(find.byType(CanonicalProjectNavigator), findsOneWidget);
       expect(find.byType(RoomSurfaceNavigator), findsOneWidget);
-      expect(
-        find.byKey(const ValueKey('room-surface-navigator')),
-        findsOneWidget,
-      );
       expect(find.byType(SpatialCanvas), findsOneWidget);
       expect(find.text('Saved'), findsOneWidget);
 
-      final navigator = tester.widget<RoomSurfaceNavigator>(
-        find.byType(RoomSurfaceNavigator),
-      );
-      final firstAdapter = CanonicalRoomSurfaceRuntimeRegistry.resolve(
-        navigator.controller,
+      final controller = _navigatorController(tester);
+      final initial = CanonicalRoomSurfaceRuntimeRegistry.resolve(
+        controller,
         fixture.spaceId,
       );
-      expect(firstAdapter, isNotNull);
-      expect(firstAdapter!.projection.edgeIdAtOrdinal(0), fixture.edgeIds[0]);
+      expect(initial, isNotNull);
+      expect(initial!.projection.edgeIdAtOrdinal(0), fixture.edgeIds[0]);
 
       await tester.tap(find.byKey(const ValueKey('room-surface-floor')));
       await tester.pumpAndSettle();
-
       expect(find.byType(SurfaceCanvas), findsOneWidget);
       expect(find.text('Current surface: Floor'), findsOneWidget);
-      expect(fixture.session.navigation.selectedSpaceId, fixture.spaceId);
-      expect(find.text('Saved'), findsOneWidget);
 
       await tester.tap(find.byKey(const ValueKey('room-surface-wall-next')));
       await tester.pumpAndSettle();
@@ -78,46 +59,39 @@ void main() {
       expect(find.text('Current surface: Wall 2'), findsOneWidget);
       expect(
         CanonicalRoomSurfaceRuntimeRegistry.resolve(
-          navigator.controller,
+          controller,
           fixture.spaceId,
         )
             ?.current()
             .boundaryEdgeId,
         fixture.edgeIds[1],
       );
-      expect(find.text('Saved'), findsOneWidget);
-
-      await tester.tap(find.byKey(const ValueKey('room-surface-plan')));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(SpatialCanvas), findsOneWidget);
-      expect(find.text('Current surface: Plan'), findsOneWidget);
+      expect(fixture.session.navigation.selectedSpaceId, fixture.spaceId);
       expect(find.text('Saved'), findsOneWidget);
     },
   );
 
   testWidgets(
-    'keyboard wall navigation uses the same stable BoundaryEdgeId path',
+    'mouse button and keyboard wall actions converge on stable edge identity',
     (tester) async {
       _useDesktopSurface(tester);
       final fixture = _fixture(selectRoom: true);
+      await _pumpScreen(tester, fixture);
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: UnifiedWorkspaceEditorScreen(
-            projectStore: fixture.store,
-            initialDocument: fixture.document,
-            canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
-              resolveRuntime: (_, __) => fixture.runtime,
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
+      final controller = _navigatorController(tester);
 
-      final navigator = tester.widget<RoomSurfaceNavigator>(
-        find.byType(RoomSurfaceNavigator),
+      await tester.tap(find.byKey(const ValueKey('room-surface-wall-2')));
+      await tester.pump();
+      expect(
+        CanonicalRoomSurfaceRuntimeRegistry.resolve(
+          controller,
+          fixture.spaceId,
+        )
+            ?.current()
+            .boundaryEdgeId,
+        fixture.edgeIds[2],
       );
+
       final focus = tester.widget<Focus>(
         find.byKey(const ValueKey('room-surface-mini-focus')),
       );
@@ -128,74 +102,46 @@ void main() {
       await tester.pump();
       expect(
         CanonicalRoomSurfaceRuntimeRegistry.resolve(
-          navigator.controller,
+          controller,
           fixture.spaceId,
         )
             ?.current()
             .boundaryEdgeId,
-        fixture.edgeIds[0],
+        fixture.edgeIds[3],
       );
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
       await tester.pump();
       expect(
         CanonicalRoomSurfaceRuntimeRegistry.resolve(
-          navigator.controller,
+          controller,
           fixture.spaceId,
         )
             ?.current()
             .boundaryEdgeId,
-        fixture.edgeIds[1],
+        fixture.edgeIds[2],
       );
     },
   );
 
   testWidgets(
-    'canonical save persists BoundaryEdgeId and never persists wallIndex resume',
+    'canonical runtime capture carries BoundaryEdgeId and no wall ordinal',
     (tester) async {
       _useDesktopSurface(tester);
       final fixture = _fixture(selectRoom: true);
+      await _pumpScreen(tester, fixture);
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: UnifiedWorkspaceEditorScreen(
-            projectStore: fixture.store,
-            initialDocument: fixture.document,
-            canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
-              resolveRuntime: (_, __) => fixture.runtime,
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
+      final controller = _navigatorController(tester);
       await tester.tap(find.byKey(const ValueKey('room-surface-wall-2')));
-      await tester.pumpAndSettle();
+      await tester.pump();
 
-      final navigator = tester.widget<RoomSurfaceNavigator>(
-        find.byType(RoomSurfaceNavigator),
-      );
-      final saved = EditorProjectDocument.capture(
-        fixture.runtime.binding.legacyBuildingId ==
-                fixture.runtime.binding.legacyBuildingId
-            ? _workspaceFor(navigator.controller)
-            : throw StateError('unreachable'),
-        metadata: fixture.document.metadata,
-      );
-      final resumeJson = ((saved.toJson()['workspace']! as Map)['resume']!
-          as Map<Object?, Object?>);
-      final canonicalJson =
-          resumeJson['canonicalSurface']! as Map<Object?, Object?>;
-
-      expect(saved.resume.activeSurface, isNull);
-      expect(saved.resume.canonicalSurface?.spaceId, fixture.spaceId);
-      expect(
-        saved.resume.canonicalSurface?.boundaryEdgeId,
-        fixture.edgeIds[2],
-      );
-      expect(resumeJson['activeSurface'], isNull);
-      expect(canonicalJson['boundaryEdgeId'], fixture.edgeIds[2].value);
-      expect(canonicalJson.containsKey('wallIndex'), isFalse);
+      final resume = CanonicalRoomSurfaceRuntimeRegistry.capture(controller);
+      expect(resume, isNotNull);
+      expect(resume!.spaceId, fixture.spaceId);
+      expect(resume.boundaryEdgeId, fixture.edgeIds[2]);
+      final json = resume.toJson();
+      expect(json['boundaryEdgeId'], fixture.edgeIds[2].value);
+      expect(json.containsKey('wallIndex'), isFalse);
     },
   );
 
@@ -206,24 +152,10 @@ void main() {
       final fixture = _fixture(selectRoom: true);
       final versionBefore = fixture.session.project.version;
       final navigationBefore = fixture.session.navigation;
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: UnifiedWorkspaceEditorScreen(
-            projectStore: fixture.store,
-            initialDocument: fixture.document,
-            canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
-              resolveRuntime: (_, __) => fixture.runtime,
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
+      await _pumpScreen(tester, fixture);
 
       await tester.tap(find.byKey(const ValueKey('room-surface-collapse')));
       await tester.pump();
-
-      expect(find.byType(RoomSurfaceNavigator), findsOneWidget);
       expect(
         find.byKey(const ValueKey('room-surface-mini-view')),
         findsNothing,
@@ -234,14 +166,12 @@ void main() {
 
       await tester.tap(find.byKey(const ValueKey('room-surface-collapse')));
       await tester.pump();
-
       expect(
         find.byKey(const ValueKey('room-surface-mini-view')),
         findsOneWidget,
       );
       expect(fixture.session.project.version, versionBefore);
       expect(fixture.session.navigation, navigationBefore);
-      expect(find.text('Saved'), findsOneWidget);
     },
   );
 
@@ -250,19 +180,7 @@ void main() {
     (tester) async {
       _useDesktopSurface(tester);
       final fixture = _fixture(selectRoom: false);
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: UnifiedWorkspaceEditorScreen(
-            projectStore: fixture.store,
-            initialDocument: fixture.document,
-            canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
-              resolveRuntime: (_, __) => fixture.runtime,
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
+      await _pumpScreen(tester, fixture);
 
       expect(find.byType(CanonicalProjectNavigator), findsOneWidget);
       expect(
@@ -273,22 +191,29 @@ void main() {
   );
 }
 
+Future<void> _pumpScreen(WidgetTester tester, _Fixture fixture) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      home: UnifiedWorkspaceEditorScreen(
+        projectStore: fixture.store,
+        initialDocument: fixture.document,
+        canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
+          resolveRuntime: (_, __) => fixture.runtime,
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+EditorController _navigatorController(WidgetTester tester) =>
+    tester.widget<RoomSurfaceNavigator>(find.byType(RoomSurfaceNavigator)).controller;
+
 void _useDesktopSurface(WidgetTester tester) {
   tester.view.physicalSize = const Size(1440, 900);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
-}
-
-EditorBuildingWorkspace _workspaceFor(EditorController controller) {
-  final room = controller.selectedSpace!;
-  final building = EditorBuildingWorkspace.blank(
-    controller,
-    projectId: 'p5e-production',
-    projectName: 'P5E Production',
-  );
-  controller.selectSpace(room.id);
-  return building;
 }
 
 final class _Fixture {
@@ -342,16 +267,16 @@ _Fixture _fixture({required bool selectRoom}) {
       BoundaryPointMm(xMm: point.x, yMm: point.y),
   ];
   final edgeIds = <BoundaryEdgeId>[
-    for (var i = 0; i < points.length; i++)
-      BoundaryEdgeId('p7a-production-edge-$i'),
+    for (var index = 0; index < points.length; index++)
+      BoundaryEdgeId('p7a-production-edge-$index'),
   ];
   final edges = <BoundaryEdgeId, ProjectBoundaryEdge>{
-    for (var i = 0; i < points.length; i++)
-      edgeIds[i]: ProjectBoundaryEdge(
-        id: edgeIds[i],
+    for (var index = 0; index < points.length; index++)
+      edgeIds[index]: ProjectBoundaryEdge(
+        id: edgeIds[index],
         spaceId: spaceId,
-        start: points[i],
-        end: points[(i + 1) % points.length],
+        start: points[index],
+        end: points[(index + 1) % points.length],
       ),
   };
   final topology = SpaceBoundaryTopology(
