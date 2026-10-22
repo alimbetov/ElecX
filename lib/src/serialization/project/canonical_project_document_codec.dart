@@ -211,6 +211,10 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
         if (adjacencies.containsKey(id)) {
           throw FormatException('Duplicate adjacency id $id.');
         }
+        final openingId = _nullableString(
+          json['openingId'],
+          'adjacency.openingId',
+        );
         adjacencies[id] = ProjectSpaceAdjacencyEntity(
           id: id,
           spaceAId: SpaceId(_string(json['spaceAId'], 'adjacency.spaceAId')),
@@ -220,8 +224,7 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
             json['kind'],
             'adjacency.kind',
           ),
-          openingId: _nullableString(json['openingId'], 'adjacency.openingId')
-              ?.let(OpeningId.new),
+          openingId: openingId == null ? null : OpeningId(openingId),
         );
       }
 
@@ -563,11 +566,4 @@ DateTime _dateTime(Object? value, String field) {
     throw FormatException('$field must be an ISO-8601 timestamp.');
   }
   return parsed.toUtc();
-}
-
-extension _NullableStringMap<T> on String? {
-  R? let<R>(R Function(String value) transform) {
-    final value = this;
-    return value == null ? null : transform(value);
-  }
 }
