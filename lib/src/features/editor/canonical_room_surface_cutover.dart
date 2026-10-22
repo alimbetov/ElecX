@@ -64,8 +64,8 @@ abstract final class CanonicalRoomSurfaceCutover {
     }
     if (canonicalLevel.buildingId != binding.buildingId) {
       throw CanonicalRoomSurfaceCutoverException(
-        code:
-            CanonicalRoomSurfaceCutoverIssueCode.canonicalSpaceOutsideBoundBuilding,
+        code: CanonicalRoomSurfaceCutoverIssueCode
+            .canonicalSpaceOutsideBoundBuilding,
         spaceId: spaceId,
         message: 'Canonical space $spaceId belongs to building '
             '${canonicalLevel.buildingId}, not editor binding '
