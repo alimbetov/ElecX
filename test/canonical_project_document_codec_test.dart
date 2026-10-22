@@ -48,8 +48,8 @@ void main() {
       );
       expect(restored.aggregate.stores.boundaries, isEmpty);
       expect(
-        restored.aggregate.engineeringMetadata.boundaryEdgeIdentityRegistry
-            .owners,
+        restored
+            .aggregate.engineeringMetadata.boundaryEdgeIdentityRegistry.owners,
         isEmpty,
       );
 
@@ -87,8 +87,8 @@ void main() {
       expect(restored.aggregate.stores.overlays, isEmpty);
       expect(restored.aggregate.stores.boundaries, isEmpty);
       expect(
-        restored.aggregate.engineeringMetadata.boundaryEdgeIdentityRegistry
-            .owners,
+        restored
+            .aggregate.engineeringMetadata.boundaryEdgeIdentityRegistry.owners,
         isEmpty,
       );
 
@@ -141,8 +141,8 @@ void main() {
 
       expect(restored.aggregate.stores.boundaries, isEmpty);
       expect(
-        restored.aggregate.engineeringMetadata.boundaryEdgeIdentityRegistry
-            .owners,
+        restored
+            .aggregate.engineeringMetadata.boundaryEdgeIdentityRegistry.owners,
         isEmpty,
       );
       expect(codec.encode(restored).schemaVersion, 4);
@@ -271,8 +271,8 @@ void main() {
       final firstBuilding = buildings.first! as Map<String, Object?>;
       final levelIds = firstBuilding['levelIds']! as List<Object?>;
       final boundaries = document.payload['boundaries']! as List<Object?>;
-      final registry = document.payload['boundaryEdgeIdentityRegistry']!
-          as List<Object?>;
+      final registry =
+          document.payload['boundaryEdgeIdentityRegistry']! as List<Object?>;
 
       expect(() => metadata['name'] = 'Changed', throwsUnsupportedError);
       expect(
