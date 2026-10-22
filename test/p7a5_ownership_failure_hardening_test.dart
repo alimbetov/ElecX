@@ -36,7 +36,15 @@ void main() {
         splitPoint: const BoundaryPointMm(xMm: 2000, yMm: 0),
         idFactory: SecureRandomEntityIdFactory(random: Random(911)),
       ),
-      throwsA(isA<StateError>()),
+      throwsA(
+        isA<CanonicalBoundaryPostCommitException>()
+            .having(
+              (error) => error.phase,
+              'phase',
+              'persistence ownership acknowledgement',
+            )
+            .having((error) => error.cause, 'cause', isA<StateError>()),
+      ),
     );
 
     expect(fixture.session.project.version, beforeVersion.next());
