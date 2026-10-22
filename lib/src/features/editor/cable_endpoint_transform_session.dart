@@ -34,7 +34,7 @@ final class CableEndpointTransformSession extends ChangeNotifier
   CableEndpointTransformSession({required this.onCommit});
 
   final bool Function(ElectricalCableRoute before, ElectricalCableRoute after)
-  onCommit;
+      onCommit;
 
   final SnapHysteresis _hysteresis = SnapHysteresis();
   ElectricalCableRoute? _origin;
@@ -64,9 +64,8 @@ final class CableEndpointTransformSession extends ChangeNotifier
     CableRouteConstraints? constraints,
   }) {
     if (route.segments.isEmpty) return false;
-    final segmentIndex = role == CableEndpointRole.source
-        ? 0
-        : route.segments.length - 1;
+    final segmentIndex =
+        role == CableEndpointRole.source ? 0 : route.segments.length - 1;
     final segment = route.segments[segmentIndex];
     final routeConstraints = constraints ?? CableRouteConstraints.empty;
     if (segment.surface != context.surface ||
@@ -107,9 +106,8 @@ final class CableEndpointTransformSession extends ChangeNotifier
       return false;
     }
 
-    final fixedEndpoint = role == CableEndpointRole.target
-        ? origin.source
-        : origin.target;
+    final fixedEndpoint =
+        role == CableEndpointRole.target ? origin.source : origin.target;
     final fixedComponentId = fixedEndpoint.componentId;
     final counterpartKind = _portKindForEndpoint(fixedEndpoint);
     if (counterpartKind == null) {
@@ -131,8 +129,7 @@ final class CableEndpointTransformSession extends ChangeNotifier
         semanticAnchors: anchors,
       ),
     );
-    final semantic =
-        resolved != null &&
+    final semantic = resolved != null &&
             (resolved.kind == SnapKind.port ||
                 resolved.kind == SnapKind.componentAnchor)
         ? resolved
@@ -153,20 +150,17 @@ final class CableEndpointTransformSession extends ChangeNotifier
       return false;
     }
 
-    final segmentIndex = role == CableEndpointRole.source
-        ? 0
-        : origin.segments.length - 1;
+    final segmentIndex =
+        role == CableEndpointRole.source ? 0 : origin.segments.length - 1;
     final segment = origin.segments[segmentIndex];
     final fixedPoint = role == CableEndpointRole.target
         ? segment.points.first
         : segment.points.last;
     final movedPoint = SurfacePointMm(snap.point.x, snap.point.y);
-    final sourcePoint = role == CableEndpointRole.source
-        ? movedPoint
-        : fixedPoint;
-    final targetPoint = role == CableEndpointRole.target
-        ? movedPoint
-        : fixedPoint;
+    final sourcePoint =
+        role == CableEndpointRole.source ? movedPoint : fixedPoint;
+    final targetPoint =
+        role == CableEndpointRole.target ? movedPoint : fixedPoint;
     final routed = _routeThroughMandatoryWaypoints(
       source: sourcePoint,
       target: targetPoint,
@@ -231,17 +225,16 @@ final class CableEndpointTransformSession extends ChangeNotifier
   }
 
   ({List<SurfacePointMm> points, RouteConstraintResult validation})?
-  _routeThroughMandatoryWaypoints({
+      _routeThroughMandatoryWaypoints({
     required SurfacePointMm source,
     required SurfacePointMm target,
     required int segmentIndex,
     required RouteNormativeContext context,
   }) {
-    final waypoints =
-        _constraints.mandatoryWaypoints
-            .where((item) => item.segmentIndex == segmentIndex)
-            .toList(growable: false)
-          ..sort((a, b) => a.pointIndex.compareTo(b.pointIndex));
+    final waypoints = _constraints.mandatoryWaypoints
+        .where((item) => item.segmentIndex == segmentIndex)
+        .toList(growable: false)
+      ..sort((a, b) => a.pointIndex.compareTo(b.pointIndex));
     final anchors = <SurfacePointMm>[
       source,
       for (final waypoint in waypoints) waypoint.point,
@@ -281,7 +274,10 @@ final class CableEndpointTransformSession extends ChangeNotifier
       points: combined,
       context: context,
     );
-    return (points: List.unmodifiable(combined), validation: validation);
+    return (
+      points: List.unmodifiable(combined),
+      validation: validation,
+    );
   }
 
   ElectricalPortKind? _portKindForEndpoint(ElectricalEndpointRef endpoint) {

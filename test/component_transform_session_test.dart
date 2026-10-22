@@ -47,64 +47,56 @@ void main() {
     controller.componentTransform.cancel();
     expect(controller.p2.selectedComponent!.position.xMm, 1000);
   });
-  test(
-    'connected route previews and commits atomically with component move',
-    () {
-      final surface = RoomSurfaceRef.wall('room-1', 0);
-      final context = RouteNormativeContext(
-        surface: surface,
-        widthMm: 4000,
-        heightMm: 2500,
-        edgeClearanceMm: 0,
-      );
-      final p2 = EditorP2Session(routeContextResolver: (_) => context);
-      addTearDown(p2.dispose);
-      final source = p2.placeComponent(
-        type: ElectricalComponentType.powerSource,
-        surface: surface,
-        position: const SurfacePointMm(500, 500),
-      );
-      final target = p2.placeComponent(
-        type: ElectricalComponentType.socketOutlet,
-        surface: surface,
-        position: const SurfacePointMm(2500, 1500),
-      );
-      p2.select(source.id, mode: SelectionMode.replace);
-      p2.select(target.id, mode: SelectionMode.add);
-      expect(p2.autoRouteSelectedPair(), isTrue);
-      final routeBefore = p2.routes.single;
-      p2.select(target.id, mode: SelectionMode.replace);
-      final depthBefore = p2.history.undoDepth;
+  test('connected route previews and commits atomically with component move',
+      () {
+    final surface = RoomSurfaceRef.wall('room-1', 0);
+    final context = RouteNormativeContext(
+      surface: surface,
+      widthMm: 4000,
+      heightMm: 2500,
+      edgeClearanceMm: 0,
+    );
+    final p2 = EditorP2Session(routeContextResolver: (_) => context);
+    addTearDown(p2.dispose);
+    final source = p2.placeComponent(
+      type: ElectricalComponentType.powerSource,
+      surface: surface,
+      position: const SurfacePointMm(500, 500),
+    );
+    final target = p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: surface,
+      position: const SurfacePointMm(2500, 1500),
+    );
+    p2.select(source.id, mode: SelectionMode.replace);
+    p2.select(target.id, mode: SelectionMode.add);
+    expect(p2.autoRouteSelectedPair(), isTrue);
+    final routeBefore = p2.routes.single;
+    p2.select(target.id, mode: SelectionMode.replace);
+    final depthBefore = p2.history.undoDepth;
 
-      expect(p2.beginMoveSelectedComponent(), isTrue);
-      expect(
-        p2.previewMoveSelectedComponent(const SurfacePointMm(3000, 1900)),
-        isTrue,
-      );
-      final previewRoute = p2.routes.single;
-      expect(previewRoute.target, routeBefore.target);
-      expect(
-        previewRoute.segments.single.points.last,
-        const SurfacePointMm(3000, 1900),
-      );
-      expect(p2.history.undoDepth, depthBefore);
+    expect(p2.beginMoveSelectedComponent(), isTrue);
+    expect(
+      p2.previewMoveSelectedComponent(const SurfacePointMm(3000, 1900)),
+      isTrue,
+    );
+    final previewRoute = p2.routes.single;
+    expect(previewRoute.target, routeBefore.target);
+    expect(previewRoute.segments.single.points.last,
+        const SurfacePointMm(3000, 1900));
+    expect(p2.history.undoDepth, depthBefore);
 
-      expect(p2.commitMoveSelectedComponent(), isTrue);
-      expect(p2.history.undoDepth, depthBefore + 1);
-      expect(p2.selectedComponent!.position, const SurfacePointMm(3000, 1900));
-      expect(
-        p2.routes.single.segments.single.points.last,
-        const SurfacePointMm(3000, 1900),
-      );
+    expect(p2.commitMoveSelectedComponent(), isTrue);
+    expect(p2.history.undoDepth, depthBefore + 1);
+    expect(p2.selectedComponent!.position, const SurfacePointMm(3000, 1900));
+    expect(p2.routes.single.segments.single.points.last,
+        const SurfacePointMm(3000, 1900));
 
-      p2.undo();
-      expect(p2.selectedComponent!.position, target.position);
-      expect(
-        p2.routes.single.segments.single.points,
-        routeBefore.segments.single.points,
-      );
-    },
-  );
+    p2.undo();
+    expect(p2.selectedComponent!.position, target.position);
+    expect(p2.routes.single.segments.single.points,
+        routeBefore.segments.single.points);
+  });
 
   test('cancel restores component routes and constraints exactly', () {
     final surface = RoomSurfaceRef.wall('room-1', 0);
@@ -150,10 +142,8 @@ void main() {
     p2.cancelMoveSelectedComponent();
 
     expect(p2.selectedComponent!.position, target.position);
-    expect(
-      p2.routes.single.segments.single.points,
-      before.routes.single.segments.single.points,
-    );
+    expect(p2.routes.single.segments.single.points,
+        before.routes.single.segments.single.points);
     expect(
       p2.routeConstraintsFor(route.id).mandatoryWaypoints.single.point,
       before.routeConstraints[route.id]!.mandatoryWaypoints.single.point,
@@ -196,9 +186,7 @@ void main() {
     expect(p2.movePreviewValid, isFalse);
     p2.cancelMoveSelectedComponent();
     expect(p2.selectedComponent!.position, target.position);
-    expect(
-      p2.routes.single.segments.single.points,
-      before.routes.single.segments.single.points,
-    );
+    expect(p2.routes.single.segments.single.points,
+        before.routes.single.segments.single.points);
   });
 }

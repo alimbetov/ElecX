@@ -36,9 +36,10 @@ void main() {
         contains(levelId),
       );
       expect(result.changeSet.addedEntityIds, <EntityId>{levelId});
-      expect(result.changeSet.updatedEntityIds, <EntityId>{
-        BuildingId('building-a'),
-      });
+      expect(
+        result.changeSet.updatedEntityIds,
+        <EntityId>{BuildingId('building-a')},
+      );
     });
 
     test('rename preserves level identity and structural attributes', () {
@@ -82,26 +83,24 @@ void main() {
       expect(result.changeSet.updatedEntityIds, <EntityId>{levelId});
     });
 
-    test(
-      'reorder changes display order without changing number or identity',
-      () {
-        final session = ProjectMutationSession(_projectWithLevel());
-        final levelId = LevelId('level-1');
+    test('reorder changes display order without changing number or identity',
+        () {
+      final session = ProjectMutationSession(_projectWithLevel());
+      final levelId = LevelId('level-1');
 
-        final result = session.commit(
-          ProjectMutationRequest(
-            expectedVersion: session.current.version,
-            command: ReorderLevelCommand(levelId: levelId, displayOrder: 99),
-          ),
-        )!;
+      final result = session.commit(
+        ProjectMutationRequest(
+          expectedVersion: session.current.version,
+          command: ReorderLevelCommand(levelId: levelId, displayOrder: 99),
+        ),
+      )!;
 
-        final level = result.project.index.level(levelId)!;
-        expect(level.id, levelId);
-        expect(level.levelNumber, 1);
-        expect(level.displayOrder, 99);
-        expect(level.elevationMm, 0);
-      },
-    );
+      final level = result.project.index.level(levelId)!;
+      expect(level.id, levelId);
+      expect(level.levelNumber, 1);
+      expect(level.displayOrder, 99);
+      expect(level.elevationMm, 0);
+    });
 
     test('same level number remains valid in a different building', () {
       final session = ProjectMutationSession(_twoBuildingsOneLevel());

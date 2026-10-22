@@ -4,7 +4,9 @@
 /// north. It only answers where Project North points inside the canonical plan
 /// XY frame (+X right, +Y up).
 final class ProjectEngineeringNorth {
-  const ProjectEngineeringNorth._(this.milliDegreesClockwiseFromPositiveY);
+  const ProjectEngineeringNorth._(
+    this.milliDegreesClockwiseFromPositiveY,
+  );
 
   static const int fullTurnMilliDegrees = 360000;
   static const double fullTurnDegrees = 360.0;
@@ -91,9 +93,8 @@ final class ProjectEngineeringMetadata {
       );
     }
     return ProjectEngineeringMetadata(
-      projectNorth: clearProjectNorth
-          ? null
-          : projectNorth ?? this.projectNorth,
+      projectNorth:
+          clearProjectNorth ? null : projectNorth ?? this.projectNorth,
     );
   }
 

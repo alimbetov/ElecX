@@ -17,41 +17,43 @@ class _PlatformProjectHubScreenState extends State<PlatformProjectHubScreen> {
   late final Future<_PlatformProjectStores> _storesFuture = _openStores();
 
   Future<_PlatformProjectStores> _openStores() async => _PlatformProjectStores(
-    projectStore: await openDefaultEditorProjectStore(),
-    recoveryStore: await openDefaultEditorProjectRecoveryStore(),
-  );
+        projectStore: await openDefaultEditorProjectStore(),
+        recoveryStore: await openDefaultEditorProjectRecoveryStore(),
+      );
 
   @override
   Widget build(BuildContext context) => FutureBuilder<_PlatformProjectStores>(
-    future: _storesFuture,
-    builder: (context, snapshot) {
-      if (snapshot.connectionState != ConnectionState.done) {
-        return const Scaffold(body: Center(child: CircularProgressIndicator()));
-      }
-      if (snapshot.hasError) {
-        return Scaffold(
-          body: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  'Не удалось инициализировать локальное хранилище ElecX.\n'
-                  '${snapshot.error}',
-                  textAlign: TextAlign.center,
+        future: _storesFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+          if (snapshot.hasError) {
+            return Scaffold(
+              body: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(
+                      'Не удалось инициализировать локальное хранилище ElecX.\n'
+                      '${snapshot.error}',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-        );
-      }
-      final stores = snapshot.requireData;
-      return ProjectHubScreen(
-        projectStore: stores.projectStore,
-        recoveryStore: stores.recoveryStore,
+            );
+          }
+          final stores = snapshot.requireData;
+          return ProjectHubScreen(
+            projectStore: stores.projectStore,
+            recoveryStore: stores.recoveryStore,
+          );
+        },
       );
-    },
-  );
 }
 
 final class _PlatformProjectStores {

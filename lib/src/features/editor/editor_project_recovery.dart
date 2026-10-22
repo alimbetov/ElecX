@@ -22,11 +22,11 @@ final class EditorProjectRecoverySnapshot {
   String get projectId => document.projectId;
 
   Map<String, Object?> toJson() => {
-    'recoveryVersion': formatVersion,
-    'capturedAt': capturedAt.toUtc().toIso8601String(),
-    'revision': revision,
-    'document': document.toJson(),
-  };
+        'recoveryVersion': formatVersion,
+        'capturedAt': capturedAt.toUtc().toIso8601String(),
+        'revision': revision,
+        'document': document.toJson(),
+      };
 
   factory EditorProjectRecoverySnapshot.fromJson(Map<String, Object?> json) {
     final version = json['recoveryVersion'];
@@ -139,14 +139,12 @@ final class JsonFileEditorProjectRecoveryStore
       }
       final snapshot = await _tryRead(entity);
       if (snapshot == null) continue;
-      final existingIndex = result.indexWhere(
-        (item) => item.projectId == snapshot.projectId,
-      );
+      final existingIndex =
+          result.indexWhere((item) => item.projectId == snapshot.projectId);
       if (existingIndex == -1) {
         result.add(snapshot);
-      } else if (snapshot.capturedAt.isAfter(
-        result[existingIndex].capturedAt,
-      )) {
+      } else if (snapshot.capturedAt
+          .isAfter(result[existingIndex].capturedAt)) {
         result[existingIndex] = snapshot;
       }
     }
@@ -186,9 +184,8 @@ final class JsonFileEditorProjectRecoveryStore
   }
 
   File _target(String projectId) {
-    final encoded = base64Url
-        .encode(utf8.encode(projectId))
-        .replaceAll('=', '');
+    final encoded =
+        base64Url.encode(utf8.encode(projectId)).replaceAll('=', '');
     return File(path.join(rootDirectory.path, '$encoded.elecx.recovery.json'));
   }
 }

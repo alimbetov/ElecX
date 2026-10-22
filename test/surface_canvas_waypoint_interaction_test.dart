@@ -30,7 +30,10 @@ void main() {
     return widthScale > heightScale ? widthScale : heightScale;
   }
 
-  Offset viewportPoint(EditorController controller, SurfacePointMm point) {
+  Offset viewportPoint(
+    EditorController controller,
+    SurfacePointMm point,
+  ) {
     final wall = controller.activeWall!;
     final scale = mmPerPixel(controller);
     return Offset(

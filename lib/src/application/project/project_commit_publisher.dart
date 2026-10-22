@@ -6,7 +6,10 @@ import 'project_mutation.dart';
 ///
 /// No-op previews/commands and failed mutations do not produce an event.
 final class ProjectCommittedEvent {
-  const ProjectCommittedEvent({required this.project, required this.changeSet});
+  const ProjectCommittedEvent({
+    required this.project,
+    required this.changeSet,
+  });
 
   final ProjectAggregateRoot project;
   final ProjectChangeSet changeSet;
@@ -35,8 +38,8 @@ final class PublishingProjectMutationSession {
   PublishingProjectMutationSession({
     required ProjectAggregateRoot initial,
     ProjectCommitPublisher publisher = const NoopProjectCommitPublisher(),
-  }) : _session = ProjectMutationSession(initial),
-       _publisher = publisher;
+  })  : _session = ProjectMutationSession(initial),
+        _publisher = publisher;
 
   final ProjectMutationSession _session;
   final ProjectCommitPublisher _publisher;

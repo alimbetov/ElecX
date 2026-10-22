@@ -200,9 +200,8 @@ void main() {
     controller.dispose();
   });
 
-  testWidgets('autosave writes recovery but never marks project Saved', (
-    tester,
-  ) async {
+  testWidgets('autosave writes recovery but never marks project Saved',
+      (tester) async {
     final projects = _MemoryProjectStore();
     final recovery = _MemoryRecoveryStore();
     await tester.binding.setSurfaceSize(const Size(1200, 900));
@@ -232,9 +231,8 @@ void main() {
     expect(find.text('Saved'), findsOneWidget);
   });
 
-  testWidgets('Save failed shows actionable incompatible cable hint', (
-    tester,
-  ) async {
+  testWidgets('Save failed shows actionable incompatible cable hint',
+      (tester) async {
     final projects = _MemoryProjectStore();
     final recovery = _MemoryRecoveryStore();
     await tester.binding.setSurfaceSize(const Size(1200, 900));
@@ -260,38 +258,37 @@ void main() {
   });
 
   testWidgets(
-    'in-flight autosave cannot resurrect recovery after explicit Save',
-    (tester) async {
-      final projects = _MemoryProjectStore();
-      final recovery = _DelayedRecoveryStore();
-      await tester.binding.setSurfaceSize(const Size(1200, 900));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      await tester.pumpWidget(
-        MaterialApp(
-          home: UnifiedWorkspaceEditorScreen(
-            projectStore: projects,
-            recoveryStore: recovery,
-            autosaveDelay: const Duration(milliseconds: 5),
-            initialMetadata: EditorProjectMetadata.create(
-              projectName: 'Autosave race',
-            ),
+      'in-flight autosave cannot resurrect recovery after explicit Save',
+      (tester) async {
+    final projects = _MemoryProjectStore();
+    final recovery = _DelayedRecoveryStore();
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: UnifiedWorkspaceEditorScreen(
+          projectStore: projects,
+          recoveryStore: recovery,
+          autosaveDelay: const Duration(milliseconds: 5),
+          initialMetadata: EditorProjectMetadata.create(
+            projectName: 'Autosave race',
           ),
         ),
-      );
-      await tester.pump(const Duration(milliseconds: 10));
-      expect(recovery.saves, 1);
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 10));
+    expect(recovery.saves, 1);
 
-      await tester.tap(find.byKey(const ValueKey('project-save')));
-      await tester.pump();
-      expect(projects.saves, 1);
-      expect(recovery.discards, greaterThanOrEqualTo(1));
+    await tester.tap(find.byKey(const ValueKey('project-save')));
+    await tester.pump();
+    expect(projects.saves, 1);
+    expect(recovery.discards, greaterThanOrEqualTo(1));
 
-      recovery.releaseFirstSave.complete();
-      await tester.pump();
-      await tester.pumpAndSettle();
-      expect(recovery.snapshots, isEmpty);
-      expect(recovery.discards, greaterThanOrEqualTo(2));
-      expect(find.text('Saved'), findsOneWidget);
-    },
-  );
+    recovery.releaseFirstSave.complete();
+    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(recovery.snapshots, isEmpty);
+    expect(recovery.discards, greaterThanOrEqualTo(2));
+    expect(find.text('Saved'), findsOneWidget);
+  });
 }

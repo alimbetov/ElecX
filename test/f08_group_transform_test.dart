@@ -14,70 +14,68 @@ void main() {
     edgeClearanceMm: 0,
   );
 
-  test(
-    'F08 group transform moves components and internal route atomically',
-    () {
-      final p2 = EditorP2Session(routeContextResolver: (_) => context);
-      addTearDown(p2.dispose);
-      final source = p2.placeComponent(
-        type: ElectricalComponentType.powerSource,
-        surface: surface,
-        position: const SurfacePointMm(500, 500),
-      );
-      final target = p2.placeComponent(
-        type: ElectricalComponentType.socketOutlet,
-        surface: surface,
-        position: const SurfacePointMm(2500, 1500),
-      );
-      p2.select(source.id, mode: SelectionMode.replace);
-      p2.select(target.id, mode: SelectionMode.add);
-      expect(p2.autoRouteSelectedPair(), isTrue);
-      final before = p2.state;
-      final routeBefore = before.routes.single;
-      final depthBefore = p2.history.undoDepth;
+  test('F08 group transform moves components and internal route atomically',
+      () {
+    final p2 = EditorP2Session(routeContextResolver: (_) => context);
+    addTearDown(p2.dispose);
+    final source = p2.placeComponent(
+      type: ElectricalComponentType.powerSource,
+      surface: surface,
+      position: const SurfacePointMm(500, 500),
+    );
+    final target = p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: surface,
+      position: const SurfacePointMm(2500, 1500),
+    );
+    p2.select(source.id, mode: SelectionMode.replace);
+    p2.select(target.id, mode: SelectionMode.add);
+    expect(p2.autoRouteSelectedPair(), isTrue);
+    final before = p2.state;
+    final routeBefore = before.routes.single;
+    final depthBefore = p2.history.undoDepth;
 
-      expect(p2.beginMoveSelectedComponent(), isTrue);
-      expect(
-        p2.previewMoveSelectedComponent(const SurfacePointMm(2800, 1700)),
-        isTrue,
-      );
-      expect(
-        p2.components.firstWhere((item) => item.id == source.id).position,
-        const SurfacePointMm(800, 700),
-      );
-      expect(
-        p2.components.firstWhere((item) => item.id == target.id).position,
-        const SurfacePointMm(2800, 1700),
-      );
-      final routePreview = p2.routes.single;
-      for (var s = 0; s < routeBefore.segments.length; s++) {
-        for (var i = 0; i < routeBefore.segments[s].points.length; i++) {
-          final oldPoint = routeBefore.segments[s].points[i];
-          expect(
-            routePreview.segments[s].points[i],
-            SurfacePointMm(oldPoint.xMm + 300, oldPoint.yMm + 200),
-          );
-        }
+    expect(p2.beginMoveSelectedComponent(), isTrue);
+    expect(
+      p2.previewMoveSelectedComponent(const SurfacePointMm(2800, 1700)),
+      isTrue,
+    );
+    expect(
+      p2.components.firstWhere((item) => item.id == source.id).position,
+      const SurfacePointMm(800, 700),
+    );
+    expect(
+      p2.components.firstWhere((item) => item.id == target.id).position,
+      const SurfacePointMm(2800, 1700),
+    );
+    final routePreview = p2.routes.single;
+    for (var s = 0; s < routeBefore.segments.length; s++) {
+      for (var i = 0; i < routeBefore.segments[s].points.length; i++) {
+        final oldPoint = routeBefore.segments[s].points[i];
+        expect(
+          routePreview.segments[s].points[i],
+          SurfacePointMm(oldPoint.xMm + 300, oldPoint.yMm + 200),
+        );
       }
-      expect(p2.history.undoDepth, depthBefore);
+    }
+    expect(p2.history.undoDepth, depthBefore);
 
-      expect(p2.commitMoveSelectedComponent(), isTrue);
-      expect(p2.history.undoDepth, depthBefore + 1);
-      p2.undo();
-      expect(
-        p2.components.firstWhere((item) => item.id == source.id).position,
-        source.position,
-      );
-      expect(
-        p2.components.firstWhere((item) => item.id == target.id).position,
-        target.position,
-      );
-      expect(
-        p2.routes.single.segments.single.points,
-        routeBefore.segments.single.points,
-      );
-    },
-  );
+    expect(p2.commitMoveSelectedComponent(), isTrue);
+    expect(p2.history.undoDepth, depthBefore + 1);
+    p2.undo();
+    expect(
+      p2.components.firstWhere((item) => item.id == source.id).position,
+      source.position,
+    );
+    expect(
+      p2.components.firstWhere((item) => item.id == target.id).position,
+      target.position,
+    );
+    expect(
+      p2.routes.single.segments.single.points,
+      routeBefore.segments.single.points,
+    );
+  });
 
   test('F08 group cancel restores all components and routes exactly', () {
     final p2 = EditorP2Session(routeContextResolver: (_) => context);

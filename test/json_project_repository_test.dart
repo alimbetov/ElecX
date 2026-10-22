@@ -54,33 +54,31 @@ void main() {
     ]);
   });
 
-  test(
-    'canonical codec repository round-trip preserves Project North',
-    () async {
-      final canonicalRepository = JsonProjectRepository(
-        rootDirectory: root,
-        codec: const CanonicalProjectDocumentCodec(),
-      );
-      final north = ProjectEngineeringNorth.fromDegrees(123.456);
-      final snapshot = _snapshot(
-        id: 'project-north',
-        name: 'Project North',
-        updatedAt: DateTime.utc(2026, 10, 21, 10),
-        north: north,
-      );
+  test('canonical codec repository round-trip preserves Project North',
+      () async {
+    final canonicalRepository = JsonProjectRepository(
+      rootDirectory: root,
+      codec: const CanonicalProjectDocumentCodec(),
+    );
+    final north = ProjectEngineeringNorth.fromDegrees(123.456);
+    final snapshot = _snapshot(
+      id: 'project-north',
+      name: 'Project North',
+      updatedAt: DateTime.utc(2026, 10, 21, 10),
+      north: north,
+    );
 
-      await canonicalRepository.save(snapshot);
-      final loaded = await canonicalRepository.load(ProjectId('project-north'));
+    await canonicalRepository.save(snapshot);
+    final loaded = await canonicalRepository.load(ProjectId('project-north'));
 
-      expect(loaded, isNotNull);
-      expect(loaded!.aggregate.engineeringMetadata.projectNorth, north);
-      expect(loaded.localVersion, snapshot.localVersion);
-      expect(
-        loaded.aggregate.index.site(loaded.siteId)?.name,
-        'Site project-north',
-      );
-    },
-  );
+    expect(loaded, isNotNull);
+    expect(loaded!.aggregate.engineeringMetadata.projectNorth, north);
+    expect(loaded.localVersion, snapshot.localVersion);
+    expect(
+      loaded.aggregate.index.site(loaded.siteId)?.name,
+      'Site project-north',
+    );
+  });
 
   test('rejects a lossy codec before touching the project file', () async {
     final lossyRepository = JsonProjectRepository(
@@ -101,10 +99,8 @@ void main() {
 
     final projectFiles = await root
         .list()
-        .where(
-          (entity) =>
-              entity is File && entity.path.endsWith('.elecx.project.json'),
-        )
+        .where((entity) =>
+            entity is File && entity.path.endsWith('.elecx.project.json'))
         .toList();
     expect(projectFiles, isEmpty);
   });
@@ -147,8 +143,10 @@ void main() {
         updatedAt: DateTime.utc(2026, 10, 21, 8),
       ),
     );
-    await File('${root.path}/corrupt.elecx.project.json')
-        .writeAsString('{broken json', flush: true);
+    await File('${root.path}/corrupt.elecx.project.json').writeAsString(
+      '{broken json',
+      flush: true,
+    );
 
     final summaries = await repository.list();
     expect(summaries, hasLength(1));
@@ -192,17 +190,17 @@ final class _TestProjectDocumentCodec implements ProjectDocumentCodec {
 
   @override
   ProjectDocument encode(ProjectSnapshot snapshot) => ProjectDocument(
-    schemaVersion: currentSchemaVersion,
-    payload: {
-      'projectId': snapshot.id.value,
-      'siteId': snapshot.siteId.value,
-      'localVersion': snapshot.localVersion.value,
-      'name': snapshot.name,
-      'createdAt': snapshot.createdAt.toIso8601String(),
-      'updatedAt': snapshot.updatedAt.toIso8601String(),
-      'siteName': snapshot.aggregate.index.site(snapshot.siteId)!.name,
-    },
-  );
+        schemaVersion: currentSchemaVersion,
+        payload: {
+          'projectId': snapshot.id.value,
+          'siteId': snapshot.siteId.value,
+          'localVersion': snapshot.localVersion.value,
+          'name': snapshot.name,
+          'createdAt': snapshot.createdAt.toIso8601String(),
+          'updatedAt': snapshot.updatedAt.toIso8601String(),
+          'siteName': snapshot.aggregate.index.site(snapshot.siteId)!.name,
+        },
+      );
 
   @override
   ProjectSnapshot decode(ProjectDocument document) {

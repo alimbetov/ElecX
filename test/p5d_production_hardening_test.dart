@@ -78,9 +78,8 @@ void main() {
     },
   );
 
-  testWidgets('compass toggle is keyboard reachable and Space activates it', (
-    tester,
-  ) async {
+  testWidgets('compass toggle is keyboard reachable and Space activates it',
+      (tester) async {
     _useSurface(tester, const Size(1440, 900));
     final fixture = _fixture('keyboard-toggle');
 
@@ -116,9 +115,8 @@ void main() {
     expect(find.bySemanticsLabel('Compass'), findsOneWidget);
   });
 
-  testWidgets('compass overlay stays clear of primary authoring toolbar', (
-    tester,
-  ) async {
+  testWidgets('compass overlay stays clear of primary authoring toolbar',
+      (tester) async {
     for (final surface in <Size>[
       const Size(1440, 900),
       const Size(820, 900),

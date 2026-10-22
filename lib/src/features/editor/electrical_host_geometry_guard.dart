@@ -132,7 +132,10 @@ abstract final class ElectricalHostGeometryGuard {
     return true;
   }
 
-  static bool _insideObstacle(SurfacePointMm point, RouteObstacleMm obstacle) =>
+  static bool _insideObstacle(
+    SurfacePointMm point,
+    RouteObstacleMm obstacle,
+  ) =>
       point.xMm > math.min(obstacle.leftMm, obstacle.rightMm) &&
       point.xMm < math.max(obstacle.leftMm, obstacle.rightMm) &&
       point.yMm > math.min(obstacle.topMm, obstacle.bottomMm) &&
@@ -147,8 +150,7 @@ abstract final class ElectricalHostGeometryGuard {
     for (var i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
       final a = polygon[j];
       final b = polygon[i];
-      final cross =
-          (b.xMm - a.xMm) * (point.yMm - a.yMm) -
+      final cross = (b.xMm - a.xMm) * (point.yMm - a.yMm) -
           (b.yMm - a.yMm) * (point.xMm - a.xMm);
       if (cross == 0 &&
           point.xMm >= math.min(a.xMm, b.xMm) &&
@@ -175,30 +177,30 @@ extension ElectricalHostGeometryGuardedMutations on EditorController {
     int? heightMm,
     int? sillHeightMm,
     bool Function(ArchitecturalOpening candidate)? canCommit,
-  }) => updateSelectedOpening(
-    type: type,
-    offsetFromStartMm: offsetFromStartMm,
-    widthMm: widthMm,
-    heightMm: heightMm,
-    sillHeightMm: sillHeightMm,
-    canCommit:
-        canCommit ??
-        (candidate) => ElectricalHostGeometryGuard.openingCandidateAllowed(
-          this,
-          candidate,
-        ),
-  );
+  }) =>
+      updateSelectedOpening(
+        type: type,
+        offsetFromStartMm: offsetFromStartMm,
+        widthMm: widthMm,
+        heightMm: heightMm,
+        sillHeightMm: sillHeightMm,
+        canCommit: canCommit ??
+            (candidate) => ElectricalHostGeometryGuard.openingCandidateAllowed(
+                  this,
+                  candidate,
+                ),
+      );
 
   bool addOpeningGuarded(
     ArchitecturalOpeningType type, {
     bool Function(ArchitecturalOpening candidate)? canCommit,
-  }) => addOpening(
-    type,
-    canCommit:
-        canCommit ??
-        (candidate) => ElectricalHostGeometryGuard.openingCandidateAllowed(
-          this,
-          candidate,
-        ),
-  );
+  }) =>
+      addOpening(
+        type,
+        canCommit: canCommit ??
+            (candidate) => ElectricalHostGeometryGuard.openingCandidateAllowed(
+                  this,
+                  candidate,
+                ),
+      );
 }

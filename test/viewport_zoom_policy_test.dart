@@ -17,8 +17,14 @@ void main() {
   });
 
   test('F12 horizontal scroll does not zoom', () {
-    expect(ViewportZoomPolicy.factorForScrollDelta(dx: 80, dy: 0), isNull);
-    expect(ViewportZoomPolicy.factorForScrollDelta(dx: 80, dy: 10), isNull);
+    expect(
+      ViewportZoomPolicy.factorForScrollDelta(dx: 80, dy: 0),
+      isNull,
+    );
+    expect(
+      ViewportZoomPolicy.factorForScrollDelta(dx: 80, dy: 10),
+      isNull,
+    );
   });
 
   test('F12 wheel zoom follows magnitude and direction with a safe cap', () {

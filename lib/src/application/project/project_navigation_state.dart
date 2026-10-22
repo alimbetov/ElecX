@@ -214,10 +214,10 @@ final class ProjectNavigationState {
   }
 
   ProjectNavigationState clearSelection() => ProjectNavigationState._(
-    siteId: siteId,
-    activeBuildingId: activeBuildingId,
-    activeLevelId: activeLevelId,
-  );
+        siteId: siteId,
+        activeBuildingId: activeBuildingId,
+        activeLevelId: activeLevelId,
+      );
 
   /// Repairs this session state against the latest canonical project graph.
   ///
@@ -337,12 +337,12 @@ final class ProjectNavigationState {
 
   @override
   int get hashCode => Object.hash(
-    siteId,
-    activeBuildingId,
-    activeLevelId,
-    selectedZoneId,
-    selectedSpaceId,
-  );
+        siteId,
+        activeBuildingId,
+        activeLevelId,
+        selectedZoneId,
+        selectedSpaceId,
+      );
 }
 
 ProjectBuildingEntity? _firstBuilding(ProjectAggregateRoot project) {
@@ -408,11 +408,12 @@ ProjectLevelEntity? _neighborLevel({
 }
 
 List<ProjectBuildingEntity> _orderedBuildings(ProjectAggregateRoot project) {
-  return project.index.buildings.values.toList()..sort((left, right) {
-    final byOrder = left.displayOrder.compareTo(right.displayOrder);
-    if (byOrder != 0) return byOrder;
-    return left.id.value.compareTo(right.id.value);
-  });
+  return project.index.buildings.values.toList()
+    ..sort((left, right) {
+      final byOrder = left.displayOrder.compareTo(right.displayOrder);
+      if (byOrder != 0) return byOrder;
+      return left.id.value.compareTo(right.id.value);
+    });
 }
 
 List<ProjectLevelEntity> _orderedLevels(

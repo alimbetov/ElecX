@@ -8,9 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('disposing canvas cancels active component preview exactly', (
-    tester,
-  ) async {
+  testWidgets('disposing canvas cancels active component preview exactly',
+      (tester) async {
     final controller = EditorController.demo();
     addTearDown(controller.dispose);
     controller.showWall(1);
@@ -21,9 +20,7 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(body: SurfaceCanvas(controller: controller)),
-      ),
+      MaterialApp(home: Scaffold(body: SurfaceCanvas(controller: controller))),
     );
     expect(controller.componentTransform.begin(), isTrue);
     expect(

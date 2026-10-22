@@ -55,7 +55,10 @@ EditorProjectRecoverySnapshot _orphanRecovery() {
     projectName: 'Несохранённый проект',
     now: DateTime.utc(2026, 10, 20, 10),
   );
-  final document = EditorProjectDocument.capture(workspace, metadata: metadata);
+  final document = EditorProjectDocument.capture(
+    workspace,
+    metadata: metadata,
+  );
   workspace.dispose();
   controller.disposeP2State();
   controller.dispose();
@@ -68,54 +71,49 @@ EditorProjectRecoverySnapshot _orphanRecovery() {
 
 void main() {
   testWidgets(
-    'hub exposes orphan recovery and opens it as Modified until explicit Save',
-    (tester) async {
-      final projects = _MemoryProjectStore();
-      final recoveryStore = _MemoryRecoveryStore();
-      final recovery = _orphanRecovery();
-      recoveryStore.snapshots[recovery.projectId] = recovery;
+      'hub exposes orphan recovery and opens it as Modified until explicit Save',
+      (tester) async {
+    final projects = _MemoryProjectStore();
+    final recoveryStore = _MemoryRecoveryStore();
+    final recovery = _orphanRecovery();
+    recoveryStore.snapshots[recovery.projectId] = recovery;
 
-      await tester.binding.setSurfaceSize(const Size(1280, 900));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      await tester.pumpWidget(
-        MaterialApp(
-          home: ProjectHubScreen(
-            projectStore: projects,
-            recoveryStore: recoveryStore,
-          ),
+    await tester.binding.setSurfaceSize(const Size(1280, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ProjectHubScreen(
+          projectStore: projects,
+          recoveryStore: recoveryStore,
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(find.text('Аварийное восстановление'), findsOneWidget);
-      expect(
-        find.byKey(ValueKey('recovery-project-${recovery.projectId}')),
-        findsOneWidget,
-      );
-      expect(projects.documents, isEmpty);
+    expect(find.text('Аварийное восстановление'), findsOneWidget);
+    expect(
+      find.byKey(ValueKey('recovery-project-${recovery.projectId}')),
+      findsOneWidget,
+    );
+    expect(projects.documents, isEmpty);
 
-      await tester.tap(
-        find.byKey(ValueKey('recovery-project-${recovery.projectId}')),
-      );
-      await tester.pumpAndSettle();
-      expect(find.byType(UnifiedWorkspaceEditorScreen), findsOneWidget);
-      expect(find.text('Modified'), findsOneWidget);
-      expect(
-        find.byKey(const ValueKey('project-recovery-dialog')),
-        findsNothing,
-      );
+    await tester.tap(
+      find.byKey(ValueKey('recovery-project-${recovery.projectId}')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(UnifiedWorkspaceEditorScreen), findsOneWidget);
+    expect(find.text('Modified'), findsOneWidget);
+    expect(find.byKey(const ValueKey('project-recovery-dialog')), findsNothing);
 
-      await tester.tap(find.byKey(const ValueKey('project-save')));
-      await tester.pumpAndSettle();
-      expect(find.text('Saved'), findsOneWidget);
-      expect(projects.documents, hasLength(1));
-      expect(recoveryStore.snapshots, isEmpty);
-    },
-  );
+    await tester.tap(find.byKey(const ValueKey('project-save')));
+    await tester.pumpAndSettle();
+    expect(find.text('Saved'), findsOneWidget);
+    expect(projects.documents, hasLength(1));
+    expect(recoveryStore.snapshots, isEmpty);
+  });
 
-  testWidgets('hub can discard orphan recovery without creating a project', (
-    tester,
-  ) async {
+  testWidgets('hub can discard orphan recovery without creating a project',
+      (tester) async {
     final projects = _MemoryProjectStore();
     final recoveryStore = _MemoryRecoveryStore();
     final recovery = _orphanRecovery();

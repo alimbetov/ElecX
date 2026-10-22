@@ -33,8 +33,7 @@ final class LosslessLegacyMigrationUnavailable implements Exception {
   final LegacyProjectCompatibilityAssessment assessment;
 
   @override
-  String toString() =>
-      'Lossless legacy project migration is not available: '
+  String toString() => 'Lossless legacy project migration is not available: '
       '${assessment.reasons.join(' ')}';
 }
 
@@ -50,7 +49,7 @@ abstract final class LegacyV4ProjectCompatibilityBoundary {
         status: LegacyProjectCompatibilityStatus.malformed,
         schemaVersion: rawVersion is int ? rawVersion : null,
         reasons: const <String>[
-          'Legacy schemaVersion must be a positive integer.',
+          'Legacy schemaVersion must be a positive integer.'
         ],
       );
     }

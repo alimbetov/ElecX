@@ -34,9 +34,10 @@ void main() {
         );
         expect(result.project.index.structuralZoneBySpace[spaceId], isNull);
         expect(result.changeSet.addedEntityIds, <EntityId>{spaceId});
-        expect(result.changeSet.updatedEntityIds, <EntityId>{
-          LevelId('level-1'),
-        });
+        expect(
+          result.changeSet.updatedEntityIds,
+          <EntityId>{LevelId('level-1')},
+        );
         expect(result.project.version, LocalProjectVersion(1));
         expect(session.undoDepth, 1);
       },
@@ -66,10 +67,10 @@ void main() {
       expect(result.project.index.zone(zoneId)!.spaceIds, contains(spaceId));
       expect(result.project.index.structuralZoneBySpace[spaceId], zoneId);
       expect(result.changeSet.addedEntityIds, <EntityId>{spaceId});
-      expect(result.changeSet.updatedEntityIds, <EntityId>{
-        LevelId('level-1'),
-        zoneId,
-      });
+      expect(
+        result.changeSet.updatedEntityIds,
+        <EntityId>{LevelId('level-1'), zoneId},
+      );
       expect(session.undoDepth, 1);
 
       final undone = session.undo(session.current.version)!;
@@ -162,7 +163,11 @@ void main() {
                 'code',
                 ProjectAuthoringIssueCode.spaceAlreadyExists,
               )
-              .having((error) => error.entityId, 'entityId', SpaceId('space-1'))
+              .having(
+                (error) => error.entityId,
+                'entityId',
+                SpaceId('space-1'),
+              )
               .having(
                 (error) => error.relatedEntityId,
                 'relatedEntityId',
@@ -203,7 +208,11 @@ void main() {
                 'code',
                 ProjectAuthoringIssueCode.structuralZoneLevelMismatch,
               )
-              .having((error) => error.entityId, 'entityId', ZoneId('zone-a'))
+              .having(
+                (error) => error.entityId,
+                'entityId',
+                ZoneId('zone-a'),
+              )
               .having(
                 (error) => error.relatedEntityId,
                 'relatedEntityId',
@@ -309,7 +318,10 @@ ProjectAggregateRoot _project({
   final zoneId = ZoneId('zone-a');
   final spaceId = SpaceId('space-1');
 
-  final levelIds = <LevelId>[levelOneId, if (secondLevel) levelTwoId];
+  final levelIds = <LevelId>[
+    levelOneId,
+    if (secondLevel) levelTwoId,
+  ];
 
   return ProjectAggregateRoot(
     id: ProjectId('project-1'),

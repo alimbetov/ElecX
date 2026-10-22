@@ -26,7 +26,7 @@ final class CableRouteEditSession extends ChangeNotifier
   CableRouteEditSession({required this.onCommit});
 
   final bool Function(ElectricalCableRoute before, ElectricalCableRoute after)
-  onCommit;
+      onCommit;
 
   ElectricalCableRoute? _origin;
   CableRouteEditPreview? _preview;
@@ -76,8 +76,7 @@ final class CableRouteEditSession extends ChangeNotifier
     if (segment.surface != context.surface || segment.points.length < 2) {
       return false;
     }
-    final waypoints =
-        constraints?.mandatoryWaypoints
+    final waypoints = constraints?.mandatoryWaypoints
             .where((item) => item.segmentIndex == segmentIndex)
             .toList(growable: false) ??
         const <CableMandatoryWaypoint>[];
@@ -121,9 +120,8 @@ final class CableRouteEditSession extends ChangeNotifier
         target: anchors[i],
         context: context,
       );
-      final best = candidates
-          .where((item) => item.validation.isValid)
-          .firstOrNull;
+      final best =
+          candidates.where((item) => item.validation.isValid).firstOrNull;
       if (best == null) {
         _phase = EditorEditSessionPhase.invalid;
         notifyListeners();
@@ -184,16 +182,16 @@ final class CableRouteEditSession extends ChangeNotifier
         issues.add(
           const RouteConstraintIssue(
             code: 'route.endpoint-moved',
-            message: 'Редактирование сегмента не должно смещать подключённые концы кабеля. Переносите endpoint через портовый handle.',
+            message:
+                'Редактирование сегмента не должно смещать подключённые концы кабеля. Переносите endpoint через портовый handle.',
             severity: RouteConstraintSeverity.error,
           ),
         );
       }
     }
     for (final waypoint in _mandatoryWaypoints) {
-      final preserved = points.any(
-        (point) => _samePoint(point, waypoint.point),
-      );
+      final preserved =
+          points.any((point) => _samePoint(point, waypoint.point));
       if (!preserved) {
         issues.add(
           RouteConstraintIssue(
@@ -248,18 +246,19 @@ final class CableRouteEditSession extends ChangeNotifier
     ElectricalCableRoute route,
     int index,
     ElectricalRouteSegment replacement,
-  ) => ElectricalCableRoute(
-    id: route.id,
-    source: route.source,
-    target: route.target,
-    segments: [
-      for (var i = 0; i < route.segments.length; i++)
-        if (i == index) replacement else route.segments[i],
-    ],
-    cableType: route.cableType,
-    medium: route.medium,
-    reservePercent: route.reservePercent,
-  );
+  ) =>
+      ElectricalCableRoute(
+        id: route.id,
+        source: route.source,
+        target: route.target,
+        segments: [
+          for (var i = 0; i < route.segments.length; i++)
+            if (i == index) replacement else route.segments[i],
+        ],
+        cableType: route.cableType,
+        medium: route.medium,
+        reservePercent: route.reservePercent,
+      );
 
   static List<SurfacePointMm> _removeConsecutiveDuplicates(
     List<SurfacePointMm> points,

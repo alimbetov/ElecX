@@ -28,7 +28,9 @@ void main() {
 
     test('legacy room selection is pulled into canonical navigation once', () {
       final observed = <ProjectNavigationState>[];
-      final fixture = _fixture(onNavigationChanged: observed.add);
+      final fixture = _fixture(
+        onNavigationChanged: observed.add,
+      );
       fixture.binding.start();
       observed.clear();
 
@@ -39,45 +41,41 @@ void main() {
       expect(observed.single.selectedSpaceId, SpaceId('space-1'));
     });
 
-    test(
-      'non-navigation editor notifications do not trigger canonical pull',
-      () {
-        final observed = <ProjectNavigationState>[];
-        final fixture = _fixture(onNavigationChanged: observed.add);
-        fixture.binding.start();
-        observed.clear();
+    test('non-navigation editor notifications do not trigger canonical pull',
+        () {
+      final observed = <ProjectNavigationState>[];
+      final fixture = _fixture(onNavigationChanged: observed.add);
+      fixture.binding.start();
+      observed.clear();
 
-        fixture.workspace.editor.notifyListeners();
-        fixture.workspace.editor.notifyListeners();
+      fixture.workspace.editor.notifyListeners();
+      fixture.workspace.editor.notifyListeners();
 
-        expect(observed, isEmpty);
-      },
-    );
+      expect(observed, isEmpty);
+    });
 
-    test(
-      'unmaterialized canonical target is reported without canvas mutation',
-      () {
-        CanonicalEditorMaterializationResult? blocked;
-        final fixture = _fixture(
-          bindSpace: false,
-          onBlocked: (result) => blocked = result,
-        );
-        fixture.binding.start(pushInitialCanonicalState: false);
-        fixture.session.selectRoom(SpaceId('space-1'));
-        final beforeLevel = fixture.workspace.editor.level.id;
-        final beforeSpace = fixture.workspace.editor.selectedSpaceId;
+    test('unmaterialized canonical target is reported without canvas mutation',
+        () {
+      CanonicalEditorMaterializationResult? blocked;
+      final fixture = _fixture(
+        bindSpace: false,
+        onBlocked: (result) => blocked = result,
+      );
+      fixture.binding.start(pushInitialCanonicalState: false);
+      fixture.session.selectRoom(SpaceId('space-1'));
+      final beforeLevel = fixture.workspace.editor.level.id;
+      final beforeSpace = fixture.workspace.editor.selectedSpaceId;
 
-        final readiness = fixture.binding.pushCanonicalToEditor();
+      final readiness = fixture.binding.pushCanonicalToEditor();
 
-        expect(
-          readiness.status,
-          CanonicalEditorMaterializationStatus.blockedMissingGeometry,
-        );
-        expect(blocked, same(readiness));
-        expect(fixture.workspace.editor.level.id, beforeLevel);
-        expect(fixture.workspace.editor.selectedSpaceId, beforeSpace);
-      },
-    );
+      expect(
+        readiness.status,
+        CanonicalEditorMaterializationStatus.blockedMissingGeometry,
+      );
+      expect(blocked, same(readiness));
+      expect(fixture.workspace.editor.level.id, beforeLevel);
+      expect(fixture.workspace.editor.selectedSpaceId, beforeSpace);
+    });
 
     test('dispose detaches legacy listeners', () {
       final observed = <ProjectNavigationState>[];
@@ -192,7 +190,11 @@ ProjectAggregateRoot _project() {
       },
       zones: const <ZoneId, ProjectStructuralZoneEntity>{},
       spaces: <SpaceId, ProjectSpaceEntity>{
-        space1: ProjectSpaceEntity(id: space1, levelId: level1, name: 'Room'),
+        space1: ProjectSpaceEntity(
+          id: space1,
+          levelId: level1,
+          name: 'Room',
+        ),
       },
     ),
   );

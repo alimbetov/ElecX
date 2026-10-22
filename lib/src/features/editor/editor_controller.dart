@@ -14,26 +14,26 @@ enum EditorViewMode { plan, roomWorld, surface }
 
 final class EditorController extends ChangeNotifier {
   EditorController.demo()
-    : level = BuildingLevel(
-        id: 'level-1',
-        name: 'Этаж 1',
-        elevationMm: 0,
-        spaces: [
-          _room(
-            'room-101',
-            'Комната 101',
-            const MmPoint(1000, 1200),
-            const MmPoint(5200, 4400),
-          ),
-          _room(
-            'corridor-1',
-            'Коридор',
-            const MmPoint(1000, 4600),
-            const MmPoint(9800, 5900),
-            type: SpaceType.corridor,
-          ),
-        ],
-      ) {
+      : level = BuildingLevel(
+          id: 'level-1',
+          name: 'Этаж 1',
+          elevationMm: 0,
+          spaces: [
+            _room(
+              'room-101',
+              'Комната 101',
+              const MmPoint(1000, 1200),
+              const MmPoint(5200, 4400),
+            ),
+            _room(
+              'corridor-1',
+              'Коридор',
+              const MmPoint(1000, 4600),
+              const MmPoint(9800, 5900),
+              type: SpaceType.corridor,
+            ),
+          ],
+        ) {
     selectedSpaceId = 'room-101';
     openings = [
       ArchitecturalOpening(
@@ -61,11 +61,11 @@ final class EditorController extends ChangeNotifier {
     String levelId = 'level-1',
     String levelName = 'Этаж 1',
   }) : level = BuildingLevel(
-         id: levelId,
-         name: levelName,
-         elevationMm: 0,
-         spaces: const [],
-       ) {
+          id: levelId,
+          name: levelName,
+          elevationMm: 0,
+          spaces: const [],
+        ) {
     openings = <ArchitecturalOpening>[];
     roomSequence = 1;
     openingSequence = 1;
@@ -396,10 +396,8 @@ final class EditorController extends ChangeNotifier {
     final sill = type == ArchitecturalOpeningType.window ? 900 : 0;
     final wallLength = wall.lengthMm.round();
     final width = defaultWidth.clamp(300, wallLength).toInt();
-    final offset = ((wallLength - width) / 2)
-        .round()
-        .clamp(0, wallLength - width)
-        .toInt();
+    final offset =
+        ((wallLength - width) / 2).round().clamp(0, wallLength - width).toInt();
     final maxHeight = wall.heightMm - sill;
     if (maxHeight <= 0) return false;
 
@@ -443,8 +441,8 @@ final class EditorController extends ChangeNotifier {
     zoom = value < 0.35
         ? 0.35
         : value > 6.0
-        ? 6.0
-        : value;
+            ? 6.0
+            : value;
     notifyListeners();
   }
 
@@ -476,8 +474,7 @@ final class EditorController extends ChangeNotifier {
     final segments = <SnapSegment>[];
     for (final space in level.spaces) {
       final bounds = space.boundary.bounds;
-      final outside =
-          bounds.right < left ||
+      final outside = bounds.right < left ||
           bounds.left > right ||
           bounds.top < bottom ||
           bounds.bottom > top;
@@ -721,13 +718,11 @@ final class EditorController extends ChangeNotifier {
     this.openings = List<ArchitecturalOpening>.of(openings);
     this.roomSequence = roomSequence;
     this.openingSequence = openingSequence;
-    this.selectedSpaceId =
-        selectedSpaceId != null &&
+    this.selectedSpaceId = selectedSpaceId != null &&
             level.spaces.any((space) => space.id == selectedSpaceId)
         ? selectedSpaceId
         : null;
-    this.selectedOpeningId =
-        selectedOpeningId != null &&
+    this.selectedOpeningId = selectedOpeningId != null &&
             this.openings.any((opening) => opening.id == selectedOpeningId)
         ? selectedOpeningId
         : null;

@@ -32,42 +32,40 @@ void main() {
       expect(workspace.editor.selectedSpaceId, isNull);
     });
 
-    test(
-      'does not fall back to matching levelNumber when binding is wrong',
-      () {
-        final project = _canonicalProject();
-        final workspace = _legacyWorkspace();
-        final adapter = CanonicalEditorWorkspaceAdapter(
-          workspace: workspace,
-          binding: CanonicalEditorWorkspaceBinding(
-            buildingId: BuildingId('building-a'),
-            legacyBuildingId: 'legacy-building-a',
-            legacyLevelIds: <LevelId, String>{
-              LevelId('level-1'): 'legacy-level-one',
-              LevelId('level-2'): 'missing-legacy-level',
-            },
-          ),
-        );
-        final navigation = ProjectNavigationState.initial(project)
-            .activateLevel(project, LevelId('level-2'));
+    test('does not fall back to matching levelNumber when binding is wrong',
+        () {
+      final project = _canonicalProject();
+      final workspace = _legacyWorkspace();
+      final adapter = CanonicalEditorWorkspaceAdapter(
+        workspace: workspace,
+        binding: CanonicalEditorWorkspaceBinding(
+          buildingId: BuildingId('building-a'),
+          legacyBuildingId: 'legacy-building-a',
+          legacyLevelIds: <LevelId, String>{
+            LevelId('level-1'): 'legacy-level-one',
+            LevelId('level-2'): 'missing-legacy-level',
+          },
+        ),
+      );
+      final navigation = ProjectNavigationState.initial(project)
+          .activateLevel(project, LevelId('level-2'));
 
-        expect(
-          () => adapter.applyCanonicalNavigation(
-            project: project,
-            navigation: navigation,
+      expect(
+        () => adapter.applyCanonicalNavigation(
+          project: project,
+          navigation: navigation,
+        ),
+        throwsA(
+          isA<CanonicalEditorWorkspaceException>().having(
+            (error) => error.code,
+            'code',
+            CanonicalEditorWorkspaceIssueCode.legacyLevelMissing,
           ),
-          throwsA(
-            isA<CanonicalEditorWorkspaceException>().having(
-              (error) => error.code,
-              'code',
-              CanonicalEditorWorkspaceIssueCode.legacyLevelMissing,
-            ),
-          ),
-        );
+        ),
+      );
 
-        expect(workspace.editor.level.id, 'legacy-level-one');
-      },
-    );
+      expect(workspace.editor.level.id, 'legacy-level-one');
+    });
 
     test('missing child binding fails before canvas Level is switched', () {
       final project = _canonicalProject();
@@ -150,31 +148,29 @@ void main() {
       expect(workspace.editor.selectedSpaceId, isNull);
     });
 
-    test(
-      'legacy canvas Space selection is projected back to canonical ids',
-      () {
-        final project = _canonicalProject();
-        final workspace = _legacyWorkspace();
-        final adapter = CanonicalEditorWorkspaceAdapter(
-          workspace: workspace,
-          binding: _binding(),
-        );
-        var navigation = ProjectNavigationState.initial(project)
-            .activateLevel(project, LevelId('level-2'));
+    test('legacy canvas Space selection is projected back to canonical ids',
+        () {
+      final project = _canonicalProject();
+      final workspace = _legacyWorkspace();
+      final adapter = CanonicalEditorWorkspaceAdapter(
+        workspace: workspace,
+        binding: _binding(),
+      );
+      var navigation = ProjectNavigationState.initial(project)
+          .activateLevel(project, LevelId('level-2'));
 
-        workspace.selectLevel(1);
-        workspace.editor.selectSpace('legacy-space-bedroom');
-        navigation = adapter.pullLegacySelection(
-          project: project,
-          navigation: navigation,
-        );
+      workspace.selectLevel(1);
+      workspace.editor.selectSpace('legacy-space-bedroom');
+      navigation = adapter.pullLegacySelection(
+        project: project,
+        navigation: navigation,
+      );
 
-        expect(navigation.activeBuildingId, BuildingId('building-a'));
-        expect(navigation.activeLevelId, LevelId('level-1'));
-        expect(navigation.selectedZoneId, ZoneId('zone-apartment'));
-        expect(navigation.selectedSpaceId, SpaceId('space-bedroom'));
-      },
-    );
+      expect(navigation.activeBuildingId, BuildingId('building-a'));
+      expect(navigation.activeLevelId, LevelId('level-1'));
+      expect(navigation.selectedZoneId, ZoneId('zone-apartment'));
+      expect(navigation.selectedSpaceId, SpaceId('space-bedroom'));
+    });
 
     test('reverse Space binding cannot jump to another canonical Level', () {
       final project = _canonicalProject();
@@ -305,20 +301,20 @@ void main() {
 }
 
 CanonicalEditorWorkspaceBinding _binding() => CanonicalEditorWorkspaceBinding(
-  buildingId: BuildingId('building-a'),
-  legacyBuildingId: 'legacy-building-a',
-  legacyLevelIds: <LevelId, String>{
-    LevelId('level-1'): 'legacy-level-one',
-    LevelId('level-2'): 'legacy-level-seven',
-  },
-  legacyZoneIds: <ZoneId, String>{
-    ZoneId('zone-apartment'): 'legacy-zone-apartment',
-  },
-  legacySpaceIds: <SpaceId, String>{
-    SpaceId('space-bedroom'): 'legacy-space-bedroom',
-    SpaceId('space-corridor'): 'legacy-space-corridor',
-  },
-);
+      buildingId: BuildingId('building-a'),
+      legacyBuildingId: 'legacy-building-a',
+      legacyLevelIds: <LevelId, String>{
+        LevelId('level-1'): 'legacy-level-one',
+        LevelId('level-2'): 'legacy-level-seven',
+      },
+      legacyZoneIds: <ZoneId, String>{
+        ZoneId('zone-apartment'): 'legacy-zone-apartment',
+      },
+      legacySpaceIds: <SpaceId, String>{
+        SpaceId('space-bedroom'): 'legacy-space-bedroom',
+        SpaceId('space-corridor'): 'legacy-space-corridor',
+      },
+    );
 
 ProjectAggregateRoot _canonicalProject() {
   final siteId = SiteId('site-root');

@@ -12,9 +12,9 @@ final class ProjectSnapshot {
     required String name,
     required DateTime createdAt,
     required DateTime updatedAt,
-  }) : name = _normalizeName(name),
-       createdAt = createdAt.toUtc(),
-       updatedAt = updatedAt.toUtc() {
+  })  : name = _normalizeName(name),
+        createdAt = createdAt.toUtc(),
+        updatedAt = updatedAt.toUtc() {
     if (this.updatedAt.isBefore(this.createdAt)) {
       throw ArgumentError.value(
         updatedAt,
@@ -37,20 +37,21 @@ final class ProjectSnapshot {
     ProjectAggregateRoot? aggregate,
     String? name,
     DateTime? updatedAt,
-  }) => ProjectSnapshot(
-    aggregate: aggregate ?? this.aggregate,
-    name: name ?? this.name,
-    createdAt: createdAt,
-    updatedAt: updatedAt ?? this.updatedAt,
-  );
+  }) =>
+      ProjectSnapshot(
+        aggregate: aggregate ?? this.aggregate,
+        name: name ?? this.name,
+        createdAt: createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
 
   ProjectSummary toSummary() => ProjectSummary(
-    id: id,
-    name: name,
-    createdAt: createdAt,
-    updatedAt: updatedAt,
-    localVersion: localVersion,
-  );
+        id: id,
+        name: name,
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+        localVersion: localVersion,
+      );
 
   static String _normalizeName(String value) {
     final normalized = value.trim();
@@ -69,9 +70,9 @@ final class ProjectSummary {
     required DateTime createdAt,
     required DateTime updatedAt,
     required this.localVersion,
-  }) : name = ProjectSnapshot._normalizeName(name),
-       createdAt = createdAt.toUtc(),
-       updatedAt = updatedAt.toUtc() {
+  })  : name = ProjectSnapshot._normalizeName(name),
+        createdAt = createdAt.toUtc(),
+        updatedAt = updatedAt.toUtc() {
     if (this.updatedAt.isBefore(this.createdAt)) {
       throw ArgumentError.value(
         updatedAt,

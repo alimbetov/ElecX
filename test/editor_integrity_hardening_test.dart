@@ -13,14 +13,15 @@ void main() {
     String id,
     ElectricalComponentType type,
     SurfacePointMm point,
-  ) => ElectricalComponentPlacement(
-    id: id,
-    type: type,
-    surface: wall,
-    position: point,
-    label: id,
-    ports: ElectricalComponentDefaults.portsFor(type),
-  );
+  ) =>
+      ElectricalComponentPlacement(
+        id: id,
+        type: type,
+        surface: wall,
+        position: point,
+        label: id,
+        ports: ElectricalComponentDefaults.portsFor(type),
+      );
 
   test('route connectivity rejects powerOut to controlIn', () {
     final source = component(
@@ -88,10 +89,8 @@ void main() {
       ],
     );
     final session = EditorP2Session(
-      initialState: EditorP2State(
-        components: [source, target],
-        routes: [route],
-      ),
+      initialState:
+          EditorP2State(components: [source, target], routes: [route]),
     );
     addTearDown(session.dispose);
     final placed = session.placeComponent(

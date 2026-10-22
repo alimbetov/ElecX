@@ -124,9 +124,10 @@ final class ComposedProjectSite {
     ProjectSite? site,
     List<OutdoorZone>? outdoorZones,
     List<SiteBuildingConnection>? connections,
-  }) => ComposedProjectSite(
-    site: site ?? this.site,
-    outdoorZones: outdoorZones ?? this.outdoorZones,
-    connections: connections ?? this.connections,
-  );
+  }) =>
+      ComposedProjectSite(
+        site: site ?? this.site,
+        outdoorZones: outdoorZones ?? this.outdoorZones,
+        connections: connections ?? this.connections,
+      );
 }

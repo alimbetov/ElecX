@@ -25,31 +25,29 @@ void main() {
       expect(session.navigation.selectedSpaceId, SpaceId('space-1'));
     });
 
-    test(
-      'foreign Site navigation is rejected without partial state change',
-      () {
-        final project = _project('site-1');
-        final foreignProject = _project('site-other');
-        final session = ProjectStructureAuthoringSession(
-          mutations: ProjectMutationSession(project),
-          idFactory: SecureRandomEntityIdFactory(random: Random(42)),
-        );
-        final before = session.navigation;
-        final foreign = ProjectNavigationState.initial(foreignProject);
+    test('foreign Site navigation is rejected without partial state change',
+        () {
+      final project = _project('site-1');
+      final foreignProject = _project('site-other');
+      final session = ProjectStructureAuthoringSession(
+        mutations: ProjectMutationSession(project),
+        idFactory: SecureRandomEntityIdFactory(random: Random(42)),
+      );
+      final before = session.navigation;
+      final foreign = ProjectNavigationState.initial(foreignProject);
 
-        expect(
-          () => session.adoptNavigation(foreign),
-          throwsA(
-            isA<ProjectStructureAuthoringException>().having(
-              (error) => error.code,
-              'code',
-              ProjectStructureAuthoringIssueCode.navigationSiteMismatch,
-            ),
+      expect(
+        () => session.adoptNavigation(foreign),
+        throwsA(
+          isA<ProjectStructureAuthoringException>().having(
+            (error) => error.code,
+            'code',
+            ProjectStructureAuthoringIssueCode.navigationSiteMismatch,
           ),
-        );
-        expect(session.navigation, before);
-      },
-    );
+        ),
+      );
+      expect(session.navigation, before);
+    });
   });
 }
 

@@ -61,9 +61,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('project-compass-action')));
       await tester.pumpAndSettle();
       expect(
-        find.byKey(const ValueKey('project-north-dialog')),
-        findsOneWidget,
-      );
+          find.byKey(const ValueKey('project-north-dialog')), findsOneWidget);
 
       await tester.enterText(
         find.byKey(const ValueKey('project-north-angle-input')),
@@ -121,81 +119,83 @@ void main() {
 
       expect(find.byKey(const ValueKey('project-compass-paint')), findsNothing);
       expect(
-        find.byKey(const ValueKey('project-compass-action')),
-        findsNothing,
-      );
+          find.byKey(const ValueKey('project-compass-action')), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
 
-  testWidgets('persistence owner mismatch keeps canonical compass read only', (
-    tester,
-  ) async {
-    _useDesktopSurface(tester);
-    final fixture = _fixture(
-      projectId: 'owner-mismatch',
-      persistenceOwnerProjectId: 'another-owner',
-    );
+  testWidgets(
+    'persistence owner mismatch keeps canonical compass read only',
+    (tester) async {
+      _useDesktopSurface(tester);
+      final fixture = _fixture(
+        projectId: 'owner-mismatch',
+        persistenceOwnerProjectId: 'another-owner',
+      );
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: UnifiedWorkspaceEditorScreen(
-          projectStore: fixture.store,
-          initialDocument: fixture.document,
-          canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
-            resolveRuntime: (_, __) => fixture.runtime,
-            onProjectNorthCommitted: (_, __) =>
-                const CanonicalAuthoringOwnershipReceipt.accepted(),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: UnifiedWorkspaceEditorScreen(
+            projectStore: fixture.store,
+            initialDocument: fixture.document,
+            canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
+              resolveRuntime: (_, __) => fixture.runtime,
+              onProjectNorthCommitted: (_, __) =>
+                  const CanonicalAuthoringOwnershipReceipt.accepted(),
+            ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey('project-compass-toggle')));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('project-compass-toggle')));
+      await tester.pumpAndSettle();
 
-    expect(
-      find.byKey(const ValueKey('project-compass-paint')),
-      findsOneWidget,
-      reason: 'ownership controls editing, not read-only projection',
-    );
-    expect(
-      find.byKey(const ValueKey('project-compass-read-only')),
-      findsOneWidget,
-    );
-    expect(find.byKey(const ValueKey('project-compass-action')), findsNothing);
-    expect(fixture.session.project.version.value, 0);
-  });
+      expect(
+        find.byKey(const ValueKey('project-compass-paint')),
+        findsOneWidget,
+        reason: 'ownership controls editing, not read-only projection',
+      );
+      expect(
+        find.byKey(const ValueKey('project-compass-read-only')),
+        findsOneWidget,
+      );
+      expect(
+          find.byKey(const ValueKey('project-compass-action')), findsNothing);
+      expect(fixture.session.project.version.value, 0);
+    },
+  );
 
-  testWidgets('missing ownership callback keeps canonical compass read only', (
-    tester,
-  ) async {
-    _useDesktopSurface(tester);
-    final fixture = _fixture(projectId: 'no-owner-callback');
+  testWidgets(
+    'missing ownership callback keeps canonical compass read only',
+    (tester) async {
+      _useDesktopSurface(tester);
+      final fixture = _fixture(projectId: 'no-owner-callback');
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: UnifiedWorkspaceEditorScreen(
-          projectStore: fixture.store,
-          initialDocument: fixture.document,
-          canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
-            resolveRuntime: (_, __) => fixture.runtime,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: UnifiedWorkspaceEditorScreen(
+            projectStore: fixture.store,
+            initialDocument: fixture.document,
+            canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
+              resolveRuntime: (_, __) => fixture.runtime,
+            ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey('project-compass-toggle')));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('project-compass-toggle')));
+      await tester.pumpAndSettle();
 
-    expect(
-      find.byKey(const ValueKey('project-compass-read-only')),
-      findsOneWidget,
-    );
-    expect(find.byKey(const ValueKey('project-compass-action')), findsNothing);
-  });
+      expect(
+        find.byKey(const ValueKey('project-compass-read-only')),
+        findsOneWidget,
+      );
+      expect(
+          find.byKey(const ValueKey('project-compass-action')), findsNothing);
+    },
+  );
 
   testWidgets(
     'same Project North value is a no-op and does not transfer ownership',

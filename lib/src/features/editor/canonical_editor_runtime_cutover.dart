@@ -67,9 +67,8 @@ final class ExistingBindingCanonicalEditorMaterializer
     }
 
     final buildingId = navigation.activeBuildingId;
-    final building = buildingId == null
-        ? null
-        : project.index.building(buildingId);
+    final building =
+        buildingId == null ? null : project.index.building(buildingId);
     if (buildingId == null ||
         building == null ||
         building.siteId != project.siteId ||
@@ -78,8 +77,7 @@ final class ExistingBindingCanonicalEditorMaterializer
         status: CanonicalEditorMaterializationStatus
             .blockedMissingRuntimeRepresentation,
         entityId: buildingId,
-        message:
-            'Active canonical Building has no coherent bound legacy '
+        message: 'Active canonical Building has no coherent bound legacy '
             'workspace.',
       );
     }
@@ -90,8 +88,7 @@ final class ExistingBindingCanonicalEditorMaterializer
       return CanonicalEditorMaterializationResult(
         status: CanonicalEditorMaterializationStatus.blockedCanonicalMismatch,
         entityId: levelId,
-        message:
-            'Active canonical Level is missing or does not belong to the '
+        message: 'Active canonical Level is missing or does not belong to the '
             'active Building.',
       );
     }
@@ -111,8 +108,7 @@ final class ExistingBindingCanonicalEditorMaterializer
         return CanonicalEditorMaterializationResult(
           status: CanonicalEditorMaterializationStatus.blockedCanonicalMismatch,
           entityId: zoneId,
-          message:
-              'Selected canonical Zone is missing or does not belong to '
+          message: 'Selected canonical Zone is missing or does not belong to '
               'the active Level.',
         );
       }
@@ -134,8 +130,7 @@ final class ExistingBindingCanonicalEditorMaterializer
         return CanonicalEditorMaterializationResult(
           status: CanonicalEditorMaterializationStatus.blockedCanonicalMismatch,
           entityId: spaceId,
-          message:
-              'Selected canonical Space is missing or does not belong to '
+          message: 'Selected canonical Space is missing or does not belong to '
               'the active Level.',
         );
       }
@@ -145,8 +140,7 @@ final class ExistingBindingCanonicalEditorMaterializer
         return CanonicalEditorMaterializationResult(
           status: CanonicalEditorMaterializationStatus.blockedCanonicalMismatch,
           entityId: spaceId,
-          message:
-              'Selected canonical Space/Zone path is incoherent with the '
+          message: 'Selected canonical Space/Zone path is incoherent with the '
               'canonical structural-zone membership.',
         );
       }

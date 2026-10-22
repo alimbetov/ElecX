@@ -27,15 +27,16 @@ final class _MemoryProjectStore implements EditorProjectStore {
 }
 
 void main() {
-  testWidgets('desktop Save and Open use canonical project store', (
-    tester,
-  ) async {
+  testWidgets('desktop Save and Open use canonical project store',
+      (tester) async {
     final store = _MemoryProjectStore();
     await tester.binding.setSurfaceSize(const Size(1440, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
-      MaterialApp(home: UnifiedWorkspaceEditorScreen(projectStore: store)),
+      MaterialApp(
+        home: UnifiedWorkspaceEditorScreen(projectStore: store),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -60,9 +61,8 @@ void main() {
     expect(find.byKey(const ValueKey('project-save')), findsOneWidget);
   });
 
-  testWidgets('unsaved new project blocks back until discard is explicit', (
-    tester,
-  ) async {
+  testWidgets('unsaved new project blocks back until discard is explicit',
+      (tester) async {
     final store = _MemoryProjectStore();
     await tester.binding.setSurfaceSize(const Size(1200, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -94,9 +94,7 @@ void main() {
     await tester.pageBack();
     await tester.pumpAndSettle();
     expect(
-      find.byKey(const ValueKey('unsaved-project-dialog')),
-      findsOneWidget,
-    );
+        find.byKey(const ValueKey('unsaved-project-dialog')), findsOneWidget);
     expect(find.byType(UnifiedWorkspaceEditorScreen), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('discard-unsaved-project')));

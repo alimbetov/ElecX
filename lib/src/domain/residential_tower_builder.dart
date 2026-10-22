@@ -8,11 +8,11 @@ final class ResidentialTowerSpec {
     this.residentialFloorToFloorMm = 3000,
     this.basementFloorToFloorMm = 3300,
     this.groundElevationMm = 0,
-  }) : assert(lowestBasementLevel >= -30),
-       assert(lowestBasementLevel <= -1),
-       assert(highestResidentialLevel >= 1),
-       assert(residentialFloorToFloorMm > 0),
-       assert(basementFloorToFloorMm > 0);
+  })  : assert(lowestBasementLevel >= -30),
+        assert(lowestBasementLevel <= -1),
+        assert(highestResidentialLevel >= 1),
+        assert(residentialFloorToFloorMm > 0),
+        assert(basementFloorToFloorMm > 0);
 
   final int lowestBasementLevel;
   final int highestResidentialLevel;
@@ -42,8 +42,7 @@ abstract final class ResidentialTowerBuilder {
       source: basementTemplate,
       fromLevel: spec.lowestBasementLevel,
       toLevel: -1,
-      baseElevationMm:
-          spec.groundElevationMm +
+      baseElevationMm: spec.groundElevationMm +
           spec.lowestBasementLevel * spec.basementFloorToFloorMm,
       floorToFloorHeightMm: spec.basementFloorToFloorMm,
     );

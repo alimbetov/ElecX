@@ -124,7 +124,9 @@ void main() {
         ),
       ],
     );
-    final session = EditorP2Session(routeContextResolver: (_) => context);
+    final session = EditorP2Session(
+      routeContextResolver: (_) => context,
+    );
     addTearDown(session.dispose);
 
     final source = session.placeComponent(

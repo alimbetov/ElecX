@@ -26,9 +26,8 @@ final class _HubMemoryStore implements EditorProjectStore {
 
   @override
   Future<void> save(EditorProjectDocument document) async {
-    final index = documents.indexWhere(
-      (item) => item.projectId == document.projectId,
-    );
+    final index =
+        documents.indexWhere((item) => item.projectId == document.projectId);
     if (index < 0) {
       documents.add(document);
     } else {
@@ -38,9 +37,8 @@ final class _HubMemoryStore implements EditorProjectStore {
 }
 
 void main() {
-  testWidgets('project hub discovers persisted project and reopens editor', (
-    tester,
-  ) async {
+  testWidgets('project hub discovers persisted project and reopens editor',
+      (tester) async {
     final editor = EditorController.demo();
     final workspace = EditorBuildingWorkspace.demo(editor);
     final document = EditorProjectDocument.capture(workspace);
@@ -88,9 +86,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('create-project')));
       await tester.pumpAndSettle();
       await tester.enterText(
-        find.byKey(const ValueKey('new-project-name')),
-        name,
-      );
+          find.byKey(const ValueKey('new-project-name')), name);
       await tester.tap(find.byKey(const ValueKey('create-project-confirm')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('project-save')));
@@ -104,9 +100,7 @@ void main() {
 
     expect(store.documents, hasLength(2));
     expect(store.documents[0].projectId, isNot(store.documents[1].projectId));
-    expect(
-      store.documents.map((item) => item.projectName),
-      containsAll(<String>['Проект 1', 'Проект 2']),
-    );
+    expect(store.documents.map((item) => item.projectName),
+        containsAll(<String>['Проект 1', 'Проект 2']));
   });
 }

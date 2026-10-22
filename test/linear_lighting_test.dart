@@ -15,28 +15,26 @@ void main() {
     cutStepMm: 50,
   );
 
-  test(
-    'distributed load derives power, current and light output from length',
-    () {
-      final run = LinearLuminaireRun(
-        id: 'strip-1',
-        specId: spec.id,
-        surface: surface,
-        points: const [SurfacePointMm(0, 2000), SurfacePointMm(4000, 2000)],
-        feedMode: LinearLuminaireFeedMode.start,
-      );
+  test('distributed load derives power, current and light output from length',
+      () {
+    final run = LinearLuminaireRun(
+      id: 'strip-1',
+      specId: spec.id,
+      surface: surface,
+      points: const [SurfacePointMm(0, 2000), SurfacePointMm(4000, 2000)],
+      feedMode: LinearLuminaireFeedMode.start,
+    );
 
-      final result = LinearLuminaireEngine.summarize(run: run, spec: spec);
+    final result = LinearLuminaireEngine.summarize(run: run, spec: spec);
 
-      expect(result.lengthMm, 4000);
-      expect(result.powerW, closeTo(57.6, 0.001));
-      expect(result.currentA, closeTo(2.4, 0.001));
-      expect(result.luminousFluxLm, closeTo(4800, 0.001));
-      expect(result.requiredFeedSections, 1);
-      expect(result.withinContinuousLength, isTrue);
-      expect(result.cutStepAligned, isTrue);
-    },
-  );
+    expect(result.lengthMm, 4000);
+    expect(result.powerW, closeTo(57.6, 0.001));
+    expect(result.currentA, closeTo(2.4, 0.001));
+    expect(result.luminousFluxLm, closeTo(4800, 0.001));
+    expect(result.requiredFeedSections, 1);
+    expect(result.withinContinuousLength, isTrue);
+    expect(result.cutStepAligned, isTrue);
+  });
 
   test('long run requests additional feed sections', () {
     final run = LinearLuminaireRun(
@@ -63,32 +61,30 @@ void main() {
     );
   });
 
-  test(
-    'requested length snaps to strip cut step without collapsing to zero',
-    () {
-      expect(
-        LinearLuminaireEngine.snapLengthToCutStep(
-          requestedLengthMm: 1032,
-          spec: spec,
-        ),
-        1050,
-      );
-      expect(
-        LinearLuminaireEngine.snapLengthToCutStep(
-          requestedLengthMm: 1,
-          spec: spec,
-        ),
-        50,
-      );
-      expect(
-        LinearLuminaireEngine.snapLengthToCutStep(
-          requestedLengthMm: 0,
-          spec: spec,
-        ),
-        0,
-      );
-    },
-  );
+  test('requested length snaps to strip cut step without collapsing to zero',
+      () {
+    expect(
+      LinearLuminaireEngine.snapLengthToCutStep(
+        requestedLengthMm: 1032,
+        spec: spec,
+      ),
+      1050,
+    );
+    expect(
+      LinearLuminaireEngine.snapLengthToCutStep(
+        requestedLengthMm: 1,
+        spec: spec,
+      ),
+      50,
+    );
+    expect(
+      LinearLuminaireEngine.snapLengthToCutStep(
+        requestedLengthMm: 0,
+        spec: spec,
+      ),
+      0,
+    );
+  });
 
   test('actual run that misses a cut mark is non-committable', () {
     final run = LinearLuminaireRun(

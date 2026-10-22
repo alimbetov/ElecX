@@ -61,7 +61,11 @@ class _ProjectStructureAuthoringControlsState
     ];
 
     if (widget.compact) {
-      return Wrap(spacing: 6, runSpacing: 6, children: controls);
+      return Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: controls,
+      );
     }
 
     return Column(

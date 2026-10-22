@@ -154,7 +154,10 @@ void main() {
       expect(redone!.changeSet.kind, ProjectChangeKind.redo);
       expect(redone.changeSet.updatedEntityIds, <EntityId>{SiteId('site-1')});
       expect(redone.project.version, LocalProjectVersion(7));
-      expect(redone.project.index.site(SiteId('site-1'))?.name, 'Renamed Site');
+      expect(
+        redone.project.index.site(SiteId('site-1'))?.name,
+        'Renamed Site',
+      );
       expect(session.undoDepth, 1);
       expect(session.redoDepth, 0);
     });
@@ -214,7 +217,9 @@ void main() {
         commandType: 'test.jump',
         beforeVersion: LocalProjectVersion(1),
         afterVersion: LocalProjectVersion(3),
-        diff: ProjectEntityDiff(updatedEntityIds: <EntityId>[SiteId('site-1')]),
+        diff: ProjectEntityDiff(
+          updatedEntityIds: <EntityId>[SiteId('site-1')],
+        ),
       ),
       throwsArgumentError,
     );

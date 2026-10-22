@@ -37,8 +37,8 @@ final class RouteObstacleMm {
     required this.topMm,
     required this.rightMm,
     required this.bottomMm,
-  }) : assert(rightMm >= leftMm),
-       assert(bottomMm >= topMm);
+  })  : assert(rightMm >= leftMm),
+        assert(bottomMm >= topMm);
 
   final String id;
   final int leftMm;
@@ -62,10 +62,10 @@ final class RouteNormativeContext {
     this.detourClearanceMm = 50,
     this.obstacles = const [],
     this.boundary = const [],
-  }) : assert(widthMm > 0),
-       assert(heightMm > 0),
-       assert(edgeClearanceMm >= 0),
-       assert(detourClearanceMm > 0);
+  })  : assert(widthMm > 0),
+        assert(heightMm > 0),
+        assert(edgeClearanceMm >= 0),
+        assert(detourClearanceMm > 0);
 
   final RoomSurfaceRef surface;
   final int widthMm;
@@ -203,7 +203,8 @@ abstract final class NormativeRouteEngine {
         issues.add(
           const RouteConstraintIssue(
             code: 'route.non-orthogonal',
-            message: 'Автоматическая трасса должна идти по ортогональным направлениям.',
+            message:
+                'Автоматическая трасса должна идти по ортогональным направлениям.',
             severity: RouteConstraintSeverity.error,
           ),
         );
@@ -314,14 +315,12 @@ abstract final class NormativeRouteEngine {
         final validation = validate(points: [a, b], context: context);
         if (!validation.isValid) continue;
         final length = (a.xMm - b.xMm).abs() + (a.yMm - b.yMm).abs();
-        adjacency.putIfAbsent(aIndex, () => <(int, int)>[]).add((
-          bIndex,
-          length,
-        ));
-        adjacency.putIfAbsent(bIndex, () => <(int, int)>[]).add((
-          aIndex,
-          length,
-        ));
+        adjacency
+            .putIfAbsent(aIndex, () => <(int, int)>[])
+            .add((bIndex, length));
+        adjacency
+            .putIfAbsent(bIndex, () => <(int, int)>[])
+            .add((aIndex, length));
       }
     }
 
@@ -375,8 +374,8 @@ abstract final class NormativeRouteEngine {
         final nextDirection = a.yMm == b.yMm ? 1 : 2;
         final bendPenalty =
             currentDirection != 0 && currentDirection != nextDirection
-            ? 250.0
-            : 0.0;
+                ? 250.0
+                : 0.0;
         final nextState = (nextNode, nextDirection);
         final nextDistance = bestDistance + edge.$2 + bendPenalty;
         if (nextDistance < (distance[nextState] ?? double.infinity)) {
@@ -411,8 +410,7 @@ abstract final class NormativeRouteEngine {
       final a = result.last;
       final b = points[i];
       final c = points[i + 1];
-      final collinear =
-          (a.xMm == b.xMm && b.xMm == c.xMm) ||
+      final collinear = (a.xMm == b.xMm && b.xMm == c.xMm) ||
           (a.yMm == b.yMm && b.yMm == c.yMm);
       if (!collinear) result.add(b);
     }
@@ -427,8 +425,7 @@ abstract final class NormativeRouteEngine {
     final validation = validate(points: points, context: context);
     final length = _length(points);
     final bends = points.length <= 2 ? 0 : points.length - 2;
-    final warningPenalty =
-        validation.issues
+    final warningPenalty = validation.issues
             .where((issue) => issue.severity == RouteConstraintSeverity.warning)
             .length *
         1000;
@@ -564,7 +561,11 @@ abstract final class NormativeRouteEngine {
   static int _cross(SurfacePointMm a, SurfacePointMm b, SurfacePointMm p) =>
       (b.xMm - a.xMm) * (p.yMm - a.yMm) - (b.yMm - a.yMm) * (p.xMm - a.xMm);
 
-  static bool _onSegment(SurfacePointMm a, SurfacePointMm p, SurfacePointMm b) {
+  static bool _onSegment(
+    SurfacePointMm a,
+    SurfacePointMm p,
+    SurfacePointMm b,
+  ) {
     if (_cross(a, b, p) != 0) return false;
     final minX = a.xMm < b.xMm ? a.xMm : b.xMm;
     final maxX = a.xMm > b.xMm ? a.xMm : b.xMm;

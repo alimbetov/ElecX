@@ -7,24 +7,24 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   ElectricalCableRoute route() => ElectricalCableRoute(
-    id: 'route-0017',
-    source: const ElectricalEndpointRef(
-      componentId: 'DB-01',
-      portId: 'outgoing',
-    ),
-    target: const ElectricalEndpointRef(
-      componentId: 'LIGHT-03',
-      portId: 'power-in',
-    ),
-    medium: RouteMediumProfile.acPower,
-    cableType: 'VVGng-LS 3x1.5',
-    segments: [
-      ElectricalRouteSegment(
-        surface: RoomSurfaceRef.wall('room-101', 0),
-        points: const [SurfacePointMm(0, 300), SurfacePointMm(2000, 300)],
-      ),
-    ],
-  );
+        id: 'route-0017',
+        source: const ElectricalEndpointRef(
+          componentId: 'DB-01',
+          portId: 'outgoing',
+        ),
+        target: const ElectricalEndpointRef(
+          componentId: 'LIGHT-03',
+          portId: 'power-in',
+        ),
+        medium: RouteMediumProfile.acPower,
+        cableType: 'VVGng-LS 3x1.5',
+        segments: [
+          ElectricalRouteSegment(
+            surface: RoomSurfaceRef.wall('room-101', 0),
+            points: const [SurfacePointMm(0, 300), SurfacePointMm(2000, 300)],
+          ),
+        ],
+      );
 
   test(
     'registers board protection circuit cable and terminations as one bundle',

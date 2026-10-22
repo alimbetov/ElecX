@@ -6,9 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P5C ProjectStructureAuthoringControls', () {
-    testWidgets('desktop baseline exposes discoverable labeled actions', (
-      tester,
-    ) async {
+    testWidgets('desktop baseline exposes discoverable labeled actions',
+        (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -27,9 +26,8 @@ void main() {
       expect(find.byType(OutlinedButton), findsNWidgets(3));
     });
 
-    testWidgets('disabled callbacks produce disabled authoring buttons', (
-      tester,
-    ) async {
+    testWidgets('disabled callbacks produce disabled authoring buttons',
+        (tester) async {
       var buildingCalls = 0;
       await tester.pumpWidget(
         MaterialApp(
@@ -57,9 +55,8 @@ void main() {
       expect(roomButton.onPressed, isNull);
     });
 
-    testWidgets('one async authoring action disables every structural action', (
-      tester,
-    ) async {
+    testWidgets('one async authoring action disables every structural action',
+        (tester) async {
       final release = Completer<void>();
       var roomCalls = 0;
       var buildingCalls = 0;
@@ -103,9 +100,8 @@ void main() {
       expect(buildingButton.onPressed, isNotNull);
     });
 
-    testWidgets('compact mode keeps all primary actions available', (
-      tester,
-    ) async {
+    testWidgets('compact mode keeps all primary actions available',
+        (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(

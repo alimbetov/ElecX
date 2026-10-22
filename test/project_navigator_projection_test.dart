@@ -11,16 +11,16 @@ void main() {
       final projection = ProjectNavigatorProjection.build(project);
 
       expect(projection.root.id, SiteId('site-root'));
-      expect(projection.root.childIds, <EntityId>[
-        BuildingId('building-a'),
-        BuildingId('building-b'),
-      ]);
+      expect(
+        projection.root.childIds,
+        <EntityId>[BuildingId('building-a'), BuildingId('building-b')],
+      );
 
       final level = projection.node(LevelId('a-level-1'))!;
-      expect(level.childIds, <EntityId>[
-        ZoneId('zone-a'),
-        SpaceId('space-unzoned'),
-      ]);
+      expect(
+        level.childIds,
+        <EntityId>[ZoneId('zone-a'), SpaceId('space-unzoned')],
+      );
 
       final zone = projection.node(ZoneId('zone-a'))!;
       expect(zone.childIds, <EntityId>[SpaceId('space-zoned')]);
@@ -30,24 +30,21 @@ void main() {
       );
     });
 
-    test(
-      'projection records canonical project identity and source version',
-      () {
-        final project = _project(version: 7);
-        final projection = ProjectNavigatorProjection.build(project);
+    test('projection records canonical project identity and source version',
+        () {
+      final project = _project(version: 7);
+      final projection = ProjectNavigatorProjection.build(project);
 
-        expect(projection.projectId, ProjectId('project-1'));
-        expect(projection.sourceVersion, LocalProjectVersion(7));
-        expect(projection.isCurrentFor(project), isTrue);
-        expect(projection.isCurrentFor(_project(version: 8)), isFalse);
-        expect(
-          projection.isCurrentFor(
-            _project(projectIdValue: 'project-2', version: 7),
-          ),
-          isFalse,
-        );
-      },
-    );
+      expect(projection.projectId, ProjectId('project-1'));
+      expect(projection.sourceVersion, LocalProjectVersion(7));
+      expect(projection.isCurrentFor(project), isTrue);
+      expect(projection.isCurrentFor(_project(version: 8)), isFalse);
+      expect(
+        projection
+            .isCurrentFor(_project(projectIdValue: 'project-2', version: 7)),
+        isFalse,
+      );
+    });
 
     test('breadcrumb uses the same indexed path as selected Space', () {
       final project = _project();
@@ -58,20 +55,26 @@ void main() {
       final path = projection.pathTo(SpaceId('space-zoned'));
       final breadcrumb = projection.breadcrumb(navigation);
 
-      expect(path.map((node) => node.id), <EntityId>[
-        SiteId('site-root'),
-        BuildingId('building-a'),
-        LevelId('a-level-1'),
-        ZoneId('zone-a'),
-        SpaceId('space-zoned'),
-      ]);
-      expect(breadcrumb.map((item) => item.label), <String>[
-        'Site',
-        'Building A',
-        'Floor 1',
-        'Apartment 101',
-        'Bedroom',
-      ]);
+      expect(
+        path.map((node) => node.id),
+        <EntityId>[
+          SiteId('site-root'),
+          BuildingId('building-a'),
+          LevelId('a-level-1'),
+          ZoneId('zone-a'),
+          SpaceId('space-zoned'),
+        ],
+      );
+      expect(
+        breadcrumb.map((item) => item.label),
+        <String>[
+          'Site',
+          'Building A',
+          'Floor 1',
+          'Apartment 101',
+          'Bedroom',
+        ],
+      );
     });
 
     test('unzoned Space path is Level to Space without synthetic Zone', () {
@@ -97,12 +100,15 @@ void main() {
       final navigation = ProjectNavigationState.initial(project)
           .selectSpace(project, SpaceId('space-zoned'));
 
-      expect(projection.requiredExpandedAncestorIds(navigation), <EntityId>{
-        SiteId('site-root'),
-        BuildingId('building-a'),
-        LevelId('a-level-1'),
-        ZoneId('zone-a'),
-      });
+      expect(
+        projection.requiredExpandedAncestorIds(navigation),
+        <EntityId>{
+          SiteId('site-root'),
+          BuildingId('building-a'),
+          LevelId('a-level-1'),
+          ZoneId('zone-a'),
+        },
+      );
     });
 
     test('current path contains ancestors and selected leaf exactly once', () {
@@ -111,13 +117,16 @@ void main() {
       final navigation = ProjectNavigationState.initial(project)
           .selectSpace(project, SpaceId('space-zoned'));
 
-      expect(projection.currentPathIds(navigation), <EntityId>{
-        SiteId('site-root'),
-        BuildingId('building-a'),
-        LevelId('a-level-1'),
-        ZoneId('zone-a'),
-        SpaceId('space-zoned'),
-      });
+      expect(
+        projection.currentPathIds(navigation),
+        <EntityId>{
+          SiteId('site-root'),
+          BuildingId('building-a'),
+          LevelId('a-level-1'),
+          ZoneId('zone-a'),
+          SpaceId('space-zoned'),
+        },
+      );
     });
 
     test('active context and selected leaf presentation stay distinct', () {
@@ -168,27 +177,25 @@ void main() {
       expect(project.index.level(LevelId('b-level-1'))!.levelNumber, 1);
     });
 
-    test(
-      'ordering is deterministic and independent of Map insertion order',
-      () {
-        final projection = ProjectNavigatorProjection.build(
-          _project(reverseInsertionOrder: true),
-        );
+    test('ordering is deterministic and independent of Map insertion order',
+        () {
+      final projection = ProjectNavigatorProjection.build(
+        _project(reverseInsertionOrder: true),
+      );
 
-        expect(projection.root.childIds, <EntityId>[
-          BuildingId('building-a'),
-          BuildingId('building-b'),
-        ]);
-        expect(projection.node(BuildingId('building-a'))!.childIds, <EntityId>[
-          LevelId('a-level-1'),
-          LevelId('a-level-2'),
-        ]);
-        expect(projection.node(LevelId('a-level-1'))!.childIds, <EntityId>[
-          ZoneId('zone-a'),
-          SpaceId('space-unzoned'),
-        ]);
-      },
-    );
+      expect(
+        projection.root.childIds,
+        <EntityId>[BuildingId('building-a'), BuildingId('building-b')],
+      );
+      expect(
+        projection.node(BuildingId('building-a'))!.childIds,
+        <EntityId>[LevelId('a-level-1'), LevelId('a-level-2')],
+      );
+      expect(
+        projection.node(LevelId('a-level-1'))!.childIds,
+        <EntityId>[ZoneId('zone-a'), SpaceId('space-unzoned')],
+      );
+    });
 
     test('missing node path fails closed instead of guessing', () {
       final projection = ProjectNavigatorProjection.build(_project());

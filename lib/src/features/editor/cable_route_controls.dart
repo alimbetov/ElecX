@@ -104,13 +104,16 @@ class CableRouteControls extends StatelessWidget {
                 ),
               ],
             ),
-            Text(switch (mode) {
-              CableRoutingMode.auto => 'Автотрасса и магнитные порты',
-              CableRoutingMode.assisted =>
-                'Инженер двигает геометрию, сетка и нормы помогают',
-              CableRoutingMode.manualGuardrails =>
-                'Свободное редактирование с обязательной проверкой',
-            }, style: Theme.of(context).textTheme.labelSmall),
+            Text(
+              switch (mode) {
+                CableRoutingMode.auto => 'Автотрасса и магнитные порты',
+                CableRoutingMode.assisted =>
+                  'Инженер двигает геометрию, сетка и нормы помогают',
+                CableRoutingMode.manualGuardrails =>
+                  'Свободное редактирование с обязательной проверкой',
+              },
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
             if (status != null) ...[
               const SizedBox(height: 7),
               Semantics(
@@ -118,10 +121,8 @@ class CableRouteControls extends StatelessWidget {
                 label: status.text,
                 child: Container(
                   constraints: const BoxConstraints(maxWidth: 300),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 5,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
                   decoration: BoxDecoration(
                     color: status.color.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(6),
@@ -138,11 +139,11 @@ class CableRouteControls extends StatelessWidget {
                       Flexible(
                         child: Text(
                           status.text,
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: status.color,
-                                fontWeight: FontWeight.w600,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: status.color,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                         ),
                       ),
                     ],
@@ -161,7 +162,8 @@ class CableRouteControls extends StatelessWidget {
       return _CableValidationStatus(
         icon: Icons.error_outline,
         color: CadVisualTokens.invalidPreview(scheme),
-        text: 'Недопустимый preview: выберите совместимый порт или допустимую трассу.',
+        text:
+            'Недопустимый preview: выберите совместимый порт или допустимую трассу.',
       );
     }
     final result = validation;

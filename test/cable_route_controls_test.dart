@@ -7,22 +7,23 @@ void main() {
   Widget host({
     RouteConstraintResult? validation,
     bool previewInvalid = false,
-  }) => MaterialApp(
-    home: Scaffold(
-      body: CableRouteControls(
-        mode: CableRoutingMode.assisted,
-        onModeChanged: (_) {},
-        segmentFocused: false,
-        segmentLocked: false,
-        onToggleSegmentLock: null,
-        pointFocused: false,
-        pointIsWaypoint: false,
-        onToggleWaypoint: null,
-        validation: validation,
-        previewInvalid: previewInvalid,
-      ),
-    ),
-  );
+  }) =>
+      MaterialApp(
+        home: Scaffold(
+          body: CableRouteControls(
+            mode: CableRoutingMode.assisted,
+            onModeChanged: (_) {},
+            segmentFocused: false,
+            segmentLocked: false,
+            onToggleSegmentLock: null,
+            pointFocused: false,
+            pointIsWaypoint: false,
+            onToggleWaypoint: null,
+            validation: validation,
+            previewInvalid: previewInvalid,
+          ),
+        ),
+      );
 
   testWidgets('invalid semantic preview is exposed as text, not color only', (
     tester,
@@ -52,7 +53,9 @@ void main() {
   });
 
   testWidgets('valid preview announces that commit is allowed', (tester) async {
-    await tester.pumpWidget(host(validation: const RouteConstraintResult([])));
+    await tester.pumpWidget(
+      host(validation: const RouteConstraintResult([])),
+    );
 
     expect(find.text('Маршрут допустим к фиксации.'), findsOneWidget);
     expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);

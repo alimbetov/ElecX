@@ -16,10 +16,7 @@ final class CreateBuildingCommand implements ProjectCommand {
   }) {
     if (name.trim().isEmpty) {
       throw ArgumentError.value(
-        name,
-        'name',
-        'Building name must be non-empty.',
-      );
+          name, 'name', 'Building name must be non-empty.');
     }
   }
 
@@ -43,9 +40,8 @@ final class CreateBuildingCommand implements ProjectCommand {
     final site = current.index.site(current.siteId)!;
     final buildingIds = <BuildingId>{...site.buildingIds, buildingId};
     final sites = Map<SiteId, ProjectSiteEntity>.from(current.stores.sites);
-    final buildings = Map<BuildingId, ProjectBuildingEntity>.from(
-      current.stores.buildings,
-    );
+    final buildings =
+        Map<BuildingId, ProjectBuildingEntity>.from(current.stores.buildings);
 
     sites[site.id] = ProjectSiteEntity(
       id: site.id,
@@ -76,13 +72,13 @@ final class CreateBuildingCommand implements ProjectCommand {
 /// Renames an existing building without changing its stable identity,
 /// hierarchy or display order.
 final class RenameBuildingCommand implements ProjectCommand {
-  RenameBuildingCommand({required this.buildingId, required this.name}) {
+  RenameBuildingCommand({
+    required this.buildingId,
+    required this.name,
+  }) {
     if (name.trim().isEmpty) {
       throw ArgumentError.value(
-        name,
-        'name',
-        'Building name must be non-empty.',
-      );
+          name, 'name', 'Building name must be non-empty.');
     }
   }
 
@@ -103,9 +99,8 @@ final class RenameBuildingCommand implements ProjectCommand {
       );
     }
 
-    final buildings = Map<BuildingId, ProjectBuildingEntity>.from(
-      current.stores.buildings,
-    );
+    final buildings =
+        Map<BuildingId, ProjectBuildingEntity>.from(current.stores.buildings);
     buildings[building.id] = ProjectBuildingEntity(
       id: building.id,
       siteId: building.siteId,
