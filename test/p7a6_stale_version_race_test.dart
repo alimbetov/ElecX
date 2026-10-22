@@ -62,7 +62,8 @@ void main() {
         mutations.current.index.boundary(fixture.spaceId)!.orderedEdgeIds,
         [fixture.bottom, fixture.east, fixture.north, fixture.west],
       );
-      expect(mutations.current.stores.spaces[fixture.spaceId]!.name, 'Room renamed');
+      expect(mutations.current.stores.spaces[fixture.spaceId]!.name,
+          'Room renamed');
     });
 
     test('only first of two same-version split sessions may commit', () {
@@ -102,7 +103,10 @@ void main() {
       expect(mutations.current.version, LocalProjectVersion(1));
       expect(mutations.undoDepth, 1);
       expect(
-        mutations.current.index.boundary(fixture.spaceId)!.orderedEdgeIds.take(2),
+        mutations.current.index
+            .boundary(fixture.spaceId)!
+            .orderedEdgeIds
+            .take(2),
         [fixture.bottomA, fixture.bottomB],
       );
     });
@@ -136,7 +140,10 @@ void main() {
       expect(mutations.current.version, LocalProjectVersion(1));
       expect(mutations.undoDepth, 1);
       expect(
-        mutations.current.index.boundary(fixture.spaceId)!.orderedEdgeIds.take(2),
+        mutations.current.index
+            .boundary(fixture.spaceId)!
+            .orderedEdgeIds
+            .take(2),
         [fixture.bottomA, fixture.bottomB],
       );
     });
