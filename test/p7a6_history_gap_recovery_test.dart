@@ -10,7 +10,8 @@ import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('canonical version gap rematerializes winner before clearing history', () {
+  test('canonical version gap rematerializes winner before clearing history',
+      () {
     final controller = EditorController.demo();
     addTearDown(controller.disposeDocumentHistory);
     addTearDown(controller.disposeP2State);
