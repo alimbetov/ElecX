@@ -70,7 +70,8 @@ void main() {
       (tester) async {
         _useDesktopSurface(tester);
         final fixture = _fixture();
-        var published = 0;
+        var canonicalOwnershipReceipts = 0;
+        var featurePublications = 0;
         EntityId? publishedId;
 
         await tester.pumpWidget(
@@ -82,8 +83,13 @@ void main() {
                 resolveRuntime: (_, __) => fixture.runtime,
                 requestRoom: (_, __) async =>
                     const CreateRoomRequest(name: 'Canonical room'),
+                onCanonicalMutationCommitted: (session, result) {
+                  canonicalOwnershipReceipts++;
+                  expect(session.project, same(result.project));
+                  return const CanonicalAuthoringOwnershipReceipt.accepted();
+                },
                 onAuthoringCommitted: (session, createdId) {
-                  published++;
+                  featurePublications++;
                   publishedId = createdId;
                   return const CanonicalAuthoringOwnershipReceipt.accepted();
                 },
@@ -101,7 +107,8 @@ void main() {
         await tester.tap(find.text('+ Room'));
         await tester.pumpAndSettle();
 
-        expect(published, 1);
+        expect(canonicalOwnershipReceipts, 1);
+        expect(featurePublications, 1);
         expect(publishedId, isA<SpaceId>());
         expect(
           fixture.session.project.index.space(publishedId! as SpaceId),
