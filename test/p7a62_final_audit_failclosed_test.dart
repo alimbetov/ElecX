@@ -78,8 +78,7 @@ void main() {
             const MmPoint(0, 0),
             const MmPoint(4000, 3000),
           ),
-          referenceFrame:
-              const RoomReferenceFrame(origin: MmPoint(2000, 1500)),
+          referenceFrame: const RoomReferenceFrame(origin: MmPoint(2000, 1500)),
         );
         final wall = RoomSurfaceRef.wall(legacySpace.id, 0);
         final routeA = _route(
