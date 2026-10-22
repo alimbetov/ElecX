@@ -20,6 +20,112 @@ import 'editor_p2_session.dart';
 /// Pointer modality is intentionally absent. Mouse/touch/stylus/keyboard/menu
 /// actions normalize to these stable-id operations before entering the runtime.
 abstract final class CanonicalBoundaryTopologyMigrationRuntime {
+  /// Resolves a transient legacy wall ordinal through a fresh version-aware
+  /// canonical projection. The returned BoundaryEdgeId is the only identity
+  /// accepted by the mutation methods below.
+  static BoundaryEdgeId? edgeIdAtLegacyWallOrdinal(
+    EditorController controller,
+    int wallOrdinal,
+  ) {
+    final context = _context(controller);
+    if (context == null) return null;
+    final adapter = CanonicalRoomSurfaceRuntimeRegistry.resolve(
+      controller,
+      context.spaceId,
+    );
+    if (adapter == null || !adapter.isMaterializationCurrent) return null;
+    if (wallOrdinal < 0 || wallOrdinal >= adapter.projection.wallCount) {
+      return null;
+    }
+    return adapter.projection.edgeIdAtOrdinal(wallOrdinal);
+  }
+
+  /// True only when the currently materialized legacy hosts exactly match the
+  /// canonical P7A-5 registries for this wall's room. UI may expose split/merge
+  /// only after this condition is proven.
+  static bool canChangeLegacyWallIdentity(
+    EditorController controller,
+    int wallOrdinal,
+  ) {
+    final context = _context(controller);
+    final edgeId = edgeIdAtLegacyWallOrdinal(controller, wallOrdinal);
+    if (context == null || edgeId == null) return false;
+    final topology = context.coordinator.session.project.index.boundary(
+      context.spaceId,
+    );
+    if (topology == null || topology.edges[edgeId] == null) return false;
+    try {
+      _requireExactCanonicalHostAdoption(
+        controller: controller,
+        context: context,
+        sourceTopology: topology,
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// UI convenience that resolves transient ordinal -> BoundaryEdgeId first,
+  /// then delegates to the exact same stable-id split path used by all inputs.
+  static bool splitLegacyWallAtMidpoint({
+    required EditorController controller,
+    required int wallOrdinal,
+    EntityIdFactory? idFactory,
+  }) {
+    final context = _context(controller);
+    final edgeId = edgeIdAtLegacyWallOrdinal(controller, wallOrdinal);
+    if (context == null || edgeId == null) return false;
+    final edge = context.coordinator.session.project.index.boundaryEdge(edgeId);
+    if (edge == null) return false;
+    final splitPoint = BoundaryPointMm(
+      xMm: (edge.start.xMm + edge.end.xMm) ~/ 2,
+      yMm: (edge.start.yMm + edge.end.yMm) ~/ 2,
+    );
+    try {
+      return splitEdge(
+        controller: controller,
+        edgeId: edgeId,
+        splitPoint: splitPoint,
+        idFactory: idFactory,
+      );
+    } on BoundaryTopologyMigrationException {
+      return false;
+    } on BoundaryHostMigrationException {
+      return false;
+    } on StateError {
+      return false;
+    } on ArgumentError {
+      return false;
+    }
+  }
+
+  /// UI convenience that resolves transient ordinal -> BoundaryEdgeId first,
+  /// then delegates to the canonical stable-id merge path.
+  static bool mergeLegacyWallWithNext({
+    required EditorController controller,
+    required int wallOrdinal,
+    EntityIdFactory? idFactory,
+  }) {
+    final edgeId = edgeIdAtLegacyWallOrdinal(controller, wallOrdinal);
+    if (edgeId == null) return false;
+    try {
+      return mergeEdgeWithNext(
+        controller: controller,
+        edgeId: edgeId,
+        idFactory: idFactory,
+      );
+    } on BoundaryTopologyMigrationException {
+      return false;
+    } on BoundaryHostMigrationException {
+      return false;
+    } on StateError {
+      return false;
+    } on ArgumentError {
+      return false;
+    }
+  }
+
   /// One-time migration of the exact currently materialized legacy room hosts
   /// into canonical P7A-5 ownership. Route point identities are allocated
   /// explicitly; no segment/point ordinal becomes durable identity.
@@ -85,6 +191,7 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
         controller: controller,
         context: context,
         sourceP2: p2Candidate,
+        showPlanAfter: false,
       );
     }
 
@@ -214,6 +321,7 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
         controller: controller,
         context: context,
         sourceP2: sourceP2,
+        showPlanAfter: true,
       );
     }
 
@@ -234,6 +342,7 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
     required EditorController controller,
     required _MigrationContext context,
     required EditorP2State sourceP2,
+    required bool showPlanAfter,
   }) {
     final project = context.coordinator.session.project;
     final topology = project.index.boundary(context.spaceId);
@@ -257,6 +366,7 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
       controller.p2,
       materialization,
     );
+    if (showPlanAfter) controller.showPlan();
   }
 
   static EditorP2State _requireExactCanonicalHostAdoption({
