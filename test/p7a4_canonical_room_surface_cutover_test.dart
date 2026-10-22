@@ -7,6 +7,7 @@ import 'package:elecx/src/domain/project_model.dart';
 import 'package:elecx/src/domain/project_orientation.dart';
 import 'package:elecx/src/features/editor/canonical_editor_workspace_adapter.dart';
 import 'package:elecx/src/features/editor/canonical_room_surface_cutover.dart';
+import 'package:elecx/src/features/editor/editor_building_workspace.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -19,7 +20,7 @@ void main() {
       final adapter = CanonicalRoomSurfaceCutover.resolve(
         project: fixture.project,
         binding: fixture.binding,
-        controller: fixture.controller,
+        workspace: fixture.workspace,
         spaceId: fixture.spaceId,
       );
 
@@ -33,7 +34,7 @@ void main() {
         () => CanonicalRoomSurfaceCutover.resolve(
           project: fixture.project,
           binding: fixture.binding,
-          controller: fixture.controller,
+          workspace: fixture.workspace,
           spaceId: fixture.spaceId,
         ),
         throwsA(
@@ -50,7 +51,7 @@ void main() {
       final fixture = _Fixture();
       final wrongBuildingBinding = CanonicalEditorWorkspaceBinding(
         buildingId: BuildingId('other-building'),
-        legacyBuildingId: 'legacy-building',
+        legacyBuildingId: fixture.workspace.building.building.id,
         legacyLevelIds: {fixture.levelId: fixture.legacyLevelId},
         legacySpaceIds: {fixture.spaceId: fixture.legacySpaceId},
       );
@@ -59,7 +60,7 @@ void main() {
         () => CanonicalRoomSurfaceCutover.resolve(
           project: fixture.project,
           binding: wrongBuildingBinding,
-          controller: fixture.controller,
+          workspace: fixture.workspace,
           spaceId: fixture.spaceId,
         ),
         throwsA(
@@ -73,12 +74,38 @@ void main() {
       );
     });
 
+    test('legacy building mismatch fails before level or wall projection', () {
+      final fixture = _Fixture();
+      final wrongLegacyBuildingBinding = CanonicalEditorWorkspaceBinding(
+        buildingId: fixture.buildingId,
+        legacyBuildingId: 'other-legacy-building',
+        legacyLevelIds: {fixture.levelId: fixture.legacyLevelId},
+        legacySpaceIds: {fixture.spaceId: fixture.legacySpaceId},
+      );
+
+      expect(
+        () => CanonicalRoomSurfaceCutover.resolve(
+          project: fixture.project,
+          binding: wrongLegacyBuildingBinding,
+          workspace: fixture.workspace,
+          spaceId: fixture.spaceId,
+        ),
+        throwsA(
+          isA<CanonicalRoomSurfaceCutoverException>().having(
+            (error) => error.code,
+            'code',
+            CanonicalRoomSurfaceCutoverIssueCode.legacyBuildingMismatch,
+          ),
+        ),
+      );
+    });
+
     test('missing legacy level binding fails closed before wall projection',
         () {
       final fixture = _Fixture();
       final incompleteBinding = CanonicalEditorWorkspaceBinding(
         buildingId: fixture.buildingId,
-        legacyBuildingId: 'legacy-building',
+        legacyBuildingId: fixture.workspace.building.building.id,
         legacyLevelIds: const {},
         legacySpaceIds: {fixture.spaceId: fixture.legacySpaceId},
       );
@@ -87,7 +114,7 @@ void main() {
         () => CanonicalRoomSurfaceCutover.resolve(
           project: fixture.project,
           binding: incompleteBinding,
-          controller: fixture.controller,
+          workspace: fixture.workspace,
           spaceId: fixture.spaceId,
         ),
         throwsA(
@@ -113,7 +140,7 @@ void main() {
         () => CanonicalRoomSurfaceCutover.resolve(
           project: fixture.project,
           binding: fixture.binding,
-          controller: fixture.controller,
+          workspace: fixture.workspace,
           spaceId: fixture.spaceId,
         ),
         throwsA(
@@ -134,7 +161,7 @@ void main() {
         () => CanonicalRoomSurfaceCutover.resolve(
           project: fixture.project,
           binding: fixture.binding,
-          controller: fixture.controller,
+          workspace: fixture.workspace,
           spaceId: fixture.spaceId,
         ),
         throwsA(
@@ -176,6 +203,12 @@ final class _Fixture {
       ),
       openings: const [],
     )..selectSpace(legacySpaceId);
+    workspace = EditorBuildingWorkspace.blank(
+      controller,
+      projectId: 'legacy-project',
+      projectName: 'Legacy project',
+    );
+    workspace.editor.selectSpace(legacySpaceId);
 
     final edges = <BoundaryEdgeId, ProjectBoundaryEdge>{};
     for (var index = 0; index < edgeIds.length; index++) {
@@ -245,7 +278,7 @@ final class _Fixture {
     );
     binding = CanonicalEditorWorkspaceBinding(
       buildingId: buildingId,
-      legacyBuildingId: 'legacy-building',
+      legacyBuildingId: workspace.building.building.id,
       legacyLevelIds: {levelId: legacyLevelId},
       legacySpaceIds: {spaceId: legacySpaceId},
     );
@@ -267,4 +300,5 @@ final class _Fixture {
   late final ProjectAggregateRoot project;
   late final CanonicalEditorWorkspaceBinding binding;
   late final EditorController controller;
+  late final EditorBuildingWorkspace workspace;
 }
