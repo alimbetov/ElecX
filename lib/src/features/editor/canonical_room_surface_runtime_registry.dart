@@ -24,10 +24,6 @@ abstract final class CanonicalRoomSurfaceRuntimeRegistry {
     final controller = coordinator.adapter.workspace.editor;
     _coordinators[controller] = coordinator;
 
-    // A legacy document may have restored RoomSurfaceRef.wall(..., wallIndex).
-    // Once this controller enters canonical runtime that ordinal is not trusted
-    // as durable identity. Only an explicitly staged BoundaryEdgeId resume may
-    // restore a wall after canonical materialization.
     if (_stagedResumes[controller] == null &&
         controller.activeSurface?.type == SurfacePlaneType.wall) {
       controller.showPlan();
@@ -43,6 +39,13 @@ abstract final class CanonicalRoomSurfaceRuntimeRegistry {
 
   static bool hasCanonicalRuntime(EditorController controller) =>
       _coordinators[controller] != null;
+
+  /// Internal production-cutover capability lookup. Callers must still resolve
+  /// their own version-aware projection and may not cache it across mutations.
+  static CanonicalEditorRuntimeCutoverCoordinator? coordinatorFor(
+    EditorController controller,
+  ) =>
+      _coordinators[controller];
 
   static CanonicalRoomSurfaceSelectionAdapter? resolve(
     EditorController controller,
@@ -97,9 +100,6 @@ abstract final class CanonicalRoomSurfaceRuntimeRegistry {
     _stagedResumes[controller] = resume;
   }
 
-  /// Applies a staged stable resume only after canonical navigation has been
-  /// materialized into the exact legacy workspace. Missing/deleted/reowned
-  /// edges fail closed to Plan and can never fall through to a wall ordinal.
   static bool applyStagedResume(EditorController controller) {
     final resume = _stagedResumes[controller];
     if (resume == null) return false;
