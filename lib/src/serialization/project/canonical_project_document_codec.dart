@@ -2,18 +2,24 @@ import '../../application/project/project_snapshot.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/project_orientation.dart';
+import '../../domain/project_space_semantics.dart';
 import 'project_document_codec.dart';
 
-/// Canonical multi-building persistence codec introduced by P2D-1.
+/// Canonical multi-building persistence codec.
 ///
-/// Schema v2 adds canonical project engineering orientation while retaining an
-/// explicit, deterministic migration from schema v1. This schema remains
-/// separate from the transitional editor JSON schema.
+/// Schema history:
+/// - v1: structural multi-building aggregate;
+/// - v2: canonical project engineering orientation;
+/// - v3: P6 SpaceUsage, openings, adjacency and overlay classifications.
+///
+/// P6 intentionally persists no wall index or durable wall host. Exact opening
+/// hosting belongs to P7 BoundaryEdgeId/edge-lineage migration.
 final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
   const CanonicalProjectDocumentCodec();
 
-  static const int schemaVersion = 2;
-  static const int _legacySchemaVersion = 1;
+  static const int schemaVersion = 3;
+  static const int _schemaV1 = 1;
+  static const int _schemaV2 = 2;
 
   @override
   int get currentSchemaVersion => schemaVersion;
@@ -41,6 +47,9 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
         'levels': _encodeLevels(stores),
         'zones': _encodeZones(stores),
         'spaces': _encodeSpaces(stores),
+        'openings': _encodeOpenings(stores),
+        'adjacencies': _encodeAdjacencies(stores),
+        'overlays': _encodeOverlays(stores),
       },
     );
   }
@@ -159,6 +168,88 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
           id: id,
           levelId: LevelId(_string(json['levelId'], 'space.levelId')),
           name: _string(json['name'], 'space.name'),
+          usage: _enumByName(
+            SpaceUsage.values,
+            json['usage'],
+            'space.usage',
+          ),
+        );
+      }
+
+      final openings = <OpeningId, ProjectOpeningEntity>{};
+      for (final raw in _list(migrated.payload['openings'], 'openings')) {
+        final json = _map(raw, 'opening');
+        final id = OpeningId(_string(json['id'], 'opening.id'));
+        if (openings.containsKey(id)) {
+          throw FormatException('Duplicate opening id $id.');
+        }
+        openings[id] = ProjectOpeningEntity(
+          id: id,
+          levelId: LevelId(_string(json['levelId'], 'opening.levelId')),
+          kind: _enumByName(
+            OpeningKind.values,
+            json['kind'],
+            'opening.kind',
+          ),
+          connectedSpaceIds: _uniqueStringList(
+            json['connectedSpaceIds'],
+            'opening.connectedSpaceIds',
+          ).map(SpaceId.new),
+          widthMm: _int(json['widthMm'], 'opening.widthMm'),
+          heightMm: _int(json['heightMm'], 'opening.heightMm'),
+          baseElevationMm: _int(
+            json['baseElevationMm'],
+            'opening.baseElevationMm',
+          ),
+        );
+      }
+
+      final adjacencies = <SpaceAdjacencyId, ProjectSpaceAdjacencyEntity>{};
+      for (final raw in _list(migrated.payload['adjacencies'], 'adjacencies')) {
+        final json = _map(raw, 'adjacency');
+        final id = SpaceAdjacencyId(_string(json['id'], 'adjacency.id'));
+        if (adjacencies.containsKey(id)) {
+          throw FormatException('Duplicate adjacency id $id.');
+        }
+        adjacencies[id] = ProjectSpaceAdjacencyEntity(
+          id: id,
+          spaceAId: SpaceId(_string(json['spaceAId'], 'adjacency.spaceAId')),
+          spaceBId: SpaceId(_string(json['spaceBId'], 'adjacency.spaceBId')),
+          kind: _enumByName(
+            SpaceAdjacencyKind.values,
+            json['kind'],
+            'adjacency.kind',
+          ),
+          openingId: _nullableString(json['openingId'], 'adjacency.openingId')
+              ?.let(OpeningId.new),
+        );
+      }
+
+      final overlays =
+          <OverlayClassificationId, ProjectOverlayClassificationEntity>{};
+      for (final raw in _list(migrated.payload['overlays'], 'overlays')) {
+        final json = _map(raw, 'overlay');
+        final id = OverlayClassificationId(_string(json['id'], 'overlay.id'));
+        if (overlays.containsKey(id)) {
+          throw FormatException('Duplicate overlay id $id.');
+        }
+        overlays[id] = ProjectOverlayClassificationEntity(
+          id: id,
+          name: _string(json['name'], 'overlay.name'),
+          discipline: _enumByName(
+            OverlayDiscipline.values,
+            json['discipline'],
+            'overlay.discipline',
+          ),
+          kind: _enumByName(
+            OverlayClassificationKind.values,
+            json['kind'],
+            'overlay.kind',
+          ),
+          spaceIds: _uniqueStringList(
+            json['spaceIds'],
+            'overlay.spaceIds',
+          ).map(SpaceId.new),
         );
       }
 
@@ -175,6 +266,9 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
           levels: levels,
           zones: zones,
           spaces: spaces,
+          openings: openings,
+          adjacencies: adjacencies,
+          overlays: overlays,
         ),
       );
 
@@ -194,26 +288,57 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
   }
 
   static ProjectDocument _migrateToCurrent(ProjectDocument document) {
-    switch (document.schemaVersion) {
-      case schemaVersion:
-        return document;
-      case _legacySchemaVersion:
-        return ProjectDocument(
-          schemaVersion: schemaVersion,
-          payload: <String, Object?>{
-            ...document.payload,
-            'projectOrientation': <String, Object?>{
-              'projectNorthMilliDegrees': null,
-            },
-          },
-        );
-      default:
-        throw FormatException(
-          'Unsupported canonical ElecX project schema '
-          '${document.schemaVersion}; supported versions are '
-          '$_legacySchemaVersion and $schemaVersion.',
-        );
+    if (document.schemaVersion == schemaVersion) {
+      return document;
     }
+    if (document.schemaVersion < _schemaV1 ||
+        document.schemaVersion > schemaVersion) {
+      throw FormatException(
+        'Unsupported canonical ElecX project schema '
+        '${document.schemaVersion}; supported versions are '
+        '$_schemaV1..$schemaVersion.',
+      );
+    }
+
+    var migrated = document;
+    if (migrated.schemaVersion == _schemaV1) {
+      migrated = _migrateV1ToV2(migrated);
+    }
+    if (migrated.schemaVersion == _schemaV2) {
+      migrated = _migrateV2ToV3(migrated);
+    }
+    return migrated;
+  }
+
+  static ProjectDocument _migrateV1ToV2(ProjectDocument document) =>
+      ProjectDocument(
+        schemaVersion: _schemaV2,
+        payload: <String, Object?>{
+          ...document.payload,
+          'projectOrientation': <String, Object?>{
+            'projectNorthMilliDegrees': null,
+          },
+        },
+      );
+
+  static ProjectDocument _migrateV2ToV3(ProjectDocument document) {
+    final spaces = <Object?>[
+      for (final raw in _list(document.payload['spaces'], 'spaces'))
+        <String, Object?>{
+          ..._map(raw, 'space'),
+          'usage': SpaceUsage.unknown.name,
+        },
+    ];
+    return ProjectDocument(
+      schemaVersion: schemaVersion,
+      payload: <String, Object?>{
+        ...document.payload,
+        'spaces': spaces,
+        'openings': const <Object?>[],
+        'adjacencies': const <Object?>[],
+        'overlays': const <Object?>[],
+      },
+    );
   }
 
   static ProjectEngineeringNorth? _projectNorth(Object? value) {
@@ -309,6 +434,54 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
           'id': space.id.value,
           'levelId': space.levelId.value,
           'name': space.name,
+          'usage': space.usage.name,
+        },
+    ];
+  }
+
+  static List<Object?> _encodeOpenings(ProjectEntityStores stores) {
+    final values = stores.openings.values.toList()
+      ..sort((a, b) => a.id.value.compareTo(b.id.value));
+    return <Object?>[
+      for (final opening in values)
+        <String, Object?>{
+          'id': opening.id.value,
+          'levelId': opening.levelId.value,
+          'kind': opening.kind.name,
+          'connectedSpaceIds': _sortedIds(opening.connectedSpaceIds),
+          'widthMm': opening.widthMm,
+          'heightMm': opening.heightMm,
+          'baseElevationMm': opening.baseElevationMm,
+        },
+    ];
+  }
+
+  static List<Object?> _encodeAdjacencies(ProjectEntityStores stores) {
+    final values = stores.adjacencies.values.toList()
+      ..sort((a, b) => a.id.value.compareTo(b.id.value));
+    return <Object?>[
+      for (final adjacency in values)
+        <String, Object?>{
+          'id': adjacency.id.value,
+          'spaceAId': adjacency.spaceAId.value,
+          'spaceBId': adjacency.spaceBId.value,
+          'kind': adjacency.kind.name,
+          'openingId': adjacency.openingId?.value,
+        },
+    ];
+  }
+
+  static List<Object?> _encodeOverlays(ProjectEntityStores stores) {
+    final values = stores.overlays.values.toList()
+      ..sort((a, b) => a.id.value.compareTo(b.id.value));
+    return <Object?>[
+      for (final overlay in values)
+        <String, Object?>{
+          'id': overlay.id.value,
+          'name': overlay.name,
+          'discipline': overlay.discipline.name,
+          'kind': overlay.kind.name,
+          'spaceIds': _sortedIds(overlay.spaceIds),
         },
     ];
   }
@@ -346,6 +519,23 @@ List<String> _uniqueStringList(Object? value, String field) {
   return result;
 }
 
+T _enumByName<T extends Enum>(
+  List<T> values,
+  Object? value,
+  String field,
+) {
+  final raw = _string(value, field);
+  for (final candidate in values) {
+    if (candidate.name == raw) return candidate;
+  }
+  throw FormatException('$field contains unsupported value $raw.');
+}
+
+String? _nullableString(Object? value, String field) {
+  if (value == null) return null;
+  return _string(value, field);
+}
+
 String _string(Object? value, String field) {
   if (value is! String || value.trim().isEmpty) {
     throw FormatException('$field must be a non-empty string.');
@@ -373,4 +563,11 @@ DateTime _dateTime(Object? value, String field) {
     throw FormatException('$field must be an ISO-8601 timestamp.');
   }
   return parsed.toUtc();
+}
+
+extension _NullableStringMap<T> on String? {
+  R? let<R>(R Function(String value) transform) {
+    final value = this;
+    return value == null ? null : transform(value);
+  }
 }
