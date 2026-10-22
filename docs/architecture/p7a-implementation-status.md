@@ -6,11 +6,13 @@ Branch: `feat/project-structure-authoring`
 
 **P7A: IN PROGRESS.**
 
-P7A-1 domain foundation, P7A-2 canonical aggregate ownership and P7A-3 persistence are **DONE + HARDENED**. P7A-4 production editor cutover is now in progress: the strict canonical-to-legacy wall projection, stable `BoundaryEdgeId` selection adapter and production cutover resolver are implemented and Flutter-qualified. The existing Room Surface Navigator is not yet switched to those adapters, so P7A-4 is not marked complete.
+P7A-1 domain foundation, P7A-2 canonical aggregate ownership and P7A-3 persistence are **DONE + HARDENED**. P7A-4.1 through P7A-4.4 are implemented and hardened, including the production Room Surface Navigator cutover and stable room-surface resume contract. The remaining P7A-4 slice is canonical topology editing; hosted-object migration remains P7A-5.
 
 ## Landed
 
 ### P7A-1 domain foundation
+
+**DONE + HARDENED.**
 
 Implemented:
 
@@ -22,12 +24,6 @@ Implemented:
 - explicit edge lineage: `preserved`, `split`, `merged`, `created`, `removed`;
 - fail-closed host remap decisions;
 - duplicate source/result lineage rejection.
-
-Primary implementation:
-
-```text
-lib/src/domain/boundary_topology.dart
-```
 
 ### P7A-2 canonical aggregate ownership
 
@@ -52,31 +48,16 @@ Implemented:
 
 Implemented:
 
-- canonical document schema v4;
+- canonical project document schema v4;
 - exact `BoundaryEdgeId`, ordered membership and millimetre geometry persistence;
 - durable `BoundaryEdgeIdentityRegistry` including tombstones;
 - ownership survives commit -> undo/remove -> save -> close -> reopen;
 - persistence is strict validation, not an identity mutation mechanism;
-- save rejects active edges missing from the durable ledger or owned by another Space;
-- canonical v1/v2/v3 migrate to v4 without inventing P7A topology;
-- deterministic legacy polygon migration produces fixed-width opaque identities;
-- deterministic migration seed uses unambiguous length-prefixed components;
-- `BoundaryGeometryIntegrity` rejects zero-area, self-intersecting and overlapping/backtracking loops;
-- corrupt schema-v4 geometry fails closed;
-- no platform-specific topology/persistence forks.
+- deterministic legacy polygon migration produces opaque stable identities;
+- corrupt topology/geometry fails closed;
+- no platform-specific topology or persistence fork.
 
-Primary implementation:
-
-```text
-lib/src/domain/boundary_edge_identity_registry.dart
-lib/src/domain/boundary_geometry_integrity.dart
-lib/src/application/project/project_mutation.dart
-lib/src/application/project/project_snapshot.dart
-lib/src/serialization/project/canonical_project_document_codec.dart
-lib/src/serialization/project/legacy_boundary_polygon_migration.dart
-```
-
-Qualification completed on hardened P7A-3 code HEAD `9632002a5e61deb68b179333d26430d5d8528df6`:
+Qualification on hardened P7A-3 code HEAD `9632002a5e61deb68b179333d26430d5d8528df6`:
 
 ```text
 dart format gate           PASS
@@ -90,9 +71,11 @@ runtime path_provider      PASS
 
 ### P7A-4 production editor cutover
 
-**IN PROGRESS.**
+**IN PROGRESS — navigation/resume cutover hardened; canonical topology edit path remains.**
 
 #### P7A-4.1 — strict canonical boundary projection
+
+**DONE + HARDENED.**
 
 Implemented:
 
@@ -102,72 +85,135 @@ Implemented:
 - exact canonical/legacy ordered geometry validation;
 - >4-wall rooms supported;
 - reordered/stale geometry fails closed;
-- invalid canonical topology fails closed;
-- invalid canonical geometry fails closed before entering editor cutover;
+- invalid canonical topology/geometry fails before editor cutover;
 - no nearest-edge, label, rotation or direction guessing.
 
-Primary implementation:
-
-```text
-lib/src/features/editor/canonical_room_boundary_projection.dart
-```
-
 #### P7A-4.2 — stable room-surface selection
+
+**DONE + HARDENED.**
 
 Implemented:
 
 - `CanonicalRoomSurfaceSelectionAdapter`;
 - current legacy wall ordinal projects to stable `BoundaryEdgeId`;
 - wall selection accepts `BoundaryEdgeId`;
-- ordinal resolution happens only at `EditorController.showWall(int)` boundary;
+- ordinal resolution occurs only at the legacy `EditorController.showWall(int)` boundary;
 - previous/next navigation rotates canonical `orderedEdgeIds`;
-- unknown/stale edge id leaves editor state unchanged.
-
-Primary implementation:
-
-```text
-lib/src/features/editor/canonical_room_surface_selection.dart
-```
+- unknown/stale edge identity fails closed;
+- stale materialization can explicitly reconcile the legacy canvas back to Plan;
+- successful stable selection verifies its post-condition after the legacy call.
 
 #### P7A-4.3 — production cutover resolver
 
+**DONE + HARDENED.**
+
+`CanonicalRoomSurfaceCutover.resolve(...)` now proves the complete ownership chain before projecting a wall:
+
+```text
+canonical SpaceId
+    -> canonical LevelId
+    -> canonical BuildingId
+    -> explicit cutover binding
+    -> actual legacy Building
+    -> active legacy Level
+    -> EditorController Level
+    -> selected legacy Space
+    -> exact boundary materialization
+```
+
+Missing topology or identity affinity never falls back to durable ordinal semantics.
+
+#### P7A-4.4 — production Room Surface Navigator wiring
+
+**DONE + HARDENED; qualification running on current branch HEAD.**
+
+Production wall navigation now uses one stable action path:
+
+```text
+wall button
+mini-view mouse/touch
+keyboard Left/Right
+previous/next controls
+        |
+        v
+BoundaryEdgeId
+        |
+        v
+fresh CanonicalRoomSurfaceSelectionAdapter
+        |
+        v
+validated transient wall ordinal
+        |
+        v
+legacy EditorController
+```
+
 Implemented:
 
-- `CanonicalRoomSurfaceCutover.resolve(...)`;
-- requires exact canonical Space;
-- requires existing canonical P7A topology;
-- requires explicit canonical -> legacy Space binding;
-- requires exact selected legacy room;
-- missing topology never falls back to durable wall-index semantics.
+- production `RoomSurfaceNavigator` resolves the selected canonical Room through the P7A cutover runtime;
+- wall targets carry `BoundaryEdgeId` in canonical mode;
+- `W1`, `W2`, ... remain presentation labels only;
+- mouse/touch/keyboard wall actions converge on the same stable-ID selection path;
+- canonical mode never falls back to ordinal wall identity when topology/binding is missing;
+- stale materialization fails closed and reconciles to Plan;
+- standalone pre-cutover/legacy workspaces retain an explicitly named legacy ordinal projection path;
+- navigation/collapse remains non-dirty.
 
 Primary implementation:
 
 ```text
-lib/src/features/editor/canonical_room_surface_cutover.dart
+lib/src/features/editor/room_surface_navigator.dart
+lib/src/features/editor/canonical_room_surface_runtime_registry.dart
+lib/src/features/editor/canonical_editor_screen_cutover_binding.dart
 ```
 
-Primary qualification:
+#### P7A-4 stable room-surface resume
+
+**DONE + HARDENED; qualification running on current branch HEAD.**
+
+The editor resume schema is now v5 and adds a canonical surface contract:
 
 ```text
-test/p7a4_canonical_room_boundary_projection_test.dart
-test/p7a4_canonical_room_surface_selection_test.dart
-test/p7a4_canonical_room_surface_cutover_test.dart
-test/p7a4_projection_geometry_guard_test.dart
+CanonicalRoomSurfaceResume
+  SpaceId
+  kind = plan | floor | ceiling | wall
+  BoundaryEdgeId?   // required only for wall
 ```
 
-Flutter qualification on code HEAD `b4c58165910d4d349539911484c346886bde5e54`:
+Canonical-runtime Save behavior:
+
+- `resume.activeSurface` is written as `null`;
+- wall selection is persisted as `SpaceId + BoundaryEdgeId`;
+- no `wallIndex` is written into canonical surface resume;
+- reopen initially remains at Plan;
+- stable resume is applied only after canonical workspace materialization;
+- missing/deleted/reowned edge fails closed to Plan.
+
+Backward compatibility:
+
+- schema v4 documents may still contain legacy `activeSurface.wallIndex`;
+- v4 -> v5 migration never invents a `BoundaryEdgeId` from that ordinal;
+- when such a legacy document enters canonical runtime without a stable resume, the old wall ordinal is discarded and the editor falls back to Plan;
+- subsequent canonical saves use the stable v5 contract.
+
+Primary implementation:
 
 ```text
-dart format gate           PASS
-flutter analyze            PASS
-flutter test               PASS
+lib/src/features/editor/canonical_room_surface_resume.dart
+lib/src/features/editor/canonical_room_surface_runtime_registry.dart
+lib/src/features/editor/editor_project_document.dart
+lib/src/features/editor/project_schema_migrator.dart
 ```
 
-macOS qualification for this exact P7A-4 code HEAD is tracked separately and must be green before the P7A-4 foundation is called fully qualified.
+#### Version-aware projection reconstruction
+
+The runtime registry stores the exact canonical cutover coordinator, **not** a cached wall projection. Every stable wall resolve reads the current `session.project` and rebuilds the projection. Therefore a `LocalProjectVersion N -> N+1` transition cannot reuse an old `BoundaryEdgeId <-> ordinal` mapping as authoritative state.
+
+Qualification includes a real P3 version transition through Project North editing and verifies that a fresh adapter is produced while the stable `BoundaryEdgeId` selection remains coherent.
 
 ## Safety invariants
 
-Durable wall identity is never:
+Durable navigation/resume wall identity is never:
 
 ```text
 wallIndex
@@ -183,24 +229,9 @@ It is:
 BoundaryEdgeId
 ```
 
-P7A-4 compatibility boundary is explicit:
+For canonical room-surface navigation/resume, `wallIndex` now exists only as a transient compatibility/presentation ordinal at the legacy canvas boundary.
 
-```text
-BoundaryEdgeId
-    |
-    v
-CanonicalRoomBoundaryProjection
-    |
-    v
-transient wall ordinal
-    |
-    v
-legacy EditorController.showWall(int)
-```
-
-The integer is discarded as identity immediately outside the legacy API call.
-
-Hosted objects remain a separate P7A-5 concern:
+This statement does **not** claim that every legacy wall-index reference in the repository has been removed. Hosted engineering objects remain P7A-5 work:
 
 ```text
 ArchitecturalOpening.hostWall
@@ -210,7 +241,34 @@ cable endpoints
 route anchors
 ```
 
-P7A-4 does not claim those hosts are migrated merely because navigation now has a stable-ID bridge.
+Those hosts must migrate under explicit lineage/remap rules; P7A-4 does not silently reinterpret their ordinals as stable identity.
+
+## Qualification coverage
+
+Primary P7A-4 tests include:
+
+```text
+test/p7a4_canonical_room_boundary_projection_test.dart
+test/p7a4_canonical_room_surface_selection_test.dart
+test/p7a4_canonical_room_surface_cutover_test.dart
+test/p7a4_projection_geometry_guard_test.dart
+test/room_surface_navigator_production_wiring_test.dart
+test/p7a4_stable_surface_resume_test.dart
+```
+
+The hardened matrix covers:
+
+- exact stable edge selection;
+- stale geometry/materialization;
+- real out-of-range legacy ordinal;
+- Building/Level/Space ownership mismatch;
+- mouse/touch/button and keyboard stable-ID navigation;
+- non-dirty surface navigation;
+- schema-v5 stable resume serialization;
+- save -> JSON -> close -> reopen -> canonical materialization;
+- missing stable resume edge -> Plan;
+- schema-v4 ordinal migration without identity invention;
+- projection reconstruction after canonical project version change.
 
 ## Remaining P7A slices
 
@@ -219,10 +277,11 @@ P7A-1 domain foundation                 DONE + HARDENED
 P7A-2 canonical aggregate ownership     DONE + HARDENED
 P7A-3 persistence foundation            DONE + HARDENED
 P7A-3 full legacy project migration     BLOCKED ON LOSSLESS DOMAIN COVERAGE
-P7A-4.1 strict wall projection          IMPLEMENTED
-P7A-4.2 stable selection adapter        IMPLEMENTED
-P7A-4.3 production cutover resolver     IMPLEMENTED
-P7A-4.4 Room Surface Navigator wiring   NEXT
+P7A-4.1 strict wall projection          DONE + HARDENED
+P7A-4.2 stable selection adapter        DONE + HARDENED
+P7A-4.3 production cutover resolver     DONE + HARDENED
+P7A-4.4 Room Surface Navigator wiring   DONE + HARDENED
+P7A-4 stable surface resume             DONE + HARDENED
 P7A-4.5 canonical topology edit path    PENDING
 P7A-5 hosted-object migration           PENDING
 P7A-6 full hardening/qualification      PENDING
@@ -237,16 +296,16 @@ Not part of P7A:
 - P8 Wizard/generation;
 - Windows/Linux/Android/iOS/iPadOS runner setup.
 
-Pending platform runners do not block P7A development. Boundary identity, projection and mutation semantics remain platform-independent across macOS, Windows, Linux, Android, iOS and iPadOS.
+Pending platform runners do not alter P7A semantics. Boundary identity, projection, resume and mutation rules remain platform-independent across macOS, Windows, Linux, Android, iOS and iPadOS.
 
 ## Next implementation target
 
-Proceed with **P7A-4.4 Room Surface Navigator wiring**:
+Proceed with **P7A-4.5 canonical topology edit path**:
 
-1. resolve the selected canonical room through `CanonicalRoomSurfaceCutover`;
-2. make navigator wall targets carry `BoundaryEdgeId` rather than durable `wallIndex` meaning;
-3. keep `W1`, `W2`, ... strictly presentation labels;
-4. mouse/touch/keyboard wall navigation invokes the same stable-edge action;
-5. stale/missing edge selection falls back to Plan;
-6. surface navigation remains non-dirty;
-7. do not migrate openings/wall profiles/routes until P7A-5 host-remap contracts are applied.
+1. define canonical geometry-edit intents against `BoundaryEdgeId`/vertex topology rather than legacy wall ordinals;
+2. route mouse/touch/stylus/keyboard edits through one version-guarded mutation session;
+3. compute explicit `BoundaryTopologyChangeSet` and lineage for split/merge/create/remove;
+4. validate topology/geometry before commit;
+5. commit atomically as one canonical `ProjectChangeSet` + Undo record;
+6. rebuild the legacy materialization from committed canonical state;
+7. leave hosted-object remap to P7A-5 and fail closed when an edit would require unsupported host migration.
