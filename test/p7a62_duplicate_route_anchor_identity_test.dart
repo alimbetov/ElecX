@@ -7,7 +7,8 @@ import 'package:elecx/src/domain/surfaces.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('duplicate durable route anchor identity fails closed before capture', () {
+  test('duplicate durable route anchor identity fails closed before capture',
+      () {
     final route = ElectricalCableRoute(
       id: 'route-duplicate-anchor',
       source: const ElectricalEndpointRef(componentId: 's', portId: 'out'),
@@ -21,7 +22,7 @@ void main() {
             SurfacePointMm(2500, 400),
             SurfacePointMm(3500, 400),
           ],
-          anchorIds: const [
+          anchorIds: [
             RouteAnchorId('source-placeholder'),
             RouteAnchorId('duplicate'),
             RouteAnchorId('duplicate'),
