@@ -5,6 +5,7 @@ import '../../domain/electrical_routing.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
+import '../../domain/wall_profile.dart';
 import 'editor_p2_session.dart';
 
 /// P7A-5 bridge between legacy editor materialization and canonical wall-host
@@ -147,7 +148,7 @@ abstract final class CanonicalBoundaryHostProjection {
       return ordinal;
     }
 
-    final stableProfiles = <BoundaryEdgeId, dynamic>{
+    final stableProfiles = <BoundaryEdgeId, WallProfile>{
       ...legacySpace.boundaryEdgeWallProfiles,
     };
     for (final entry in legacySpace.wallProfiles.entries) {
@@ -155,7 +156,7 @@ abstract final class CanonicalBoundaryHostProjection {
       stableProfiles[edgeId] = entry.value;
     }
     final materializedSpace = legacySpace.copyWith(
-      boundaryEdgeWallProfiles: stableProfiles.cast(),
+      boundaryEdgeWallProfiles: Map.unmodifiable(stableProfiles),
     );
 
     final nextOpenings = <ArchitecturalOpening>[
