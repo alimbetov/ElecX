@@ -153,7 +153,7 @@ void main() {
       ..['p2'] = legacyP2;
 
     final decoded = EditorProjectDocument.fromJson(legacy);
-    expect(decoded.schemaVersion, 4);
+    expect(decoded.schemaVersion, EditorProjectDocument.currentSchemaVersion);
     expect(decoded.p2State.circuitBundles, isEmpty);
   });
 
