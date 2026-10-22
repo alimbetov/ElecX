@@ -24,7 +24,8 @@ void main() {
     expect(registry[reference.objectKey], same(reference));
   });
 
-  test('put preserves durable anchor containing transition text internally', () {
+  test('put preserves durable anchor containing transition text internally',
+      () {
     final original = BoundaryHostedObjectRegistry({
       'component:c1': BoundaryHostedReference.point(
         objectKey: 'component:c1',
