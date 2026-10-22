@@ -6,28 +6,34 @@ import 'package:elecx/src/domain/project_space_semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('space semantics editing shares the structure-authoring P3 timeline', () {
-    final project = _project();
-    final mutations = ProjectMutationSession(project);
-    final session = ProjectStructureAuthoringSession(
-      mutations: mutations,
-      idFactory: SecureRandomEntityIdFactory(),
-    );
+  test(
+    'space semantics editing shares the structure-authoring P3 timeline',
+    () {
+      final project = _project();
+      final mutations = ProjectMutationSession(project);
+      final session = ProjectStructureAuthoringSession(
+        mutations: mutations,
+        idFactory: SecureRandomEntityIdFactory(),
+      );
 
-    final editing = session.spaceSemanticsEditing;
-    final beforeVersion = session.project.version;
+      final editing = session.spaceSemanticsEditing;
+      final beforeVersion = session.project.version;
 
-    final result = editing.setUsage(
-      SpaceId('space-1'),
-      SpaceUsage.bedroom,
-      expectedVersion: beforeVersion,
-    );
+      final result = editing.setUsage(
+        SpaceId('space-1'),
+        SpaceUsage.bedroom,
+        expectedVersion: beforeVersion,
+      );
 
-    expect(result, isNotNull);
-    expect(session.project.version, beforeVersion.next());
-    expect(session.project.index.space(SpaceId('space-1'))!.usage, SpaceUsage.bedroom);
-    expect(mutations.current, same(session.project));
-  });
+      expect(result, isNotNull);
+      expect(session.project.version, beforeVersion.next());
+      expect(
+        session.project.index.space(SpaceId('space-1'))!.usage,
+        SpaceUsage.bedroom,
+      );
+      expect(mutations.current, same(session.project));
+    },
+  );
 }
 
 ProjectAggregateRoot _project() {

@@ -25,7 +25,9 @@ void main() {
     });
 
     test('same usage remains a semantic no-op', () {
-      final mutations = ProjectMutationSession(_project(usage: SpaceUsage.bedroom));
+      final mutations = ProjectMutationSession(
+        _project(usage: SpaceUsage.bedroom),
+      );
       final editing = ProjectSpaceSemanticsEditingSession(mutations);
       final before = editing.version;
 

@@ -4,7 +4,10 @@ import '../../domain/project_identity.dart';
 import '../../domain/project_space_semantics.dart';
 import 'canonical_space_semantics_adapter.dart';
 
-enum SpaceSemanticsInspectorEditingIssueCode { projectMismatch, editingDisabled }
+enum SpaceSemanticsInspectorEditingIssueCode {
+  projectMismatch,
+  editingDisabled,
+}
 
 final class SpaceSemanticsInspectorEditingException implements Exception {
   const SpaceSemanticsInspectorEditingException({
@@ -44,7 +47,8 @@ final class SpaceSemanticsInspectorEditingCoordinator {
       throw SpaceSemanticsInspectorEditingException(
         code: SpaceSemanticsInspectorEditingIssueCode.projectMismatch,
         projectId: editing.projectId,
-        message: 'Inspector projection belongs to ${projection.projectId}, '
+        message:
+            'Inspector projection belongs to ${projection.projectId}, '
             'but editing port owns ${editing.projectId}.',
       );
     }
