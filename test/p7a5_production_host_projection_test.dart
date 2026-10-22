@@ -1,4 +1,5 @@
 import 'package:elecx/src/domain/boundary_host_migration.dart';
+import 'package:elecx/src/domain/boundary_topology.dart';
 import 'package:elecx/src/domain/electrical_placement.dart';
 import 'package:elecx/src/domain/electrical_routing.dart';
 import 'package:elecx/src/domain/geometry.dart';
@@ -35,8 +36,7 @@ void main() {
           },
         );
 
-    test('captures openings components endpoints and route anchors by edge id',
-        () {
+    test('captures hosted objects and wall profiles in separate registries', () {
       final legacyRoom = room();
       final wall = RoomSurfaceRef.wall(legacyRoom.id, 0);
       final componentA = ElectricalComponentPlacement(
@@ -96,7 +96,7 @@ void main() {
         sillHeightMm: 0,
       );
 
-      final registry = CanonicalBoundaryHostProjection.capture(
+      final hosted = CanonicalBoundaryHostProjection.capture(
         canonicalSpaceId: canonicalSpaceId,
         legacySpace: legacyRoom,
         orderedEdgeIds: ordered,
@@ -106,16 +106,66 @@ void main() {
           routes: [route],
         ),
       );
+      final profiles = CanonicalBoundaryHostProjection.captureWallProfiles(
+        canonicalSpaceId: canonicalSpaceId,
+        legacySpace: legacyRoom,
+        orderedEdgeIds: ordered,
+      );
 
-      expect(registry['opening:o1:space-a']!.host.edgeId, e0);
-      expect(registry['opening:o1:space-a']!.geometryKind,
-          BoundaryHostGeometryKind.interval);
-      expect(registry['component:c1']!.host.edgeId, e0);
-      expect(registry['component:c2']!.host.edgeId, e0);
-      expect(registry['cable:r1:source']!.host.edgeId, e0);
-      expect(registry['route:r1:segment:0:point:1']!.host.edgeId, e0);
-      expect(registry['cable:r1:target']!.host.edgeId, e0);
-      expect(registry['wall-profile:space-a:edge-0']!.host.edgeId, e0);
+      expect(hosted['opening:o1:space-a']!.host.edgeId, e0);
+      expect(
+        hosted['opening:o1:space-a']!.geometryKind,
+        BoundaryHostGeometryKind.interval,
+      );
+      expect(hosted['component:c1']!.host.edgeId, e0);
+      expect(hosted['component:c2']!.host.edgeId, e0);
+      expect(hosted['cable:r1:source']!.host.edgeId, e0);
+      expect(hosted['route:r1:segment:0:point:1']!.host.edgeId, e0);
+      expect(hosted['cable:r1:target']!.host.edgeId, e0);
+      expect(
+        hosted.references.values.any(
+          (reference) => reference.objectKind == BoundaryHostedObjectKind.wallProfile,
+        ),
+        isFalse,
+      );
+      expect(
+        profiles[
+          BoundaryEdgeHostRef(spaceId: canonicalSpaceId, edgeId: e0)
+        ],
+        isNotNull,
+      );
+    });
+
+    test('stable BoundaryEdgeId surfaces are captured without wallIndex', () {
+      final legacyRoom = room();
+      final stableWall = RoomSurfaceRef.wallByBoundaryEdge(legacyRoom.id, e2);
+      final component = ElectricalComponentPlacement(
+        id: 'stable-c1',
+        type: ElectricalComponentType.socketOutlet,
+        surface: stableWall,
+        position: const SurfacePointMm(700, 300),
+        label: 'Stable socket',
+      );
+      final opening = ArchitecturalOpening(
+        id: 'stable-o1',
+        hostWall: stableWall,
+        type: ArchitecturalOpeningType.window,
+        offsetFromStartMm: 500,
+        widthMm: 900,
+        heightMm: 1200,
+        sillHeightMm: 900,
+      );
+
+      final hosted = CanonicalBoundaryHostProjection.capture(
+        canonicalSpaceId: canonicalSpaceId,
+        legacySpace: legacyRoom,
+        orderedEdgeIds: ordered,
+        openings: [opening],
+        p2State: EditorP2State(components: [component]),
+      );
+
+      expect(hosted['opening:stable-o1:space-a']!.host.edgeId, e2);
+      expect(hosted['component:stable-c1']!.host.edgeId, e2);
     });
 
     test('materializes remapped ids back to transient ordinal without id drift',
@@ -144,6 +194,11 @@ void main() {
         orderedEdgeIds: ordered,
         openings: [opening],
         p2State: EditorP2State(components: [component]),
+      );
+      final profiles = CanonicalBoundaryHostProjection.captureWallProfiles(
+        canonicalSpaceId: canonicalSpaceId,
+        legacySpace: legacyRoom,
+        orderedEdgeIds: ordered,
       );
 
       final remapped = registry
@@ -176,6 +231,7 @@ void main() {
         legacySpace: legacyRoom,
         orderedEdgeIds: ordered,
         registry: remapped,
+        wallProfiles: profiles,
         openings: [opening],
         p2State: EditorP2State(components: [component]),
       );
@@ -186,9 +242,89 @@ void main() {
       expect(materialized.openings.single.widthMm, 1000);
       expect(materialized.p2State.components.single.id, 'c1');
       expect(materialized.p2State.components.single.surface.wallIndex, 2);
-      expect(materialized.p2State.components.single.position,
-          const SurfacePointMm(700, 300));
+      expect(
+        materialized.p2State.components.single.position,
+        const SurfacePointMm(700, 300),
+      );
       expect(materialized.space.boundaryEdgeWallProfiles[e0], isNotNull);
+    });
+
+    test('topology-aware materialization reconstructs wall count after split', () {
+      final legacyRoom = room();
+      final bottomA = BoundaryEdgeId('bottom-a');
+      final bottomB = BoundaryEdgeId('bottom-b');
+      final topology = SpaceBoundaryTopology(
+        spaceId: canonicalSpaceId,
+        orderedEdgeIds: [bottomA, bottomB, e1, e2, e3],
+        edges: {
+          bottomA: ProjectBoundaryEdge(
+            id: bottomA,
+            spaceId: canonicalSpaceId,
+            start: const BoundaryPointMm(xMm: 0, yMm: 0),
+            end: const BoundaryPointMm(xMm: 2000, yMm: 0),
+          ),
+          bottomB: ProjectBoundaryEdge(
+            id: bottomB,
+            spaceId: canonicalSpaceId,
+            start: const BoundaryPointMm(xMm: 2000, yMm: 0),
+            end: const BoundaryPointMm(xMm: 4000, yMm: 0),
+          ),
+          e1: ProjectBoundaryEdge(
+            id: e1,
+            spaceId: canonicalSpaceId,
+            start: const BoundaryPointMm(xMm: 4000, yMm: 0),
+            end: const BoundaryPointMm(xMm: 4000, yMm: 3000),
+          ),
+          e2: ProjectBoundaryEdge(
+            id: e2,
+            spaceId: canonicalSpaceId,
+            start: const BoundaryPointMm(xMm: 4000, yMm: 3000),
+            end: const BoundaryPointMm(xMm: 0, yMm: 3000),
+          ),
+          e3: ProjectBoundaryEdge(
+            id: e3,
+            spaceId: canonicalSpaceId,
+            start: const BoundaryPointMm(xMm: 0, yMm: 3000),
+            end: const BoundaryPointMm(xMm: 0, yMm: 0),
+          ),
+        },
+      );
+      final component = ElectricalComponentPlacement(
+        id: 'c1',
+        type: ElectricalComponentType.socketOutlet,
+        surface: RoomSurfaceRef.wall(legacyRoom.id, 0),
+        position: const SurfacePointMm(3000, 300),
+        label: 'Socket',
+      );
+      final hosted = BoundaryHostedObjectRegistry({
+        'component:c1': BoundaryHostedReference.point(
+          objectKey: 'component:c1',
+          objectKind: BoundaryHostedObjectKind.component,
+          host: BoundaryEdgeHostRef(
+            spaceId: canonicalSpaceId,
+            edgeId: bottomB,
+          ),
+          offsetMm: 1000,
+        ),
+      });
+
+      final materialized = CanonicalBoundaryHostProjection.materializeTopology(
+        canonicalSpaceId: canonicalSpaceId,
+        legacySpace: legacyRoom,
+        topology: topology,
+        registry: hosted,
+        wallProfiles: const BoundaryWallProfileRegistry.empty(),
+        openings: const [],
+        p2State: EditorP2State(components: [component]),
+      );
+
+      expect(materialized.space.boundary.vertices, hasLength(5));
+      expect(materialized.p2State.components.single.surface.wallIndex, 1);
+      expect(
+        materialized.p2State.components.single.position,
+        const SurfacePointMm(1000, 300),
+      );
+      expect(materialized.space.wallProfiles, isEmpty);
     });
 
     test('route segment spanning different result edges fails closed', () {
