@@ -26,6 +26,8 @@ final class ProjectSnapshot {
 
     aggregate.engineeringMetadata.boundaryEdgeIdentityRegistry
         .requireCoversActiveBoundaries(aggregate.stores.boundaries);
+    aggregate.engineeringMetadata.boundaryHostedObjectRegistry
+        .validateAgainst(aggregate.stores.boundaries);
     for (final topology in aggregate.stores.boundaries.values) {
       BoundaryGeometryIntegrity.validateOrThrow(topology);
     }
