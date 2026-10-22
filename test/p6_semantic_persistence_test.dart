@@ -151,8 +151,7 @@ ProjectSnapshot _snapshot() {
           openingId: openingId,
         ),
       },
-      overlays:
-          <OverlayClassificationId, ProjectOverlayClassificationEntity>{
+      overlays: <OverlayClassificationId, ProjectOverlayClassificationEntity>{
         overlayId: ProjectOverlayClassificationEntity(
           id: overlayId,
           name: 'FC-01',
