@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../application/project/project_mutation.dart';
 import '../../application/project/project_structure_authoring.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_model.dart';
@@ -9,6 +10,9 @@ import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 
 typedef CanonicalHistoryRematerializer = void Function();
+typedef CanonicalHistoryReplayOwner = void Function(
+  ProjectMutationResult result,
+);
 
 final class EditorDocumentHistory extends ChangeNotifier {
   EditorDocumentHistory(this.controller)
@@ -60,10 +64,13 @@ final class EditorDocumentHistory extends ChangeNotifier {
   /// The version must be exactly one step after the last observed canonical
   /// version. Any gap means a canonical mutation bypassed this production
   /// journal, so chronological Undo can no longer be proven and is discarded.
+  /// [onReplayed] must acknowledge every future canonical Undo/Redo commit;
+  /// replay is a new P3 version and therefore cannot bypass persistence owner.
   void recordCanonicalCommit({
     required ProjectStructureAuthoringSession session,
     required String label,
     required CanonicalHistoryRematerializer rematerialize,
+    required CanonicalHistoryReplayOwner onReplayed,
   }) {
     if (_replaying) return;
     if (!identical(_canonicalSession, session)) {
@@ -89,6 +96,7 @@ final class EditorDocumentHistory extends ChangeNotifier {
         label: label,
         session: session,
         rematerialize: rematerialize,
+        onReplayed: onReplayed,
       ),
     );
   }
@@ -124,9 +132,6 @@ final class EditorDocumentHistory extends ChangeNotifier {
     final revision = _p2.history.mutationRevision;
     if (revision == _p2Revision) return;
 
-    // Local undo/redo outside this journal destroys global chronological
-    // ordering. Fail closed by resetting the global journal rather than
-    // presenting an incorrect Undo operation.
     if (_p2.history.lastMutationKind != CommandHistoryMutationKind.execute ||
         revision != _p2Revision + 1) {
       _clearTimeline();
@@ -222,6 +227,7 @@ final class EditorDocumentHistory extends ChangeNotifier {
     }
     _canonicalObservedVersion = result.project.version;
     entry.rematerialize();
+    entry.onReplayed(result);
   }
 
   void _redoCanonical(_CanonicalEntry entry) {
@@ -232,6 +238,7 @@ final class EditorDocumentHistory extends ChangeNotifier {
     }
     _canonicalObservedVersion = result.project.version;
     entry.rematerialize();
+    entry.onReplayed(result);
   }
 
   ProjectStructureAuthoringSession _requireCanonicalAffinity(
@@ -298,12 +305,14 @@ final class _CanonicalEntry extends _DocumentEntry {
     required this.label,
     required this.session,
     required this.rematerialize,
+    required this.onReplayed,
   });
 
   @override
   final String label;
   final ProjectStructureAuthoringSession session;
   final CanonicalHistoryRematerializer rematerialize;
+  final CanonicalHistoryReplayOwner onReplayed;
 
   @override
   void undo(EditorDocumentHistory history) => history._undoCanonical(this);
