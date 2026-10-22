@@ -13,7 +13,8 @@ import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('reverse split preserves stable anchor, lock and mandatory waypoint', () {
+  test('reverse split preserves stable anchor, lock and mandatory waypoint',
+      () {
     final spaceId = SpaceId('space');
     final a = BoundaryEdgeId('bottom-a');
     final b = BoundaryEdgeId('bottom-b');
@@ -114,7 +115,7 @@ void main() {
     expect(resultRoute.segments[1].surface.wallIndex, 0);
     expect(
       resultRoute.segments[0].anchorIds,
-      contains(const RouteAnchorId('middle-stable')),
+      contains(RouteAnchorId('middle-stable')),
     );
     expect(resultConstraints.lockedSegments, {0, 1});
     expect(resultConstraints.mandatoryWaypoints, hasLength(1));
