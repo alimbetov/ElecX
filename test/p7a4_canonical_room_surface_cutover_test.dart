@@ -73,7 +73,8 @@ void main() {
       );
     });
 
-    test('missing legacy level binding fails closed before wall projection', () {
+    test('missing legacy level binding fails closed before wall projection',
+        () {
       final fixture = _Fixture();
       final incompleteBinding = CanonicalEditorWorkspaceBinding(
         buildingId: fixture.buildingId,
