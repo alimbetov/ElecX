@@ -1,5 +1,6 @@
 import '../../domain/boundary_host_migration.dart';
 import '../../domain/boundary_host_registry.dart';
+import '../../domain/boundary_wall_profile_registry.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/electrical_routing.dart';
 import '../../domain/project_identity.dart';
@@ -23,20 +24,6 @@ abstract final class CanonicalBoundaryHostProjection {
   }) {
     _requireAffinity(legacySpace, orderedEdgeIds);
     var registry = base;
-
-    for (final entry in legacySpace.wallProfiles.entries) {
-      final edgeId = _edgeAtOrdinal(orderedEdgeIds, entry.key);
-      registry = registry.put(
-        BoundaryHostedReference.wholeEdge(
-          objectKey: _wallProfileKey(canonicalSpaceId, edgeId),
-          objectKind: BoundaryHostedObjectKind.wallProfile,
-          host: BoundaryEdgeHostRef(
-            spaceId: canonicalSpaceId,
-            edgeId: edgeId,
-          ),
-        ),
-      );
-    }
 
     for (final opening in openings) {
       if (opening.hostWall.spaceId != legacySpace.id) continue;
@@ -122,11 +109,41 @@ abstract final class CanonicalBoundaryHostProjection {
     return registry;
   }
 
+  static BoundaryWallProfileRegistry captureWallProfiles({
+    required SpaceId canonicalSpaceId,
+    required EngineeringSpace legacySpace,
+    required List<BoundaryEdgeId> orderedEdgeIds,
+    BoundaryWallProfileRegistry base =
+        const BoundaryWallProfileRegistry.empty(),
+  }) {
+    _requireAffinity(legacySpace, orderedEdgeIds);
+    var registry = base;
+    for (final entry in legacySpace.wallProfiles.entries) {
+      final edgeId = _edgeAtOrdinal(orderedEdgeIds, entry.key);
+      registry = registry.put(
+        BoundaryEdgeHostRef(spaceId: canonicalSpaceId, edgeId: edgeId),
+        entry.value,
+      );
+    }
+    for (final entry in legacySpace.boundaryEdgeWallProfiles.entries) {
+      registry = registry.put(
+        BoundaryEdgeHostRef(
+          spaceId: canonicalSpaceId,
+          edgeId: entry.key,
+        ),
+        entry.value,
+      );
+    }
+    return registry;
+  }
+
   static CanonicalBoundaryHostMaterialization materialize({
     required SpaceId canonicalSpaceId,
     required EngineeringSpace legacySpace,
     required List<BoundaryEdgeId> orderedEdgeIds,
     required BoundaryHostedObjectRegistry registry,
+    BoundaryWallProfileRegistry wallProfiles =
+        const BoundaryWallProfileRegistry.empty(),
     required List<ArchitecturalOpening> openings,
     required EditorP2State p2State,
   }) {
@@ -150,12 +167,20 @@ abstract final class CanonicalBoundaryHostProjection {
 
     final stableProfiles = <BoundaryEdgeId, WallProfile>{
       ...legacySpace.boundaryEdgeWallProfiles,
+      ...wallProfiles.forSpace(canonicalSpaceId),
     };
-    for (final entry in legacySpace.wallProfiles.entries) {
-      final edgeId = _edgeAtOrdinal(orderedEdgeIds, entry.key);
-      stableProfiles[edgeId] = entry.value;
+    final ordinalProfiles = <int, WallProfile>{};
+    for (final entry in stableProfiles.entries) {
+      final ordinal = orderedEdgeIds.indexOf(entry.key);
+      if (ordinal < 0) {
+        throw StateError(
+          'Wall profile references inactive edge ${entry.key}.',
+        );
+      }
+      ordinalProfiles[ordinal] = entry.value;
     }
     final materializedSpace = legacySpace.copyWith(
+      wallProfiles: Map.unmodifiable(ordinalProfiles),
       boundaryEdgeWallProfiles: Map.unmodifiable(stableProfiles),
     );
 
@@ -358,8 +383,6 @@ abstract final class CanonicalBoundaryHostProjection {
 
   static String _openingKey(String openingId, SpaceId spaceId) =>
       'opening:$openingId:${spaceId.value}';
-  static String _wallProfileKey(SpaceId spaceId, BoundaryEdgeId edgeId) =>
-      'wall-profile:${spaceId.value}:${edgeId.value}';
   static String _componentKey(String componentId) => 'component:$componentId';
   static String _cableSourceKey(String routeId) => 'cable:$routeId:source';
   static String _cableTargetKey(String routeId) => 'cable:$routeId:target';
