@@ -73,13 +73,13 @@ void main() {
     expect(mutations.current.version, LocalProjectVersion(1));
     expect(mutations.undoDepth, 1);
     expect(
-      mutations.current.engineeringMetadata.boundaryHostedObjectRegistry[
-          winnerKey],
+      mutations
+          .current.engineeringMetadata.boundaryHostedObjectRegistry[winnerKey],
       isNotNull,
     );
     expect(
-      mutations.current.engineeringMetadata.boundaryHostedObjectRegistry[
-          loserKey],
+      mutations
+          .current.engineeringMetadata.boundaryHostedObjectRegistry[loserKey],
       isNull,
     );
   });
