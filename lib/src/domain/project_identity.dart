@@ -102,6 +102,16 @@ final class RouteId extends EntityId {
   RouteId(super.value);
 }
 
+/// Stable identity for one durable intermediate point of a physical route.
+///
+/// Segment and point indexes are transient editing coordinates and must never be
+/// used as persistence identity. Legacy routes may temporarily have no anchor
+/// identities; P7A-5 persistence fails closed for those interior points until a
+/// migration assigns explicit [RouteAnchorId] values.
+final class RouteAnchorId extends EntityId {
+  RouteAnchorId(super.value);
+}
+
 final class GenerationId extends EntityId {
   GenerationId(super.value);
 }
