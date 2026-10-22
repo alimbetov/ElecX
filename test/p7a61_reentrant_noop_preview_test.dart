@@ -44,7 +44,8 @@ void main() {
       expect(mutations.undoDepth, 1);
     });
 
-    test('preview cannot return a candidate after reentrant version advance', () {
+    test('preview cannot return a candidate after reentrant version advance',
+        () {
       final fixture = _Fixture();
       final initial = fixture.project();
       final mutations = ProjectMutationSession(initial);
