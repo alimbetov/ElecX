@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:elecx/src/application/project/project_snapshot.dart';
 import 'package:elecx/src/domain/boundary_edge_identity_registry.dart';
 import 'package:elecx/src/domain/boundary_geometry_integrity.dart';
+import 'package:elecx/src/domain/boundary_host_migration.dart';
+import 'package:elecx/src/domain/boundary_host_registry.dart';
 import 'package:elecx/src/domain/boundary_topology.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
@@ -28,14 +30,8 @@ void main() {
       );
 
       expect(first.topology.validate(), isEmpty);
-      expect(
-        BoundaryGeometryIntegrity.validate(first.topology),
-        isEmpty,
-      );
-      expect(
-        first.topology.orderedEdgeIds,
-        second.topology.orderedEdgeIds,
-      );
+      expect(BoundaryGeometryIntegrity.validate(first.topology), isEmpty);
+      expect(first.topology.orderedEdgeIds, second.topology.orderedEdgeIds);
       for (final edgeId in first.topology.orderedEdgeIds) {
         expect(first.identityRegistry.ownerOf(edgeId), SpaceId('space-a'));
       }
@@ -52,7 +48,6 @@ void main() {
         spaceId: SpaceId('space-a'),
         polygon: [..._rectangle, _rectangle.first],
       );
-
       expect(closed.topology.orderedEdgeIds, open.topology.orderedEdgeIds);
     });
 
@@ -67,11 +62,10 @@ void main() {
         spaceId: SpaceId('space-b'),
         polygon: _rectangle,
       );
-
       expect(
-        a.topology.orderedEdgeIds.toSet().intersection(
-              b.topology.orderedEdgeIds.toSet(),
-            ),
+        a.topology.orderedEdgeIds
+            .toSet()
+            .intersection(b.topology.orderedEdgeIds.toSet()),
         isEmpty,
       );
     });
@@ -88,11 +82,10 @@ void main() {
         spaceId: SpaceId('space-a'),
         polygon: _rectangle,
       );
-
       expect(
-        a.topology.orderedEdgeIds.toSet().intersection(
-              b.topology.orderedEdgeIds.toSet(),
-            ),
+        a.topology.orderedEdgeIds
+            .toSet()
+            .intersection(b.topology.orderedEdgeIds.toSet()),
         isEmpty,
       );
     });
@@ -108,11 +101,10 @@ void main() {
         spaceId: SpaceId('a|space'),
         polygon: _rectangle,
       );
-
       expect(
-        left.topology.orderedEdgeIds.toSet().intersection(
-              right.topology.orderedEdgeIds.toSet(),
-            ),
+        left.topology.orderedEdgeIds
+            .toSet()
+            .intersection(right.topology.orderedEdgeIds.toSet()),
         isEmpty,
       );
     });
@@ -151,7 +143,7 @@ void main() {
       );
     });
 
-    test('schema v4 round-trip preserves boundary ids and tombstones', () {
+    test('schema v5 round-trip preserves boundary ids tombstones and hosts', () {
       final fixture = _BoundarySnapshotFixture.valid();
       const codec = CanonicalProjectDocumentCodec();
 
@@ -159,7 +151,7 @@ void main() {
       final restored = codec.decode(encoded);
       final reencoded = codec.encode(restored);
 
-      expect(encoded.schemaVersion, 4);
+      expect(encoded.schemaVersion, 5);
       expect(
         restored.aggregate.index.boundary(fixture.spaceId)?.orderedEdgeIds,
         fixture.migrated.topology.orderedEdgeIds,
@@ -169,6 +161,15 @@ void main() {
             .ownerOf(fixture.retiredEdgeId),
         fixture.spaceId,
       );
+      final restoredComponent = restored.aggregate.engineeringMetadata
+          .boundaryHostedObjectRegistry['component:c1']!;
+      expect(restoredComponent.host.edgeId, fixture.firstEdgeId);
+      expect(restoredComponent.startOffsetMm, 1000);
+      final restoredOpening = restored.aggregate.engineeringMetadata
+          .boundaryHostedObjectRegistry['opening:o1']!;
+      expect(restoredOpening.host.edgeId, fixture.firstEdgeId);
+      expect(restoredOpening.startOffsetMm, 1200);
+      expect(restoredOpening.endOffsetMm, 2000);
       expect(reencoded.payload, encoded.payload);
     });
 
@@ -181,7 +182,6 @@ void main() {
         version: LocalProjectVersion(7),
         stores: fixture.stores,
       );
-
       expect(
         () => ProjectSnapshot(
           aggregate: aggregate,
@@ -195,11 +195,10 @@ void main() {
 
     test('persistence snapshot rejects historical owner mismatch', () {
       final fixture = _BoundarySnapshotFixture.valid();
-      final firstEdgeId = fixture.migrated.topology.orderedEdgeIds.first;
       final mismatchedRegistry = BoundaryEdgeIdentityRegistry({
         ...fixture.migrated.identityRegistry.owners,
         fixture.retiredEdgeId: fixture.spaceId,
-        firstEdgeId: SpaceId('foreign-space'),
+        fixture.firstEdgeId: SpaceId('foreign-space'),
       });
       final aggregate = ProjectAggregateRoot(
         id: fixture.projectId,
@@ -210,7 +209,6 @@ void main() {
         ),
         stores: fixture.stores,
       );
-
       expect(
         () => ProjectSnapshot(
           aggregate: aggregate,
@@ -222,8 +220,7 @@ void main() {
       );
     });
 
-    test('codec rejects self-intersecting schema v4 geometry as format error',
-        () {
+    test('codec rejects current-schema self-intersecting geometry', () {
       final fixture = _BoundarySnapshotFixture.valid();
       const codec = CanonicalProjectDocumentCodec();
       final document = codec.encode(fixture.snapshot);
@@ -239,6 +236,48 @@ void main() {
         edge['start'] = <String, Object?>{'xMm': start.xMm, 'yMm': start.yMm};
         edge['end'] = <String, Object?>{'xMm': end.xMm, 'yMm': end.yMm};
       }
+      expect(
+        () => codec.decode(
+          ProjectDocument(
+            schemaVersion: document.schemaVersion,
+            payload: payload.cast<String, Object?>(),
+          ),
+        ),
+        throwsFormatException,
+      );
+    });
+
+    test('codec rejects hosted reference to inactive boundary edge', () {
+      final fixture = _BoundarySnapshotFixture.valid();
+      const codec = CanonicalProjectDocumentCodec();
+      final document = codec.encode(fixture.snapshot);
+      final payload =
+          jsonDecode(jsonEncode(document.payload)) as Map<String, dynamic>;
+      final hosted = payload['boundaryHostedObjectRegistry'] as List<dynamic>;
+      (hosted.first as Map<String, dynamic>)['edgeId'] = 'missing-edge';
+
+      expect(
+        () => codec.decode(
+          ProjectDocument(
+            schemaVersion: document.schemaVersion,
+            payload: payload.cast<String, Object?>(),
+          ),
+        ),
+        throwsFormatException,
+      );
+    });
+
+    test('codec rejects hosted geometry beyond active edge length', () {
+      final fixture = _BoundarySnapshotFixture.valid();
+      const codec = CanonicalProjectDocumentCodec();
+      final document = codec.encode(fixture.snapshot);
+      final payload =
+          jsonDecode(jsonEncode(document.payload)) as Map<String, dynamic>;
+      final hosted = payload['boundaryHostedObjectRegistry'] as List<dynamic>;
+      final component = hosted.cast<Map<String, dynamic>>().firstWhere(
+            (entry) => entry['objectKey'] == 'component:c1',
+          );
+      component['startOffsetMm'] = 5000;
 
       expect(
         () => codec.decode(
@@ -253,14 +292,8 @@ void main() {
 
     test('registry rejects edge re-parent after tombstone restoration', () {
       final edgeId = BoundaryEdgeId('edge-stable');
-      final registry = BoundaryEdgeIdentityRegistry({
-        edgeId: SpaceId('space-a'),
-      });
-      final foreignTopology = _triangleTopology(
-        SpaceId('space-b'),
-        edgeId,
-      );
-
+      final registry = BoundaryEdgeIdentityRegistry({edgeId: SpaceId('space-a')});
+      final foreignTopology = _triangleTopology(SpaceId('space-b'), edgeId);
       expect(
         () => registry.registerActiveBoundaries({
           SpaceId('space-b'): foreignTopology,
@@ -296,6 +329,7 @@ final class _BoundarySnapshotFixture {
     required this.projectId,
     required this.siteId,
     required this.spaceId,
+    required this.firstEdgeId,
     required this.retiredEdgeId,
     required this.migrated,
     required this.stores,
@@ -313,10 +347,26 @@ final class _BoundarySnapshotFixture {
       spaceId: spaceId,
       polygon: _rectangle,
     );
+    final firstEdgeId = migrated.topology.orderedEdgeIds.first;
     final retiredEdgeId = BoundaryEdgeId('retired-edge');
     final registry = BoundaryEdgeIdentityRegistry({
       ...migrated.identityRegistry.owners,
       retiredEdgeId: spaceId,
+    });
+    final hostedRegistry = BoundaryHostedObjectRegistry({
+      'component:c1': BoundaryHostedReference.point(
+        objectKey: 'component:c1',
+        objectKind: BoundaryHostedObjectKind.component,
+        host: BoundaryEdgeHostRef(spaceId: spaceId, edgeId: firstEdgeId),
+        offsetMm: 1000,
+      ),
+      'opening:o1': BoundaryHostedReference.interval(
+        objectKey: 'opening:o1',
+        objectKind: BoundaryHostedObjectKind.opening,
+        host: BoundaryEdgeHostRef(spaceId: spaceId, edgeId: firstEdgeId),
+        startOffsetMm: 1200,
+        endOffsetMm: 2000,
+      ),
     });
     final stores = ProjectEntityStores(
       sites: {
@@ -359,6 +409,7 @@ final class _BoundarySnapshotFixture {
       version: LocalProjectVersion(7),
       engineeringMetadata: ProjectEngineeringMetadata(
         boundaryEdgeIdentityRegistry: registry,
+        boundaryHostedObjectRegistry: hostedRegistry,
       ),
       stores: stores,
     );
@@ -368,11 +419,11 @@ final class _BoundarySnapshotFixture {
       createdAt: DateTime.utc(2026, 10, 22, 8),
       updatedAt: DateTime.utc(2026, 10, 22, 9),
     );
-
     return _BoundarySnapshotFixture._(
       projectId: projectId,
       siteId: siteId,
       spaceId: spaceId,
+      firstEdgeId: firstEdgeId,
       retiredEdgeId: retiredEdgeId,
       migrated: migrated,
       stores: stores,
@@ -383,6 +434,7 @@ final class _BoundarySnapshotFixture {
   final ProjectId projectId;
   final SiteId siteId;
   final SpaceId spaceId;
+  final BoundaryEdgeId firstEdgeId;
   final BoundaryEdgeId retiredEdgeId;
   final LegacyBoundaryMigrationResult migrated;
   final ProjectEntityStores stores;
