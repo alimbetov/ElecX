@@ -1,5 +1,6 @@
 import '../../application/project/project_structure_authoring.dart';
 import 'canonical_editor_runtime_cutover.dart';
+import 'canonical_room_surface_runtime_registry.dart';
 import 'editor_building_workspace.dart';
 
 typedef CanonicalEditorCutoverBlockedCallback = void Function(
@@ -47,16 +48,18 @@ final class CanonicalEditorScreenCutoverBinding {
   bool isBoundTo(EditorBuildingWorkspace candidate) =>
       identical(workspace, candidate);
 
-  /// Attaches the legacy listeners and optionally projects the current
-  /// canonical location into the canvas. Calling start twice is a no-op.
+  /// Attaches the legacy listeners and the runtime-only stable-surface bridge,
+  /// then optionally projects the current canonical location into the canvas.
+  /// Calling start twice is a no-op.
   ///
-  /// Unexpected initial-push failures roll listener registration back so the
-  /// screen cannot remain half-started. Controlled materialization blockers do
-  /// not throw and keep the binding active for later valid navigation.
+  /// Unexpected initial-push failures roll listener/registry ownership back so
+  /// the screen cannot remain half-started. Controlled materialization blockers
+  /// do not throw and keep the binding active for later valid navigation.
   void start({bool pushInitialCanonicalState = true}) {
     _requireNotDisposed();
     if (_started) return;
     _started = true;
+    CanonicalRoomSurfaceRuntimeRegistry.attach(coordinator);
     workspace.addListener(_onLegacyRuntimeChanged);
     workspace.editor.addListener(_onLegacyRuntimeChanged);
     _lastLegacySelectionFingerprint = _legacySelectionFingerprint();
@@ -88,6 +91,7 @@ final class CanonicalEditorScreenCutoverBinding {
       coordinator.pushCanonicalToEditor();
       _lastLegacySelectionFingerprint = _legacySelectionFingerprint();
       _lastRejectedLegacySelectionFingerprint = null;
+      CanonicalRoomSurfaceRuntimeRegistry.applyStagedResume(workspace.editor);
       return readiness;
     } on CanonicalEditorCutoverBlockedException catch (error) {
       onBlocked?.call(error.result);
@@ -98,8 +102,9 @@ final class CanonicalEditorScreenCutoverBinding {
     }
   }
 
-  /// Detaches all listeners. The coordinator/session are externally owned and
-  /// are deliberately not disposed by this transitional binding.
+  /// Detaches all listeners and runtime-only stable-surface ownership. The
+  /// coordinator/session are externally owned and are deliberately not disposed
+  /// by this transitional binding.
   void dispose() {
     if (_disposed) return;
     _disposed = true;
@@ -143,6 +148,7 @@ final class CanonicalEditorScreenCutoverBinding {
       );
 
   void _detachListeners() {
+    CanonicalRoomSurfaceRuntimeRegistry.detach(coordinator);
     if (!_started) return;
     workspace.removeListener(_onLegacyRuntimeChanged);
     workspace.editor.removeListener(_onLegacyRuntimeChanged);
