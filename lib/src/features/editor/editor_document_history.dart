@@ -89,6 +89,19 @@ final class EditorDocumentHistory extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// A canonical transition is already authoritative and persistence ownership
+  /// may have succeeded, but a later callback, journal registration or legacy
+  /// projection diverged from that exact committed version. Discard the mixed
+  /// timeline and re-baseline against the state that is actually authoritative.
+  void invalidateAfterCommittedCanonicalDivergence(
+    ProjectStructureAuthoringSession session,
+  ) {
+    if (!identical(_canonicalSession, session)) return;
+    _clearTimeline();
+    _refreshBaselines();
+    notifyListeners();
+  }
+
   /// Records one already-committed P3 mutation in the same chronological
   /// journal as legacy architecture and P2 electrical edits.
   ///
