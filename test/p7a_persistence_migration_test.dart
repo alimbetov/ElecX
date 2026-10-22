@@ -6,9 +6,11 @@ import 'package:elecx/src/domain/boundary_geometry_integrity.dart';
 import 'package:elecx/src/domain/boundary_host_migration.dart';
 import 'package:elecx/src/domain/boundary_host_registry.dart';
 import 'package:elecx/src/domain/boundary_topology.dart';
+import 'package:elecx/src/domain/boundary_wall_profile_registry.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_orientation.dart';
+import 'package:elecx/src/domain/wall_profile.dart';
 import 'package:elecx/src/serialization/project/canonical_project_document_codec.dart';
 import 'package:elecx/src/serialization/project/legacy_boundary_polygon_migration.dart';
 import 'package:elecx/src/serialization/project/project_document_codec.dart';
@@ -143,7 +145,7 @@ void main() {
       );
     });
 
-    test('schema v5 round-trip preserves boundary ids tombstones and hosts', () {
+    test('schema v6 round-trip preserves ids hosts profiles and tombstones', () {
       final fixture = _BoundarySnapshotFixture.valid();
       const codec = CanonicalProjectDocumentCodec();
 
@@ -151,7 +153,7 @@ void main() {
       final restored = codec.decode(encoded);
       final reencoded = codec.encode(restored);
 
-      expect(encoded.schemaVersion, 5);
+      expect(encoded.schemaVersion, CanonicalProjectDocumentCodec.schemaVersion);
       expect(
         restored.aggregate.index.boundary(fixture.spaceId)?.orderedEdgeIds,
         fixture.migrated.topology.orderedEdgeIds,
@@ -170,6 +172,16 @@ void main() {
       expect(restoredOpening.host.edgeId, fixture.firstEdgeId);
       expect(restoredOpening.startOffsetMm, 1200);
       expect(restoredOpening.endOffsetMm, 2000);
+      final restoredProfile = restored.aggregate.engineeringMetadata
+          .boundaryWallProfileRegistry[
+        BoundaryEdgeHostRef(
+          spaceId: fixture.spaceId,
+          edgeId: fixture.firstEdgeId,
+        )
+      ];
+      expect(restoredProfile, isNotNull);
+      expect(restoredProfile!.maxX, 4000);
+      expect(restoredProfile.maxY, 3000);
       expect(reencoded.payload, encoded.payload);
     });
 
@@ -368,6 +380,10 @@ final class _BoundarySnapshotFixture {
         endOffsetMm: 2000,
       ),
     });
+    final profileRegistry = BoundaryWallProfileRegistry({
+      BoundaryEdgeHostRef(spaceId: spaceId, edgeId: firstEdgeId):
+          WallProfile.rectangle(widthMm: 4000, heightMm: 3000),
+    });
     final stores = ProjectEntityStores(
       sites: {
         siteId: ProjectSiteEntity(
@@ -410,6 +426,7 @@ final class _BoundarySnapshotFixture {
       engineeringMetadata: ProjectEngineeringMetadata(
         boundaryEdgeIdentityRegistry: registry,
         boundaryHostedObjectRegistry: hostedRegistry,
+        boundaryWallProfileRegistry: profileRegistry,
       ),
       stores: stores,
     );
