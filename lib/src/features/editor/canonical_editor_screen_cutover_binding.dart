@@ -161,7 +161,8 @@ final class CanonicalEditorScreenCutoverBinding {
 
   void _detachListeners() {
     CanonicalRoomSurfaceRuntimeRegistry.detach(coordinator);
-    workspace.editor.documentHistory.detachCanonicalSession(coordinator.session);
+    workspace.editor.documentHistory
+        .detachCanonicalSession(coordinator.session);
     if (!_started) return;
     workspace.removeListener(_onLegacyRuntimeChanged);
     workspace.editor.removeListener(_onLegacyRuntimeChanged);
