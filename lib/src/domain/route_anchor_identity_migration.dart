@@ -13,6 +13,8 @@ abstract final class RouteAnchorIdentityMigration {
     ElectricalCableRoute route,
     EntityIdFactory ids,
   ) {
+    _requireUniqueExistingAnchorIds(route);
+
     var changed = false;
     final segments = <ElectricalRouteSegment>[];
     for (final segment in route.segments) {
@@ -37,7 +39,8 @@ abstract final class RouteAnchorIdentityMigration {
       );
     }
     if (!changed) return route;
-    return ElectricalCableRoute(
+
+    final migrated = ElectricalCableRoute(
       id: route.id,
       source: route.source,
       target: route.target,
@@ -46,5 +49,21 @@ abstract final class RouteAnchorIdentityMigration {
       medium: route.medium,
       reservePercent: route.reservePercent,
     );
+    _requireUniqueExistingAnchorIds(migrated);
+    return migrated;
+  }
+
+  static void _requireUniqueExistingAnchorIds(ElectricalCableRoute route) {
+    final seen = <RouteAnchorId>{};
+    for (final segment in route.segments) {
+      for (final anchorId in segment.anchorIds) {
+        if (!seen.add(anchorId)) {
+          throw StateError(
+            'Route ${route.id} contains duplicate durable RouteAnchorId '
+            '${anchorId.value}.',
+          );
+        }
+      }
+    }
   }
 }
