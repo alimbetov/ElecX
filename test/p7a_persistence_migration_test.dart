@@ -76,7 +76,8 @@ void main() {
       );
     });
 
-    test('same legacy polygon in another project gets different identities', () {
+    test('same legacy polygon in another project gets different identities',
+        () {
       final a = LegacyBoundaryPolygonMigration.migrate(
         projectId: ProjectId('project-a'),
         spaceId: SpaceId('space-a'),
