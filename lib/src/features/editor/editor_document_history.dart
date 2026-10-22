@@ -190,6 +190,7 @@ final class EditorDocumentHistory extends ChangeNotifier {
       _refreshBaselines();
       succeeded = true;
     } catch (_) {
+      _reconcileCanonicalAfterHistoryFailure(entry);
       _clearTimeline();
       _refreshBaselines();
     } finally {
@@ -210,6 +211,7 @@ final class EditorDocumentHistory extends ChangeNotifier {
       _refreshBaselines();
       succeeded = true;
     } catch (_) {
+      _reconcileCanonicalAfterHistoryFailure(entry);
       _clearTimeline();
       _refreshBaselines();
     } finally {
@@ -217,6 +219,24 @@ final class EditorDocumentHistory extends ChangeNotifier {
     }
     notifyListeners();
     return succeeded;
+  }
+
+  /// A canonical replay can fail before mutation because the observed version
+  /// is stale, or after mutation because rematerialization/ownership failed.
+  /// In both cases canonical state remains authoritative. Re-project it when
+  /// the entry still belongs to the attached canonical session so the legacy
+  /// editor cannot remain a second, stale representation after the timeline is
+  /// invalidated.
+  void _reconcileCanonicalAfterHistoryFailure(_DocumentEntry entry) {
+    if (entry is! _CanonicalEntry) return;
+    final session = _canonicalSession;
+    if (session == null || !identical(session, entry.session)) return;
+    try {
+      entry.rematerialize();
+    } catch (_) {
+      // The timeline is still invalidated below. A rematerialization failure is
+      // intentionally not allowed to trigger a second history mutation.
+    }
   }
 
   void _refreshBaselines() {
