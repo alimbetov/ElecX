@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
+
 import '../../domain/boundary_edge_identity_registry.dart';
 import '../../domain/boundary_topology.dart';
 import '../../domain/project_identity.dart';
@@ -10,6 +12,8 @@ import '../../domain/project_identity.dart';
 /// The migration never uses wallIndex as durable identity. The old polygon
 /// order is only an input to deterministic ID allocation during the one-time
 /// conversion. Once created, BoundaryEdgeId is persisted and reused verbatim.
+/// Generated ids are opaque SHA-256 digests so their textual representation
+/// does not encode project, space or geometry semantics.
 abstract final class LegacyBoundaryPolygonMigration {
   static LegacyBoundaryMigrationResult migrate({
     required ProjectId projectId,
@@ -101,8 +105,8 @@ abstract final class LegacyBoundaryPolygonMigration {
       polygonSeed,
       edgeOrdinal.toString(),
     ].join('|');
-    final encoded = base64Url.encode(utf8.encode(seed)).replaceAll('=', '');
-    return 'be_$encoded';
+    final digest = sha256.convert(utf8.encode(seed));
+    return 'be_${digest.toString()}';
   }
 }
 
