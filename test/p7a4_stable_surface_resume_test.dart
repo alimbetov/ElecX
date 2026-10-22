@@ -62,8 +62,6 @@ void main() {
     addTearDown(restored.editor.disposeP2State);
     addTearDown(restored.editor.dispose);
 
-    // Raw document restore cannot project a wall before canonical identity is
-    // attached. Stable resume is staged while the legacy editor remains Plan.
     expect(restored.editor.viewMode, EditorViewMode.plan);
     expect(restored.editor.activeSurface, isNull);
 
@@ -108,7 +106,8 @@ void main() {
     expect(fixture.controller.activeSurface, isNull);
   });
 
-  test('projection is reconstructed after canonical project version changes', () {
+  test('projection is reconstructed after canonical project version changes',
+      () {
     final fixture = _Fixture();
     addTearDown(fixture.dispose);
     final runtime = fixture.bind(fixture.workspace);
