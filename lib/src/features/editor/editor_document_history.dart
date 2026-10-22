@@ -33,6 +33,7 @@ final class EditorDocumentHistory extends ChangeNotifier {
   int _canonicalProjectionDepth = 0;
   ProjectStructureAuthoringSession? _canonicalSession;
   LocalProjectVersion? _canonicalObservedVersion;
+  CanonicalHistoryReplayOwner? _canonicalReplayOwner;
 
   bool get canUndo => _undo.isNotEmpty;
   bool get canRedo => _redo.isNotEmpty;
@@ -41,20 +42,26 @@ final class EditorDocumentHistory extends ChangeNotifier {
   String? get undoLabel => _undo.isEmpty ? null : _undo.last.label;
   String? get redoLabel => _redo.isEmpty ? null : _redo.last.label;
 
-  void attachCanonicalSession(ProjectStructureAuthoringSession session) {
+  void attachCanonicalSession(
+    ProjectStructureAuthoringSession session, {
+    CanonicalHistoryReplayOwner? onReplayed,
+  }) {
     if (identical(_canonicalSession, session)) {
       _canonicalObservedVersion ??= session.project.version;
+      _canonicalReplayOwner = onReplayed;
       return;
     }
     if (_canonicalSession != null) _clearTimeline();
     _canonicalSession = session;
     _canonicalObservedVersion = session.project.version;
+    _canonicalReplayOwner = onReplayed;
   }
 
   void detachCanonicalSession(ProjectStructureAuthoringSession session) {
     if (!identical(_canonicalSession, session)) return;
     _canonicalSession = null;
     _canonicalObservedVersion = null;
+    _canonicalReplayOwner = null;
     _clearTimeline();
   }
 
@@ -64,19 +71,17 @@ final class EditorDocumentHistory extends ChangeNotifier {
   /// The version must be exactly one step after the last observed canonical
   /// version. Any gap means a canonical mutation bypassed this production
   /// journal, so chronological Undo can no longer be proven and is discarded.
-  /// [onReplayed] must acknowledge every future canonical Undo/Redo commit;
-  /// replay is a new P3 version and therefore cannot bypass persistence owner.
   void recordCanonicalCommit({
     required ProjectStructureAuthoringSession session,
     required String label,
     required CanonicalHistoryRematerializer rematerialize,
-    required CanonicalHistoryReplayOwner onReplayed,
   }) {
     if (_replaying) return;
     if (!identical(_canonicalSession, session)) {
       _clearTimeline();
       _canonicalSession = session;
       _canonicalObservedVersion = session.project.version;
+      _canonicalReplayOwner = null;
       notifyListeners();
       return;
     }
@@ -96,7 +101,6 @@ final class EditorDocumentHistory extends ChangeNotifier {
         label: label,
         session: session,
         rematerialize: rematerialize,
-        onReplayed: onReplayed,
       ),
     );
   }
@@ -221,24 +225,26 @@ final class EditorDocumentHistory extends ChangeNotifier {
 
   void _undoCanonical(_CanonicalEntry entry) {
     final session = _requireCanonicalAffinity(entry);
+    final owner = _requireCanonicalReplayOwner();
     final result = session.undoCanonicalMutation();
     if (result == null) {
       throw StateError('Canonical history expected an undoable P3 mutation.');
     }
     _canonicalObservedVersion = result.project.version;
     entry.rematerialize();
-    entry.onReplayed(result);
+    owner(result);
   }
 
   void _redoCanonical(_CanonicalEntry entry) {
     final session = _requireCanonicalAffinity(entry);
+    final owner = _requireCanonicalReplayOwner();
     final result = session.redoCanonicalMutation();
     if (result == null) {
       throw StateError('Canonical history expected a redoable P3 mutation.');
     }
     _canonicalObservedVersion = result.project.version;
     entry.rematerialize();
-    entry.onReplayed(result);
+    owner(result);
   }
 
   ProjectStructureAuthoringSession _requireCanonicalAffinity(
@@ -253,6 +259,16 @@ final class EditorDocumentHistory extends ChangeNotifier {
       throw StateError('Canonical production history observed a version gap.');
     }
     return session;
+  }
+
+  CanonicalHistoryReplayOwner _requireCanonicalReplayOwner() {
+    final owner = _canonicalReplayOwner;
+    if (owner == null) {
+      throw StateError(
+        'Canonical production history has no persistence owner for replay.',
+      );
+    }
+    return owner;
   }
 
   @override
@@ -305,14 +321,12 @@ final class _CanonicalEntry extends _DocumentEntry {
     required this.label,
     required this.session,
     required this.rematerialize,
-    required this.onReplayed,
   });
 
   @override
   final String label;
   final ProjectStructureAuthoringSession session;
   final CanonicalHistoryRematerializer rematerialize;
-  final CanonicalHistoryReplayOwner onReplayed;
 
   @override
   void undo(EditorDocumentHistory history) => history._undoCanonical(this);
