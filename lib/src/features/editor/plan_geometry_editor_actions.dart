@@ -16,7 +16,7 @@ extension PlanGeometryEditorActions on EditorController {
       return CanonicalBoundaryTopologyEditingRuntime.commitCandidate(
         this,
         candidate,
-        materializeLegacy: () => _commitSelectedBoundaryLegacy(candidate),
+        materializeLegacy: _commitSelectedBoundaryLegacy,
       );
     }
     return _commitSelectedBoundaryLegacy(candidate);
