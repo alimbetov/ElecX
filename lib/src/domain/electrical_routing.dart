@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'electrical_placement.dart';
+import 'project_identity.dart';
 import 'route_medium.dart';
 import 'surfaces.dart';
 
@@ -15,10 +16,37 @@ final class ElectricalEndpointRef {
 }
 
 final class ElectricalRouteSegment {
-  const ElectricalRouteSegment({required this.surface, required this.points});
+  ElectricalRouteSegment({
+    required this.surface,
+    required this.points,
+    Iterable<RouteAnchorId> anchorIds = const <RouteAnchorId>[],
+  }) : anchorIds = List<RouteAnchorId>.unmodifiable(anchorIds) {
+    if (this.anchorIds.isNotEmpty && this.anchorIds.length != points.length) {
+      throw ArgumentError(
+        'Stable route anchor ids must be supplied for every segment point or '
+        'omitted entirely for a legacy segment.',
+      );
+    }
+    if (this.anchorIds.toSet().length != this.anchorIds.length) {
+      throw ArgumentError('Route segment anchor ids must be unique.');
+    }
+  }
 
   final RoomSurfaceRef surface;
   final List<SurfacePointMm> points;
+
+  /// Stable identities corresponding 1:1 with [points]. Empty means this is a
+  /// legacy route segment that has not yet been migrated to durable anchors.
+  /// P7A-5 wall-host persistence must fail closed for interior points in that
+  /// state rather than derive identity from segment/point indexes.
+  final List<RouteAnchorId> anchorIds;
+
+  bool get hasStableAnchorIdentity =>
+      points.isEmpty || anchorIds.length == points.length;
+
+  RouteAnchorId? anchorIdAt(int pointIndex) => anchorIds.isEmpty
+      ? null
+      : anchorIds[pointIndex];
 
   double get lengthMm {
     var length = 0.0;
