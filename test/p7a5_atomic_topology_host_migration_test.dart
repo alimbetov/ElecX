@@ -7,166 +7,180 @@ import 'package:elecx/src/domain/boundary_wall_profile_registry.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_orientation.dart';
+import 'package:elecx/src/domain/project_space_semantics.dart';
 import 'package:elecx/src/domain/wall_profile.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P7A-5 atomic topology + hosted object migration', () {
     test(
-        'split commits topology hosted references and wall profile as one undo record',
-        () {
-      final fixture = _Fixture();
-      final initial = fixture.project(
-        hostedObjects: fixture.hostedObjectsOnBottom(),
-        wallProfiles: fixture.wallProfilesOnBottom(),
-      );
-      final mutations = ProjectMutationSession(initial);
-      final migration = ProjectBoundaryTopologyMigrationService(mutations);
+      'split commits topology hosted references and wall profile as one undo record',
+      () {
+        final fixture = _Fixture();
+        final initial = fixture.project(
+          hostedObjects: fixture.hostedObjectsOnBottom(),
+          wallProfiles: fixture.wallProfilesOnBottom(),
+        );
+        final mutations = ProjectMutationSession(initial);
+        final migration = ProjectBoundaryTopologyMigrationService(mutations);
 
-      final edit = migration.begin(
-        spaceId: fixture.spaceId,
-        expectedVersion: initial.version,
-      );
-      final preview = edit.previewSplitEdge(
-        sourceEdgeId: fixture.bottom,
-        splitPoint: const BoundaryPointMm(xMm: 2000, yMm: 0),
-        firstResultEdgeId: fixture.bottomA,
-        secondResultEdgeId: fixture.bottomB,
-      );
+        final edit = migration.begin(
+          spaceId: fixture.spaceId,
+          expectedVersion: initial.version,
+        );
+        final preview = edit.previewSplitEdge(
+          sourceEdgeId: fixture.bottom,
+          splitPoint: const BoundaryPointMm(xMm: 2000, yMm: 0),
+          firstResultEdgeId: fixture.bottomA,
+          secondResultEdgeId: fixture.bottomB,
+        );
 
-      expect(preview.topology.orderedEdgeIds.take(2), [
-        fixture.bottomA,
-        fixture.bottomB,
-      ]);
-      expect(
-        preview.hostedObjects['opening:o1']!.host.edgeId,
-        fixture.bottomB,
-      );
-      expect(preview.hostedObjects['opening:o1']!.startOffsetMm, 400);
-      expect(preview.hostedObjects['opening:o1']!.endOffsetMm, 1200);
-      expect(
-        preview.hostedObjects['component:c1']!.host.edgeId,
-        fixture.bottomA,
-      );
-      expect(preview.hostedObjects['component:c1']!.startOffsetMm, 1000);
-      expect(
-        preview.hostedObjects['cable:r1:source']!.host.edgeId,
-        fixture.bottomB,
-      );
-      expect(
-        preview.hostedObjects['route-anchor:anchor-1']!.host.edgeId,
-        fixture.bottomB,
-      );
-      expect(
-        preview.wallProfiles[
-          BoundaryEdgeHostRef(
+        expect(preview.topology.orderedEdgeIds.take(2), [
+          fixture.bottomA,
+          fixture.bottomB,
+        ]);
+        expect(
+          preview.hostedObjects[fixture.openingKey]!.host.edgeId,
+          fixture.bottomB,
+        );
+        expect(
+          preview.hostedObjects[fixture.openingKey]!.startOffsetMm,
+          400,
+        );
+        expect(
+          preview.hostedObjects[fixture.openingKey]!.endOffsetMm,
+          1200,
+        );
+        expect(
+          preview.hostedObjects['component:c1']!.host.edgeId,
+          fixture.bottomA,
+        );
+        expect(preview.hostedObjects['component:c1']!.startOffsetMm, 1000);
+        expect(
+          preview.hostedObjects['cable:r1:source']!.host.edgeId,
+          fixture.bottomB,
+        );
+        expect(
+          preview.hostedObjects['route-anchor:anchor-1']!.host.edgeId,
+          fixture.bottomB,
+        );
+        expect(
+          preview.wallProfiles[BoundaryEdgeHostRef(
             spaceId: fixture.spaceId,
             edgeId: fixture.bottom,
-          )
-        ],
-        isNull,
-      );
-      expect(
-        preview.wallProfiles[
-          BoundaryEdgeHostRef(
+          )],
+          isNull,
+        );
+        expect(
+          preview
+              .wallProfiles[BoundaryEdgeHostRef(
             spaceId: fixture.spaceId,
             edgeId: fixture.bottomA,
-          )
-        ]!.maxX,
-        2000,
-      );
-      expect(
-        preview.wallProfiles[
-          BoundaryEdgeHostRef(
+          )]!
+              .maxX,
+          2000,
+        );
+        expect(
+          preview
+              .wallProfiles[BoundaryEdgeHostRef(
             spaceId: fixture.spaceId,
             edgeId: fixture.bottomB,
-          )
-        ]!.maxX,
-        2000,
-      );
+          )]!
+              .maxX,
+          2000,
+        );
 
-      final committed = edit.commit();
-      expect(committed, isNotNull);
-      expect(committed!.mutation.project.version, LocalProjectVersion(1));
-      expect(mutations.undoDepth, 1);
-      expect(
-        committed.mutation.changeSet.engineeringMetadataDiff
-            .boundaryHostedObjectRegistryChanged,
-        isTrue,
-      );
-      expect(
-        committed.mutation.changeSet.engineeringMetadataDiff
-            .boundaryWallProfileRegistryChanged,
-        isTrue,
-      );
-      expect(
-        mutations.current.index.boundary(fixture.spaceId)!.orderedEdgeIds,
-        [
-          fixture.bottomA,
+        final committed = edit.commit();
+        expect(committed, isNotNull);
+        expect(committed!.mutation.project.version, LocalProjectVersion(1));
+        expect(mutations.undoDepth, 1);
+        expect(
+          committed.mutation.changeSet.engineeringMetadataDiff
+              .boundaryHostedObjectRegistryChanged,
+          isTrue,
+        );
+        expect(
+          committed.mutation.changeSet.engineeringMetadataDiff
+              .boundaryWallProfileRegistryChanged,
+          isTrue,
+        );
+        expect(
+          mutations.current.index.boundary(fixture.spaceId)!.orderedEdgeIds,
+          [
+            fixture.bottomA,
+            fixture.bottomB,
+            fixture.east,
+            fixture.north,
+            fixture.west,
+          ],
+        );
+        expect(
+          mutations.current.engineeringMetadata
+              .boundaryHostedObjectRegistry[fixture.openingKey]!
+              .host
+              .edgeId,
           fixture.bottomB,
-          fixture.east,
-          fixture.north,
-          fixture.west,
-        ],
-      );
-      expect(
-        mutations.current.engineeringMetadata
-            .boundaryHostedObjectRegistry['opening:o1']!.host.edgeId,
-        fixture.bottomB,
-      );
+        );
 
-      final undone = mutations.undo(mutations.current.version);
-      expect(undone, isNotNull);
-      expect(undone!.project.version, LocalProjectVersion(2));
-      expect(
-        undone.project.index.boundary(fixture.spaceId)!.orderedEdgeIds,
-        [fixture.bottom, fixture.east, fixture.north, fixture.west],
-      );
-      expect(
-        undone.project.engineeringMetadata
-            .boundaryHostedObjectRegistry['opening:o1']!.host.edgeId,
-        fixture.bottom,
-      );
-      expect(
-        undone.project.engineeringMetadata.boundaryWallProfileRegistry[
-          BoundaryEdgeHostRef(
+        final undone = mutations.undo(mutations.current.version);
+        expect(undone, isNotNull);
+        expect(undone!.project.version, LocalProjectVersion(2));
+        expect(
+          undone.project.index.boundary(fixture.spaceId)!.orderedEdgeIds,
+          [fixture.bottom, fixture.east, fixture.north, fixture.west],
+        );
+        expect(
+          undone.project.engineeringMetadata
+              .boundaryHostedObjectRegistry[fixture.openingKey]!
+              .host
+              .edgeId,
+          fixture.bottom,
+        );
+        expect(
+          undone
+              .project
+              .engineeringMetadata
+              .boundaryWallProfileRegistry[BoundaryEdgeHostRef(
             spaceId: fixture.spaceId,
             edgeId: fixture.bottom,
-          )
-        ]!.maxX,
-        4000,
-      );
-      expect(
-        undone.project.engineeringMetadata.boundaryEdgeIdentityRegistry.ownerOf(
-          fixture.bottomA,
-        ),
-        fixture.spaceId,
-      );
-      expect(
-        undone.project.engineeringMetadata.boundaryEdgeIdentityRegistry.ownerOf(
-          fixture.bottomB,
-        ),
-        fixture.spaceId,
-      );
+          )]!
+              .maxX,
+          4000,
+        );
+        expect(
+          undone.project.engineeringMetadata.boundaryEdgeIdentityRegistry
+              .ownerOf(fixture.bottomA),
+          fixture.spaceId,
+        );
+        expect(
+          undone.project.engineeringMetadata.boundaryEdgeIdentityRegistry
+              .ownerOf(fixture.bottomB),
+          fixture.spaceId,
+        );
 
-      final redone = mutations.redo(mutations.current.version);
-      expect(redone, isNotNull);
-      expect(redone!.project.version, LocalProjectVersion(3));
-      expect(
-        redone.project.engineeringMetadata
-            .boundaryHostedObjectRegistry['opening:o1']!.host.edgeId,
-        fixture.bottomB,
-      );
-      expect(
-        redone.project.engineeringMetadata.boundaryWallProfileRegistry[
-          BoundaryEdgeHostRef(
+        final redone = mutations.redo(mutations.current.version);
+        expect(redone, isNotNull);
+        expect(redone!.project.version, LocalProjectVersion(3));
+        expect(
+          redone.project.engineeringMetadata
+              .boundaryHostedObjectRegistry[fixture.openingKey]!
+              .host
+              .edgeId,
+          fixture.bottomB,
+        );
+        expect(
+          redone
+              .project
+              .engineeringMetadata
+              .boundaryWallProfileRegistry[BoundaryEdgeHostRef(
             spaceId: fixture.spaceId,
             edgeId: fixture.bottomA,
-          )
-        ]!.maxX,
-        2000,
-      );
-    });
+          )]!
+              .maxX,
+          2000,
+        );
+      },
+    );
 
     test('opening crossing split blocks before canonical mutation', () {
       final fixture = _Fixture();
@@ -251,8 +265,8 @@ void main() {
             ),
             offsetMm: 1000,
           ),
-          'opening:o1': BoundaryHostedReference.interval(
-            objectKey: 'opening:o1',
+          fixture.openingKey: BoundaryHostedReference.interval(
+            objectKey: fixture.openingKey,
             objectKind: BoundaryHostedObjectKind.opening,
             host: BoundaryEdgeHostRef(
               spaceId: fixture.spaceId,
@@ -291,18 +305,24 @@ void main() {
       );
       expect(preview.hostedObjects['component:c1']!.startOffsetMm, 1000);
       expect(
-        preview.hostedObjects['opening:o1']!.host.edgeId,
+        preview.hostedObjects[fixture.openingKey]!.host.edgeId,
         fixture.bottomMerged,
       );
-      expect(preview.hostedObjects['opening:o1']!.startOffsetMm, 2400);
-      expect(preview.hostedObjects['opening:o1']!.endOffsetMm, 3200);
       expect(
-        preview.wallProfiles[
-          BoundaryEdgeHostRef(
-            spaceId: fixture.spaceId,
-            edgeId: fixture.bottomMerged,
-          )
-        ]!.maxX,
+        preview.hostedObjects[fixture.openingKey]!.startOffsetMm,
+        2400,
+      );
+      expect(
+        preview.hostedObjects[fixture.openingKey]!.endOffsetMm,
+        3200,
+      );
+      expect(
+        preview
+            .wallProfiles[BoundaryEdgeHostRef(
+          spaceId: fixture.spaceId,
+          edgeId: fixture.bottomMerged,
+        )]!
+            .maxX,
         4000,
       );
 
@@ -347,6 +367,7 @@ final class _Fixture {
   final buildingId = BuildingId('building-p7a5');
   final levelId = LevelId('level-p7a5');
   final spaceId = SpaceId('space-p7a5');
+  final openingId = OpeningId('o1');
 
   final bottom = BoundaryEdgeId('bottom');
   final bottomA = BoundaryEdgeId('bottom-a');
@@ -356,6 +377,9 @@ final class _Fixture {
   final north = BoundaryEdgeId('north');
   final west = BoundaryEdgeId('west');
 
+  String get openingKey =>
+      BoundaryHostedObjectRegistry.openingObjectKey(openingId, spaceId);
+
   ProjectAggregateRoot project({
     SpaceBoundaryTopology? boundary,
     BoundaryHostedObjectRegistry hostedObjects =
@@ -364,6 +388,17 @@ final class _Fixture {
         const BoundaryWallProfileRegistry.empty(),
   }) {
     final topology = boundary ?? initialBoundary();
+    final openings = <OpeningId, ProjectOpeningEntity>{};
+    if (hostedObjects[openingKey] != null) {
+      openings[openingId] = ProjectOpeningEntity(
+        id: openingId,
+        levelId: levelId,
+        kind: OpeningKind.door,
+        connectedSpaceIds: [spaceId],
+        widthMm: 800,
+        heightMm: 2100,
+      );
+    }
     return ProjectAggregateRoot(
       id: projectId,
       siteId: siteId,
@@ -405,6 +440,7 @@ final class _Fixture {
             name: 'Room',
           ),
         },
+        openings: openings,
         boundaries: {spaceId: topology},
       ),
     );
@@ -412,8 +448,8 @@ final class _Fixture {
 
   BoundaryHostedObjectRegistry hostedObjectsOnBottom() =>
       BoundaryHostedObjectRegistry({
-        'opening:o1': BoundaryHostedReference.interval(
-          objectKey: 'opening:o1',
+        openingKey: BoundaryHostedReference.interval(
+          objectKey: openingKey,
           objectKind: BoundaryHostedObjectKind.opening,
           host: BoundaryEdgeHostRef(spaceId: spaceId, edgeId: bottom),
           startOffsetMm: 2400,
