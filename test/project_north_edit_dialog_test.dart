@@ -4,8 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('invalid input stays open and exposes validation text',
-      (tester) async {
+  testWidgets('invalid input stays open and exposes validation text', (
+    tester,
+  ) async {
     ProjectEngineeringNorth? result;
 
     await tester.pumpWidget(
@@ -15,9 +16,8 @@ void main() {
             onPressed: () async {
               result = await showDialog<ProjectEngineeringNorth>(
                 context: context,
-                builder: (_) => const ProjectNorthEditDialog(
-                  initialValue: null,
-                ),
+                builder: (_) =>
+                    const ProjectNorthEditDialog(initialValue: null),
               );
             },
             child: const Text('Open'),
@@ -37,12 +37,15 @@ void main() {
 
     expect(find.byKey(const ValueKey('project-north-dialog')), findsOneWidget);
     expect(
-        find.text('Введите конечное числовое значение угла.'), findsOneWidget);
+      find.text('Введите конечное числовое значение угла.'),
+      findsOneWidget,
+    );
     expect(result, isNull);
   });
 
-  testWidgets('valid value closes cleanly and returns canonical north',
-      (tester) async {
+  testWidgets('valid value closes cleanly and returns canonical north', (
+    tester,
+  ) async {
     ProjectEngineeringNorth? result;
 
     await tester.pumpWidget(
@@ -77,8 +80,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('cancel returns no value and performs no implicit mutation',
-      (tester) async {
+  testWidgets('cancel returns no value and performs no implicit mutation', (
+    tester,
+  ) async {
     ProjectEngineeringNorth? result;
 
     await tester.pumpWidget(

@@ -44,39 +44,37 @@ final class EditorP2State {
     Map<String, CableRouteConstraints>? routeConstraints,
     List<CircuitCableBundle>? circuitBundles,
     Map<String, CircuitSizingEvidence>? sizingEvidenceByRoute,
-  }) =>
-      EditorP2State(
-        components: components ?? this.components,
-        routes: routes ?? this.routes,
-        selection: selection ?? this.selection,
-        routeConstraints: routeConstraints ?? this.routeConstraints,
-        circuitBundles: circuitBundles ?? this.circuitBundles,
-        sizingEvidenceByRoute:
-            sizingEvidenceByRoute ?? this.sizingEvidenceByRoute,
-      );
+  }) => EditorP2State(
+    components: components ?? this.components,
+    routes: routes ?? this.routes,
+    selection: selection ?? this.selection,
+    routeConstraints: routeConstraints ?? this.routeConstraints,
+    circuitBundles: circuitBundles ?? this.circuitBundles,
+    sizingEvidenceByRoute: sizingEvidenceByRoute ?? this.sizingEvidenceByRoute,
+  );
 }
 
 final class EditorP2Session extends ChangeNotifier {
   EditorP2Session({
     EditorP2State initialState = const EditorP2State(),
     RouteNormativeContext? Function(RoomSurfaceRef surface)?
-        routeContextResolver,
-  })  : _routeContextResolver = routeContextResolver,
-        _componentSequence = _nextSequence(
-          prefix: 'component-',
-          ids: initialState.components.map((item) => item.id),
-        ),
-        _routeSequence = _nextSequence(
-          prefix: 'route-',
-          ids: initialState.routes.map((item) => item.id),
-        ),
-        history = CommandHistory<EditorP2State>(initialState) {
+    routeContextResolver,
+  }) : _routeContextResolver = routeContextResolver,
+       _componentSequence = _nextSequence(
+         prefix: 'component-',
+         ids: initialState.components.map((item) => item.id),
+       ),
+       _routeSequence = _nextSequence(
+         prefix: 'route-',
+         ids: initialState.routes.map((item) => item.id),
+       ),
+       history = CommandHistory<EditorP2State>(initialState) {
     _validateUniqueIds(initialState);
   }
 
   final CommandHistory<EditorP2State> history;
   final RouteNormativeContext? Function(RoomSurfaceRef surface)?
-      _routeContextResolver;
+  _routeContextResolver;
   final EditorLayerRegistry layers = EditorLayerRegistry();
   SnapCandidate? activeSnap;
   ElectricalComponentType? placementType;
@@ -466,9 +464,10 @@ final class EditorP2Session extends ChangeNotifier {
           return false;
         }
       } else {
-        final movedComponent = movedById[sourceSelected
-            ? route.source.componentId
-            : route.target.componentId];
+        final movedComponent =
+            movedById[sourceSelected
+                ? route.source.componentId
+                : route.target.componentId];
         if (movedComponent == null) {
           _movePreviewValid = false;
           return false;
@@ -513,7 +512,8 @@ final class EditorP2Session extends ChangeNotifier {
     final origin = _moveOriginState;
     final componentIds = _moveComponentIds;
     final after = state;
-    final previewValid = _movePreviewValid &&
+    final previewValid =
+        _movePreviewValid &&
         componentIds.isNotEmpty &&
         _movePreviewValidState(after, componentIds);
     _clearMoveTransaction();
@@ -973,7 +973,9 @@ final class EditorP2Session extends ChangeNotifier {
           if (candidate.validation.isValid) {
             return [
               ElectricalRouteSegment(
-                  surface: surface, points: candidate.points),
+                surface: surface,
+                points: candidate.points,
+              ),
             ];
           }
         }
@@ -1004,9 +1006,7 @@ final class EditorP2Session extends ChangeNotifier {
     return solution == null ? null : RouteEngine.toSegments(graph, solution);
   }
 
-  static List<SurfacePointMm> _compactOrthogonal(
-    List<SurfacePointMm> points,
-  ) {
+  static List<SurfacePointMm> _compactOrthogonal(List<SurfacePointMm> points) {
     final result = <SurfacePointMm>[];
     for (final point in points) {
       if (result.isEmpty || result.last != point) result.add(point);
@@ -1102,8 +1102,8 @@ final class EditorP2Session extends ChangeNotifier {
           primaryId: ids.contains(selection.primaryId)
               ? selection.primaryId
               : ids.isEmpty
-                  ? null
-                  : ids.first,
+              ? null
+              : ids.first,
         ),
       ),
       notify: false,
@@ -1116,10 +1116,10 @@ final class EditorP2Session extends ChangeNotifier {
   }
 
   bool _componentHasConnectedRoutes(String componentId) => routes.any(
-        (route) =>
-            route.source.componentId == componentId ||
-            route.target.componentId == componentId,
-      );
+    (route) =>
+        route.source.componentId == componentId ||
+        route.target.componentId == componentId,
+  );
 
   ElectricalCableRoute? _routeForId(String routeId) {
     for (final route in routes) {
@@ -1137,13 +1137,12 @@ final class EditorP2Session extends ChangeNotifier {
   static EditorP2State _replaceComponent(
     EditorP2State state,
     ElectricalComponentPlacement replacement,
-  ) =>
-      state.copyWith(
-        components: [
-          for (final component in state.components)
-            if (component.id == replacement.id) replacement else component,
-        ],
-      );
+  ) => state.copyWith(
+    components: [
+      for (final component in state.components)
+        if (component.id == replacement.id) replacement else component,
+    ],
+  );
 
   ElectricalCableRoute? _rerouteForMovedComponent({
     required ElectricalCableRoute route,
@@ -1172,10 +1171,11 @@ final class EditorP2Session extends ChangeNotifier {
       return _routeGeometryIsValid(replacement) ? replacement : null;
     }
 
-    final waypoints = constraints.mandatoryWaypoints
-        .where((item) => item.segmentIndex == segmentIndex)
-        .toList()
-      ..sort((a, b) => a.pointIndex.compareTo(b.pointIndex));
+    final waypoints =
+        constraints.mandatoryWaypoints
+            .where((item) => item.segmentIndex == segmentIndex)
+            .toList()
+          ..sort((a, b) => a.pointIndex.compareTo(b.pointIndex));
     for (final waypoint in waypoints) {
       if (waypoint.pointIndex >= segment.points.length ||
           segment.points[waypoint.pointIndex] != waypoint.point) {
@@ -1237,49 +1237,47 @@ final class EditorP2Session extends ChangeNotifier {
     ElectricalCableRoute route, {
     required int dxMm,
     required int dyMm,
-  }) =>
-      ElectricalCableRoute(
-        id: route.id,
-        source: route.source,
-        target: route.target,
-        segments: [
-          for (final segment in route.segments)
-            ElectricalRouteSegment(
-              surface: segment.surface,
-              points: List.unmodifiable([
-                for (final point in segment.points)
-                  SurfacePointMm(point.xMm + dxMm, point.yMm + dyMm),
-              ]),
-            ),
-        ],
-        cableType: route.cableType,
-        medium: route.medium,
-        reservePercent: route.reservePercent,
-      );
+  }) => ElectricalCableRoute(
+    id: route.id,
+    source: route.source,
+    target: route.target,
+    segments: [
+      for (final segment in route.segments)
+        ElectricalRouteSegment(
+          surface: segment.surface,
+          points: List.unmodifiable([
+            for (final point in segment.points)
+              SurfacePointMm(point.xMm + dxMm, point.yMm + dyMm),
+          ]),
+        ),
+    ],
+    cableType: route.cableType,
+    medium: route.medium,
+    reservePercent: route.reservePercent,
+  );
 
   static ElectricalCableRoute _routeWithSegment(
     ElectricalCableRoute route,
     int segmentIndex,
     List<SurfacePointMm> points,
-  ) =>
-      ElectricalCableRoute(
-        id: route.id,
-        source: route.source,
-        target: route.target,
-        segments: [
-          for (var i = 0; i < route.segments.length; i++)
-            if (i == segmentIndex)
-              ElectricalRouteSegment(
-                surface: route.segments[i].surface,
-                points: List.unmodifiable(points),
-              )
-            else
-              route.segments[i],
-        ],
-        cableType: route.cableType,
-        medium: route.medium,
-        reservePercent: route.reservePercent,
-      );
+  ) => ElectricalCableRoute(
+    id: route.id,
+    source: route.source,
+    target: route.target,
+    segments: [
+      for (var i = 0; i < route.segments.length; i++)
+        if (i == segmentIndex)
+          ElectricalRouteSegment(
+            surface: route.segments[i].surface,
+            points: List.unmodifiable(points),
+          )
+        else
+          route.segments[i],
+    ],
+    cableType: route.cableType,
+    medium: route.medium,
+    reservePercent: route.reservePercent,
+  );
 
   static ElectricalComponentPlacement? _componentForId(
     EditorP2State state,
@@ -1291,10 +1289,7 @@ final class EditorP2Session extends ChangeNotifier {
     return null;
   }
 
-  bool _movePreviewValidState(
-    EditorP2State preview,
-    Set<String> componentIds,
-  ) {
+  bool _movePreviewValidState(EditorP2State preview, Set<String> componentIds) {
     for (final route in preview.routes) {
       if (!componentIds.contains(route.source.componentId) &&
           !componentIds.contains(route.target.componentId)) {
@@ -1377,8 +1372,9 @@ final class EditorP2Session extends ChangeNotifier {
     }
     for (final waypoint in constraints.mandatoryWaypoints) {
       if (waypoint.segmentIndex >= after.segments.length ||
-          !after.segments[waypoint.segmentIndex].points
-              .contains(waypoint.point)) {
+          !after.segments[waypoint.segmentIndex].points.contains(
+            waypoint.point,
+          )) {
         return false;
       }
     }
@@ -1532,8 +1528,8 @@ final Expando<EditorP2Session> _p2Sessions = Expando<EditorP2Session>(
 
 extension EditorP2SessionAccess on EditorController {
   EditorP2Session get p2 => _p2Sessions[this] ??= EditorP2Session(
-        routeContextResolver: routeNormativeContextFor,
-      );
+    routeContextResolver: routeNormativeContextFor,
+  );
 
   void restoreP2State(EditorP2State state) {
     final previous = _p2Sessions[this];
@@ -1563,10 +1559,10 @@ final class _AddComponentCommand implements EditorCommand<EditorP2State> {
 
   @override
   EditorP2State undo(EditorP2State state) => state.copyWith(
-        components: state.components
-            .where((item) => item.id != component.id)
-            .toList(growable: false),
-      );
+    components: state.components
+        .where((item) => item.id != component.id)
+        .toList(growable: false),
+  );
 }
 
 final class _ReplaceComponentCommand implements EditorCommand<EditorP2State> {
@@ -1599,8 +1595,8 @@ final class _AddRouteCommand implements EditorCommand<EditorP2State> {
 
   @override
   EditorP2State undo(EditorP2State state) => state.copyWith(
-        routes: state.routes
-            .where((item) => item.id != route.id)
-            .toList(growable: false),
-      );
+    routes: state.routes
+        .where((item) => item.id != route.id)
+        .toList(growable: false),
+  );
 }

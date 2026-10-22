@@ -9,8 +9,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('shows useful canonical room semantics and changes usage',
-      (tester) async {
+  testWidgets('shows useful canonical room semantics and changes usage', (
+    tester,
+  ) async {
     SpaceUsage? selected;
     await tester.pumpWidget(
       MaterialApp(
@@ -44,8 +45,9 @@ void main() {
     expect(selected, SpaceUsage.office);
   });
 
-  testWidgets('read-only projection exposes usage without an editor control',
-      (tester) async {
+  testWidgets('read-only projection exposes usage without an editor control', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(

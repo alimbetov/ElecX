@@ -19,10 +19,9 @@ abstract interface class ComponentCatalogRepository {
 final class InMemoryComponentCatalogRepository
     implements ComponentCatalogRepository {
   InMemoryComponentCatalogRepository([Iterable<ComponentCatalogEntryV2>? seed])
-      : _entries = {
-          for (final entry in seed ?? ComponentCatalogV2.entries)
-            entry.id: entry,
-        };
+    : _entries = {
+        for (final entry in seed ?? ComponentCatalogV2.entries) entry.id: entry,
+      };
 
   final Map<String, ComponentCatalogEntryV2> _entries;
 
@@ -36,20 +35,18 @@ final class InMemoryComponentCatalogRepository
   @override
   Future<List<ComponentCatalogEntryV2>> forSurface(
     SurfacePlaneType surface,
-  ) async =>
-      List.unmodifiable(
-        _entries.values.where(
-          (entry) => entry.mounting.allowedSurfaces.contains(surface),
-        ),
-      );
+  ) async => List.unmodifiable(
+    _entries.values.where(
+      (entry) => entry.mounting.allowedSurfaces.contains(surface),
+    ),
+  );
 
   @override
   Future<List<ComponentCatalogEntryV2>> forSystem(
     EngineeringSystemClass systemClass,
-  ) async =>
-      List.unmodifiable(
-        _entries.values.where((entry) => entry.systemClass == systemClass),
-      );
+  ) async => List.unmodifiable(
+    _entries.values.where((entry) => entry.systemClass == systemClass),
+  );
 
   @override
   Future<void> replaceAll(Iterable<ComponentCatalogEntryV2> entries) async {

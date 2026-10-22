@@ -22,8 +22,10 @@ void main() {
       final state = ProjectNavigationState.initial(project)
           .selectSpace(project, SpaceId('a-space-1'));
 
-      final switched =
-          state.activateBuilding(project, BuildingId('building-b'));
+      final switched = state.activateBuilding(
+        project,
+        BuildingId('building-b'),
+      );
 
       expect(switched.activeBuildingId, BuildingId('building-b'));
       expect(switched.activeLevelId, LevelId('b-level-1'));
@@ -113,22 +115,24 @@ void main() {
       expect(restored.selectedSpaceId, SpaceId('a-space-1'));
     });
 
-    test('restore repairs invalid identities without label or number rebinding',
-        () {
-      final project = _project(includeBuildingA: false);
+    test(
+      'restore repairs invalid identities without label or number rebinding',
+      () {
+        final project = _project(includeBuildingA: false);
 
-      final restored = ProjectNavigationState.restore(
-        project,
-        activeBuildingId: BuildingId('missing-building'),
-        activeLevelId: LevelId('a-level-1'),
-        selectedSpaceId: SpaceId('missing-space'),
-      );
+        final restored = ProjectNavigationState.restore(
+          project,
+          activeBuildingId: BuildingId('missing-building'),
+          activeLevelId: LevelId('a-level-1'),
+          selectedSpaceId: SpaceId('missing-space'),
+        );
 
-      expect(restored.activeBuildingId, BuildingId('building-b'));
-      expect(restored.activeLevelId, LevelId('b-level-1'));
-      expect(restored.selectedZoneId, isNull);
-      expect(restored.selectedSpaceId, isNull);
-    });
+        expect(restored.activeBuildingId, BuildingId('building-b'));
+        expect(restored.activeLevelId, LevelId('b-level-1'));
+        expect(restored.selectedZoneId, isNull);
+        expect(restored.selectedSpaceId, isNull);
+      },
+    );
 
     test('reconcile clears deleted selected Space and keeps Level context', () {
       final before = _project();
@@ -144,20 +148,22 @@ void main() {
       expect(repaired.selectedSpaceId, isNull);
     });
 
-    test('generic reconcile replaces deleted active Level deterministically',
-        () {
-      final before = _project();
-      final state = ProjectNavigationState.initial(before)
-          .activateLevel(before, LevelId('a-level-2'));
-      final after = _project(includeSecondLevelA: false);
+    test(
+      'generic reconcile replaces deleted active Level deterministically',
+      () {
+        final before = _project();
+        final state = ProjectNavigationState.initial(before)
+            .activateLevel(before, LevelId('a-level-2'));
+        final after = _project(includeSecondLevelA: false);
 
-      final repaired = state.reconcile(after);
+        final repaired = state.reconcile(after);
 
-      expect(repaired.activeBuildingId, BuildingId('building-a'));
-      expect(repaired.activeLevelId, LevelId('a-level-1'));
-      expect(repaired.selectedZoneId, isNull);
-      expect(repaired.selectedSpaceId, isNull);
-    });
+        expect(repaired.activeBuildingId, BuildingId('building-a'));
+        expect(repaired.activeLevelId, LevelId('a-level-1'));
+        expect(repaired.selectedZoneId, isNull);
+        expect(repaired.selectedSpaceId, isNull);
+      },
+    );
 
     test('mutation reconcile chooses next surviving Level neighbor first', () {
       final before = _project(includeThirdLevelA: true);
@@ -168,35 +174,42 @@ void main() {
         includeThirdLevelA: true,
       );
 
-      final repaired =
-          state.reconcileAfterMutation(before: before, after: after);
+      final repaired = state.reconcileAfterMutation(
+        before: before,
+        after: after,
+      );
 
       expect(repaired.activeBuildingId, BuildingId('building-a'));
       expect(repaired.activeLevelId, LevelId('a-level-3'));
     });
 
     test(
-        'mutation reconcile falls back to previous Level when no next survives',
-        () {
-      final before = _project();
-      final state = ProjectNavigationState.initial(before)
-          .activateLevel(before, LevelId('a-level-2'));
-      final after = _project(includeSecondLevelA: false);
+      'mutation reconcile falls back to previous Level when no next survives',
+      () {
+        final before = _project();
+        final state = ProjectNavigationState.initial(before)
+            .activateLevel(before, LevelId('a-level-2'));
+        final after = _project(includeSecondLevelA: false);
 
-      final repaired =
-          state.reconcileAfterMutation(before: before, after: after);
+        final repaired = state.reconcileAfterMutation(
+          before: before,
+          after: after,
+        );
 
-      expect(repaired.activeBuildingId, BuildingId('building-a'));
-      expect(repaired.activeLevelId, LevelId('a-level-1'));
-    });
+        expect(repaired.activeBuildingId, BuildingId('building-a'));
+        expect(repaired.activeLevelId, LevelId('a-level-1'));
+      },
+    );
 
     test('reconcile replaces deleted active Building deterministically', () {
       final before = _project();
       final state = ProjectNavigationState.initial(before);
       final after = _project(includeBuildingA: false);
 
-      final repaired =
-          state.reconcileAfterMutation(before: before, after: after);
+      final repaired = state.reconcileAfterMutation(
+        before: before,
+        after: after,
+      );
 
       expect(repaired.activeBuildingId, BuildingId('building-b'));
       expect(repaired.activeLevelId, LevelId('b-level-1'));
@@ -208,8 +221,10 @@ void main() {
           .activateLevel(before, LevelId('a-level-1'));
       final after = _project(includeBuildingA: false);
 
-      final repaired =
-          state.reconcileAfterMutation(before: before, after: after);
+      final repaired = state.reconcileAfterMutation(
+        before: before,
+        after: after,
+      );
 
       expect(repaired.activeLevelId, LevelId('b-level-1'));
       expect(repaired.activeLevelId, isNot(LevelId('a-level-1')));
@@ -309,8 +324,9 @@ ProjectAggregateRoot _project({
             displayOrder: 0,
             elevationMm: 0,
             zoneIds: includeZoneAndSpace ? <ZoneId>[zoneId] : const <ZoneId>[],
-            spaceIds:
-                includeZoneAndSpace ? <SpaceId>[spaceId] : const <SpaceId>[],
+            spaceIds: includeZoneAndSpace
+                ? <SpaceId>[spaceId]
+                : const <SpaceId>[],
           ),
         if (includeBuildingA && includeSecondLevelA)
           aLevel2Id: ProjectLevelEntity(

@@ -17,110 +17,116 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('selected canonical room exposes read-only semantics without owner',
-      (tester) async {
-    _useDesktopSurface(tester);
-    final fixture = _fixture(projectId: 'p6f-read-only');
+  testWidgets(
+    'selected canonical room exposes read-only semantics without owner',
+    (tester) async {
+      _useDesktopSurface(tester);
+      final fixture = _fixture(projectId: 'p6f-read-only');
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: UnifiedWorkspaceEditorScreen(
-          projectStore: fixture.store,
-          initialDocument: fixture.document,
-          canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
-            resolveRuntime: (_, __) => fixture.runtime,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: UnifiedWorkspaceEditorScreen(
+            projectStore: fixture.store,
+            initialDocument: fixture.document,
+            canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
+              resolveRuntime: (_, __) => fixture.runtime,
+            ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.byType(SpaceSemanticsInspector), findsOneWidget);
-    expect(
-      find.byKey(const ValueKey('space-semantics-production-inspector')),
-      findsOneWidget,
-    );
-    expect(find.byKey(const ValueKey('space-semantics-usage')), findsNothing);
-    expect(find.text('Kitchen'), findsOneWidget);
-    expect(find.text('Saved'), findsOneWidget);
-    expect(fixture.session.project.version.value, 0);
-  });
+      expect(find.byType(SpaceSemanticsInspector), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('space-semantics-production-inspector')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('space-semantics-usage')), findsNothing);
+      expect(find.text('Kitchen'), findsOneWidget);
+      expect(find.text('Saved'), findsOneWidget);
+      expect(fixture.session.project.version.value, 0);
+    },
+  );
 
-  testWidgets('owned usage edit commits once and leaves legacy document saved',
-      (tester) async {
-    _useDesktopSurface(tester);
-    final fixture = _fixture(projectId: 'p6f-owned');
-    var ownershipReceipts = 0;
+  testWidgets(
+    'owned usage edit commits once and leaves legacy document saved',
+    (tester) async {
+      _useDesktopSurface(tester);
+      final fixture = _fixture(projectId: 'p6f-owned');
+      var ownershipReceipts = 0;
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: UnifiedWorkspaceEditorScreen(
-          projectStore: fixture.store,
-          initialDocument: fixture.document,
-          canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
-            resolveRuntime: (_, __) => fixture.runtime,
-            onSpaceSemanticsCommitted: (editing, result) {
-              ownershipReceipts++;
-              expect(editing.projectId, fixture.session.project.id);
-              expect(result.project.version.value, 1);
-              return const CanonicalAuthoringOwnershipReceipt.accepted();
-            },
+      await tester.pumpWidget(
+        MaterialApp(
+          home: UnifiedWorkspaceEditorScreen(
+            projectStore: fixture.store,
+            initialDocument: fixture.document,
+            canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
+              resolveRuntime: (_, __) => fixture.runtime,
+              onSpaceSemanticsCommitted: (editing, result) {
+                ownershipReceipts++;
+                expect(editing.projectId, fixture.session.project.id);
+                expect(result.project.version.value, 1);
+                return const CanonicalAuthoringOwnershipReceipt.accepted();
+              },
+            ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    final usage = find.byKey(const ValueKey('space-semantics-usage'));
-    expect(usage, findsOneWidget);
-    expect(fixture.session.project.version.value, 0);
+      final usage = find.byKey(const ValueKey('space-semantics-usage'));
+      expect(usage, findsOneWidget);
+      expect(fixture.session.project.version.value, 0);
 
-    await tester.tap(usage);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Bedroom').last);
-    await tester.pumpAndSettle();
+      await tester.tap(usage);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Bedroom').last);
+      await tester.pumpAndSettle();
 
-    expect(ownershipReceipts, 1);
-    expect(fixture.session.project.version.value, 1);
-    expect(
-      fixture.session.project.index.space(fixture.spaceId)!.usage,
-      SpaceUsage.bedroom,
-    );
-    expect(find.text('Saved'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+      expect(ownershipReceipts, 1);
+      expect(fixture.session.project.version.value, 1);
+      expect(
+        fixture.session.project.index.space(fixture.spaceId)!.usage,
+        SpaceUsage.bedroom,
+      );
+      expect(find.text('Saved'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
-  testWidgets('persistence owner mismatch keeps semantics inspector read only',
-      (tester) async {
-    _useDesktopSurface(tester);
-    final fixture = _fixture(
-      projectId: 'p6f-owner-mismatch',
-      persistenceOwnerProjectId: ProjectId('different-owner'),
-    );
-    var ownershipReceipts = 0;
+  testWidgets(
+    'persistence owner mismatch keeps semantics inspector read only',
+    (tester) async {
+      _useDesktopSurface(tester);
+      final fixture = _fixture(
+        projectId: 'p6f-owner-mismatch',
+        persistenceOwnerProjectId: ProjectId('different-owner'),
+      );
+      var ownershipReceipts = 0;
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: UnifiedWorkspaceEditorScreen(
-          projectStore: fixture.store,
-          initialDocument: fixture.document,
-          canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
-            resolveRuntime: (_, __) => fixture.runtime,
-            onSpaceSemanticsCommitted: (_, __) {
-              ownershipReceipts++;
-              return const CanonicalAuthoringOwnershipReceipt.accepted();
-            },
+      await tester.pumpWidget(
+        MaterialApp(
+          home: UnifiedWorkspaceEditorScreen(
+            projectStore: fixture.store,
+            initialDocument: fixture.document,
+            canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
+              resolveRuntime: (_, __) => fixture.runtime,
+              onSpaceSemanticsCommitted: (_, __) {
+                ownershipReceipts++;
+                return const CanonicalAuthoringOwnershipReceipt.accepted();
+              },
+            ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.byType(SpaceSemanticsInspector), findsOneWidget);
-    expect(find.byKey(const ValueKey('space-semantics-usage')), findsNothing);
-    expect(ownershipReceipts, 0);
-    expect(fixture.session.project.version.value, 0);
-  });
+      expect(find.byType(SpaceSemanticsInspector), findsOneWidget);
+      expect(find.byKey(const ValueKey('space-semantics-usage')), findsNothing);
+      expect(ownershipReceipts, 0);
+      expect(fixture.session.project.version.value, 0);
+    },
+  );
 }
 
 void _useDesktopSurface(WidgetTester tester) {

@@ -15,8 +15,9 @@ final class SetProjectNorthCommand implements ProjectCommand {
   ProjectCommandCandidate buildCandidate(ProjectAggregateRoot current) {
     return ProjectCommandCandidate.fromState(
       state: ProjectMutableState(
-        engineeringMetadata:
-            current.engineeringMetadata.withProjectNorth(north),
+        engineeringMetadata: current.engineeringMetadata.withProjectNorth(
+          north,
+        ),
         stores: current.stores,
       ),
     );

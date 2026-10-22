@@ -96,11 +96,7 @@ CanonicalSpaceSemanticsProjection _projection({
   return CanonicalSpaceSemanticsProjection(
     projectId: projectId,
     projectVersion: version,
-    space: ProjectSpaceEntity(
-      id: spaceId,
-      levelId: levelId,
-      name: 'Room',
-    ),
+    space: ProjectSpaceEntity(id: spaceId, levelId: levelId, name: 'Room'),
     legacySpace: EngineeringSpace(
       id: 'legacy-room',
       name: 'Room',

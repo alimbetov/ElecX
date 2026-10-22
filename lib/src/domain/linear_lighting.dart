@@ -81,16 +81,16 @@ final class LinearLuminaireRun {
     LinearLuminaireFeedMode? feedMode,
     String? driverComponentId,
     bool clearDriver = false,
-  }) =>
-      LinearLuminaireRun(
-        id: id,
-        specId: specId,
-        surface: surface,
-        points: points ?? this.points,
-        feedMode: feedMode ?? this.feedMode,
-        driverComponentId:
-            clearDriver ? null : driverComponentId ?? this.driverComponentId,
-      );
+  }) => LinearLuminaireRun(
+    id: id,
+    specId: specId,
+    surface: surface,
+    points: points ?? this.points,
+    feedMode: feedMode ?? this.feedMode,
+    driverComponentId: clearDriver
+        ? null
+        : driverComponentId ?? this.driverComponentId,
+  );
 
   static double _lengthOf(List<SurfacePointMm> points) {
     var total = 0.0;
@@ -195,11 +195,11 @@ final class LinearLuminaireValidationResult {
   final List<LinearLuminaireValidationIssue> issues;
 
   bool get isValid => issues.every(
-        (issue) => issue.severity != LinearLuminaireValidationSeverity.error,
-      );
+    (issue) => issue.severity != LinearLuminaireValidationSeverity.error,
+  );
   bool get hasWarnings => issues.any(
-        (issue) => issue.severity == LinearLuminaireValidationSeverity.warning,
-      );
+    (issue) => issue.severity == LinearLuminaireValidationSeverity.warning,
+  );
 }
 
 abstract final class LinearLuminaireEngine {

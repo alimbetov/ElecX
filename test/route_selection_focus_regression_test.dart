@@ -7,16 +7,16 @@ import 'package:elecx/src/features/editor/route_selection_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 ElectricalCableRoute _route(String id, int y) => ElectricalCableRoute(
-      id: id,
-      source: const ElectricalEndpointRef(componentId: 'source', portId: 'out'),
-      target: const ElectricalEndpointRef(componentId: 'target', portId: 'in'),
-      segments: [
-        ElectricalRouteSegment(
-          surface: RoomSurfaceRef.wall('room-101', 1),
-          points: [SurfacePointMm(100, y), SurfacePointMm(1000, y)],
-        ),
-      ],
-    );
+  id: id,
+  source: const ElectricalEndpointRef(componentId: 'source', portId: 'out'),
+  target: const ElectricalEndpointRef(componentId: 'target', portId: 'in'),
+  segments: [
+    ElectricalRouteSegment(
+      surface: RoomSurfaceRef.wall('room-101', 1),
+      points: [SurfacePointMm(100, y), SurfacePointMm(1000, y)],
+    ),
+  ],
+);
 
 void main() {
   test('F09 selecting another route clears stale cable geometry focus', () {
@@ -41,8 +41,12 @@ void main() {
 
     controller.cableUi.toggleActiveSegmentLock();
     expect(
-        controller.p2.routeConstraintsFor('route-a').lockedSegments, isEmpty);
+      controller.p2.routeConstraintsFor('route-a').lockedSegments,
+      isEmpty,
+    );
     expect(
-        controller.p2.routeConstraintsFor('route-b').lockedSegments, isEmpty);
+      controller.p2.routeConstraintsFor('route-b').lockedSegments,
+      isEmpty,
+    );
   });
 }

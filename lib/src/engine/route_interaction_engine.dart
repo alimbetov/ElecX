@@ -111,13 +111,11 @@ abstract final class RouteInteractionEngine {
   static List<RouteHostTransition> transitionsOnHost({
     required HostedRoutePath route,
     required RouteHostRef host,
-  }) =>
-      List.unmodifiable(
-        route.transitions.where(
-          (transition) =>
-              transition.fromHost == host || transition.toHost == host,
-        ),
-      );
+  }) => List.unmodifiable(
+    route.transitions.where(
+      (transition) => transition.fromHost == host || transition.toHost == host,
+    ),
+  );
 
   static List<RouteFlowSample> flowSamples({
     required HostedRoutePath route,

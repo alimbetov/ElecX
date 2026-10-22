@@ -31,7 +31,7 @@ final class CanonicalEditorScreenCutoverBinding {
 
   final CanonicalEditorRuntimeCutoverCoordinator coordinator;
   final void Function(ProjectNavigationState navigation)?
-      onCanonicalNavigationChanged;
+  onCanonicalNavigationChanged;
   final CanonicalEditorCutoverBlockedCallback? onBlocked;
   final CanonicalEditorCutoverErrorCallback? onError;
 

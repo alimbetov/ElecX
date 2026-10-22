@@ -26,14 +26,13 @@ final class ComponentMoveState {
   ComponentMoveState copyWith({
     SurfacePointMm? previewPosition,
     bool? isValid,
-  }) =>
-      ComponentMoveState(
-        componentId: componentId,
-        surface: surface,
-        originalPosition: originalPosition,
-        previewPosition: previewPosition ?? this.previewPosition,
-        isValid: isValid ?? this.isValid,
-      );
+  }) => ComponentMoveState(
+    componentId: componentId,
+    surface: surface,
+    originalPosition: originalPosition,
+    previewPosition: previewPosition ?? this.previewPosition,
+    isValid: isValid ?? this.isValid,
+  );
 }
 
 /// Device-independent move transaction for an already placed engineering

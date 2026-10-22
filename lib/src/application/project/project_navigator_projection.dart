@@ -2,13 +2,7 @@ import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import 'project_navigation_state.dart';
 
-enum ProjectNavigatorNodeKind {
-  site,
-  building,
-  level,
-  structuralZone,
-  space,
-}
+enum ProjectNavigatorNodeKind { site, building, level, structuralZone, space }
 
 /// Immutable canonical node projected for Project Navigator presentation.
 ///
@@ -67,8 +61,8 @@ final class ProjectNavigatorProjection {
     required this.rootSiteId,
     required Map<EntityId, ProjectNavigatorNode> nodesById,
     required Map<EntityId, EntityId?> parentById,
-  })  : nodesById = Map.unmodifiable(nodesById),
-        parentById = Map.unmodifiable(parentById);
+  }) : nodesById = Map.unmodifiable(nodesById),
+       parentById = Map.unmodifiable(parentById);
 
   factory ProjectNavigatorProjection.build(ProjectAggregateRoot project) {
     final childIdsByParent = <EntityId, List<EntityId>>{};
@@ -103,10 +97,11 @@ final class ProjectNavigatorProjection {
 
     // Traverse canonical membership IDs directly instead of repeatedly scanning
     // global stores. This keeps projection construction linear in entity count.
-    final buildings = site.buildingIds
-        .map((buildingId) => project.index.building(buildingId)!)
-        .toList()
-      ..sort(_compareBuildings);
+    final buildings =
+        site.buildingIds
+            .map((buildingId) => project.index.building(buildingId)!)
+            .toList()
+          ..sort(_compareBuildings);
     for (final building in buildings) {
       register(
         id: building.id,
@@ -115,10 +110,11 @@ final class ProjectNavigatorProjection {
         parentId: site.id,
       );
 
-      final levels = building.levelIds
-          .map((levelId) => project.index.level(levelId)!)
-          .toList()
-        ..sort(_compareLevels);
+      final levels =
+          building.levelIds
+              .map((levelId) => project.index.level(levelId)!)
+              .toList()
+            ..sort(_compareLevels);
       for (final level in levels) {
         register(
           id: level.id,
@@ -127,10 +123,9 @@ final class ProjectNavigatorProjection {
           parentId: building.id,
         );
 
-        final zones = level.zoneIds
-            .map((zoneId) => project.index.zone(zoneId)!)
-            .toList()
-          ..sort(_compareZones);
+        final zones =
+            level.zoneIds.map((zoneId) => project.index.zone(zoneId)!).toList()
+              ..sort(_compareZones);
         for (final zone in zones) {
           register(
             id: zone.id,
@@ -139,10 +134,11 @@ final class ProjectNavigatorProjection {
             parentId: level.id,
           );
 
-          final zonedSpaces = zone.spaceIds
-              .map((spaceId) => project.index.space(spaceId)!)
-              .toList()
-            ..sort(_compareSpaces);
+          final zonedSpaces =
+              zone.spaceIds
+                  .map((spaceId) => project.index.space(spaceId)!)
+                  .toList()
+                ..sort(_compareSpaces);
           for (final space in zonedSpaces) {
             register(
               id: space.id,
@@ -153,13 +149,15 @@ final class ProjectNavigatorProjection {
           }
         }
 
-        final unzonedSpaces = level.spaceIds
-            .where(
-              (spaceId) => project.index.structuralZoneBySpace[spaceId] == null,
-            )
-            .map((spaceId) => project.index.space(spaceId)!)
-            .toList()
-          ..sort(_compareSpaces);
+        final unzonedSpaces =
+            level.spaceIds
+                .where(
+                  (spaceId) =>
+                      project.index.structuralZoneBySpace[spaceId] == null,
+                )
+                .map((spaceId) => project.index.space(spaceId)!)
+                .toList()
+              ..sort(_compareSpaces);
         for (final space in unzonedSpaces) {
           register(
             id: space.id,
@@ -249,9 +247,7 @@ final class ProjectNavigatorProjection {
   }
 
   /// Breadcrumb and tree-current path are derived from the same source.
-  List<ProjectBreadcrumbItem> breadcrumb(
-    ProjectNavigationState navigation,
-  ) {
+  List<ProjectBreadcrumbItem> breadcrumb(ProjectNavigationState navigation) {
     return List.unmodifiable(
       _pathForNavigation(navigation).map(
         (node) => ProjectBreadcrumbItem(
@@ -266,9 +262,7 @@ final class ProjectNavigatorProjection {
   /// Ancestors that must be expanded to reveal the active/selected leaf.
   ///
   /// The leaf itself is excluded because expansion is a container concern.
-  Set<EntityId> requiredExpandedAncestorIds(
-    ProjectNavigationState navigation,
-  ) {
+  Set<EntityId> requiredExpandedAncestorIds(ProjectNavigationState navigation) {
     final path = _pathForNavigation(navigation);
     if (path.length <= 1) return const <EntityId>{};
     return Set.unmodifiable(path.take(path.length - 1).map((node) => node.id));
@@ -277,14 +271,12 @@ final class ProjectNavigatorProjection {
   bool isActiveBuilding(
     ProjectNavigatorNode node,
     ProjectNavigationState navigation,
-  ) =>
-      node.id == navigation.activeBuildingId;
+  ) => node.id == navigation.activeBuildingId;
 
   bool isActiveLevel(
     ProjectNavigatorNode node,
     ProjectNavigationState navigation,
-  ) =>
-      node.id == navigation.activeLevelId;
+  ) => node.id == navigation.activeLevelId;
 
   /// True only for the selected leaf entity.
   ///
@@ -354,10 +346,7 @@ final class _NavigatorNodeSeed {
   final EntityId? parentId;
 }
 
-int _compareBuildings(
-  ProjectBuildingEntity left,
-  ProjectBuildingEntity right,
-) {
+int _compareBuildings(ProjectBuildingEntity left, ProjectBuildingEntity right) {
   final byOrder = left.displayOrder.compareTo(right.displayOrder);
   if (byOrder != 0) return byOrder;
   return left.id.value.compareTo(right.id.value);

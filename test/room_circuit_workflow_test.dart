@@ -158,158 +158,177 @@ void main() {
   });
 
   testWidgets(
-      'circuit panel connects selected load and exposes incomplete protection',
-      (tester) async {
-    final editor = EditorController.demo();
-    addTearDown(() {
-      editor.disposeP2State();
-      editor.dispose();
-    });
-    final surface = RoomSurfaceRef.wall(editor.selectedSpace!.id, 1);
-    final board = editor.p2.placeComponent(
-      type: ElectricalComponentType.distributionBoard,
-      surface: surface,
-      position: const SurfacePointMm(300, 2200),
-    );
-    final load = editor.p2.placeComponent(
-      type: ElectricalComponentType.socketOutlet,
-      surface: surface,
-      position: const SurfacePointMm(1400, 2200),
-    );
-    editor.p2.select(load.id);
+    'circuit panel connects selected load and exposes incomplete protection',
+    (tester) async {
+      final editor = EditorController.demo();
+      addTearDown(() {
+        editor.disposeP2State();
+        editor.dispose();
+      });
+      final surface = RoomSurfaceRef.wall(editor.selectedSpace!.id, 1);
+      final board = editor.p2.placeComponent(
+        type: ElectricalComponentType.distributionBoard,
+        surface: surface,
+        position: const SurfacePointMm(300, 2200),
+      );
+      final load = editor.p2.placeComponent(
+        type: ElectricalComponentType.socketOutlet,
+        surface: surface,
+        position: const SurfacePointMm(1400, 2200),
+      );
+      editor.p2.select(load.id);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(body: RoomCircuitPanel(controller: editor)),
-      ),
-    );
-    await tester.pump();
-    expect(find.byKey(ValueKey('connect-load-to-board-${board.id}')),
-        findsOneWidget);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: RoomCircuitPanel(controller: editor)),
+        ),
+      );
+      await tester.pump();
+      expect(
+        find.byKey(ValueKey('connect-load-to-board-${board.id}')),
+        findsOneWidget,
+      );
 
-    await tester.tap(find.byKey(ValueKey('connect-load-to-board-${board.id}')));
-    await tester.pump();
-    expect(editor.p2.state.circuitBundles, hasLength(1));
-    expect(find.textContaining('Защита не назначена'), findsOneWidget);
-  });
+      await tester.tap(
+        find.byKey(ValueKey('connect-load-to-board-${board.id}')),
+      );
+      await tester.pump();
+      expect(editor.p2.state.circuitBundles, hasLength(1));
+      expect(find.textContaining('Защита не назначена'), findsOneWidget);
+    },
+  );
 
-  test('manual protective device assignment is undoable engineering evidence',
-      () {
-    final editor = EditorController.demo();
-    final workspace = EditorBuildingWorkspace.demo(editor);
-    addTearDown(() {
-      editor.disposeP2State();
-      workspace.dispose();
-      editor.dispose();
-    });
-    final surface = RoomSurfaceRef.wall(editor.selectedSpace!.id, 1);
-    final board = editor.p2.placeComponent(
-      type: ElectricalComponentType.distributionBoard,
-      surface: surface,
-      position: const SurfacePointMm(300, 2200),
-    );
-    final load = editor.p2.placeComponent(
-      type: ElectricalComponentType.socketOutlet,
-      surface: surface,
-      position: const SurfacePointMm(1400, 2200),
-    );
-    expect(
-      editor.p2.connectLoadToBoard(
-        loadComponentId: load.id,
-        boardComponentId: board.id,
-        space: editor.selectedSpace,
-      ),
-      isNotNull,
-    );
-    final depthBefore = editor.p2.history.undoDepth;
+  test(
+    'manual protective device assignment is undoable engineering evidence',
+    () {
+      final editor = EditorController.demo();
+      final workspace = EditorBuildingWorkspace.demo(editor);
+      addTearDown(() {
+        editor.disposeP2State();
+        workspace.dispose();
+        editor.dispose();
+      });
+      final surface = RoomSurfaceRef.wall(editor.selectedSpace!.id, 1);
+      final board = editor.p2.placeComponent(
+        type: ElectricalComponentType.distributionBoard,
+        surface: surface,
+        position: const SurfacePointMm(300, 2200),
+      );
+      final load = editor.p2.placeComponent(
+        type: ElectricalComponentType.socketOutlet,
+        surface: surface,
+        position: const SurfacePointMm(1400, 2200),
+      );
+      expect(
+        editor.p2.connectLoadToBoard(
+          loadComponentId: load.id,
+          boardComponentId: board.id,
+          space: editor.selectedSpace,
+        ),
+        isNotNull,
+      );
+      final depthBefore = editor.p2.history.undoDepth;
 
-    expect(
-      editor.p2.assignProtectiveDeviceToLoad(
-        loadComponentId: load.id,
-        designation: 'QF-1',
-        ratedCurrentA: 16,
-        poleCount: 1,
-      ),
-      isTrue,
-    );
-    final protected = editor.p2.circuitBundleForLoad(load.id)!;
-    expect(
-        protected.circuit.protectiveDeviceId, protected.protectiveDevice!.id);
-    expect(protected.protectiveDevice!.designation, 'QF-1');
-    expect(protected.protectiveDevice!.ratedCurrentA, 16);
-    expect(editor.p2.history.undoDepth, depthBefore + 1);
+      expect(
+        editor.p2.assignProtectiveDeviceToLoad(
+          loadComponentId: load.id,
+          designation: 'QF-1',
+          ratedCurrentA: 16,
+          poleCount: 1,
+        ),
+        isTrue,
+      );
+      final protected = editor.p2.circuitBundleForLoad(load.id)!;
+      expect(
+        protected.circuit.protectiveDeviceId,
+        protected.protectiveDevice!.id,
+      );
+      expect(protected.protectiveDevice!.designation, 'QF-1');
+      expect(protected.protectiveDevice!.ratedCurrentA, 16);
+      expect(editor.p2.history.undoDepth, depthBefore + 1);
 
-    editor.p2.undo();
-    expect(editor.p2.circuitBundleForLoad(load.id)!.protectiveDevice, isNull);
-    editor.p2.redo();
-    expect(
-        editor.p2.circuitBundleForLoad(load.id)!.protectiveDevice, isNotNull);
-  });
+      editor.p2.undo();
+      expect(editor.p2.circuitBundleForLoad(load.id)!.protectiveDevice, isNull);
+      editor.p2.redo();
+      expect(
+        editor.p2.circuitBundleForLoad(load.id)!.protectiveDevice,
+        isNotNull,
+      );
+    },
+  );
 
-  test('load data and cable specification edits are undoable and persisted',
-      () {
-    final editor = EditorController.demo();
-    final workspace = EditorBuildingWorkspace.demo(editor);
-    addTearDown(() {
-      editor.disposeP2State();
-      workspace.dispose();
-      editor.dispose();
-    });
-    final surface = RoomSurfaceRef.wall(editor.selectedSpace!.id, 1);
-    final board = editor.p2.placeComponent(
-      type: ElectricalComponentType.distributionBoard,
-      surface: surface,
-      position: const SurfacePointMm(300, 2200),
-    );
-    final load = editor.p2.placeComponent(
-      type: ElectricalComponentType.socketOutlet,
-      surface: surface,
-      position: const SurfacePointMm(1400, 2200),
-    );
-    expect(
-      editor.p2.connectLoadToBoard(
-        loadComponentId: load.id,
-        boardComponentId: board.id,
-        space: editor.selectedSpace,
-      ),
-      isNotNull,
-    );
-    expect(
-      editor.p2.updateLoadElectricalData(
-        componentId: load.id,
-        ratedPowerW: 2300,
-        voltageV: 230,
-      ),
-      isTrue,
-    );
-    expect(
-      editor.p2.assignCableSpecificationToLoad(
-        loadComponentId: load.id,
-        cableSpecId: 'VVGng-LS-3x2.5',
-      ),
-      isTrue,
-    );
-    final currentLoad =
-        editor.p2.components.singleWhere((item) => item.id == load.id);
-    expect(currentLoad.ratedPowerW, 2300);
-    expect(editor.p2.circuitBundleForLoad(load.id)!.cable.cableSpecId,
-        'VVGng-LS-3x2.5');
-    expect(editor.p2.routes.single.cableType, 'VVGng-LS-3x2.5');
+  test(
+    'load data and cable specification edits are undoable and persisted',
+    () {
+      final editor = EditorController.demo();
+      final workspace = EditorBuildingWorkspace.demo(editor);
+      addTearDown(() {
+        editor.disposeP2State();
+        workspace.dispose();
+        editor.dispose();
+      });
+      final surface = RoomSurfaceRef.wall(editor.selectedSpace!.id, 1);
+      final board = editor.p2.placeComponent(
+        type: ElectricalComponentType.distributionBoard,
+        surface: surface,
+        position: const SurfacePointMm(300, 2200),
+      );
+      final load = editor.p2.placeComponent(
+        type: ElectricalComponentType.socketOutlet,
+        surface: surface,
+        position: const SurfacePointMm(1400, 2200),
+      );
+      expect(
+        editor.p2.connectLoadToBoard(
+          loadComponentId: load.id,
+          boardComponentId: board.id,
+          space: editor.selectedSpace,
+        ),
+        isNotNull,
+      );
+      expect(
+        editor.p2.updateLoadElectricalData(
+          componentId: load.id,
+          ratedPowerW: 2300,
+          voltageV: 230,
+        ),
+        isTrue,
+      );
+      expect(
+        editor.p2.assignCableSpecificationToLoad(
+          loadComponentId: load.id,
+          cableSpecId: 'VVGng-LS-3x2.5',
+        ),
+        isTrue,
+      );
+      final currentLoad = editor.p2.components.singleWhere(
+        (item) => item.id == load.id,
+      );
+      expect(currentLoad.ratedPowerW, 2300);
+      expect(
+        editor.p2.circuitBundleForLoad(load.id)!.cable.cableSpecId,
+        'VVGng-LS-3x2.5',
+      );
+      expect(editor.p2.routes.single.cableType, 'VVGng-LS-3x2.5');
 
-    final restored = EditorProjectDocument.fromJson(
-      EditorProjectDocument.capture(workspace).toJson(),
-    ).restore();
-    addTearDown(() {
-      restored.editor.disposeP2State();
-      restored.workspace.dispose();
-      restored.editor.dispose();
-    });
-    final restoredLoad =
-        restored.editor.p2.components.singleWhere((item) => item.id == load.id);
-    expect(restoredLoad.ratedPowerW, 2300);
-    expect(restored.editor.p2.circuitBundleForLoad(load.id)!.cable.cableSpecId,
-        'VVGng-LS-3x2.5');
-  });
+      final restored = EditorProjectDocument.fromJson(
+        EditorProjectDocument.capture(workspace).toJson(),
+      ).restore();
+      addTearDown(() {
+        restored.editor.disposeP2State();
+        restored.workspace.dispose();
+        restored.editor.dispose();
+      });
+      final restoredLoad = restored.editor.p2.components.singleWhere(
+        (item) => item.id == load.id,
+      );
+      expect(restoredLoad.ratedPowerW, 2300);
+      expect(
+        restored.editor.p2.circuitBundleForLoad(load.id)!.cable.cableSpecId,
+        'VVGng-LS-3x2.5',
+      );
+    },
+  );
 
   test('sizing evidence is undoable and survives project reopen', () {
     final editor = EditorController.demo();

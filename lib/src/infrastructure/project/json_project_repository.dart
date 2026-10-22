@@ -15,10 +15,7 @@ import '../../serialization/project/project_document_codec.dart';
 /// wired into the production editor yet; P2D must provide a lossless canonical
 /// document/migration path before replacing the legacy editor store.
 final class JsonProjectRepository implements ProjectRepository {
-  JsonProjectRepository({
-    required this.rootDirectory,
-    required this.codec,
-  });
+  JsonProjectRepository({required this.rootDirectory, required this.codec});
 
   final Directory rootDirectory;
   final ProjectDocumentCodec codec;
@@ -188,9 +185,7 @@ final class JsonProjectRepository implements ProjectRepository {
     if (raw is! Map) {
       throw const FormatException('ElecX project root must be a JSON object.');
     }
-    final normalized = raw.map(
-      (key, value) => MapEntry(key.toString(), value),
-    );
+    final normalized = raw.map((key, value) => MapEntry(key.toString(), value));
     final schemaVersion = normalized['schemaVersion'];
     final payload = normalized['payload'];
     if (schemaVersion is! int) {
@@ -201,19 +196,14 @@ final class JsonProjectRepository implements ProjectRepository {
     }
     return ProjectDocument(
       schemaVersion: schemaVersion,
-      payload: payload.map(
-        (key, value) => MapEntry(key.toString(), value),
-      ),
+      payload: payload.map((key, value) => MapEntry(key.toString(), value)),
     );
   }
 
   File _target(ProjectId projectId) {
-    final encoded = base64Url.encode(utf8.encode(projectId.value)).replaceAll(
-          '=',
-          '',
-        );
-    return File(
-      path.join(rootDirectory.path, '$encoded.elecx.project.json'),
-    );
+    final encoded = base64Url
+        .encode(utf8.encode(projectId.value))
+        .replaceAll('=', '');
+    return File(path.join(rootDirectory.path, '$encoded.elecx.project.json'));
   }
 }

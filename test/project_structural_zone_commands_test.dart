@@ -32,10 +32,7 @@ void main() {
         contains(zoneId),
       );
       expect(result.changeSet.addedEntityIds, <EntityId>{zoneId});
-      expect(
-        result.changeSet.updatedEntityIds,
-        <EntityId>{LevelId('level-1')},
-      );
+      expect(result.changeSet.updatedEntityIds, <EntityId>{LevelId('level-1')});
       expect(result.project.version, LocalProjectVersion(1));
       expect(session.undoDepth, 1);
     });
@@ -105,11 +102,7 @@ void main() {
                 'code',
                 ProjectAuthoringIssueCode.structuralZoneAlreadyExists,
               )
-              .having(
-                (error) => error.entityId,
-                'entityId',
-                ZoneId('zone-a'),
-              )
+              .having((error) => error.entityId, 'entityId', ZoneId('zone-a'))
               .having(
                 (error) => error.relatedEntityId,
                 'relatedEntityId',
@@ -142,11 +135,7 @@ void main() {
                 'code',
                 ProjectAuthoringIssueCode.structuralZoneAlreadyExists,
               )
-              .having(
-                (error) => error.entityId,
-                'entityId',
-                ZoneId('zone-a'),
-              )
+              .having((error) => error.entityId, 'entityId', ZoneId('zone-a'))
               .having(
                 (error) => error.relatedEntityId,
                 'relatedEntityId',
@@ -156,10 +145,7 @@ void main() {
       );
       expect(session.current.version, LocalProjectVersion(0));
       expect(session.undoDepth, 0);
-      expect(
-        session.current.index.level(LevelId('level-2'))!.zoneIds,
-        isEmpty,
-      );
+      expect(session.current.index.level(LevelId('level-2'))!.zoneIds, isEmpty);
     });
 
     test('rejects create under a missing level fail closed', () {

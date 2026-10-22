@@ -29,8 +29,8 @@ final class EditorProjectSchemaMigrator {
         2 => _v2ToV3(result),
         3 => _v3ToV4(result),
         _ => throw FormatException(
-            'No ElecX migration registered from schema $version.',
-          ),
+          'No ElecX migration registered from schema $version.',
+        ),
       };
       version = result['schemaVersion']! as int;
     }

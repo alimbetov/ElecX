@@ -90,9 +90,7 @@ void main() {
       for (var i = 0; i < 80 && !floorFocused; i++) {
         await tester.sendKeyEvent(LogicalKeyboardKey.tab);
         await tester.pump();
-        floorFocused = _focusIsInsideKey(
-          const ValueKey('room-surface-floor'),
-        );
+        floorFocused = _focusIsInsideKey(const ValueKey('room-surface-floor'));
       }
 
       expect(floorFocused, isTrue);

@@ -18,12 +18,13 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
     required this.site,
     int initialLevelNumber = 1,
     Map<int, List<ArchitecturalOpening>> initialOpeningsByLevel = const {},
-  })  : _activeLevelNumber = initialLevelNumber,
-        _openingsByLevel = {
-          for (final entry in initialOpeningsByLevel.entries)
-            entry.key: List<ArchitecturalOpening>.of(entry.value),
-        } {
-    final initial = building.levelByNumber(initialLevelNumber) ??
+  }) : _activeLevelNumber = initialLevelNumber,
+       _openingsByLevel = {
+         for (final entry in initialOpeningsByLevel.entries)
+           entry.key: List<ArchitecturalOpening>.of(entry.value),
+       } {
+    final initial =
+        building.levelByNumber(initialLevelNumber) ??
         building.orderedLevels.first;
     _activeLevelNumber = initial.levelNumber;
     _activateLevel(initial);
@@ -157,9 +158,7 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
         value.northAzimuthDegrees) {
       return;
     }
-    site = site.copyWith(
-      site: site.site.copyWith(projectNorth: value),
-    );
+    site = site.copyWith(site: site.site.copyWith(projectNorth: value));
     notifyListeners();
   }
 
@@ -270,8 +269,9 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
     final current = building.levelByNumber(_activeLevelNumber);
     if (current == null) return;
 
-    _openingsByLevel[_activeLevelNumber] =
-        List<ArchitecturalOpening>.of(editor.openings);
+    _openingsByLevel[_activeLevelNumber] = List<ArchitecturalOpening>.of(
+      editor.openings,
+    );
     final updatedLevel = ComposedBuildingLevel(
       level: editor.level,
       levelNumber: current.levelNumber,

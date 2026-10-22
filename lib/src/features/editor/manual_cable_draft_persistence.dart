@@ -112,10 +112,12 @@ _ManualEndpoint? _nearestManualEndpoint({
     }
     for (final port in component.ports) {
       final roleCompatible = switch (role) {
-        CableEndpointRole.source => port.kind == ElectricalPortKind.powerOut ||
-            port.kind == ElectricalPortKind.controlOut,
-        CableEndpointRole.target => port.kind == ElectricalPortKind.powerIn ||
-            port.kind == ElectricalPortKind.controlIn,
+        CableEndpointRole.source =>
+          port.kind == ElectricalPortKind.powerOut ||
+              port.kind == ElectricalPortKind.controlOut,
+        CableEndpointRole.target =>
+          port.kind == ElectricalPortKind.powerIn ||
+              port.kind == ElectricalPortKind.controlIn,
       };
       if (!roleCompatible) continue;
       if (counterpartKind != null) {

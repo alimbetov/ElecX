@@ -12,12 +12,7 @@ void main() {
     });
 
     test('projects cardinal canonical directions directly to the screen', () {
-      final cases = <double, int>{
-        0: 0,
-        90: 90000,
-        180: 180000,
-        270: 270000,
-      };
+      final cases = <double, int>{0: 0, 90: 90000, 180: 180000, 270: 270000};
 
       for (final entry in cases.entries) {
         final north = ProjectEngineeringNorth.fromDegrees(entry.key);
@@ -26,10 +21,7 @@ void main() {
         expect(projected, isA<CompassNorthDefined>());
         final defined = projected as CompassNorthDefined;
         expect(defined.canonicalNorth, north);
-        expect(
-          defined.screenMilliDegreesClockwiseFromUp,
-          entry.value,
-        );
+        expect(defined.screenMilliDegreesClockwiseFromUp, entry.value);
       }
     });
 
@@ -63,10 +55,7 @@ void main() {
     });
 
     test('unsupported projection is explicit and fail closed', () {
-      expect(
-        ProjectCompassProjection.unavailable,
-        isA<CompassUnavailable>(),
-      );
+      expect(ProjectCompassProjection.unavailable, isA<CompassUnavailable>());
     });
   });
 }

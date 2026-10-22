@@ -40,38 +40,30 @@ final class CircuitEngineeringStatus {
   bool get hasLoadData => loadPowerW != null && loadPowerW! > 0;
 
   String get headline => switch (readiness) {
-        CircuitEngineeringReadiness.missingLoadPower =>
-          'Укажите мощность нагрузки',
-        CircuitEngineeringReadiness.missingProtection =>
-          'Назначьте защиту группы',
-        CircuitEngineeringReadiness.missingCableSpecification =>
-          'Укажите кабель',
-        CircuitEngineeringReadiness.sizingEvidenceRequired =>
-          'Нужны данные для расчёта кабеля',
-        CircuitEngineeringReadiness.sizingEvidenceStale =>
-          'Расчёт кабеля устарел',
-        CircuitEngineeringReadiness.sizingIndeterminate =>
-          'Расчёт кабеля: недостаточно evidence',
-        CircuitEngineeringReadiness.sizingFailed => 'Расчёт кабеля: FAIL',
-        CircuitEngineeringReadiness.sizingPassed => 'Расчёт кабеля: PASS',
-      };
+    CircuitEngineeringReadiness.missingLoadPower => 'Укажите мощность нагрузки',
+    CircuitEngineeringReadiness.missingProtection => 'Назначьте защиту группы',
+    CircuitEngineeringReadiness.missingCableSpecification => 'Укажите кабель',
+    CircuitEngineeringReadiness.sizingEvidenceRequired =>
+      'Нужны данные для расчёта кабеля',
+    CircuitEngineeringReadiness.sizingEvidenceStale => 'Расчёт кабеля устарел',
+    CircuitEngineeringReadiness.sizingIndeterminate =>
+      'Расчёт кабеля: недостаточно evidence',
+    CircuitEngineeringReadiness.sizingFailed => 'Расчёт кабеля: FAIL',
+    CircuitEngineeringReadiness.sizingPassed => 'Расчёт кабеля: PASS',
+  };
 
   String get detail => switch (readiness) {
-        CircuitEngineeringReadiness.missingLoadPower =>
-          'Без мощности нельзя даже предварительно оценить ток нагрузки.',
-        CircuitEngineeringReadiness.missingProtection =>
-          'Связность и нагрузка заданы, но защитный аппарат ещё не выбран инженером.',
-        CircuitEngineeringReadiness.missingCableSpecification =>
-          'Группа подключена и защищена, но марка/спецификация кабеля не назначена.',
-        CircuitEngineeringReadiness.sizingEvidenceRequired =>
-          'Для PASS требуются ampacity по участкам и impedance evidence. ElecX не подменяет их предположениями.',
-        CircuitEngineeringReadiness.sizingEvidenceStale =>
-          'Геометрия трассы или кабель изменились после расчёта. Обновите evidence.',
-        CircuitEngineeringReadiness.sizingIndeterminate ||
-        CircuitEngineeringReadiness.sizingFailed ||
-        CircuitEngineeringReadiness.sizingPassed =>
-          sizingResult?.reasons.join(' ') ?? 'Нет результата расчёта.',
-      };
+    CircuitEngineeringReadiness.missingLoadPower =>
+      'Без мощности нельзя даже предварительно оценить ток нагрузки.',
+    CircuitEngineeringReadiness.missingProtection => 'Связность и нагрузка заданы, но защитный аппарат ещё не выбран инженером.',
+    CircuitEngineeringReadiness.missingCableSpecification => 'Группа подключена и защищена, но марка/спецификация кабеля не назначена.',
+    CircuitEngineeringReadiness.sizingEvidenceRequired => 'Для PASS требуются ampacity по участкам и impedance evidence. ElecX не подменяет их предположениями.',
+    CircuitEngineeringReadiness.sizingEvidenceStale => 'Геометрия трассы или кабель изменились после расчёта. Обновите evidence.',
+    CircuitEngineeringReadiness.sizingIndeterminate ||
+    CircuitEngineeringReadiness.sizingFailed ||
+    CircuitEngineeringReadiness.sizingPassed =>
+      sizingResult?.reasons.join(' ') ?? 'Нет результата расчёта.',
+  };
 
   static CircuitEngineeringStatus evaluate({
     required ElectricalComponentPlacement load,
@@ -80,8 +72,9 @@ final class CircuitEngineeringStatus {
     CircuitSizingEvidence? sizingEvidence,
   }) {
     final power = load.ratedPowerW;
-    final current =
-        power == null || power <= 0 ? null : power / load.voltageV.toDouble();
+    final current = power == null || power <= 0
+        ? null
+        : power / load.voltageV.toDouble();
     final cableSpec = bundle.cable.cableSpecId ?? route.cableType;
     CableSizingResult? sizingResult;
     late final CircuitEngineeringReadiness readiness;
@@ -100,12 +93,12 @@ final class CircuitEngineeringStatus {
       sizingResult = sizingEvidence.evaluate(route);
       final hasFailure =
           sizingResult.currentStatus == EngineeringCheckStatus.fail ||
-              sizingResult.voltageDropStatus == EngineeringCheckStatus.fail;
+          sizingResult.voltageDropStatus == EngineeringCheckStatus.fail;
       readiness = hasFailure
           ? CircuitEngineeringReadiness.sizingFailed
           : sizingResult.isIndeterminate
-              ? CircuitEngineeringReadiness.sizingIndeterminate
-              : CircuitEngineeringReadiness.sizingPassed;
+          ? CircuitEngineeringReadiness.sizingIndeterminate
+          : CircuitEngineeringReadiness.sizingPassed;
     }
     return CircuitEngineeringStatus(
       readiness: readiness,

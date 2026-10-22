@@ -7,7 +7,7 @@ import 'route_medium.dart';
 
 final class HostedRouteSegment {
   HostedRouteSegment({required this.host, required Iterable<MmPoint> points})
-      : points = List.unmodifiable(points) {
+    : points = List.unmodifiable(points) {
     if (this.points.isEmpty) {
       throw ArgumentError('Hosted route segment requires at least one point.');
     }
@@ -51,8 +51,8 @@ final class HostedRoutePath {
       segments.fold(0.0, (sum, segment) => sum + segment.lengthMm);
 
   bool get crossesBuildingEnvelope => transitions.any(
-        (transition) => transition.fromHost.kind != transition.toHost.kind,
-      );
+    (transition) => transition.fromHost.kind != transition.toHost.kind,
+  );
 
   Iterable<RouteHostRef> get hosts sync* {
     final seen = <String>{};

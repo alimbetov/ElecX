@@ -385,8 +385,7 @@ abstract final class DrawingSimulationEngine {
           kind: DrawingDefectKind.routeNoFeasibleAlternative,
           severity: SimulationSeverity.warning,
           objectId: route.id,
-          message:
-              'No feasible auto-route satisfies the current geometric constraints.',
+          message: 'No feasible auto-route satisfies the current geometric constraints.',
         ),
       );
       return;
@@ -480,8 +479,7 @@ abstract final class DrawingSimulationEngine {
             kind: DrawingDefectKind.topologyNoPathToBoard,
             severity: SimulationSeverity.error,
             objectId: component.id,
-            message:
-                'No physical engineering path exists from component to distribution board.',
+            message: 'No physical engineering path exists from component to distribution board.',
           ),
         );
         continue;
@@ -492,8 +490,7 @@ abstract final class DrawingSimulationEngine {
             kind: DrawingDefectKind.topologyWrongFlowDirection,
             severity: SimulationSeverity.error,
             objectId: component.id,
-            message:
-                'Topology is connected, but no directed supply path exists from distribution board to component.',
+            message: 'Topology is connected, but no directed supply path exists from distribution board to component.',
           ),
         );
       }
@@ -508,14 +505,14 @@ abstract final class DrawingSimulationEngine {
     for (final defect in defects) {
       score -= switch (defect.severity) {
         SimulationSeverity.error => profile.penaltyFor(
-            AnalysisSeverityWeight.error,
-          ),
+          AnalysisSeverityWeight.error,
+        ),
         SimulationSeverity.warning => profile.penaltyFor(
-            AnalysisSeverityWeight.warning,
-          ),
+          AnalysisSeverityWeight.warning,
+        ),
         SimulationSeverity.info => profile.penaltyFor(
-            AnalysisSeverityWeight.info,
-          ),
+          AnalysisSeverityWeight.info,
+        ),
       };
     }
     return score.clamp(0, 100);

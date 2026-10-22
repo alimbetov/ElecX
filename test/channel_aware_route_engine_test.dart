@@ -9,15 +9,14 @@ void main() {
     String id, {
     required String channel,
     String node = 'n',
-  }) =>
-      ChannelRouteState(
-        id: id,
-        routeNodeId: node,
-        host: host,
-        installationPathSpecId: 'tray-1',
-        pathSectionId: 'section-1',
-        channelId: channel,
-      );
+  }) => ChannelRouteState(
+    id: id,
+    routeNodeId: node,
+    host: host,
+    installationPathSpecId: 'tray-1',
+    pathSectionId: 'section-1',
+    channelId: channel,
+  );
 
   test('hard feasibility removes cheaper but invalid channel path', () {
     final graph = ChannelRoutingGraph(

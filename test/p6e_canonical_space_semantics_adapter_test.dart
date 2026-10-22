@@ -30,14 +30,12 @@ void main() {
       expect(projection.legacySpace.id, 'legacy-space-bedroom');
       expect(projection.legacySpace.boundary.vertices, hasLength(4));
       expect(projection.openings.map((item) => item.id), [OpeningId('door-1')]);
-      expect(
-        projection.adjacencies.map((item) => item.id),
-        [SpaceAdjacencyId('adj-1')],
-      );
-      expect(
-        projection.overlays.map((item) => item.id),
-        [OverlayClassificationId('fire-1')],
-      );
+      expect(projection.adjacencies.map((item) => item.id), [
+        SpaceAdjacencyId('adj-1'),
+      ]);
+      expect(projection.overlays.map((item) => item.id), [
+        OverlayClassificationId('fire-1'),
+      ]);
     });
 
     test('missing Space binding fails closed', () {
@@ -92,16 +90,14 @@ void main() {
 }
 
 CanonicalEditorWorkspaceBinding _binding() => CanonicalEditorWorkspaceBinding(
-      buildingId: BuildingId('building-a'),
-      legacyBuildingId: 'legacy-building-a',
-      legacyLevelIds: <LevelId, String>{
-        LevelId('level-1'): 'legacy-level-one',
-      },
-      legacySpaceIds: <SpaceId, String>{
-        SpaceId('space-bedroom'): 'legacy-space-bedroom',
-        SpaceId('space-corridor'): 'legacy-space-corridor',
-      },
-    );
+  buildingId: BuildingId('building-a'),
+  legacyBuildingId: 'legacy-building-a',
+  legacyLevelIds: <LevelId, String>{LevelId('level-1'): 'legacy-level-one'},
+  legacySpaceIds: <SpaceId, String>{
+    SpaceId('space-bedroom'): 'legacy-space-bedroom',
+    SpaceId('space-corridor'): 'legacy-space-corridor',
+  },
+);
 
 ProjectAggregateRoot _project() {
   final siteId = SiteId('site-1');
@@ -205,10 +201,7 @@ ProjectAggregateRoot _projectWithForeignSpace() {
         base.siteId: ProjectSiteEntity(
           id: base.siteId,
           name: site.name,
-          buildingIds: <BuildingId>[
-            ...site.buildingIds,
-            foreignBuilding,
-          ],
+          buildingIds: <BuildingId>[...site.buildingIds, foreignBuilding],
         ),
       },
       buildings: <BuildingId, ProjectBuildingEntity>{

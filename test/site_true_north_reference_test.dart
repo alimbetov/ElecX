@@ -11,12 +11,14 @@ void main() {
       expect(reference.toTrueAzimuth(90), 60);
     });
 
-    test('normalizes explicit true-north input independently of Project North',
-        () {
-      final reference = SiteTrueNorthReference.fromDegrees(390);
+    test(
+      'normalizes explicit true-north input independently of Project North',
+      () {
+        final reference = SiteTrueNorthReference.fromDegrees(390);
 
-      expect(reference.degreesClockwiseFromProjectPositiveY, 30);
-    });
+        expect(reference.degreesClockwiseFromProjectPositiveY, 30);
+      },
+    );
 
     test('rejects non-finite values', () {
       expect(

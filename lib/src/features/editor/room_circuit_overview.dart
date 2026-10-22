@@ -4,13 +4,7 @@ import 'circuit_engineering_status.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 
-enum RoomCircuitOverviewKind {
-  pass,
-  fail,
-  indeterminate,
-  incomplete,
-  stale,
-}
+enum RoomCircuitOverviewKind { pass, fail, indeterminate, incomplete, stale }
 
 final class RoomCircuitOverviewEntry {
   const RoomCircuitOverviewEntry({
@@ -106,30 +100,29 @@ final class RoomCircuitOverviewModel {
     return RoomCircuitOverviewModel(List.unmodifiable(entries));
   }
 
-  static RoomCircuitOverviewKind _kind(CircuitEngineeringReadiness readiness) =>
-      switch (readiness) {
-        CircuitEngineeringReadiness.sizingPassed =>
-          RoomCircuitOverviewKind.pass,
-        CircuitEngineeringReadiness.sizingFailed =>
-          RoomCircuitOverviewKind.fail,
-        CircuitEngineeringReadiness.sizingIndeterminate =>
-          RoomCircuitOverviewKind.indeterminate,
-        CircuitEngineeringReadiness.sizingEvidenceStale =>
-          RoomCircuitOverviewKind.stale,
-        CircuitEngineeringReadiness.missingLoadPower ||
-        CircuitEngineeringReadiness.missingProtection ||
-        CircuitEngineeringReadiness.missingCableSpecification ||
-        CircuitEngineeringReadiness.sizingEvidenceRequired =>
-          RoomCircuitOverviewKind.incomplete,
-      };
+  static RoomCircuitOverviewKind _kind(
+    CircuitEngineeringReadiness readiness,
+  ) => switch (readiness) {
+    CircuitEngineeringReadiness.sizingPassed => RoomCircuitOverviewKind.pass,
+    CircuitEngineeringReadiness.sizingFailed => RoomCircuitOverviewKind.fail,
+    CircuitEngineeringReadiness.sizingIndeterminate =>
+      RoomCircuitOverviewKind.indeterminate,
+    CircuitEngineeringReadiness.sizingEvidenceStale =>
+      RoomCircuitOverviewKind.stale,
+    CircuitEngineeringReadiness.missingLoadPower ||
+    CircuitEngineeringReadiness.missingProtection ||
+    CircuitEngineeringReadiness.missingCableSpecification ||
+    CircuitEngineeringReadiness.sizingEvidenceRequired =>
+      RoomCircuitOverviewKind.incomplete,
+  };
 
   static int _severity(RoomCircuitOverviewKind kind) => switch (kind) {
-        RoomCircuitOverviewKind.fail => 0,
-        RoomCircuitOverviewKind.stale => 1,
-        RoomCircuitOverviewKind.incomplete => 2,
-        RoomCircuitOverviewKind.indeterminate => 3,
-        RoomCircuitOverviewKind.pass => 4,
-      };
+    RoomCircuitOverviewKind.fail => 0,
+    RoomCircuitOverviewKind.stale => 1,
+    RoomCircuitOverviewKind.incomplete => 2,
+    RoomCircuitOverviewKind.indeterminate => 3,
+    RoomCircuitOverviewKind.pass => 4,
+  };
 }
 
 class RoomCircuitOverviewPanel extends StatelessWidget {
@@ -165,9 +158,7 @@ class RoomCircuitOverviewPanel extends StatelessWidget {
                   padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Выберите нагрузку и подключите её к щиту.',
-                    ),
+                    child: Text('Выберите нагрузку и подключите её к щиту.'),
                   ),
                 )
               else
@@ -187,8 +178,9 @@ class RoomCircuitOverviewPanel extends StatelessWidget {
                           message: _kindLabel(entry.kind),
                           child: Icon(_kindIcon(entry.kind), size: 20),
                         ),
-                        title:
-                            Text('${entry.circuitName} · ${entry.loadLabel}'),
+                        title: Text(
+                          '${entry.circuitName} · ${entry.loadLabel}',
+                        ),
                         subtitle: Text(
                           '${_kindLabel(entry.kind)} · ${entry.headline}\n'
                           '${entry.boardLabel} · ${entry.cableLabel} · '
@@ -209,26 +201,26 @@ class RoomCircuitOverviewPanel extends StatelessWidget {
   }
 
   static String _summary(RoomCircuitOverviewModel model) => [
-        if (model.failCount > 0) 'FAIL ${model.failCount}',
-        if (model.staleCount > 0) 'STALE ${model.staleCount}',
-        if (model.incompleteCount > 0) 'ДАННЫЕ ${model.incompleteCount}',
-        if (model.indeterminateCount > 0) '? ${model.indeterminateCount}',
-        if (model.passCount > 0) 'PASS ${model.passCount}',
-      ].join(' · ');
+    if (model.failCount > 0) 'FAIL ${model.failCount}',
+    if (model.staleCount > 0) 'STALE ${model.staleCount}',
+    if (model.incompleteCount > 0) 'ДАННЫЕ ${model.incompleteCount}',
+    if (model.indeterminateCount > 0) '? ${model.indeterminateCount}',
+    if (model.passCount > 0) 'PASS ${model.passCount}',
+  ].join(' · ');
 
   static String _kindLabel(RoomCircuitOverviewKind kind) => switch (kind) {
-        RoomCircuitOverviewKind.pass => 'PASS',
-        RoomCircuitOverviewKind.fail => 'FAIL',
-        RoomCircuitOverviewKind.indeterminate => 'INDETERMINATE',
-        RoomCircuitOverviewKind.incomplete => 'ТРЕБУЮТСЯ ДАННЫЕ',
-        RoomCircuitOverviewKind.stale => 'STALE',
-      };
+    RoomCircuitOverviewKind.pass => 'PASS',
+    RoomCircuitOverviewKind.fail => 'FAIL',
+    RoomCircuitOverviewKind.indeterminate => 'INDETERMINATE',
+    RoomCircuitOverviewKind.incomplete => 'ТРЕБУЮТСЯ ДАННЫЕ',
+    RoomCircuitOverviewKind.stale => 'STALE',
+  };
 
   static IconData _kindIcon(RoomCircuitOverviewKind kind) => switch (kind) {
-        RoomCircuitOverviewKind.pass => Icons.check_circle_outline,
-        RoomCircuitOverviewKind.fail => Icons.error_outline,
-        RoomCircuitOverviewKind.indeterminate => Icons.help_outline,
-        RoomCircuitOverviewKind.incomplete => Icons.edit_note_outlined,
-        RoomCircuitOverviewKind.stale => Icons.history_toggle_off,
-      };
+    RoomCircuitOverviewKind.pass => Icons.check_circle_outline,
+    RoomCircuitOverviewKind.fail => Icons.error_outline,
+    RoomCircuitOverviewKind.indeterminate => Icons.help_outline,
+    RoomCircuitOverviewKind.incomplete => Icons.edit_note_outlined,
+    RoomCircuitOverviewKind.stale => Icons.history_toggle_off,
+  };
 }

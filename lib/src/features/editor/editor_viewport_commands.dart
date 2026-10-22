@@ -16,8 +16,8 @@ final class EditorViewportCommandEvent {
 
 final Expando<ValueNotifier<EditorViewportCommandEvent?>> _viewportBuses =
     Expando<ValueNotifier<EditorViewportCommandEvent?>>(
-  'ElecX viewport command bus',
-);
+      'ElecX viewport command bus',
+    );
 
 extension EditorViewportCommands on EditorController {
   ValueNotifier<EditorViewportCommandEvent?> get viewportCommandListenable =>

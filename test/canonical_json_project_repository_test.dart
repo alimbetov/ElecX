@@ -8,42 +8,45 @@ import 'package:elecx/src/serialization/project/canonical_project_document_codec
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('canonical JSON repository preserves multi-building identity graph',
-      () async {
-    final root =
-        await Directory.systemTemp.createTemp('elecx-canonical-project-');
-    addTearDown(() async {
-      if (await root.exists()) await root.delete(recursive: true);
-    });
+  test(
+    'canonical JSON repository preserves multi-building identity graph',
+    () async {
+      final root = await Directory.systemTemp.createTemp(
+        'elecx-canonical-project-',
+      );
+      addTearDown(() async {
+        if (await root.exists()) await root.delete(recursive: true);
+      });
 
-    final repository = JsonProjectRepository(
-      rootDirectory: root,
-      codec: const CanonicalProjectDocumentCodec(),
-    );
-    final source = _snapshot();
+      final repository = JsonProjectRepository(
+        rootDirectory: root,
+        codec: const CanonicalProjectDocumentCodec(),
+      );
+      final source = _snapshot();
 
-    await repository.save(source);
-    final restored = await repository.load(source.id);
+      await repository.save(source);
+      final restored = await repository.load(source.id);
 
-    expect(restored, isNotNull);
-    expect(restored!.id, source.id);
-    expect(restored.siteId, source.siteId);
-    expect(restored.localVersion, source.localVersion);
-    expect(restored.aggregate.stores.buildings, hasLength(2));
-    expect(restored.aggregate.stores.levels, hasLength(2));
-    expect(
-      restored.aggregate.index.buildingByLevel[LevelId('level-a')],
-      BuildingId('building-a'),
-    );
-    expect(
-      restored.aggregate.index.buildingByLevel[LevelId('level-b')],
-      BuildingId('building-b'),
-    );
+      expect(restored, isNotNull);
+      expect(restored!.id, source.id);
+      expect(restored.siteId, source.siteId);
+      expect(restored.localVersion, source.localVersion);
+      expect(restored.aggregate.stores.buildings, hasLength(2));
+      expect(restored.aggregate.stores.levels, hasLength(2));
+      expect(
+        restored.aggregate.index.buildingByLevel[LevelId('level-a')],
+        BuildingId('building-a'),
+      );
+      expect(
+        restored.aggregate.index.buildingByLevel[LevelId('level-b')],
+        BuildingId('building-b'),
+      );
 
-    final summaries = await repository.list();
-    expect(summaries, hasLength(1));
-    expect(summaries.single.id, source.id);
-  });
+      final summaries = await repository.list();
+      expect(summaries, hasLength(1));
+      expect(summaries.single.id, source.id);
+    },
+  );
 }
 
 ProjectSnapshot _snapshot() {

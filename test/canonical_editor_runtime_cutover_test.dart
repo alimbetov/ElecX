@@ -151,9 +151,7 @@ _Fixture _fixture({
   final binding = CanonicalEditorWorkspaceBinding(
     buildingId: BuildingId('building-1'),
     legacyBuildingId: 'legacy-building-1',
-    legacyLevelIds: <LevelId, String>{
-      LevelId('level-1'): 'legacy-level-1',
-    },
+    legacyLevelIds: <LevelId, String>{LevelId('level-1'): 'legacy-level-1'},
     legacySpaceIds: bindSpace
         ? <SpaceId, String>{SpaceId('space-1'): 'legacy-space-1'}
         : const <SpaceId, String>{},

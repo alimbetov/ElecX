@@ -53,7 +53,8 @@ abstract final class PlanPullMeasureResolver {
       final distance = signedDistance.abs();
       if (distance < 1) continue;
 
-      final along = (midpoint.x - c.x) * (odx / otherLength) +
+      final along =
+          (midpoint.x - c.x) * (odx / otherLength) +
           (midpoint.y - c.y) * (ody / otherLength);
       final projected = MmPoint(
         (c.x + odx / otherLength * along).round(),

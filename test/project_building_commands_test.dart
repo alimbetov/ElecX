@@ -33,10 +33,9 @@ void main() {
       );
       expect(result.project.version, LocalProjectVersion(1));
       expect(result.changeSet.addedEntityIds, <EntityId>{buildingId});
-      expect(
-        result.changeSet.updatedEntityIds,
-        <EntityId>{SiteId('site-root')},
-      );
+      expect(result.changeSet.updatedEntityIds, <EntityId>{
+        SiteId('site-root'),
+      });
     });
 
     test('rename preserves identity, hierarchy and display order', () {

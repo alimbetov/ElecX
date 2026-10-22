@@ -30,8 +30,8 @@ enum EditorInputModality { mouse, keyboard, touch, stylus, precisionPad }
 /// engines.
 final class EditorSnapProfile {
   const EditorSnapProfile({required this.capturePx, required this.releasePx})
-      : assert(capturePx > 0),
-        assert(releasePx >= capturePx);
+    : assert(capturePx > 0),
+      assert(releasePx >= capturePx);
 
   final double capturePx;
   final double releasePx;
@@ -39,24 +39,24 @@ final class EditorSnapProfile {
   static EditorSnapProfile forModality(EditorInputModality modality) =>
       switch (modality) {
         EditorInputModality.mouse => const EditorSnapProfile(
-            capturePx: 8,
-            releasePx: 14,
-          ),
+          capturePx: 8,
+          releasePx: 14,
+        ),
         EditorInputModality.keyboard => const EditorSnapProfile(
-            capturePx: 6,
-            releasePx: 10,
-          ),
+          capturePx: 6,
+          releasePx: 10,
+        ),
         EditorInputModality.touch => const EditorSnapProfile(
-            capturePx: 20,
-            releasePx: 30,
-          ),
+          capturePx: 20,
+          releasePx: 30,
+        ),
         EditorInputModality.stylus => const EditorSnapProfile(
-            capturePx: 7,
-            releasePx: 12,
-          ),
+          capturePx: 7,
+          releasePx: 12,
+        ),
         EditorInputModality.precisionPad => const EditorSnapProfile(
-            capturePx: 10,
-            releasePx: 16,
-          ),
+          capturePx: 10,
+          releasePx: 16,
+        ),
       };
 }

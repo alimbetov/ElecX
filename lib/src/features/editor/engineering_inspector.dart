@@ -256,8 +256,9 @@ class EngineeringInspector extends StatelessWidget {
             const SizedBox(width: 6),
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () => controller
-                    .addOpeningGuarded(ArchitecturalOpeningType.window),
+                onPressed: () => controller.addOpeningGuarded(
+                  ArchitecturalOpeningType.window,
+                ),
                 icon: const Icon(Icons.window_outlined, size: 17),
                 label: const Text('Окно'),
               ),
@@ -275,8 +276,9 @@ class EngineeringInspector extends StatelessWidget {
               visualDensity: VisualDensity.compact,
               minTileHeight: 38,
               selected: controller.selectedOpeningId == opening.id,
-              selectedTileColor:
-                  Theme.of(context).colorScheme.secondaryContainer,
+              selectedTileColor: Theme.of(context)
+                  .colorScheme
+                  .secondaryContainer,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(7),
               ),
@@ -523,7 +525,8 @@ class _OpeningEditor extends StatelessWidget {
               label: 'Позиция от начала стены',
               value: opening.offsetFromStartMm,
               onCommit: (value) => controller.updateSelectedOpeningGuarded(
-                  offsetFromStartMm: value),
+                offsetFromStartMm: value,
+              ),
             ),
             const SizedBox(height: 6),
             _CommitIntField(
@@ -569,14 +572,14 @@ class _DirectionCaption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        children: [
-          Icon(icon, size: 14, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: 5),
-          Expanded(
-            child: Text(text, style: Theme.of(context).textTheme.labelSmall),
-          ),
-        ],
-      );
+    children: [
+      Icon(icon, size: 14, color: Theme.of(context).colorScheme.primary),
+      const SizedBox(width: 5),
+      Expanded(
+        child: Text(text, style: Theme.of(context).textTheme.labelSmall),
+      ),
+    ],
+  );
 }
 
 class _CommitIntField extends StatefulWidget {
@@ -653,24 +656,24 @@ class _CommitIntFieldState extends State<_CommitIntField> {
 
   @override
   Widget build(BuildContext context) => TextField(
-        controller: _textController,
-        focusNode: _focusNode,
-        keyboardType: TextInputType.number,
-        textInputAction: TextInputAction.done,
-        decoration: InputDecoration(
-          labelText: widget.label,
-          suffixText: 'mm',
-          errorText: _error,
-        ),
-        onChanged: (_) {
-          _lastAttemptedText = null;
-          if (_error != null) setState(() => _error = null);
-        },
-        onSubmitted: (_) {
-          _commit();
-          _focusNode.unfocus();
-        },
-      );
+    controller: _textController,
+    focusNode: _focusNode,
+    keyboardType: TextInputType.number,
+    textInputAction: TextInputAction.done,
+    decoration: InputDecoration(
+      labelText: widget.label,
+      suffixText: 'mm',
+      errorText: _error,
+    ),
+    onChanged: (_) {
+      _lastAttemptedText = null;
+      if (_error != null) setState(() => _error = null);
+    },
+    onSubmitted: (_) {
+      _commit();
+      _focusNode.unfocus();
+    },
+  );
 }
 
 class _IntEditor extends StatelessWidget {
@@ -686,16 +689,16 @@ class _IntEditor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => TextFormField(
-        initialValue: '$value',
-        keyboardType: TextInputType.number,
-        decoration: InputDecoration(labelText: label, suffixText: 'mm'),
-        onChanged: (text) {
-          final parsed = int.tryParse(text);
-          if (parsed != null) {
-            onChanged(parsed);
-          }
-        },
-      );
+    initialValue: '$value',
+    keyboardType: TextInputType.number,
+    decoration: InputDecoration(labelText: label, suffixText: 'mm'),
+    onChanged: (text) {
+      final parsed = int.tryParse(text);
+      if (parsed != null) {
+        onChanged(parsed);
+      }
+    },
+  );
 }
 
 class _SectionLabel extends StatelessWidget {
@@ -705,9 +708,9 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Text(value, style: Theme.of(context).textTheme.labelSmall),
-      );
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Text(value, style: Theme.of(context).textTheme.labelSmall),
+  );
 }
 
 class _ValueRow extends StatelessWidget {
@@ -718,23 +721,22 @@ class _ValueRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 5),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: Text(label, style: const TextStyle(fontSize: 11))),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                value,
-                textAlign: TextAlign.right,
-                style:
-                    const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
+    padding: const EdgeInsets.only(bottom: 5),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: Text(label, style: const TextStyle(fontSize: 11))),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _InlineEmptyState extends StatelessWidget {
@@ -744,9 +746,9 @@ class _InlineEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Text(text, style: Theme.of(context).textTheme.bodySmall),
-      );
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Text(text, style: Theme.of(context).textTheme.bodySmall),
+  );
 }
 
 class _InspectorEmptyState extends StatelessWidget {
@@ -754,20 +756,20 @@ class _InspectorEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            'Выберите помещение, стену или инженерный объект.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ),
-      );
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Text(
+        'Выберите помещение, стену или инженерный объект.',
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
+    ),
+  );
 }
 
 String _openingName(ArchitecturalOpening opening) => switch (opening.type) {
-      ArchitecturalOpeningType.door => 'Дверь',
-      ArchitecturalOpeningType.window => 'Окно',
-      ArchitecturalOpeningType.passage => 'Проход',
-      ArchitecturalOpeningType.technicalOpening => 'Тех. проём',
-    };
+  ArchitecturalOpeningType.door => 'Дверь',
+  ArchitecturalOpeningType.window => 'Окно',
+  ArchitecturalOpeningType.passage => 'Проход',
+  ArchitecturalOpeningType.technicalOpening => 'Тех. проём',
+};

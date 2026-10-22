@@ -33,10 +33,7 @@ void main() {
     segments: [
       ElectricalRouteSegment(
         surface: surface,
-        points: const [
-          SurfacePointMm(0, 1000),
-          SurfacePointMm(2000, 1000),
-        ],
+        points: const [SurfacePointMm(0, 1000), SurfacePointMm(2000, 1000)],
       ),
     ],
     cableType: 'VVGng-LS-3x2.5',
@@ -57,10 +54,7 @@ void main() {
       componentId: 'board-1',
       portId: 'power-out',
     ),
-    endB: const CableTerminationRef(
-      componentId: 'load-1',
-      portId: 'power-in',
-    ),
+    endB: const CableTerminationRef(componentId: 'load-1', portId: 'power-in'),
   );
 
   test('status exposes route length and preliminary P/U current', () {
