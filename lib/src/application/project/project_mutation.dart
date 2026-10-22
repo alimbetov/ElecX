@@ -145,7 +145,13 @@ final class ProjectEntityDiff {
       updated,
       removed,
     );
-    _diffBoundaries(before.boundaries, after.boundaries, added, updated, removed);
+    _diffBoundaries(
+      before.boundaries,
+      after.boundaries,
+      added,
+      updated,
+      removed,
+    );
 
     return ProjectEntityDiff(
       addedEntityIds: added,
@@ -308,6 +314,22 @@ final class ProjectCandidateValidationException implements Exception {
       'Invalid project mutation candidate:\n${issues.join('\n')}';
 }
 
+final class BoundaryEdgeOwnershipException implements Exception {
+  const BoundaryEdgeOwnershipException({
+    required this.edgeId,
+    required this.expectedSpaceId,
+    required this.actualSpaceId,
+  });
+
+  final BoundaryEdgeId edgeId;
+  final SpaceId expectedSpaceId;
+  final SpaceId actualSpaceId;
+
+  @override
+  String toString() => 'Boundary edge $edgeId is permanently owned by '
+      '$expectedSpaceId and cannot be reassigned to $actualSpaceId.';
+}
+
 abstract final class CandidateGraphValidator {
   static void validate({
     required ProjectAggregateRoot current,
@@ -378,9 +400,12 @@ final class _ProjectMutableStateDiff {
 }
 
 final class ProjectMutationSession {
-  ProjectMutationSession(ProjectAggregateRoot initial) : _current = initial;
+  ProjectMutationSession(ProjectAggregateRoot initial)
+      : _current = initial,
+        _boundaryOwnerHistory = _collectBoundaryOwners(initial.stores);
 
   ProjectAggregateRoot _current;
+  final Map<BoundaryEdgeId, SpaceId> _boundaryOwnerHistory;
   final List<UndoRecord> _undoStack = <UndoRecord>[];
   final List<UndoRecord> _redoStack = <UndoRecord>[];
 
@@ -397,6 +422,7 @@ final class ProjectMutationSession {
     final candidate = request.command.buildCandidate(before);
     CandidateGraphValidator.validate(current: before, candidate: candidate);
     final candidateState = candidate.resolveState(before);
+    _validateBoundaryOwnerHistory(candidateState.stores);
     final stateDiff = _ProjectMutableStateDiff.between(
       ProjectMutableState.fromProject(before),
       candidateState,
@@ -425,6 +451,7 @@ final class ProjectMutationSession {
     final candidate = request.command.buildCandidate(before);
     CandidateGraphValidator.validate(current: before, candidate: candidate);
     final candidateState = candidate.resolveState(before);
+    _validateBoundaryOwnerHistory(candidateState.stores);
     final stateDiff = _ProjectMutableStateDiff.between(
       beforeState,
       candidateState,
@@ -456,6 +483,7 @@ final class ProjectMutationSession {
       ),
     );
     _redoStack.clear();
+    _recordBoundaryOwners(committed.stores);
     return ProjectMutationResult(project: committed, changeSet: changeSet);
   }
 
@@ -530,6 +558,7 @@ final class ProjectMutationSession {
     if (issues.isNotEmpty) {
       throw ProjectCandidateValidationException(issues);
     }
+    _validateBoundaryOwnerHistory(state.stores);
     return ProjectAggregateRoot(
       id: before.id,
       siteId: before.siteId,
@@ -537,6 +566,25 @@ final class ProjectMutationSession {
       engineeringMetadata: state.engineeringMetadata,
       stores: state.stores,
     );
+  }
+
+  void _validateBoundaryOwnerHistory(ProjectEntityStores stores) {
+    for (final entry in _collectBoundaryOwners(stores).entries) {
+      final expectedOwner = _boundaryOwnerHistory[entry.key];
+      if (expectedOwner != null && expectedOwner != entry.value) {
+        throw BoundaryEdgeOwnershipException(
+          edgeId: entry.key,
+          expectedSpaceId: expectedOwner,
+          actualSpaceId: entry.value,
+        );
+      }
+    }
+  }
+
+  void _recordBoundaryOwners(ProjectEntityStores stores) {
+    for (final entry in _collectBoundaryOwners(stores).entries) {
+      _boundaryOwnerHistory.putIfAbsent(entry.key, () => entry.value);
+    }
   }
 
   String _requireCommandType(ProjectCommand command) {
@@ -559,6 +607,18 @@ final class ProjectMutationSession {
       );
     }
   }
+}
+
+Map<BoundaryEdgeId, SpaceId> _collectBoundaryOwners(
+  ProjectEntityStores stores,
+) {
+  final owners = <BoundaryEdgeId, SpaceId>{};
+  for (final topology in stores.boundaries.values) {
+    for (final edgeId in topology.edges.keys) {
+      owners[edgeId] = topology.spaceId;
+    }
+  }
+  return owners;
 }
 
 void _diffMap<K extends EntityId, V>(
