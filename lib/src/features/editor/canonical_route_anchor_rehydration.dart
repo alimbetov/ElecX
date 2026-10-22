@@ -66,7 +66,8 @@ abstract final class CanonicalRouteAnchorRehydration {
               '${candidates.length} canonical RouteAnchorId candidates.',
             );
           }
-          ids.add(RouteAnchorId(candidates.single.key.substring(prefix.length)));
+          ids.add(
+              RouteAnchorId(candidates.single.key.substring(prefix.length)));
         }
         segments.add(
           ElectricalRouteSegment(
