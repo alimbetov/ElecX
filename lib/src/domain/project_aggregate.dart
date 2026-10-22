@@ -670,7 +670,8 @@ abstract final class ProjectAggregateValidator {
                   'different levels.',
             ),
           );
-        } else if (adjacency.kind != SpaceAdjacencyKind.vertical && !sameLevel) {
+        } else if (adjacency.kind != SpaceAdjacencyKind.vertical &&
+            !sameLevel) {
           issues.add(
             ProjectAggregateValidationIssue(
               code: ProjectAggregateIssueCode.adjacencyLevelMismatch,
@@ -680,7 +681,8 @@ abstract final class ProjectAggregateValidator {
                   '${a.levelId} and ${b.levelId}.',
             ),
           );
-        } else if (adjacency.kind == SpaceAdjacencyKind.vertical && !sameLevel) {
+        } else if (adjacency.kind == SpaceAdjacencyKind.vertical &&
+            !sameLevel) {
           final levelA = stores.levels[a.levelId];
           final levelB = stores.levels[b.levelId];
           if (levelA != null &&
