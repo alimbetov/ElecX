@@ -1,5 +1,4 @@
 import '../../application/project/project_boundary_topology_migration.dart';
-import '../../domain/boundary_host_migration.dart';
 import '../../domain/boundary_host_registry.dart';
 import '../../domain/boundary_topology.dart';
 import '../../domain/boundary_wall_profile_registry.dart';
@@ -12,6 +11,7 @@ import 'canonical_editor_runtime_cutover.dart';
 import 'canonical_room_surface_runtime_registry.dart';
 import 'canonical_route_anchor_rehydration.dart';
 import 'editor_controller.dart';
+import 'editor_document_history.dart';
 import 'editor_p2_session.dart';
 
 /// Production P7A-5 gateway for canonical hosted-object adoption and
