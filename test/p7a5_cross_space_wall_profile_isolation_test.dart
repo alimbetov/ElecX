@@ -6,12 +6,12 @@ import 'package:elecx/src/domain/boundary_wall_profile_registry.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_orientation.dart';
-import 'package:elecx/src/domain/project_space_semantics.dart';
 import 'package:elecx/src/domain/wall_profile.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('replace topology cannot mutate wall profiles owned by another space', () {
+  test('replace topology cannot mutate wall profiles owned by another space',
+      () {
     final fixture = _Fixture();
     final initial = fixture.project();
     final mutations = ProjectMutationSession(initial);
