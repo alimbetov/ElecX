@@ -44,9 +44,6 @@ abstract final class CanonicalRoomSurfaceRuntimeRegistry {
   static bool hasCanonicalRuntime(EditorController controller) =>
       _coordinators[controller] != null;
 
-  static LocalProjectVersion? projectVersion(EditorController controller) =>
-      _coordinators[controller]?.session.project.version;
-
   static CanonicalRoomSurfaceSelectionAdapter? resolve(
     EditorController controller,
     SpaceId spaceId,
