@@ -1,4 +1,5 @@
 import '../../domain/boundary_geometry_integrity.dart';
+import '../../domain/boundary_host_migration.dart';
 import '../../domain/boundary_host_registry.dart';
 import '../../domain/boundary_opening_profile_validation.dart';
 import '../../domain/boundary_topology.dart';
@@ -308,8 +309,6 @@ final class CanonicalBoundaryTopologyMigrationSession {
     );
   }
 
-  /// General P7A-5 topology replacement used by create/remove-capable tools.
-  /// Every pre-mutation and post-mutation edge must participate in lineage.
   BoundaryTopologyMigrationPreview previewReplaceTopology({
     required SpaceBoundaryTopology topology,
     required BoundaryTopologyChangeSet lineage,
