@@ -23,9 +23,14 @@ final class BoundaryGeometryIssue {
   String toString() => '${code.name}: $message';
 }
 
-final class BoundaryGeometryIntegrityException implements Exception {
+final class BoundaryGeometryIntegrityException extends ArgumentError {
   BoundaryGeometryIntegrityException(Iterable<BoundaryGeometryIssue> issues)
-      : issues = List.unmodifiable(issues);
+      : issues = List.unmodifiable(issues),
+        super.value(
+          List<BoundaryGeometryIssue>.unmodifiable(issues),
+          'boundaryGeometry',
+          'Canonical boundary geometry is invalid.',
+        );
 
   final List<BoundaryGeometryIssue> issues;
 
