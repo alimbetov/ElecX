@@ -12,7 +12,8 @@ import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('synthetic transition remains projection-only with opaque anchor ids', () {
+  test('synthetic transition remains projection-only with opaque anchor ids',
+      () {
     final spaceId = SpaceId('space');
     final first = BoundaryEdgeId('bottom-a');
     final second = BoundaryEdgeId('bottom-b');
