@@ -1,3 +1,4 @@
+import 'package:elecx/src/application/project/project_destructive_commands.dart';
 import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/domain/boundary_topology.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
@@ -22,73 +23,79 @@ void main() {
       expect(project.index.isConsistentWith(project.stores), isTrue);
     });
 
-    test('boundary geometry changes participate in canonical diff and undo', () {
-      final fixture = _Fixture();
-      final initial = fixture.project(boundary: fixture.initialBoundary());
-      final session = ProjectMutationSession(initial);
+    test(
+      'boundary geometry changes participate in canonical diff and undo',
+      () {
+        final fixture = _Fixture();
+        final initial = fixture.project(boundary: fixture.initialBoundary());
+        final session = ProjectMutationSession(initial);
 
-      final result = session.commit(
-        ProjectMutationRequest(
-          expectedVersion: initial.version,
-          command: _ReplaceBoundaryCommand(fixture.changedBoundary()),
-        ),
-      );
-
-      expect(result, isNotNull);
-      expect(result!.project.version, LocalProjectVersion(1));
-      expect(result.changeSet.updatedEntityIds, contains(fixture.spaceId));
-      expect(result.changeSet.updatedEntityIds, contains(fixture.edgeA));
-      expect(result.changeSet.updatedEntityIds, contains(fixture.edgeB));
-      expect(
-        result.project.index.boundaryEdge(fixture.edgeA)?.end,
-        const BoundaryPointMm(xMm: 1200, yMm: 0),
-      );
-
-      final undone = session.undo(result.project.version);
-      expect(undone, isNotNull);
-      expect(undone!.project.version, LocalProjectVersion(2));
-      expect(
-        undone.project.index.boundaryEdge(fixture.edgeA)?.end,
-        const BoundaryPointMm(xMm: 1000, yMm: 0),
-      );
-      expect(undone.changeSet.updatedEntityIds, contains(fixture.spaceId));
-      expect(undone.changeSet.updatedEntityIds, contains(fixture.edgeA));
-    });
-
-    test('invalid boundary candidate fails before authoritative state changes', () {
-      final fixture = _Fixture();
-      final initial = fixture.project(boundary: fixture.initialBoundary());
-      final session = ProjectMutationSession(initial);
-      final foreignSpace = SpaceId('foreign-space');
-      final invalid = fixture.boundaryFor(foreignSpace);
-
-      expect(
-        () => session.commit(
+        final result = session.commit(
           ProjectMutationRequest(
             expectedVersion: initial.version,
-            command: _ReplaceBoundaryCommand(invalid),
+            command: _ReplaceBoundaryCommand(fixture.changedBoundary()),
           ),
-        ),
-        throwsA(
-          isA<ProjectCandidateValidationException>().having(
-            (error) => error.issues.map((issue) => issue.code),
-            'issue codes',
-            anyOf(
-              contains(ProjectAggregateIssueCode.boundarySpaceKeyMismatch),
-              contains(ProjectAggregateIssueCode.danglingBoundarySpace),
+        );
+
+        expect(result, isNotNull);
+        expect(result!.project.version, LocalProjectVersion(1));
+        expect(result.changeSet.updatedEntityIds, contains(fixture.spaceId));
+        expect(result.changeSet.updatedEntityIds, contains(fixture.edgeA));
+        expect(result.changeSet.updatedEntityIds, contains(fixture.edgeB));
+        expect(
+          result.project.index.boundaryEdge(fixture.edgeA)?.end,
+          const BoundaryPointMm(xMm: 1200, yMm: 0),
+        );
+
+        final undone = session.undo(result.project.version);
+        expect(undone, isNotNull);
+        expect(undone!.project.version, LocalProjectVersion(2));
+        expect(
+          undone.project.index.boundaryEdge(fixture.edgeA)?.end,
+          const BoundaryPointMm(xMm: 1000, yMm: 0),
+        );
+        expect(undone.changeSet.updatedEntityIds, contains(fixture.spaceId));
+        expect(undone.changeSet.updatedEntityIds, contains(fixture.edgeA));
+      },
+    );
+
+    test(
+      'invalid boundary candidate fails before authoritative state changes',
+      () {
+        final fixture = _Fixture();
+        final initial = fixture.project(boundary: fixture.initialBoundary());
+        final session = ProjectMutationSession(initial);
+        final foreignSpace = SpaceId('foreign-space');
+        final invalid = fixture.boundaryFor(foreignSpace);
+
+        expect(
+          () => session.commit(
+            ProjectMutationRequest(
+              expectedVersion: initial.version,
+              command: _ReplaceBoundaryCommand(invalid),
             ),
           ),
-        ),
-      );
+          throwsA(
+            isA<ProjectCandidateValidationException>().having(
+              (error) => error.issues.map((issue) => issue.code),
+              'issue codes',
+              anyOf(
+                contains(ProjectAggregateIssueCode.boundarySpaceKeyMismatch),
+                contains(ProjectAggregateIssueCode.danglingBoundarySpace),
+              ),
+            ),
+          ),
+        );
 
-      expect(session.current, same(initial));
-      expect(session.current.version, LocalProjectVersion(0));
-      expect(
-        session.current.index.boundaryEdge(fixture.edgeA)?.end,
-        const BoundaryPointMm(xMm: 1000, yMm: 0),
-      );
-      expect(session.undoDepth, 0);
-    });
+        expect(session.current, same(initial));
+        expect(session.current.version, LocalProjectVersion(0));
+        expect(
+          session.current.index.boundaryEdge(fixture.edgeA)?.end,
+          const BoundaryPointMm(xMm: 1000, yMm: 0),
+        );
+        expect(session.undoDepth, 0);
+      },
+    );
 
     test('legacy stores-only commands cannot erase P7A boundary state', () {
       final fixture = _Fixture();
@@ -103,12 +110,48 @@ void main() {
       );
 
       expect(result, isNotNull);
-      expect(result!.project.index.space(fixture.spaceId)?.name, 'Room renamed');
+      expect(
+        result!.project.index.space(fixture.spaceId)?.name,
+        'Room renamed',
+      );
       expect(
         result.project.index.boundary(fixture.spaceId)?.orderedEdgeIds,
         fixture.edgeIds,
       );
       expect(result.project.index.boundaryEdge(fixture.edgeA), isNotNull);
+    });
+
+    test('removing a space atomically removes its owned boundary and undo restores it', () {
+      final fixture = _Fixture();
+      final initial = fixture.project(boundary: fixture.initialBoundary());
+      final session = ProjectMutationSession(initial);
+
+      final result = session.commit(
+        ProjectMutationRequest(
+          expectedVersion: initial.version,
+          command: RemoveSpaceCommand(spaceId: fixture.spaceId),
+        ),
+      );
+
+      expect(result, isNotNull);
+      expect(result!.project.index.space(fixture.spaceId), isNull);
+      expect(result.project.index.boundary(fixture.spaceId), isNull);
+      for (final edgeId in fixture.edgeIds) {
+        expect(result.project.index.boundaryEdge(edgeId), isNull);
+        expect(result.changeSet.removedEntityIds, contains(edgeId));
+      }
+      expect(result.changeSet.removedEntityIds, contains(fixture.spaceId));
+
+      final undone = session.undo(result.project.version);
+      expect(undone, isNotNull);
+      expect(undone!.project.index.space(fixture.spaceId), isNotNull);
+      expect(
+        undone.project.index.boundary(fixture.spaceId)?.orderedEdgeIds,
+        fixture.edgeIds,
+      );
+      for (final edgeId in fixture.edgeIds) {
+        expect(undone.project.index.boundaryEdge(edgeId), isNotNull);
+      }
     });
   });
 }
