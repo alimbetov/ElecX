@@ -35,10 +35,7 @@ final class CanonicalRoomSurfaceSelectionAdapter {
   final CanonicalRoomBoundaryProjection projection;
 
   CanonicalRoomSurfaceSelection current() {
-    final selectedSpace = controller.selectedSpace;
-    if (selectedSpace == null ||
-        selectedSpace.id != projection.legacySpaceId ||
-        controller.selectedSpaceId != projection.legacySpaceId) {
+    if (!_hasExactLegacyMaterialization()) {
       return const CanonicalRoomSurfaceSelection(
         kind: CanonicalRoomSurfaceKind.plan,
       );
@@ -83,6 +80,7 @@ final class CanonicalRoomSurfaceSelectionAdapter {
   }
 
   bool showBoundaryEdge(BoundaryEdgeId edgeId) {
+    if (!_hasExactLegacyMaterialization()) return false;
     final wallOrdinal = projection.ordinalForEdgeId(edgeId);
     if (wallOrdinal == null) return false;
     controller.showWall(wallOrdinal);
@@ -90,8 +88,10 @@ final class CanonicalRoomSurfaceSelectionAdapter {
   }
 
   bool previousWall() {
+    if (!_hasExactLegacyMaterialization() || projection.wallCount == 0) {
+      return false;
+    }
     final currentSelection = current();
-    if (projection.wallCount == 0) return false;
     final currentEdgeId = currentSelection.boundaryEdgeId;
     final currentOrdinal = currentEdgeId == null
         ? 0
@@ -102,13 +102,23 @@ final class CanonicalRoomSurfaceSelectionAdapter {
   }
 
   bool nextWall() {
+    if (!_hasExactLegacyMaterialization() || projection.wallCount == 0) {
+      return false;
+    }
     final currentSelection = current();
-    if (projection.wallCount == 0) return false;
     final currentEdgeId = currentSelection.boundaryEdgeId;
     final currentOrdinal = currentEdgeId == null
         ? -1
         : projection.ordinalForEdgeId(currentEdgeId) ?? -1;
     final targetOrdinal = (currentOrdinal + 1) % projection.wallCount;
     return showBoundaryEdge(projection.edgeIdAtOrdinal(targetOrdinal));
+  }
+
+  bool _hasExactLegacyMaterialization() {
+    final selectedSpace = controller.selectedSpace;
+    return selectedSpace != null &&
+        controller.selectedSpaceId == projection.legacySpaceId &&
+        selectedSpace.id == projection.legacySpaceId &&
+        projection.matchesLegacySpace(selectedSpace);
   }
 }
