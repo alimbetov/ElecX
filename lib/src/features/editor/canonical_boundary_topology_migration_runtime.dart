@@ -414,10 +414,13 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
 
     try {
       ownerMutation();
-    } catch (_) {
+    } catch (error) {
       controller.documentHistory.invalidateAfterUnownedCanonicalCommit(session);
       _bestEffortRematerialize(rematerialize);
-      rethrow;
+      throw CanonicalBoundaryPostCommitException(
+        phase: 'persistence ownership acknowledgement',
+        cause: error,
+      );
     }
 
     _requireCommittedVersionCurrent(
