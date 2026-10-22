@@ -1,6 +1,7 @@
 import '../../domain/boundary_geometry_integrity.dart';
 import '../../domain/boundary_host_registry.dart';
 import '../../domain/boundary_topology.dart';
+import '../../domain/boundary_wall_profile_registry.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import 'project_mutation.dart';
@@ -8,8 +9,8 @@ import 'project_mutation.dart';
 /// P7A-5 application boundary for identity-changing topology edits.
 ///
 /// Unlike the P7A-4.5 geometry editor, this service accepts explicit lineage
-/// and atomically remaps canonical hosted-object ownership in the same P3
-/// mutation as the topology replacement.
+/// and atomically remaps canonical hosted-object ownership and wall-profile
+/// payloads in the same P3 mutation as the topology replacement.
 final class ProjectBoundaryTopologyMigrationService {
   const ProjectBoundaryTopologyMigrationService(this._mutations);
 
@@ -41,6 +42,7 @@ final class ProjectBoundaryTopologyMigrationService {
       expectedVersion: expectedVersion,
       source: source,
       sourceRegistry: current.engineeringMetadata.boundaryHostedObjectRegistry,
+      sourceProfiles: current.engineeringMetadata.boundaryWallProfileRegistry,
     );
   }
 }
@@ -73,11 +75,13 @@ final class BoundaryTopologyMigrationPreview {
     required this.topology,
     required this.lineage,
     required this.hostedObjects,
+    required this.wallProfiles,
   });
 
   final SpaceBoundaryTopology topology;
   final BoundaryTopologyChangeSet lineage;
   final BoundaryHostedObjectRegistry hostedObjects;
+  final BoundaryWallProfileRegistry wallProfiles;
 }
 
 final class BoundaryTopologyMigrationCommit {
@@ -97,25 +101,31 @@ final class CanonicalBoundaryTopologyMigrationSession {
     required this.expectedVersion,
     required SpaceBoundaryTopology source,
     required BoundaryHostedObjectRegistry sourceRegistry,
+    required BoundaryWallProfileRegistry sourceProfiles,
   })  : _mutations = mutations,
         _source = source,
         _sourceRegistry = sourceRegistry,
+        _sourceProfiles = sourceProfiles,
         _previewTopology = source,
-        _previewRegistry = sourceRegistry;
+        _previewRegistry = sourceRegistry,
+        _previewProfiles = sourceProfiles;
 
   final ProjectMutationSession _mutations;
   final SpaceId spaceId;
   final LocalProjectVersion expectedVersion;
   final SpaceBoundaryTopology _source;
   final BoundaryHostedObjectRegistry _sourceRegistry;
+  final BoundaryWallProfileRegistry _sourceProfiles;
 
   SpaceBoundaryTopology _previewTopology;
   BoundaryHostedObjectRegistry _previewRegistry;
+  BoundaryWallProfileRegistry _previewProfiles;
   BoundaryTopologyChangeSet? _lineage;
 
   SpaceBoundaryTopology get source => _source;
   SpaceBoundaryTopology get previewTopology => _previewTopology;
   BoundaryHostedObjectRegistry get previewHostedObjects => _previewRegistry;
+  BoundaryWallProfileRegistry get previewWallProfiles => _previewProfiles;
   BoundaryTopologyChangeSet? get previewLineage => _lineage;
   bool get dirty => _lineage != null;
 
@@ -174,6 +184,11 @@ final class CanonicalBoundaryTopologyMigrationSession {
         ordered.add(id);
       }
     }
+    final topology = SpaceBoundaryTopology(
+      spaceId: spaceId,
+      orderedEdgeIds: ordered,
+      edges: edges,
+    );
     final lineage = BoundaryTopologyChangeSet([
       for (final id in _source.orderedEdgeIds)
         if (id != sourceEdgeId) BoundaryEdgeLineage.preserved(id),
@@ -182,13 +197,17 @@ final class CanonicalBoundaryTopologyMigrationSession {
         resultEdgeIds: [first.id, second.id],
       ),
     ]);
+    final profiles = _sourceProfiles.split(
+      spaceId: spaceId,
+      sourceEdge: sourceEdge,
+      firstResultEdgeId: first.id,
+      secondResultEdgeId: second.id,
+      splitPoint: splitPoint,
+    );
     return previewReplaceTopology(
-      topology: SpaceBoundaryTopology(
-        spaceId: spaceId,
-        orderedEdgeIds: ordered,
-        edges: edges,
-      ),
+      topology: topology,
       lineage: lineage,
+      wallProfiles: profiles,
     );
   }
 
@@ -246,6 +265,11 @@ final class CanonicalBoundaryTopologyMigrationSession {
       ..remove(first.id)
       ..remove(second.id)
       ..[merged.id] = merged;
+    final topology = SpaceBoundaryTopology(
+      spaceId: spaceId,
+      orderedEdgeIds: ordered,
+      edges: edges,
+    );
     final lineage = BoundaryTopologyChangeSet([
       for (final id in _source.orderedEdgeIds)
         if (id != first.id && id != second.id)
@@ -255,21 +279,25 @@ final class CanonicalBoundaryTopologyMigrationSession {
         resultEdgeId: merged.id,
       ),
     ]);
+    final profiles = _sourceProfiles.merge(
+      spaceId: spaceId,
+      firstSourceEdge: first,
+      secondSourceEdge: second,
+      resultEdgeId: merged.id,
+    );
     return previewReplaceTopology(
-      topology: SpaceBoundaryTopology(
-        spaceId: spaceId,
-        orderedEdgeIds: ordered,
-        edges: edges,
-      ),
+      topology: topology,
       lineage: lineage,
+      wallProfiles: profiles,
     );
   }
 
-  /// General P7A-5 topology replacement used by future create/remove tools.
+  /// General P7A-5 topology replacement used by create/remove-capable tools.
   /// Every pre-mutation and post-mutation edge must participate in lineage.
   BoundaryTopologyMigrationPreview previewReplaceTopology({
     required SpaceBoundaryTopology topology,
     required BoundaryTopologyChangeSet lineage,
+    BoundaryWallProfileRegistry? wallProfiles,
   }) {
     _requireCurrentVersion();
     if (topology.spaceId != spaceId) {
@@ -284,19 +312,23 @@ final class CanonicalBoundaryTopologyMigrationSession {
       after: topology,
       lineage: lineage,
     );
+    final profiles = wallProfiles ?? _sourceProfiles;
     _previewTopology = topology;
     _previewRegistry = remapped;
+    _previewProfiles = profiles;
     _lineage = lineage;
     return BoundaryTopologyMigrationPreview(
       topology: topology,
       lineage: lineage,
       hostedObjects: remapped,
+      wallProfiles: profiles,
     );
   }
 
   void cancel() {
     _previewTopology = _source;
     _previewRegistry = _sourceRegistry;
+    _previewProfiles = _sourceProfiles;
     _lineage = null;
   }
 
@@ -311,6 +343,7 @@ final class CanonicalBoundaryTopologyMigrationSession {
           spaceId: spaceId,
           topology: _previewTopology,
           hostedObjects: _previewRegistry,
+          wallProfiles: _previewProfiles,
         ),
       ),
     );
@@ -334,11 +367,13 @@ final class _ReplaceBoundaryTopologyWithHostsCommand implements ProjectCommand {
     required this.spaceId,
     required this.topology,
     required this.hostedObjects,
+    required this.wallProfiles,
   });
 
   final SpaceId spaceId;
   final SpaceBoundaryTopology topology;
   final BoundaryHostedObjectRegistry hostedObjects;
+  final BoundaryWallProfileRegistry wallProfiles;
 
   @override
   String get commandType => 'p7a.migrateBoundaryTopologyAndHosts';
@@ -356,10 +391,15 @@ final class _ReplaceBoundaryTopologyWithHostsCommand implements ProjectCommand {
     BoundaryGeometryIntegrity.validateOrThrow(topology);
 
     final stores = current.stores;
-    final metadata =
-        current.engineeringMetadata.withBoundaryHostedObjectRegistry(
-      hostedObjects,
-    );
+    final boundaries = <SpaceId, SpaceBoundaryTopology>{
+      ...stores.boundaries,
+      spaceId: topology,
+    };
+    hostedObjects.validateAgainst(boundaries);
+    wallProfiles.validateAgainst(boundaries);
+    final metadata = current.engineeringMetadata
+        .withBoundaryHostedObjectRegistry(hostedObjects)
+        .withBoundaryWallProfileRegistry(wallProfiles);
     return ProjectCommandCandidate.fromState(
       state: ProjectMutableState(
         engineeringMetadata: metadata,
@@ -372,10 +412,7 @@ final class _ReplaceBoundaryTopologyWithHostsCommand implements ProjectCommand {
           openings: stores.openings,
           adjacencies: stores.adjacencies,
           overlays: stores.overlays,
-          boundaries: {
-            ...stores.boundaries,
-            spaceId: topology,
-          },
+          boundaries: boundaries,
         ),
       ),
       affectedEntityIds: <EntityId>{
