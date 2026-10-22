@@ -9,6 +9,7 @@ import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_model.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/domain/wall_profile.dart';
+import 'package:elecx/src/features/editor/cable_route_constraints.dart';
 import 'package:elecx/src/features/editor/canonical_boundary_host_projection.dart';
 import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -127,7 +128,7 @@ void main() {
       expect(hosted['component:c1']!.host.edgeId, e0);
       expect(hosted['component:c2']!.host.edgeId, e0);
       expect(hosted['cable:r1:source']!.host.edgeId, e0);
-      expect(hosted['route-anchor:anchor-1']!.host.edgeId, e0);
+      expect(hosted['route:r1:anchor:anchor-1']!.host.edgeId, e0);
       expect(hosted['cable:r1:target']!.host.edgeId, e0);
       expect(
         hosted.references.values.any(
@@ -292,41 +293,13 @@ void main() {
       final legacyRoom = room();
       final bottomA = BoundaryEdgeId('bottom-a');
       final bottomB = BoundaryEdgeId('bottom-b');
-      final topology = SpaceBoundaryTopology(
-        spaceId: canonicalSpaceId,
-        orderedEdgeIds: [bottomA, bottomB, e1, e2, e3],
-        edges: {
-          bottomA: ProjectBoundaryEdge(
-            id: bottomA,
-            spaceId: canonicalSpaceId,
-            start: const BoundaryPointMm(xMm: 0, yMm: 0),
-            end: const BoundaryPointMm(xMm: 2000, yMm: 0),
-          ),
-          bottomB: ProjectBoundaryEdge(
-            id: bottomB,
-            spaceId: canonicalSpaceId,
-            start: const BoundaryPointMm(xMm: 2000, yMm: 0),
-            end: const BoundaryPointMm(xMm: 4000, yMm: 0),
-          ),
-          e1: ProjectBoundaryEdge(
-            id: e1,
-            spaceId: canonicalSpaceId,
-            start: const BoundaryPointMm(xMm: 4000, yMm: 0),
-            end: const BoundaryPointMm(xMm: 4000, yMm: 3000),
-          ),
-          e2: ProjectBoundaryEdge(
-            id: e2,
-            spaceId: canonicalSpaceId,
-            start: const BoundaryPointMm(xMm: 4000, yMm: 3000),
-            end: const BoundaryPointMm(xMm: 0, yMm: 3000),
-          ),
-          e3: ProjectBoundaryEdge(
-            id: e3,
-            spaceId: canonicalSpaceId,
-            start: const BoundaryPointMm(xMm: 0, yMm: 3000),
-            end: const BoundaryPointMm(xMm: 0, yMm: 0),
-          ),
-        },
+      final topology = _splitBottomTopology(
+        canonicalSpaceId: canonicalSpaceId,
+        bottomA: bottomA,
+        bottomB: bottomB,
+        e1: e1,
+        e2: e2,
+        e3: e3,
       );
       final component = ElectricalComponentPlacement(
         id: 'c1',
@@ -366,7 +339,103 @@ void main() {
       expect(materialized.space.wallProfiles, isEmpty);
     });
 
-    test('route segment spanning different result edges fails closed', () {
+    test('collinear split materializes one route segment as two losslessly', () {
+      final legacyRoom = room();
+      final bottomA = BoundaryEdgeId('bottom-a');
+      final bottomB = BoundaryEdgeId('bottom-b');
+      final topology = _splitBottomTopology(
+        canonicalSpaceId: canonicalSpaceId,
+        bottomA: bottomA,
+        bottomB: bottomB,
+        e1: e1,
+        e2: e2,
+        e3: e3,
+      );
+      final route = ElectricalCableRoute(
+        id: 'split-route',
+        source: const ElectricalEndpointRef(componentId: 'c1', portId: 'out'),
+        target: const ElectricalEndpointRef(componentId: 'c2', portId: 'in'),
+        segments: [
+          ElectricalRouteSegment(
+            surface: RoomSurfaceRef.wall(legacyRoom.id, 0),
+            points: const [
+              SurfacePointMm(500, 500),
+              SurfacePointMm(2500, 500),
+              SurfacePointMm(3500, 500),
+            ],
+            anchorIds: [
+              RouteAnchorId('source'),
+              RouteAnchorId('middle'),
+              RouteAnchorId('target'),
+            ],
+          ),
+        ],
+      );
+      final registry = BoundaryHostedObjectRegistry({
+        'cable:split-route:source': BoundaryHostedReference.point(
+          objectKey: 'cable:split-route:source',
+          objectKind: BoundaryHostedObjectKind.cableEndpoint,
+          host: BoundaryEdgeHostRef(spaceId: canonicalSpaceId, edgeId: bottomA),
+          offsetMm: 500,
+        ),
+        'route:split-route:anchor:middle': BoundaryHostedReference.point(
+          objectKey: 'route:split-route:anchor:middle',
+          objectKind: BoundaryHostedObjectKind.routeAnchor,
+          host: BoundaryEdgeHostRef(spaceId: canonicalSpaceId, edgeId: bottomB),
+          offsetMm: 500,
+        ),
+        'cable:split-route:target': BoundaryHostedReference.point(
+          objectKey: 'cable:split-route:target',
+          objectKind: BoundaryHostedObjectKind.cableEndpoint,
+          host: BoundaryEdgeHostRef(spaceId: canonicalSpaceId, edgeId: bottomB),
+          offsetMm: 1500,
+        ),
+      });
+      final constraints = CableRouteConstraints(
+        lockedSegments: {0},
+        mandatoryWaypoints: const [
+          CableMandatoryWaypoint(
+            segmentIndex: 0,
+            pointIndex: 1,
+            point: SurfacePointMm(2500, 500),
+          ),
+        ],
+      );
+
+      final materialized = CanonicalBoundaryHostProjection.materializeTopology(
+        canonicalSpaceId: canonicalSpaceId,
+        legacySpace: legacyRoom,
+        topology: topology,
+        registry: registry,
+        wallProfiles: const BoundaryWallProfileRegistry.empty(),
+        openings: const [],
+        p2State: EditorP2State(
+          routes: [route],
+          routeConstraints: {'split-route': constraints},
+        ),
+      );
+
+      final result = materialized.p2State.routes.single;
+      expect(result.id, 'split-route');
+      expect(result.segments, hasLength(2));
+      expect(result.segments[0].surface.wallIndex, 0);
+      expect(result.segments[1].surface.wallIndex, 1);
+      expect(result.segments[0].points.last, const SurfacePointMm(2000, 500));
+      expect(result.segments[1].points.first, const SurfacePointMm(0, 500));
+      expect(result.segments[1].anchorIds[1], RouteAnchorId('middle'));
+
+      final resultConstraints =
+          materialized.p2State.routeConstraints['split-route']!;
+      expect(resultConstraints.lockedSegments, {0, 1});
+      expect(resultConstraints.mandatoryWaypoints.single.segmentIndex, 1);
+      expect(resultConstraints.mandatoryWaypoints.single.pointIndex, 1);
+      expect(
+        resultConstraints.mandatoryWaypoints.single.point,
+        const SurfacePointMm(500, 500),
+      );
+    });
+
+    test('route crossing a real corner remains fail closed', () {
       final legacyRoom = room();
       final wall = RoomSurfaceRef.wall(legacyRoom.id, 0);
       final route = ElectricalCableRoute(
@@ -397,29 +466,17 @@ void main() {
         openings: const [],
         p2State: p2,
       );
-      final incompatible = captured
-          .put(
-            BoundaryHostedReference.point(
-              objectKey: 'cable:r1:source',
-              objectKind: BoundaryHostedObjectKind.cableEndpoint,
-              host: BoundaryEdgeHostRef(
-                spaceId: canonicalSpaceId,
-                edgeId: e0,
-              ),
-              offsetMm: 500,
-            ),
-          )
-          .put(
-            BoundaryHostedReference.point(
-              objectKey: 'route-anchor:crossing-anchor',
-              objectKind: BoundaryHostedObjectKind.routeAnchor,
-              host: BoundaryEdgeHostRef(
-                spaceId: canonicalSpaceId,
-                edgeId: e1,
-              ),
-              offsetMm: 400,
-            ),
-          );
+      final incompatible = captured.put(
+        BoundaryHostedReference.point(
+          objectKey: 'route:r1:anchor:crossing-anchor',
+          objectKind: BoundaryHostedObjectKind.routeAnchor,
+          host: BoundaryEdgeHostRef(
+            spaceId: canonicalSpaceId,
+            edgeId: e1,
+          ),
+          offsetMm: 400,
+        ),
+      );
 
       expect(
         () => CanonicalBoundaryHostProjection.materialize(
@@ -435,3 +492,48 @@ void main() {
     });
   });
 }
+
+SpaceBoundaryTopology _splitBottomTopology({
+  required SpaceId canonicalSpaceId,
+  required BoundaryEdgeId bottomA,
+  required BoundaryEdgeId bottomB,
+  required BoundaryEdgeId e1,
+  required BoundaryEdgeId e2,
+  required BoundaryEdgeId e3,
+}) =>
+    SpaceBoundaryTopology(
+      spaceId: canonicalSpaceId,
+      orderedEdgeIds: [bottomA, bottomB, e1, e2, e3],
+      edges: {
+        bottomA: ProjectBoundaryEdge(
+          id: bottomA,
+          spaceId: canonicalSpaceId,
+          start: const BoundaryPointMm(xMm: 0, yMm: 0),
+          end: const BoundaryPointMm(xMm: 2000, yMm: 0),
+        ),
+        bottomB: ProjectBoundaryEdge(
+          id: bottomB,
+          spaceId: canonicalSpaceId,
+          start: const BoundaryPointMm(xMm: 2000, yMm: 0),
+          end: const BoundaryPointMm(xMm: 4000, yMm: 0),
+        ),
+        e1: ProjectBoundaryEdge(
+          id: e1,
+          spaceId: canonicalSpaceId,
+          start: const BoundaryPointMm(xMm: 4000, yMm: 0),
+          end: const BoundaryPointMm(xMm: 4000, yMm: 3000),
+        ),
+        e2: ProjectBoundaryEdge(
+          id: e2,
+          spaceId: canonicalSpaceId,
+          start: const BoundaryPointMm(xMm: 4000, yMm: 3000),
+          end: const BoundaryPointMm(xMm: 0, yMm: 3000),
+        ),
+        e3: ProjectBoundaryEdge(
+          id: e3,
+          spaceId: canonicalSpaceId,
+          start: const BoundaryPointMm(xMm: 0, yMm: 3000),
+          end: const BoundaryPointMm(xMm: 0, yMm: 0),
+        ),
+      },
+    );
