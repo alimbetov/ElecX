@@ -1,5 +1,6 @@
 import '../../application/project/project_mutation.dart';
 import '../../application/project/project_north_editing.dart';
+import '../../application/project/project_space_semantics_editing.dart';
 import '../../application/project/project_structure_authoring.dart';
 import '../../domain/project_identity.dart';
 import 'canonical_editor_runtime_cutover.dart';
@@ -46,6 +47,12 @@ typedef CanonicalProductionProjectNorthCommittedCallback
   ProjectMutationResult result,
 );
 
+typedef CanonicalProductionSpaceSemanticsCommittedCallback
+    = CanonicalAuthoringOwnershipReceipt Function(
+  ProjectSpaceSemanticsEditingPort editing,
+  ProjectMutationResult result,
+);
+
 final class CanonicalEditorResolvedRuntime {
   const CanonicalEditorResolvedRuntime({
     required this.session,
@@ -59,8 +66,8 @@ final class CanonicalEditorResolvedRuntime {
   final CanonicalEditorMaterializer materializer;
 
   /// Exact canonical project for which the production host accepts persistence
-  /// ownership. Null keeps Project North read-only even when a canonical
-  /// runtime is available.
+  /// ownership. Null keeps canonical metadata/semantic editing read-only even
+  /// when a canonical runtime is available.
   final ProjectId? persistenceOwnerProjectId;
 }
 
@@ -71,14 +78,15 @@ final class CanonicalEditorResolvedRuntime {
 /// workspace from surviving a project lifecycle transition.
 ///
 /// Canonical structure authoring is enabled only when [onAuthoringCommitted] is
-/// supplied. Project North editing is independently enabled only when the
-/// resolved runtime persistence-owner identity matches the screen/canonical
-/// project and [onProjectNorthCommitted] is supplied. The editing capability is
-/// obtained from [ProjectStructureAuthoringSession.projectNorthEditing], which
-/// guarantees that structure and root-metadata edits share one P3 timeline.
+/// supplied. Project North and P6 Space semantics editing are independently
+/// enabled only when the resolved runtime persistence-owner identity matches
+/// the screen/canonical project and the corresponding ownership callback is
+/// supplied. Both capabilities come from [ProjectStructureAuthoringSession],
+/// so structure, root metadata and selected-space semantics share one P3
+/// mutation timeline.
 ///
-/// Both callbacks are synchronous ownership-transfer boundaries. They do not
-/// claim durable disk/backend save completion.
+/// Callbacks are synchronous ownership-transfer boundaries. They do not claim
+/// durable disk/backend save completion.
 final class CanonicalEditorProductionRuntimeConfig {
   const CanonicalEditorProductionRuntimeConfig({
     required this.resolveRuntime,
@@ -87,6 +95,7 @@ final class CanonicalEditorProductionRuntimeConfig {
     this.requestRoom,
     this.onAuthoringCommitted,
     this.onProjectNorthCommitted,
+    this.onSpaceSemanticsCommitted,
   });
 
   final CanonicalEditorRuntimeResolver resolveRuntime;
@@ -96,6 +105,8 @@ final class CanonicalEditorProductionRuntimeConfig {
   final CanonicalProductionAuthoringCommittedCallback? onAuthoringCommitted;
   final CanonicalProductionProjectNorthCommittedCallback?
       onProjectNorthCommitted;
+  final CanonicalProductionSpaceSemanticsCommittedCallback?
+      onSpaceSemanticsCommitted;
 
   bool get authoringEnabled => onAuthoringCommitted != null;
 }
