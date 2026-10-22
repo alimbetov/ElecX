@@ -8,6 +8,7 @@ import 'package:elecx/src/domain/boundary_topology.dart';
 import 'package:elecx/src/domain/boundary_wall_profile_registry.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
+import 'package:elecx/src/domain/project_orientation.dart';
 import 'package:elecx/src/domain/project_space_semantics.dart';
 import 'package:elecx/src/domain/wall_profile.dart';
 import 'package:elecx/src/serialization/project/canonical_project_document_codec.dart';
