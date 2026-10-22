@@ -17,11 +17,17 @@ void main() {
     addTearDown(controller.dispose);
 
     final fixtureA = _Fixture('a');
-    final sessionA = fixtureA.session(seed: 965);
+    final aggregateA = fixtureA.project();
+    final mutationsA = ProjectMutationSession(aggregateA);
+    final sessionA = fixtureA.session(
+      seed: 965,
+      aggregate: aggregateA,
+      mutations: mutationsA,
+    );
     final history = controller.documentHistory;
     history.attachCanonicalSession(sessionA, onReplayed: (_) {});
 
-    final committed = sessionA.mutations.commit(
+    final committed = mutationsA.commit(
       ProjectMutationRequest(
         expectedVersion: sessionA.project.version,
         command: _RenameSpaceCommand(
@@ -39,7 +45,12 @@ void main() {
     expect(history.undoDepth, 1);
 
     final fixtureB = _Fixture('b');
-    final sessionB = fixtureB.session(seed: 966);
+    final aggregateB = fixtureB.project();
+    final sessionB = fixtureB.session(
+      seed: 966,
+      aggregate: aggregateB,
+      mutations: ProjectMutationSession(aggregateB),
+    );
     history.attachCanonicalSession(sessionB, onReplayed: (_) {});
 
     expect(history.undoDepth, 0);
@@ -154,17 +165,19 @@ final class _Fixture {
         ),
       );
 
-  ProjectStructureAuthoringSession session({required int seed}) {
-    final aggregate = project();
-    return ProjectStructureAuthoringSession(
-      mutations: ProjectMutationSession(aggregate),
-      idFactory: SecureRandomEntityIdFactory(random: Random(seed)),
-      navigation: ProjectNavigationState.restore(
-        aggregate,
-        activeBuildingId: buildingId,
-        activeLevelId: levelId,
-        selectedSpaceId: spaceId,
-      ),
-    );
-  }
+  ProjectStructureAuthoringSession session({
+    required int seed,
+    required ProjectAggregateRoot aggregate,
+    required ProjectMutationSession mutations,
+  }) =>
+      ProjectStructureAuthoringSession(
+        mutations: mutations,
+        idFactory: SecureRandomEntityIdFactory(random: Random(seed)),
+        navigation: ProjectNavigationState.restore(
+          aggregate,
+          activeBuildingId: buildingId,
+          activeLevelId: levelId,
+          selectedSpaceId: spaceId,
+        ),
+      );
 }
