@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import '../../application/project/project_boundary_topology_editing.dart';
 import '../../domain/boundary_topology.dart';
 import '../../domain/geometry.dart';
-import '../../domain/project_identity.dart';
 import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
 import 'canonical_room_surface_runtime_registry.dart';
@@ -35,7 +34,8 @@ abstract final class CanonicalBoundaryTopologyEditingRuntime {
     if (coordinator == null || canonicalSpaceId == null) return false;
 
     final legacySpace = controller.selectedSpace;
-    final legacySpaceId = coordinator.adapter.binding.legacySpaceIds[canonicalSpaceId];
+    final legacySpaceId =
+        coordinator.adapter.binding.legacySpaceIds[canonicalSpaceId];
     if (legacySpace == null ||
         legacySpaceId == null ||
         legacySpace.id != legacySpaceId ||
@@ -174,9 +174,15 @@ abstract final class CanonicalBoundaryTopologyEditingRuntime {
     for (final index in changed) {
       final next = (index + 1) % count;
       if (!changed.contains(next)) continue;
-      final deltaA = after.vertices[index] - before.vertices[index];
-      final deltaB = after.vertices[next] - before.vertices[next];
-      if (deltaA == deltaB) return index;
+      final beforeA = before.vertices[index];
+      final afterA = after.vertices[index];
+      final beforeB = before.vertices[next];
+      final afterB = after.vertices[next];
+      final deltaAx = afterA.x - beforeA.x;
+      final deltaAy = afterA.y - beforeA.y;
+      final deltaBx = afterB.x - beforeB.x;
+      final deltaBy = afterB.y - beforeB.y;
+      if (deltaAx == deltaBx && deltaAy == deltaBy) return index;
     }
     return null;
   }
