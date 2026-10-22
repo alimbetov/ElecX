@@ -25,6 +25,7 @@ void main() {
       _useSurface(tester, const Size(1440, 900));
       final fixture = _fixture('publication-failure');
       var publicationAttempts = 0;
+      var featureHookCalls = 0;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -33,9 +34,13 @@ void main() {
             initialDocument: fixture.document,
             canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
               resolveRuntime: (_, __) => fixture.runtime,
-              onProjectNorthCommitted: (_, __) {
+              onCanonicalMutationCommitted: (_, __) {
                 publicationAttempts++;
                 throw StateError('simulated owner failure');
+              },
+              onProjectNorthCommitted: (_, __) {
+                featureHookCalls++;
+                return const CanonicalAuthoringOwnershipReceipt.accepted();
               },
             ),
           ),
@@ -55,6 +60,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(publicationAttempts, 1);
+      expect(featureHookCalls, 0);
       expect(fixture.session.project.version.value, 1);
       expect(
         fixture.session.projectNorthEditing.currentProjectNorth?.degrees,
