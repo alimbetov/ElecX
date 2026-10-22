@@ -1,4 +1,5 @@
 import '../../domain/boundary_geometry_integrity.dart';
+import '../../domain/boundary_opening_profile_validation.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 
@@ -26,10 +27,17 @@ final class ProjectSnapshot {
 
     aggregate.engineeringMetadata.boundaryEdgeIdentityRegistry
         .requireCoversActiveBoundaries(aggregate.stores.boundaries);
-    aggregate.engineeringMetadata.boundaryHostedObjectRegistry
-        .validateAgainst(aggregate.stores.boundaries);
-    aggregate.engineeringMetadata.boundaryWallProfileRegistry
-        .validateAgainst(aggregate.stores.boundaries);
+    final hostedObjects =
+        aggregate.engineeringMetadata.boundaryHostedObjectRegistry;
+    final wallProfiles =
+        aggregate.engineeringMetadata.boundaryWallProfileRegistry;
+    hostedObjects.validateAgainst(aggregate.stores.boundaries);
+    wallProfiles.validateAgainst(aggregate.stores.boundaries);
+    _validateAdoptedOpeningOwnership(
+      aggregate: aggregate,
+      hostedObjects: hostedObjects,
+      wallProfiles: wallProfiles,
+    );
     for (final topology in aggregate.stores.boundaries.values) {
       BoundaryGeometryIntegrity.validateOrThrow(topology);
     }
@@ -73,7 +81,26 @@ final class ProjectSnapshot {
   }
 }
 
-/// Lightweight repository listing projection.
+void _validateAdoptedOpeningOwnership({
+  required ProjectAggregateRoot aggregate,
+  required dynamic hostedObjects,
+  required dynamic wallProfiles,
+}) {
+  for (final spaceId in aggregate.stores.spaces.keys) {
+    final hasCanonicalOwnership =
+        hostedObjects.forSpace(spaceId).isNotEmpty ||
+            wallProfiles.forSpace(spaceId).isNotEmpty;
+    if (!hasCanonicalOwnership) continue;
+    BoundaryOpeningProfileValidator.validateSpace(
+      spaceId: spaceId,
+      openings: aggregate.stores.openings.values,
+      hostedObjects: hostedObjects,
+      wallProfiles: wallProfiles,
+    );
+  }
+}
+
+/// Lightweight repository listing projection of one canonical project.
 final class ProjectSummary {
   ProjectSummary({
     required this.id,
