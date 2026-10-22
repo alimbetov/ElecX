@@ -23,7 +23,8 @@ void main() {
     (tester) async {
       _useDesktopSurface(tester);
       final fixture = _fixture(projectId: 'p5d-screen');
-      var ownershipReceipts = 0;
+      var canonicalOwnershipReceipts = 0;
+      var featureHookCalls = 0;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -32,8 +33,13 @@ void main() {
             initialDocument: fixture.document,
             canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
               resolveRuntime: (_, __) => fixture.runtime,
+              onCanonicalMutationCommitted: (session, result) {
+                canonicalOwnershipReceipts++;
+                expect(session.project, same(result.project));
+                return const CanonicalAuthoringOwnershipReceipt.accepted();
+              },
               onProjectNorthCommitted: (_, __) {
-                ownershipReceipts++;
+                featureHookCalls++;
                 return const CanonicalAuthoringOwnershipReceipt.accepted();
               },
             ),
@@ -72,7 +78,8 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('apply-project-north')));
       await tester.pumpAndSettle();
 
-      expect(ownershipReceipts, 1);
+      expect(canonicalOwnershipReceipts, 1);
+      expect(featureHookCalls, 1);
       expect(
         fixture.session.project.engineeringMetadata.projectNorth?.degrees,
         32.5,
@@ -108,6 +115,8 @@ void main() {
             initialDocument: fixture.document,
             canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
               resolveRuntime: (_, __) => fixture.runtime,
+              onCanonicalMutationCommitted: (_, __) =>
+                  const CanonicalAuthoringOwnershipReceipt.accepted(),
               onProjectNorthCommitted: (_, __) =>
                   const CanonicalAuthoringOwnershipReceipt.accepted(),
             ),
@@ -144,6 +153,8 @@ void main() {
           initialDocument: fixture.document,
           canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
             resolveRuntime: (_, __) => fixture.runtime,
+            onCanonicalMutationCommitted: (_, __) =>
+                const CanonicalAuthoringOwnershipReceipt.accepted(),
             onProjectNorthCommitted: (_, __) =>
                 const CanonicalAuthoringOwnershipReceipt.accepted(),
           ),
@@ -181,6 +192,8 @@ void main() {
           initialDocument: fixture.document,
           canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
             resolveRuntime: (_, __) => fixture.runtime,
+            onProjectNorthCommitted: (_, __) =>
+                const CanonicalAuthoringOwnershipReceipt.accepted(),
           ),
         ),
       ),
@@ -209,7 +222,8 @@ void main() {
         isNotNull,
       );
       final versionBefore = fixture.session.project.version;
-      var ownershipReceipts = 0;
+      var canonicalOwnershipReceipts = 0;
+      var featureHookCalls = 0;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -218,8 +232,12 @@ void main() {
             initialDocument: fixture.document,
             canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
               resolveRuntime: (_, __) => fixture.runtime,
+              onCanonicalMutationCommitted: (_, __) {
+                canonicalOwnershipReceipts++;
+                return const CanonicalAuthoringOwnershipReceipt.accepted();
+              },
               onProjectNorthCommitted: (_, __) {
-                ownershipReceipts++;
+                featureHookCalls++;
                 return const CanonicalAuthoringOwnershipReceipt.accepted();
               },
             ),
@@ -239,7 +257,8 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('apply-project-north')));
       await tester.pumpAndSettle();
 
-      expect(ownershipReceipts, 0);
+      expect(canonicalOwnershipReceipts, 0);
+      expect(featureHookCalls, 0);
       expect(fixture.session.project.version, versionBefore);
       expect(
         fixture.session.project.engineeringMetadata.projectNorth?.degrees,
@@ -253,7 +272,8 @@ void main() {
     (tester) async {
       _useDesktopSurface(tester);
       final fixture = _fixture(projectId: 'north-stale-dialog');
-      var ownershipReceipts = 0;
+      var canonicalOwnershipReceipts = 0;
+      var featureHookCalls = 0;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -262,8 +282,12 @@ void main() {
             initialDocument: fixture.document,
             canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
               resolveRuntime: (_, __) => fixture.runtime,
+              onCanonicalMutationCommitted: (_, __) {
+                canonicalOwnershipReceipts++;
+                return const CanonicalAuthoringOwnershipReceipt.accepted();
+              },
               onProjectNorthCommitted: (_, __) {
-                ownershipReceipts++;
+                featureHookCalls++;
                 return const CanonicalAuthoringOwnershipReceipt.accepted();
               },
             ),
@@ -291,7 +315,8 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('apply-project-north')));
       await tester.pumpAndSettle();
 
-      expect(ownershipReceipts, 0);
+      expect(canonicalOwnershipReceipts, 0);
+      expect(featureHookCalls, 0);
       expect(fixture.session.project.version.value, 1);
       expect(
         fixture.session.project.engineeringMetadata.projectNorth?.degrees,
