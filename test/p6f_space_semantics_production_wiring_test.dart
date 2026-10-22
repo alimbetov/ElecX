@@ -53,7 +53,8 @@ void main() {
     (tester) async {
       _useDesktopSurface(tester);
       final fixture = _fixture(projectId: 'p6f-owned');
-      var ownershipReceipts = 0;
+      var canonicalOwnershipReceipts = 0;
+      var featureHookCalls = 0;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -62,8 +63,14 @@ void main() {
             initialDocument: fixture.document,
             canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
               resolveRuntime: (_, __) => fixture.runtime,
+              onCanonicalMutationCommitted: (session, result) {
+                canonicalOwnershipReceipts++;
+                expect(session.project.id, fixture.session.project.id);
+                expect(result.project.version.value, 1);
+                return const CanonicalAuthoringOwnershipReceipt.accepted();
+              },
               onSpaceSemanticsCommitted: (editing, result) {
-                ownershipReceipts++;
+                featureHookCalls++;
                 expect(editing.projectId, fixture.session.project.id);
                 expect(result.project.version.value, 1);
                 return const CanonicalAuthoringOwnershipReceipt.accepted();
@@ -83,7 +90,8 @@ void main() {
       await tester.tap(find.text('Bedroom').last);
       await tester.pumpAndSettle();
 
-      expect(ownershipReceipts, 1);
+      expect(canonicalOwnershipReceipts, 1);
+      expect(featureHookCalls, 1);
       expect(fixture.session.project.version.value, 1);
       expect(
         fixture.session.project.index.space(fixture.spaceId)!.usage,
@@ -102,7 +110,8 @@ void main() {
         projectId: 'p6f-owner-mismatch',
         persistenceOwnerProjectId: ProjectId('different-owner'),
       );
-      var ownershipReceipts = 0;
+      var canonicalOwnershipReceipts = 0;
+      var featureHookCalls = 0;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -111,8 +120,12 @@ void main() {
             initialDocument: fixture.document,
             canonicalRuntime: CanonicalEditorProductionRuntimeConfig(
               resolveRuntime: (_, __) => fixture.runtime,
+              onCanonicalMutationCommitted: (_, __) {
+                canonicalOwnershipReceipts++;
+                return const CanonicalAuthoringOwnershipReceipt.accepted();
+              },
               onSpaceSemanticsCommitted: (_, __) {
-                ownershipReceipts++;
+                featureHookCalls++;
                 return const CanonicalAuthoringOwnershipReceipt.accepted();
               },
             ),
@@ -123,7 +136,8 @@ void main() {
 
       expect(find.byType(SpaceSemanticsInspector), findsOneWidget);
       expect(find.byKey(const ValueKey('space-semantics-usage')), findsNothing);
-      expect(ownershipReceipts, 0);
+      expect(canonicalOwnershipReceipts, 0);
+      expect(featureHookCalls, 0);
       expect(fixture.session.project.version.value, 0);
     },
   );
