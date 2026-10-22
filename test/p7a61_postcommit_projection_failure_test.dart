@@ -20,47 +20,85 @@ import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('committed split is never reported as false after projection failure',
-      () {
-    final fixture = _Fixture();
-    addTearDown(fixture.dispose);
-    final binding = fixture.bindWithProjectionBreakingOwner();
-    addTearDown(binding.dispose);
+  group('P7A-6.1 postcommit failure semantics', () {
+    test('committed split is never reported false after projection failure',
+        () {
+      final fixture = _Fixture();
+      addTearDown(fixture.dispose);
+      final binding = fixture.bindWithProjectionBreakingOwner();
+      addTearDown(binding.dispose);
 
-    fixture.controller.showWall(0);
-    expect(
-      CanonicalBoundaryTopologyMigrationRuntime.edgeIdAtLegacyWallOrdinal(
-        fixture.controller,
-        0,
-      ),
-      fixture.edgeIds.first,
-    );
-
-    expect(
-      () => CanonicalBoundaryTopologyMigrationRuntime.splitLegacyWallAtMidpoint(
-        controller: fixture.controller,
-        wallOrdinal: 0,
-        idFactory: SecureRandomEntityIdFactory(random: Random(981)),
-      ),
-      throwsA(
-        isA<CanonicalBoundaryPostCommitException>().having(
-          (error) => error.phase,
-          'phase',
-          'legacy/P2 rematerialization',
+      fixture.controller.showWall(0);
+      expect(
+        CanonicalBoundaryTopologyMigrationRuntime.edgeIdAtLegacyWallOrdinal(
+          fixture.controller,
+          0,
         ),
-      ),
-    );
+        fixture.edgeIds.first,
+      );
 
-    expect(fixture.ownerCalls, 1);
-    expect(fixture.session.project.version, LocalProjectVersion(1));
-    expect(
-      fixture.session.project.index.boundary(fixture.spaceId)!.orderedEdgeIds,
-      hasLength(5),
-      reason: 'canonical split already committed before projection failed',
-    );
-    expect(fixture.controller.selectedSpaceId, isNull);
-    expect(fixture.controller.documentHistory.undoDepth, 0);
-    expect(fixture.controller.documentHistory.redoDepth, 0);
+      expect(
+        () =>
+            CanonicalBoundaryTopologyMigrationRuntime.splitLegacyWallAtMidpoint(
+          controller: fixture.controller,
+          wallOrdinal: 0,
+          idFactory: SecureRandomEntityIdFactory(random: Random(981)),
+        ),
+        throwsA(
+          isA<CanonicalBoundaryPostCommitException>().having(
+            (error) => error.phase,
+            'phase',
+            'legacy/P2 rematerialization',
+          ),
+        ),
+      );
+
+      expect(fixture.ownerCalls, 1);
+      expect(fixture.session.project.version, LocalProjectVersion(1));
+      expect(
+        fixture.session.project.index.boundary(fixture.spaceId)!.orderedEdgeIds,
+        hasLength(5),
+        reason: 'canonical split already committed before projection failed',
+      );
+      expect(fixture.controller.selectedSpaceId, isNull);
+      expect(fixture.controller.documentHistory.undoDepth, 0);
+      expect(fixture.controller.documentHistory.redoDepth, 0);
+    });
+
+    test('convenience split never masks committed owner failure as false', () {
+      final fixture = _Fixture();
+      addTearDown(fixture.dispose);
+      final binding = fixture.bindWithFailingOwner();
+      addTearDown(binding.dispose);
+
+      fixture.controller.showWall(0);
+      expect(
+        () =>
+            CanonicalBoundaryTopologyMigrationRuntime.splitLegacyWallAtMidpoint(
+          controller: fixture.controller,
+          wallOrdinal: 0,
+          idFactory: SecureRandomEntityIdFactory(random: Random(983)),
+        ),
+        throwsA(
+          isA<CanonicalBoundaryPostCommitException>()
+              .having(
+                (error) => error.phase,
+                'phase',
+                'persistence ownership acknowledgement',
+              )
+              .having((error) => error.cause, 'cause', isA<StateError>()),
+        ),
+      );
+
+      expect(fixture.ownerCalls, 1);
+      expect(fixture.session.project.version, LocalProjectVersion(1));
+      expect(
+        fixture.session.project.index.boundary(fixture.spaceId)!.orderedEdgeIds,
+        hasLength(5),
+      );
+      expect(fixture.controller.documentHistory.undoDepth, 0);
+      expect(fixture.controller.documentHistory.redoDepth, 0);
+    });
   });
 }
 
@@ -171,7 +209,20 @@ final class _Fixture {
     );
   }
 
-  CanonicalEditorScreenCutoverBinding bindWithProjectionBreakingOwner() {
+  CanonicalEditorScreenCutoverBinding bindWithProjectionBreakingOwner() =>
+      _bind((_) {
+        ownerCalls++;
+        controller.selectSpace(null);
+      });
+
+  CanonicalEditorScreenCutoverBinding bindWithFailingOwner() => _bind((_) {
+        ownerCalls++;
+        throw StateError('persistence owner rejected committed split');
+      });
+
+  CanonicalEditorScreenCutoverBinding _bind(
+    CanonicalMutationOwnershipCallback owner,
+  ) {
     final coordinator = CanonicalEditorRuntimeCutoverCoordinator(
       session: session,
       adapter: CanonicalEditorWorkspaceAdapter(
@@ -186,10 +237,7 @@ final class _Fixture {
     );
     final binding = CanonicalEditorScreenCutoverBinding(
       coordinator: coordinator,
-      onCanonicalMutationReplayed: (_) {
-        ownerCalls++;
-        controller.selectSpace(null);
-      },
+      onCanonicalMutationReplayed: owner,
     );
     binding.start();
     return binding;
