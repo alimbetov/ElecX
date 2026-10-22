@@ -1,0 +1,66 @@
+name: P7A One-shot Wiring Fix
+
+on:
+  push:
+    branches:
+      - feat/project-structure-authoring
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feat/project-structure-authoring
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - name: Apply exact wiring fixes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          runtime = Path('lib/src/features/editor/canonical_boundary_topology_migration_runtime.dart')
+          text = runtime.read_text()
+          needle = "import '../../domain/boundary_host_registry.dart';\n"
+          addition = "import '../../domain/boundary_host_migration.dart';\n" + needle
+          if "import '../../domain/boundary_host_migration.dart';" not in text:
+              if needle not in text:
+                  raise SystemExit('runtime import anchor missing')
+              text = text.replace(needle, addition, 1)
+          runtime.write_text(text)
+
+          toolbar = Path('lib/src/features/editor/unified_icon_toolbar.dart')
+          text = toolbar.read_text()
+          marker = '\nIconData _catalogIcon(EngineeringSystemClass systemClass) =>'
+          first = text.find(marker)
+          last = text.rfind(marker)
+          if first < 0:
+              raise SystemExit('catalog icon helper missing')
+          if last != first:
+              # The accidental second helper is the final declaration in the file.
+              if text[last:].count(marker) != 1:
+                  raise SystemExit('unexpected duplicate helper shape')
+              text = text[:last].rstrip() + '\n'
+          toolbar.write_text(text)
+          PY
+          dart format \
+            lib/src/features/editor/canonical_boundary_topology_migration_runtime.dart \
+            lib/src/features/editor/unified_icon_toolbar.dart \
+            lib/src/features/editor/editor_keyboard_scope.dart
+      - name: Commit exact patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            lib/src/features/editor/canonical_boundary_topology_migration_runtime.dart \
+            lib/src/features/editor/unified_icon_toolbar.dart \
+            lib/src/features/editor/editor_keyboard_scope.dart
+          git diff --cached --quiet && exit 0
+          git commit -m "fix(p7a): finalize production topology wiring"
+          git push origin HEAD:feat/project-structure-authoring
