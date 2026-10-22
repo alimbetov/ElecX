@@ -33,9 +33,7 @@ abstract final class CanonicalBoundaryTopologyEditingRuntime {
     final canonicalSpaceId = coordinator?.session.navigation.selectedSpaceId;
     final ownership =
         CanonicalRoomSurfaceRuntimeRegistry.topologyOwnershipFor(controller);
-    if (coordinator == null ||
-        canonicalSpaceId == null ||
-        ownership == null) {
+    if (coordinator == null || canonicalSpaceId == null || ownership == null) {
       return false;
     }
 
@@ -109,7 +107,8 @@ abstract final class CanonicalBoundaryTopologyEditingRuntime {
 
     final history = controller.documentHistory;
     void rematerializeCurrentCanonicalState() {
-      final topology = coordinator.session.project.index.boundary(canonicalSpaceId);
+      final topology =
+          coordinator.session.project.index.boundary(canonicalSpaceId);
       if (topology == null) {
         throw StateError(
           'Canonical Space $canonicalSpaceId lost boundary topology during '
