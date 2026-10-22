@@ -16,7 +16,6 @@ void main() {
           ProjectMutationRequest(
             expectedVersion: initial.version,
             command: _ReentrantRenameCommand(
-              session: mutations,
               spaceId: fixture.spaceId,
               outerName: 'Outer stale rename',
               onBuild: () {
@@ -53,7 +52,8 @@ void main() {
 
       expect(reentered, isTrue);
       expect(mutations.current.version, LocalProjectVersion(1));
-      expect(mutations.current.stores.spaces[fixture.spaceId]!.name, 'Nested winner');
+      expect(mutations.current.stores.spaces[fixture.spaceId]!.name,
+          'Nested winner');
       expect(mutations.undoDepth, 1);
       expect(mutations.redoDepth, 0);
     });
@@ -93,12 +93,14 @@ void main() {
       );
 
       expect(mutations.current.version, LocalProjectVersion(1));
-      expect(mutations.current.stores.spaces[fixture.spaceId]!.name, 'Version one');
+      expect(mutations.current.stores.spaces[fixture.spaceId]!.name,
+          'Version one');
       expect(mutations.undoDepth, 1);
       expect(mutations.redoDepth, 0);
     });
 
-    test('stale redo cannot replay after undo advanced the project version', () {
+    test('stale redo cannot replay after undo advanced the project version',
+        () {
       final fixture = _Fixture();
       final initial = fixture.project();
       final mutations = ProjectMutationSession(initial);
@@ -146,13 +148,11 @@ void main() {
 
 final class _ReentrantRenameCommand implements ProjectCommand {
   const _ReentrantRenameCommand({
-    required this.session,
     required this.spaceId,
     required this.outerName,
     required this.onBuild,
   });
 
-  final ProjectMutationSession session;
   final SpaceId spaceId;
   final String outerName;
   final void Function() onBuild;
