@@ -1,8 +1,10 @@
 import '../../domain/boundary_host_migration.dart';
 import '../../domain/boundary_host_registry.dart';
+import '../../domain/boundary_topology.dart';
 import '../../domain/boundary_wall_profile_registry.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/electrical_routing.dart';
+import '../../domain/geometry.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
@@ -26,10 +28,12 @@ abstract final class CanonicalBoundaryHostProjection {
     var registry = base;
 
     for (final opening in openings) {
-      if (opening.hostWall.spaceId != legacySpace.id) continue;
-      final ordinal = opening.hostWall.wallIndex;
-      if (ordinal == null) continue;
-      final edgeId = _edgeAtOrdinal(orderedEdgeIds, ordinal);
+      final surface = opening.hostWall;
+      if (surface.spaceId != legacySpace.id ||
+          surface.type != SurfacePlaneType.wall) {
+        continue;
+      }
+      final edgeId = _edgeForSurface(surface, orderedEdgeIds);
       registry = registry.put(
         BoundaryHostedReference.interval(
           objectKey: _openingKey(opening.id, canonicalSpaceId),
@@ -47,11 +51,10 @@ abstract final class CanonicalBoundaryHostProjection {
     for (final component in p2State.components) {
       final surface = component.surface;
       if (surface.spaceId != legacySpace.id ||
-          surface.type != SurfacePlaneType.wall ||
-          surface.wallIndex == null) {
+          surface.type != SurfacePlaneType.wall) {
         continue;
       }
-      final edgeId = _edgeAtOrdinal(orderedEdgeIds, surface.wallIndex!);
+      final edgeId = _edgeForSurface(surface, orderedEdgeIds);
       registry = registry.put(
         BoundaryHostedReference.point(
           objectKey: _componentKey(component.id),
@@ -73,11 +76,10 @@ abstract final class CanonicalBoundaryHostProjection {
         final surface = segment.surface;
         if (surface.spaceId != legacySpace.id ||
             surface.type != SurfacePlaneType.wall ||
-            surface.wallIndex == null ||
             segment.points.isEmpty) {
           continue;
         }
-        final edgeId = _edgeAtOrdinal(orderedEdgeIds, surface.wallIndex!);
+        final edgeId = _edgeForSurface(surface, orderedEdgeIds);
         for (var pointIndex = 0;
             pointIndex < segment.points.length;
             pointIndex++) {
@@ -126,6 +128,11 @@ abstract final class CanonicalBoundaryHostProjection {
       );
     }
     for (final entry in legacySpace.boundaryEdgeWallProfiles.entries) {
+      if (!orderedEdgeIds.contains(entry.key)) {
+        throw StateError(
+          'Stable wall profile references inactive edge ${entry.key}.',
+        );
+      }
       registry = registry.put(
         BoundaryEdgeHostRef(
           spaceId: canonicalSpaceId,
@@ -135,6 +142,46 @@ abstract final class CanonicalBoundaryHostProjection {
       );
     }
     return registry;
+  }
+
+  /// Reconstructs the transitional room polygon from the current canonical
+  /// topology before projecting hosted objects back to legacy wall ordinals.
+  /// This is the required path after split/merge because the wall count may
+  /// differ from the pre-mutation legacy polygon.
+  static CanonicalBoundaryHostMaterialization materializeTopology({
+    required SpaceId canonicalSpaceId,
+    required EngineeringSpace legacySpace,
+    required SpaceBoundaryTopology topology,
+    required BoundaryHostedObjectRegistry registry,
+    required BoundaryWallProfileRegistry wallProfiles,
+    required List<ArchitecturalOpening> openings,
+    required EditorP2State p2State,
+  }) {
+    if (topology.spaceId != canonicalSpaceId) {
+      throw StateError(
+        'Canonical topology belongs to ${topology.spaceId}, expected '
+        '$canonicalSpaceId.',
+      );
+    }
+    topology.validateOrThrow();
+    final reconstructed = legacySpace.copyWith(
+      boundary: MmPolygon(<MmPoint>[
+        for (final edgeId in topology.orderedEdgeIds)
+          MmPoint(
+            topology.edges[edgeId]!.start.xMm,
+            topology.edges[edgeId]!.start.yMm,
+          ),
+      ]),
+    );
+    return materialize(
+      canonicalSpaceId: canonicalSpaceId,
+      legacySpace: reconstructed,
+      orderedEdgeIds: topology.orderedEdgeIds,
+      registry: registry,
+      wallProfiles: wallProfiles,
+      openings: openings,
+      p2State: p2State,
+    );
   }
 
   static CanonicalBoundaryHostMaterialization materialize({
@@ -165,10 +212,9 @@ abstract final class CanonicalBoundaryHostProjection {
       return ordinal;
     }
 
-    final stableProfiles = <BoundaryEdgeId, WallProfile>{
-      ...legacySpace.boundaryEdgeWallProfiles,
-      ...wallProfiles.forSpace(canonicalSpaceId),
-    };
+    // Once P7A-5 is active, the canonical profile registry is authoritative.
+    // Do not carry retired edge profiles forward from a stale legacy projection.
+    final stableProfiles = wallProfiles.forSpace(canonicalSpaceId);
     final ordinalProfiles = <int, WallProfile>{};
     for (final entry in stableProfiles.entries) {
       final ordinal = orderedEdgeIds.indexOf(entry.key);
@@ -324,7 +370,8 @@ abstract final class CanonicalBoundaryHostProjection {
         if (surfaceReference.host.edgeId != reference.host.edgeId) {
           throw StateError(
             'Route segment ${route.id}:$segmentIndex spans multiple canonical '
-            'boundary edges and must be split before legacy materialization.',
+            'boundary edges and must be split with explicit crossing geometry '
+            'before legacy materialization.',
           );
         }
         points.add(
@@ -369,6 +416,26 @@ abstract final class CanonicalBoundaryHostProjection {
         'Canonical boundary edge count does not match legacy room geometry.',
       );
     }
+  }
+
+  static BoundaryEdgeId _edgeForSurface(
+    RoomSurfaceRef surface,
+    List<BoundaryEdgeId> orderedEdgeIds,
+  ) {
+    final stableId = surface.boundaryEdgeId;
+    if (stableId != null) {
+      if (!orderedEdgeIds.contains(stableId)) {
+        throw StateError(
+          'Canonical wall surface references inactive edge $stableId.',
+        );
+      }
+      return stableId;
+    }
+    final ordinal = surface.wallIndex;
+    if (ordinal == null) {
+      throw StateError('Wall surface has neither BoundaryEdgeId nor wallIndex.');
+    }
+    return _edgeAtOrdinal(orderedEdgeIds, ordinal);
   }
 
   static BoundaryEdgeId _edgeAtOrdinal(
