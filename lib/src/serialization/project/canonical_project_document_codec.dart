@@ -3,10 +3,12 @@ import '../../domain/boundary_edge_identity_registry.dart';
 import '../../domain/boundary_host_migration.dart';
 import '../../domain/boundary_host_registry.dart';
 import '../../domain/boundary_topology.dart';
+import '../../domain/boundary_wall_profile_registry.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/project_orientation.dart';
 import '../../domain/project_space_semantics.dart';
+import '../../domain/wall_profile.dart';
 import 'project_document_codec.dart';
 
 /// Canonical multi-building persistence codec.
@@ -16,15 +18,17 @@ import 'project_document_codec.dart';
 /// - v2: canonical project engineering orientation;
 /// - v3: P6 SpaceUsage, openings, adjacency and overlay classifications;
 /// - v4: P7A stable boundary topology and durable edge-owner tombstones;
-/// - v5: P7A-5 durable hosted-object ownership by BoundaryEdgeId.
+/// - v5: P7A-5 durable hosted-object ownership by BoundaryEdgeId;
+/// - v6: P7A-5 durable wall-profile payloads by BoundaryEdgeId.
 final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
   const CanonicalProjectDocumentCodec();
 
-  static const int schemaVersion = 5;
+  static const int schemaVersion = 6;
   static const int _schemaV1 = 1;
   static const int _schemaV2 = 2;
   static const int _schemaV3 = 3;
   static const int _schemaV4 = 4;
+  static const int _schemaV5 = 5;
 
   @override
   int get currentSchemaVersion => schemaVersion;
@@ -37,7 +41,10 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
         .registerActiveBoundaries(stores.boundaries);
     final hostedRegistry =
         snapshot.aggregate.engineeringMetadata.boundaryHostedObjectRegistry;
+    final wallProfileRegistry =
+        snapshot.aggregate.engineeringMetadata.boundaryWallProfileRegistry;
     hostedRegistry.validateAgainst(stores.boundaries);
+    wallProfileRegistry.validateAgainst(stores.boundaries);
     return ProjectDocument(
       schemaVersion: schemaVersion,
       payload: <String, Object?>{
@@ -58,6 +65,9 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
         ),
         'boundaryHostedObjectRegistry': _encodeBoundaryHostedObjectRegistry(
           hostedRegistry,
+        ),
+        'boundaryWallProfileRegistry': _encodeBoundaryWallProfileRegistry(
+          wallProfileRegistry,
         ),
         'sites': _encodeSites(stores),
         'buildings': _encodeBuildings(stores),
@@ -274,7 +284,11 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
       final hostedRegistry = _decodeBoundaryHostedObjectRegistry(
         migrated.payload['boundaryHostedObjectRegistry'],
       );
+      final wallProfileRegistry = _decodeBoundaryWallProfileRegistry(
+        migrated.payload['boundaryWallProfileRegistry'],
+      );
       hostedRegistry.validateAgainst(boundaries);
+      wallProfileRegistry.validateAgainst(boundaries);
 
       final aggregate = ProjectAggregateRoot(
         id: projectId,
@@ -284,6 +298,7 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
           projectNorth: projectNorth,
           boundaryEdgeIdentityRegistry: identityRegistry,
           boundaryHostedObjectRegistry: hostedRegistry,
+          boundaryWallProfileRegistry: wallProfileRegistry,
         ),
         stores: ProjectEntityStores(
           sites: sites,
@@ -310,6 +325,8 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
       throw FormatException('Invalid boundary edge identity registry: $error');
     } on BoundaryHostedRegistryException catch (error) {
       throw FormatException('Invalid boundary hosted-object registry: $error');
+    } on BoundaryWallProfileRegistryException catch (error) {
+      throw FormatException('Invalid boundary wall-profile registry: $error');
     } on BoundaryTopologyValidationException catch (error) {
       throw FormatException('Invalid persisted boundary topology: $error');
     } on ArgumentError catch (error) {
@@ -344,6 +361,9 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
     }
     if (migrated.schemaVersion == _schemaV4) {
       migrated = _migrateV4ToV5(migrated);
+    }
+    if (migrated.schemaVersion == _schemaV5) {
+      migrated = _migrateV5ToV6(migrated);
     }
     return migrated;
   }
@@ -391,10 +411,19 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
 
   static ProjectDocument _migrateV4ToV5(ProjectDocument document) =>
       ProjectDocument(
-        schemaVersion: schemaVersion,
+        schemaVersion: _schemaV5,
         payload: <String, Object?>{
           ...document.payload,
           'boundaryHostedObjectRegistry': const <Object?>[],
+        },
+      );
+
+  static ProjectDocument _migrateV5ToV6(ProjectDocument document) =>
+      ProjectDocument(
+        schemaVersion: schemaVersion,
+        payload: <String, Object?>{
+          ...document.payload,
+          'boundaryWallProfileRegistry': const <Object?>[],
         },
       );
 
@@ -606,6 +635,28 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
     ];
   }
 
+  static List<Object?> _encodeBoundaryWallProfileRegistry(
+    BoundaryWallProfileRegistry registry,
+  ) {
+    final entries = registry.profiles.entries.toList()
+      ..sort((a, b) {
+        final bySpace = a.key.spaceId.value.compareTo(b.key.spaceId.value);
+        if (bySpace != 0) return bySpace;
+        return a.key.edgeId.value.compareTo(b.key.edgeId.value);
+      });
+    return <Object?>[
+      for (final entry in entries)
+        <String, Object?>{
+          'spaceId': entry.key.spaceId.value,
+          'edgeId': entry.key.edgeId.value,
+          'vertices': <Object?>[
+            for (final point in entry.value.vertices)
+              <String, Object?>{'xMm': point.xMm, 'yMm': point.yMm},
+          ],
+        },
+    ];
+  }
+
   static Map<SpaceId, SpaceBoundaryTopology> _decodeBoundaries(Object? value) {
     final result = <SpaceId, SpaceBoundaryTopology>{};
     for (final raw in _list(value, 'boundaries')) {
@@ -756,6 +807,45 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
       };
     }
     return BoundaryHostedObjectRegistry(references);
+  }
+
+  static BoundaryWallProfileRegistry _decodeBoundaryWallProfileRegistry(
+    Object? value,
+  ) {
+    final profiles = <BoundaryEdgeHostRef, WallProfile>{};
+    for (final raw in _list(value, 'boundaryWallProfileRegistry')) {
+      final json = _map(raw, 'boundaryWallProfileRegistry.entry');
+      final host = BoundaryEdgeHostRef(
+        spaceId: SpaceId(
+          _string(json['spaceId'], 'boundaryWallProfileRegistry.spaceId'),
+        ),
+        edgeId: BoundaryEdgeId(
+          _string(json['edgeId'], 'boundaryWallProfileRegistry.edgeId'),
+        ),
+      );
+      if (profiles.containsKey(host)) {
+        throw FormatException(
+          'boundaryWallProfileRegistry contains duplicate host '
+          '${host.spaceId}/${host.edgeId}.',
+        );
+      }
+      final vertices = <WallProfilePoint>[
+        for (final rawPoint
+            in _list(json['vertices'], 'boundaryWallProfileRegistry.vertices'))
+          () {
+            final point = _map(
+              rawPoint,
+              'boundaryWallProfileRegistry.vertex',
+            );
+            return WallProfilePoint(
+              _int(point['xMm'], 'boundaryWallProfileRegistry.vertex.xMm'),
+              _int(point['yMm'], 'boundaryWallProfileRegistry.vertex.yMm'),
+            );
+          }(),
+      ];
+      profiles[host] = WallProfile(vertices: vertices);
+    }
+    return BoundaryWallProfileRegistry(profiles);
   }
 
   static void _requireRegistryCoversActiveBoundaries(
