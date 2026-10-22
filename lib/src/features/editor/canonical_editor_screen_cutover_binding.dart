@@ -15,18 +15,11 @@ typedef CanonicalEditorCutoverErrorCallback = void Function(
 
 /// Lifecycle bridge used by [UnifiedWorkspaceEditorScreen] during the P5C
 /// production cutover.
-///
-/// The bridge owns listener wiring only. Canonical navigation remains owned by
-/// [ProjectStructureAuthoringSession], while all canonical <-> legacy state
-/// transfer still goes through [CanonicalEditorRuntimeCutoverCoordinator].
-///
-/// Site/outdoor navigation is intentionally ignored here because P5C only owns
-/// Site/Building/Level/Zone/Space structural navigation. Outdoor runtime state
-/// remains transitional until its canonical model is introduced.
 final class CanonicalEditorScreenCutoverBinding {
   CanonicalEditorScreenCutoverBinding({
     required this.coordinator,
     this.onCanonicalNavigationChanged,
+    this.onCanonicalMutationReplayed,
     this.onBoundaryTopologyCommitted,
     this.onBlocked,
     this.onError,
@@ -35,6 +28,7 @@ final class CanonicalEditorScreenCutoverBinding {
   final CanonicalEditorRuntimeCutoverCoordinator coordinator;
   final void Function(ProjectNavigationState navigation)?
       onCanonicalNavigationChanged;
+  final CanonicalHistoryReplayOwner? onCanonicalMutationReplayed;
   final CanonicalBoundaryTopologyOwnershipCallback? onBoundaryTopologyCommitted;
   final CanonicalEditorCutoverBlockedCallback? onBlocked;
   final CanonicalEditorCutoverErrorCallback? onError;
@@ -58,19 +52,13 @@ final class CanonicalEditorScreenCutoverBinding {
     _requireNotDisposed();
     if (_started) return;
     _started = true;
-    final topologyOwner = onBoundaryTopologyCommitted;
     workspace.editor.documentHistory.attachCanonicalSession(
       coordinator.session,
-      onReplayed: topologyOwner == null
-          ? null
-          : (result) => topologyOwner(
-                coordinator.session.boundaryTopologyEditing,
-                result,
-              ),
+      onReplayed: onCanonicalMutationReplayed,
     );
     CanonicalRoomSurfaceRuntimeRegistry.attach(
       coordinator,
-      onBoundaryTopologyCommitted: topologyOwner,
+      onBoundaryTopologyCommitted: onBoundaryTopologyCommitted,
     );
     workspace.addListener(_onLegacyRuntimeChanged);
     workspace.editor.addListener(_onLegacyRuntimeChanged);
@@ -116,9 +104,6 @@ final class CanonicalEditorScreenCutoverBinding {
     }
   }
 
-  /// Detaches all listeners and runtime-only ownership. The canonical session
-  /// remains externally owned, but its history entries are invalid after this
-  /// exact production binding disappears, so the unified journal fails closed.
   void dispose() {
     if (_disposed) return;
     _disposed = true;
