@@ -94,36 +94,39 @@ void main() {
       );
     });
 
-    test('vertical adjacency may cross levels but horizontal adjacency may not', () {
-      final verticalStores = _twoLevelStores(
-        adjacencyKind: SpaceAdjacencyKind.vertical,
-      );
-      final project = ProjectAggregateRoot(
-        id: ProjectId('project-1'),
-        siteId: SiteId('site-1'),
-        version: LocalProjectVersion(0),
-        stores: verticalStores,
-      );
-      expect(project.index.adjacency(SpaceAdjacencyId('adj-1')), isNotNull);
-
-      expect(
-        () => ProjectAggregateRoot(
+    test(
+      'vertical adjacency may cross levels but horizontal adjacency may not',
+      () {
+        final verticalStores = _twoLevelStores(
+          adjacencyKind: SpaceAdjacencyKind.vertical,
+        );
+        final project = ProjectAggregateRoot(
           id: ProjectId('project-1'),
           siteId: SiteId('site-1'),
           version: LocalProjectVersion(0),
-          stores: _twoLevelStores(
-            adjacencyKind: SpaceAdjacencyKind.sharedBoundary,
+          stores: verticalStores,
+        );
+        expect(project.index.adjacency(SpaceAdjacencyId('adj-1')), isNotNull);
+
+        expect(
+          () => ProjectAggregateRoot(
+            id: ProjectId('project-1'),
+            siteId: SiteId('site-1'),
+            version: LocalProjectVersion(0),
+            stores: _twoLevelStores(
+              adjacencyKind: SpaceAdjacencyKind.sharedBoundary,
+            ),
           ),
-        ),
-        throwsA(
-          isA<ProjectAggregateValidationException>().having(
-            (error) => error.issues.map((issue) => issue.code),
-            'issue codes',
-            contains(ProjectAggregateIssueCode.adjacencyLevelMismatch),
+          throwsA(
+            isA<ProjectAggregateValidationException>().having(
+              (error) => error.issues.map((issue) => issue.code),
+              'issue codes',
+              contains(ProjectAggregateIssueCode.adjacencyLevelMismatch),
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
 
     test('vertical adjacency on the same level is rejected', () {
       final base = _twoRoomStores();
@@ -156,46 +159,49 @@ void main() {
       );
     });
 
-    test('index consistency detects stale extra reverse projection entries', () {
-      final roomA = SpaceId('room-a');
-      final roomB = SpaceId('room-b');
-      final openingId = OpeningId('opening-1');
-      final base = _twoRoomStores();
-      final initialStores = _copyStores(
-        base,
-        openings: <OpeningId, ProjectOpeningEntity>{
-          openingId: ProjectOpeningEntity(
-            id: openingId,
-            levelId: LevelId('level-1'),
-            kind: OpeningKind.door,
-            connectedSpaceIds: <SpaceId>[roomA, roomB],
-            widthMm: 900,
-            heightMm: 2100,
-          ),
-        },
-      );
-      final project = ProjectAggregateRoot(
-        id: ProjectId('project-1'),
-        siteId: SiteId('site-1'),
-        version: LocalProjectVersion(0),
-        stores: initialStores,
-      );
-      final reducedStores = _copyStores(
-        base,
-        openings: <OpeningId, ProjectOpeningEntity>{
-          openingId: ProjectOpeningEntity(
-            id: openingId,
-            levelId: LevelId('level-1'),
-            kind: OpeningKind.window,
-            connectedSpaceIds: <SpaceId>[roomA],
-            widthMm: 900,
-            heightMm: 1200,
-          ),
-        },
-      );
+    test(
+      'index consistency detects stale extra reverse projection entries',
+      () {
+        final roomA = SpaceId('room-a');
+        final roomB = SpaceId('room-b');
+        final openingId = OpeningId('opening-1');
+        final base = _twoRoomStores();
+        final initialStores = _copyStores(
+          base,
+          openings: <OpeningId, ProjectOpeningEntity>{
+            openingId: ProjectOpeningEntity(
+              id: openingId,
+              levelId: LevelId('level-1'),
+              kind: OpeningKind.door,
+              connectedSpaceIds: <SpaceId>[roomA, roomB],
+              widthMm: 900,
+              heightMm: 2100,
+            ),
+          },
+        );
+        final project = ProjectAggregateRoot(
+          id: ProjectId('project-1'),
+          siteId: SiteId('site-1'),
+          version: LocalProjectVersion(0),
+          stores: initialStores,
+        );
+        final reducedStores = _copyStores(
+          base,
+          openings: <OpeningId, ProjectOpeningEntity>{
+            openingId: ProjectOpeningEntity(
+              id: openingId,
+              levelId: LevelId('level-1'),
+              kind: OpeningKind.window,
+              connectedSpaceIds: <SpaceId>[roomA],
+              widthMm: 900,
+              heightMm: 1200,
+            ),
+          },
+        );
 
-      expect(project.index.isConsistentWith(reducedStores), isFalse);
-    });
+        expect(project.index.isConsistentWith(reducedStores), isFalse);
+      },
+    );
   });
 }
 
@@ -238,7 +244,9 @@ ProjectEntityStores _twoRoomStores() {
   );
 }
 
-ProjectEntityStores _twoLevelStores({required SpaceAdjacencyKind adjacencyKind}) {
+ProjectEntityStores _twoLevelStores({
+  required SpaceAdjacencyKind adjacencyKind,
+}) {
   final siteId = SiteId('site-1');
   final buildingId = BuildingId('building-1');
   final level1 = LevelId('level-1');

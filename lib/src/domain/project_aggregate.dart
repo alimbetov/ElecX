@@ -168,6 +168,7 @@ final class ProjectEntityStores {
 }
 
 enum ProjectAggregateIssueCode {
+  storeKeyIdMismatch,
   missingRootSite,
   unexpectedSite,
   danglingBuilding,
@@ -189,6 +190,7 @@ enum ProjectAggregateIssueCode {
   openingSpaceLevelMismatch,
   danglingAdjacencySpace,
   adjacencyLevelMismatch,
+  verticalAdjacencyLevelMismatch,
   duplicateAdjacencyPair,
   danglingAdjacencyOpening,
   adjacencyOpeningSpaceMismatch,
@@ -231,6 +233,7 @@ abstract final class ProjectAggregateValidator {
     required ProjectEntityStores stores,
   }) {
     final issues = <ProjectAggregateValidationIssue>[];
+    _validateStoreKeys(stores, issues);
     final rootSite = stores.sites[rootSiteId];
     if (rootSite == null) {
       issues.add(
@@ -530,6 +533,54 @@ abstract final class ProjectAggregateValidator {
     return List.unmodifiable(issues);
   }
 
+  static void _validateStoreKeys(
+    ProjectEntityStores stores,
+    List<ProjectAggregateValidationIssue> issues,
+  ) {
+    for (final entry in stores.sites.entries) {
+      _validateStoreKey('sites', entry.key, entry.value.id, issues);
+    }
+    for (final entry in stores.buildings.entries) {
+      _validateStoreKey('buildings', entry.key, entry.value.id, issues);
+    }
+    for (final entry in stores.levels.entries) {
+      _validateStoreKey('levels', entry.key, entry.value.id, issues);
+    }
+    for (final entry in stores.zones.entries) {
+      _validateStoreKey('zones', entry.key, entry.value.id, issues);
+    }
+    for (final entry in stores.spaces.entries) {
+      _validateStoreKey('spaces', entry.key, entry.value.id, issues);
+    }
+    for (final entry in stores.openings.entries) {
+      _validateStoreKey('openings', entry.key, entry.value.id, issues);
+    }
+    for (final entry in stores.adjacencies.entries) {
+      _validateStoreKey('adjacencies', entry.key, entry.value.id, issues);
+    }
+    for (final entry in stores.overlays.entries) {
+      _validateStoreKey('overlays', entry.key, entry.value.id, issues);
+    }
+  }
+
+  static void _validateStoreKey(
+    String storeName,
+    EntityId key,
+    EntityId entityId,
+    List<ProjectAggregateValidationIssue> issues,
+  ) {
+    if (key == entityId) return;
+    issues.add(
+      ProjectAggregateValidationIssue(
+        code: ProjectAggregateIssueCode.storeKeyIdMismatch,
+        entityId: entityId,
+        relatedEntityId: key,
+        message:
+            '$storeName store key $key does not match entity id $entityId.',
+      ),
+    );
+  }
+
   static void _validateOpenings(
     ProjectEntityStores stores,
     List<ProjectAggregateValidationIssue> issues,
@@ -607,17 +658,32 @@ abstract final class ProjectAggregateValidator {
           ),
         );
       }
-      if (a != null && b != null && a.levelId != b.levelId) {
-        issues.add(
-          ProjectAggregateValidationIssue(
-            code: ProjectAggregateIssueCode.adjacencyLevelMismatch,
-            entityId: adjacency.id,
-            relatedEntityId: b.id,
-            message:
-                'Adjacency ${adjacency.id} spans levels ${a.levelId} and '
-                '${b.levelId}; P6 adjacency is level-local.',
-          ),
-        );
+      if (a != null && b != null) {
+        final sameLevel = a.levelId == b.levelId;
+        if (adjacency.kind == SpaceAdjacencyKind.vertical && sameLevel) {
+          issues.add(
+            ProjectAggregateValidationIssue(
+              code: ProjectAggregateIssueCode.verticalAdjacencyLevelMismatch,
+              entityId: adjacency.id,
+              relatedEntityId: b.id,
+              message:
+                  'Vertical adjacency ${adjacency.id} must connect spaces on '
+                  'different levels.',
+            ),
+          );
+        } else if (adjacency.kind != SpaceAdjacencyKind.vertical &&
+            !sameLevel) {
+          issues.add(
+            ProjectAggregateValidationIssue(
+              code: ProjectAggregateIssueCode.adjacencyLevelMismatch,
+              entityId: adjacency.id,
+              relatedEntityId: b.id,
+              message:
+                  'Horizontal adjacency ${adjacency.id} spans levels '
+                  '${a.levelId} and ${b.levelId}.',
+            ),
+          );
+        }
       }
 
       final ids = <String>[adjacency.spaceAId.value, adjacency.spaceBId.value]
@@ -849,8 +915,43 @@ final class ProjectIndex {
         }
       }
     }
-    return true;
+
+    final expectedOpeningsBySpaceId = <SpaceId, Set<OpeningId>>{};
+    for (final opening in stores.openings.values) {
+      for (final spaceId in opening.connectedSpaceIds) {
+        (expectedOpeningsBySpaceId[spaceId] ??= <OpeningId>{}).add(opening.id);
+      }
+    }
+    final expectedAdjacenciesBySpaceId = <SpaceId, Set<SpaceAdjacencyId>>{};
+    for (final adjacency in stores.adjacencies.values) {
+      for (final spaceId in adjacency.spaceIds) {
+        (expectedAdjacenciesBySpaceId[spaceId] ??= <SpaceAdjacencyId>{}).add(
+          adjacency.id,
+        );
+      }
+    }
+    final expectedOverlaysBySpaceId = <SpaceId, Set<OverlayClassificationId>>{};
+    for (final overlay in stores.overlays.values) {
+      for (final spaceId in overlay.spaceIds) {
+        (expectedOverlaysBySpaceId[spaceId] ??= <OverlayClassificationId>{})
+            .add(overlay.id);
+      }
+    }
+
+    return _setMapEquals(openingsBySpaceId, expectedOpeningsBySpaceId) &&
+        _setMapEquals(adjacenciesBySpaceId, expectedAdjacenciesBySpaceId) &&
+        _setMapEquals(overlaysBySpaceId, expectedOverlaysBySpaceId);
   }
+}
+
+bool _setMapEquals<K, V>(Map<K, Set<V>> left, Map<K, Set<V>> right) {
+  if (left.length != right.length) return false;
+  for (final entry in left.entries) {
+    final other = right[entry.key];
+    if (other == null || entry.value.length != other.length) return false;
+    if (!entry.value.containsAll(other)) return false;
+  }
+  return true;
 }
 
 Map<K, Set<V>> _freezeSetMap<K, V>(Map<K, Set<V>> source) => Map.unmodifiable({

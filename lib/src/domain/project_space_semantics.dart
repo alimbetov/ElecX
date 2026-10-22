@@ -114,9 +114,7 @@ final class ProjectSpaceAdjacencyEntity {
       throw ArgumentError('Opening adjacency requires openingId.');
     }
     if (kind != SpaceAdjacencyKind.opening && openingId != null) {
-      throw ArgumentError(
-        'Only opening adjacency may reference openingId.',
-      );
+      throw ArgumentError('Only opening adjacency may reference openingId.');
     }
   }
 
