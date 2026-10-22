@@ -8,6 +8,12 @@ import 'project_mutation.dart';
 /// P6 semantic dependencies are never cascaded implicitly. Openings,
 /// adjacencies and overlay classifications must be edited explicitly first so
 /// one destructive action cannot silently erase engineering meaning.
+///
+/// P7A boundary topology is different: it is owned state of the space itself,
+/// not an independent semantic dependency. Removing a space therefore removes
+/// its boundary topology and stable edge identities atomically in the same
+/// mutation. Future wall-hosted engineering objects must block removal before
+/// this owned cascade is allowed.
 final class RemoveSpaceCommand implements ProjectCommand {
   const RemoveSpaceCommand({required this.spaceId});
 
@@ -46,11 +52,14 @@ final class RemoveSpaceCommand implements ProjectCommand {
 
     final level = current.index.level(space.levelId)!;
     final structuralZoneId = current.index.structuralZoneBySpace[space.id];
+    final boundary = current.index.boundary(space.id);
     final levels = Map<LevelId, ProjectLevelEntity>.from(current.stores.levels);
     final zones = Map<ZoneId, ProjectStructuralZoneEntity>.from(
       current.stores.zones,
     );
     final spaces = Map<SpaceId, ProjectSpaceEntity>.from(current.stores.spaces)
+      ..remove(space.id);
+    final boundaries = Map<SpaceId, dynamic>.from(current.stores.boundaries)
       ..remove(space.id);
 
     levels[level.id] = ProjectLevelEntity(
@@ -74,18 +83,26 @@ final class RemoveSpaceCommand implements ProjectCommand {
       );
     }
 
-    return ProjectCommandCandidate(
-      stores: ProjectEntityStores(
-        sites: current.stores.sites,
-        buildings: current.stores.buildings,
-        levels: levels,
-        zones: zones,
-        spaces: spaces,
+    return ProjectCommandCandidate.fromState(
+      state: ProjectMutableState(
+        engineeringMetadata: current.engineeringMetadata,
+        stores: ProjectEntityStores(
+          sites: current.stores.sites,
+          buildings: current.stores.buildings,
+          levels: levels,
+          zones: zones,
+          spaces: spaces,
+          openings: current.stores.openings,
+          adjacencies: current.stores.adjacencies,
+          overlays: current.stores.overlays,
+          boundaries: boundaries.cast(),
+        ),
       ),
       affectedEntityIds: <EntityId>[
         space.id,
         level.id,
         if (structuralZoneId != null) structuralZoneId,
+        ...?boundary?.orderedEdgeIds,
       ],
     );
   }
