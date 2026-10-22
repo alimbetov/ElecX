@@ -18,7 +18,7 @@ void main() {
       final restored = codec.decode(document);
       final stores = restored.aggregate.stores;
 
-      expect(document.schemaVersion, 3);
+      expect(document.schemaVersion, 4);
       expect(stores.spaces[SpaceId('room-a')]!.usage, SpaceUsage.bedroom);
       expect(stores.spaces[SpaceId('room-b')]!.usage, SpaceUsage.corridor);
 
@@ -48,10 +48,12 @@ void main() {
     });
 
     test('canonical P6 payload contains no durable wallIndex contract', () {
-      final encoded = jsonEncode(codec.encode(_snapshot()).payload);
+      final document = codec.encode(_snapshot());
+      final encoded = jsonEncode(document.payload);
 
       expect(encoded, isNot(contains('wallIndex')));
-      expect(encoded, isNot(contains('boundaryEdgeId')));
+      expect(document.payload['boundaries'], isEmpty);
+      expect(document.payload['boundaryEdgeIdentityRegistry'], isEmpty);
       expect(encoded, contains('"door-1"'));
     });
 
