@@ -46,6 +46,84 @@ void main() {
       );
     });
 
+    test('canonical space outside bound building fails closed', () {
+      final fixture = _Fixture();
+      final wrongBuildingBinding = CanonicalEditorWorkspaceBinding(
+        buildingId: BuildingId('other-building'),
+        legacyBuildingId: 'legacy-building',
+        legacyLevelIds: {fixture.levelId: fixture.legacyLevelId},
+        legacySpaceIds: {fixture.spaceId: fixture.legacySpaceId},
+      );
+
+      expect(
+        () => CanonicalRoomSurfaceCutover.resolve(
+          project: fixture.project,
+          binding: wrongBuildingBinding,
+          controller: fixture.controller,
+          spaceId: fixture.spaceId,
+        ),
+        throwsA(
+          isA<CanonicalRoomSurfaceCutoverException>().having(
+            (error) => error.code,
+            'code',
+            CanonicalRoomSurfaceCutoverIssueCode
+                .canonicalSpaceOutsideBoundBuilding,
+          ),
+        ),
+      );
+    });
+
+    test('missing legacy level binding fails closed before wall projection', () {
+      final fixture = _Fixture();
+      final incompleteBinding = CanonicalEditorWorkspaceBinding(
+        buildingId: fixture.buildingId,
+        legacyBuildingId: 'legacy-building',
+        legacySpaceIds: {fixture.spaceId: fixture.legacySpaceId},
+      );
+
+      expect(
+        () => CanonicalRoomSurfaceCutover.resolve(
+          project: fixture.project,
+          binding: incompleteBinding,
+          controller: fixture.controller,
+          spaceId: fixture.spaceId,
+        ),
+        throwsA(
+          isA<CanonicalRoomSurfaceCutoverException>().having(
+            (error) => error.code,
+            'code',
+            CanonicalRoomSurfaceCutoverIssueCode.legacyLevelBindingMissing,
+          ),
+        ),
+      );
+    });
+
+    test('wrong active legacy level fails closed before wall projection', () {
+      final fixture = _Fixture();
+      fixture.controller.level = BuildingLevel(
+        id: 'other-legacy-level',
+        name: 'Other level',
+        elevationMm: 0,
+        spaces: fixture.controller.level.spaces,
+      );
+
+      expect(
+        () => CanonicalRoomSurfaceCutover.resolve(
+          project: fixture.project,
+          binding: fixture.binding,
+          controller: fixture.controller,
+          spaceId: fixture.spaceId,
+        ),
+        throwsA(
+          isA<CanonicalRoomSurfaceCutoverException>().having(
+            (error) => error.code,
+            'code',
+            CanonicalRoomSurfaceCutoverIssueCode.legacyLevelNotActive,
+          ),
+        ),
+      );
+    });
+
     test('legacy selection drift fails closed', () {
       final fixture = _Fixture();
       fixture.controller.selectSpace(null);
