@@ -4,7 +4,8 @@ import 'package:elecx/src/domain/project_identity.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('projection transition cannot be constructed as canonical host state', () {
+  test('projection transition cannot be constructed as canonical host state',
+      () {
     final reference = BoundaryHostedReference.point(
       objectKey: 'route:r1:anchor:p7a-transition:r1:a:b:left:right',
       objectKind: BoundaryHostedObjectKind.routeAnchor,
