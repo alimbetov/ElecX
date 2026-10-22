@@ -154,10 +154,6 @@ abstract final class CanonicalBoundaryHostProjection {
     return registry;
   }
 
-  /// Reconstructs the transitional room polygon from the current canonical
-  /// topology before projecting hosted objects back to legacy wall ordinals.
-  /// This is the required path after split/merge because the wall count may
-  /// differ from the pre-mutation legacy polygon.
   static CanonicalBoundaryHostMaterialization materializeTopology({
     required SpaceId canonicalSpaceId,
     required EngineeringSpace legacySpace,
@@ -277,7 +273,6 @@ abstract final class CanonicalBoundaryHostProjection {
             CableRouteConstraints.empty,
         canonicalSpaceId: canonicalSpaceId,
         legacySpace: legacySpace,
-        orderedEdgeIds: orderedEdgeIds,
         registry: registry,
         ordinalFor: ordinalFor,
       );
@@ -353,7 +348,6 @@ abstract final class CanonicalBoundaryHostProjection {
     required CableRouteConstraints constraints,
     required SpaceId canonicalSpaceId,
     required EngineeringSpace legacySpace,
-    required List<BoundaryEdgeId> orderedEdgeIds,
     required BoundaryHostedObjectRegistry registry,
     required int Function(BoundaryHostedReference) ordinalFor,
   }) {
@@ -455,8 +449,7 @@ abstract final class CanonicalBoundaryHostProjection {
           ),
         );
         produced.add(newIndex);
-        for (var index = 0; index < pendingSourceLocations.length; index++) {
-          final source = pendingSourceLocations[index];
+        for (final source in pendingSourceLocations) {
           final anchorIndex = currentAnchorIds.indexOf(source.anchorId);
           oldPointToNew[
             '${source.sourceSegmentIndex}:${source.sourcePointIndex}'
@@ -478,11 +471,12 @@ abstract final class CanonicalBoundaryHostProjection {
         }
 
         final nextOrdinal = ordinalFor(point.reference);
-        if (!_isLosslessCollinearTransition(
+        final transition = _losslessCollinearTransition(
           legacySpace.boundary,
           currentOrdinal,
           nextOrdinal,
-        )) {
+        );
+        if (transition == null) {
           throw StateError(
             'Route ${route.id} crosses canonical edges $currentEdgeId and '
             '$nextEdgeId without a lossless collinear wall transition.',
@@ -503,14 +497,17 @@ abstract final class CanonicalBoundaryHostProjection {
           leftAnchorId: previous.anchorId,
           rightAnchorId: point.anchorId,
         );
-        final wallLength = _wallLengthMm(legacySpace.boundary, currentOrdinal);
-        currentPoints.add(SurfacePointMm(wallLength, transitionY));
+        currentPoints.add(
+          SurfacePointMm(transition.fromOffsetMm, transitionY),
+        );
         currentAnchorIds.add(transitionId);
         finishSegment();
 
         currentEdgeId = nextEdgeId;
         currentOrdinal = nextOrdinal;
-        currentPoints.add(SurfacePointMm(0, transitionY));
+        currentPoints.add(
+          SurfacePointMm(transition.toOffsetMm, transitionY),
+        );
         currentAnchorIds.add(transitionId);
         appendSourcePoint(point);
       }
@@ -618,23 +615,40 @@ abstract final class CanonicalBoundaryHostProjection {
         '${leftAnchorId.value}:${rightAnchorId.value}',
       );
 
-  static bool _isLosslessCollinearTransition(
+  static _WallTransition? _losslessCollinearTransition(
     MmPolygon boundary,
     int fromOrdinal,
     int toOrdinal,
   ) {
     final count = boundary.vertices.length;
-    if (count < 3 || toOrdinal != (fromOrdinal + 1) % count) return false;
-    final a = boundary.vertices[fromOrdinal];
-    final b = boundary.vertices[(fromOrdinal + 1) % count];
-    final c = boundary.vertices[(toOrdinal + 1) % count];
+    if (count < 3) return null;
+
+    final forward = toOrdinal == (fromOrdinal + 1) % count;
+    final reverse = fromOrdinal == (toOrdinal + 1) % count;
+    if (!forward && !reverse) return null;
+
+    final firstOrdinal = forward ? fromOrdinal : toOrdinal;
+    final secondOrdinal = forward ? toOrdinal : fromOrdinal;
+    final a = boundary.vertices[firstOrdinal];
+    final b = boundary.vertices[(firstOrdinal + 1) % count];
+    final c = boundary.vertices[(secondOrdinal + 1) % count];
     final firstDx = b.x - a.x;
     final firstDy = b.y - a.y;
     final secondDx = c.x - b.x;
     final secondDy = c.y - b.y;
     final cross = firstDx * secondDy - firstDy * secondDx;
     final dot = firstDx * secondDx + firstDy * secondDy;
-    return cross == 0 && dot > 0;
+    if (cross != 0 || dot <= 0) return null;
+
+    return forward
+        ? _WallTransition(
+            fromOffsetMm: _wallLengthMm(boundary, fromOrdinal),
+            toOffsetMm: 0,
+          )
+        : _WallTransition(
+            fromOffsetMm: 0,
+            toOffsetMm: _wallLengthMm(boundary, toOrdinal),
+          );
   }
 
   static int _wallLengthMm(MmPolygon boundary, int ordinal) {
@@ -733,4 +747,14 @@ final class _RouteMaterialization {
 
   final ElectricalCableRoute route;
   final CableRouteConstraints constraints;
+}
+
+final class _WallTransition {
+  const _WallTransition({
+    required this.fromOffsetMm,
+    required this.toOffsetMm,
+  });
+
+  final int fromOffsetMm;
+  final int toOffsetMm;
 }
