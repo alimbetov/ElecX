@@ -29,17 +29,18 @@ void main() {
       addTearDown(binding.dispose);
 
       fixture.controller.showWall(0);
-      final retiredEdge =
+      final resolved =
           CanonicalBoundaryTopologyMigrationRuntime.edgeIdAtLegacyWallOrdinal(
         fixture.controller,
         0,
       );
-      expect(retiredEdge, fixture.edgeIds.first);
+      expect(resolved, fixture.edgeIds.first);
+      final retiredEdge = resolved!;
 
       expect(
         CanonicalBoundaryTopologyMigrationRuntime.splitEdge(
           controller: fixture.controller,
-          edgeId: retiredEdge!,
+          edgeId: retiredEdge,
           splitPoint: const BoundaryPointMm(xMm: 2000, yMm: 0),
           idFactory: SecureRandomEntityIdFactory(random: Random(961)),
         ),
