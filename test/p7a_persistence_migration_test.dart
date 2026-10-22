@@ -10,6 +10,7 @@ import 'package:elecx/src/domain/boundary_wall_profile_registry.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_orientation.dart';
+import 'package:elecx/src/domain/project_space_semantics.dart';
 import 'package:elecx/src/domain/wall_profile.dart';
 import 'package:elecx/src/serialization/project/canonical_project_document_codec.dart';
 import 'package:elecx/src/serialization/project/legacy_boundary_polygon_migration.dart';
@@ -169,8 +170,12 @@ void main() {
           .boundaryHostedObjectRegistry['component:c1']!;
       expect(restoredComponent.host.edgeId, fixture.firstEdgeId);
       expect(restoredComponent.startOffsetMm, 1000);
+      final openingKey = BoundaryHostedObjectRegistry.openingObjectKey(
+        OpeningId('o1'),
+        fixture.spaceId,
+      );
       final restoredOpening = restored.aggregate.engineeringMetadata
-          .boundaryHostedObjectRegistry['opening:o1']!;
+          .boundaryHostedObjectRegistry[openingKey]!;
       expect(restoredOpening.host.edgeId, fixture.firstEdgeId);
       expect(restoredOpening.startOffsetMm, 1200);
       expect(restoredOpening.endOffsetMm, 2000);
@@ -355,6 +360,7 @@ final class _BoundarySnapshotFixture {
     final buildingId = BuildingId('building-a');
     final levelId = LevelId('level-a');
     final spaceId = SpaceId('space-a');
+    final openingId = OpeningId('o1');
     final migrated = LegacyBoundaryPolygonMigration.migrate(
       projectId: projectId,
       spaceId: spaceId,
@@ -366,6 +372,8 @@ final class _BoundarySnapshotFixture {
       ...migrated.identityRegistry.owners,
       retiredEdgeId: spaceId,
     });
+    final openingKey =
+        BoundaryHostedObjectRegistry.openingObjectKey(openingId, spaceId);
     final hostedRegistry = BoundaryHostedObjectRegistry({
       'component:c1': BoundaryHostedReference.point(
         objectKey: 'component:c1',
@@ -373,8 +381,8 @@ final class _BoundarySnapshotFixture {
         host: BoundaryEdgeHostRef(spaceId: spaceId, edgeId: firstEdgeId),
         offsetMm: 1000,
       ),
-      'opening:o1': BoundaryHostedReference.interval(
-        objectKey: 'opening:o1',
+      openingKey: BoundaryHostedReference.interval(
+        objectKey: openingKey,
         objectKind: BoundaryHostedObjectKind.opening,
         host: BoundaryEdgeHostRef(spaceId: spaceId, edgeId: firstEdgeId),
         startOffsetMm: 1200,
@@ -416,6 +424,16 @@ final class _BoundarySnapshotFixture {
           id: spaceId,
           levelId: levelId,
           name: 'Room',
+        ),
+      },
+      openings: {
+        openingId: ProjectOpeningEntity(
+          id: openingId,
+          levelId: levelId,
+          kind: OpeningKind.door,
+          connectedSpaceIds: [spaceId],
+          widthMm: 800,
+          heightMm: 2100,
         ),
       },
       boundaries: {spaceId: migrated.topology},
