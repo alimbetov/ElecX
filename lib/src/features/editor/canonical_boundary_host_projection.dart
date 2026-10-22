@@ -88,6 +88,18 @@ abstract final class CanonicalBoundaryHostProjection {
           final isRouteStart = segmentIndex == 0 && pointIndex == 0;
           final isRouteEnd = segmentIndex == route.segments.length - 1 &&
               pointIndex == segment.points.length - 1;
+          RouteAnchorId? anchorId;
+          if (!isRouteStart && !isRouteEnd) {
+            anchorId = _requireRouteAnchorId(
+              route.id,
+              segmentIndex,
+              pointIndex,
+              segment,
+            );
+            if (_isProjectionOnlyTransitionAnchor(anchorId)) {
+              continue;
+            }
+          }
           final kind = isRouteStart || isRouteEnd
               ? BoundaryHostedObjectKind.cableEndpoint
               : BoundaryHostedObjectKind.routeAnchor;
@@ -95,15 +107,7 @@ abstract final class CanonicalBoundaryHostProjection {
               ? BoundaryHostedObjectRegistry.cableSourceObjectKey(route.id)
               : isRouteEnd
                   ? BoundaryHostedObjectRegistry.cableTargetObjectKey(route.id)
-                  : _routeAnchorKey(
-                      route.id,
-                      _requireRouteAnchorId(
-                        route.id,
-                        segmentIndex,
-                        pointIndex,
-                        segment,
-                      ),
-                    );
+                  : _routeAnchorKey(route.id, anchorId!);
           registry = registry.put(
             BoundaryHostedReference.point(
               objectKey: key,
@@ -614,6 +618,9 @@ abstract final class CanonicalBoundaryHostProjection {
         'p7a-transition:$routeId:${fromEdgeId.value}:${toEdgeId.value}:'
         '${leftAnchorId.value}:${rightAnchorId.value}',
       );
+
+  static bool _isProjectionOnlyTransitionAnchor(RouteAnchorId anchorId) =>
+      anchorId.value.startsWith('p7a-transition:');
 
   static _WallTransition? _losslessCollinearTransition(
     MmPolygon boundary,
