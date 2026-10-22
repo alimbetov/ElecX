@@ -14,6 +14,13 @@ enum ProjectAuthoringIssueCode {
   structuralZoneHasSpaces,
   spaceAlreadyExists,
   spaceNotFound,
+  spaceHasSemanticDependencies,
+  openingAlreadyExists,
+  openingNotFound,
+  adjacencyAlreadyExists,
+  adjacencyNotFound,
+  overlayAlreadyExists,
+  overlayNotFound,
 }
 
 final class ProjectAuthoringException implements Exception {
@@ -33,10 +40,6 @@ final class ProjectAuthoringException implements Exception {
   final EntityId? relatedEntityId;
 
   /// Complete set of direct canonical entities blocking an authoring action.
-  ///
-  /// Destructive commands populate this set instead of exposing only an
-  /// arbitrary first dependency. This allows future navigator/dialog UX to
-  /// explain every direct blocker without re-deriving domain relationships.
   final Set<EntityId> blockingEntityIds;
 
   @override
