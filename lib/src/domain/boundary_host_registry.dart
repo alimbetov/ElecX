@@ -124,16 +124,25 @@ final class BoundaryHostedObjectRegistry {
     required BoundaryEdgeHostRef host,
     required int startOffsetMm,
     required int endOffsetMm,
-  }) =>
-      put(
-        BoundaryHostedReference.interval(
-          objectKey: openingObjectKey(openingId, host.spaceId),
-          objectKind: BoundaryHostedObjectKind.opening,
-          host: host,
-          startOffsetMm: startOffsetMm,
-          endOffsetMm: endOffsetMm,
-        ),
+  }) {
+    final objectKey = openingObjectKey(openingId, host.spaceId);
+    final existing = references[objectKey];
+    if (existing != null && existing.host.spaceId != host.spaceId) {
+      throw StateError(
+        'Canonical opening key $objectKey is ambiguous across Spaces '
+        '${existing.host.spaceId} and ${host.spaceId}.',
       );
+    }
+    return put(
+      BoundaryHostedReference.interval(
+        objectKey: objectKey,
+        objectKind: BoundaryHostedObjectKind.opening,
+        host: host,
+        startOffsetMm: startOffsetMm,
+        endOffsetMm: endOffsetMm,
+      ),
+    );
+  }
 
   BoundaryHostedObjectRegistry remove(String objectKey) {
     if (!references.containsKey(objectKey)) return this;
