@@ -1,3 +1,4 @@
+import '../../domain/boundary_topology.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/project_orientation.dart';
@@ -29,8 +30,8 @@ final class ProjectMutableState {
 ///
 /// New P6+ commands must use [ProjectCommandCandidate.fromState]. The legacy
 /// stores-only constructor remains source-compatible with P3/P4 commands and
-/// preserves root engineering metadata plus all P6 semantic stores. This keeps
-/// older structural commands from accidentally erasing P6 state.
+/// preserves root engineering metadata plus semantic and P7A boundary stores.
+/// This keeps older structural commands from accidentally erasing newer state.
 final class ProjectCommandCandidate {
   ProjectCommandCandidate({
     required ProjectEntityStores stores,
@@ -65,6 +66,7 @@ final class ProjectCommandCandidate {
         openings: current.stores.openings,
         adjacencies: current.stores.adjacencies,
         overlays: current.stores.overlays,
+        boundaries: current.stores.boundaries,
       ),
     );
   }
@@ -143,6 +145,7 @@ final class ProjectEntityDiff {
       updated,
       removed,
     );
+    _diffBoundaries(before.boundaries, after.boundaries, added, updated, removed);
 
     return ProjectEntityDiff(
       addedEntityIds: added,
@@ -579,6 +582,48 @@ void _diffMap<K extends EntityId, V>(
   }
 }
 
+void _diffBoundaries(
+  Map<SpaceId, SpaceBoundaryTopology> before,
+  Map<SpaceId, SpaceBoundaryTopology> after,
+  Set<EntityId> added,
+  Set<EntityId> updated,
+  Set<EntityId> removed,
+) {
+  final spaceIds = <SpaceId>{...before.keys, ...after.keys};
+  for (final spaceId in spaceIds) {
+    final previous = before[spaceId];
+    final next = after[spaceId];
+
+    if (previous == null && next != null) {
+      updated.add(spaceId);
+      added.addAll(next.edges.keys);
+      continue;
+    }
+    if (previous != null && next == null) {
+      updated.add(spaceId);
+      removed.addAll(previous.edges.keys);
+      continue;
+    }
+    if (previous == null || next == null) continue;
+
+    if (!_sameBoundaryTopology(previous, next)) {
+      updated.add(spaceId);
+    }
+
+    for (final entry in previous.edges.entries) {
+      final nextEdge = next.edges[entry.key];
+      if (nextEdge == null) {
+        removed.add(entry.key);
+      } else if (!_sameBoundaryEdge(entry.value, nextEdge)) {
+        updated.add(entry.key);
+      }
+    }
+    for (final edgeId in next.edges.keys) {
+      if (!previous.edges.containsKey(edgeId)) added.add(edgeId);
+    }
+  }
+}
+
 bool _sameSite(ProjectSiteEntity a, ProjectSiteEntity b) =>
     a.id == b.id && a.name == b.name && _sameSet(a.buildingIds, b.buildingIds);
 
@@ -639,6 +684,31 @@ bool _sameOverlay(
     a.discipline == b.discipline &&
     a.kind == b.kind &&
     _sameSet(a.spaceIds, b.spaceIds);
+
+bool _sameBoundaryTopology(
+  SpaceBoundaryTopology a,
+  SpaceBoundaryTopology b,
+) {
+  if (a.spaceId != b.spaceId ||
+      a.orderedEdgeIds.length != b.orderedEdgeIds.length ||
+      a.edges.length != b.edges.length) {
+    return false;
+  }
+  for (var index = 0; index < a.orderedEdgeIds.length; index++) {
+    if (a.orderedEdgeIds[index] != b.orderedEdgeIds[index]) return false;
+  }
+  for (final entry in a.edges.entries) {
+    final other = b.edges[entry.key];
+    if (other == null || !_sameBoundaryEdge(entry.value, other)) return false;
+  }
+  return true;
+}
+
+bool _sameBoundaryEdge(ProjectBoundaryEdge a, ProjectBoundaryEdge b) =>
+    a.id == b.id &&
+    a.spaceId == b.spaceId &&
+    a.start == b.start &&
+    a.end == b.end;
 
 bool _sameSet<T>(Set<T> a, Set<T> b) =>
     a.length == b.length && a.containsAll(b);
