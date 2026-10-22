@@ -59,7 +59,6 @@ void main() {
     final decoded = EditorProjectDocument.fromJson(document.toJson());
     final restored = decoded.restore();
     addTearDown(restored.workspace.dispose);
-    addTearDown(restored.editor.disposeP2State);
     addTearDown(restored.editor.dispose);
 
     expect(restored.editor.viewMode, EditorViewMode.plan);
@@ -299,7 +298,6 @@ final class _Fixture {
 
   void dispose() {
     workspace.dispose();
-    controller.disposeP2State();
     controller.dispose();
   }
 
