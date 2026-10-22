@@ -204,7 +204,8 @@ abstract final class BoundaryHostedObjectRemapper {
         throw BoundaryHostMigrationException(
           code: BoundaryHostMigrationIssueCode.resultEdgeMissing,
           reference: reference,
-          message: 'Lineage result edge $resultId is missing from result topology.',
+          message:
+              'Lineage result edge $resultId is missing from result topology.',
         );
       }
       if (resultEdge.spaceId != after.spaceId) {
