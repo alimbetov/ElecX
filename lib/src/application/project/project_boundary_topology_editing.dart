@@ -350,15 +350,22 @@ void _requireSameIdentitySet(
   SpaceBoundaryTopology before,
   SpaceBoundaryTopology after,
 ) {
-  final sameOrder = before.orderedEdgeIds.length == after.orderedEdgeIds.length &&
-      List.generate(before.orderedEdgeIds.length, (index) => index)
-          .every((index) =>
-              before.orderedEdgeIds[index] == after.orderedEdgeIds[index]);
-  final sameIds = before.edges.keys.toSet().length == after.edges.keys.toSet().length &&
-      before.edges.keys.toSet().containsAll(after.edges.keys);
+  final sameOrder =
+      before.orderedEdgeIds.length == after.orderedEdgeIds.length &&
+          List.generate(
+            before.orderedEdgeIds.length,
+            (index) => index,
+          ).every(
+            (index) =>
+                before.orderedEdgeIds[index] == after.orderedEdgeIds[index],
+          );
+  final sameIds =
+      before.edges.keys.toSet().length == after.edges.keys.toSet().length &&
+          before.edges.keys.toSet().containsAll(after.edges.keys);
   if (!sameOrder || !sameIds) {
     throw BoundaryTopologyEditingException(
-      code: BoundaryTopologyEditingIssueCode.identityChangingEditRequiresHostMigration,
+      code:
+          BoundaryTopologyEditingIssueCode.identityChangingEditRequiresHostMigration,
       spaceId: before.spaceId,
       message: 'P7A-4.5 refuses split/merge/create/remove until P7A-5 can '
           'migrate hosted objects atomically.',
