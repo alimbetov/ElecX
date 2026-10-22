@@ -1,3 +1,5 @@
+import '../../application/project/project_boundary_topology_editing.dart';
+import '../../application/project/project_mutation.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/surfaces.dart';
 import 'canonical_editor_runtime_cutover.dart';
@@ -5,6 +7,11 @@ import 'canonical_room_surface_cutover.dart';
 import 'canonical_room_surface_resume.dart';
 import 'canonical_room_surface_selection.dart';
 import 'editor_controller.dart';
+
+typedef CanonicalBoundaryTopologyOwnershipCallback = void Function(
+  ProjectBoundaryTopologyEditingPort editing,
+  ProjectMutationResult result,
+);
 
 /// Runtime-only bridge from the legacy EditorController instance to the exact
 /// canonical cutover coordinator that owns it.
@@ -19,10 +26,19 @@ abstract final class CanonicalRoomSurfaceRuntimeRegistry {
   );
   static final Expando<CanonicalRoomSurfaceResume> _stagedResumes =
       Expando<CanonicalRoomSurfaceResume>('ElecX canonical surface resume');
+  static final Expando<CanonicalBoundaryTopologyOwnershipCallback>
+      _topologyOwnership =
+      Expando<CanonicalBoundaryTopologyOwnershipCallback>(
+    'ElecX canonical boundary topology ownership',
+  );
 
-  static void attach(CanonicalEditorRuntimeCutoverCoordinator coordinator) {
+  static void attach(
+    CanonicalEditorRuntimeCutoverCoordinator coordinator, {
+    CanonicalBoundaryTopologyOwnershipCallback? onBoundaryTopologyCommitted,
+  }) {
     final controller = coordinator.adapter.workspace.editor;
     _coordinators[controller] = coordinator;
+    _topologyOwnership[controller] = onBoundaryTopologyCommitted;
 
     if (_stagedResumes[controller] == null &&
         controller.activeSurface?.type == SurfacePlaneType.wall) {
@@ -34,6 +50,7 @@ abstract final class CanonicalRoomSurfaceRuntimeRegistry {
     final controller = coordinator.adapter.workspace.editor;
     if (identical(_coordinators[controller], coordinator)) {
       _coordinators[controller] = null;
+      _topologyOwnership[controller] = null;
     }
   }
 
@@ -46,6 +63,11 @@ abstract final class CanonicalRoomSurfaceRuntimeRegistry {
     EditorController controller,
   ) =>
       _coordinators[controller];
+
+  static CanonicalBoundaryTopologyOwnershipCallback? topologyOwnershipFor(
+    EditorController controller,
+  ) =>
+      _topologyOwnership[controller];
 
   static CanonicalRoomSurfaceSelectionAdapter? resolve(
     EditorController controller,
