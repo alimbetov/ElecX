@@ -26,6 +26,7 @@ final class CanonicalEditorScreenCutoverBinding {
   CanonicalEditorScreenCutoverBinding({
     required this.coordinator,
     this.onCanonicalNavigationChanged,
+    this.onBoundaryTopologyCommitted,
     this.onBlocked,
     this.onError,
   });
@@ -33,6 +34,7 @@ final class CanonicalEditorScreenCutoverBinding {
   final CanonicalEditorRuntimeCutoverCoordinator coordinator;
   final void Function(ProjectNavigationState navigation)?
       onCanonicalNavigationChanged;
+  final CanonicalBoundaryTopologyOwnershipCallback? onBoundaryTopologyCommitted;
   final CanonicalEditorCutoverBlockedCallback? onBlocked;
   final CanonicalEditorCutoverErrorCallback? onError;
 
@@ -59,7 +61,10 @@ final class CanonicalEditorScreenCutoverBinding {
     _requireNotDisposed();
     if (_started) return;
     _started = true;
-    CanonicalRoomSurfaceRuntimeRegistry.attach(coordinator);
+    CanonicalRoomSurfaceRuntimeRegistry.attach(
+      coordinator,
+      onBoundaryTopologyCommitted: onBoundaryTopologyCommitted,
+    );
     workspace.addListener(_onLegacyRuntimeChanged);
     workspace.editor.addListener(_onLegacyRuntimeChanged);
     _lastLegacySelectionFingerprint = _legacySelectionFingerprint();
@@ -132,8 +137,6 @@ final class CanonicalEditorScreenCutoverBinding {
       _lastRejectedLegacySelectionFingerprint = null;
       onCanonicalNavigationChanged?.call(navigation);
     } catch (error, stackTrace) {
-      // Suppress repeated reports for the same invalid legacy selection. A new
-      // navigation fingerprint is eligible for another pull attempt.
       _lastRejectedLegacySelectionFingerprint = fingerprint;
       onError?.call(error, stackTrace);
     }
