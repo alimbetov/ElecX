@@ -7,6 +7,7 @@ import '../../engine/editor_layers.dart';
 import '../../engine/route_engine.dart';
 import 'component_catalog_session.dart';
 import 'editor_controller.dart';
+import 'editor_document_history.dart';
 import 'editor_p2_session.dart';
 import 'editor_ui_tokens.dart';
 import 'editor_viewport_commands.dart';
@@ -28,13 +29,17 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final history = controller.documentHistory;
     return ListenableBuilder(
-      listenable: controller.p2,
-      builder: (context, _) => _buildToolbar(context),
+      listenable: Listenable.merge(<Listenable>[controller.p2, history]),
+      builder: (context, _) => _buildToolbar(context, history),
     );
   }
 
-  Widget _buildToolbar(BuildContext context) {
+  Widget _buildToolbar(
+    BuildContext context,
+    EditorDocumentHistory history,
+  ) {
     final p2 = controller.p2;
     final buttons = <Widget>[
       _toolButton(
@@ -86,14 +91,18 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
       _iconButton(
         context,
         icon: Icons.undo,
-        tooltip: 'Отменить',
-        onPressed: p2.canUndo ? p2.undo : null,
+        tooltip: history.undoLabel == null
+            ? 'Отменить'
+            : 'Отменить: ${history.undoLabel}',
+        onPressed: history.canUndo ? history.undo : null,
       ),
       _iconButton(
         context,
         icon: Icons.redo,
-        tooltip: 'Повторить',
-        onPressed: p2.canRedo ? p2.redo : null,
+        tooltip: history.redoLabel == null
+            ? 'Повторить'
+            : 'Повторить: ${history.redoLabel}',
+        onPressed: history.canRedo ? history.redo : null,
       ),
       const _ToolbarDivider(),
       _iconButton(
