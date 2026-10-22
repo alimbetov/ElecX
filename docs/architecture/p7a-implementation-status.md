@@ -6,7 +6,7 @@ Branch: `feat/project-structure-authoring`
 
 **P7A: IN PROGRESS.**
 
-P7A-1 domain foundation, P7A-2 canonical aggregate ownership and P7A-3 persistence are **DONE + HARDENED**. P7A-4.1 through P7A-4.4 are implemented and hardened, including the production Room Surface Navigator cutover and stable room-surface resume contract. The remaining P7A-4 slice is canonical topology editing; hosted-object migration remains P7A-5.
+P7A-1 domain foundation, P7A-2 canonical aggregate ownership and P7A-3 persistence are **DONE + HARDENED**. P7A-4.1 through P7A-4.4 are **DONE + HARDENED + QUALIFIED**, including production Room Surface Navigator cutover and stable room-surface resume. The P7A-4.5 canonical topology-editing core is now implemented, production-wired and qualified; its remaining closure item is canonical production history/undo ownership and rematerialization. Hosted-object migration remains P7A-5 and is deliberately not bypassed by P7A-4.5.
 
 ## Landed
 
@@ -71,7 +71,7 @@ runtime path_provider      PASS
 
 ### P7A-4 production editor cutover
 
-**IN PROGRESS — navigation/resume cutover hardened; canonical topology edit path remains.**
+**IN PROGRESS — topology-editing core qualified; canonical production history/undo closure remains.**
 
 #### P7A-4.1 — strict canonical boundary projection
 
@@ -107,7 +107,7 @@ Implemented:
 
 **DONE + HARDENED.**
 
-`CanonicalRoomSurfaceCutover.resolve(...)` now proves the complete ownership chain before projecting a wall:
+`CanonicalRoomSurfaceCutover.resolve(...)` proves the complete ownership chain before projecting a wall:
 
 ```text
 canonical SpaceId
@@ -127,7 +127,7 @@ Missing topology or identity affinity never falls back to durable ordinal semant
 
 **DONE + HARDENED + QUALIFIED.**
 
-Production wall navigation now uses one stable action path:
+Production wall navigation uses one stable action path:
 
 ```text
 wall button
@@ -171,7 +171,7 @@ lib/src/features/editor/canonical_editor_screen_cutover_binding.dart
 
 **DONE + HARDENED + QUALIFIED.**
 
-The editor resume schema is now v5 and adds a canonical surface contract:
+The editor resume schema is v5 and adds a canonical surface contract:
 
 ```text
 CanonicalRoomSurfaceResume
@@ -223,9 +223,121 @@ macOS debug build          PASS
 runtime path_provider      PASS
 ```
 
+#### P7A-4.5 — canonical topology edit path
+
+**CORE IMPLEMENTED + HARDENED + QUALIFIED; production history/undo closure remains.**
+
+Application contract:
+
+```text
+begin(spaceId, expectedVersion N)
+        |
+        v
+preview stable vertex/edge edit
+        |
+        v
+validate topology + geometry + minimum edge length
+        |
+        v
+BoundaryTopologyChangeSet / preserved lineage
+        |
+        v
+compare current version == N
+        |
+        v
+ProjectMutationSession.commit
+        |
+        v
+version N+1 + ProjectChangeSet + UndoRecord
+```
+
+Production cutover path:
+
+```text
+mouse / touch / stylus drag
+keyboard / external-wall gizmo
+        |
+        v
+legacy MmPolygon preview candidate
+        |
+        v
+classify exact single vertex or parallel edge edit
+        |
+        v
+version-aware BoundaryEdgeId projection
+        |
+        v
+CanonicalBoundaryTopologyEditSession
+        |
+        v
+canonical P3 commit
+        |
+        v
+legacy canvas rematerialization
+```
+
+Implemented:
+
+- new `ProjectBoundaryTopologyEditingPort` backed by the same `ProjectMutationSession` as structure authoring, Project North and P6 semantics;
+- one canonical transaction lifecycle: `begin -> preview -> validate -> commit/cancel`;
+- vertex editing addresses the outgoing stable `BoundaryEdgeId`, not a durable vertex/wall ordinal;
+- edge-normal editing addresses exact `BoundaryEdgeId`;
+- stale `expectedVersion` fails before authoritative mutation;
+- topology continuity/closure and `BoundaryGeometryIntegrity` are revalidated for every preview;
+- minimum 300 mm edge-length guard remains enforced before commit;
+- successful geometry commit increments canonical version exactly once and creates one canonical undo record;
+- unchanged/cancelled preview leaves canonical state and undo depth unchanged;
+- existing mouse/touch/stylus drag and keyboard/gizmo paths converge at `commitSelectedBoundary(...)`, which now becomes a canonical gateway whenever canonical runtime is attached;
+- canonical runtime never falls back to direct legacy polygon mutation if the stable edit cannot be proven;
+- legacy-only workspaces keep the transitional direct geometry path until their cutover;
+- successful canonical commit is followed by exact legacy materialization, and materialization failure after commit is treated as an invariant violation.
+
+P7A-5 boundary is intentionally strict:
+
+- P7A-4.5 commits only topology-preserving geometry edits with preserved edge identities;
+- split/merge/create/remove identity changes are rejected until hosted-object migration is available;
+- a wall edit is blocked when it affects legacy `wallProfiles`, openings, wall-hosted components or cable/route segments;
+- floor/ceiling hosted engineering geometry in the edited room is conservatively blocked because room footprint changes can invalidate it;
+- shared/internal wall edits are blocked rather than silently propagating only the legacy polygon and diverging from canonical neighboring topology.
+
+Primary implementation:
+
+```text
+lib/src/application/project/project_boundary_topology_editing.dart
+lib/src/application/project/project_structure_authoring.dart
+lib/src/features/editor/canonical_boundary_topology_editing_runtime.dart
+lib/src/features/editor/canonical_room_surface_runtime_registry.dart
+lib/src/features/editor/plan_geometry_editor_actions.dart
+```
+
+Qualification:
+
+```text
+test/p7a45_canonical_topology_editing_test.dart
+test/p7a45_production_topology_editing_test.dart
+```
+
+Qualified code HEAD `6598afba591322bb078699e54f0746bed54911ef`:
+
+```text
+dart format gate           PASS
+flutter analyze            PASS
+flutter full test          PASS
+macOS analyze              PASS
+macOS full test            PASS
+macOS debug build          PASS
+runtime path_provider      PASS
+```
+
+##### Remaining P7A-4.5 closure
+
+The canonical mutation engine already owns the correct `UndoRecord`, but the current production toolbar still invokes the legacy/P2 `undo/redo` controls. Before P7A-4.5 is marked completely DONE, production history must consume the shared canonical mutation timeline and rematerialize the restored canonical boundary after undo/redo. This must be solved as one document-history contract; blindly wiring all canonical undo into the existing P2 toolbar would mix unrelated structural, metadata, semantic and electrical histories incorrectly.
+
+A production topology commit also needs an explicit ownership/publication boundary equivalent to the existing Project North/P6 production callbacks before canonical persistence ownership is considered fully cut over.
+
 ## Safety invariants
 
-Durable navigation/resume wall identity is never:
+Durable navigation/resume/edit wall identity is never:
 
 ```text
 wallIndex
@@ -241,7 +353,7 @@ It is:
 BoundaryEdgeId
 ```
 
-For canonical room-surface navigation/resume, `wallIndex` now exists only as a transient compatibility/presentation ordinal at the legacy canvas boundary.
+For canonical room-surface navigation/resume/editing, `wallIndex` now exists only as a transient compatibility/presentation ordinal at the legacy canvas boundary.
 
 This statement does **not** claim that every legacy wall-index reference in the repository has been removed. Hosted engineering objects remain P7A-5 work:
 
@@ -266,6 +378,8 @@ test/p7a4_canonical_room_surface_cutover_test.dart
 test/p7a4_projection_geometry_guard_test.dart
 test/room_surface_navigator_production_wiring_test.dart
 test/p7a4_stable_surface_resume_test.dart
+test/p7a45_canonical_topology_editing_test.dart
+test/p7a45_production_topology_editing_test.dart
 ```
 
 The hardened matrix covers:
@@ -280,7 +394,14 @@ The hardened matrix covers:
 - save -> JSON -> close -> reopen -> canonical materialization;
 - missing stable resume edge -> Plan;
 - schema-v4 ordinal migration without identity invention;
-- projection reconstruction after canonical project version change.
+- projection reconstruction after canonical project version change;
+- stable vertex and edge geometry editing;
+- stale topology-edit session rejection;
+- invalid/short geometry rejection before commit;
+- one canonical version increment and undo boundary;
+- canonical commit followed by legacy rematerialization;
+- host-dependent edit blocking until P7A-5;
+- legacy-only geometry compatibility path.
 
 ## Remaining P7A slices
 
@@ -294,7 +415,8 @@ P7A-4.2 stable selection adapter        DONE + HARDENED
 P7A-4.3 production cutover resolver     DONE + HARDENED
 P7A-4.4 Room Surface Navigator wiring   DONE + HARDENED + QUALIFIED
 P7A-4 stable surface resume             DONE + HARDENED + QUALIFIED
-P7A-4.5 canonical topology edit path    PENDING
+P7A-4.5 topology edit core              IMPLEMENTED + HARDENED + QUALIFIED
+P7A-4.5 production history/ownership    NEXT
 P7A-5 hosted-object migration           PENDING
 P7A-6 full hardening/qualification      PENDING
 ```
@@ -312,12 +434,12 @@ Pending platform runners do not alter P7A semantics. Boundary identity, projecti
 
 ## Next implementation target
 
-Proceed with **P7A-4.5 canonical topology edit path**:
+Close **P7A-4.5 production history/ownership** before entering P7A-5:
 
-1. define canonical geometry-edit intents against `BoundaryEdgeId`/vertex topology rather than legacy wall ordinals;
-2. route mouse/touch/stylus/keyboard edits through one version-guarded mutation session;
-3. compute explicit `BoundaryTopologyChangeSet` and lineage for split/merge/create/remove;
-4. validate topology/geometry before commit;
-5. commit atomically as one canonical `ProjectChangeSet` + Undo record;
-6. rebuild the legacy materialization from committed canonical state;
-7. leave hosted-object remap to P7A-5 and fail closed when an edit would require unsupported host migration.
+1. extend the production document-history contract to represent canonical P3 commits alongside legacy electrical history without creating two competing undo timelines;
+2. route canonical topology undo/redo through the same expected-version rules and restore the exact stable `BoundaryEdgeId` topology;
+3. rematerialize the legacy room polygon from restored canonical topology after undo/redo;
+4. suppress duplicate legacy architecture-history entries caused only by canonical rematerialization;
+5. add an explicit production topology-commit ownership callback/publication boundary for canonical persistence;
+6. qualify chronology: topology edit -> electrical edit -> topology edit -> undo/redo in exact document order;
+7. only after this closure begin **P7A-5 hosted-object migration**, then enable split/merge/create/remove lineage with atomic host remap.
