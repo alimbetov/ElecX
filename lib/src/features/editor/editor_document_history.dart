@@ -314,7 +314,9 @@ final class EditorDocumentHistory extends ChangeNotifier {
     // commit path and guarantees that rematerialization failure cannot prevent
     // the persistence owner from seeing the committed canonical transition.
     owner(result);
+    _requireCanonicalReplayResultCurrent(session, result);
     entry.rematerialize();
+    _requireCanonicalReplayResultCurrent(session, result);
   }
 
   void _redoCanonical(_CanonicalEntry entry) {
@@ -326,7 +328,20 @@ final class EditorDocumentHistory extends ChangeNotifier {
     }
     _canonicalObservedVersion = result.project.version;
     owner(result);
+    _requireCanonicalReplayResultCurrent(session, result);
     entry.rematerialize();
+    _requireCanonicalReplayResultCurrent(session, result);
+  }
+
+  void _requireCanonicalReplayResultCurrent(
+    ProjectStructureAuthoringSession session,
+    ProjectMutationResult result,
+  ) {
+    if (session.project.version != result.project.version) {
+      throw StateError(
+        'Canonical project advanced re-entrantly during history replay.',
+      );
+    }
   }
 
   ProjectStructureAuthoringSession _requireCanonicalAffinity(
