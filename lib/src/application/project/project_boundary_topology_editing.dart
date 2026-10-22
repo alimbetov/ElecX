@@ -364,8 +364,8 @@ void _requireSameIdentitySet(
           before.edges.keys.toSet().containsAll(after.edges.keys);
   if (!sameOrder || !sameIds) {
     throw BoundaryTopologyEditingException(
-      code:
-          BoundaryTopologyEditingIssueCode.identityChangingEditRequiresHostMigration,
+      code: BoundaryTopologyEditingIssueCode
+          .identityChangingEditRequiresHostMigration,
       spaceId: before.spaceId,
       message: 'P7A-4.5 refuses split/merge/create/remove until P7A-5 can '
           'migrate hosted objects atomically.',
