@@ -1,7 +1,7 @@
 final class EditorProjectSchemaMigrator {
   const EditorProjectSchemaMigrator._();
 
-  static const int currentSchemaVersion = 4;
+  static const int currentSchemaVersion = 5;
 
   static Map<String, Object?> migrate(
     Map<String, Object?> source, {
@@ -28,6 +28,7 @@ final class EditorProjectSchemaMigrator {
         1 => _v1ToV2(result, legacyTimestamp: legacyTimestamp),
         2 => _v2ToV3(result),
         3 => _v3ToV4(result),
+        4 => _v4ToV5(result),
         _ => throw FormatException(
             'No ElecX migration registered from schema $version.',
           ),
@@ -35,6 +36,35 @@ final class EditorProjectSchemaMigrator {
       version = result['schemaVersion']! as int;
     }
     return result;
+  }
+
+  static Map<String, Object?> _v4ToV5(Map<String, Object?> source) {
+    final workspaceRaw = source['workspace'];
+    if (workspaceRaw is! Map) {
+      throw const FormatException('workspace must be an object for schema v4.');
+    }
+    final workspace =
+        workspaceRaw.map((key, value) => MapEntry(key.toString(), value));
+    final resumeRaw = workspace['resume'];
+    if (resumeRaw is! Map) {
+      throw const FormatException(
+        'workspace.resume must be an object for schema v4.',
+      );
+    }
+    final resume = resumeRaw.map(
+      (key, value) => MapEntry(key.toString(), value),
+    );
+    return <String, Object?>{
+      ...source,
+      'schemaVersion': 5,
+      'workspace': <String, Object?>{
+        ...workspace,
+        'resume': <String, Object?>{
+          ...resume,
+          'canonicalSurface': null,
+        },
+      },
+    };
   }
 
   static Map<String, Object?> _v3ToV4(Map<String, Object?> source) {
