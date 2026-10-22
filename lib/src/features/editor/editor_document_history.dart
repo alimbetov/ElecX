@@ -106,8 +106,8 @@ final class EditorDocumentHistory extends ChangeNotifier {
   }
 
   /// Runs canonical -> legacy projection without manufacturing a second legacy
-  /// architecture history entry. Screen dirty-state listeners remain active;
-  /// this suppression is scoped only to the unified history journal.
+  /// architecture/P2 history entry. Screen dirty-state listeners remain active;
+  /// this suppression is scoped only to the unified document-history journal.
   T runCanonicalProjection<T>(T Function() action) {
     _canonicalProjectionDepth++;
     try {
@@ -115,6 +115,7 @@ final class EditorDocumentHistory extends ChangeNotifier {
     } finally {
       _canonicalProjectionDepth--;
       _architecture = _ArchitectureSnapshot.capture(controller);
+      _p2Revision = _p2.history.mutationRevision;
     }
   }
 
@@ -134,6 +135,10 @@ final class EditorDocumentHistory extends ChangeNotifier {
   void _onP2Changed() {
     if (_replaying) return;
     final revision = _p2.history.mutationRevision;
+    if (_canonicalProjectionDepth > 0) {
+      _p2Revision = revision;
+      return;
+    }
     if (revision == _p2Revision) return;
 
     if (_p2.history.lastMutationKind != CommandHistoryMutationKind.execute ||
