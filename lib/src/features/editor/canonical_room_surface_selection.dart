@@ -34,6 +34,8 @@ final class CanonicalRoomSurfaceSelectionAdapter {
   final EditorController controller;
   final CanonicalRoomBoundaryProjection projection;
 
+  bool get isMaterializationCurrent => _hasExactLegacyMaterialization();
+
   CanonicalRoomSurfaceSelection current() {
     if (!_hasExactLegacyMaterialization()) {
       return const CanonicalRoomSurfaceSelection(
@@ -84,7 +86,9 @@ final class CanonicalRoomSurfaceSelectionAdapter {
     final wallOrdinal = projection.ordinalForEdgeId(edgeId);
     if (wallOrdinal == null) return false;
     controller.showWall(wallOrdinal);
-    return true;
+    final selection = current();
+    return selection.kind == CanonicalRoomSurfaceKind.wall &&
+        selection.boundaryEdgeId == edgeId;
   }
 
   bool previousWall() {
@@ -112,6 +116,30 @@ final class CanonicalRoomSurfaceSelectionAdapter {
         : projection.ordinalForEdgeId(currentEdgeId) ?? -1;
     final targetOrdinal = (currentOrdinal + 1) % projection.wallCount;
     return showBoundaryEdge(projection.edgeIdAtOrdinal(targetOrdinal));
+  }
+
+  /// Explicitly reconciles a stale legacy wall selection with the stable-id
+  /// projection. Returns true only when a stale wall/surface state was changed
+  /// to Plan. This remains a navigation-only operation in [EditorController].
+  bool fallbackToPlanIfStale() {
+    final active = controller.activeSurface;
+    final staleMaterialization = !_hasExactLegacyMaterialization();
+    final staleWallOrdinal = active?.type == SurfacePlaneType.wall &&
+        (active?.wallIndex == null ||
+            active!.wallIndex! < 0 ||
+            active.wallIndex! >= projection.wallCount);
+    final wrongSurfaceOwner = active != null &&
+        active.spaceId != projection.legacySpaceId &&
+        controller.viewMode == EditorViewMode.surface;
+
+    if (!staleMaterialization && !staleWallOrdinal && !wrongSurfaceOwner) {
+      return false;
+    }
+    if (controller.viewMode == EditorViewMode.plan && active == null) {
+      return false;
+    }
+    controller.showPlan();
+    return true;
   }
 
   bool _hasExactLegacyMaterialization() {
