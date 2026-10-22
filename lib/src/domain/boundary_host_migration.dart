@@ -290,9 +290,12 @@ abstract final class BoundaryHostedObjectRemapper {
     int offsetMm,
   ) {
     final length = _edgeLength(edge);
-    final t = (length == 0 ? 0.0 : offsetMm / length)
-        .clamp(0.0, 1.0)
-        .toDouble();
+    final roundedLength = length.round();
+    final t = offsetMm == roundedLength
+        ? 1.0
+        : (length == 0 ? 0.0 : offsetMm / length)
+            .clamp(0.0, 1.0)
+            .toDouble();
     return _BoundaryPointDouble(
       x: edge.start.xMm + (edge.end.xMm - edge.start.xMm) * t,
       y: edge.start.yMm + (edge.end.yMm - edge.start.yMm) * t,
