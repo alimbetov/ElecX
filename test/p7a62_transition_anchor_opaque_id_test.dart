@@ -98,7 +98,7 @@ void main() {
           if (id.value.startsWith('p7a-transition:')) id,
     ];
     expect(transitionIds, hasLength(2));
-    expect(transitionIds.singleOrNull, isNull);
+    expect(transitionIds[0], transitionIds[1]);
     expect(transitionIds.first.value, contains(':anchor:'));
 
     final recaptured = CanonicalBoundaryHostProjection.capture(
