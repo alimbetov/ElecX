@@ -4,6 +4,8 @@ import '../../domain/boundary_host_registry.dart';
 import '../../domain/boundary_topology.dart';
 import '../../domain/boundary_wall_profile_registry.dart';
 import '../../domain/project_identity.dart';
+import '../../domain/route_anchor_identity_migration.dart';
+import '../../domain/surfaces.dart';
 import 'canonical_boundary_host_materialization.dart';
 import 'canonical_boundary_host_projection.dart';
 import 'canonical_editor_runtime_cutover.dart';
@@ -12,14 +14,93 @@ import 'canonical_route_anchor_rehydration.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 
-/// Production P7A-5 gateway for identity-changing boundary topology edits.
+/// Production P7A-5 gateway for canonical hosted-object adoption and
+/// identity-changing boundary topology edits.
 ///
 /// Pointer modality is intentionally absent. Mouse/touch/stylus/keyboard/menu
 /// actions normalize to these stable-id operations before entering the runtime.
-/// Existing legacy hosted objects must already be adopted into canonical
-/// registries; this gateway never silently bootstraps authoritative state during
-/// a split/merge operation.
 abstract final class CanonicalBoundaryTopologyMigrationRuntime {
+  /// One-time migration of the exact currently materialized legacy room hosts
+  /// into canonical P7A-5 ownership. Route point identities are allocated
+  /// explicitly; no segment/point ordinal becomes durable identity.
+  static bool adoptLegacyHosts({
+    required EditorController controller,
+    EntityIdFactory? idFactory,
+  }) {
+    final context = _context(controller);
+    if (context == null) return false;
+    final project = context.coordinator.session.project;
+    final topology = project.index.boundary(context.spaceId);
+    final legacySpace = controller.selectedSpace;
+    if (topology == null || legacySpace == null) return false;
+
+    if (context.coordinator.session.boundaryHostAdoption
+        .hasCanonicalHosts(context.spaceId)) {
+      _requireExactCanonicalHostAdoption(
+        controller: controller,
+        context: context,
+        sourceTopology: topology,
+      );
+      return true;
+    }
+
+    final ids = idFactory ?? SecureRandomEntityIdFactory();
+    final migratedRoutes = [
+      for (final route in controller.p2.state.routes)
+        if (route.segments.any(
+          (segment) =>
+              segment.surface.spaceId == legacySpace.id &&
+              segment.surface.type == SurfacePlaneType.wall,
+        ))
+          RouteAnchorIdentityMigration.migrate(route, ids)
+        else
+          route,
+    ];
+    final p2Candidate = controller.p2.state.copyWith(
+      routes: List.unmodifiable(migratedRoutes),
+    );
+    final hosts = CanonicalBoundaryHostProjection.capture(
+      canonicalSpaceId: context.spaceId,
+      legacySpace: legacySpace,
+      orderedEdgeIds: topology.orderedEdgeIds,
+      openings: controller.openings,
+      p2State: p2Candidate,
+    );
+    final profiles = CanonicalBoundaryHostProjection.captureWallProfiles(
+      canonicalSpaceId: context.spaceId,
+      legacySpace: legacySpace,
+      orderedEdgeIds: topology.orderedEdgeIds,
+    );
+
+    final result = context.coordinator.session.boundaryHostAdoption.adopt(
+      spaceId: context.spaceId,
+      expectedVersion: project.version,
+      hostedObjects: hosts,
+      wallProfiles: profiles,
+    );
+    if (result == null) return true;
+
+    void rematerializeCurrentCanonicalState() {
+      _materialize(
+        controller: controller,
+        context: context,
+        sourceP2: p2Candidate,
+      );
+    }
+
+    controller.documentHistory.recordCanonicalCommit(
+      session: context.coordinator.session,
+      label: 'Adopt stable boundary hosts',
+      rematerialize: rematerializeCurrentCanonicalState,
+    );
+    try {
+      context.owner(result);
+    } finally {
+      rematerializeCurrentCanonicalState();
+    }
+    return true;
+  }
+
   static bool splitEdge({
     required EditorController controller,
     required BoundaryEdgeId edgeId,
@@ -129,28 +210,10 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
     if (committed == null) return true;
 
     void rematerializeCurrentCanonicalState() {
-      final project = context.coordinator.session.project;
-      final topology = project.index.boundary(context.spaceId);
-      final legacySpace = controller.selectedSpace;
-      if (topology == null || legacySpace == null) {
-        throw StateError(
-          'P7A-5 history replay lost selected room/topology affinity.',
-        );
-      }
-      final materialization =
-          CanonicalBoundaryHostProjection.materializeTopology(
-        canonicalSpaceId: context.spaceId,
-        legacySpace: legacySpace,
-        topology: topology,
-        registry: project.engineeringMetadata.boundaryHostedObjectRegistry,
-        wallProfiles: project.engineeringMetadata.boundaryWallProfileRegistry,
-        openings: controller.openings,
-        p2State: sourceP2,
-      );
-      CanonicalBoundaryHostMaterializer.apply(
-        controller,
-        controller.p2,
-        materialization,
+      _materialize(
+        controller: controller,
+        context: context,
+        sourceP2: sourceP2,
       );
     }
 
@@ -165,6 +228,35 @@ abstract final class CanonicalBoundaryTopologyMigrationRuntime {
       rematerializeCurrentCanonicalState();
     }
     return true;
+  }
+
+  static void _materialize({
+    required EditorController controller,
+    required _MigrationContext context,
+    required EditorP2State sourceP2,
+  }) {
+    final project = context.coordinator.session.project;
+    final topology = project.index.boundary(context.spaceId);
+    final legacySpace = controller.selectedSpace;
+    if (topology == null || legacySpace == null) {
+      throw StateError(
+        'P7A-5 history replay lost selected room/topology affinity.',
+      );
+    }
+    final materialization = CanonicalBoundaryHostProjection.materializeTopology(
+      canonicalSpaceId: context.spaceId,
+      legacySpace: legacySpace,
+      topology: topology,
+      registry: project.engineeringMetadata.boundaryHostedObjectRegistry,
+      wallProfiles: project.engineeringMetadata.boundaryWallProfileRegistry,
+      openings: controller.openings,
+      p2State: sourceP2,
+    );
+    CanonicalBoundaryHostMaterializer.apply(
+      controller,
+      controller.p2,
+      materialization,
+    );
   }
 
   static EditorP2State _requireExactCanonicalHostAdoption({
