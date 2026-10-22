@@ -146,6 +146,7 @@ abstract interface class EntityIdFactory {
   PortId newPortId();
   CircuitId newCircuitId();
   RouteId newRouteId();
+  RouteAnchorId newRouteAnchorId();
   GenerationId newGenerationId();
   TemplateId newTemplateId();
   TypicalFloorDefinitionId newTypicalFloorDefinitionId();
@@ -207,6 +208,9 @@ final class SecureRandomEntityIdFactory implements EntityIdFactory {
 
   @override
   RouteId newRouteId() => RouteId(_nextUuidV4());
+
+  @override
+  RouteAnchorId newRouteAnchorId() => RouteAnchorId(_nextUuidV4());
 
   @override
   GenerationId newGenerationId() => GenerationId(_nextUuidV4());
