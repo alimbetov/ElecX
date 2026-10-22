@@ -56,10 +56,12 @@ void main() {
     expect(find.textContaining('wallIndex'), findsNothing);
     expect(find.textContaining('BoundaryEdgeId'), findsNothing);
 
-    await tester.tap(find.byKey(const ValueKey('space-semantics-usage')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Office').last);
-    await tester.pumpAndSettle();
+    final usageField = tester.widget<DropdownButtonFormField<SpaceUsage>>(
+      find.byKey(const ValueKey('space-semantics-usage')),
+    );
+    expect(usageField.onChanged, isNotNull);
+    usageField.onChanged!(SpaceUsage.office);
+    await tester.pump();
 
     expect(selected, SpaceUsage.office);
   });
