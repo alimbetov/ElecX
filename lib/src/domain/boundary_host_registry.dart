@@ -27,7 +27,8 @@ final class BoundaryHostedObjectRegistry {
 
   final Map<String, BoundaryHostedReference> references;
 
-  BoundaryHostedReference? operator [](String objectKey) => references[objectKey];
+  BoundaryHostedReference? operator [](String objectKey) =>
+      references[objectKey];
 
   Iterable<BoundaryHostedReference> forSpace(SpaceId spaceId) =>
       references.values.where((reference) => reference.host.spaceId == spaceId);
