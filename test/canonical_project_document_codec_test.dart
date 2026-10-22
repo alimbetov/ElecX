@@ -4,6 +4,7 @@ import 'package:elecx/src/application/project/project_snapshot.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_orientation.dart';
+import 'package:elecx/src/domain/project_space_semantics.dart';
 import 'package:elecx/src/serialization/project/canonical_project_document_codec.dart';
 import 'package:elecx/src/serialization/project/legacy_v4_project_compatibility.dart';
 import 'package:elecx/src/serialization/project/project_document_codec.dart';
@@ -23,7 +24,7 @@ void main() {
         final restored = codec.decode(first);
         final second = codec.encode(restored);
 
-        expect(first.schemaVersion, 2);
+        expect(first.schemaVersion, 3);
         expect(restored.id, snapshot.id);
         expect(restored.siteId, snapshot.siteId);
         expect(restored.localVersion, snapshot.localVersion);
@@ -41,27 +42,78 @@ void main() {
           restored.aggregate.index.buildingByLevel[LevelId('level-b-2')],
           BuildingId('building-b'),
         );
+        expect(
+          restored.aggregate.stores.spaces[SpaceId('room-a')]!.usage,
+          SpaceUsage.bedroom,
+        );
 
         expect(jsonEncode(second.payload), jsonEncode(first.payload));
       },
     );
 
-    test('migrates canonical v1 to v2 with Project North unspecified', () {
+    test('migrates canonical v1 to v3 with safe P6 defaults', () {
       final current = codec.encode(_multiBuildingSnapshot());
       final v1Payload = Map<String, Object?>.from(current.payload)
-        ..remove('projectOrientation');
+        ..remove('projectOrientation')
+        ..remove('openings')
+        ..remove('adjacencies')
+        ..remove('overlays');
+      final oldSpaces = <Object?>[
+        for (final raw in v1Payload['spaces']! as List<Object?>)
+          Map<String, Object?>.from(raw! as Map)..remove('usage'),
+      ];
+      v1Payload['spaces'] = oldSpaces;
+
       final restored = codec.decode(
         ProjectDocument(schemaVersion: 1, payload: v1Payload),
       );
 
       expect(restored.aggregate.engineeringMetadata.projectNorth, isNull);
+      expect(
+        restored.aggregate.stores.spaces.values
+            .every((space) => space.usage == SpaceUsage.unknown),
+        isTrue,
+      );
+      expect(restored.aggregate.stores.openings, isEmpty);
+      expect(restored.aggregate.stores.adjacencies, isEmpty);
+      expect(restored.aggregate.stores.overlays, isEmpty);
 
       final reencoded = codec.encode(restored);
-      expect(reencoded.schemaVersion, 2);
+      expect(reencoded.schemaVersion, 3);
       expect(
         reencoded.payload['projectOrientation'],
         <String, Object?>{'projectNorthMilliDegrees': null},
       );
+    });
+
+    test('migrates canonical v2 to v3 without inferring usage from names', () {
+      final current = codec.encode(_multiBuildingSnapshot());
+      final v2Payload = _mutablePayload(current)
+        ..remove('openings')
+        ..remove('adjacencies')
+        ..remove('overlays');
+      for (final raw in v2Payload['spaces']! as List) {
+        (raw as Map).remove('usage');
+      }
+
+      final restored = codec.decode(
+        ProjectDocument(
+          schemaVersion: 2,
+          payload: _stringKeyed(v2Payload),
+        ),
+      );
+
+      expect(
+        restored.aggregate.stores.spaces[SpaceId('room-a')]!.usage,
+        SpaceUsage.unknown,
+      );
+      expect(
+        restored.aggregate.stores.spaces[SpaceId('room-b')]!.usage,
+        SpaceUsage.unknown,
+      );
+      expect(restored.aggregate.stores.openings, isEmpty);
+      expect(restored.aggregate.stores.adjacencies, isEmpty);
+      expect(restored.aggregate.stores.overlays, isEmpty);
     });
 
     test('rejects unsupported canonical schema fail closed', () {
@@ -99,7 +151,7 @@ void main() {
       }
     });
 
-    test('rejects missing or malformed orientation object in schema v2', () {
+    test('rejects missing or malformed orientation object in current schema', () {
       final document = codec.encode(_multiBuildingSnapshot());
 
       final missing = _mutablePayload(document)..remove('projectOrientation');
@@ -325,11 +377,13 @@ ProjectSnapshot _multiBuildingSnapshot({ProjectEngineeringNorth? north}) {
           id: roomA,
           levelId: levelA,
           name: 'Bedroom',
+          usage: SpaceUsage.bedroom,
         ),
         roomB: ProjectSpaceEntity(
           id: roomB,
           levelId: levelB,
           name: 'Office',
+          usage: SpaceUsage.office,
         ),
       },
     ),
