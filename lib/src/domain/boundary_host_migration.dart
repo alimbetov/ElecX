@@ -198,11 +198,27 @@ abstract final class BoundaryHostedObjectRemapper {
               'the whole source edge and requires a domain-specific transform.',
         );
       }
+      final resultId = decision.candidateEdgeIds.single;
+      final resultEdge = after.edges[resultId];
+      if (resultEdge == null) {
+        throw BoundaryHostMigrationException(
+          code: BoundaryHostMigrationIssueCode.resultEdgeMissing,
+          reference: reference,
+          message: 'Lineage result edge $resultId is missing from result topology.',
+        );
+      }
+      if (resultEdge.spaceId != after.spaceId) {
+        throw BoundaryHostMigrationException(
+          code: BoundaryHostMigrationIssueCode.resultOwnerMismatch,
+          reference: reference,
+          message: 'Lineage result edge $resultId has a different Space owner.',
+        );
+      }
       return BoundaryHostedRemap(
         source: reference,
         host: BoundaryEdgeHostRef(
           spaceId: after.spaceId,
-          edgeId: decision.candidateEdgeIds.single,
+          edgeId: resultEdge.id,
         ),
       );
     }
