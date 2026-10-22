@@ -3,12 +3,11 @@ import '../../domain/project_identity.dart';
 import 'project_authoring_error.dart';
 import 'project_mutation.dart';
 
-/// Removes one space and all of its current structural back-references.
+/// Removes one space and all structural back-references.
 ///
-/// This command is dependency-safe relative to the canonical P4 stores:
-/// Level.spaceIds and StructuralZone.spaceIds are updated atomically with the
-/// Space removal. Future dependency domains introduced in P6/P7/P11 must extend
-/// destructive validation before they become eligible to reference spaces.
+/// P6 semantic dependencies are never cascaded implicitly. Openings,
+/// adjacencies and overlay classifications must be edited explicitly first so
+/// one destructive action cannot silently erase engineering meaning.
 final class RemoveSpaceCommand implements ProjectCommand {
   const RemoveSpaceCommand({required this.spaceId});
 
@@ -28,9 +27,25 @@ final class RemoveSpaceCommand implements ProjectCommand {
       );
     }
 
+    final semanticBlockers = <EntityId>{
+      ...?current.index.openingsBySpaceId[space.id],
+      ...?current.index.adjacenciesBySpaceId[space.id],
+      ...?current.index.overlaysBySpaceId[space.id],
+    };
+    if (semanticBlockers.isNotEmpty) {
+      throw ProjectAuthoringException(
+        code: ProjectAuthoringIssueCode.spaceHasSemanticDependencies,
+        entityId: space.id,
+        relatedEntityId: semanticBlockers.first,
+        blockingEntityIds: Set<EntityId>.unmodifiable(semanticBlockers),
+        message: 'Space ${space.id} cannot be removed while '
+            '${semanticBlockers.length} P6 semantic dependency/dependencies '
+            'still reference it.',
+      );
+    }
+
     final level = current.index.level(space.levelId)!;
     final structuralZoneId = current.index.structuralZoneBySpace[space.id];
-
     final levels = Map<LevelId, ProjectLevelEntity>.from(current.stores.levels);
     final zones = Map<ZoneId, ProjectStructuralZoneEntity>.from(
       current.stores.zones,
@@ -76,10 +91,6 @@ final class RemoveSpaceCommand implements ProjectCommand {
   }
 }
 
-/// Removes an empty structural zone.
-///
-/// Cascade deletion is intentionally forbidden. The caller must remove or move
-/// member spaces explicitly before deleting the structural zone.
 final class RemoveStructuralZoneCommand implements ProjectCommand {
   const RemoveStructuralZoneCommand({required this.zoneId});
 
@@ -139,11 +150,6 @@ final class RemoveStructuralZoneCommand implements ProjectCommand {
   }
 }
 
-/// Removes an empty level.
-///
-/// Levels with structural zones or spaces are rejected. No implicit cascade is
-/// permitted because it would erase multiple user-authored entities behind one
-/// destructive action.
 final class RemoveLevelCommand implements ProjectCommand {
   const RemoveLevelCommand({required this.levelId});
 
@@ -208,9 +214,6 @@ final class RemoveLevelCommand implements ProjectCommand {
   }
 }
 
-/// Removes an empty building from its owning site.
-///
-/// Buildings with levels are rejected; deletion never cascades implicitly.
 final class RemoveBuildingCommand implements ProjectCommand {
   const RemoveBuildingCommand({required this.buildingId});
 
