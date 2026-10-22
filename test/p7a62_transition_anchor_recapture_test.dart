@@ -12,7 +12,8 @@ import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('projection-only transition anchors are not recaptured as canonical hosts',
+  test(
+      'projection-only transition anchors are not recaptured as canonical hosts',
       () {
     final spaceId = SpaceId('space');
     final first = BoundaryEdgeId('bottom-a');
