@@ -13,6 +13,10 @@ typedef CanonicalBoundaryTopologyOwnershipCallback = void Function(
   ProjectMutationResult result,
 );
 
+typedef CanonicalMutationOwnershipCallback = void Function(
+  ProjectMutationResult result,
+);
+
 /// Runtime-only bridge from the legacy EditorController instance to the exact
 /// canonical cutover coordinator that owns it.
 ///
@@ -30,14 +34,20 @@ abstract final class CanonicalRoomSurfaceRuntimeRegistry {
       _topologyOwnership = Expando<CanonicalBoundaryTopologyOwnershipCallback>(
     'ElecX canonical boundary topology ownership',
   );
+  static final Expando<CanonicalMutationOwnershipCallback> _canonicalOwnership =
+      Expando<CanonicalMutationOwnershipCallback>(
+    'ElecX canonical mutation ownership',
+  );
 
   static void attach(
     CanonicalEditorRuntimeCutoverCoordinator coordinator, {
     CanonicalBoundaryTopologyOwnershipCallback? onBoundaryTopologyCommitted,
+    CanonicalMutationOwnershipCallback? onCanonicalMutationCommitted,
   }) {
     final controller = coordinator.adapter.workspace.editor;
     _coordinators[controller] = coordinator;
     _topologyOwnership[controller] = onBoundaryTopologyCommitted;
+    _canonicalOwnership[controller] = onCanonicalMutationCommitted;
 
     if (_stagedResumes[controller] == null &&
         controller.activeSurface?.type == SurfacePlaneType.wall) {
@@ -50,6 +60,7 @@ abstract final class CanonicalRoomSurfaceRuntimeRegistry {
     if (identical(_coordinators[controller], coordinator)) {
       _coordinators[controller] = null;
       _topologyOwnership[controller] = null;
+      _canonicalOwnership[controller] = null;
     }
   }
 
@@ -67,6 +78,11 @@ abstract final class CanonicalRoomSurfaceRuntimeRegistry {
     EditorController controller,
   ) =>
       _topologyOwnership[controller];
+
+  static CanonicalMutationOwnershipCallback? canonicalOwnershipFor(
+    EditorController controller,
+  ) =>
+      _canonicalOwnership[controller];
 
   static CanonicalRoomSurfaceSelectionAdapter? resolve(
     EditorController controller,
