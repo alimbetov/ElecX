@@ -16,7 +16,11 @@ import 'package:elecx/src/features/editor/canonical_editor_workspace_adapter.dar
 import 'package:elecx/src/features/editor/editor_building_workspace.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
 import 'package:elecx/src/features/editor/editor_document_history.dart';
+import 'package:elecx/src/features/editor/editor_keyboard_scope.dart';
 import 'package:elecx/src/features/editor/editor_p2_session.dart';
+import 'package:elecx/src/features/editor/unified_icon_toolbar.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -78,6 +82,87 @@ void main() {
     expect(fixture.controller.selectedSpace!.boundary.vertices, hasLength(4));
     expect(fixture.ownershipCount, 4);
   });
+
+  testWidgets(
+    'production toolbar resolves transient wall ordinal to stable split action',
+    (tester) async {
+      final fixture = _Fixture();
+      addTearDown(fixture.dispose);
+      final binding = fixture.bind();
+      addTearDown(binding.dispose);
+      fixture.controller.showWall(0);
+
+      expect(
+        CanonicalBoundaryTopologyMigrationRuntime.edgeIdAtLegacyWallOrdinal(
+          fixture.controller,
+          0,
+        ),
+        fixture.edgeIds.first,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: UnifiedEditorIconToolbar(controller: fixture.controller),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final split = find.byKey(const ValueKey('boundary-split-edge'));
+      expect(split, findsOneWidget);
+      await tester.tap(split);
+      await tester.pump();
+
+      expect(
+        fixture.session.project.index.boundary(fixture.spaceId)!.orderedEdgeIds,
+        hasLength(5),
+      );
+      expect(fixture.controller.selectedSpace!.boundary.vertices, hasLength(5));
+      expect(fixture.controller.viewMode, EditorViewMode.plan);
+      expect(fixture.controller.activeSurface, isNull);
+      expect(fixture.ownershipCount, 1);
+      expect(fixture.controller.documentHistory.undoDepth, 1);
+    },
+  );
+
+  testWidgets(
+    'keyboard Alt+S converges on the same stable-id split runtime',
+    (tester) async {
+      final fixture = _Fixture();
+      addTearDown(fixture.dispose);
+      final binding = fixture.bind();
+      addTearDown(binding.dispose);
+      fixture.controller.showWall(0);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: EditorKeyboardScope(
+              controller: fixture.controller,
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyS);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
+      await tester.pump();
+
+      expect(
+        fixture.session.project.index.boundary(fixture.spaceId)!.orderedEdgeIds,
+        hasLength(5),
+      );
+      expect(fixture.controller.selectedSpace!.boundary.vertices, hasLength(5));
+      expect(fixture.controller.viewMode, EditorViewMode.plan);
+      expect(fixture.controller.activeSurface, isNull);
+      expect(fixture.ownershipCount, 1);
+      expect(fixture.controller.documentHistory.undoDepth, 1);
+    },
+  );
 
   test('identity-changing edit is read-only without project-wide owner', () {
     final fixture = _Fixture();
