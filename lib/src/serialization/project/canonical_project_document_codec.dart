@@ -1,4 +1,6 @@
 import '../../application/project/project_snapshot.dart';
+import '../../domain/boundary_edge_identity_registry.dart';
+import '../../domain/boundary_topology.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/project_orientation.dart';
@@ -10,16 +12,15 @@ import 'project_document_codec.dart';
 /// Schema history:
 /// - v1: structural multi-building aggregate;
 /// - v2: canonical project engineering orientation;
-/// - v3: P6 SpaceUsage, openings, adjacency and overlay classifications.
-///
-/// P6 intentionally persists no wall index or durable wall host. Exact opening
-/// hosting belongs to P7 BoundaryEdgeId/edge-lineage migration.
+/// - v3: P6 SpaceUsage, openings, adjacency and overlay classifications;
+/// - v4: P7A stable boundary topology and durable edge-owner tombstones.
 final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
   const CanonicalProjectDocumentCodec();
 
-  static const int schemaVersion = 3;
+  static const int schemaVersion = 4;
   static const int _schemaV1 = 1;
   static const int _schemaV2 = 2;
+  static const int _schemaV3 = 3;
 
   @override
   int get currentSchemaVersion => schemaVersion;
@@ -27,6 +28,9 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
   @override
   ProjectDocument encode(ProjectSnapshot snapshot) {
     final stores = snapshot.aggregate.stores;
+    final identityRegistry = snapshot
+        .aggregate.engineeringMetadata.boundaryEdgeIdentityRegistry
+        .registerActiveBoundaries(stores.boundaries);
     return ProjectDocument(
       schemaVersion: schemaVersion,
       payload: <String, Object?>{
@@ -42,6 +46,9 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
           'projectNorthMilliDegrees': snapshot.aggregate.engineeringMetadata
               .projectNorth?.milliDegreesClockwiseFromPositiveY,
         },
+        'boundaryEdgeIdentityRegistry': _encodeBoundaryIdentityRegistry(
+          identityRegistry,
+        ),
         'sites': _encodeSites(stores),
         'buildings': _encodeBuildings(stores),
         'levels': _encodeLevels(stores),
@@ -50,6 +57,7 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
         'openings': _encodeOpenings(stores),
         'adjacencies': _encodeAdjacencies(stores),
         'overlays': _encodeOverlays(stores),
+        'boundaries': _encodeBoundaries(stores),
       },
     );
   }
@@ -248,12 +256,19 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
         );
       }
 
+      final boundaries = _decodeBoundaries(migrated.payload['boundaries']);
+      final identityRegistry = _decodeBoundaryIdentityRegistry(
+        migrated.payload['boundaryEdgeIdentityRegistry'],
+      );
+      _requireRegistryCoversActiveBoundaries(identityRegistry, boundaries);
+
       final aggregate = ProjectAggregateRoot(
         id: projectId,
         siteId: siteId,
         version: localVersion,
         engineeringMetadata: ProjectEngineeringMetadata(
           projectNorth: projectNorth,
+          boundaryEdgeIdentityRegistry: identityRegistry,
         ),
         stores: ProjectEntityStores(
           sites: sites,
@@ -264,6 +279,7 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
           openings: openings,
           adjacencies: adjacencies,
           overlays: overlays,
+          boundaries: boundaries,
         ),
       );
 
@@ -275,6 +291,10 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
       );
     } on FormatException {
       rethrow;
+    } on BoundaryEdgeIdentityOwnershipException catch (error) {
+      throw FormatException('Invalid boundary edge identity registry: $error');
+    } on BoundaryTopologyValidationException catch (error) {
+      throw FormatException('Invalid persisted boundary topology: $error');
     } on ArgumentError catch (error) {
       throw FormatException('Invalid canonical ElecX project value: $error');
     } on ProjectAggregateValidationException catch (error) {
@@ -302,6 +322,9 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
     if (migrated.schemaVersion == _schemaV2) {
       migrated = _migrateV2ToV3(migrated);
     }
+    if (migrated.schemaVersion == _schemaV3) {
+      migrated = _migrateV3ToV4(migrated);
+    }
     return migrated;
   }
 
@@ -325,7 +348,7 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
         },
     ];
     return ProjectDocument(
-      schemaVersion: schemaVersion,
+      schemaVersion: _schemaV3,
       payload: <String, Object?>{
         ...document.payload,
         'spaces': spaces,
@@ -335,6 +358,16 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
       },
     );
   }
+
+  static ProjectDocument _migrateV3ToV4(ProjectDocument document) =>
+      ProjectDocument(
+        schemaVersion: schemaVersion,
+        payload: <String, Object?>{
+          ...document.payload,
+          'boundaries': const <Object?>[],
+          'boundaryEdgeIdentityRegistry': const <Object?>[],
+        },
+      );
 
   static ProjectEngineeringNorth? _projectNorth(Object? value) {
     if (value == null) return null;
@@ -480,12 +513,154 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
         },
     ];
   }
+
+  static List<Object?> _encodeBoundaries(ProjectEntityStores stores) {
+    final values = stores.boundaries.values.toList()
+      ..sort((a, b) => a.spaceId.value.compareTo(b.spaceId.value));
+    return <Object?>[
+      for (final topology in values)
+        <String, Object?>{
+          'spaceId': topology.spaceId.value,
+          'orderedEdgeIds': _sortedPreservingOrder(topology.orderedEdgeIds),
+          'edges': <Object?>[
+            for (final edgeId in topology.orderedEdgeIds)
+              _encodeBoundaryEdge(topology.edges[edgeId]!),
+          ],
+        },
+    ];
+  }
+
+  static Map<String, Object?> _encodeBoundaryEdge(ProjectBoundaryEdge edge) =>
+      <String, Object?>{
+        'id': edge.id.value,
+        'spaceId': edge.spaceId.value,
+        'start': <String, Object?>{
+          'xMm': edge.start.xMm,
+          'yMm': edge.start.yMm,
+        },
+        'end': <String, Object?>{
+          'xMm': edge.end.xMm,
+          'yMm': edge.end.yMm,
+        },
+      };
+
+  static List<Object?> _encodeBoundaryIdentityRegistry(
+    BoundaryEdgeIdentityRegistry registry,
+  ) {
+    final entries = registry.owners.entries.toList()
+      ..sort((a, b) => a.key.value.compareTo(b.key.value));
+    return <Object?>[
+      for (final entry in entries)
+        <String, Object?>{
+          'edgeId': entry.key.value,
+          'spaceId': entry.value.value,
+        },
+    ];
+  }
+
+  static Map<SpaceId, SpaceBoundaryTopology> _decodeBoundaries(Object? value) {
+    final result = <SpaceId, SpaceBoundaryTopology>{};
+    for (final raw in _list(value, 'boundaries')) {
+      final json = _map(raw, 'boundary');
+      final spaceId = SpaceId(_string(json['spaceId'], 'boundary.spaceId'));
+      if (result.containsKey(spaceId)) {
+        throw FormatException('Duplicate boundary owner $spaceId.');
+      }
+      final orderedEdgeIds = _uniqueStringList(
+        json['orderedEdgeIds'],
+        'boundary.orderedEdgeIds',
+      ).map(BoundaryEdgeId.new).toList(growable: false);
+      final edges = <BoundaryEdgeId, ProjectBoundaryEdge>{};
+      for (final edgeRaw in _list(json['edges'], 'boundary.edges')) {
+        final edgeJson = _map(edgeRaw, 'boundary.edge');
+        final edgeId = BoundaryEdgeId(
+          _string(edgeJson['id'], 'boundary.edge.id'),
+        );
+        if (edges.containsKey(edgeId)) {
+          throw FormatException('Duplicate boundary edge id $edgeId.');
+        }
+        final edgeSpaceId = SpaceId(
+          _string(edgeJson['spaceId'], 'boundary.edge.spaceId'),
+        );
+        edges[edgeId] = ProjectBoundaryEdge(
+          id: edgeId,
+          spaceId: edgeSpaceId,
+          start: _boundaryPoint(edgeJson['start'], 'boundary.edge.start'),
+          end: _boundaryPoint(edgeJson['end'], 'boundary.edge.end'),
+        );
+      }
+      final topology = SpaceBoundaryTopology(
+        spaceId: spaceId,
+        orderedEdgeIds: orderedEdgeIds,
+        edges: edges,
+      );
+      topology.validateOrThrow();
+      result[spaceId] = topology;
+    }
+    return Map.unmodifiable(result);
+  }
+
+  static BoundaryEdgeIdentityRegistry _decodeBoundaryIdentityRegistry(
+    Object? value,
+  ) {
+    final owners = <BoundaryEdgeId, SpaceId>{};
+    for (final raw in _list(value, 'boundaryEdgeIdentityRegistry')) {
+      final json = _map(raw, 'boundaryEdgeIdentityRegistry.entry');
+      final edgeId = BoundaryEdgeId(
+        _string(json['edgeId'], 'boundaryEdgeIdentityRegistry.edgeId'),
+      );
+      final spaceId = SpaceId(
+        _string(json['spaceId'], 'boundaryEdgeIdentityRegistry.spaceId'),
+      );
+      if (owners.containsKey(edgeId)) {
+        throw FormatException(
+          'boundaryEdgeIdentityRegistry contains duplicate edge id $edgeId.',
+        );
+      }
+      owners[edgeId] = spaceId;
+    }
+    return BoundaryEdgeIdentityRegistry(owners);
+  }
+
+  static void _requireRegistryCoversActiveBoundaries(
+    BoundaryEdgeIdentityRegistry registry,
+    Map<SpaceId, SpaceBoundaryTopology> boundaries,
+  ) {
+    for (final topology in boundaries.values) {
+      for (final edgeId in topology.edges.keys) {
+        final registeredOwner = registry.ownerOf(edgeId);
+        if (registeredOwner == null) {
+          throw FormatException(
+            'Active boundary edge $edgeId is missing from '
+            'boundaryEdgeIdentityRegistry.',
+          );
+        }
+        if (registeredOwner != topology.spaceId) {
+          throw FormatException(
+            'Active boundary edge $edgeId belongs to ${topology.spaceId} but '
+            'registry owner is $registeredOwner.',
+          );
+        }
+      }
+    }
+  }
+
+  static BoundaryPointMm _boundaryPoint(Object? value, String field) {
+    final json = _map(value, field);
+    return BoundaryPointMm(
+      xMm: _int(json['xMm'], '$field.xMm'),
+      yMm: _int(json['yMm'], '$field.yMm'),
+    );
+  }
 }
 
 List<String> _sortedIds(Iterable<EntityId> ids) {
   final values = ids.map((id) => id.value).toList()..sort();
   return List<String>.unmodifiable(values);
 }
+
+List<String> _sortedPreservingOrder(Iterable<EntityId> ids) =>
+    List<String>.unmodifiable(ids.map((id) => id.value));
 
 Map<String, Object?> _map(Object? value, String field) {
   if (value is! Map) {
