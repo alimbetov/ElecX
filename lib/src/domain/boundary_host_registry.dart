@@ -62,11 +62,9 @@ final class BoundaryHostedObjectRegistry {
   static String componentObjectKey(String componentId) =>
       'component:$componentId';
 
-  static String cableSourceObjectKey(String routeId) =>
-      'cable:$routeId:source';
+  static String cableSourceObjectKey(String routeId) => 'cable:$routeId:source';
 
-  static String cableTargetObjectKey(String routeId) =>
-      'cable:$routeId:target';
+  static String cableTargetObjectKey(String routeId) => 'cable:$routeId:target';
 
   static String routeAnchorObjectKey(RouteAnchorId anchorId) =>
       'route-anchor:${anchorId.value}';
@@ -115,7 +113,8 @@ final class BoundaryHostedObjectRegistry {
     for (final reference in references.values) {
       if (reference.objectKind == BoundaryHostedObjectKind.wallProfile) {
         throw BoundaryHostedRegistryException(
-          code: BoundaryHostedRegistryIssueCode.wallProfileMustUseDedicatedRegistry,
+          code: BoundaryHostedRegistryIssueCode
+              .wallProfileMustUseDedicatedRegistry,
           reference: reference,
           message: 'Wall profile ${reference.objectKey} must be owned by '
               'BoundaryWallProfileRegistry, not the generic hosted-object '
