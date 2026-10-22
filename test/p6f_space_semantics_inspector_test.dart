@@ -30,8 +30,27 @@ void main() {
     expect(find.text('ROOM SEMANTICS'), findsOneWidget);
     expect(find.text('Bedroom 101'), findsOneWidget);
     expect(find.text('Door · 900×2100 mm'), findsOneWidget);
-    expect(find.text('Corridor'), findsWidgets);
-    expect(find.text('Connected by opening'), findsOneWidget);
+    final openingRow = find.byKey(
+      const ValueKey('space-semantics-opening-door-1'),
+    );
+    final adjacencyRow = find.byKey(
+      const ValueKey('space-semantics-adjacency-adj-1'),
+    );
+    expect(
+      find.descendant(of: openingRow, matching: find.text('Corridor')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: adjacencyRow, matching: find.text('Corridor')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: adjacencyRow,
+        matching: find.text('Connected by opening'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('FC-01'), findsOneWidget);
     expect(find.textContaining('Fire safety'), findsOneWidget);
     expect(find.textContaining('wallIndex'), findsNothing);
