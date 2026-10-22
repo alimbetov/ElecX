@@ -59,6 +59,7 @@ final class CanonicalEditorScreenCutoverBinding {
     CanonicalRoomSurfaceRuntimeRegistry.attach(
       coordinator,
       onBoundaryTopologyCommitted: onBoundaryTopologyCommitted,
+      onCanonicalMutationCommitted: onCanonicalMutationReplayed,
     );
     workspace.addListener(_onLegacyRuntimeChanged);
     workspace.editor.addListener(_onLegacyRuntimeChanged);
