@@ -78,14 +78,14 @@ void main() {
 
       final controller = _navigatorController(tester);
 
-      await tester.tap(find.byKey(const ValueKey('room-surface-wall-2')));
+      await tester.tap(find.byKey(const ValueKey('room-surface-wall-0')));
       await tester.pump();
       expect(
         CanonicalRoomSurfaceRuntimeRegistry.resolve(
           controller,
           fixture.spaceId,
         )?.current().boundaryEdgeId,
-        fixture.edgeIds[2],
+        fixture.edgeIds[0],
       );
 
       final focus = tester.widget<Focus>(
@@ -101,7 +101,7 @@ void main() {
           controller,
           fixture.spaceId,
         )?.current().boundaryEdgeId,
-        fixture.edgeIds[3],
+        fixture.edgeIds[1],
       );
 
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
@@ -111,7 +111,7 @@ void main() {
           controller,
           fixture.spaceId,
         )?.current().boundaryEdgeId,
-        fixture.edgeIds[2],
+        fixture.edgeIds[0],
       );
     },
   );
@@ -124,15 +124,15 @@ void main() {
       await _pumpScreen(tester, fixture);
 
       final controller = _navigatorController(tester);
-      await tester.tap(find.byKey(const ValueKey('room-surface-wall-2')));
+      await tester.tap(find.byKey(const ValueKey('room-surface-wall-0')));
       await tester.pump();
 
       final resume = CanonicalRoomSurfaceRuntimeRegistry.capture(controller);
       expect(resume, isNotNull);
       expect(resume!.spaceId, fixture.spaceId);
-      expect(resume.boundaryEdgeId, fixture.edgeIds[2]);
+      expect(resume.boundaryEdgeId, fixture.edgeIds[0]);
       final json = resume.toJson();
-      expect(json['boundaryEdgeId'], fixture.edgeIds[2].value);
+      expect(json['boundaryEdgeId'], fixture.edgeIds[0].value);
       expect(json.containsKey('wallIndex'), isFalse);
     },
   );
