@@ -159,7 +159,8 @@ final class BoundaryWallProfileRegistry {
       ..remove(secondHost);
     final result = migrated[resultEdgeId];
     if (result != null) {
-      next[BoundaryEdgeHostRef(spaceId: spaceId, edgeId: resultEdgeId)] = result;
+      next[BoundaryEdgeHostRef(spaceId: spaceId, edgeId: resultEdgeId)] =
+          result;
     }
     return BoundaryWallProfileRegistry(next);
   }
