@@ -47,8 +47,7 @@ final class SpaceSemanticsInspectorEditingCoordinator {
       throw SpaceSemanticsInspectorEditingException(
         code: SpaceSemanticsInspectorEditingIssueCode.projectMismatch,
         projectId: editing.projectId,
-        message:
-            'Inspector projection belongs to ${projection.projectId}, '
+        message: 'Inspector projection belongs to ${projection.projectId}, '
             'but editing port owns ${editing.projectId}.',
       );
     }

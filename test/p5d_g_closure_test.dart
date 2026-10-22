@@ -53,8 +53,8 @@ void main() {
     });
 
     test('compass visibility remains presentation-only canonical state', () {
-      final project = _snapshot(north: ProjectEngineeringNorth.fromDegrees(90))
-          .aggregate;
+      final project =
+          _snapshot(north: ProjectEngineeringNorth.fromDegrees(90)).aggregate;
       final mutations = ProjectMutationSession(project);
       final shell = EditorShellState();
       final versionBefore = mutations.current.version;

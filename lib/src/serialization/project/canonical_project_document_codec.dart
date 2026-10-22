@@ -39,11 +39,8 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
           'localVersion': snapshot.localVersion.value,
         },
         'projectOrientation': <String, Object?>{
-          'projectNorthMilliDegrees': snapshot
-              .aggregate
-              .engineeringMetadata
-              .projectNorth
-              ?.milliDegreesClockwiseFromPositiveY,
+          'projectNorthMilliDegrees': snapshot.aggregate.engineeringMetadata
+              .projectNorth?.milliDegreesClockwiseFromPositiveY,
         },
         'sites': _encodeSites(stores),
         'buildings': _encodeBuildings(stores),
@@ -546,8 +543,7 @@ int _int(Object? value, String field) {
 
 DateTime _dateTime(Object? value, String field) {
   final raw = _string(value, field);
-  final hasExplicitZone =
-      raw.endsWith('Z') ||
+  final hasExplicitZone = raw.endsWith('Z') ||
       raw.endsWith('z') ||
       RegExp(r'[+-]\d{2}:\d{2}$').hasMatch(raw);
   if (!hasExplicitZone) {

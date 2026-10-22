@@ -324,9 +324,8 @@ ProjectAggregateRoot _project({
             displayOrder: 0,
             elevationMm: 0,
             zoneIds: includeZoneAndSpace ? <ZoneId>[zoneId] : const <ZoneId>[],
-            spaceIds: includeZoneAndSpace
-                ? <SpaceId>[spaceId]
-                : const <SpaceId>[],
+            spaceIds:
+                includeZoneAndSpace ? <SpaceId>[spaceId] : const <SpaceId>[],
           ),
         if (includeBuildingA && includeSecondLevelA)
           aLevel2Id: ProjectLevelEntity(

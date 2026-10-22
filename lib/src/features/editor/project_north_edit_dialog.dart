@@ -62,7 +62,8 @@ final class _ProjectNorthEditDialogState extends State<ProjectNorthEditDialog> {
         decoration: InputDecoration(
           labelText: 'Угол',
           suffixText: '°',
-          helperText: '0° = вверх по плану; положительное направление по часовой стрелке',
+          helperText:
+              '0° = вверх по плану; положительное направление по часовой стрелке',
           errorText: _validationError,
         ),
         onSubmitted: (_) => _submit(),

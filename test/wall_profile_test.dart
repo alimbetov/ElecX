@@ -21,10 +21,10 @@ void main() {
     () {
       final profile = WallProfile.rectangle(widthMm: 4000, heightMm: 3000)
           .withTopPolyline(const [
-            WallProfilePoint(0, 3000),
-            WallProfilePoint(2000, 2600),
-            WallProfilePoint(4000, 2200),
-          ]);
+        WallProfilePoint(0, 3000),
+        WallProfilePoint(2000, 2600),
+        WallProfilePoint(4000, 2200),
+      ]);
 
       expect(profile.containsPoint(3500, 2000), isTrue);
       expect(profile.containsPoint(3500, 2500), isFalse);

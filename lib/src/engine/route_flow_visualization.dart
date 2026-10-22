@@ -46,17 +46,15 @@ abstract final class RouteFlowVisualizationPolicy {
         return RouteFlowFrame(
           glow: 0.92,
           forwardOffsets: _movingOffsets(p, count: 2),
-          reverseOffsets: medium.bidirectional
-              ? _movingOffsets(1 - p, count: 2)
-              : const [],
+          reverseOffsets:
+              medium.bidirectional ? _movingOffsets(1 - p, count: 2) : const [],
         );
       case RouteFlowVisualKind.controlPulse:
         return RouteFlowFrame(
           glow: 0.72,
           forwardOffsets: _movingOffsets(p, count: 2),
-          reverseOffsets: medium.bidirectional
-              ? _movingOffsets(1 - p, count: 2)
-              : const [],
+          reverseOffsets:
+              medium.bidirectional ? _movingOffsets(1 - p, count: 2) : const [],
         );
       case RouteFlowVisualKind.neutralPulse:
         final glow = 0.6 + 0.22 * (0.5 + 0.5 * math.sin(p * math.pi * 2));

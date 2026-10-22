@@ -49,10 +49,10 @@ abstract final class SelectionEngine {
       primaryId: next.contains(id)
           ? id
           : next.isEmpty
-          ? null
-          : current.primaryId != null && next.contains(current.primaryId)
-          ? current.primaryId
-          : next.first,
+              ? null
+              : current.primaryId != null && next.contains(current.primaryId)
+                  ? current.primaryId
+                  : next.first,
     );
   }
 
@@ -76,12 +76,12 @@ abstract final class SelectionEngine {
       SelectionMode.replace => hits,
       SelectionMode.add => <String>{...current.ids, ...hits},
       SelectionMode.toggle => <String>{
-        ...current.ids.where((id) => !hits.contains(id)),
-        ...hits.where((id) => !current.ids.contains(id)),
-      },
+          ...current.ids.where((id) => !hits.contains(id)),
+          ...hits.where((id) => !current.ids.contains(id)),
+        },
       SelectionMode.subtract => <String>{
-        ...current.ids.where((id) => !hits.contains(id)),
-      },
+          ...current.ids.where((id) => !hits.contains(id)),
+        },
     };
     return SelectionState(
       ids: Set.unmodifiable(next),

@@ -202,8 +202,7 @@ class EditorKeyboardScope extends StatelessWidget {
           LogicalKeyboardKey.tab,
           control: true,
           shift: true,
-        ): () =>
-            _cycleSceneSelection(reverse: true),
+        ): () => _cycleSceneSelection(reverse: true),
         const SingleActivator(LogicalKeyboardKey.enter): _commitActiveEdit,
         const SingleActivator(LogicalKeyboardKey.numpadEnter):
             _commitActiveEdit,

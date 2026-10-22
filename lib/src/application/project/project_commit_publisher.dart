@@ -35,8 +35,8 @@ final class PublishingProjectMutationSession {
   PublishingProjectMutationSession({
     required ProjectAggregateRoot initial,
     ProjectCommitPublisher publisher = const NoopProjectCommitPublisher(),
-  }) : _session = ProjectMutationSession(initial),
-       _publisher = publisher;
+  })  : _session = ProjectMutationSession(initial),
+        _publisher = publisher;
 
   final ProjectMutationSession _session;
   final ProjectCommitPublisher _publisher;

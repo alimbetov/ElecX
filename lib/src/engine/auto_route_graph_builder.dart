@@ -299,9 +299,9 @@ final class _GraphBuilder {
   }
 
   RoutingGraph build() => RoutingGraph(
-    nodes: Map.unmodifiable(nodes),
-    edges: List.unmodifiable(edges),
-  );
+        nodes: Map.unmodifiable(nodes),
+        edges: List.unmodifiable(edges),
+      );
 
   static double _distance(SurfacePointMm a, SurfacePointMm b) {
     final dx = (a.xMm - b.xMm).toDouble();

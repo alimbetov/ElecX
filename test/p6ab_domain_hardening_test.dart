@@ -307,13 +307,14 @@ ProjectEntityStores _copyStores(
   ProjectEntityStores source, {
   Map<OpeningId, ProjectOpeningEntity>? openings,
   Map<SpaceAdjacencyId, ProjectSpaceAdjacencyEntity>? adjacencies,
-}) => ProjectEntityStores(
-  sites: source.sites,
-  buildings: source.buildings,
-  levels: source.levels,
-  zones: source.zones,
-  spaces: source.spaces,
-  openings: openings ?? source.openings,
-  adjacencies: adjacencies ?? source.adjacencies,
-  overlays: source.overlays,
-);
+}) =>
+    ProjectEntityStores(
+      sites: source.sites,
+      buildings: source.buildings,
+      levels: source.levels,
+      zones: source.zones,
+      spaces: source.spaces,
+      openings: openings ?? source.openings,
+      adjacencies: adjacencies ?? source.adjacencies,
+      overlays: source.overlays,
+    );

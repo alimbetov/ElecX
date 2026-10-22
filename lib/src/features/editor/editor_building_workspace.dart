@@ -18,13 +18,12 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
     required this.site,
     int initialLevelNumber = 1,
     Map<int, List<ArchitecturalOpening>> initialOpeningsByLevel = const {},
-  }) : _activeLevelNumber = initialLevelNumber,
-       _openingsByLevel = {
-         for (final entry in initialOpeningsByLevel.entries)
-           entry.key: List<ArchitecturalOpening>.of(entry.value),
-       } {
-    final initial =
-        building.levelByNumber(initialLevelNumber) ??
+  })  : _activeLevelNumber = initialLevelNumber,
+        _openingsByLevel = {
+          for (final entry in initialOpeningsByLevel.entries)
+            entry.key: List<ArchitecturalOpening>.of(entry.value),
+        } {
+    final initial = building.levelByNumber(initialLevelNumber) ??
         building.orderedLevels.first;
     _activeLevelNumber = initial.levelNumber;
     _activateLevel(initial);

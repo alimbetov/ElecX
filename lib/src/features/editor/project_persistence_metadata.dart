@@ -68,11 +68,11 @@ enum EditorProjectSaveStatus { saved, modified, saving, saveFailed }
 
 extension EditorProjectSaveStatusText on EditorProjectSaveStatus {
   String get label => switch (this) {
-    EditorProjectSaveStatus.saved => 'Saved',
-    EditorProjectSaveStatus.modified => 'Modified',
-    EditorProjectSaveStatus.saving => 'Saving…',
-    EditorProjectSaveStatus.saveFailed => 'Save failed',
-  };
+        EditorProjectSaveStatus.saved => 'Saved',
+        EditorProjectSaveStatus.modified => 'Modified',
+        EditorProjectSaveStatus.saving => 'Saving…',
+        EditorProjectSaveStatus.saveFailed => 'Save failed',
+      };
 }
 
 abstract final class _ProjectIdGenerator {

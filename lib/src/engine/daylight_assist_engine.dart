@@ -262,9 +262,8 @@ abstract final class DaylightAssistEngine {
         final depth = frame.depthMm(point);
         if (depth < 0) continue;
         final lateral = frame.lateralOffsetMm(point).abs();
-        final depthInfluence = depth >= effectiveDepth
-            ? 0.0
-            : 1.0 - depth / effectiveDepth;
+        final depthInfluence =
+            depth >= effectiveDepth ? 0.0 : 1.0 - depth / effectiveDepth;
         final lateralRatio = lateral / lateralScale;
         final lateralInfluence = 1.0 / (1.0 + lateralRatio * lateralRatio);
         final daylightInfluence =
@@ -311,7 +310,8 @@ abstract final class DaylightAssistEngine {
       return [
         LightingPlacementHint(
           position: SurfacePointMm(roomWidthMm ~/ 2, roomDepthMm ~/ 2),
-          reason: 'Контрольная точка: помещение в зоне сильного естественного света.',
+          reason:
+              'Контрольная точка: помещение в зоне сильного естественного света.',
           priority: 0.35,
           daylightInfluence: daylight.centerlineStrength,
         ),

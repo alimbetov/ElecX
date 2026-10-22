@@ -609,7 +609,8 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
       EditorInteractionPolicy.forMode(switch (kind) {
         PointerDeviceKind.touch => EditorInputMode.touch,
         PointerDeviceKind.stylus ||
-        PointerDeviceKind.invertedStylus => EditorInputMode.stylus,
+        PointerDeviceKind.invertedStylus =>
+          EditorInputMode.stylus,
         _ => EditorInputMode.mouseKeyboard,
       });
 
@@ -652,7 +653,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
           pointIndex: endpoint.role == CableEndpointRole.source
               ? 0
               : endpoint.route.segments[endpoint.segmentIndex].points.length -
-                    1,
+                  1,
         );
         if (ui.isSegmentLocked(endpoint.route.id, endpoint.segmentIndex)) {
           return false;
@@ -1015,8 +1016,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
         final lod = RenderPolicy.lodForWorldUnitsPerPixel(camera.mmPerPixel);
         final compact = MediaQuery.sizeOf(context).width < 700;
         final scheme = Theme.of(context).colorScheme;
-        final bottomEditorVisible =
-            surface.type == SurfacePlaneType.wall &&
+        final bottomEditorVisible = surface.type == SurfacePlaneType.wall &&
             controller.boundaryEditing.active &&
             controller.boundaryEditing.profile != BoundaryEditProfile.wall;
         final electricalVisible = controller.p2.layers.isVisible(
@@ -1121,10 +1121,10 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                   }
                   final previewPosition = event.kind == PointerDeviceKind.touch
                       ? event.localPosition -
-                            Offset(
-                              0,
-                              _policy(event.kind).pointerPreviewOffsetPx,
-                            )
+                          Offset(
+                            0,
+                            _policy(event.kind).pointerPreviewOffsetPx,
+                          )
                       : event.localPosition;
                   if (_cableDragHit != null && event.buttons != 0) {
                     final raw = projection.viewportToSurface(previewPosition);
@@ -1266,14 +1266,10 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                   pointFocused: controller.cableUi.activePointIndex != null,
                   pointIsWaypoint: controller.cableUi.activePointIsWaypoint,
                   onToggleWaypoint: _toggleActiveWaypoint,
-                  validation:
-                      controller
-                          .cableEndpointTransform
-                          .previewState
-                          ?.validation ??
+                  validation: controller
+                          .cableEndpointTransform.previewState?.validation ??
                       controller.cableRouteEdit.previewState?.validation,
-                  previewInvalid:
-                      controller.cableEndpointTransform.active &&
+                  previewInvalid: controller.cableEndpointTransform.active &&
                       controller.cableEndpointTransform.previewState == null,
                 ),
               ),
@@ -1350,19 +1346,20 @@ class _ViewportBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainerHigh,
-      borderRadius: BorderRadius.circular(7),
-      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
-      child: Text(
-        '${lod.name} · ${mmPerPixel.toStringAsFixed(1)} mm/px',
-        style: Theme.of(context).textTheme.labelSmall,
-      ),
-    ),
-  );
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(7),
+          border:
+              Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+          child: Text(
+            '${lod.name} · ${mmPerPixel.toStringAsFixed(1)} mm/px',
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+        ),
+      );
 }
 
 class _EdgeNavigationHint extends StatelessWidget {
@@ -1372,29 +1369,32 @@ class _EdgeNavigationHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainerHigh
-          .withValues(alpha: 0.90),
-      borderRadius: BorderRadius.circular(7),
-      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.touch_app_outlined, size: 14),
-          const SizedBox(width: 4),
-          Text(
-            surface.type == SurfacePlaneType.wall
-                ? 'Double-click кромки → соседняя плоскость'
-                : 'Double-click границы → стена',
-            style: Theme.of(context).textTheme.labelSmall,
+        decoration: BoxDecoration(
+          color: Theme.of(context)
+              .colorScheme
+              .surfaceContainerHigh
+              .withValues(alpha: 0.90),
+          borderRadius: BorderRadius.circular(7),
+          border:
+              Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.touch_app_outlined, size: 14),
+              const SizedBox(width: 4),
+              Text(
+                surface.type == SurfacePlaneType.wall
+                    ? 'Double-click кромки → соседняя плоскость'
+                    : 'Double-click границы → стена',
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            ],
           ),
-        ],
-      ),
-    ),
-  );
+        ),
+      );
 }
 
 final class _SurfaceExtent {
@@ -1486,9 +1486,9 @@ final class _SurfaceProjection {
   }
 
   Rect get surfaceRect => Rect.fromPoints(
-    surfaceToViewport(SurfacePointMm(0, extent.heightMm)),
-    surfaceToViewport(SurfacePointMm(extent.widthMm, 0)),
-  );
+        surfaceToViewport(SurfacePointMm(0, extent.heightMm)),
+        surfaceToViewport(SurfacePointMm(extent.widthMm, 0)),
+      );
 
   _WallEdgeHit? wallEdgeHit(
     Offset viewportPoint, {
@@ -1545,11 +1545,11 @@ final class _SurfaceProjection {
   }
 
   Offset floorPointToViewport(MmPoint point) => surfaceToViewport(
-    SurfacePointMm(
-      point.x - extent.floorLeftMm,
-      point.y - extent.floorBottomMm,
-    ),
-  );
+        SurfacePointMm(
+          point.x - extent.floorLeftMm,
+          point.y - extent.floorBottomMm,
+        ),
+      );
 
   Offset _closestPointOnSegment(Offset point, Offset a, Offset b) {
     final ab = b - a;
@@ -1568,131 +1568,131 @@ class _SurfacePainter extends CustomPainter {
     this.lod,
     this.scheme, {
     required Animation<double> flowAnimation,
-  }) : flowAnimation = flowAnimation,
-       activeSurfaceId = controller.activeSurface?.id,
-       selectedSpaceId = controller.selectedSpaceId,
-       dimensionsVisible =
-           controller.dimensionsVisible &&
-           controller.p2.layers.isVisible(EditorLayerId.dimensions),
-       openingsVisible = controller.p2.layers.isVisible(EditorLayerId.openings),
-       electricalVisible = controller.p2.layers.isVisible(
-         EditorLayerId.electrical,
-       ),
-       cableRoutesVisible = controller.p2.layers.isVisible(
-         EditorLayerId.cableRoutes,
-       ),
-       boundaryProfile = controller.boundaryEditing.profile,
-       hoveredOpeningId = controller.boundaryEditing.hoveredOpeningId,
-       selectedOpeningId = controller.selectedOpeningId,
-       selectedRouteId = controller.routeSelection.selectedRouteId,
-       draftFingerprint = Object.hash(
-         controller.boundaryEditing.openingDraft?.openingId,
-         controller.boundaryEditing.openingDraft?.type,
-         controller.boundaryEditing.openingDraft?.offsetFromStartMm,
-         controller.boundaryEditing.openingDraft?.widthMm,
-         controller.boundaryEditing.openingDraft?.heightMm,
-         controller.boundaryEditing.openingDraft?.sillHeightMm,
-         controller.boundaryEditing.beamDraft?.startMm,
-         controller.boundaryEditing.beamDraft?.widthMm,
-         controller.boundaryEditing.beamDraft?.depthMm,
-       ),
-       openingsFingerprint = Object.hashAll(
-         controller.activeWallOpenings.map(
-           (opening) => Object.hash(
-             opening.id,
-             opening.type,
-             opening.offsetFromStartMm,
-             opening.widthMm,
-             opening.heightMm,
-             opening.sillHeightMm,
-           ),
-         ),
-       ),
-       routeFingerprint = Object.hashAll([
-         ...controller.routeSegments.expand(
-           (segment) => <Object?>[
-             segment.surface.id,
-             ...segment.points.expand(
-               (point) => <Object?>[point.xMm, point.yMm],
-             ),
-           ],
-         ),
-         ...controller.p2.routes.expand(
-           (route) => <Object?>[
-             route.id,
-             route.medium.id,
-             ...route.segments.expand(
-               (segment) => <Object?>[
-                 segment.surface.id,
-                 ...segment.points.expand(
-                   (point) => <Object?>[point.xMm, point.yMm],
-                 ),
-               ],
-             ),
-           ],
-         ),
-         ...controller.hostedRoutes.paths.expand(
-           (route) => <Object?>[
-             route.routeId,
-             ...route.segments.expand(
-               (segment) => <Object?>[
-                 segment.host.id,
-                 ...segment.points.expand(
-                   (point) => <Object?>[point.x, point.y],
-                 ),
-               ],
-             ),
-             ...route.transitions.expand(
-               (transition) => <Object?>[
-                 transition.id,
-                 transition.fromHost.id,
-                 transition.toHost.id,
-               ],
-             ),
-           ],
-         ),
-       ]),
-       componentsFingerprint = Object.hashAll(
-         controller.p2.components.expand(
-           (component) => <Object?>[
-             component.id,
-             component.type,
-             component.surface.id,
-             component.position.xMm,
-             component.position.yMm,
-             component.rotationDegrees,
-           ],
-         ),
-       ),
-       selectionFingerprint = Object.hashAll(controller.p2.selection.ids),
-       transformPreviewFingerprint =
-           controller.componentTransform.previewState == null
-           ? 0
-           : Object.hash(
-               controller.componentTransform.previewState!.componentId,
-               controller.componentTransform.previewState!.position.xMm,
-               controller.componentTransform.previewState!.position.yMm,
-               controller.componentTransform.previewState!.isValid,
-             ),
-       snapFingerprint = controller.p2.activeSnap == null
-           ? 0
-           : Object.hash(
-               controller.p2.activeSnap!.kind,
-               controller.p2.activeSnap!.point.x,
-               controller.p2.activeSnap!.point.y,
-             ),
-       profileFingerprint = Object.hashAll(
-         controller.selectedSpace?.wallProfiles.entries.expand(
-               (entry) => <Object?>[
-                 entry.key,
-                 ...entry.value.vertices.expand(
-                   (point) => <Object?>[point.xMm, point.yMm],
-                 ),
-               ],
-             ) ??
-             const <Object?>[],
-       ),
-       super(repaint: flowAnimation);
+  })  : flowAnimation = flowAnimation,
+        activeSurfaceId = controller.activeSurface?.id,
+        selectedSpaceId = controller.selectedSpaceId,
+        dimensionsVisible = controller.dimensionsVisible &&
+            controller.p2.layers.isVisible(EditorLayerId.dimensions),
+        openingsVisible =
+            controller.p2.layers.isVisible(EditorLayerId.openings),
+        electricalVisible = controller.p2.layers.isVisible(
+          EditorLayerId.electrical,
+        ),
+        cableRoutesVisible = controller.p2.layers.isVisible(
+          EditorLayerId.cableRoutes,
+        ),
+        boundaryProfile = controller.boundaryEditing.profile,
+        hoveredOpeningId = controller.boundaryEditing.hoveredOpeningId,
+        selectedOpeningId = controller.selectedOpeningId,
+        selectedRouteId = controller.routeSelection.selectedRouteId,
+        draftFingerprint = Object.hash(
+          controller.boundaryEditing.openingDraft?.openingId,
+          controller.boundaryEditing.openingDraft?.type,
+          controller.boundaryEditing.openingDraft?.offsetFromStartMm,
+          controller.boundaryEditing.openingDraft?.widthMm,
+          controller.boundaryEditing.openingDraft?.heightMm,
+          controller.boundaryEditing.openingDraft?.sillHeightMm,
+          controller.boundaryEditing.beamDraft?.startMm,
+          controller.boundaryEditing.beamDraft?.widthMm,
+          controller.boundaryEditing.beamDraft?.depthMm,
+        ),
+        openingsFingerprint = Object.hashAll(
+          controller.activeWallOpenings.map(
+            (opening) => Object.hash(
+              opening.id,
+              opening.type,
+              opening.offsetFromStartMm,
+              opening.widthMm,
+              opening.heightMm,
+              opening.sillHeightMm,
+            ),
+          ),
+        ),
+        routeFingerprint = Object.hashAll([
+          ...controller.routeSegments.expand(
+            (segment) => <Object?>[
+              segment.surface.id,
+              ...segment.points.expand(
+                (point) => <Object?>[point.xMm, point.yMm],
+              ),
+            ],
+          ),
+          ...controller.p2.routes.expand(
+            (route) => <Object?>[
+              route.id,
+              route.medium.id,
+              ...route.segments.expand(
+                (segment) => <Object?>[
+                  segment.surface.id,
+                  ...segment.points.expand(
+                    (point) => <Object?>[point.xMm, point.yMm],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          ...controller.hostedRoutes.paths.expand(
+            (route) => <Object?>[
+              route.routeId,
+              ...route.segments.expand(
+                (segment) => <Object?>[
+                  segment.host.id,
+                  ...segment.points.expand(
+                    (point) => <Object?>[point.x, point.y],
+                  ),
+                ],
+              ),
+              ...route.transitions.expand(
+                (transition) => <Object?>[
+                  transition.id,
+                  transition.fromHost.id,
+                  transition.toHost.id,
+                ],
+              ),
+            ],
+          ),
+        ]),
+        componentsFingerprint = Object.hashAll(
+          controller.p2.components.expand(
+            (component) => <Object?>[
+              component.id,
+              component.type,
+              component.surface.id,
+              component.position.xMm,
+              component.position.yMm,
+              component.rotationDegrees,
+            ],
+          ),
+        ),
+        selectionFingerprint = Object.hashAll(controller.p2.selection.ids),
+        transformPreviewFingerprint =
+            controller.componentTransform.previewState == null
+                ? 0
+                : Object.hash(
+                    controller.componentTransform.previewState!.componentId,
+                    controller.componentTransform.previewState!.position.xMm,
+                    controller.componentTransform.previewState!.position.yMm,
+                    controller.componentTransform.previewState!.isValid,
+                  ),
+        snapFingerprint = controller.p2.activeSnap == null
+            ? 0
+            : Object.hash(
+                controller.p2.activeSnap!.kind,
+                controller.p2.activeSnap!.point.x,
+                controller.p2.activeSnap!.point.y,
+              ),
+        profileFingerprint = Object.hashAll(
+          controller.selectedSpace?.wallProfiles.entries.expand(
+                (entry) => <Object?>[
+                  entry.key,
+                  ...entry.value.vertices.expand(
+                    (point) => <Object?>[point.xMm, point.yMm],
+                  ),
+                ],
+              ) ??
+              const <Object?>[],
+        ),
+        super(repaint: flowAnimation);
 
   final EditorController controller;
   final _SurfaceProjection projection;
@@ -1720,81 +1720,81 @@ class _SurfacePainter extends CustomPainter {
 
   @override
   SemanticsBuilderCallback get semanticsBuilder => (Size size) {
-    final nodes = <CustomPainterSemantics>[];
-    final surface = controller.activeSurface;
-    if (surface == null) return nodes;
-    if (electricalVisible) {
-      for (final component in controller.p2.components) {
-        if (component.surface != surface) continue;
-        final center = projection.surfaceToViewport(component.position);
-        nodes.add(
-          CustomPainterSemantics(
-            key: ValueKey<String>('component-semantics-${component.id}'),
-            rect: Rect.fromCenter(center: center, width: 48, height: 48),
-            properties: SemanticsProperties(
-              label: '${component.label}, электрический компонент',
-              value:
-                  '${component.position.xMm} на ${component.position.yMm} мм',
-              hint: 'Двойное касание выбирает компонент',
-              textDirection: TextDirection.ltr,
-              button: true,
-              selected: controller.p2.selection.contains(component.id),
-              onTap: () {
-                controller.routeSelection.clear();
-                controller.p2.select(component.id);
-              },
-            ),
-          ),
-        );
-      }
-    }
-    if (cableRoutesVisible) {
-      for (final route in controller.p2.routes) {
-        final points = <Offset>[];
-        for (final segment in route.segments) {
-          if (segment.surface != surface) continue;
-          for (final point in segment.points) {
-            points.add(projection.surfaceToViewport(point));
+        final nodes = <CustomPainterSemantics>[];
+        final surface = controller.activeSurface;
+        if (surface == null) return nodes;
+        if (electricalVisible) {
+          for (final component in controller.p2.components) {
+            if (component.surface != surface) continue;
+            final center = projection.surfaceToViewport(component.position);
+            nodes.add(
+              CustomPainterSemantics(
+                key: ValueKey<String>('component-semantics-${component.id}'),
+                rect: Rect.fromCenter(center: center, width: 48, height: 48),
+                properties: SemanticsProperties(
+                  label: '${component.label}, электрический компонент',
+                  value:
+                      '${component.position.xMm} на ${component.position.yMm} мм',
+                  hint: 'Двойное касание выбирает компонент',
+                  textDirection: TextDirection.ltr,
+                  button: true,
+                  selected: controller.p2.selection.contains(component.id),
+                  onTap: () {
+                    controller.routeSelection.clear();
+                    controller.p2.select(component.id);
+                  },
+                ),
+              ),
+            );
           }
         }
-        if (points.isEmpty) continue;
-        var left = points.first.dx;
-        var right = points.first.dx;
-        var top = points.first.dy;
-        var bottom = points.first.dy;
-        for (final point in points.skip(1)) {
-          left = math.min(left, point.dx);
-          right = math.max(right, point.dx);
-          top = math.min(top, point.dy);
-          bottom = math.max(bottom, point.dy);
+        if (cableRoutesVisible) {
+          for (final route in controller.p2.routes) {
+            final points = <Offset>[];
+            for (final segment in route.segments) {
+              if (segment.surface != surface) continue;
+              for (final point in segment.points) {
+                points.add(projection.surfaceToViewport(point));
+              }
+            }
+            if (points.isEmpty) continue;
+            var left = points.first.dx;
+            var right = points.first.dx;
+            var top = points.first.dy;
+            var bottom = points.first.dy;
+            for (final point in points.skip(1)) {
+              left = math.min(left, point.dx);
+              right = math.max(right, point.dx);
+              top = math.min(top, point.dy);
+              bottom = math.max(bottom, point.dy);
+            }
+            final raw = Rect.fromLTRB(left, top, right, bottom);
+            nodes.add(
+              CustomPainterSemantics(
+                key: ValueKey<String>('route-semantics-${route.id}'),
+                rect: Rect.fromCenter(
+                  center: raw.center,
+                  width: math.max(48, raw.width + 24),
+                  height: math.max(48, raw.height + 24),
+                ),
+                properties: SemanticsProperties(
+                  label: 'Кабельная трасса ${route.id}',
+                  value: route.medium.id,
+                  hint: 'Двойное касание выбирает трассу',
+                  textDirection: TextDirection.ltr,
+                  button: true,
+                  selected: selectedRouteId == route.id,
+                  onTap: () {
+                    controller.p2.clearSelection();
+                    controller.routeSelection.select(route.id);
+                  },
+                ),
+              ),
+            );
+          }
         }
-        final raw = Rect.fromLTRB(left, top, right, bottom);
-        nodes.add(
-          CustomPainterSemantics(
-            key: ValueKey<String>('route-semantics-${route.id}'),
-            rect: Rect.fromCenter(
-              center: raw.center,
-              width: math.max(48, raw.width + 24),
-              height: math.max(48, raw.height + 24),
-            ),
-            properties: SemanticsProperties(
-              label: 'Кабельная трасса ${route.id}',
-              value: route.medium.id,
-              hint: 'Двойное касание выбирает трассу',
-              textDirection: TextDirection.ltr,
-              button: true,
-              selected: selectedRouteId == route.id,
-              onTap: () {
-                controller.p2.clearSelection();
-                controller.routeSelection.select(route.id);
-              },
-            ),
-          ),
-        );
-      }
-    }
-    return nodes;
-  };
+        return nodes;
+      };
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1853,14 +1853,14 @@ class _SurfacePainter extends CustomPainter {
         ..strokeWidth = boundaryProfile == BoundaryEditProfile.wall
             ? 4.0
             : customProfile
-            ? CadVisualTokens.profileStroke
-            : CadVisualTokens.geometryStroke
+                ? CadVisualTokens.profileStroke
+                : CadVisualTokens.geometryStroke
         ..strokeJoin = StrokeJoin.miter
         ..color = boundaryProfile == BoundaryEditProfile.wall
             ? CadVisualTokens.selectedGeometry(scheme)
             : customProfile
-            ? CadVisualTokens.profile(scheme)
-            : CadVisualTokens.geometry(scheme),
+                ? CadVisualTokens.profile(scheme)
+                : CadVisualTokens.geometry(scheme),
     );
     if (boundaryProfile == BoundaryEditProfile.structuralProfile) {
       _drawStructuralProfile(canvas, wall);
@@ -1953,9 +1953,8 @@ class _SurfacePainter extends CustomPainter {
         SurfacePointMm(end, draft.sillHeightMm),
       );
       final rect = Rect.fromPoints(a, b);
-      final color = valid
-          ? CadVisualTokens.selectedGeometry(scheme)
-          : scheme.error;
+      final color =
+          valid ? CadVisualTokens.selectedGeometry(scheme) : scheme.error;
       canvas.drawRect(rect, Paint()..color = color.withValues(alpha: 0.10));
       canvas.drawRect(
         rect,
@@ -1979,16 +1978,14 @@ class _SurfacePainter extends CustomPainter {
     if (draft == null) return;
     final end = draft.startMm + draft.widthMm;
     final bottom = wall.heightMm - draft.depthMm;
-    var valid =
-        draft.startMm >= 0 &&
+    var valid = draft.startMm >= 0 &&
         draft.widthMm > 0 &&
         draft.depthMm > 0 &&
         end <= wall.lengthMm.round() &&
         draft.depthMm < wall.heightMm;
     if (valid) {
       for (final opening in controller.activeWallOpenings) {
-        final overlapsX =
-            opening.offsetFromStartMm < end &&
+        final overlapsX = opening.offsetFromStartMm < end &&
             opening.endOffsetMm > draft.startMm;
         if (overlapsX && opening.topMm > bottom) {
           valid = false;
@@ -1997,9 +1994,8 @@ class _SurfacePainter extends CustomPainter {
       }
     }
 
-    final color = valid
-        ? CadVisualTokens.selectedGeometry(scheme)
-        : scheme.error;
+    final color =
+        valid ? CadVisualTokens.selectedGeometry(scheme) : scheme.error;
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5
@@ -2050,8 +2046,8 @@ class _SurfacePainter extends CustomPainter {
       final paint = Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.1
-        ..color = CadVisualTokens.selectedGeometry(scheme)
-            .withValues(alpha: 0.82);
+        ..color =
+            CadVisualTokens.selectedGeometry(scheme).withValues(alpha: 0.82);
       canvas.drawLine(start, end, paint);
       if (span.axis == MeasurementAxis.horizontal) {
         canvas.drawLine(
@@ -2198,14 +2194,13 @@ class _SurfacePainter extends CustomPainter {
     );
     final rect = Rect.fromPoints(a, b);
     final selected = selectedOpeningId == opening.id;
-    final hovered =
-        hoveredOpeningId == opening.id &&
+    final hovered = hoveredOpeningId == opening.id &&
         boundaryProfile == BoundaryEditProfile.openings;
     final fill = selected || hovered
         ? CadVisualTokens.selectedFill(scheme)
         : opening.type == ArchitecturalOpeningType.door
-        ? scheme.tertiaryContainer.withValues(alpha: 0.42)
-        : scheme.secondaryContainer.withValues(alpha: 0.42);
+            ? scheme.tertiaryContainer.withValues(alpha: 0.42)
+            : scheme.secondaryContainer.withValues(alpha: 0.42);
     canvas.drawRect(rect, Paint()..color = fill);
     canvas.drawRect(
       rect,
@@ -2214,8 +2209,8 @@ class _SurfacePainter extends CustomPainter {
         ..strokeWidth = selected
             ? 4
             : hovered
-            ? 3
-            : CadVisualTokens.openingStroke
+                ? 3
+                : CadVisualTokens.openingStroke
         ..color = selected || hovered
             ? CadVisualTokens.selectedGeometry(scheme)
             : CadVisualTokens.opening(scheme),
@@ -2288,8 +2283,8 @@ class _SurfacePainter extends CustomPainter {
       final color = validation == null || !validation.isValid
           ? scheme.error
           : validation.hasWarnings
-          ? Colors.amber.shade700
-          : Colors.green.shade600;
+              ? Colors.amber.shade700
+              : Colors.green.shade600;
       final paint = Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 4
@@ -2309,8 +2304,7 @@ class _SurfacePainter extends CustomPainter {
         continue;
       }
       for (var p = 0; p < segment.points.length; p++) {
-        final isEndpoint =
-            (s == 0 && p == 0) ||
+        final isEndpoint = (s == 0 && p == 0) ||
             (s == selected.segments.length - 1 &&
                 p == segment.points.length - 1);
         final isWaypoint = controller.cableUi.isWaypoint(selected.id, s, p);
@@ -2545,15 +2539,13 @@ class _SurfacePainter extends CustomPainter {
     final stroke = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = selected ? 2.6 : 1.8
-      ..color =
-          strokeColor ??
+      ..color = strokeColor ??
           (selected
               ? CadVisualTokens.selectedGeometry(scheme)
               : scheme.onSurface);
     final fill = Paint()
       ..style = PaintingStyle.fill
-      ..color =
-          fillColor ??
+      ..color = fillColor ??
           (selected
               ? CadVisualTokens.selectedFill(scheme)
               : scheme.surfaceContainerLowest);

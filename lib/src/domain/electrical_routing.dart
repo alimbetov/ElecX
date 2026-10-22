@@ -75,11 +75,12 @@ abstract final class ElectricalPortCompatibility {
   static bool areCompatible(
     ElectricalPortKind source,
     ElectricalPortKind target,
-  ) => switch (source) {
-    ElectricalPortKind.powerOut => target == ElectricalPortKind.powerIn,
-    ElectricalPortKind.controlOut => target == ElectricalPortKind.controlIn,
-    _ => false,
-  };
+  ) =>
+      switch (source) {
+        ElectricalPortKind.powerOut => target == ElectricalPortKind.powerIn,
+        ElectricalPortKind.controlOut => target == ElectricalPortKind.controlIn,
+        _ => false,
+      };
 
   static ElectricalPortDefinition? portForEndpoint({
     required ElectricalEndpointRef endpoint,

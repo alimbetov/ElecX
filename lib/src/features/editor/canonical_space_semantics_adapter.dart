@@ -46,10 +46,10 @@ final class CanonicalSpaceSemanticsProjection {
     required Iterable<ProjectSpaceAdjacencyEntity> adjacencies,
     required Iterable<ProjectOverlayClassificationEntity> overlays,
     required Map<SpaceId, ProjectSpaceEntity> adjacentSpaces,
-  }) : openings = List.unmodifiable(openings),
-       adjacencies = List.unmodifiable(adjacencies),
-       overlays = List.unmodifiable(overlays),
-       adjacentSpaces = Map.unmodifiable(adjacentSpaces);
+  })  : openings = List.unmodifiable(openings),
+        adjacencies = List.unmodifiable(adjacencies),
+        overlays = List.unmodifiable(overlays),
+        adjacentSpaces = Map.unmodifiable(adjacentSpaces);
 
   final ProjectId projectId;
   final LocalProjectVersion projectVersion;
@@ -65,9 +65,8 @@ final class CanonicalSpaceSemanticsProjection {
   LevelId get levelId => space.levelId;
 
   ProjectSpaceEntity? adjacentSpaceFor(ProjectSpaceAdjacencyEntity adjacency) {
-    final otherId = adjacency.spaceAId == spaceId
-        ? adjacency.spaceBId
-        : adjacency.spaceAId;
+    final otherId =
+        adjacency.spaceAId == spaceId ? adjacency.spaceBId : adjacency.spaceAId;
     return adjacentSpaces[otherId];
   }
 }
@@ -89,8 +88,7 @@ final class CanonicalSpaceSemanticsAdapter {
       throw CanonicalSpaceSemanticsException(
         code: CanonicalSpaceSemanticsIssueCode.unsupportedBuilding,
         entityId: binding.buildingId,
-        message:
-            'The editor workspace is not the legacy Building bound to '
+        message: 'The editor workspace is not the legacy Building bound to '
             '${binding.buildingId}.',
       );
     }
@@ -109,8 +107,7 @@ final class CanonicalSpaceSemanticsAdapter {
       throw CanonicalSpaceSemanticsException(
         code: CanonicalSpaceSemanticsIssueCode.canonicalLevelMissing,
         entityId: space.levelId,
-        message:
-            'Canonical Space $spaceId is outside the bound Building '
+        message: 'Canonical Space $spaceId is outside the bound Building '
             '${binding.buildingId}.',
       );
     }
@@ -120,8 +117,7 @@ final class CanonicalSpaceSemanticsAdapter {
       throw CanonicalSpaceSemanticsException(
         code: CanonicalSpaceSemanticsIssueCode.legacyLevelBindingMissing,
         entityId: level.id,
-        message:
-            'No legacy Level binding exists for canonical Level '
+        message: 'No legacy Level binding exists for canonical Level '
             '${level.id}.',
       );
     }
@@ -153,8 +149,7 @@ final class CanonicalSpaceSemanticsAdapter {
       throw CanonicalSpaceSemanticsException(
         code: CanonicalSpaceSemanticsIssueCode.legacySpaceMissing,
         entityId: spaceId,
-        message:
-            'Bound legacy Space $legacySpaceId does not exist on Level '
+        message: 'Bound legacy Space $legacySpaceId does not exist on Level '
             '$legacyLevelId.',
       );
     }

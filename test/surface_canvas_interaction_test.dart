@@ -86,8 +86,7 @@ void main() {
     await pumpCanvas(tester, controller);
     final canvasOrigin = tester.getTopLeft(find.byType(SurfaceCanvas));
     final start = canvasOrigin + viewportPoint(controller, component.position);
-    final target =
-        canvasOrigin +
+    final target = canvasOrigin +
         viewportPoint(controller, const SurfacePointMm(2000, 1500));
 
     final gesture = await tester.startGesture(
@@ -253,8 +252,7 @@ void main() {
 
     await pumpCanvas(tester, controller);
     final origin = tester.getTopLeft(find.byType(SurfaceCanvas));
-    final start =
-        origin +
+    final start = origin +
         viewportPoint(controller, originalRoute.segments.last.points.last);
     final target = origin + viewportPoint(controller, newTarget.position);
 
@@ -383,8 +381,7 @@ void main() {
 
       await pumpCanvas(tester, controller);
       final origin = tester.getTopLeft(find.byType(SurfaceCanvas));
-      final start =
-          origin +
+      final start = origin +
           viewportPoint(controller, originalRoute.segments.last.points.last);
       final emptyPoint =
           origin + viewportPoint(controller, const SurfacePointMm(1600, 700));

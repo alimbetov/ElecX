@@ -73,9 +73,8 @@ class _ComponentInspector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final entry = controller.componentCatalog.byId(component.componentTypeId);
-    final taxonomy = entry == null
-        ? null
-        : ComponentTaxonomyResolver.resolve(entry);
+    final taxonomy =
+        entry == null ? null : ComponentTaxonomyResolver.resolve(entry);
     return _InspectorScaffold(
       title: component.label,
       subtitle: component.componentTypeId,
@@ -241,32 +240,34 @@ class _EmptyInspector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.radar_outlined,
-            size: 30,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.radar_outlined,
+                size: 30,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'SELECT ENGINEERING OBJECT',
+                style: Theme.of(context)
+                    .textTheme
+                    .labelMedium
+                    ?.copyWith(letterSpacing: 1.1),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                'Компонент или трасса откроет инженерные параметры здесь.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
-          Text(
-            'SELECT ENGINEERING OBJECT',
-            style: Theme.of(context).textTheme.labelMedium
-                ?.copyWith(letterSpacing: 1.1),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            'Компонент или трасса откроет инженерные параметры здесь.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
-      ),
-    ),
-  );
+        ),
+      );
 }
 
 class _InspectorScaffold extends StatelessWidget {
@@ -315,7 +316,9 @@ class _InspectorScaffold extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
-                        style: Theme.of(context).textTheme.labelSmall
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelSmall
                             ?.copyWith(color: scheme.onSurfaceVariant),
                       ),
                     ],
@@ -324,10 +327,10 @@ class _InspectorScaffold extends StatelessWidget {
                 Text(
                   status,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: signal,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
-                  ),
+                        color: signal,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                      ),
                 ),
               ],
             ),
@@ -341,57 +344,62 @@ class _InspectorScaffold extends StatelessWidget {
 }
 
 Widget _section(String title, List<Widget> rows) => Padding(
-  padding: const EdgeInsets.only(top: 8),
-  child: Builder(
-    builder: (context) => DecoratedBox(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: Theme.of(context).textTheme.labelSmall
-                  ?.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1),
+      padding: const EdgeInsets.only(top: 8),
+      child: Builder(
+        builder: (context) => DecoratedBox(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(7),
+            border:
+                Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelSmall
+                      ?.copyWith(fontWeight: FontWeight.w800, letterSpacing: 1),
+                ),
+                const SizedBox(height: 7),
+                ...rows,
+              ],
             ),
-            const SizedBox(height: 7),
-            ...rows,
+          ),
+        ),
+      ),
+    );
+
+Widget _row(String label, String value) => Builder(
+      builder: (context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2.5),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 94,
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                value,
+                textAlign: TextAlign.right,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context)
+                    .textTheme
+                    .labelSmall
+                    ?.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ),
           ],
         ),
       ),
-    ),
-  ),
-);
-
-Widget _row(String label, String value) => Builder(
-  builder: (context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 2.5),
-    child: Row(
-      children: [
-        SizedBox(
-          width: 94,
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            textAlign: TextAlign.right,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall
-                ?.copyWith(fontWeight: FontWeight.w600),
-          ),
-        ),
-      ],
-    ),
-  ),
-);
+    );

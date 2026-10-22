@@ -31,11 +31,11 @@ final class RoomSurfaceNavigatorProjection {
   final int? wallIndex;
 
   String get currentLabel => switch (kind) {
-    RoomSurfaceNavigatorKind.plan => 'Plan',
-    RoomSurfaceNavigatorKind.floor => 'Floor',
-    RoomSurfaceNavigatorKind.ceiling => 'Ceiling',
-    RoomSurfaceNavigatorKind.wall => 'Wall ${(wallIndex ?? 0) + 1}',
-  };
+        RoomSurfaceNavigatorKind.plan => 'Plan',
+        RoomSurfaceNavigatorKind.floor => 'Floor',
+        RoomSurfaceNavigatorKind.ceiling => 'Ceiling',
+        RoomSurfaceNavigatorKind.wall => 'Wall ${(wallIndex ?? 0) + 1}',
+      };
 
   static RoomSurfaceNavigatorProjection? fromEditor({
     required EditorController controller,
@@ -55,9 +55,8 @@ final class RoomSurfaceNavigatorProjection {
             SurfacePlaneType.ceiling => RoomSurfaceNavigatorKind.ceiling,
             SurfacePlaneType.wall => RoomSurfaceNavigatorKind.wall,
           };
-    final wallIndex = kind == RoomSurfaceNavigatorKind.wall
-        ? active?.wallIndex
-        : null;
+    final wallIndex =
+        kind == RoomSurfaceNavigatorKind.wall ? active?.wallIndex : null;
     if (wallIndex != null &&
         (wallIndex < 0 || wallIndex >= space.boundary.vertices.length)) {
       return null;
@@ -226,7 +225,8 @@ class _RoomSurfaceNavigatorState extends State<RoomSurfaceNavigator> {
           child: Semantics(
             label:
                 'Room surface preview, ${projection.currentLabel}, canonical room ${projection.canonicalSpaceId.value}',
-            hint: 'Click a visible surface. With keyboard focus use left and right for walls, up for ceiling, down for floor.',
+            hint:
+                'Click a visible surface. With keyboard focus use left and right for walls, up for ceiling, down for floor.',
             focusable: true,
             child: Focus(
               key: const ValueKey('room-surface-mini-focus'),
@@ -327,7 +327,7 @@ class _RoomSurfaceNavigatorState extends State<RoomSurfaceNavigator> {
                           : null;
                       final selected =
                           projection.kind == RoomSurfaceNavigatorKind.wall &&
-                          projection.wallIndex == index;
+                              projection.wallIndex == index;
                       return Tooltip(
                         message: length == null
                             ? 'Wall ${index + 1}'
@@ -470,11 +470,11 @@ final class _RoomSurfaceMiniTarget {
   const _RoomSurfaceMiniTarget._(this.kind, [this.wallIndex]);
 
   const _RoomSurfaceMiniTarget.floor()
-    : this._(_RoomSurfaceMiniTargetKind.floor);
+      : this._(_RoomSurfaceMiniTargetKind.floor);
   const _RoomSurfaceMiniTarget.ceiling()
-    : this._(_RoomSurfaceMiniTargetKind.ceiling);
+      : this._(_RoomSurfaceMiniTargetKind.ceiling);
   const _RoomSurfaceMiniTarget.wall(int wallIndex)
-    : this._(_RoomSurfaceMiniTargetKind.wall, wallIndex);
+      : this._(_RoomSurfaceMiniTargetKind.wall, wallIndex);
 
   final _RoomSurfaceMiniTargetKind kind;
   final int? wallIndex;
@@ -520,12 +520,13 @@ final class _RoomSurfaceMiniGeometry {
     for (var i = 0; i < floor.length; i++) {
       final next = (i + 1) % floor.length;
       walls.add(
-        Path()..addPolygon([
-          floor[i],
-          floor[next],
-          ceiling[next],
-          ceiling[i],
-        ], true),
+        Path()
+          ..addPolygon([
+            floor[i],
+            floor[next],
+            ceiling[next],
+            ceiling[i],
+          ], true),
       );
     }
     return _RoomSurfaceMiniGeometry(
@@ -625,40 +626,38 @@ final class _RoomSurfaceMiniPainter extends CustomPainter {
       floorSelected
           ? selectedPaint
           : floorHovered
-          ? hoverPaint
-          : basePaint,
+              ? hoverPaint
+              : basePaint,
     );
     canvas.drawPath(
       geometry.floorPath,
       floorSelected
           ? selectedOutline
           : floorHovered
-          ? hoverOutline
-          : outline,
+              ? hoverOutline
+              : outline,
     );
 
     for (var i = 0; i < geometry.walls.length; i++) {
-      final selected =
-          projection.kind == RoomSurfaceNavigatorKind.wall &&
+      final selected = projection.kind == RoomSurfaceNavigatorKind.wall &&
           projection.wallIndex == i;
-      final hovered =
-          hoveredTarget?.kind == _RoomSurfaceMiniTargetKind.wall &&
+      final hovered = hoveredTarget?.kind == _RoomSurfaceMiniTargetKind.wall &&
           hoveredTarget?.wallIndex == i;
       canvas.drawPath(
         geometry.walls[i],
         selected
             ? selectedPaint
             : hovered
-            ? hoverPaint
-            : basePaint,
+                ? hoverPaint
+                : basePaint,
       );
       canvas.drawPath(
         geometry.walls[i],
         selected
             ? selectedOutline
             : hovered
-            ? hoverOutline
-            : outline,
+                ? hoverOutline
+                : outline,
       );
       _paintWallLabel(
         canvas,
@@ -676,16 +675,16 @@ final class _RoomSurfaceMiniPainter extends CustomPainter {
       ceilingSelected
           ? selectedPaint
           : ceilingHovered
-          ? hoverPaint
-          : ceilingPaint,
+              ? hoverPaint
+              : ceilingPaint,
     );
     canvas.drawPath(
       geometry.ceilingPath,
       ceilingSelected
           ? selectedOutline
           : ceilingHovered
-          ? hoverOutline
-          : outline,
+              ? hoverOutline
+              : outline,
     );
   }
 

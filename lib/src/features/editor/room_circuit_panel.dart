@@ -80,7 +80,7 @@ class RoomCircuitPanel extends StatelessWidget {
                       engineeringStatus.estimatedCurrentA == null
                           ? 'Нагрузка: мощность не задана · ${engineeringStatus.nominalVoltageV} В'
                           : 'Нагрузка: ${engineeringStatus.loadPowerW} Вт · ${engineeringStatus.nominalVoltageV} В'
-                                ' · I≈${engineeringStatus.estimatedCurrentA!.toStringAsFixed(2)} A (P/U)',
+                              ' · I≈${engineeringStatus.estimatedCurrentA!.toStringAsFixed(2)} A (P/U)',
                     ),
                     const SizedBox(height: 6),
                     Container(
@@ -143,13 +143,13 @@ class RoomCircuitPanel extends StatelessWidget {
                         key: const ValueKey('edit-cable-sizing-evidence'),
                         onPressed:
                             route == null || bundle.cable.cableSpecId == null
-                            ? null
-                            : () => _editSizingEvidence(
-                                context,
-                                load: selected,
-                                route: route,
-                                bundle: bundle,
-                              ),
+                                ? null
+                                : () => _editSizingEvidence(
+                                      context,
+                                      load: selected,
+                                      route: route,
+                                      bundle: bundle,
+                                    ),
                         icon: const Icon(Icons.calculate_outlined),
                         label: const Text('Расчёт'),
                       ),
@@ -279,7 +279,7 @@ class RoomCircuitPanel extends StatelessWidget {
         existing?.ampacitySections.firstOrNull?.baseAmpacityA.toString() ?? '';
     var correctionText =
         existing?.ampacitySections.firstOrNull?.combinedFactor.toString() ??
-        '1.0';
+            '1.0';
     var ampacitySource =
         existing?.ampacitySections.firstOrNull?.sourceKey ?? '';
     var resistanceText =
@@ -455,7 +455,8 @@ class RoomCircuitPanel extends StatelessWidget {
                     decoration: const InputDecoration(
                       labelText: 'R',
                       suffixText: 'Ω/км',
-                      helperText: 'Оставьте пустым → voltage-drop check = INDETERMINATE.',
+                      helperText:
+                          'Оставьте пустым → voltage-drop check = INDETERMINATE.',
                     ),
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
@@ -508,13 +509,11 @@ class RoomCircuitPanel extends StatelessWidget {
     final diameter = parseDouble(diameterText);
     final conductorCount = int.tryParse(conductorCountText.trim());
     final crossSection = parseDouble(crossSectionText);
-    final baseAmpacity = baseAmpacityText.trim().isEmpty
-        ? null
-        : parseDouble(baseAmpacityText);
+    final baseAmpacity =
+        baseAmpacityText.trim().isEmpty ? null : parseDouble(baseAmpacityText);
     final correction = parseDouble(correctionText);
-    final resistance = resistanceText.trim().isEmpty
-        ? null
-        : parseDouble(resistanceText);
+    final resistance =
+        resistanceText.trim().isEmpty ? null : parseDouble(resistanceText);
     final reactance = parseDouble(reactanceText) ?? 0;
     final specId = bundle.cable.cableSpecId;
     if (designCurrent == null ||
@@ -665,8 +664,7 @@ class RoomCircuitPanel extends StatelessWidget {
     if (accepted != true || !context.mounted) return;
     final power = int.tryParse(powerText.trim());
     final voltage = int.tryParse(voltageText.trim());
-    final ok =
-        power != null &&
+    final ok = power != null &&
         voltage != null &&
         controller.p2.updateLoadElectricalData(
           componentId: load.id,
@@ -739,8 +737,7 @@ class RoomCircuitPanel extends StatelessWidget {
     required String loadComponentId,
     required CircuitCableBundle bundle,
   }) async {
-    var designation =
-        bundle.protectiveDevice?.designation ??
+    var designation = bundle.protectiveDevice?.designation ??
         'QF-${bundle.circuit.id.replaceFirst('circuit-', '')}';
     var ratedCurrentText =
         bundle.protectiveDevice?.ratedCurrentA?.toString() ?? '';
@@ -798,9 +795,8 @@ class RoomCircuitPanel extends StatelessWidget {
     final ratedCurrent = ratedCurrentText.trim().isEmpty
         ? null
         : double.tryParse(ratedCurrentText.replaceAll(',', '.'));
-    final poleCount = poleCountText.trim().isEmpty
-        ? null
-        : int.tryParse(poleCountText);
+    final poleCount =
+        poleCountText.trim().isEmpty ? null : int.tryParse(poleCountText);
     final ok = controller.p2.assignProtectiveDeviceToLoad(
       loadComponentId: loadComponentId,
       designation: designation,
@@ -813,7 +809,9 @@ class RoomCircuitPanel extends StatelessWidget {
       ..showSnackBar(
         SnackBar(
           content: Text(
-            ok ? 'Защита группы назначена.' : 'Не удалось назначить защиту: проверьте обозначение и параметры.',
+            ok
+                ? 'Защита группы назначена.'
+                : 'Не удалось назначить защиту: проверьте обозначение и параметры.',
           ),
         ),
       );
@@ -850,17 +848,17 @@ class _CircuitCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-    margin: const EdgeInsets.all(8),
-    child: Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 6),
-          Text(body, style: Theme.of(context).textTheme.bodySmall),
-        ],
-      ),
-    ),
-  );
+        margin: const EdgeInsets.all(8),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 6),
+              Text(body, style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+        ),
+      );
 }

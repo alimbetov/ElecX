@@ -102,8 +102,7 @@ final class RemoveOpeningCommand implements ProjectCommand {
         entityId: opening.id,
         relatedEntityId: blockers.first,
         blockingEntityIds: Set<EntityId>.unmodifiable(blockers),
-        message:
-            'Opening ${opening.id} cannot be removed while adjacency '
+        message: 'Opening ${opening.id} cannot be removed while adjacency '
             'entities reference it.',
       );
     }
@@ -227,8 +226,8 @@ final class CreateOverlayClassificationCommand implements ProjectCommand {
     }
     final overlays =
         Map<OverlayClassificationId, ProjectOverlayClassificationEntity>.from(
-          current.stores.overlays,
-        )..[overlay.id] = overlay;
+      current.stores.overlays,
+    )..[overlay.id] = overlay;
     return _candidate(
       current,
       overlays: overlays,
@@ -262,8 +261,8 @@ final class RenameOverlayClassificationCommand implements ProjectCommand {
     final overlay = _requireOverlay(current, overlayId);
     final overlays =
         Map<OverlayClassificationId, ProjectOverlayClassificationEntity>.from(
-          current.stores.overlays,
-        );
+      current.stores.overlays,
+    );
     overlays[overlay.id] = ProjectOverlayClassificationEntity(
       id: overlay.id,
       name: name,
@@ -297,8 +296,8 @@ final class AssignSpaceToOverlayCommand implements ProjectCommand {
     _requireSpace(current, spaceId);
     final overlays =
         Map<OverlayClassificationId, ProjectOverlayClassificationEntity>.from(
-          current.stores.overlays,
-        );
+      current.stores.overlays,
+    );
     overlays[overlay.id] = ProjectOverlayClassificationEntity(
       id: overlay.id,
       name: overlay.name,
@@ -331,8 +330,8 @@ final class RemoveSpaceFromOverlayCommand implements ProjectCommand {
     final overlay = _requireOverlay(current, overlayId);
     final overlays =
         Map<OverlayClassificationId, ProjectOverlayClassificationEntity>.from(
-          current.stores.overlays,
-        );
+      current.stores.overlays,
+    );
     overlays[overlay.id] = ProjectOverlayClassificationEntity(
       id: overlay.id,
       name: overlay.name,
@@ -361,8 +360,8 @@ final class RemoveOverlayClassificationCommand implements ProjectCommand {
     final overlay = _requireOverlay(current, overlayId);
     final overlays =
         Map<OverlayClassificationId, ProjectOverlayClassificationEntity>.from(
-          current.stores.overlays,
-        )..remove(overlay.id);
+      current.stores.overlays,
+    )..remove(overlay.id);
     return _candidate(
       current,
       overlays: overlays,
@@ -378,22 +377,23 @@ ProjectCommandCandidate _candidate(
   Map<SpaceAdjacencyId, ProjectSpaceAdjacencyEntity>? adjacencies,
   Map<OverlayClassificationId, ProjectOverlayClassificationEntity>? overlays,
   required Iterable<EntityId> affected,
-}) => ProjectCommandCandidate.fromState(
-  state: ProjectMutableState(
-    engineeringMetadata: current.engineeringMetadata,
-    stores: ProjectEntityStores(
-      sites: current.stores.sites,
-      buildings: current.stores.buildings,
-      levels: current.stores.levels,
-      zones: current.stores.zones,
-      spaces: spaces ?? current.stores.spaces,
-      openings: openings ?? current.stores.openings,
-      adjacencies: adjacencies ?? current.stores.adjacencies,
-      overlays: overlays ?? current.stores.overlays,
-    ),
-  ),
-  affectedEntityIds: affected,
-);
+}) =>
+    ProjectCommandCandidate.fromState(
+      state: ProjectMutableState(
+        engineeringMetadata: current.engineeringMetadata,
+        stores: ProjectEntityStores(
+          sites: current.stores.sites,
+          buildings: current.stores.buildings,
+          levels: current.stores.levels,
+          zones: current.stores.zones,
+          spaces: spaces ?? current.stores.spaces,
+          openings: openings ?? current.stores.openings,
+          adjacencies: adjacencies ?? current.stores.adjacencies,
+          overlays: overlays ?? current.stores.overlays,
+        ),
+      ),
+      affectedEntityIds: affected,
+    );
 
 ProjectSpaceEntity _requireSpace(ProjectAggregateRoot current, SpaceId id) {
   final value = current.index.space(id);

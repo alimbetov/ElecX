@@ -38,8 +38,7 @@ final class CreateStructuralZoneCommand implements ProjectCommand {
         code: ProjectAuthoringIssueCode.structuralZoneAlreadyExists,
         entityId: zoneId,
         relatedEntityId: existingZone.levelId,
-        message:
-            'Structural zone $zoneId already exists on level '
+        message: 'Structural zone $zoneId already exists on level '
             '${existingZone.levelId}; requested parent level is $levelId.',
       );
     }

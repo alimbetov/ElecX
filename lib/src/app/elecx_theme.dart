@@ -11,9 +11,8 @@ abstract final class ElecXTheme {
   static ThemeData _theme(Brightness brightness) {
     final dark = brightness == Brightness.dark;
     final base = ColorScheme.fromSeed(
-      seedColor: dark
-          ? AlienCockpitTokens.darkSeed
-          : AlienCockpitTokens.lightSeed,
+      seedColor:
+          dark ? AlienCockpitTokens.darkSeed : AlienCockpitTokens.lightSeed,
       brightness: brightness,
     );
     final scheme = dark

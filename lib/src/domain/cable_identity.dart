@@ -88,9 +88,9 @@ abstract final class CableLabelComposer {
       secondaryText: '$board${circuit.name}$breaker',
       tertiaryText: cableSpecDisplayName == null
           ? '${termination.componentId}:${termination.portId} → '
-                '${opposite.componentId}:${opposite.portId}'
+              '${opposite.componentId}:${opposite.portId}'
           : '$cableSpecDisplayName · '
-                '${termination.componentId}:${termination.portId}',
+              '${termination.componentId}:${termination.portId}',
       qrPayload: 'elecx://cable/${cable.id}?end=${end.name}',
     );
   }

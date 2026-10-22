@@ -7,8 +7,8 @@ final Expando<CableRouteEditSession> _routeEditSessions =
     Expando<CableRouteEditSession>('ElecX cable route edit session');
 final Expando<CableEndpointTransformSession> _endpointTransformSessions =
     Expando<CableEndpointTransformSession>(
-      'ElecX cable endpoint transform session',
-    );
+  'ElecX cable endpoint transform session',
+);
 
 extension CableEditSessionAccess on EditorController {
   CableRouteEditSession get cableRouteEdit => _routeEditSessions[this] ??=

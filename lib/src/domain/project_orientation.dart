@@ -91,9 +91,8 @@ final class ProjectEngineeringMetadata {
       );
     }
     return ProjectEngineeringMetadata(
-      projectNorth: clearProjectNorth
-          ? null
-          : projectNorth ?? this.projectNorth,
+      projectNorth:
+          clearProjectNorth ? null : projectNorth ?? this.projectNorth,
     );
   }
 

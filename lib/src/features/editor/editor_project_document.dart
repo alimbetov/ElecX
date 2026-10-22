@@ -118,8 +118,7 @@ final class EditorProjectDocument {
       throw EditorProjectSaveBlockedException(blockingIssue);
     }
     workspace.synchronizeActiveEditorState();
-    final projectMetadata =
-        metadata ??
+    final projectMetadata = metadata ??
         EditorProjectMetadata.create(
           projectName: workspace.site.site.name,
           projectId: workspace.site.site.id,
@@ -189,30 +188,30 @@ final class EditorProjectDocument {
   }
 
   Map<String, Object?> toJson() => {
-    'schemaVersion': schemaVersion,
-    'metadata': {
-      'projectId': metadata.projectId,
-      'projectName': metadata.projectName,
-      'createdAt': metadata.createdAt.toUtc().toIso8601String(),
-      'updatedAt': metadata.updatedAt.toUtc().toIso8601String(),
-    },
-    'building': _buildingToJson(building),
-    'site': _siteToJson(site),
-    'workspace': {
-      'context': workspaceContext.name,
-      'activeLevelNumber': activeLevelNumber,
-      'selectedZoneId': selectedZoneId,
-      'activeOutdoorZoneId': activeOutdoorZoneId,
-      'openingsByLevel': {
-        for (final entry in openingsByLevel.entries)
-          entry.key.toString(): [
-            for (final opening in entry.value) _openingToJson(opening),
-          ],
-      },
-      'resume': _resumeToJson(resume),
-    },
-    'p2': _p2ToJson(p2State),
-  };
+        'schemaVersion': schemaVersion,
+        'metadata': {
+          'projectId': metadata.projectId,
+          'projectName': metadata.projectName,
+          'createdAt': metadata.createdAt.toUtc().toIso8601String(),
+          'updatedAt': metadata.updatedAt.toUtc().toIso8601String(),
+        },
+        'building': _buildingToJson(building),
+        'site': _siteToJson(site),
+        'workspace': {
+          'context': workspaceContext.name,
+          'activeLevelNumber': activeLevelNumber,
+          'selectedZoneId': selectedZoneId,
+          'activeOutdoorZoneId': activeOutdoorZoneId,
+          'openingsByLevel': {
+            for (final entry in openingsByLevel.entries)
+              entry.key.toString(): [
+                for (final opening in entry.value) _openingToJson(opening),
+              ],
+          },
+          'resume': _resumeToJson(resume),
+        },
+        'p2': _p2ToJson(p2State),
+      };
 
   factory EditorProjectDocument.fromJson(
     Map<String, Object?> json, {
@@ -404,27 +403,26 @@ final class JsonFileEditorProjectStore implements EditorProjectStore {
   }
 
   File _target(String projectId) {
-    final encoded = base64Url
-        .encode(utf8.encode(projectId))
-        .replaceAll('=', '');
+    final encoded =
+        base64Url.encode(utf8.encode(projectId)).replaceAll('=', '');
     return File(path.join(rootDirectory.path, '$encoded.elecx.json'));
   }
 }
 
 Map<String, Object?> _resumeToJson(EditorProjectResumeState value) => {
-  'selectedSpaceId': value.selectedSpaceId,
-  'selectedOpeningId': value.selectedOpeningId,
-  'activeSurface': value.activeSurface == null
-      ? null
-      : _surfaceToJson(value.activeSurface!),
-  'viewMode': value.viewMode.name,
-  'snapEnabled': value.snapEnabled,
-  'dimensionsVisible': value.dimensionsVisible,
-  'floorGridMm': value.floorGridMm,
-  'zoom': value.zoom,
-  'roomSequence': value.roomSequence,
-  'openingSequence': value.openingSequence,
-};
+      'selectedSpaceId': value.selectedSpaceId,
+      'selectedOpeningId': value.selectedOpeningId,
+      'activeSurface': value.activeSurface == null
+          ? null
+          : _surfaceToJson(value.activeSurface!),
+      'viewMode': value.viewMode.name,
+      'snapEnabled': value.snapEnabled,
+      'dimensionsVisible': value.dimensionsVisible,
+      'floorGridMm': value.floorGridMm,
+      'zoom': value.zoom,
+      'roomSequence': value.roomSequence,
+      'openingSequence': value.openingSequence,
+    };
 
 EditorProjectResumeState _resumeFromJson(Map<String, Object?> json) =>
     EditorProjectResumeState(
@@ -447,49 +445,52 @@ EditorProjectResumeState _resumeFromJson(Map<String, Object?> json) =>
     );
 
 Map<String, Object?> _buildingToJson(ComposedBuilding value) => {
-  'building': _plainBuildingToJson(value.building),
-  'levels': [for (final item in value.levels) _composedLevelToJson(item)],
-  'verticalCores': [
-    for (final item in value.verticalCores) _verticalCoreToJson(item),
-  ],
-};
+      'building': _plainBuildingToJson(value.building),
+      'levels': [for (final item in value.levels) _composedLevelToJson(item)],
+      'verticalCores': [
+        for (final item in value.verticalCores) _verticalCoreToJson(item),
+      ],
+    };
 
 ComposedBuilding _buildingFromJson(
   Map<String, Object?> json,
-) => ComposedBuilding(
-  building: _plainBuildingFromJson(_map(json['building'], 'building.building')),
-  levels: [
-    for (final item in _list(json['levels'], 'building.levels'))
-      _composedLevelFromJson(_map(item, 'building.level')),
-  ],
-  verticalCores: [
-    for (final item in _list(json['verticalCores'], 'building.verticalCores'))
-      _verticalCoreFromJson(_map(item, 'verticalCore')),
-  ],
-);
+) =>
+    ComposedBuilding(
+      building:
+          _plainBuildingFromJson(_map(json['building'], 'building.building')),
+      levels: [
+        for (final item in _list(json['levels'], 'building.levels'))
+          _composedLevelFromJson(_map(item, 'building.level')),
+      ],
+      verticalCores: [
+        for (final item
+            in _list(json['verticalCores'], 'building.verticalCores'))
+          _verticalCoreFromJson(_map(item, 'verticalCore')),
+      ],
+    );
 
 Map<String, Object?> _plainBuildingToJson(Building value) => {
-  'id': value.id,
-  'name': value.name,
-  'levels': [for (final level in value.levels) _levelToJson(level)],
-};
+      'id': value.id,
+      'name': value.name,
+      'levels': [for (final level in value.levels) _levelToJson(level)],
+    };
 
 Building _plainBuildingFromJson(Map<String, Object?> json) => Building(
-  id: _string(json['id'], 'building.id'),
-  name: _string(json['name'], 'building.name'),
-  levels: [
-    for (final item in _list(json['levels'], 'building.levels'))
-      _levelFromJson(_map(item, 'level')),
-  ],
-);
+      id: _string(json['id'], 'building.id'),
+      name: _string(json['name'], 'building.name'),
+      levels: [
+        for (final item in _list(json['levels'], 'building.levels'))
+          _levelFromJson(_map(item, 'level')),
+      ],
+    );
 
 Map<String, Object?> _composedLevelToJson(ComposedBuildingLevel value) => {
-  'level': _levelToJson(value.level),
-  'levelNumber': value.levelNumber,
-  'kind': value.kind.name,
-  'floorToFloorHeightMm': value.floorToFloorHeightMm,
-  'zones': [for (final zone in value.zones) _zoneToJson(zone)],
-};
+      'level': _levelToJson(value.level),
+      'levelNumber': value.levelNumber,
+      'kind': value.kind.name,
+      'floorToFloorHeightMm': value.floorToFloorHeightMm,
+      'zones': [for (final zone in value.zones) _zoneToJson(zone)],
+    };
 
 ComposedBuildingLevel _composedLevelFromJson(Map<String, Object?> json) =>
     ComposedBuildingLevel(
@@ -511,38 +512,38 @@ ComposedBuildingLevel _composedLevelFromJson(Map<String, Object?> json) =>
     );
 
 Map<String, Object?> _zoneToJson(BuildingZone value) => {
-  'id': value.id,
-  'name': value.name,
-  'kind': value.kind.name,
-  'spaceIds': value.spaceIds.toList()..sort(),
-  'apartmentNumber': value.apartmentNumber,
-};
+      'id': value.id,
+      'name': value.name,
+      'kind': value.kind.name,
+      'spaceIds': value.spaceIds.toList()..sort(),
+      'apartmentNumber': value.apartmentNumber,
+    };
 
 BuildingZone _zoneFromJson(Map<String, Object?> json) => BuildingZone(
-  id: _string(json['id'], 'zone.id'),
-  name: _string(json['name'], 'zone.name'),
-  kind: _enumValue(
-    BuildingZoneKind.values,
-    _string(json['kind'], 'zone.kind'),
-    'zone.kind',
-  ),
-  spaceIds: [
-    for (final value in _list(json['spaceIds'], 'zone.spaceIds'))
-      _string(value, 'zone.spaceId'),
-  ],
-  apartmentNumber: _nullableString(json['apartmentNumber']),
-);
+      id: _string(json['id'], 'zone.id'),
+      name: _string(json['name'], 'zone.name'),
+      kind: _enumValue(
+        BuildingZoneKind.values,
+        _string(json['kind'], 'zone.kind'),
+        'zone.kind',
+      ),
+      spaceIds: [
+        for (final value in _list(json['spaceIds'], 'zone.spaceIds'))
+          _string(value, 'zone.spaceId'),
+      ],
+      apartmentNumber: _nullableString(json['apartmentNumber']),
+    );
 
 Map<String, Object?> _verticalCoreToJson(VerticalCore value) => {
-  'id': value.id,
-  'name': value.name,
-  'kind': value.kind.name,
-  'servedLevelNumbers': value.servedLevelNumbers.toList()..sort(),
-  'spaceIdByLevel': {
-    for (final entry in value.spaceIdByLevel.entries)
-      entry.key.toString(): entry.value,
-  },
-};
+      'id': value.id,
+      'name': value.name,
+      'kind': value.kind.name,
+      'servedLevelNumbers': value.servedLevelNumbers.toList()..sort(),
+      'spaceIdByLevel': {
+        for (final entry in value.spaceIdByLevel.entries)
+          entry.key.toString(): entry.value,
+      },
+    };
 
 VerticalCore _verticalCoreFromJson(Map<String, Object?> json) {
   final spaces = _map(json['spaceIdByLevel'], 'verticalCore.spaceIdByLevel');
@@ -569,12 +570,14 @@ VerticalCore _verticalCoreFromJson(Map<String, Object?> json) {
 }
 
 Map<String, Object?> _siteToJson(ComposedProjectSite value) => {
-  'site': _projectSiteToJson(value.site),
-  'outdoorZones': [for (final zone in value.outdoorZones) _outdoorToJson(zone)],
-  'connections': [
-    for (final item in value.connections) _siteConnectionToJson(item),
-  ],
-};
+      'site': _projectSiteToJson(value.site),
+      'outdoorZones': [
+        for (final zone in value.outdoorZones) _outdoorToJson(zone)
+      ],
+      'connections': [
+        for (final item in value.connections) _siteConnectionToJson(item),
+      ],
+    };
 
 ComposedProjectSite _siteFromJson(Map<String, Object?> json) =>
     ComposedProjectSite(
@@ -590,18 +593,21 @@ ComposedProjectSite _siteFromJson(Map<String, Object?> json) =>
     );
 
 Map<String, Object?> _projectSiteToJson(ProjectSite value) => {
-  'id': value.id,
-  'name': value.name,
-  'buildings': [for (final item in value.buildings) _plainBuildingToJson(item)],
-  'projectNorthDegrees': value.projectNorth.northAzimuthDegrees,
-  'solarContext': value.solarContext == null
-      ? null
-      : {
-          'latitudeDegrees': value.solarContext!.latitudeDegrees,
-          'longitudeDegrees': value.solarContext!.longitudeDegrees,
-          'timeZoneOffsetMinutes': value.solarContext!.timeZoneOffsetMinutes,
-        },
-};
+      'id': value.id,
+      'name': value.name,
+      'buildings': [
+        for (final item in value.buildings) _plainBuildingToJson(item)
+      ],
+      'projectNorthDegrees': value.projectNorth.northAzimuthDegrees,
+      'solarContext': value.solarContext == null
+          ? null
+          : {
+              'latitudeDegrees': value.solarContext!.latitudeDegrees,
+              'longitudeDegrees': value.solarContext!.longitudeDegrees,
+              'timeZoneOffsetMinutes':
+                  value.solarContext!.timeZoneOffsetMinutes,
+            },
+    };
 
 ProjectSite _projectSiteFromJson(Map<String, Object?> json) {
   final solarRaw = json['solarContext'];
@@ -641,88 +647,91 @@ ProjectSite _projectSiteFromJson(Map<String, Object?> json) {
 }
 
 Map<String, Object?> _outdoorToJson(OutdoorZone value) => {
-  'id': value.id,
-  'name': value.name,
-  'kind': value.kind.name,
-  'boundary': _polygonToJson(value.boundary),
-  'grid': _gridToJson(value.grid),
-};
+      'id': value.id,
+      'name': value.name,
+      'kind': value.kind.name,
+      'boundary': _polygonToJson(value.boundary),
+      'grid': _gridToJson(value.grid),
+    };
 
 OutdoorZone _outdoorFromJson(Map<String, Object?> json) => OutdoorZone(
-  id: _string(json['id'], 'outdoor.id'),
-  name: _string(json['name'], 'outdoor.name'),
-  kind: _enumValue(
-    OutdoorZoneKind.values,
-    _string(json['kind'], 'outdoor.kind'),
-    'outdoor.kind',
-  ),
-  boundary: _polygonFromJson(_list(json['boundary'], 'outdoor.boundary')),
-  grid: _gridFromJson(_map(json['grid'], 'outdoor.grid')),
-);
+      id: _string(json['id'], 'outdoor.id'),
+      name: _string(json['name'], 'outdoor.name'),
+      kind: _enumValue(
+        OutdoorZoneKind.values,
+        _string(json['kind'], 'outdoor.kind'),
+        'outdoor.kind',
+      ),
+      boundary: _polygonFromJson(_list(json['boundary'], 'outdoor.boundary')),
+      grid: _gridFromJson(_map(json['grid'], 'outdoor.grid')),
+    );
 
 Map<String, Object?> _siteConnectionToJson(SiteBuildingConnection value) => {
-  'id': value.id,
-  'kind': value.kind.name,
-  'outdoorZoneId': value.outdoorZoneId,
-  'buildingId': value.buildingId,
-  'levelNumber': value.levelNumber,
-  'sitePoint': _pointToJson(value.sitePoint),
-  'levelPoint': _pointToJson(value.levelPoint),
-  'targetSpaceId': value.targetSpaceId,
-};
+      'id': value.id,
+      'kind': value.kind.name,
+      'outdoorZoneId': value.outdoorZoneId,
+      'buildingId': value.buildingId,
+      'levelNumber': value.levelNumber,
+      'sitePoint': _pointToJson(value.sitePoint),
+      'levelPoint': _pointToJson(value.levelPoint),
+      'targetSpaceId': value.targetSpaceId,
+    };
 
 SiteBuildingConnection _siteConnectionFromJson(
   Map<String, Object?> json,
-) => SiteBuildingConnection(
-  id: _string(json['id'], 'connection.id'),
-  kind: _enumValue(
-    SiteConnectionKind.values,
-    _string(json['kind'], 'connection.kind'),
-    'connection.kind',
-  ),
-  outdoorZoneId: _string(json['outdoorZoneId'], 'connection.outdoorZoneId'),
-  buildingId: _string(json['buildingId'], 'connection.buildingId'),
-  levelNumber: _int(json['levelNumber'], 'connection.levelNumber'),
-  sitePoint: _pointFromJson(_map(json['sitePoint'], 'connection.sitePoint')),
-  levelPoint: _pointFromJson(_map(json['levelPoint'], 'connection.levelPoint')),
-  targetSpaceId: _nullableString(json['targetSpaceId']),
-);
+) =>
+    SiteBuildingConnection(
+      id: _string(json['id'], 'connection.id'),
+      kind: _enumValue(
+        SiteConnectionKind.values,
+        _string(json['kind'], 'connection.kind'),
+        'connection.kind',
+      ),
+      outdoorZoneId: _string(json['outdoorZoneId'], 'connection.outdoorZoneId'),
+      buildingId: _string(json['buildingId'], 'connection.buildingId'),
+      levelNumber: _int(json['levelNumber'], 'connection.levelNumber'),
+      sitePoint:
+          _pointFromJson(_map(json['sitePoint'], 'connection.sitePoint')),
+      levelPoint:
+          _pointFromJson(_map(json['levelPoint'], 'connection.levelPoint')),
+      targetSpaceId: _nullableString(json['targetSpaceId']),
+    );
 
 Map<String, Object?> _levelToJson(BuildingLevel value) => {
-  'id': value.id,
-  'name': value.name,
-  'elevationMm': value.elevationMm,
-  'spaces': [for (final item in value.spaces) _spaceToJson(item)],
-};
+      'id': value.id,
+      'name': value.name,
+      'elevationMm': value.elevationMm,
+      'spaces': [for (final item in value.spaces) _spaceToJson(item)],
+    };
 
 BuildingLevel _levelFromJson(Map<String, Object?> json) => BuildingLevel(
-  id: _string(json['id'], 'level.id'),
-  name: _string(json['name'], 'level.name'),
-  elevationMm: _int(json['elevationMm'], 'level.elevationMm'),
-  spaces: [
-    for (final item in _list(json['spaces'], 'level.spaces'))
-      _spaceFromJson(_map(item, 'space')),
-  ],
-);
+      id: _string(json['id'], 'level.id'),
+      name: _string(json['name'], 'level.name'),
+      elevationMm: _int(json['elevationMm'], 'level.elevationMm'),
+      spaces: [
+        for (final item in _list(json['spaces'], 'level.spaces'))
+          _spaceFromJson(_map(item, 'space')),
+      ],
+    );
 
 Map<String, Object?> _spaceToJson(EngineeringSpace value) => {
-  'id': value.id,
-  'name': value.name,
-  'type': value.type.name,
-  'boundary': _polygonToJson(value.boundary),
-  'referenceFrame': {
-    'origin': _pointToJson(value.referenceFrame.origin),
-    'rotationRadians': value.referenceFrame.rotationRadians,
-  },
-  'grid': _gridToJson(value.grid),
-  'wallProfiles': {
-    for (final entry in value.wallProfiles.entries)
-      entry.key.toString(): [
-        for (final point in entry.value.vertices)
-          {'xMm': point.xMm, 'yMm': point.yMm},
-      ],
-  },
-};
+      'id': value.id,
+      'name': value.name,
+      'type': value.type.name,
+      'boundary': _polygonToJson(value.boundary),
+      'referenceFrame': {
+        'origin': _pointToJson(value.referenceFrame.origin),
+        'rotationRadians': value.referenceFrame.rotationRadians,
+      },
+      'grid': _gridToJson(value.grid),
+      'wallProfiles': {
+        for (final entry in value.wallProfiles.entries)
+          entry.key.toString(): [
+            for (final point in entry.value.vertices)
+              {'xMm': point.xMm, 'yMm': point.yMm},
+          ],
+      },
+    };
 
 EngineeringSpace _spaceFromJson(Map<String, Object?> json) {
   final frame = _map(json['referenceFrame'], 'space.referenceFrame');
@@ -763,36 +772,36 @@ EngineeringSpace _spaceFromJson(Map<String, Object?> json) {
 }
 
 Map<String, Object?> _gridToJson(GridDefinition value) => {
-  'minorStepMm': value.minorStepMm,
-  'majorEvery': value.majorEvery,
-};
+      'minorStepMm': value.minorStepMm,
+      'majorEvery': value.majorEvery,
+    };
 
 GridDefinition _gridFromJson(Map<String, Object?> json) => GridDefinition(
-  minorStepMm: _int(json['minorStepMm'], 'grid.minorStepMm'),
-  majorEvery: _int(json['majorEvery'], 'grid.majorEvery'),
-);
+      minorStepMm: _int(json['minorStepMm'], 'grid.minorStepMm'),
+      majorEvery: _int(json['majorEvery'], 'grid.majorEvery'),
+    );
 
 List<Object?> _polygonToJson(MmPolygon value) => [
-  for (final point in value.vertices) _pointToJson(point),
-];
+      for (final point in value.vertices) _pointToJson(point),
+    ];
 
 MmPolygon _polygonFromJson(List<Object?> json) => MmPolygon([
-  for (final item in json) _pointFromJson(_map(item, 'polygon.point')),
-]);
+      for (final item in json) _pointFromJson(_map(item, 'polygon.point')),
+    ]);
 
 Map<String, Object?> _pointToJson(MmPoint value) => {
-  'x': value.x,
-  'y': value.y,
-};
+      'x': value.x,
+      'y': value.y,
+    };
 
 MmPoint _pointFromJson(Map<String, Object?> json) =>
     MmPoint(_int(json['x'], 'point.x'), _int(json['y'], 'point.y'));
 
 Map<String, Object?> _surfaceToJson(RoomSurfaceRef value) => {
-  'spaceId': value.spaceId,
-  'type': value.type.name,
-  'wallIndex': value.wallIndex,
-};
+      'spaceId': value.spaceId,
+      'type': value.type.name,
+      'wallIndex': value.wallIndex,
+    };
 
 RoomSurfaceRef _surfaceFromJson(Map<String, Object?> json) {
   final spaceId = _string(json['spaceId'], 'surface.spaceId');
@@ -805,21 +814,21 @@ RoomSurfaceRef _surfaceFromJson(Map<String, Object?> json) {
     SurfacePlaneType.floor => RoomSurfaceRef.floor(spaceId),
     SurfacePlaneType.ceiling => RoomSurfaceRef.ceiling(spaceId),
     SurfacePlaneType.wall => RoomSurfaceRef.wall(
-      spaceId,
-      _int(json['wallIndex'], 'surface.wallIndex'),
-    ),
+        spaceId,
+        _int(json['wallIndex'], 'surface.wallIndex'),
+      ),
   };
 }
 
 Map<String, Object?> _openingToJson(ArchitecturalOpening value) => {
-  'id': value.id,
-  'hostWall': _surfaceToJson(value.hostWall),
-  'type': value.type.name,
-  'offsetFromStartMm': value.offsetFromStartMm,
-  'widthMm': value.widthMm,
-  'heightMm': value.heightMm,
-  'sillHeightMm': value.sillHeightMm,
-};
+      'id': value.id,
+      'hostWall': _surfaceToJson(value.hostWall),
+      'type': value.type.name,
+      'offsetFromStartMm': value.offsetFromStartMm,
+      'widthMm': value.widthMm,
+      'heightMm': value.heightMm,
+      'sillHeightMm': value.sillHeightMm,
+    };
 
 ArchitecturalOpening _openingFromJson(Map<String, Object?> json) =>
     ArchitecturalOpening(
@@ -840,24 +849,26 @@ ArchitecturalOpening _openingFromJson(Map<String, Object?> json) =>
     );
 
 Map<String, Object?> _p2ToJson(EditorP2State value) => {
-  'components': [for (final item in value.components) _componentToJson(item)],
-  'routes': [for (final item in value.routes) _routeToJson(item)],
-  'selection': {
-    'ids': value.selection.ids.toList()..sort(),
-    'primaryId': value.selection.primaryId,
-  },
-  'routeConstraints': {
-    for (final entry in value.routeConstraints.entries)
-      entry.key: entry.value.toJson(),
-  },
-  'circuitBundles': [
-    for (final bundle in value.circuitBundles) _circuitBundleToJson(bundle),
-  ],
-  'sizingEvidenceByRoute': {
-    for (final entry in value.sizingEvidenceByRoute.entries)
-      entry.key: entry.value.toJson(),
-  },
-};
+      'components': [
+        for (final item in value.components) _componentToJson(item)
+      ],
+      'routes': [for (final item in value.routes) _routeToJson(item)],
+      'selection': {
+        'ids': value.selection.ids.toList()..sort(),
+        'primaryId': value.selection.primaryId,
+      },
+      'routeConstraints': {
+        for (final entry in value.routeConstraints.entries)
+          entry.key: entry.value.toJson(),
+      },
+      'circuitBundles': [
+        for (final bundle in value.circuitBundles) _circuitBundleToJson(bundle),
+      ],
+      'sizingEvidenceByRoute': {
+        for (final entry in value.sizingEvidenceByRoute.entries)
+          entry.key: entry.value.toJson(),
+      },
+    };
 
 EditorP2State _p2FromJson(Map<String, Object?> json) {
   final selection = _map(json['selection'], 'p2.selection');
@@ -902,31 +913,31 @@ EditorP2State _p2FromJson(Map<String, Object?> json) {
 }
 
 Map<String, Object?> _circuitBundleToJson(CircuitCableBundle value) => {
-  'circuit': {
-    'id': value.circuit.id,
-    'name': value.circuit.name,
-    'boardId': value.circuit.boardId,
-    'protectiveDeviceId': value.circuit.protectiveDeviceId,
-  },
-  'cable': {
-    'id': value.cable.id,
-    'routeId': value.cable.routeId,
-    'circuitId': value.cable.circuitId,
-    'designation': value.cable.designation,
-    'cableSpecId': value.cable.cableSpecId,
-    'endA': _terminationToJson(value.cable.endA),
-    'endB': _terminationToJson(value.cable.endB),
-  },
-  'protectiveDevice': value.protectiveDevice == null
-      ? null
-      : {
-          'id': value.protectiveDevice!.id,
-          'boardId': value.protectiveDevice!.boardId,
-          'designation': value.protectiveDevice!.designation,
-          'poleCount': value.protectiveDevice!.poleCount,
-          'ratedCurrentA': value.protectiveDevice!.ratedCurrentA,
-        },
-};
+      'circuit': {
+        'id': value.circuit.id,
+        'name': value.circuit.name,
+        'boardId': value.circuit.boardId,
+        'protectiveDeviceId': value.circuit.protectiveDeviceId,
+      },
+      'cable': {
+        'id': value.cable.id,
+        'routeId': value.cable.routeId,
+        'circuitId': value.cable.circuitId,
+        'designation': value.cable.designation,
+        'cableSpecId': value.cable.cableSpecId,
+        'endA': _terminationToJson(value.cable.endA),
+        'endB': _terminationToJson(value.cable.endB),
+      },
+      'protectiveDevice': value.protectiveDevice == null
+          ? null
+          : {
+              'id': value.protectiveDevice!.id,
+              'boardId': value.protectiveDevice!.boardId,
+              'designation': value.protectiveDevice!.designation,
+              'poleCount': value.protectiveDevice!.poleCount,
+              'ratedCurrentA': value.protectiveDevice!.ratedCurrentA,
+            },
+    };
 
 CircuitCableBundle _circuitBundleFromJson(Map<String, Object?> json) {
   final circuitJson = _map(json['circuit'], 'circuitBundle.circuit');
@@ -977,10 +988,10 @@ CircuitCableBundle _circuitBundleFromJson(Map<String, Object?> json) {
 }
 
 Map<String, Object?> _terminationToJson(CableTerminationRef value) => {
-  'componentId': value.componentId,
-  'portId': value.portId,
-  'terminalId': value.terminalId,
-};
+      'componentId': value.componentId,
+      'portId': value.portId,
+      'terminalId': value.terminalId,
+    };
 
 CableTerminationRef _terminationFromJson(Map<String, Object?> json) =>
     CableTerminationRef(
@@ -990,19 +1001,19 @@ CableTerminationRef _terminationFromJson(Map<String, Object?> json) =>
     );
 
 Map<String, Object?> _componentToJson(ElectricalComponentPlacement value) => {
-  'id': value.id,
-  'type': value.type.name,
-  'componentTypeId': value.componentTypeId,
-  'surface': _surfaceToJson(value.surface),
-  'position': {'xMm': value.position.xMm, 'yMm': value.position.yMm},
-  'label': value.label,
-  'rotationDegrees': value.rotationDegrees,
-  'ratedPowerW': value.ratedPowerW,
-  'voltageV': value.voltageV,
-  'ports': [
-    for (final port in value.ports) {'id': port.id, 'kind': port.kind.name},
-  ],
-};
+      'id': value.id,
+      'type': value.type.name,
+      'componentTypeId': value.componentTypeId,
+      'surface': _surfaceToJson(value.surface),
+      'position': {'xMm': value.position.xMm, 'yMm': value.position.yMm},
+      'label': value.label,
+      'rotationDegrees': value.rotationDegrees,
+      'ratedPowerW': value.ratedPowerW,
+      'voltageV': value.voltageV,
+      'ports': [
+        for (final port in value.ports) {'id': port.id, 'kind': port.kind.name},
+      ],
+    };
 
 ElectricalComponentPlacement _componentFromJson(Map<String, Object?> json) {
   final position = _map(json['position'], 'component.position');
@@ -1046,20 +1057,20 @@ ElectricalComponentPlacement _componentFromJson(Map<String, Object?> json) {
 }
 
 Map<String, Object?> _routeToJson(ElectricalCableRoute value) => {
-  'id': value.id,
-  'source': _endpointToJson(value.source),
-  'target': _endpointToJson(value.target),
-  'segments': [for (final item in value.segments) _segmentToJson(item)],
-  'cableType': value.cableType,
-  'reservePercent': value.reservePercent,
-  'medium': {
-    'id': value.medium.id,
-    'family': value.medium.family.name,
-    'flowVisual': value.medium.flowVisual.name,
-    'bidirectional': value.medium.bidirectional,
-    'protocol': value.medium.protocol,
-  },
-};
+      'id': value.id,
+      'source': _endpointToJson(value.source),
+      'target': _endpointToJson(value.target),
+      'segments': [for (final item in value.segments) _segmentToJson(item)],
+      'cableType': value.cableType,
+      'reservePercent': value.reservePercent,
+      'medium': {
+        'id': value.medium.id,
+        'family': value.medium.family.name,
+        'flowVisual': value.medium.flowVisual.name,
+        'bidirectional': value.medium.bidirectional,
+        'protocol': value.medium.protocol,
+      },
+    };
 
 ElectricalCableRoute _routeFromJson(Map<String, Object?> json) {
   final medium = _map(json['medium'], 'route.medium');
@@ -1095,9 +1106,9 @@ ElectricalCableRoute _routeFromJson(Map<String, Object?> json) {
 }
 
 Map<String, Object?> _endpointToJson(ElectricalEndpointRef value) => {
-  'componentId': value.componentId,
-  'portId': value.portId,
-};
+      'componentId': value.componentId,
+      'portId': value.portId,
+    };
 
 ElectricalEndpointRef _endpointFromJson(Map<String, Object?> json) =>
     ElectricalEndpointRef(
@@ -1106,11 +1117,11 @@ ElectricalEndpointRef _endpointFromJson(Map<String, Object?> json) =>
     );
 
 Map<String, Object?> _segmentToJson(ElectricalRouteSegment value) => {
-  'surface': _surfaceToJson(value.surface),
-  'points': [
-    for (final point in value.points) {'xMm': point.xMm, 'yMm': point.yMm},
-  ],
-};
+      'surface': _surfaceToJson(value.surface),
+      'points': [
+        for (final point in value.points) {'xMm': point.xMm, 'yMm': point.yMm},
+      ],
+    };
 
 ElectricalRouteSegment _segmentFromJson(Map<String, Object?> json) =>
     ElectricalRouteSegment(

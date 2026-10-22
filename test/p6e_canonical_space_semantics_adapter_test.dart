@@ -90,14 +90,14 @@ void main() {
 }
 
 CanonicalEditorWorkspaceBinding _binding() => CanonicalEditorWorkspaceBinding(
-  buildingId: BuildingId('building-a'),
-  legacyBuildingId: 'legacy-building-a',
-  legacyLevelIds: <LevelId, String>{LevelId('level-1'): 'legacy-level-one'},
-  legacySpaceIds: <SpaceId, String>{
-    SpaceId('space-bedroom'): 'legacy-space-bedroom',
-    SpaceId('space-corridor'): 'legacy-space-corridor',
-  },
-);
+      buildingId: BuildingId('building-a'),
+      legacyBuildingId: 'legacy-building-a',
+      legacyLevelIds: <LevelId, String>{LevelId('level-1'): 'legacy-level-one'},
+      legacySpaceIds: <SpaceId, String>{
+        SpaceId('space-bedroom'): 'legacy-space-bedroom',
+        SpaceId('space-corridor'): 'legacy-space-corridor',
+      },
+    );
 
 ProjectAggregateRoot _project() {
   final siteId = SiteId('site-1');

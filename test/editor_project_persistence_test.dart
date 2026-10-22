@@ -252,15 +252,12 @@ void main() {
       final store = JsonFileEditorProjectStore(temp);
       await store.save(document);
 
-      final primary =
-          (await temp
-                  .list()
-                  .where(
-                    (entity) =>
-                        entity is File && entity.path.endsWith('.elecx.json'),
-                  )
-                  .first)
-              as File;
+      final primary = (await temp
+          .list()
+          .where(
+            (entity) => entity is File && entity.path.endsWith('.elecx.json'),
+          )
+          .first) as File;
       final backup = File('${primary.path}.bak');
       await primary.rename(backup.path);
       await File('${temp.path}/corrupt.elecx.json').writeAsString('{broken');

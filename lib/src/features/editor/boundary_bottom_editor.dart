@@ -86,9 +86,9 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
                     ArchitecturalOpeningType.door,
                     canCommit: (candidate) =>
                         ElectricalHostGeometryGuard.openingCandidateAllowed(
-                          controller,
-                          candidate,
-                        ),
+                      controller,
+                      candidate,
+                    ),
                   );
                   final opening = controller.selectedOpening;
                   if (opening != null) session.beginOpeningDraft(opening);
@@ -105,9 +105,9 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
                     ArchitecturalOpeningType.window,
                     canCommit: (candidate) =>
                         ElectricalHostGeometryGuard.openingCandidateAllowed(
-                          controller,
-                          candidate,
-                        ),
+                      controller,
+                      candidate,
+                    ),
                   );
                   final opening = controller.selectedOpening;
                   if (opening != null) session.beginOpeningDraft(opening);
@@ -436,8 +436,7 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
     final bottom = wall.heightMm - draft.depthMm;
     final end = draft.startMm + draft.widthMm;
     for (final opening in controller.activeWallOpenings) {
-      final overlapsX =
-          opening.offsetFromStartMm < end &&
+      final overlapsX = opening.offsetFromStartMm < end &&
           opening.endOffsetMm > draft.startMm;
       if (overlapsX && opening.topMm > bottom) return false;
     }
@@ -453,9 +452,9 @@ class _BoundaryBottomEditorState extends State<BoundaryBottomEditor> {
       sillHeightMm: draft.sillHeightMm,
       canCommit: (candidate) =>
           ElectricalHostGeometryGuard.openingCandidateAllowed(
-            controller,
-            candidate,
-          ),
+        controller,
+        candidate,
+      ),
     );
     if (saved) {
       final current = controller.selectedOpening;
@@ -607,23 +606,23 @@ class _DraftIntField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    width: 132,
-    child: TextFormField(
-      key: ValueKey(fieldKey),
-      initialValue: '$value',
-      keyboardType: TextInputType.number,
-      decoration: InputDecoration(
-        labelText: label,
-        suffixText: 'mm',
-        isDense: true,
-        border: const OutlineInputBorder(),
-      ),
-      onChanged: (text) {
-        final parsed = int.tryParse(text);
-        if (parsed != null) onChanged(parsed);
-      },
-    ),
-  );
+        width: 132,
+        child: TextFormField(
+          key: ValueKey(fieldKey),
+          initialValue: '$value',
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: label,
+            suffixText: 'mm',
+            isDense: true,
+            border: const OutlineInputBorder(),
+          ),
+          onChanged: (text) {
+            final parsed = int.tryParse(text);
+            if (parsed != null) onChanged(parsed);
+          },
+        ),
+      );
 }
 
 class _ValidationBadge extends StatelessWidget {
@@ -633,11 +632,11 @@ class _ValidationBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Chip(
-    avatar: Icon(
-      Icons.warning_amber_outlined,
-      size: 17,
-      color: Theme.of(context).colorScheme.error,
-    ),
-    label: Text(message),
-  );
+        avatar: Icon(
+          Icons.warning_amber_outlined,
+          size: 17,
+          color: Theme.of(context).colorScheme.error,
+        ),
+        label: Text(message),
+      );
 }

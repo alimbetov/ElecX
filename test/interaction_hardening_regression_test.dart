@@ -145,7 +145,9 @@ void main() {
     expect(committed!.target.componentId, 'new');
   });
 
-  test('multi-surface endpoint reroute preserves target-segment waypoint and transition', () {
+  test(
+      'multi-surface endpoint reroute preserves target-segment waypoint and transition',
+      () {
     final wall = RoomSurfaceRef.wall('room', 0);
     final ceiling = RoomSurfaceRef.ceiling('room');
     const transition = SurfacePointMm(100, 900);

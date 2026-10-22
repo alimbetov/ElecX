@@ -236,34 +236,36 @@ ElectricalComponentPlacement _component({
   required ElectricalComponentType type,
   required RoomSurfaceRef surface,
   required SurfacePointMm position,
-}) => ElectricalComponentPlacement(
-  id: id,
-  type: type,
-  surface: surface,
-  position: position,
-  label: id,
-  ports: ElectricalComponentDefaults.portsFor(type),
-);
+}) =>
+    ElectricalComponentPlacement(
+      id: id,
+      type: type,
+      surface: surface,
+      position: position,
+      label: id,
+      ports: ElectricalComponentDefaults.portsFor(type),
+    );
 
 ElectricalCableRoute _route({
   required RoomSurfaceRef surface,
   required List<SurfacePointMm> points,
-}) => ElectricalCableRoute(
-  id: 'route-1',
-  source: const ElectricalEndpointRef(
-    componentId: 'board-1',
-    portId: 'power-out',
-  ),
-  target: const ElectricalEndpointRef(
-    componentId: 'socket-old',
-    portId: 'power-in',
-  ),
-  segments: [ElectricalRouteSegment(surface: surface, points: points)],
-);
+}) =>
+    ElectricalCableRoute(
+      id: 'route-1',
+      source: const ElectricalEndpointRef(
+        componentId: 'board-1',
+        portId: 'power-out',
+      ),
+      target: const ElectricalEndpointRef(
+        componentId: 'socket-old',
+        portId: 'power-in',
+      ),
+      segments: [ElectricalRouteSegment(surface: surface, points: points)],
+    );
 
 RouteNormativeContext _context(RoomSurfaceRef surface) => RouteNormativeContext(
-  surface: surface,
-  widthMm: 2000,
-  heightMm: 1600,
-  edgeClearanceMm: 100,
-);
+      surface: surface,
+      widthMm: 2000,
+      heightMm: 1600,
+      edgeClearanceMm: 100,
+    );

@@ -162,14 +162,12 @@ final class _OpeningRow extends StatelessWidget {
         .where((id) => id != projection.spaceId)
         .map((id) => projection.adjacentSpaces[id]?.name ?? id.toString())
         .toList(growable: false);
-    final target = otherNames.isEmpty
-        ? 'Exterior / unbound side'
-        : otherNames.join(', ');
+    final target =
+        otherNames.isEmpty ? 'Exterior / unbound side' : otherNames.join(', ');
     return _SemanticRow(
       key: ValueKey('space-semantics-opening-${opening.id.value}'),
       icon: Icons.door_front_door_outlined,
-      title:
-          '${openingKindLabel(opening.kind)} · '
+      title: '${openingKindLabel(opening.kind)} · '
           '${opening.widthMm}×${opening.heightMm} mm',
       subtitle: target,
     );
@@ -203,12 +201,11 @@ final class _OverlayRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _SemanticRow(
-    icon: Icons.layers_outlined,
-    title: overlay.name,
-    subtitle:
-        '${overlayDisciplineLabel(overlay.discipline)} · '
-        '${overlayKindLabel(overlay.kind)}',
-  );
+        icon: Icons.layers_outlined,
+        title: overlay.name,
+        subtitle: '${overlayDisciplineLabel(overlay.discipline)} · '
+            '${overlayKindLabel(overlay.kind)}',
+      );
 }
 
 final class _SemanticRow extends StatelessWidget {
@@ -225,24 +222,24 @@ final class _SemanticRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 3),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 18),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title),
-              Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
-            ],
-          ),
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title),
+                  Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
+            ),
+          ],
         ),
-      ],
-    ),
-  );
+      );
 }
 
 final class _LabeledValue extends StatelessWidget {
@@ -253,88 +250,88 @@ final class _LabeledValue extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-    children: [
-      Text('$label: ', style: Theme.of(context).textTheme.labelLarge),
-      Expanded(child: Text(value)),
-    ],
-  );
+        children: [
+          Text('$label: ', style: Theme.of(context).textTheme.labelLarge),
+          Expanded(child: Text(value)),
+        ],
+      );
 }
 
 String spaceUsageLabel(SpaceUsage value) => switch (value) {
-  SpaceUsage.unknown => 'Unknown',
-  SpaceUsage.bedroom => 'Bedroom',
-  SpaceUsage.livingRoom => 'Living room',
-  SpaceUsage.kitchen => 'Kitchen',
-  SpaceUsage.kitchenLiving => 'Kitchen / living',
-  SpaceUsage.diningRoom => 'Dining room',
-  SpaceUsage.bathroom => 'Bathroom',
-  SpaceUsage.wc => 'WC',
-  SpaceUsage.showerRoom => 'Shower room',
-  SpaceUsage.entranceHall => 'Entrance hall',
-  SpaceUsage.corridor => 'Corridor',
-  SpaceUsage.commonHall => 'Common hall',
-  SpaceUsage.wardrobe => 'Wardrobe',
-  SpaceUsage.storage => 'Storage',
-  SpaceUsage.pantry => 'Pantry',
-  SpaceUsage.laundry => 'Laundry',
-  SpaceUsage.balcony => 'Balcony',
-  SpaceUsage.loggia => 'Loggia',
-  SpaceUsage.terrace => 'Terrace',
-  SpaceUsage.office => 'Office',
-  SpaceUsage.study => 'Study',
-  SpaceUsage.garage => 'Garage',
-  SpaceUsage.parking => 'Parking',
-  SpaceUsage.electricalRoom => 'Electrical room',
-  SpaceUsage.serverRoom => 'Server room',
-  SpaceUsage.telecomRoom => 'Telecom room',
-  SpaceUsage.fireControlRoom => 'Fire control room',
-  SpaceUsage.utilityRoom => 'Utility room',
-  SpaceUsage.mechanicalRoom => 'Mechanical room',
-  SpaceUsage.stairwell => 'Stairwell',
-  SpaceUsage.elevatorHall => 'Elevator hall',
-  SpaceUsage.elevatorShaft => 'Elevator shaft',
-  SpaceUsage.serviceShaft => 'Service shaft',
-  SpaceUsage.commercial => 'Commercial',
-  SpaceUsage.commonArea => 'Common area',
-};
+      SpaceUsage.unknown => 'Unknown',
+      SpaceUsage.bedroom => 'Bedroom',
+      SpaceUsage.livingRoom => 'Living room',
+      SpaceUsage.kitchen => 'Kitchen',
+      SpaceUsage.kitchenLiving => 'Kitchen / living',
+      SpaceUsage.diningRoom => 'Dining room',
+      SpaceUsage.bathroom => 'Bathroom',
+      SpaceUsage.wc => 'WC',
+      SpaceUsage.showerRoom => 'Shower room',
+      SpaceUsage.entranceHall => 'Entrance hall',
+      SpaceUsage.corridor => 'Corridor',
+      SpaceUsage.commonHall => 'Common hall',
+      SpaceUsage.wardrobe => 'Wardrobe',
+      SpaceUsage.storage => 'Storage',
+      SpaceUsage.pantry => 'Pantry',
+      SpaceUsage.laundry => 'Laundry',
+      SpaceUsage.balcony => 'Balcony',
+      SpaceUsage.loggia => 'Loggia',
+      SpaceUsage.terrace => 'Terrace',
+      SpaceUsage.office => 'Office',
+      SpaceUsage.study => 'Study',
+      SpaceUsage.garage => 'Garage',
+      SpaceUsage.parking => 'Parking',
+      SpaceUsage.electricalRoom => 'Electrical room',
+      SpaceUsage.serverRoom => 'Server room',
+      SpaceUsage.telecomRoom => 'Telecom room',
+      SpaceUsage.fireControlRoom => 'Fire control room',
+      SpaceUsage.utilityRoom => 'Utility room',
+      SpaceUsage.mechanicalRoom => 'Mechanical room',
+      SpaceUsage.stairwell => 'Stairwell',
+      SpaceUsage.elevatorHall => 'Elevator hall',
+      SpaceUsage.elevatorShaft => 'Elevator shaft',
+      SpaceUsage.serviceShaft => 'Service shaft',
+      SpaceUsage.commercial => 'Commercial',
+      SpaceUsage.commonArea => 'Common area',
+    };
 
 String openingKindLabel(OpeningKind value) => switch (value) {
-  OpeningKind.door => 'Door',
-  OpeningKind.window => 'Window',
-  OpeningKind.openPassage => 'Open passage',
-  OpeningKind.hatch => 'Hatch',
-  OpeningKind.serviceOpening => 'Service opening',
-  OpeningKind.other => 'Opening',
-};
+      OpeningKind.door => 'Door',
+      OpeningKind.window => 'Window',
+      OpeningKind.openPassage => 'Open passage',
+      OpeningKind.hatch => 'Hatch',
+      OpeningKind.serviceOpening => 'Service opening',
+      OpeningKind.other => 'Opening',
+    };
 
 String adjacencyKindLabel(SpaceAdjacencyKind value) => switch (value) {
-  SpaceAdjacencyKind.sharedBoundary => 'Shared boundary',
-  SpaceAdjacencyKind.opening => 'Connected by opening',
-  SpaceAdjacencyKind.openPassage => 'Open passage',
-  SpaceAdjacencyKind.vertical => 'Vertical connection',
-};
+      SpaceAdjacencyKind.sharedBoundary => 'Shared boundary',
+      SpaceAdjacencyKind.opening => 'Connected by opening',
+      SpaceAdjacencyKind.openPassage => 'Open passage',
+      SpaceAdjacencyKind.vertical => 'Vertical connection',
+    };
 
 String overlayDisciplineLabel(OverlayDiscipline value) => switch (value) {
-  OverlayDiscipline.fireSafety => 'Fire safety',
-  OverlayDiscipline.accessControl => 'Access control',
-  OverlayDiscipline.security => 'Security',
-  OverlayDiscipline.electrical => 'Electrical',
-  OverlayDiscipline.telecom => 'Telecom',
-  OverlayDiscipline.lighting => 'Lighting',
-  OverlayDiscipline.custom => 'Custom',
-};
+      OverlayDiscipline.fireSafety => 'Fire safety',
+      OverlayDiscipline.accessControl => 'Access control',
+      OverlayDiscipline.security => 'Security',
+      OverlayDiscipline.electrical => 'Electrical',
+      OverlayDiscipline.telecom => 'Telecom',
+      OverlayDiscipline.lighting => 'Lighting',
+      OverlayDiscipline.custom => 'Custom',
+    };
 
 String overlayKindLabel(OverlayClassificationKind value) => switch (value) {
-  OverlayClassificationKind.fireCompartment => 'Fire compartment',
-  OverlayClassificationKind.smokeZone => 'Smoke zone',
-  OverlayClassificationKind.evacuationZone => 'Evacuation zone',
-  OverlayClassificationKind.accessControlZone => 'Access-control zone',
-  OverlayClassificationKind.securityZone => 'Security zone',
-  OverlayClassificationKind.restrictedArea => 'Restricted area',
-  OverlayClassificationKind.electricalZone => 'Electrical zone',
-  OverlayClassificationKind.emergencySupplyZone => 'Emergency supply zone',
-  OverlayClassificationKind.telecomZone => 'Telecom zone',
-  OverlayClassificationKind.networkZone => 'Network zone',
-  OverlayClassificationKind.lightingControlZone => 'Lighting-control zone',
-  OverlayClassificationKind.custom => 'Custom',
-};
+      OverlayClassificationKind.fireCompartment => 'Fire compartment',
+      OverlayClassificationKind.smokeZone => 'Smoke zone',
+      OverlayClassificationKind.evacuationZone => 'Evacuation zone',
+      OverlayClassificationKind.accessControlZone => 'Access-control zone',
+      OverlayClassificationKind.securityZone => 'Security zone',
+      OverlayClassificationKind.restrictedArea => 'Restricted area',
+      OverlayClassificationKind.electricalZone => 'Electrical zone',
+      OverlayClassificationKind.emergencySupplyZone => 'Emergency supply zone',
+      OverlayClassificationKind.telecomZone => 'Telecom zone',
+      OverlayClassificationKind.networkZone => 'Network zone',
+      OverlayClassificationKind.lightingControlZone => 'Lighting-control zone',
+      OverlayClassificationKind.custom => 'Custom',
+    };

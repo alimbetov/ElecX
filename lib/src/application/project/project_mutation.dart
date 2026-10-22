@@ -35,15 +35,15 @@ final class ProjectCommandCandidate {
   ProjectCommandCandidate({
     required ProjectEntityStores stores,
     Iterable<EntityId> affectedEntityIds = const <EntityId>[],
-  }) : _stores = stores,
-       state = null,
-       affectedEntityIds = Set<EntityId>.unmodifiable(affectedEntityIds);
+  })  : _stores = stores,
+        state = null,
+        affectedEntityIds = Set<EntityId>.unmodifiable(affectedEntityIds);
 
   ProjectCommandCandidate.fromState({
     required this.state,
     Iterable<EntityId> affectedEntityIds = const <EntityId>[],
-  }) : _stores = null,
-       affectedEntityIds = Set<EntityId>.unmodifiable(affectedEntityIds);
+  })  : _stores = null,
+        affectedEntityIds = Set<EntityId>.unmodifiable(affectedEntityIds);
 
   final ProjectMutableState? state;
   final ProjectEntityStores? _stores;
@@ -87,9 +87,9 @@ final class ProjectEntityDiff {
     Iterable<EntityId> addedEntityIds = const <EntityId>[],
     Iterable<EntityId> updatedEntityIds = const <EntityId>[],
     Iterable<EntityId> removedEntityIds = const <EntityId>[],
-  }) : addedEntityIds = Set<EntityId>.unmodifiable(addedEntityIds),
-       updatedEntityIds = Set<EntityId>.unmodifiable(updatedEntityIds),
-       removedEntityIds = Set<EntityId>.unmodifiable(removedEntityIds) {
+  })  : addedEntityIds = Set<EntityId>.unmodifiable(addedEntityIds),
+        updatedEntityIds = Set<EntityId>.unmodifiable(updatedEntityIds),
+        removedEntityIds = Set<EntityId>.unmodifiable(removedEntityIds) {
     if (_hasOverlap(this.addedEntityIds, this.updatedEntityIds) ||
         _hasOverlap(this.addedEntityIds, this.removedEntityIds) ||
         _hasOverlap(this.updatedEntityIds, this.removedEntityIds)) {
@@ -156,10 +156,10 @@ final class ProjectEntityDiff {
   final Set<EntityId> removedEntityIds;
 
   Set<EntityId> get affectedEntityIds => Set<EntityId>.unmodifiable({
-    ...addedEntityIds,
-    ...updatedEntityIds,
-    ...removedEntityIds,
-  });
+        ...addedEntityIds,
+        ...updatedEntityIds,
+        ...removedEntityIds,
+      });
 
   bool get isEmpty =>
       addedEntityIds.isEmpty &&
@@ -175,16 +175,17 @@ final class ProjectEngineeringMetadataDiff {
   });
 
   const ProjectEngineeringMetadataDiff.empty()
-    : beforeProjectNorth = null,
-      afterProjectNorth = null;
+      : beforeProjectNorth = null,
+        afterProjectNorth = null;
 
   factory ProjectEngineeringMetadataDiff.between(
     ProjectEngineeringMetadata before,
     ProjectEngineeringMetadata after,
-  ) => ProjectEngineeringMetadataDiff(
-    beforeProjectNorth: before.projectNorth,
-    afterProjectNorth: after.projectNorth,
-  );
+  ) =>
+      ProjectEngineeringMetadataDiff(
+        beforeProjectNorth: before.projectNorth,
+        afterProjectNorth: after.projectNorth,
+      );
 
   final ProjectEngineeringNorth? beforeProjectNorth;
   final ProjectEngineeringNorth? afterProjectNorth;
@@ -250,10 +251,10 @@ final class ProjectMutationPreview {
     ProjectEntityDiff? entityDiff,
     this.engineeringMetadataDiff = const ProjectEngineeringMetadataDiff.empty(),
     Iterable<EntityId> declaredAffectedEntityIds = const <EntityId>[],
-  }) : entityDiff = entityDiff ?? diff ?? ProjectEntityDiff(),
-       declaredAffectedEntityIds = Set<EntityId>.unmodifiable(
-         declaredAffectedEntityIds,
-       ) {
+  })  : entityDiff = entityDiff ?? diff ?? ProjectEntityDiff(),
+        declaredAffectedEntityIds = Set<EntityId>.unmodifiable(
+          declaredAffectedEntityIds,
+        ) {
     if (diff != null && entityDiff != null) {
       throw ArgumentError('Specify either diff or entityDiff, not both.');
     }
@@ -288,8 +289,7 @@ final class StaleProjectMutationException implements Exception {
   final LocalProjectVersion currentVersion;
 
   @override
-  String toString() =>
-      'Stale project mutation: expected local version '
+  String toString() => 'Stale project mutation: expected local version '
       '$expectedVersion, current version is $currentVersion.';
 }
 
@@ -359,13 +359,14 @@ final class _ProjectMutableStateDiff {
   factory _ProjectMutableStateDiff.between(
     ProjectMutableState before,
     ProjectMutableState after,
-  ) => _ProjectMutableStateDiff(
-    entityDiff: ProjectEntityDiff.between(before.stores, after.stores),
-    engineeringMetadataDiff: ProjectEngineeringMetadataDiff.between(
-      before.engineeringMetadata,
-      after.engineeringMetadata,
-    ),
-  );
+  ) =>
+      _ProjectMutableStateDiff(
+        entityDiff: ProjectEntityDiff.between(before.stores, after.stores),
+        engineeringMetadataDiff: ProjectEngineeringMetadataDiff.between(
+          before.engineeringMetadata,
+          after.engineeringMetadata,
+        ),
+      );
 
   final ProjectEntityDiff entityDiff;
   final ProjectEngineeringMetadataDiff engineeringMetadataDiff;

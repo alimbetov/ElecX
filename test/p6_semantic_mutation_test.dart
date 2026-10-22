@@ -278,15 +278,15 @@ void main() {
         throwsA(
           isA<ProjectAuthoringException>()
               .having(
-                (error) => error.code,
-                'code',
-                ProjectAuthoringIssueCode.spaceHasSemanticDependencies,
-              )
+            (error) => error.code,
+            'code',
+            ProjectAuthoringIssueCode.spaceHasSemanticDependencies,
+          )
               .having(
-                (error) => error.blockingEntityIds,
-                'blockingEntityIds',
-                <EntityId>{openingId, adjacencyId, overlayId},
-              ),
+            (error) => error.blockingEntityIds,
+            'blockingEntityIds',
+            <EntityId>{openingId, adjacencyId, overlayId},
+          ),
         ),
       );
       expect(session.current, same(before));

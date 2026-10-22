@@ -22,9 +22,8 @@ void main() {
       controller.dispose();
     });
     controller.showWall(1);
-    final entry = controller.componentCatalog
-        .forSurface(SurfacePlaneType.wall)
-        .first;
+    final entry =
+        controller.componentCatalog.forSurface(SurfacePlaneType.wall).first;
     controller.p2.setLayerLocked(EditorLayerId.electrical, true);
     controller.placementCursor.beginCatalogPlacement(entry.id);
 

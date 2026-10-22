@@ -8,9 +8,9 @@ import 'editor_p2_session.dart';
 
 final class EditorDocumentHistory extends ChangeNotifier {
   EditorDocumentHistory(this.controller)
-    : _architecture = _ArchitectureSnapshot.capture(controller),
-      _p2 = controller.p2,
-      _p2Revision = controller.p2.history.mutationRevision {
+      : _architecture = _ArchitectureSnapshot.capture(controller),
+        _p2 = controller.p2,
+        _p2Revision = controller.p2.history.mutationRevision {
     controller.addListener(_onArchitectureChanged);
     _p2.addListener(_onP2Changed);
   }

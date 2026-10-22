@@ -40,14 +40,15 @@ final class EngineeringPlacementCursorState {
     String? snapLabel,
     bool clearSnapLabel = false,
     bool? isValid,
-  }) => EngineeringPlacementCursorState(
-    surface: surface ?? this.surface,
-    position: position ?? this.position,
-    componentTypeId: componentTypeId ?? this.componentTypeId,
-    snapKind: snapKind ?? this.snapKind,
-    snapLabel: clearSnapLabel ? null : snapLabel ?? this.snapLabel,
-    isValid: isValid ?? this.isValid,
-  );
+  }) =>
+      EngineeringPlacementCursorState(
+        surface: surface ?? this.surface,
+        position: position ?? this.position,
+        componentTypeId: componentTypeId ?? this.componentTypeId,
+        snapKind: snapKind ?? this.snapKind,
+        snapLabel: clearSnapLabel ? null : snapLabel ?? this.snapLabel,
+        isValid: isValid ?? this.isValid,
+      );
 
   String get coordinateLabel => 'X ${position.xMm} · Y ${position.yMm} mm';
 }
@@ -60,24 +61,26 @@ abstract final class EngineeringPlacementCursor {
     PlacementCursorSnapKind snapKind = PlacementCursorSnapKind.none,
     String? snapLabel,
     bool isValid = true,
-  }) => state.copyWith(
-    position: position,
-    snapKind: snapKind,
-    snapLabel: snapLabel,
-    clearSnapLabel: snapLabel == null,
-    isValid: isValid,
-  );
+  }) =>
+      state.copyWith(
+        position: position,
+        snapKind: snapKind,
+        snapLabel: snapLabel,
+        clearSnapLabel: snapLabel == null,
+        isValid: isValid,
+      );
 
   static EngineeringPlacementCursorState nudge(
     EngineeringPlacementCursorState state, {
     required int dxMm,
     required int dyMm,
-  }) => state.copyWith(
-    position: SurfacePointMm(
-      state.position.xMm + dxMm,
-      state.position.yMm + dyMm,
-    ),
-    snapKind: PlacementCursorSnapKind.grid,
-    clearSnapLabel: true,
-  );
+  }) =>
+      state.copyWith(
+        position: SurfacePointMm(
+          state.position.xMm + dxMm,
+          state.position.yMm + dyMm,
+        ),
+        snapKind: PlacementCursorSnapKind.grid,
+        clearSnapLabel: true,
+      );
 }

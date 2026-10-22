@@ -134,9 +134,8 @@ void main() {
       final store = JsonFileEditorProjectRecoveryStore(root);
       await store.save(snapshot);
 
-      final encodedId = base64Url
-          .encode(utf8.encode(metadata.projectId))
-          .replaceAll('=', '');
+      final encodedId =
+          base64Url.encode(utf8.encode(metadata.projectId)).replaceAll('=', '');
       final target = File('${root.path}/$encodedId.elecx.recovery.json');
       final backup = File('${target.path}.bak');
       await target.rename(backup.path);

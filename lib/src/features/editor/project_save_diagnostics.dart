@@ -56,7 +56,8 @@ abstract final class EditorProjectSaveDiagnostics {
         const EditorProjectSaveIssue(
           code: EditorProjectSaveIssueCode.activeTransform,
           title: 'Завершите редактирование компонента',
-          detail: 'Сейчас активен preview перемещения. Подтвердите его Enter/отпусканием указателя или отмените Escape, затем сохраните проект.',
+          detail:
+              'Сейчас активен preview перемещения. Подтвердите его Enter/отпусканием указателя или отмените Escape, затем сохраните проект.',
         ),
       );
     }
@@ -65,7 +66,8 @@ abstract final class EditorProjectSaveDiagnostics {
         const EditorProjectSaveIssue(
           code: EditorProjectSaveIssueCode.unfinishedDraft,
           title: 'Есть незавершённая трасса',
-          detail: 'Завершите построение кабеля или отмените черновик перед сохранением.',
+          detail:
+              'Завершите построение кабеля или отмените черновик перед сохранением.',
         ),
       );
     }

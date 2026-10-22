@@ -50,5 +50,6 @@ abstract final class BoundaryEditingResolver {
   static bool openingBelongsToProfile(
     ArchitecturalOpening opening,
     BoundaryEditProfile profile,
-  ) => profile == BoundaryEditProfile.openings;
+  ) =>
+      profile == BoundaryEditProfile.openings;
 }

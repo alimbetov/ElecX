@@ -68,39 +68,39 @@ final class CircuitSizingEvidence {
   }
 
   Map<String, Object?> toJson() => {
-    'routeId': routeId,
-    'routeGeometrySignature': routeGeometrySignature,
-    'cable': _cableToJson(cable),
-    'phaseSystem': phaseSystem.name,
-    'designCurrentA': designCurrentA,
-    'nominalVoltageV': nominalVoltageV,
-    'maxVoltageDropRatio': maxVoltageDropRatio,
-    'powerFactor': powerFactor,
-    'designCurrentSourceKey': designCurrentSourceKey,
-    'impedanceEvidence': impedanceEvidence == null
-        ? null
-        : {
-            'resistanceOhmPerKm': impedanceEvidence!.resistanceOhmPerKm,
-            'reactanceOhmPerKm': impedanceEvidence!.reactanceOhmPerKm,
-            'sourceKey': impedanceEvidence!.sourceKey,
-          },
-    'ampacitySections': [
-      for (final section in ampacitySections)
-        {
-          'sectionId': section.sectionId,
-          'baseAmpacityA': section.baseAmpacityA,
-          'sourceKey': section.sourceKey,
-          'factors': [
-            for (final factor in section.factors)
-              {
-                'id': factor.id,
-                'factor': factor.factor,
-                'reason': factor.reason,
+        'routeId': routeId,
+        'routeGeometrySignature': routeGeometrySignature,
+        'cable': _cableToJson(cable),
+        'phaseSystem': phaseSystem.name,
+        'designCurrentA': designCurrentA,
+        'nominalVoltageV': nominalVoltageV,
+        'maxVoltageDropRatio': maxVoltageDropRatio,
+        'powerFactor': powerFactor,
+        'designCurrentSourceKey': designCurrentSourceKey,
+        'impedanceEvidence': impedanceEvidence == null
+            ? null
+            : {
+                'resistanceOhmPerKm': impedanceEvidence!.resistanceOhmPerKm,
+                'reactanceOhmPerKm': impedanceEvidence!.reactanceOhmPerKm,
+                'sourceKey': impedanceEvidence!.sourceKey,
               },
-          ],
-        },
-    ],
-  };
+        'ampacitySections': [
+          for (final section in ampacitySections)
+            {
+              'sectionId': section.sectionId,
+              'baseAmpacityA': section.baseAmpacityA,
+              'sourceKey': section.sourceKey,
+              'factors': [
+                for (final factor in section.factors)
+                  {
+                    'id': factor.id,
+                    'factor': factor.factor,
+                    'reason': factor.reason,
+                  },
+              ],
+            },
+        ],
+      };
 
   factory CircuitSizingEvidence.fromJson(Map<String, Object?> json) {
     final cableJson = _map(json['cable'], 'cable');
@@ -177,26 +177,26 @@ final class CircuitSizingEvidence {
       .join('|');
 
   static Map<String, Object?> _cableToJson(CableSpec value) => {
-    'id': value.id,
-    'name': value.name,
-    'medium': {
-      'id': value.medium.id,
-      'family': value.medium.family.name,
-      'flowVisual': value.medium.flowVisual.name,
-      'bidirectional': value.medium.bidirectional,
-      'protocol': value.medium.protocol,
-    },
-    'outerDiameterMm': value.outerDiameterMm,
-    'segregationClass': value.segregationClass.name,
-    'conductorMaterial': value.conductorMaterial.name,
-    'conductorCount': value.conductorCount,
-    'conductorCrossSectionMm2': value.conductorCrossSectionMm2,
-    'pairCount': value.pairCount,
-    'fiberCount': value.fiberCount,
-    'shielding': value.shielding.name,
-    'ratedVoltageV': value.ratedVoltageV,
-    'category': value.category,
-  };
+        'id': value.id,
+        'name': value.name,
+        'medium': {
+          'id': value.medium.id,
+          'family': value.medium.family.name,
+          'flowVisual': value.medium.flowVisual.name,
+          'bidirectional': value.medium.bidirectional,
+          'protocol': value.medium.protocol,
+        },
+        'outerDiameterMm': value.outerDiameterMm,
+        'segregationClass': value.segregationClass.name,
+        'conductorMaterial': value.conductorMaterial.name,
+        'conductorCount': value.conductorCount,
+        'conductorCrossSectionMm2': value.conductorCrossSectionMm2,
+        'pairCount': value.pairCount,
+        'fiberCount': value.fiberCount,
+        'shielding': value.shielding.name,
+        'ratedVoltageV': value.ratedVoltageV,
+        'category': value.category,
+      };
 
   static CableSpec _cableFromJson(Map<String, Object?> json) {
     final medium = _map(json['medium'], 'cable.medium');

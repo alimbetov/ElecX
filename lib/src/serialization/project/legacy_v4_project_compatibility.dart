@@ -33,8 +33,7 @@ final class LosslessLegacyMigrationUnavailable implements Exception {
   final LegacyProjectCompatibilityAssessment assessment;
 
   @override
-  String toString() =>
-      'Lossless legacy project migration is not available: '
+  String toString() => 'Lossless legacy project migration is not available: '
       '${assessment.reasons.join(' ')}';
 }
 

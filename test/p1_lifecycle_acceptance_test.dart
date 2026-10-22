@@ -212,9 +212,9 @@ void main() {
           ArchitecturalOpeningType.door,
           canCommit: (candidate) =>
               ElectricalHostGeometryGuard.openingCandidateAllowed(
-                controller,
-                candidate,
-              ),
+            controller,
+            candidate,
+          ),
         ),
         isFalse,
       );

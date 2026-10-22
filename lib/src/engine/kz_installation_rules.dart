@@ -19,7 +19,8 @@ final class InstallationRuleResult {
 abstract final class KzInstallationRules {
   static const sp404106 = InstallationGuideSource(
     code: 'СП РК 4.04-106-2013',
-    title: 'Электрооборудование жилых и общественных зданий. Правила проектирования',
+    title:
+        'Электрооборудование жилых и общественных зданий. Правила проектирования',
   );
 
   /// Residential apartments and dormitory living rooms: sockets should be
@@ -36,7 +37,8 @@ abstract final class KzInstallationRules {
           : 'Для квартир/общежитий розетка не должна быть выше 1000 mm.',
       source: const InstallationGuideSource(
         code: 'СП РК 4.04-106-2013',
-        title: 'Электрооборудование жилых и общественных зданий. Правила проектирования',
+        title:
+            'Электрооборудование жилых и общественных зданий. Правила проектирования',
         clause: '15.33',
       ),
     );
@@ -57,7 +59,8 @@ abstract final class KzInstallationRules {
           : 'Выключатель общего освещения должен быть на высоте 800–1700 mm.',
       source: const InstallationGuideSource(
         code: 'СП РК 4.04-106-2013',
-        title: 'Электрооборудование жилых и общественных зданий. Правила проектирования',
+        title:
+            'Электрооборудование жилых и общественных зданий. Правила проектирования',
         clause: '15.33',
       ),
     );
@@ -76,7 +79,8 @@ abstract final class KzInstallationRules {
           : 'До газопровода требуется не менее 500 mm.',
       source: const InstallationGuideSource(
         code: 'СП РК 4.04-106-2013',
-        title: 'Электрооборудование жилых и общественных зданий. Правила проектирования',
+        title:
+            'Электрооборудование жилых и общественных зданий. Правила проектирования',
         clause: '15.34',
       ),
     );
@@ -97,7 +101,8 @@ abstract final class KzInstallationRules {
           : 'Для помещений пребывания детей требуется 1800 mm.',
       source: const InstallationGuideSource(
         code: 'СП РК 4.04-106-2013',
-        title: 'Электрооборудование жилых и общественных зданий. Правила проектирования',
+        title:
+            'Электрооборудование жилых и общественных зданий. Правила проектирования',
         clause: '15.39',
       ),
     );

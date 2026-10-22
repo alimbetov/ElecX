@@ -6,8 +6,8 @@ final class EngineeringTopology {
   EngineeringTopology({
     required Iterable<EngineeringNode> nodes,
     Iterable<EngineeringEdge> edges = const [],
-  }) : _nodes = {for (final node in nodes) node.id: node},
-       _edges = List<EngineeringEdge>.of(edges) {
+  })  : _nodes = {for (final node in nodes) node.id: node},
+        _edges = List<EngineeringEdge>.of(edges) {
     if (_nodes.length != nodes.length) {
       throw ArgumentError('Engineering node ids must be unique.');
     }

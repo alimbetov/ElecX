@@ -50,7 +50,7 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
         final placing = controller.placementCursor.active;
         final hasEngineeringSelection =
             controller.routeSelection.selectedRouteId != null ||
-            controller.p2.selectedComponent != null;
+                controller.p2.selectedComponent != null;
         if (!placing && hasEngineeringSelection) {
           return _InspectorMode(
             controller: controller,
@@ -146,11 +146,11 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
           child: catalog.loading
               ? const Center(child: CircularProgressIndicator())
               : entries.isEmpty
-              ? const _EmptyCatalogState()
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(8, 7, 8, 18),
-                  children: _buildGrouped(entries),
-                ),
+                  ? const _EmptyCatalogState()
+                  : ListView(
+                      padding: const EdgeInsets.fromLTRB(8, 7, 8, 18),
+                      children: _buildGrouped(entries),
+                    ),
         ),
       ],
     );
@@ -166,24 +166,22 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
   ) {
     final query = _searchController.text.trim().toLowerCase();
     final activeSurface = controller.activeSurface;
-    return source
-        .where((entry) {
-          final taxonomy = ComponentTaxonomyResolver.resolve(entry);
-          if (_category != null && taxonomy.category != _category) return false;
-          if (query.isNotEmpty &&
-              !entry.name.toLowerCase().contains(query) &&
-              !entry.code.toLowerCase().contains(query) &&
-              !entry.id.toLowerCase().contains(query)) {
-            return false;
-          }
-          if (_compatibleOnly &&
-              activeSurface != null &&
-              !entry.mounting.allows(activeSurface)) {
-            return false;
-          }
-          return true;
-        })
-        .toList(growable: false);
+    return source.where((entry) {
+      final taxonomy = ComponentTaxonomyResolver.resolve(entry);
+      if (_category != null && taxonomy.category != _category) return false;
+      if (query.isNotEmpty &&
+          !entry.name.toLowerCase().contains(query) &&
+          !entry.code.toLowerCase().contains(query) &&
+          !entry.id.toLowerCase().contains(query)) {
+        return false;
+      }
+      if (_compatibleOnly &&
+          activeSurface != null &&
+          !entry.mounting.allows(activeSurface)) {
+        return false;
+      }
+      return true;
+    }).toList(growable: false);
   }
 
   List<Widget> _buildGrouped(List<ComponentCatalogEntryV2> entries) {
@@ -287,9 +285,9 @@ class _InspectorMode extends StatelessWidget {
                 child: Text(
                   'ENGINEERING INSPECTOR',
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    letterSpacing: 0.9,
-                    fontWeight: FontWeight.w700,
-                  ),
+                        letterSpacing: 0.9,
+                        fontWeight: FontWeight.w700,
+                      ),
                 ),
               ),
               IconButton(
@@ -336,7 +334,9 @@ class _CatalogHeader extends StatelessWidget {
           Expanded(
             child: Text(
               'EQUIPMENT MATRIX',
-              style: Theme.of(context).textTheme.labelMedium
+              style: Theme.of(context)
+                  .textTheme
+                  .labelMedium
                   ?.copyWith(letterSpacing: 0.9, fontWeight: FontWeight.w700),
             ),
           ),
@@ -348,9 +348,9 @@ class _CatalogHeader extends StatelessWidget {
           Text(
             '$count',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-            ),
+                  color: scheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
           ),
         ],
       ),
@@ -384,18 +384,18 @@ class _SectionHeader extends StatelessWidget {
             child: Text(
               label.toUpperCase(),
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                fontSize: 9.5,
-                letterSpacing: 0.85,
-                fontWeight: FontWeight.w800,
-              ),
+                    fontSize: 9.5,
+                    letterSpacing: 0.85,
+                    fontWeight: FontWeight.w800,
+                  ),
             ),
           ),
           Text(
             '$count',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontSize: 9.5,
-            ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 9.5,
+                ),
           ),
         ],
       ),
@@ -425,8 +425,8 @@ class _EquipmentCard extends StatelessWidget {
     final signal = placing
         ? engineering.active
         : compatible
-        ? engineering.info
-        : scheme.onSurfaceVariant;
+            ? engineering.info
+            : scheme.onSurfaceVariant;
     return Padding(
       padding: const EdgeInsets.only(bottom: 5),
       child: Material(
@@ -471,7 +471,9 @@ class _EquipmentCard extends StatelessWidget {
                         entry.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelMedium
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelMedium
                             ?.copyWith(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 2),
@@ -480,10 +482,10 @@ class _EquipmentCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          fontSize: 9.5,
-                          color: scheme.onSurfaceVariant,
-                          letterSpacing: 0.25,
-                        ),
+                              fontSize: 9.5,
+                              color: scheme.onSurfaceVariant,
+                              letterSpacing: 0.25,
+                            ),
                       ),
                       const SizedBox(height: 2),
                       Text(
@@ -493,11 +495,11 @@ class _EquipmentCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          fontSize: 9.5,
-                          color: compatible
-                              ? scheme.onSurfaceVariant
-                              : engineering.warning,
-                        ),
+                              fontSize: 9.5,
+                              color: compatible
+                                  ? scheme.onSurfaceVariant
+                                  : engineering.warning,
+                            ),
                       ),
                     ],
                   ),
@@ -522,26 +524,26 @@ class _EmptyCatalogState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(22),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.radar,
-            size: 28,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.radar,
+                size: 28,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(height: 9),
+              Text(
+                'Нет оборудования для текущего фильтра',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+            ],
           ),
-          const SizedBox(height: 9),
-          Text(
-            'Нет оборудования для текущего фильтра',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.labelMedium,
-          ),
-        ],
-      ),
-    ),
-  );
+        ),
+      );
 }
 
 class _FilterChip extends StatelessWidget {
@@ -557,72 +559,73 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(right: 4),
-    child: FilterChip(
-      selected: selected,
-      label: Text(label),
-      onSelected: (_) => onPressed(),
-      visualDensity: VisualDensity.compact,
-    ),
-  );
+        padding: const EdgeInsets.only(right: 4),
+        child: FilterChip(
+          selected: selected,
+          label: Text(label),
+          onSelected: (_) => onPressed(),
+          visualDensity: VisualDensity.compact,
+        ),
+      );
 }
 
 String _categoryLabel(ComponentCategory category) => switch (category) {
-  ComponentCategory.power => 'Силовые',
-  ComponentCategory.lighting => 'Освещение',
-  ComponentCategory.data => 'Данные',
-  ComponentCategory.cctv => 'CCTV',
-  ComponentCategory.accessControl => 'СКУД',
-  ComponentCategory.fireSafety => 'Пожарные',
-  ComponentCategory.automation => 'Автоматика',
-  ComponentCategory.infrastructure => 'Инфраструктура',
-  ComponentCategory.custom => 'Прочее',
-};
+      ComponentCategory.power => 'Силовые',
+      ComponentCategory.lighting => 'Освещение',
+      ComponentCategory.data => 'Данные',
+      ComponentCategory.cctv => 'CCTV',
+      ComponentCategory.accessControl => 'СКУД',
+      ComponentCategory.fireSafety => 'Пожарные',
+      ComponentCategory.automation => 'Автоматика',
+      ComponentCategory.infrastructure => 'Инфраструктура',
+      ComponentCategory.custom => 'Прочее',
+    };
 
 String _subcategoryLabel(ComponentSubcategory category) => switch (category) {
-  ComponentSubcategory.socketOutlet => 'Розетки',
-  ComponentSubcategory.switchControl => 'Выключатели',
-  ComponentSubcategory.luminaire => 'Светильники',
-  ComponentSubcategory.distributionBoard => 'Щиты',
-  ComponentSubcategory.junctionBox => 'Распределительные коробки',
-  ComponentSubcategory.powerSource => 'Источники питания',
-  ComponentSubcategory.motorDrive => 'Приводы',
-  ComponentSubcategory.dataOutlet => 'LAN / СКС',
-  ComponentSubcategory.accessPoint => 'Wi-Fi / PoE',
-  ComponentSubcategory.camera => 'Камеры',
-  ComponentSubcategory.accessReader => 'Считыватели',
-  ComponentSubcategory.detector => 'Извещатели',
-  ComponentSubcategory.contactSensor => 'Контакты / датчики',
-  ComponentSubcategory.fiberTermination => 'Оптика',
-  ComponentSubcategory.controller => 'Контроллеры',
-  ComponentSubcategory.custom => 'Прочее',
-};
+      ComponentSubcategory.socketOutlet => 'Розетки',
+      ComponentSubcategory.switchControl => 'Выключатели',
+      ComponentSubcategory.luminaire => 'Светильники',
+      ComponentSubcategory.distributionBoard => 'Щиты',
+      ComponentSubcategory.junctionBox => 'Распределительные коробки',
+      ComponentSubcategory.powerSource => 'Источники питания',
+      ComponentSubcategory.motorDrive => 'Приводы',
+      ComponentSubcategory.dataOutlet => 'LAN / СКС',
+      ComponentSubcategory.accessPoint => 'Wi-Fi / PoE',
+      ComponentSubcategory.camera => 'Камеры',
+      ComponentSubcategory.accessReader => 'Считыватели',
+      ComponentSubcategory.detector => 'Извещатели',
+      ComponentSubcategory.contactSensor => 'Контакты / датчики',
+      ComponentSubcategory.fiberTermination => 'Оптика',
+      ComponentSubcategory.controller => 'Контроллеры',
+      ComponentSubcategory.custom => 'Прочее',
+    };
 
 String _mountingLabel(ComponentCatalogEntryV2 entry) {
-  final surfaces = entry.mounting.allowedSurfaces
-      .map((type) {
-        return switch (type) {
-          SurfacePlaneType.wall => 'стена',
-          SurfacePlaneType.floor => 'пол',
-          SurfacePlaneType.ceiling => 'потолок',
-        };
-      })
-      .join(', ');
+  final surfaces = entry.mounting.allowedSurfaces.map((type) {
+    return switch (type) {
+      SurfacePlaneType.wall => 'стена',
+      SurfacePlaneType.floor => 'пол',
+      SurfacePlaneType.ceiling => 'потолок',
+    };
+  }).join(', ');
   final height = entry.mounting.preferredHeightMm;
   return height == null ? surfaces : '$surfaces · H $height mm';
 }
 
 IconData _iconFor(EngineeringSystemClass systemClass) => switch (systemClass) {
-  EngineeringSystemClass.powerAc ||
-  EngineeringSystemClass.powerDc => Icons.power_outlined,
-  EngineeringSystemClass.lighting => Icons.lightbulb_outline,
-  EngineeringSystemClass.structuredCabling ||
-  EngineeringSystemClass.poeNetwork ||
-  EngineeringSystemClass.fiberOptic => Icons.lan_outlined,
-  EngineeringSystemClass.cctv => Icons.videocam_outlined,
-  EngineeringSystemClass.accessControl => Icons.badge_outlined,
-  EngineeringSystemClass.fireAlarm => Icons.local_fire_department_outlined,
-  EngineeringSystemClass.automationBus ||
-  EngineeringSystemClass.dryContact => Icons.memory_outlined,
-  EngineeringSystemClass.custom => Icons.widgets_outlined,
-};
+      EngineeringSystemClass.powerAc ||
+      EngineeringSystemClass.powerDc =>
+        Icons.power_outlined,
+      EngineeringSystemClass.lighting => Icons.lightbulb_outline,
+      EngineeringSystemClass.structuredCabling ||
+      EngineeringSystemClass.poeNetwork ||
+      EngineeringSystemClass.fiberOptic =>
+        Icons.lan_outlined,
+      EngineeringSystemClass.cctv => Icons.videocam_outlined,
+      EngineeringSystemClass.accessControl => Icons.badge_outlined,
+      EngineeringSystemClass.fireAlarm => Icons.local_fire_department_outlined,
+      EngineeringSystemClass.automationBus ||
+      EngineeringSystemClass.dryContact =>
+        Icons.memory_outlined,
+      EngineeringSystemClass.custom => Icons.widgets_outlined,
+    };

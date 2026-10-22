@@ -12,11 +12,11 @@ final class CableMandatoryWaypoint {
   final SurfacePointMm point;
 
   Map<String, Object> toJson() => {
-    'segmentIndex': segmentIndex,
-    'pointIndex': pointIndex,
-    'xMm': point.xMm,
-    'yMm': point.yMm,
-  };
+        'segmentIndex': segmentIndex,
+        'pointIndex': pointIndex,
+        'xMm': point.xMm,
+        'yMm': point.yMm,
+      };
 
   factory CableMandatoryWaypoint.fromJson(Map<String, Object?> json) {
     final segmentIndex = json['segmentIndex'];
@@ -48,8 +48,8 @@ final class CableRouteConstraints {
   CableRouteConstraints({
     Set<int> lockedSegments = const {},
     List<CableMandatoryWaypoint> mandatoryWaypoints = const [],
-  }) : lockedSegments = Set.unmodifiable(lockedSegments),
-       mandatoryWaypoints = List.unmodifiable(mandatoryWaypoints) {
+  })  : lockedSegments = Set.unmodifiable(lockedSegments),
+        mandatoryWaypoints = List.unmodifiable(mandatoryWaypoints) {
     if (this.lockedSegments.any((index) => index < 0)) {
       throw ArgumentError('Locked segment indices must be non-negative.');
     }
@@ -69,9 +69,9 @@ final class CableRouteConstraints {
       mandatoryWaypoints.any((item) => item.segmentIndex == segmentIndex);
 
   bool isWaypoint(int segmentIndex, int pointIndex) => mandatoryWaypoints.any(
-    (item) =>
-        item.segmentIndex == segmentIndex && item.pointIndex == pointIndex,
-  );
+        (item) =>
+            item.segmentIndex == segmentIndex && item.pointIndex == pointIndex,
+      );
 
   CableRouteConstraints toggleSegmentLock(int segmentIndex) {
     if (segmentIndex < 0) {
@@ -155,11 +155,11 @@ final class CableRouteConstraints {
   }
 
   Map<String, Object> toJson() => {
-    'lockedSegments': lockedSegments.toList()..sort(),
-    'mandatoryWaypoints': [
-      for (final waypoint in mandatoryWaypoints) waypoint.toJson(),
-    ],
-  };
+        'lockedSegments': lockedSegments.toList()..sort(),
+        'mandatoryWaypoints': [
+          for (final waypoint in mandatoryWaypoints) waypoint.toJson(),
+        ],
+      };
 
   factory CableRouteConstraints.fromJson(Map<String, Object?> json) {
     final lockedRaw = json['lockedSegments'];

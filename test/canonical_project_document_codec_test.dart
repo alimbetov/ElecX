@@ -14,7 +14,9 @@ void main() {
   group('CanonicalProjectDocumentCodec', () {
     const codec = CanonicalProjectDocumentCodec();
 
-    test('round-trips multi-building snapshot and Project North without identity loss', () {
+    test(
+        'round-trips multi-building snapshot and Project North without identity loss',
+        () {
       final north = ProjectEngineeringNorth.fromDegrees(32.5);
       final snapshot = _multiBuildingSnapshot(north: north);
 

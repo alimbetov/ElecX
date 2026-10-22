@@ -262,9 +262,8 @@ abstract final class BuildingLevelRepeater {
 
     final level = BuildingLevel(
       id: '$prefix:${source.level.id}',
-      name: levelNumber < 0
-          ? 'Подвал ${levelNumber.abs()}'
-          : 'Этаж $levelNumber',
+      name:
+          levelNumber < 0 ? 'Подвал ${levelNumber.abs()}' : 'Этаж $levelNumber',
       elevationMm: elevationMm,
       spaces: spaces,
     );

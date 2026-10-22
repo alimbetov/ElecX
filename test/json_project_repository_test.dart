@@ -192,17 +192,17 @@ final class _TestProjectDocumentCodec implements ProjectDocumentCodec {
 
   @override
   ProjectDocument encode(ProjectSnapshot snapshot) => ProjectDocument(
-    schemaVersion: currentSchemaVersion,
-    payload: {
-      'projectId': snapshot.id.value,
-      'siteId': snapshot.siteId.value,
-      'localVersion': snapshot.localVersion.value,
-      'name': snapshot.name,
-      'createdAt': snapshot.createdAt.toIso8601String(),
-      'updatedAt': snapshot.updatedAt.toIso8601String(),
-      'siteName': snapshot.aggregate.index.site(snapshot.siteId)!.name,
-    },
-  );
+        schemaVersion: currentSchemaVersion,
+        payload: {
+          'projectId': snapshot.id.value,
+          'siteId': snapshot.siteId.value,
+          'localVersion': snapshot.localVersion.value,
+          'name': snapshot.name,
+          'createdAt': snapshot.createdAt.toIso8601String(),
+          'updatedAt': snapshot.updatedAt.toIso8601String(),
+          'siteName': snapshot.aggregate.index.site(snapshot.siteId)!.name,
+        },
+      );
 
   @override
   ProjectSnapshot decode(ProjectDocument document) {

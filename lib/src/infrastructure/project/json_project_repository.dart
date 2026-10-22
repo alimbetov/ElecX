@@ -201,9 +201,8 @@ final class JsonProjectRepository implements ProjectRepository {
   }
 
   File _target(ProjectId projectId) {
-    final encoded = base64Url
-        .encode(utf8.encode(projectId.value))
-        .replaceAll('=', '');
+    final encoded =
+        base64Url.encode(utf8.encode(projectId.value)).replaceAll('=', '');
     return File(path.join(rootDirectory.path, '$encoded.elecx.project.json'));
   }
 }

@@ -197,8 +197,7 @@ void _ensureLevelNumberAvailable(
         code: ProjectAuthoringIssueCode.duplicateLevelNumber,
         entityId: subjectLevelId,
         relatedEntityId: candidateId,
-        message:
-            'Building ${building.id} already contains level number '
+        message: 'Building ${building.id} already contains level number '
             '$levelNumber at $candidateId.',
       );
     }

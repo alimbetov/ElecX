@@ -36,8 +36,7 @@ final class CreateSpaceCommand implements ProjectCommand {
         code: ProjectAuthoringIssueCode.spaceAlreadyExists,
         entityId: spaceId,
         relatedEntityId: existing.levelId,
-        message:
-            'Space $spaceId already exists on level ${existing.levelId}; '
+        message: 'Space $spaceId already exists on level ${existing.levelId}; '
             'requested parent level is $levelId.',
       );
     }

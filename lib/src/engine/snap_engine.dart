@@ -36,9 +36,9 @@ final class SemanticSnapAnchor {
     required this.point,
     required this.sourceId,
   }) : assert(
-         kind == SnapKind.port || kind == SnapKind.componentAnchor,
-         'Semantic anchors are restricted to port/component anchors.',
-       );
+          kind == SnapKind.port || kind == SnapKind.componentAnchor,
+          'Semantic anchors are restricted to port/component anchors.',
+        );
 
   final SnapKind kind;
   final MmPoint point;
@@ -240,10 +240,10 @@ abstract final class SnapEngine {
 
     final px =
         ((x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)) /
-        denominator;
+            denominator;
     final py =
         ((x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)) /
-        denominator;
+            denominator;
 
     bool inside(double value, double a, double b) =>
         value >= math.min(a, b) - 0.001 && value <= math.max(a, b) + 0.001;

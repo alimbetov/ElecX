@@ -115,11 +115,11 @@ final class ProjectStructureAuthoringSession {
     required ProjectMutationSession mutations,
     required EntityIdFactory idFactory,
     ProjectNavigationState? navigation,
-  }) : _mutations = mutations,
-       _projectNorthEditing = ProjectNorthEditingSession(mutations),
-       _spaceSemanticsEditing = ProjectSpaceSemanticsEditingSession(mutations),
-       _idFactory = idFactory,
-       _navigation = _initialNavigation(mutations.current, navigation);
+  })  : _mutations = mutations,
+        _projectNorthEditing = ProjectNorthEditingSession(mutations),
+        _spaceSemanticsEditing = ProjectSpaceSemanticsEditingSession(mutations),
+        _idFactory = idFactory,
+        _navigation = _initialNavigation(mutations.current, navigation);
 
   final ProjectMutationSession _mutations;
   final ProjectNorthEditingPort _projectNorthEditing;
@@ -175,8 +175,7 @@ final class ProjectStructureAuthoringSession {
         code: ProjectStructureAuthoringIssueCode.navigationSiteMismatch,
         entityId: next.siteId,
         relatedEntityId: project.siteId,
-        message:
-            'Navigation belongs to site ${next.siteId}, not current site '
+        message: 'Navigation belongs to site ${next.siteId}, not current site '
             '${project.siteId}.',
       );
     }
@@ -185,13 +184,11 @@ final class ProjectStructureAuthoringSession {
     if (validated != next) {
       throw ProjectStructureAuthoringException(
         code: ProjectStructureAuthoringIssueCode.navigationStateMismatch,
-        entityId:
-            next.selectedSpaceId ??
+        entityId: next.selectedSpaceId ??
             next.selectedZoneId ??
             next.activeLevelId ??
             next.activeBuildingId,
-        message:
-            'Navigation state is not coherent with the current canonical '
+        message: 'Navigation state is not coherent with the current canonical '
             'project and cannot be adopted without repair.',
       );
     }
@@ -207,9 +204,8 @@ final class ProjectStructureAuthoringSession {
     final buildingId = _navigation.activeBuildingId;
     final levelId = _navigation.activeLevelId;
 
-    final building = buildingId == null
-        ? null
-        : current.index.building(buildingId);
+    final building =
+        buildingId == null ? null : current.index.building(buildingId);
     final level = levelId == null ? null : current.index.level(levelId);
     final hasBuilding = building != null && building.siteId == current.siteId;
     final hasLevel =
@@ -260,8 +256,7 @@ final class ProjectStructureAuthoringSession {
         code: ProjectStructureAuthoringIssueCode.authoringContextChanged,
         entityId: buildingId,
         relatedEntityId: expectedActiveBuildingId,
-        message:
-            'Active Building changed while +Level authoring was in '
+        message: 'Active Building changed while +Level authoring was in '
             'progress.',
       );
     }
@@ -370,8 +365,7 @@ final class ProjectStructureAuthoringSession {
       throw ProjectStructureAuthoringException(
         code: ProjectStructureAuthoringIssueCode.reconciliationProjectMismatch,
         entityId: current.id,
-        message:
-            'Navigation reconciliation snapshots must belong to the '
+        message: 'Navigation reconciliation snapshots must belong to the '
             'current project and site.',
       );
     }
@@ -380,8 +374,7 @@ final class ProjectStructureAuthoringSession {
       throw ProjectStructureAuthoringException(
         code: ProjectStructureAuthoringIssueCode.reconciliationVersionMismatch,
         entityId: current.id,
-        message:
-            'Navigation reconciliation requires the immediate committed '
+        message: 'Navigation reconciliation requires the immediate committed '
             'before/after versions ending at ${current.version}.',
       );
     }
@@ -400,8 +393,7 @@ final class ProjectStructureAuthoringSession {
         code: ProjectStructureAuthoringIssueCode.activeBuildingRequired,
         entityId: id,
         relatedEntityId: project.siteId,
-        message:
-            '+Level requires an explicit active BuildingId in the '
+        message: '+Level requires an explicit active BuildingId in the '
             'current site.',
       );
     }
@@ -444,8 +436,7 @@ ProjectNavigationState _initialNavigation(
       code: ProjectStructureAuthoringIssueCode.navigationSiteMismatch,
       entityId: navigation.siteId,
       relatedEntityId: project.siteId,
-      message:
-          'Authoring navigation belongs to site ${navigation.siteId}, '
+      message: 'Authoring navigation belongs to site ${navigation.siteId}, '
           'not current site ${project.siteId}.',
     );
   }
