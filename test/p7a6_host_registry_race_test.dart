@@ -48,8 +48,8 @@ void main() {
     expect(mutations.current.version, LocalProjectVersion(1));
     expect(mutations.undoDepth, 1);
     expect(
-      mutations.current.engineeringMetadata.boundaryHostedObjectRegistry[hostKey]
-          ?.host.edgeId,
+      mutations.current.engineeringMetadata
+          .boundaryHostedObjectRegistry[hostKey]?.host.edgeId,
       fixture.bottomA,
     );
 
@@ -83,8 +83,8 @@ void main() {
       ],
     );
     expect(
-      mutations.current.engineeringMetadata.boundaryHostedObjectRegistry[hostKey]
-          ?.host.edgeId,
+      mutations.current.engineeringMetadata
+          .boundaryHostedObjectRegistry[hostKey]?.host.edgeId,
       fixture.bottomA,
       reason: 'the winning hosted-registry mutation must remain authoritative',
     );
