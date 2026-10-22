@@ -2,6 +2,7 @@ import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import 'project_authoring_error.dart';
 import 'project_boundary_topology_editing.dart';
+import 'project_boundary_topology_migration.dart';
 import 'project_building_commands.dart';
 import 'project_level_commands.dart';
 import 'project_mutation.dart';
@@ -115,6 +116,8 @@ final class ProjectStructureAuthoringSession {
         _spaceSemanticsEditing = ProjectSpaceSemanticsEditingSession(mutations),
         _boundaryTopologyEditing =
             ProjectBoundaryTopologyEditingService(mutations),
+        _boundaryTopologyMigration =
+            ProjectBoundaryTopologyMigrationService(mutations),
         _idFactory = idFactory,
         _navigation = _initialNavigation(mutations.current, navigation);
 
@@ -122,6 +125,7 @@ final class ProjectStructureAuthoringSession {
   final ProjectNorthEditingPort _projectNorthEditing;
   final ProjectSpaceSemanticsEditingPort _spaceSemanticsEditing;
   final ProjectBoundaryTopologyEditingPort _boundaryTopologyEditing;
+  final ProjectBoundaryTopologyMigrationService _boundaryTopologyMigration;
   final EntityIdFactory _idFactory;
   ProjectNavigationState _navigation;
 
@@ -144,6 +148,12 @@ final class ProjectStructureAuthoringSession {
   /// entering this port; no durable wall ordinal is accepted here.
   ProjectBoundaryTopologyEditingPort get boundaryTopologyEditing =>
       _boundaryTopologyEditing;
+
+  /// P7A-5 identity-changing topology capability. Split/merge/create/remove
+  /// host migration must use this service so topology, hosted references and
+  /// wall-profile payloads share the exact same P3 version and Undo/Redo stack.
+  ProjectBoundaryTopologyMigrationService get boundaryTopologyMigration =>
+      _boundaryTopologyMigration;
 
   /// Production history replay is deliberately exposed only through this
   /// session so all canonical capabilities keep one P3 undo/redo stack and the
