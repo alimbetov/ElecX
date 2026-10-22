@@ -76,7 +76,8 @@ void main() {
       expect(fixture.adapter.fallbackToPlanIfStale(), isFalse);
     });
 
-    test('legacy polygon drift invalidates previously resolved edge mapping', () {
+    test('legacy polygon drift invalidates previously resolved edge mapping',
+        () {
       final fixture = _Fixture();
       fixture.adapter.showBoundaryEdge(fixture.edgeIds[1]);
       final before = fixture.controller.activeSurface;
