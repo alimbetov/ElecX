@@ -1,0 +1,123 @@
+import 'package:elecx/src/domain/electrical_placement.dart';
+import 'package:elecx/src/domain/geometry.dart';
+import 'package:elecx/src/domain/project_model.dart';
+import 'package:elecx/src/domain/surface_routing.dart';
+import 'package:elecx/src/domain/surfaces.dart';
+import 'package:elecx/src/features/editor/editor_controller.dart';
+import 'package:elecx/src/features/editor/editor_p2_session.dart';
+import 'package:elecx/src/features/editor/manual_cable_draft_persistence.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  group('production finishManualCableDraft wiring', () {
+    test('same-surface manual route still commits through physical authoring',
+        () {
+      final editor = _editor();
+      addTearDown(() {
+        editor.disposeP2State();
+        editor.dispose();
+      });
+      final wall = RoomSurfaceRef.wall('room-a', 0);
+      editor.p2.placeComponent(
+        type: ElectricalComponentType.powerSource,
+        surface: wall,
+        position: const SurfacePointMm(100, 1200),
+      );
+      editor.p2.placeComponent(
+        type: ElectricalComponentType.socketOutlet,
+        surface: wall,
+        position: const SurfacePointMm(900, 1200),
+      );
+      editor.setTool(EditorTool.cableRoute);
+      editor.routeSegments.add(
+        SurfaceRouteSegmentDraft(
+          surface: wall,
+          points: const [
+            SurfacePointMm(100, 1200),
+            SurfacePointMm(900, 1200),
+          ],
+        ),
+      );
+
+      expect(editor.finishManualCableDraft(), isTrue);
+      expect(editor.p2.routes, hasLength(1));
+      expect(editor.p2.routes.single.penetrations, isEmpty);
+      expect(editor.routeSegments, isEmpty);
+      expect(editor.tool, EditorTool.select);
+    });
+
+    test('cross-room finish without canonical thickness preserves draft', () {
+      final editor = _editor();
+      addTearDown(() {
+        editor.disposeP2State();
+        editor.dispose();
+      });
+      final wallA = RoomSurfaceRef.wall('room-a', 1);
+      final wallB = RoomSurfaceRef.wall('room-b', 3);
+      editor.p2.placeComponent(
+        type: ElectricalComponentType.powerSource,
+        surface: wallA,
+        position: const SurfacePointMm(100, 1200),
+      );
+      editor.p2.placeComponent(
+        type: ElectricalComponentType.socketOutlet,
+        surface: wallB,
+        position: const SurfacePointMm(900, 1200),
+      );
+      editor.setTool(EditorTool.cableRoute);
+      editor.routeSegments.addAll([
+        SurfaceRouteSegmentDraft(
+          surface: wallA,
+          points: const [
+            SurfacePointMm(100, 1200),
+            SurfacePointMm(1500, 1200),
+          ],
+        ),
+        SurfaceRouteSegmentDraft(
+          surface: wallB,
+          points: const [
+            SurfacePointMm(1500, 1200),
+            SurfacePointMm(900, 1200),
+          ],
+        ),
+      ]);
+
+      expect(editor.finishManualCableDraft(), isFalse);
+      expect(editor.p2.routes, isEmpty);
+      expect(editor.routeSegments, hasLength(2));
+      expect(editor.tool, EditorTool.cableRoute);
+    });
+  });
+}
+
+EditorController _editor() {
+  final editor = EditorController.blank();
+  final roomA = EngineeringSpace(
+    id: 'room-a',
+    name: 'A',
+    type: SpaceType.room,
+    boundary: MmPolygon.rectangle(
+      const MmPoint(0, 0),
+      const MmPoint(4000, 3000),
+    ),
+    referenceFrame: const RoomReferenceFrame(origin: MmPoint(2000, 1500)),
+  );
+  final roomB = EngineeringSpace(
+    id: 'room-b',
+    name: 'B',
+    type: SpaceType.room,
+    boundary: MmPolygon.rectangle(
+      const MmPoint(4000, 0),
+      const MmPoint(8000, 3000),
+    ),
+    referenceFrame: const RoomReferenceFrame(origin: MmPoint(6000, 1500)),
+  );
+  editor.level = BuildingLevel(
+    id: 'level-1',
+    name: 'L1',
+    elevationMm: 0,
+    spaces: [roomA, roomB],
+  );
+  editor.selectedSpaceId = roomA.id;
+  return editor;
+}
