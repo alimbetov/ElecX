@@ -19,7 +19,8 @@ enum CanonicalSlabRouteDraftExternalizationIssueCode {
   targetSurfaceMismatch,
 }
 
-final class CanonicalSlabRouteDraftExternalizationException implements Exception {
+final class CanonicalSlabRouteDraftExternalizationException
+    implements Exception {
   const CanonicalSlabRouteDraftExternalizationException({
     required this.code,
     required this.message,
@@ -69,7 +70,8 @@ final class CanonicalSlabRouteDraftExternalization {
   }) {
     if (editor.routeSegments.isEmpty) {
       throw const CanonicalSlabRouteDraftExternalizationException(
-        code: CanonicalSlabRouteDraftExternalizationIssueCode.routeDraftRequired,
+        code:
+            CanonicalSlabRouteDraftExternalizationIssueCode.routeDraftRequired,
         message: 'A live route draft is required before slab cutover.',
       );
     }
@@ -77,8 +79,8 @@ final class CanonicalSlabRouteDraftExternalization {
     final continuationId = editor.physicalRouteContinuationId;
     if (continuationId != null && continuationId != intent.routeId) {
       throw CanonicalSlabRouteDraftExternalizationException(
-        code:
-            CanonicalSlabRouteDraftExternalizationIssueCode.routeIdentityMismatch,
+        code: CanonicalSlabRouteDraftExternalizationIssueCode
+            .routeIdentityMismatch,
         message: 'Physical continuation route $continuationId does not match '
             'handoff route ${intent.routeId}.',
       );
@@ -215,8 +217,7 @@ final class CanonicalSlabRouteDraftExternalization {
     }
     if (editor.p2.history.mutationRevision != p2MutationRevision) {
       throw const CanonicalSlabRouteDraftExternalizationException(
-        code:
-            CanonicalSlabRouteDraftExternalizationIssueCode.p2RevisionChanged,
+        code: CanonicalSlabRouteDraftExternalizationIssueCode.p2RevisionChanged,
         message: 'Electrical P2 state changed while the route draft was '
             'externalized.',
       );
@@ -224,8 +225,8 @@ final class CanonicalSlabRouteDraftExternalization {
     if (hadPhysicalContinuation &&
         editor.physicalRouteContinuationId != routeId) {
       throw const CanonicalSlabRouteDraftExternalizationException(
-        code:
-            CanonicalSlabRouteDraftExternalizationIssueCode.routeIdentityMismatch,
+        code: CanonicalSlabRouteDraftExternalizationIssueCode
+            .routeIdentityMismatch,
         message: 'Physical route continuation identity changed during cutover.',
       );
     }
@@ -248,10 +249,11 @@ final class CanonicalSlabRouteDraftExternalization {
     final routingContext =
         CanonicalRoomSurfaceRuntimeRegistry.physicalRoutingContextFor(editor);
     final selectedLegacySpaceId = editor.selectedSpaceId;
-    final selectedCanonicalSpaceId = selectedLegacySpaceId == null ||
-            routingContext == null
-        ? null
-        : routingContext.canonicalSpaceIdForSurfaceSpaceId(selectedLegacySpaceId);
+    final selectedCanonicalSpaceId =
+        selectedLegacySpaceId == null || routingContext == null
+            ? null
+            : routingContext
+                .canonicalSpaceIdForSurfaceSpaceId(selectedLegacySpaceId);
     final expectedCanonicalSpaceId = routingContext == null
         ? null
         : expectedCanonicalSpaceIdResolver(routingContext);
