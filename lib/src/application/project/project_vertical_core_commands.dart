@@ -23,9 +23,9 @@ final class CreateVerticalCoreCommand implements ProjectCommand {
         message: 'Vertical core ${verticalCore.id} already exists.',
       );
     }
-    final verticalCores =
-        Map<VerticalCoreId, ProjectVerticalCore>.from(current.stores.verticalCores)
-          ..[verticalCore.id] = verticalCore;
+    final verticalCores = Map<VerticalCoreId, ProjectVerticalCore>.from(
+        current.stores.verticalCores)
+      ..[verticalCore.id] = verticalCore;
     return ProjectCommandCandidate.fromState(
       state: ProjectMutableState(
         engineeringMetadata: current.engineeringMetadata,
@@ -59,9 +59,9 @@ final class UpdateVerticalCoreCommand implements ProjectCommand {
         message: 'Vertical core ${verticalCore.id} does not exist.',
       );
     }
-    final verticalCores =
-        Map<VerticalCoreId, ProjectVerticalCore>.from(current.stores.verticalCores)
-          ..[verticalCore.id] = verticalCore;
+    final verticalCores = Map<VerticalCoreId, ProjectVerticalCore>.from(
+        current.stores.verticalCores)
+      ..[verticalCore.id] = verticalCore;
     return ProjectCommandCandidate.fromState(
       state: ProjectMutableState(
         engineeringMetadata: current.engineeringMetadata,
@@ -97,9 +97,9 @@ final class RemoveVerticalCoreCommand implements ProjectCommand {
         message: 'Vertical core $verticalCoreId does not exist.',
       );
     }
-    final verticalCores =
-        Map<VerticalCoreId, ProjectVerticalCore>.from(current.stores.verticalCores)
-          ..remove(core.id);
+    final verticalCores = Map<VerticalCoreId, ProjectVerticalCore>.from(
+        current.stores.verticalCores)
+      ..remove(core.id);
     return ProjectCommandCandidate.fromState(
       state: ProjectMutableState(
         engineeringMetadata: current.engineeringMetadata,
