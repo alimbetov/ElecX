@@ -1,4 +1,5 @@
 import 'geometry.dart';
+import 'project_identity.dart';
 import 'site_outdoor_model.dart';
 import 'surfaces.dart';
 
@@ -52,6 +53,7 @@ final class RouteHostRef {
 enum RouteHostTransitionKind {
   surfaceAdjacency,
   roomPenetration,
+  levelPenetration,
   buildingServiceEntry,
   cableEntry,
   externalPowerSource,
@@ -69,7 +71,14 @@ final class RouteHostTransition {
     required this.toPoint,
     this.requiresPenetration = false,
     this.siteConnectionId,
-  });
+    this.slabId,
+  })  : assert(
+          kind == RouteHostTransitionKind.levelPenetration
+              ? slabId != null
+              : slabId == null,
+          'Only levelPenetration transitions may carry a SlabId, and they '
+          'must carry one.',
+        );
 
   final String id;
   final RouteHostTransitionKind kind;
@@ -79,6 +88,10 @@ final class RouteHostTransition {
   final MmPoint toPoint;
   final bool requiresPenetration;
   final String? siteConnectionId;
+
+  /// Stable physical slab ownership for an inter-level continuation marker.
+  /// Wall penetrations and outdoor transitions intentionally keep this null.
+  final SlabId? slabId;
 }
 
 abstract final class SiteRouteTransitionResolver {
