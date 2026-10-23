@@ -35,7 +35,8 @@ void main() {
       expect(level.elevationMm, 30000);
     });
 
-    test('authoring without explicit kind infers physical role deterministically',
+    test(
+        'authoring without explicit kind infers physical role deterministically',
         () {
       ProjectLevelKind createKind(int number) {
         final session = ProjectStructureAuthoringSession(
