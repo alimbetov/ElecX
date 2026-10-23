@@ -1,6 +1,7 @@
 import 'package:elecx/src/domain/adjacent_room.dart';
 import 'package:elecx/src/domain/boundary_penetration.dart';
 import 'package:elecx/src/domain/geometry.dart';
+import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_model.dart';
 import 'package:elecx/src/domain/surface_transition_graph.dart';
 import 'package:elecx/src/domain/surfaces.dart';
@@ -23,6 +24,31 @@ void main() {
     );
     expect(floor.kind, SurfaceTransitionKind.wallToFloor);
     expect(floor.requiresPenetration, isFalse);
+  });
+
+  test('canonical boundary edge wall can continue without wallIndex', () {
+    final controller = EditorController.demo();
+    final room = controller.selectedSpace!;
+    final edgeIds = List.generate(
+      room.boundary.vertices.length,
+      (index) => BoundaryEdgeId('edge-$index'),
+    );
+
+    final candidates = SurfaceTransitionGraph.candidates(
+      level: controller.level,
+      fromSpace: room,
+      fromSurface: RoomSurfaceRef.wallByBoundaryEdge(room.id, edgeIds.first),
+      point: const SurfacePointMm(1000, 0),
+      boundaryEdgeOrderResolver: (spaceId) =>
+          spaceId == room.id ? edgeIds : null,
+    );
+
+    expect(
+      candidates.any(
+        (candidate) => candidate.toSurface == RoomSurfaceRef.floor(room.id),
+      ),
+      isTrue,
+    );
   });
 
   test('wall corner exposes adjacent wall continuation at same height', () {
@@ -99,7 +125,7 @@ void main() {
     );
   });
 
-  test('ceiling to upper floor requires a slab penetration', () {
+  test('ceiling to upper floor requires an adjacent physical slab', () {
     final lowerSpace = EngineeringSpace(
       id: 'lower-room',
       name: 'Lower room',
@@ -123,17 +149,20 @@ void main() {
     final upper = BuildingLevel(
       id: 'L2',
       name: 'Level 2',
-      elevationMm: 3200,
+      elevationMm: 3220,
       spaces: [upperSpace],
     );
 
     final candidate = SurfaceTransitionGraph.levelPenetration(
+      buildingLevels: [lower, upper],
       fromLevel: lower,
       fromSpace: lowerSpace,
       fromSurface: RoomSurfaceRef.ceiling(lowerSpace.id),
       point: const SurfacePointMm(1500, 1000),
+      fromRoomHeightMm: 3000,
       toLevel: upper,
       toSpace: upperSpace,
+      toRoomHeightMm: 3000,
       slabThicknessMm: 220,
       materialId: 'reinforced-concrete',
     );
@@ -151,6 +180,60 @@ void main() {
     expect(penetration.hostThicknessMm, 220);
     expect(penetration.exitAnchor.isContinuationStart, isTrue);
     expect(penetration.exitAnchor.surface, RoomSurfaceRef.floor(upperSpace.id));
+  });
+
+  test('slab penetration rejects a concave-room bounding-box false positive', () {
+    final lowerSpace = EngineeringSpace(
+      id: 'lower-room',
+      name: 'Lower room',
+      type: SpaceType.room,
+      boundary: MmPolygon.rectangle(
+        const MmPoint(0, 0),
+        const MmPoint(4000, 4000),
+      ),
+      referenceFrame: const RoomReferenceFrame(origin: MmPoint(0, 0)),
+    );
+    final upperSpace = EngineeringSpace(
+      id: 'upper-room',
+      name: 'Upper L room',
+      type: SpaceType.room,
+      boundary: MmPolygon([
+        const MmPoint(0, 0),
+        const MmPoint(4000, 0),
+        const MmPoint(4000, 1000),
+        const MmPoint(1000, 1000),
+        const MmPoint(1000, 4000),
+        const MmPoint(0, 4000),
+      ]),
+      referenceFrame: const RoomReferenceFrame(origin: MmPoint(0, 0)),
+    );
+    final lower = BuildingLevel(
+      id: 'L1',
+      name: 'Level 1',
+      elevationMm: 0,
+      spaces: [lowerSpace],
+    );
+    final upper = BuildingLevel(
+      id: 'L2',
+      name: 'Level 2',
+      elevationMm: 3200,
+      spaces: [upperSpace],
+    );
+
+    final candidate = SurfaceTransitionGraph.levelPenetration(
+      buildingLevels: [lower, upper],
+      fromLevel: lower,
+      fromSpace: lowerSpace,
+      fromSurface: RoomSurfaceRef.ceiling(lowerSpace.id),
+      point: const SurfacePointMm(3000, 3000),
+      fromRoomHeightMm: 3000,
+      toLevel: upper,
+      toSpace: upperSpace,
+      toRoomHeightMm: 3000,
+      slabThicknessMm: 200,
+    );
+
+    expect(candidate, isNull);
   });
 }
 
