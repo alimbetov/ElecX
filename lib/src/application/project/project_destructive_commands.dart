@@ -95,6 +95,8 @@ final class RemoveSpaceCommand implements ProjectCommand {
       levelNumber: level.levelNumber,
       displayOrder: level.displayOrder,
       elevationMm: level.elevationMm,
+      kind: level.kind,
+      floorToFloorHeightMm: level.floorToFloorHeightMm,
       zoneIds: level.zoneIds,
       spaceIds: <SpaceId>{...level.spaceIds}..remove(space.id),
     );
@@ -105,6 +107,7 @@ final class RemoveSpaceCommand implements ProjectCommand {
         id: zone.id,
         levelId: zone.levelId,
         name: zone.name,
+        kind: zone.kind,
         spaceIds: <SpaceId>{...zone.spaceIds}..remove(space.id),
       );
     }
@@ -171,6 +174,8 @@ final class RemoveStructuralZoneCommand implements ProjectCommand {
       levelNumber: level.levelNumber,
       displayOrder: level.displayOrder,
       elevationMm: level.elevationMm,
+      kind: level.kind,
+      floorToFloorHeightMm: level.floorToFloorHeightMm,
       zoneIds: <ZoneId>{...level.zoneIds}..remove(zone.id),
       spaceIds: level.spaceIds,
     );
