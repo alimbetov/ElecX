@@ -59,8 +59,8 @@ final class RemoveSpaceCommand implements ProjectCommand {
       ...current.engineeringMetadata.boundaryWallProfileRegistry
           .forSpace(space.id)
           .keys,
-      for (final host
-          in current.engineeringMetadata.boundaryConstructionRegistry.profiles.keys)
+      for (final host in current
+          .engineeringMetadata.boundaryConstructionRegistry.profiles.keys)
         if (host.spaceId == space.id) host.edgeId,
     };
     if (boundaryBlockers.isNotEmpty) {
