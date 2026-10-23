@@ -709,7 +709,7 @@ abstract final class CanonicalBoundaryHostProjection {
   }
 
   static String _routeAnchorKey(String routeId, RouteAnchorId anchorId) =>
-      'route:$routeId:anchor:${anchorId.value}';
+      BoundaryHostedObjectRegistry.routeAnchorObjectKey(routeId, anchorId);
 }
 
 final class CanonicalBoundaryHostMaterialization {
