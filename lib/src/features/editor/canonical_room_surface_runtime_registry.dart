@@ -2,11 +2,15 @@ import '../../application/project/project_boundary_topology_editing.dart';
 import '../../application/project/project_mutation.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/surfaces.dart';
+import 'cable_edit_access.dart';
 import 'canonical_editor_runtime_cutover.dart';
 import 'canonical_room_surface_cutover.dart';
 import 'canonical_room_surface_resume.dart';
 import 'canonical_room_surface_selection.dart';
+import 'component_transform_session.dart';
 import 'editor_controller.dart';
+import 'editor_p2_session.dart';
+import 'engineering_placement_cursor_session.dart';
 
 typedef CanonicalBoundaryTopologyOwnershipCallback = void Function(
   ProjectBoundaryTopologyEditingPort editing,
@@ -67,12 +71,27 @@ abstract final class CanonicalRoomSurfaceRuntimeRegistry {
   static bool hasCanonicalRuntime(EditorController controller) =>
       _coordinators[controller] != null;
 
-  /// Internal production-cutover capability lookup. Callers must still resolve
-  /// their own version-aware projection and may not cache it across mutations.
+  /// Canonical topology changes must never run through a second active edit
+  /// transaction. This is deliberately input-modality agnostic: toolbar,
+  /// keyboard, touch, stylus and direct runtime callers all resolve the same
+  /// mutation capability and therefore share this one fail-closed gate.
+  static bool topologyMutationAdmissionOpen(EditorController controller) =>
+      !controller.p2.isManipulating &&
+      !controller.componentTransform.active &&
+      !controller.cableRouteEdit.active &&
+      !controller.cableEndpointTransform.active &&
+      !controller.placementCursor.active;
+
+  /// Internal production-cutover mutation capability lookup. Navigation and
+  /// resume resolution intentionally do not use this gate; only canonical
+  /// topology mutation paths are denied while another persistent edit session
+  /// owns preview/commit state.
   static CanonicalEditorRuntimeCutoverCoordinator? coordinatorFor(
     EditorController controller,
-  ) =>
-      _coordinators[controller];
+  ) {
+    if (!topologyMutationAdmissionOpen(controller)) return null;
+    return _coordinators[controller];
+  }
 
   static CanonicalBoundaryTopologyOwnershipCallback? topologyOwnershipFor(
     EditorController controller,
