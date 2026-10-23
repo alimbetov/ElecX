@@ -1,13 +1,10 @@
 import '../../domain/canonical_slab_transition_resolver.dart';
 import '../../domain/project_identity.dart';
-import '../../domain/project_model.dart';
 import '../../domain/surface_transition_graph.dart';
 import '../../domain/surfaces.dart';
 import 'canonical_room_surface_runtime_registry.dart';
 import 'canonical_slab_route_draft_externalization.dart';
 import 'canonical_slab_route_handoff_runtime.dart';
-import 'editor_controller.dart';
-
 
 enum CanonicalSlabCableHandoffIssueCode {
   canonicalRuntimeRequired,
