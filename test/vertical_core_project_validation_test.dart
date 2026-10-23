@@ -64,8 +64,9 @@ void main() {
     );
 
     final issues = VerticalCoreProjectValidator.validate(
-      stores: stores,
       verticalCores: {core.id: core},
+      buildingExists: stores.buildings.containsKey,
+      levelBuildingResolver: (levelId) => stores.levels[levelId]?.buildingId,
     );
 
     expect(issues, hasLength(1));
@@ -120,8 +121,9 @@ void main() {
     );
 
     final issues = VerticalCoreProjectValidator.validate(
-      stores: stores,
       verticalCores: {core.id: core},
+      buildingExists: stores.buildings.containsKey,
+      levelBuildingResolver: (levelId) => stores.levels[levelId]?.buildingId,
     );
 
     expect(issues, hasLength(1));
