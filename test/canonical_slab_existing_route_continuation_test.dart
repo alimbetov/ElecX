@@ -32,7 +32,8 @@ void main() {
       final original = fixture.route;
       final revisionBeforeBegin = fixture.editor.p2.history.mutationRevision;
 
-      expect(fixture.editor.beginPhysicalRouteContinuation(original.id), isTrue);
+      expect(
+          fixture.editor.beginPhysicalRouteContinuation(original.id), isTrue);
       expect(fixture.editor.physicalRouteContinuationId, 'C-103');
       expect(
         fixture.editor.activeSurface,
@@ -187,7 +188,8 @@ final class _Fixture {
     route = ElectricalCableRoute(
       id: 'C-103',
       source: const ElectricalEndpointRef(componentId: 'source', portId: 'out'),
-      target: const ElectricalEndpointRef(componentId: 'target-a', portId: 'in'),
+      target:
+          const ElectricalEndpointRef(componentId: 'target-a', portId: 'in'),
       segments: [
         ElectricalRouteSegment(
           surface: canonicalLowerCeiling,
