@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/project_structure_authoring.dart';
+import 'package:elecx/src/domain/boundary_construction_registry.dart';
 import 'package:elecx/src/domain/boundary_edge_identity_registry.dart';
 import 'package:elecx/src/domain/boundary_topology.dart';
 import 'package:elecx/src/domain/geometry.dart';
@@ -15,6 +16,7 @@ import 'package:elecx/src/features/editor/canonical_editor_workspace_adapter.dar
 import 'package:elecx/src/features/editor/canonical_wall_construction_runtime.dart';
 import 'package:elecx/src/features/editor/editor_building_workspace.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
+import 'package:elecx/src/features/editor/wall_construction_edit_contract.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -85,6 +87,113 @@ void main() {
         expect(fixture.controller.documentHistory.redoDepth, 0);
       },
     );
+
+    test('stale 180 mm baseline cannot overwrite external 200 mm edit', () {
+      final fixture = _Fixture();
+      addTearDown(fixture.dispose);
+      final binding = fixture.bind();
+      addTearDown(binding.dispose);
+      fixture.controller.showWall(0);
+
+      expect(
+        CanonicalWallConstructionRuntime.setActiveWallConstruction(
+          controller: fixture.controller,
+          thicknessMm: 180,
+          materialId: 'brick',
+        ),
+        isTrue,
+      );
+      final baseline =
+          CanonicalWallConstructionEditContract.capture(fixture.controller)!;
+      expect(baseline.profile!.thicknessMm, 180);
+      expect(baseline.expectedVersion, LocalProjectVersion(1));
+
+      expect(
+        CanonicalWallConstructionRuntime.setActiveWallConstruction(
+          controller: fixture.controller,
+          thicknessMm: 200,
+          materialId: 'brick',
+        ),
+        isTrue,
+      );
+      expect(fixture.session.project.version, LocalProjectVersion(2));
+
+      expect(
+        () => CanonicalWallConstructionEditContract.save(
+          controller: fixture.controller,
+          baseline: baseline,
+          profile: BoundaryConstructionProfile(
+            kind: BoundaryConstructionKind.wall,
+            thicknessMm: 190,
+            materialId: 'brick',
+          ),
+        ),
+        throwsA(
+          isA<CanonicalWallConstructionEditConflictException>().having(
+            (error) => error.message,
+            'message',
+            contains('advanced from version 1 to 2'),
+          ),
+        ),
+      );
+
+      final current =
+          CanonicalWallConstructionEditContract.capture(fixture.controller)!;
+      expect(current.profile!.thicknessMm, 200);
+      expect(current.expectedVersion, LocalProjectVersion(2));
+    });
+
+    test('same numeric version in replacement session does not own old draft',
+        () {
+      final fixture = _Fixture();
+      addTearDown(fixture.dispose);
+      final firstBinding = fixture.bind();
+      fixture.controller.showWall(0);
+
+      expect(
+        CanonicalWallConstructionRuntime.setActiveWallConstruction(
+          controller: fixture.controller,
+          thicknessMm: 180,
+          materialId: 'brick',
+        ),
+        isTrue,
+      );
+      final baseline =
+          CanonicalWallConstructionEditContract.capture(fixture.controller)!;
+      final replacement = fixture.cloneCurrentSession(seed: 1203);
+      expect(replacement.project.version, baseline.expectedVersion);
+
+      firstBinding.dispose();
+      final replacementBinding = fixture.bindSession(replacement);
+      addTearDown(replacementBinding.dispose);
+      fixture.controller.showWall(0);
+
+      expect(
+        () => CanonicalWallConstructionEditContract.save(
+          controller: fixture.controller,
+          baseline: baseline,
+          profile: BoundaryConstructionProfile(
+            kind: BoundaryConstructionKind.wall,
+            thicknessMm: 200,
+            materialId: 'brick',
+          ),
+        ),
+        throwsA(
+          isA<CanonicalWallConstructionEditConflictException>().having(
+            (error) => error.message,
+            'message',
+            contains('session changed'),
+          ),
+        ),
+      );
+      expect(replacement.project.version, LocalProjectVersion(1));
+      expect(
+        CanonicalWallConstructionEditContract.capture(fixture.controller)!
+            .profile!
+            .thicknessMm,
+        180,
+      );
+    });
   });
 }
 
@@ -185,9 +294,13 @@ final class _Fixture {
     session = _session(ProjectMutationSession(project), seed: 1201);
   }
 
-  CanonicalEditorScreenCutoverBinding bind() {
+  CanonicalEditorScreenCutoverBinding bind() => bindSession(session);
+
+  CanonicalEditorScreenCutoverBinding bindSession(
+    ProjectStructureAuthoringSession targetSession,
+  ) {
     final coordinator = CanonicalEditorRuntimeCutoverCoordinator(
-      session: session,
+      session: targetSession,
       adapter: CanonicalEditorWorkspaceAdapter(
         workspace: workspace,
         binding: CanonicalEditorWorkspaceBinding(
