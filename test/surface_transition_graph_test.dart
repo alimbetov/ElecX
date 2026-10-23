@@ -126,7 +126,8 @@ void main() {
     );
   });
 
-  test('ceiling to upper floor proves geometry but cannot commit without SlabId',
+  test(
+      'ceiling to upper floor proves geometry but cannot commit without SlabId',
       () {
     final lowerSpace = EngineeringSpace(
       id: 'lower-room',
