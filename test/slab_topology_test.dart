@@ -41,6 +41,30 @@ void main() {
       expect(slab.thicknessMm, 200);
     });
 
+    test('stable slab faces map ceiling and floor projections to one slab', () {
+      final slab = _interLevelSlab('slab-01-02');
+
+      expect(
+        slab.belowFace,
+        SlabFaceRef(
+          slabId: SlabId('slab-01-02'),
+          side: SlabFaceSide.below,
+        ),
+      );
+      expect(slab.belowFace.opposite, slab.aboveFace);
+      expect(slab.levelForFace(slab.belowFace), LevelId('level-01'));
+      expect(slab.levelForFace(slab.aboveFace), LevelId('level-02'));
+      expect(
+        () => slab.levelForFace(
+          SlabFaceRef(
+            slabId: SlabId('other-slab'),
+            side: SlabFaceSide.below,
+          ),
+        ),
+        throwsArgumentError,
+      );
+    });
+
     test('foundation and roof have exactly one exterior side', () {
       final foundation = ProjectSlab(
         id: SlabId('foundation'),
@@ -64,7 +88,9 @@ void main() {
       );
 
       expect(foundation.belowLevelId, isNull);
+      expect(foundation.levelForFace(foundation.belowFace), isNull);
       expect(roof.aboveLevelId, isNull);
+      expect(roof.levelForFace(roof.aboveFace), isNull);
     });
 
     test('rejects zero-area footprint and invalid level-side semantics', () {
