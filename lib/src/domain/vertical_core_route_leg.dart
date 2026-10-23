@@ -3,16 +3,29 @@ import 'project_identity.dart';
 /// Hidden physical cable run inside one stable riser/shaft between two
 /// consecutive slab penetrations.
 ///
-/// Slab thickness is deliberately excluded: it is already owned by the two
-/// [BoundaryPenetration] entities. This leg contributes only the vertical run
+/// Slab thickness is deliberately excluded because it is already owned by the
+/// physical penetration entities. This leg contributes only the vertical run
 /// between those physical slab boundaries.
 final class VerticalCoreRouteLeg {
-  const VerticalCoreRouteLeg({
+  VerticalCoreRouteLeg({
     required this.verticalCoreId,
     required this.fromSlabId,
     required this.toSlabId,
     required this.lengthMm,
-  }) : assert(lengthMm >= 0);
+  }) {
+    if (fromSlabId == toSlabId) {
+      throw ArgumentError(
+        'VerticalCore route leg must connect two different SlabId values.',
+      );
+    }
+    if (lengthMm < 0) {
+      throw ArgumentError.value(
+        lengthMm,
+        'lengthMm',
+        'VerticalCore route leg length must be non-negative.',
+      );
+    }
+  }
 
   final VerticalCoreId verticalCoreId;
   final SlabId fromSlabId;
