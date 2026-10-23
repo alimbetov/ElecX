@@ -1,15 +1,24 @@
 import 'package:flutter/material.dart';
 
+import '../../application/project/project_repository.dart';
+import '../editor/canonical_editor_production_bootstrap.dart';
+import '../editor/canonical_owning_editor_project_store.dart';
 import '../editor/editor_project_document.dart';
 import '../editor/editor_project_recovery.dart';
 import '../editor/project_persistence_metadata.dart';
 import '../editor/unified_workspace_editor_screen.dart';
 
 class ProjectHubScreen extends StatefulWidget {
-  const ProjectHubScreen({super.key, this.projectStore, this.recoveryStore});
+  const ProjectHubScreen({
+    super.key,
+    this.projectStore,
+    this.recoveryStore,
+    this.canonicalProjectRepository,
+  });
 
   final EditorProjectStore? projectStore;
   final EditorProjectRecoveryStore? recoveryStore;
+  final ProjectRepository? canonicalProjectRepository;
 
   @override
   State<ProjectHubScreen> createState() => _ProjectHubScreenState();
@@ -117,15 +126,44 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
   }) async {
     final store = await _storeFuture;
     final recoveryStore = await _recoveryStoreFuture;
+    final sourceDocument = recovery?.document ?? document;
+    CanonicalEditorProductionHandle? canonicalHandle;
+    final canonicalRepository = widget.canonicalProjectRepository;
+    if (sourceDocument != null && canonicalRepository != null) {
+      try {
+        canonicalHandle = await CanonicalEditorProductionHandle.loadOrBootstrap(
+          legacyDocument: sourceDocument,
+          repository: canonicalRepository,
+        );
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Canonical project state could not be opened safely: $error',
+            ),
+          ),
+        );
+        return;
+      }
+    }
     if (!mounted) return;
+
+    final editorStore = canonicalHandle == null
+        ? store
+        : CanonicalOwningEditorProjectStore(
+            legacy: store,
+            canonical: canonicalHandle,
+          );
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => UnifiedWorkspaceEditorScreen(
-          projectStore: store,
+          projectStore: editorStore,
           recoveryStore: recoveryStore,
           initialDocument: document,
           initialRecovery: recovery,
           initialMetadata: metadata,
+          canonicalRuntime: canonicalHandle?.runtimeConfig,
         ),
       ),
     );
