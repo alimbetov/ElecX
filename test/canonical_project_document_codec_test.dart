@@ -222,7 +222,8 @@ void main() {
         ProjectLevelKind.residential,
       );
       expect(
-        restored.aggregate.index.level(LevelId('level-a-2'))!
+        restored.aggregate.index
+            .level(LevelId('level-a-2'))!
             .floorToFloorHeightMm,
         3000,
       );
@@ -316,9 +317,9 @@ void main() {
         throwsUnsupportedError,
       );
       expect(
-        () => (document.payload['boundaryEdgeIdentityRegistry']!
-                as List<Object?>)
-            .clear(),
+        () =>
+            (document.payload['boundaryEdgeIdentityRegistry']! as List<Object?>)
+                .clear(),
         throwsUnsupportedError,
       );
     });
