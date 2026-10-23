@@ -31,7 +31,8 @@ final class BoundaryPenetrationAnchor {
     }
     if (routeId.isEmpty) throw ArgumentError('Route id is required.');
     if (point.xMm < 0 || point.yMm < 0) {
-      throw ArgumentError('Penetration anchor coordinates must be non-negative.');
+      throw ArgumentError(
+          'Penetration anchor coordinates must be non-negative.');
     }
   }
 
@@ -152,7 +153,8 @@ final class BoundaryPenetration {
   BoundaryPenetrationAnchor oppositeAnchor(RoomSurfaceRef surface) {
     if (entryAnchor.surface == surface) return exitAnchor;
     if (exitAnchor.surface == surface) return entryAnchor;
-    throw StateError('Surface ${surface.id} does not belong to penetration $id.');
+    throw StateError(
+        'Surface ${surface.id} does not belong to penetration $id.');
   }
 
   void _validateHostSurfaces() {
