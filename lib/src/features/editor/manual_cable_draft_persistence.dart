@@ -1,83 +1,63 @@
-import '../../domain/electrical_placement.dart';
-import '../../domain/electrical_routing.dart';
+import '../../domain/boundary_construction_transition_resolver.dart';
+import '../../domain/project_model.dart';
+import '../../domain/surface_transition_graph.dart';
 import '../../domain/surfaces.dart';
-import '../../engine/editor_layers.dart';
-import '../../engine/port_snap_resolver.dart';
+import 'canonical_room_surface_runtime_registry.dart';
 import 'editor_controller.dart';
-import 'editor_p2_session.dart';
-
-final class _ManualEndpoint {
-  const _ManualEndpoint(this.component, this.port);
-
-  final ElectricalComponentPlacement component;
-  final ElectricalPortDefinition port;
-}
+import 'physical_manual_cable_draft_persistence.dart';
 
 extension ManualCableDraftPersistence on EditorController {
+  /// Production manual-route commit boundary.
+  ///
+  /// The public API remains stable for SurfaceCanvas, but route construction is
+  /// now delegated to the physical authoring flow. Every surface change must be
+  /// proven by SurfaceTransitionGraph; canonical runtime additionally resolves
+  /// wall thickness/material from BoundaryConstructionRegistry. A missing or
+  /// conflicting physical construction therefore preserves the draft and
+  /// rejects commit instead of creating a teleporting cable.
   bool finishManualCableDraft({int endpointSnapRadiusMm = 180}) {
-    if (tool != EditorTool.cableRoute ||
-        routeSegments.isEmpty ||
-        endpointSnapRadiusMm <= 0 ||
-        !p2.layers.isVisible(EditorLayerId.cableRoutes) ||
-        p2.layers.isLocked(EditorLayerId.cableRoutes)) {
-      return false;
-    }
-    if (routeSegments.any((segment) => segment.points.length < 2)) {
-      return false;
-    }
+    final routingContext =
+        CanonicalRoomSurfaceRuntimeRegistry.physicalRoutingContextFor(this);
+    return finishPhysicalManualCableDraft(
+      endpointSnapRadiusMm: endpointSnapRadiusMm,
+      resolveTransition: (fromSurface, fromPoint, toSurface, toPoint) {
+        final fromSpace = _spaceById(level, fromSurface.spaceId);
+        if (fromSpace == null) return null;
 
-    final firstDraft = routeSegments.first;
-    final lastDraft = routeSegments.last;
-    final source = _nearestManualEndpoint(
-      components: p2.components,
-      surface: firstDraft.surface,
-      point: firstDraft.points.first,
-      role: CableEndpointRole.source,
-      radiusMm: endpointSnapRadiusMm,
-    );
-    if (source == null) return false;
-    final target = _nearestManualEndpoint(
-      components: p2.components,
-      surface: lastDraft.surface,
-      point: lastDraft.points.last,
-      role: CableEndpointRole.target,
-      radiusMm: endpointSnapRadiusMm,
-      excludeComponentId: source.component.id,
-      counterpartKind: source.port.kind,
-    );
-    if (target == null) return false;
+        if (routingContext != null) {
+          return BoundaryConstructionTransitionResolver.resolve(
+            level: level,
+            fromSpace: fromSpace,
+            fromSurface: fromSurface,
+            fromPoint: fromPoint,
+            toSurface: toSurface,
+            toPoint: toPoint,
+            constructions: routingContext.constructions,
+            edgeOrderResolver: routingContext.edgeOrderForLegacySpace,
+            canonicalSpaceIdResolver:
+                routingContext.canonicalSpaceIdForLegacy,
+          );
+        }
 
-    final segments = <ElectricalRouteSegment>[];
-    for (var i = 0; i < routeSegments.length; i++) {
-      final draft = routeSegments[i];
-      final points = List<SurfacePointMm>.of(draft.points);
-      if (i == 0) points[0] = source.component.position;
-      if (i == routeSegments.length - 1) {
-        points[points.length - 1] = target.component.position;
-      }
-      segments.add(
-        ElectricalRouteSegment(
-          surface: draft.surface,
-          points: List.unmodifiable(points),
-        ),
-      );
-    }
-
-    final committed = p2.addManualRouteSegments(
-      source: ElectricalEndpointRef(
-        componentId: source.component.id,
-        portId: source.port.id,
-      ),
-      target: ElectricalEndpointRef(
-        componentId: target.component.id,
-        portId: target.port.id,
-      ),
-      segments: List.unmodifiable(segments),
+        // Transitional/offline editor sessions have no canonical construction
+        // registry. Ordinary same-room surface adjacency remains available,
+        // while a physical wall crossing has no thickness evidence and is
+        // consequently rejected by CablePenetrationAuthoring.
+        for (final candidate in SurfaceTransitionGraph.candidates(
+          level: level,
+          fromSpace: fromSpace,
+          fromSurface: fromSurface,
+          point: fromPoint,
+        )) {
+          if (candidate.toSurface == toSurface &&
+              candidate.toPoint == toPoint &&
+              !candidate.requiresPenetration) {
+            return candidate;
+          }
+        }
+        return null;
+      },
     );
-    if (!committed) return false;
-    clearRouteDraft();
-    setTool(EditorTool.select);
-    return true;
   }
 
   void cancelManualCableDraft({bool exitTool = false}) {
@@ -88,52 +68,9 @@ extension ManualCableDraftPersistence on EditorController {
   }
 }
 
-_ManualEndpoint? _nearestManualEndpoint({
-  required Iterable<ElectricalComponentPlacement> components,
-  required RoomSurfaceRef surface,
-  required SurfacePointMm point,
-  required CableEndpointRole role,
-  required int radiusMm,
-  String? excludeComponentId,
-  ElectricalPortKind? counterpartKind,
-}) {
-  _ManualEndpoint? best;
-  var bestDistanceSquared = radiusMm * radiusMm + 1;
-  for (final component in components) {
-    if (component.surface != surface || component.id == excludeComponentId) {
-      continue;
-    }
-    final dx = component.position.xMm - point.xMm;
-    final dy = component.position.yMm - point.yMm;
-    final distanceSquared = dx * dx + dy * dy;
-    if (distanceSquared > radiusMm * radiusMm ||
-        distanceSquared >= bestDistanceSquared) {
-      continue;
-    }
-    for (final port in component.ports) {
-      final roleCompatible = switch (role) {
-        CableEndpointRole.source => port.kind == ElectricalPortKind.powerOut ||
-            port.kind == ElectricalPortKind.controlOut,
-        CableEndpointRole.target => port.kind == ElectricalPortKind.powerIn ||
-            port.kind == ElectricalPortKind.controlIn,
-      };
-      if (!roleCompatible) continue;
-      if (counterpartKind != null) {
-        final compatible = role == CableEndpointRole.source
-            ? ElectricalPortCompatibility.areCompatible(
-                port.kind,
-                counterpartKind,
-              )
-            : ElectricalPortCompatibility.areCompatible(
-                counterpartKind,
-                port.kind,
-              );
-        if (!compatible) continue;
-      }
-      best = _ManualEndpoint(component, port);
-      bestDistanceSquared = distanceSquared;
-      break;
-    }
+EngineeringSpace? _spaceById(BuildingLevel level, String spaceId) {
+  for (final space in level.spaces) {
+    if (space.id == spaceId) return space;
   }
-  return best;
+  return null;
 }
