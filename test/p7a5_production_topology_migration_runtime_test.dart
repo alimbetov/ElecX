@@ -4,15 +4,18 @@ import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/project_structure_authoring.dart';
 import 'package:elecx/src/domain/boundary_edge_identity_registry.dart';
 import 'package:elecx/src/domain/boundary_topology.dart';
+import 'package:elecx/src/domain/electrical_placement.dart';
 import 'package:elecx/src/domain/geometry.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_model.dart';
 import 'package:elecx/src/domain/project_orientation.dart';
+import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/features/editor/canonical_boundary_topology_migration_runtime.dart';
 import 'package:elecx/src/features/editor/canonical_editor_runtime_cutover.dart';
 import 'package:elecx/src/features/editor/canonical_editor_screen_cutover_binding.dart';
 import 'package:elecx/src/features/editor/canonical_editor_workspace_adapter.dart';
+import 'package:elecx/src/features/editor/component_transform_session.dart';
 import 'package:elecx/src/features/editor/editor_building_workspace.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
 import 'package:elecx/src/features/editor/editor_document_history.dart';
@@ -161,6 +164,88 @@ void main() {
       expect(fixture.controller.activeSurface, isNull);
       expect(fixture.ownershipCount, 1);
       expect(fixture.controller.documentHistory.undoDepth, 1);
+    },
+  );
+
+  testWidgets(
+    'P7A-6.9 active transform blocks direct runtime toolbar and keyboard split',
+    (tester) async {
+      final fixture = _Fixture();
+      addTearDown(fixture.dispose);
+      final binding = fixture.bind();
+      addTearDown(binding.dispose);
+
+      fixture.controller.showWall(0);
+      final component = fixture.controller.p2.placeComponent(
+        type: ElectricalComponentType.socketOutlet,
+        surface: fixture.controller.activeSurface!,
+        position: const SurfacePointMm(1000, 1000),
+      );
+      expect(
+        CanonicalBoundaryTopologyMigrationRuntime.adoptLegacyHosts(
+          controller: fixture.controller,
+          idFactory: SecureRandomEntityIdFactory(random: Random(753)),
+        ),
+        isTrue,
+      );
+
+      fixture.controller.showWall(0);
+      fixture.controller.p2.select(component.id);
+      expect(fixture.controller.componentTransform.begin(), isTrue);
+
+      final versionBefore = fixture.session.project.version;
+      final historyBefore = fixture.controller.documentHistory.undoDepth;
+      final ownershipBefore = fixture.ownershipCount;
+
+      expect(
+        CanonicalBoundaryTopologyMigrationRuntime.splitEdge(
+          controller: fixture.controller,
+          edgeId: fixture.edgeIds.first,
+          splitPoint: const BoundaryPointMm(xMm: 2000, yMm: 0),
+          idFactory: SecureRandomEntityIdFactory(random: Random(754)),
+        ),
+        isFalse,
+      );
+      expect(fixture.session.project.version, versionBefore);
+      expect(
+        fixture.session.project.index.boundary(fixture.spaceId)!.orderedEdgeIds,
+        fixture.edgeIds,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                UnifiedEditorIconToolbar(controller: fixture.controller),
+                Expanded(
+                  child: EditorKeyboardScope(
+                    controller: fixture.controller,
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('boundary-split-edge')), findsNothing);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyS);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
+      await tester.pump();
+
+      expect(fixture.session.project.version, versionBefore);
+      expect(
+        fixture.session.project.index.boundary(fixture.spaceId)!.orderedEdgeIds,
+        fixture.edgeIds,
+      );
+      expect(fixture.controller.documentHistory.undoDepth, historyBefore);
+      expect(fixture.ownershipCount, ownershipBefore);
+      expect(fixture.controller.componentTransform.active, isTrue);
+      fixture.controller.componentTransform.cancel();
     },
   );
 
