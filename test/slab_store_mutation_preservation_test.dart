@@ -162,22 +162,22 @@ final class _Fixture {
   final SpaceId spaceId = SpaceId('space-l1');
   final SlabId slabId = SlabId('slab-01-02');
 
-  ProjectSlab get slab => ProjectSlab(
-        id: slabId,
-        buildingId: buildingId,
-        kind: SlabKind.interLevel,
-        belowLevelId: lowerLevelId,
-        aboveLevelId: upperLevelId,
-        bottomElevationMm: 3000,
-        thicknessMm: 200,
-        materialId: 'reinforced-concrete',
-        footprint: const [
-          BoundaryPointMm(xMm: 0, yMm: 0),
-          BoundaryPointMm(xMm: 6000, yMm: 0),
-          BoundaryPointMm(xMm: 6000, yMm: 4000),
-          BoundaryPointMm(xMm: 0, yMm: 4000),
-        ],
-      );
+  late final ProjectSlab slab = ProjectSlab(
+    id: slabId,
+    buildingId: buildingId,
+    kind: SlabKind.interLevel,
+    belowLevelId: lowerLevelId,
+    aboveLevelId: upperLevelId,
+    bottomElevationMm: 3000,
+    thicknessMm: 200,
+    materialId: 'reinforced-concrete',
+    footprint: const [
+      BoundaryPointMm(xMm: 0, yMm: 0),
+      BoundaryPointMm(xMm: 6000, yMm: 0),
+      BoundaryPointMm(xMm: 6000, yMm: 4000),
+      BoundaryPointMm(xMm: 0, yMm: 4000),
+    ],
+  );
 
   ProjectAggregateRoot project() {
     final currentSlab = slab;
