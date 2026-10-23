@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'boundary_penetration.dart';
 import 'geometry.dart';
+import 'project_identity.dart';
 import 'project_model.dart';
 import 'surface_routing.dart';
 import 'surfaces.dart';
@@ -24,6 +25,10 @@ typedef BoundaryMaterialResolver = String? Function(
   RoomSurfaceRef toSurface,
 );
 
+typedef BoundaryEdgeOrderResolver = List<BoundaryEdgeId>? Function(
+  String spaceId,
+);
+
 /// One physical continuation point represented on two surface coordinate
 /// systems. Both anchors refer to the same place in the building.
 final class SurfaceTransitionCandidate {
@@ -43,9 +48,6 @@ final class SurfaceTransitionCandidate {
   final SurfacePointMm fromPoint;
   final RoomSurfaceRef toSurface;
   final SurfacePointMm toPoint;
-
-  /// Non-null means this transition crosses a physical construction and cannot
-  /// be committed as a zero-length teleport between surfaces.
   final BoundaryPenetrationRequirement? penetrationRequirement;
 
   bool get requiresPenetration => penetrationRequirement != null;
@@ -72,11 +74,6 @@ final class SurfaceTransitionCandidate {
 }
 
 /// Discovers physically valid continuation points for an in-progress route.
-///
-/// Same-room transitions reuse [SurfaceTransitionResolver]. Cross-room wall
-/// transitions always require a physical penetration. Optional thickness and
-/// material resolvers allow the graph to bind that requirement to the current
-/// wall-construction registry without coupling routing to persistence.
 abstract final class SurfaceTransitionGraph {
   static List<SurfaceTransitionCandidate> candidates({
     required BuildingLevel level,
@@ -87,7 +84,10 @@ abstract final class SurfaceTransitionGraph {
     int toleranceMm = 2,
     BoundaryThicknessResolver? thicknessResolver,
     BoundaryMaterialResolver? materialResolver,
+    BoundaryEdgeOrderResolver? boundaryEdgeOrderResolver,
   }) {
+    if (fromSurface.spaceId != fromSpace.id) return const [];
+    final sourceEdgeIds = boundaryEdgeOrderResolver?.call(fromSpace.id);
     final result = <SurfaceTransitionCandidate>[];
 
     void addSameRoom(RoomSurfaceRef target, SurfaceTransitionKind kind) {
@@ -98,6 +98,7 @@ abstract final class SurfaceTransitionGraph {
         to: target,
         roomHeightMm: roomHeightMm,
         toleranceMm: toleranceMm,
+        orderedBoundaryEdgeIds: sourceEdgeIds,
       );
       if (mapped == null) return;
       result.add(
@@ -121,7 +122,7 @@ abstract final class SurfaceTransitionGraph {
         RoomSurfaceRef.ceiling(fromSpace.id),
         SurfaceTransitionKind.wallToCeiling,
       );
-      for (final wall in RoomSurfaceResolver.walls(fromSpace)) {
+      for (final wall in _wallsForSpace(fromSpace, sourceEdgeIds)) {
         if (wall.ref == fromSurface) continue;
         addSameRoom(wall.ref, SurfaceTransitionKind.wallToWall);
       }
@@ -132,12 +133,15 @@ abstract final class SurfaceTransitionGraph {
           fromSurface: fromSurface,
           point: point,
           toleranceMm: toleranceMm,
+          roomHeightMm: roomHeightMm,
           thicknessResolver: thicknessResolver,
           materialResolver: materialResolver,
+          boundaryEdgeOrderResolver: boundaryEdgeOrderResolver,
         ),
       );
     } else {
-      for (final wall in RoomSurfaceResolver.walls(fromSpace)) {
+      if (!_horizontalPointIsValid(fromSpace, point)) return const [];
+      for (final wall in _wallsForSpace(fromSpace, sourceEdgeIds)) {
         addSameRoom(
           wall.ref,
           fromSurface.type == SurfacePlaneType.floor
@@ -154,20 +158,25 @@ abstract final class SurfaceTransitionGraph {
     return List.unmodifiable(unique.values);
   }
 
-  /// Resolves a ceiling/floor penetration between two building levels at the
-  /// same plan coordinate. This is intentionally explicit: floor and ceiling
-  /// surfaces do not become adjacent merely because they belong to successive
-  /// levels; the route must cross a physical slab.
+  /// Resolves a slab penetration only between physically adjacent levels and
+  /// where source and target room polygons overlap at the same plan point.
   static SurfaceTransitionCandidate? levelPenetration({
+    required Iterable<BuildingLevel> buildingLevels,
     required BuildingLevel fromLevel,
     required EngineeringSpace fromSpace,
     required RoomSurfaceRef fromSurface,
     required SurfacePointMm point,
+    required int fromRoomHeightMm,
     required BuildingLevel toLevel,
     required EngineeringSpace toSpace,
+    required int toRoomHeightMm,
     required int slabThicknessMm,
+    int verticalToleranceMm = 2,
     String? materialId,
   }) {
+    if (fromRoomHeightMm <= 0 || toRoomHeightMm <= 0) {
+      throw ArgumentError('Room heights must be positive.');
+    }
     if (slabThicknessMm <= 0) {
       throw ArgumentError.value(
         slabThicknessMm,
@@ -175,20 +184,41 @@ abstract final class SurfaceTransitionGraph {
         'Must be positive.',
       );
     }
+    if (verticalToleranceMm < 0) {
+      throw ArgumentError.value(
+        verticalToleranceMm,
+        'verticalToleranceMm',
+        'Must be non-negative.',
+      );
+    }
     if (fromLevel.id == toLevel.id) return null;
+    if (!_levelContainsSpace(fromLevel, fromSpace) ||
+        !_levelContainsSpace(toLevel, toSpace)) {
+      return null;
+    }
+    if (!_areAdjacentLevels(buildingLevels, fromLevel, toLevel)) return null;
 
     final isUp = toLevel.elevationMm > fromLevel.elevationMm;
-    final expectedFrom = isUp ? SurfacePlaneType.ceiling : SurfacePlaneType.floor;
-    final expectedTo = isUp ? SurfacePlaneType.floor : SurfacePlaneType.ceiling;
+    final expectedFrom =
+        isUp ? SurfacePlaneType.ceiling : SurfacePlaneType.floor;
+    final expectedTo =
+        isUp ? SurfacePlaneType.floor : SurfacePlaneType.ceiling;
     if (fromSurface.type != expectedFrom || fromSurface.spaceId != fromSpace.id) {
+      return null;
+    }
+    if (!_horizontalPointIsValid(fromSpace, point)) return null;
+
+    final physicalGapMm = isUp
+        ? toLevel.elevationMm -
+            (fromLevel.elevationMm + fromRoomHeightMm)
+        : fromLevel.elevationMm - (toLevel.elevationMm + toRoomHeightMm);
+    if (physicalGapMm <= 0 ||
+        (physicalGapMm - slabThicknessMm).abs() > verticalToleranceMm) {
       return null;
     }
 
     final planPoint = _horizontalToPlan(fromSpace, point);
-    if (!toSpace.boundary.contains(planPoint) &&
-        !_onBounds(toSpace.boundary.bounds, planPoint)) {
-      return null;
-    }
+    if (!_containsOrTouches(toSpace.boundary, planPoint)) return null;
 
     final target = expectedTo == SurfacePlaneType.floor
         ? RoomSurfaceRef.floor(toSpace.id)
@@ -215,26 +245,36 @@ abstract final class SurfaceTransitionGraph {
     required RoomSurfaceRef fromSurface,
     required SurfacePointMm point,
     required int toleranceMm,
+    required int roomHeightMm,
     required BoundaryThicknessResolver? thicknessResolver,
     required BoundaryMaterialResolver? materialResolver,
+    required BoundaryEdgeOrderResolver? boundaryEdgeOrderResolver,
   }) {
-    final fromWall = RoomSurfaceResolver.wall(
+    final sourceEdgeIds = boundaryEdgeOrderResolver?.call(fromSpace.id);
+    final fromWall = _wallForRef(
       fromSpace,
-      fromSurface.wallIndex!,
+      fromSurface,
+      sourceEdgeIds,
+      roomHeightMm,
     );
+    if (fromWall == null ||
+        !fromWall.profile.containsPoint(point.xMm, point.yMm)) {
+      return const [];
+    }
     final worldPoint = RoomSurfaceResolver.wallLocalToPlan(fromWall, point.xMm);
     final result = <SurfaceTransitionCandidate>[];
 
     for (final space in level.spaces) {
       if (space.id == fromSpace.id) continue;
-      for (final wall in RoomSurfaceResolver.walls(space)) {
+      final targetEdgeIds = boundaryEdgeOrderResolver?.call(space.id);
+      for (final wall in _wallsForSpace(space, targetEdgeIds)) {
         if (!_collinear(fromWall, wall, toleranceMm: toleranceMm)) continue;
         final x = _distanceAlongWallIfOnSegment(
           wall,
           worldPoint,
           toleranceMm: toleranceMm,
         );
-        if (x == null) continue;
+        if (x == null || !wall.profile.containsPoint(x, point.yMm)) continue;
         final mapped = SurfacePointMm(x, point.yMm);
         result.add(
           SurfaceTransitionCandidate(
@@ -256,6 +296,81 @@ abstract final class SurfaceTransitionGraph {
     return result;
   }
 
+  static List<RoomWallSurface> _wallsForSpace(
+    EngineeringSpace space,
+    List<BoundaryEdgeId>? edgeIds,
+  ) {
+    if (edgeIds == null) return RoomSurfaceResolver.walls(space);
+    try {
+      return RoomSurfaceResolver.wallsByBoundaryEdges(space, edgeIds);
+    } on ArgumentError {
+      return const [];
+    }
+  }
+
+  static RoomWallSurface? _wallForRef(
+    EngineeringSpace space,
+    RoomSurfaceRef ref,
+    List<BoundaryEdgeId>? edgeIds,
+    int roomHeightMm,
+  ) {
+    if (ref.type != SurfacePlaneType.wall || ref.spaceId != space.id) return null;
+    final edgeId = ref.boundaryEdgeId;
+    if (edgeId != null) {
+      if (edgeIds == null) return null;
+      try {
+        return RoomSurfaceResolver.wallByBoundaryEdge(
+          space,
+          edgeIds,
+          edgeId,
+          defaultHeightMm: roomHeightMm,
+        );
+      } on StateError {
+        return null;
+      } on ArgumentError {
+        return null;
+      }
+    }
+    final wallIndex = ref.wallIndex;
+    if (wallIndex == null) return null;
+    try {
+      return RoomSurfaceResolver.wall(
+        space,
+        wallIndex,
+        defaultHeightMm: roomHeightMm,
+      );
+    } on RangeError {
+      return null;
+    }
+  }
+
+  static bool _levelContainsSpace(
+    BuildingLevel level,
+    EngineeringSpace space,
+  ) =>
+      level.spaces.any((candidate) => candidate.id == space.id);
+
+  static bool _areAdjacentLevels(
+    Iterable<BuildingLevel> buildingLevels,
+    BuildingLevel a,
+    BuildingLevel b,
+  ) {
+    final levels = buildingLevels.toList()
+      ..sort((left, right) => left.elevationMm.compareTo(right.elevationMm));
+    final aIndex = levels.indexWhere((level) => level.id == a.id);
+    final bIndex = levels.indexWhere((level) => level.id == b.id);
+    if (aIndex < 0 || bIndex < 0) return false;
+    return (aIndex - bIndex).abs() == 1;
+  }
+
+  static bool _horizontalPointIsValid(
+    EngineeringSpace space,
+    SurfacePointMm point,
+  ) {
+    if (point.xMm < 0 || point.yMm < 0) return false;
+    return _containsOrTouches(space.boundary, _horizontalToPlan(space, point));
+  }
+
   static SurfacePointMm _planToHorizontal(
     EngineeringSpace space,
     MmPoint point,
@@ -272,11 +387,28 @@ abstract final class SurfaceTransitionGraph {
     return MmPoint(bounds.left + point.xMm, bounds.bottom + point.yMm);
   }
 
-  static bool _onBounds(MmBounds bounds, MmPoint point) =>
-      point.x >= bounds.left &&
-      point.x <= bounds.right &&
-      point.y >= bounds.bottom &&
-      point.y <= bounds.top;
+  static bool _containsOrTouches(MmPolygon polygon, MmPoint point) {
+    if (polygon.contains(point)) return true;
+    final vertices = polygon.vertices;
+    for (var i = 0; i < vertices.length; i++) {
+      final a = vertices[i];
+      final b = vertices[(i + 1) % vertices.length];
+      final cross =
+          (point.x - a.x) * (b.y - a.y) - (point.y - a.y) * (b.x - a.x);
+      if (cross != 0) continue;
+      final minX = math.min(a.x, b.x);
+      final maxX = math.max(a.x, b.x);
+      final minY = math.min(a.y, b.y);
+      final maxY = math.max(a.y, b.y);
+      if (point.x >= minX &&
+          point.x <= maxX &&
+          point.y >= minY &&
+          point.y <= maxY) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   static bool _collinear(
     RoomWallSurface a,
@@ -312,7 +444,8 @@ abstract final class SurfaceTransitionGraph {
     final px = ax + t * dx;
     final py = ay + t * dy;
     final distance = math.sqrt(
-      (point.x - px) * (point.x - px) + (point.y - py) * (point.y - py),
+      (point.x - px) * (point.x - px) +
+          (point.y - py) * (point.y - py),
     );
     if (distance > toleranceMm) return null;
     return (math.sqrt(lengthSquared) * t).round();
