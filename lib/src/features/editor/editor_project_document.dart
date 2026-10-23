@@ -17,6 +17,7 @@ import '../../domain/route_medium.dart';
 import '../../domain/site_orientation.dart';
 import '../../domain/site_outdoor_model.dart';
 import '../../domain/surfaces.dart';
+import '../../domain/vertical_core_route_leg.dart';
 import '../../domain/wall_profile.dart';
 import '../../engine/selection_engine.dart';
 import 'cable_route_constraints.dart';
@@ -1108,6 +1109,15 @@ Map<String, Object?> _routeToJson(ElectricalCableRoute value) => {
       'penetrations': [
         for (final item in value.penetrations) _penetrationToJson(item),
       ],
+      'verticalCoreLegs': [
+        for (final leg in value.verticalCoreLegs)
+          {
+            'verticalCoreId': leg.verticalCoreId.value,
+            'fromSlabId': leg.fromSlabId.value,
+            'toSlabId': leg.toSlabId.value,
+            'lengthMm': leg.lengthMm,
+          },
+      ],
       'cableType': value.cableType,
       'reservePercent': value.reservePercent,
       'medium': {
@@ -1133,6 +1143,40 @@ ElectricalCableRoute _routeFromJson(Map<String, Object?> json) {
           for (final item in _list(penetrationRaw, 'route.penetrations'))
             _penetrationFromJson(_map(item, 'route.penetration')),
         ];
+  final verticalCoreLegRaw = json['verticalCoreLegs'];
+  final verticalCoreLegs = verticalCoreLegRaw == null
+      ? const <VerticalCoreRouteLeg>[]
+      : [
+          for (final item
+              in _list(verticalCoreLegRaw, 'route.verticalCoreLegs'))
+            () {
+              final leg = _map(item, 'route.verticalCoreLeg');
+              return VerticalCoreRouteLeg(
+                verticalCoreId: VerticalCoreId(
+                  _string(
+                    leg['verticalCoreId'],
+                    'route.verticalCoreLeg.verticalCoreId',
+                  ),
+                ),
+                fromSlabId: SlabId(
+                  _string(
+                    leg['fromSlabId'],
+                    'route.verticalCoreLeg.fromSlabId',
+                  ),
+                ),
+                toSlabId: SlabId(
+                  _string(
+                    leg['toSlabId'],
+                    'route.verticalCoreLeg.toSlabId',
+                  ),
+                ),
+                lengthMm: _int(
+                  leg['lengthMm'],
+                  'route.verticalCoreLeg.lengthMm',
+                ),
+              );
+            }(),
+        ];
   _validatePersistedRouteAnchorIds(routeId, segments);
   return ElectricalCableRoute(
     id: routeId,
@@ -1140,6 +1184,7 @@ ElectricalCableRoute _routeFromJson(Map<String, Object?> json) {
     target: _endpointFromJson(_map(json['target'], 'route.target')),
     segments: segments,
     penetrations: penetrations,
+    verticalCoreLegs: verticalCoreLegs,
     cableType: _nullableString(json['cableType']),
     reservePercent: _int(json['reservePercent'], 'route.reservePercent'),
     medium: RouteMediumProfile(
@@ -1217,6 +1262,7 @@ Map<String, Object?> _penetrationToJson(BoundaryPenetration value) => {
       'pathLengthMm': value.pathLengthMm,
       'materialId': value.materialId,
       'slabId': value.slabId?.value,
+      'verticalCoreId': value.verticalCoreId?.value,
       'entryAnchor': _penetrationAnchorToJson(value.entryAnchor),
       'exitAnchor': _penetrationAnchorToJson(value.exitAnchor),
     };
@@ -1241,6 +1287,9 @@ BoundaryPenetration _penetrationFromJson(Map<String, Object?> json) =>
       slabId: _nullableString(json['slabId']) == null
           ? null
           : SlabId(_nullableString(json['slabId'])!),
+      verticalCoreId: _nullableString(json['verticalCoreId']) == null
+          ? null
+          : VerticalCoreId(_nullableString(json['verticalCoreId'])!),
       entryAnchor: _penetrationAnchorFromJson(
         _map(json['entryAnchor'], 'penetration.entryAnchor'),
       ),
