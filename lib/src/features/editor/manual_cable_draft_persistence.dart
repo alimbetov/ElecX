@@ -34,8 +34,7 @@ extension ManualCableDraftPersistence on EditorController {
             toPoint: toPoint,
             constructions: routingContext.constructions,
             edgeOrderResolver: routingContext.edgeOrderForLegacySpace,
-            canonicalSpaceIdResolver:
-                routingContext.canonicalSpaceIdForLegacy,
+            canonicalSpaceIdResolver: routingContext.canonicalSpaceIdForLegacy,
           );
         }
 
