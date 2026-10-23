@@ -36,7 +36,8 @@ void main() {
     expect(leg.lengthMm, 3000);
   });
 
-  test('crossing plan materializes canonical slab and VerticalCore identity', () {
+  test('crossing plan materializes canonical slab and VerticalCore identity',
+      () {
     final fixture = _Fixture();
     final plan = VerticalCoreRouteAuthoring.plan(
       project: fixture.project,
