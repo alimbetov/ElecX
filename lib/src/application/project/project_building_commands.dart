@@ -1,4 +1,5 @@
 import '../../domain/project_aggregate.dart';
+import '../../domain/project_entity_stores_copy.dart';
 import '../../domain/project_identity.dart';
 import 'project_authoring_error.dart';
 import 'project_mutation.dart';
@@ -61,12 +62,9 @@ final class CreateBuildingCommand implements ProjectCommand {
     );
 
     return ProjectCommandCandidate(
-      stores: ProjectEntityStores(
+      stores: current.stores.copyWith(
         sites: sites,
         buildings: buildings,
-        levels: current.stores.levels,
-        zones: current.stores.zones,
-        spaces: current.stores.spaces,
       ),
       affectedEntityIds: <EntityId>[site.id, buildingId],
     );
@@ -115,13 +113,7 @@ final class RenameBuildingCommand implements ProjectCommand {
     );
 
     return ProjectCommandCandidate(
-      stores: ProjectEntityStores(
-        sites: current.stores.sites,
-        buildings: buildings,
-        levels: current.stores.levels,
-        zones: current.stores.zones,
-        spaces: current.stores.spaces,
-      ),
+      stores: current.stores.copyWith(buildings: buildings),
       affectedEntityIds: <EntityId>[building.id],
     );
   }
