@@ -6,6 +6,7 @@ import '../../domain/surface_routing.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/editor_layers.dart';
 import '../../engine/port_snap_resolver.dart';
+import 'canonical_room_surface_runtime_registry.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 import 'physical_cable_route_committer.dart';
@@ -168,6 +169,8 @@ extension PhysicalManualCableDraftPersistence on EditorController {
       return false;
     }
 
+    final canonicalSession =
+        CanonicalRoomSurfaceRuntimeRegistry.coordinatorFor(this)?.session;
     final extensionSegments = <ElectricalRouteSegment>[];
     for (var index = 0; index < routeSegments.length; index++) {
       final draft = routeSegments[index];
@@ -181,6 +184,12 @@ extension PhysicalManualCableDraftPersistence on EditorController {
         ElectricalRouteSegment(
           surface: draft.surface,
           points: List.unmodifiable(draft.points),
+          anchorIds: canonicalSession == null
+              ? const []
+              : List.unmodifiable([
+                  for (final _ in draft.points)
+                    canonicalSession.allocateRouteAnchorId(),
+                ]),
         ),
       );
     }
@@ -307,6 +316,8 @@ extension PhysicalManualCableDraftPersistence on EditorController {
     );
     if (target == null) return false;
 
+    final canonicalSession =
+        CanonicalRoomSurfaceRuntimeRegistry.coordinatorFor(this)?.session;
     final segments = <ElectricalRouteSegment>[];
     for (var index = 0; index < routeSegments.length; index++) {
       final draft = routeSegments[index];
@@ -319,6 +330,12 @@ extension PhysicalManualCableDraftPersistence on EditorController {
         ElectricalRouteSegment(
           surface: draft.surface,
           points: List.unmodifiable(points),
+          anchorIds: canonicalSession == null
+              ? const []
+              : List.unmodifiable([
+                  for (final _ in points)
+                    canonicalSession.allocateRouteAnchorId(),
+                ]),
         ),
       );
     }
