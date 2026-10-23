@@ -1,6 +1,5 @@
 import '../../application/project/canonical_project_persistence_owner.dart';
 import '../../application/project/project_mutation.dart';
-import '../../application/project/project_navigation_state.dart';
 import '../../application/project/project_repository.dart';
 import '../../application/project/project_structure_authoring.dart';
 import '../../domain/project_identity.dart';
@@ -8,9 +7,7 @@ import '../../domain/project_model.dart';
 import 'canonical_editor_legacy_bootstrap.dart';
 import 'canonical_editor_production_runtime.dart';
 import 'canonical_editor_workspace_adapter.dart';
-import 'editor_building_workspace.dart';
 import 'editor_project_document.dart';
-import 'project_persistence_metadata.dart';
 
 final class CanonicalEditorProductionHandle {
   CanonicalEditorProductionHandle._({
