@@ -78,6 +78,15 @@ final class BoundaryEdgeId extends EntityId {
   BoundaryEdgeId(super.value);
 }
 
+/// Stable identity for one physical horizontal building slab.
+///
+/// A slab is not a floor/ceiling surface ordinal and is not owned by a room.
+/// It is a building-level physical boundary that can separate two canonical
+/// levels and can later host penetrations and vertical routing evidence.
+final class SlabId extends EntityId {
+  SlabId(super.value);
+}
+
 final class VerticalCoreId extends EntityId {
   VerticalCoreId(super.value);
 }
@@ -140,6 +149,7 @@ abstract interface class EntityIdFactory {
   SpaceAdjacencyId newSpaceAdjacencyId();
   OverlayClassificationId newOverlayClassificationId();
   BoundaryEdgeId newBoundaryEdgeId();
+  SlabId newSlabId();
   VerticalCoreId newVerticalCoreId();
   ServiceEntryId newServiceEntryId();
   ComponentId newComponentId();
@@ -190,6 +200,9 @@ final class SecureRandomEntityIdFactory implements EntityIdFactory {
 
   @override
   BoundaryEdgeId newBoundaryEdgeId() => BoundaryEdgeId(_nextUuidV4());
+
+  @override
+  SlabId newSlabId() => SlabId(_nextUuidV4());
 
   @override
   VerticalCoreId newVerticalCoreId() => VerticalCoreId(_nextUuidV4());
