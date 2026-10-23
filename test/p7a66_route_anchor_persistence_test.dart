@@ -1,9 +1,9 @@
 import 'package:elecx/src/domain/electrical_placement.dart';
-import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/engine/selection_engine.dart';
 import 'package:elecx/src/features/editor/editor_building_workspace.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
+import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:elecx/src/features/editor/editor_project_document.dart';
 import 'package:flutter_test/flutter_test.dart';
 
