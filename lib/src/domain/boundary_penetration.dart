@@ -30,6 +30,9 @@ final class BoundaryPenetrationAnchor {
       throw ArgumentError('Penetration id is required.');
     }
     if (routeId.isEmpty) throw ArgumentError('Route id is required.');
+    if (point.xMm < 0 || point.yMm < 0) {
+      throw ArgumentError('Penetration anchor coordinates must be non-negative.');
+    }
   }
 
   final String id;
@@ -48,7 +51,7 @@ final class BoundaryPenetrationAnchor {
 /// physical wall/slab crossing is represented by this entity and two paired
 /// anchors. [hostThicknessMm] is the normal thickness of the construction.
 /// [pathLengthMm] is the actual cable length through it and therefore may be
-/// larger for a future angled penetration, but never smaller.
+/// larger for an angled penetration, but never smaller.
 final class BoundaryPenetration {
   BoundaryPenetration({
     required this.id,
@@ -67,15 +70,21 @@ final class BoundaryPenetration {
         'Must be positive.',
       );
     }
-    if (pathLengthMm < hostThicknessMm) {
+    if (!pathLengthMm.isFinite || pathLengthMm < hostThicknessMm) {
       throw ArgumentError.value(
         pathLengthMm,
         'pathLengthMm',
-        'Must not be shorter than the host thickness.',
+        'Must be finite and not shorter than the host thickness.',
       );
+    }
+    if (materialId != null && materialId!.isEmpty) {
+      throw ArgumentError('materialId must be null or non-empty.');
     }
     if (entryAnchor.penetrationId != id || exitAnchor.penetrationId != id) {
       throw ArgumentError('Both anchors must belong to penetration $id.');
+    }
+    if (entryAnchor.id == exitAnchor.id) {
+      throw ArgumentError('Penetration anchors must have distinct identities.');
     }
     if (entryAnchor.side != PenetrationAnchorSide.entry ||
         exitAnchor.side != PenetrationAnchorSide.exit) {
@@ -89,6 +98,7 @@ final class BoundaryPenetration {
         'A physical penetration must connect two different surfaces.',
       );
     }
+    _validateHostSurfaces();
   }
 
   factory BoundaryPenetration.normal({
@@ -143,6 +153,33 @@ final class BoundaryPenetration {
     if (entryAnchor.surface == surface) return exitAnchor;
     if (exitAnchor.surface == surface) return entryAnchor;
     throw StateError('Surface ${surface.id} does not belong to penetration $id.');
+  }
+
+  void _validateHostSurfaces() {
+    switch (hostKind) {
+      case BoundaryPenetrationHostKind.wall:
+        if (entryAnchor.surface.type != SurfacePlaneType.wall ||
+            exitAnchor.surface.type != SurfacePlaneType.wall) {
+          throw ArgumentError('Wall penetrations must connect two wall faces.');
+        }
+        if (entryAnchor.surface.spaceId == exitAnchor.surface.spaceId) {
+          throw ArgumentError(
+            'Wall penetrations must connect different spaces.',
+          );
+        }
+      case BoundaryPenetrationHostKind.slab:
+        final types = <SurfacePlaneType>{
+          entryAnchor.surface.type,
+          exitAnchor.surface.type,
+        };
+        if (!types.contains(SurfacePlaneType.floor) ||
+            !types.contains(SurfacePlaneType.ceiling) ||
+            types.length != 2) {
+          throw ArgumentError(
+            'Slab penetrations must connect one ceiling and one floor.',
+          );
+        }
+    }
   }
 }
 
