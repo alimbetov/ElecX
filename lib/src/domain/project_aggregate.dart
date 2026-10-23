@@ -2,6 +2,7 @@ import 'boundary_topology.dart';
 import 'project_identity.dart';
 import 'project_orientation.dart';
 import 'project_space_semantics.dart';
+import 'slab_topology.dart';
 
 /// Local monotonic version of the canonical in-memory project state.
 final class LocalProjectVersion {
@@ -142,6 +143,7 @@ final class ProjectEntityStores {
     Map<SiteId, ProjectSiteEntity> sites = const {},
     Map<BuildingId, ProjectBuildingEntity> buildings = const {},
     Map<LevelId, ProjectLevelEntity> levels = const {},
+    Map<SlabId, ProjectSlab> slabs = const {},
     Map<ZoneId, ProjectStructuralZoneEntity> zones = const {},
     Map<SpaceId, ProjectSpaceEntity> spaces = const {},
     Map<OpeningId, ProjectOpeningEntity> openings = const {},
@@ -152,6 +154,7 @@ final class ProjectEntityStores {
   })  : sites = Map.unmodifiable(sites),
         buildings = Map.unmodifiable(buildings),
         levels = Map.unmodifiable(levels),
+        slabs = Map.unmodifiable(slabs),
         zones = Map.unmodifiable(zones),
         spaces = Map.unmodifiable(spaces),
         openings = Map.unmodifiable(openings),
@@ -162,6 +165,7 @@ final class ProjectEntityStores {
   final Map<SiteId, ProjectSiteEntity> sites;
   final Map<BuildingId, ProjectBuildingEntity> buildings;
   final Map<LevelId, ProjectLevelEntity> levels;
+  final Map<SlabId, ProjectSlab> slabs;
   final Map<ZoneId, ProjectStructuralZoneEntity> zones;
   final Map<SpaceId, ProjectSpaceEntity> spaces;
   final Map<OpeningId, ProjectOpeningEntity> openings;
@@ -184,6 +188,11 @@ enum ProjectAggregateIssueCode {
   levelBuildingMismatch,
   buildingLevelBackReferenceMissing,
   duplicateLevelNumber,
+  danglingSlabBuilding,
+  danglingSlabLevel,
+  slabLevelBuildingMismatch,
+  slabLevelOrderMismatch,
+  invalidSlabTopology,
   danglingZone,
   zoneLevelMismatch,
   levelZoneBackReferenceMissing,
@@ -529,6 +538,7 @@ abstract final class ProjectAggregateValidator {
       }
     }
 
+    _validateSlabs(stores, issues);
     _validateOpenings(stores, issues);
     _validateAdjacencies(stores, issues);
     _validateOverlays(stores, issues);
@@ -548,6 +558,9 @@ abstract final class ProjectAggregateValidator {
     }
     for (final entry in stores.levels.entries) {
       _validateStoreKey('levels', entry.key, entry.value.id, issues);
+    }
+    for (final entry in stores.slabs.entries) {
+      _validateStoreKey('slabs', entry.key, entry.value.id, issues);
     }
     for (final entry in stores.zones.entries) {
       _validateStoreKey('zones', entry.key, entry.value.id, issues);
@@ -582,6 +595,104 @@ abstract final class ProjectAggregateValidator {
             '$storeName store key $key does not match entity id $entityId.',
       ),
     );
+  }
+
+  static void _validateSlabs(
+    ProjectEntityStores stores,
+    List<ProjectAggregateValidationIssue> issues,
+  ) {
+    for (final topologyIssue in SlabTopologyValidator.validate(stores.slabs)) {
+      if (topologyIssue.code == SlabTopologyIssueCode.storeKeyIdMismatch) {
+        continue;
+      }
+      issues.add(
+        ProjectAggregateValidationIssue(
+          code: ProjectAggregateIssueCode.invalidSlabTopology,
+          entityId: topologyIssue.slabId,
+          message: topologyIssue.message,
+        ),
+      );
+    }
+
+    for (final slab in stores.slabs.values) {
+      final building = stores.buildings[slab.buildingId];
+      if (building == null) {
+        issues.add(
+          ProjectAggregateValidationIssue(
+            code: ProjectAggregateIssueCode.danglingSlabBuilding,
+            entityId: slab.id,
+            relatedEntityId: slab.buildingId,
+            message: 'Slab ${slab.id} references missing building '
+                '${slab.buildingId}.',
+          ),
+        );
+      }
+
+      final below = slab.belowLevelId == null
+          ? null
+          : stores.levels[slab.belowLevelId!];
+      final above = slab.aboveLevelId == null
+          ? null
+          : stores.levels[slab.aboveLevelId!];
+
+      if (slab.belowLevelId != null && below == null) {
+        issues.add(
+          ProjectAggregateValidationIssue(
+            code: ProjectAggregateIssueCode.danglingSlabLevel,
+            entityId: slab.id,
+            relatedEntityId: slab.belowLevelId,
+            message: 'Slab ${slab.id} references missing below level '
+                '${slab.belowLevelId}.',
+          ),
+        );
+      }
+      if (slab.aboveLevelId != null && above == null) {
+        issues.add(
+          ProjectAggregateValidationIssue(
+            code: ProjectAggregateIssueCode.danglingSlabLevel,
+            entityId: slab.id,
+            relatedEntityId: slab.aboveLevelId,
+            message: 'Slab ${slab.id} references missing above level '
+                '${slab.aboveLevelId}.',
+          ),
+        );
+      }
+      if (below != null && below.buildingId != slab.buildingId) {
+        issues.add(
+          ProjectAggregateValidationIssue(
+            code: ProjectAggregateIssueCode.slabLevelBuildingMismatch,
+            entityId: slab.id,
+            relatedEntityId: below.id,
+            message: 'Slab ${slab.id} belongs to building ${slab.buildingId} '
+                'but below level ${below.id} belongs to ${below.buildingId}.',
+          ),
+        );
+      }
+      if (above != null && above.buildingId != slab.buildingId) {
+        issues.add(
+          ProjectAggregateValidationIssue(
+            code: ProjectAggregateIssueCode.slabLevelBuildingMismatch,
+            entityId: slab.id,
+            relatedEntityId: above.id,
+            message: 'Slab ${slab.id} belongs to building ${slab.buildingId} '
+                'but above level ${above.id} belongs to ${above.buildingId}.',
+          ),
+        );
+      }
+      if (below != null &&
+          above != null &&
+          below.elevationMm >= above.elevationMm) {
+        issues.add(
+          ProjectAggregateValidationIssue(
+            code: ProjectAggregateIssueCode.slabLevelOrderMismatch,
+            entityId: slab.id,
+            relatedEntityId: above.id,
+            message: 'Slab ${slab.id} below level ${below.id} must have lower '
+                'elevation than above level ${above.id}.',
+          ),
+        );
+      }
+    }
   }
 
   static void _validateOpenings(
@@ -844,6 +955,7 @@ final class ProjectIndex {
     required this.sites,
     required this.buildings,
     required this.levels,
+    required this.slabs,
     required this.zones,
     required this.spaces,
     required this.openings,
@@ -860,6 +972,8 @@ final class ProjectIndex {
     required this.adjacenciesBySpaceId,
     required this.overlaysBySpaceId,
     required this.spaceByBoundaryEdgeId,
+    required this.slabsByBuildingId,
+    required this.slabsByLevelId,
   });
 
   factory ProjectIndex.build(ProjectEntityStores stores) {
@@ -869,6 +983,8 @@ final class ProjectIndex {
     final overlaysBySpaceId = <SpaceId, Set<OverlayClassificationId>>{};
     final boundaryEdges = <BoundaryEdgeId, ProjectBoundaryEdge>{};
     final spaceByBoundaryEdgeId = <BoundaryEdgeId, SpaceId>{};
+    final slabsByBuildingId = <BuildingId, Set<SlabId>>{};
+    final slabsByLevelId = <LevelId, Set<SlabId>>{};
 
     for (final zone in stores.zones.values) {
       for (final spaceId in zone.spaceIds) {
@@ -900,11 +1016,23 @@ final class ProjectIndex {
         spaceByBoundaryEdgeId[edge.id] = topology.spaceId;
       }
     }
+    for (final slab in stores.slabs.values) {
+      (slabsByBuildingId[slab.buildingId] ??= <SlabId>{}).add(slab.id);
+      final below = slab.belowLevelId;
+      if (below != null) {
+        (slabsByLevelId[below] ??= <SlabId>{}).add(slab.id);
+      }
+      final above = slab.aboveLevelId;
+      if (above != null) {
+        (slabsByLevelId[above] ??= <SlabId>{}).add(slab.id);
+      }
+    }
 
     return ProjectIndex._(
       sites: stores.sites,
       buildings: stores.buildings,
       levels: stores.levels,
+      slabs: stores.slabs,
       zones: stores.zones,
       spaces: stores.spaces,
       openings: stores.openings,
@@ -930,12 +1058,15 @@ final class ProjectIndex {
       adjacenciesBySpaceId: _freezeSetMap(adjacenciesBySpaceId),
       overlaysBySpaceId: _freezeSetMap(overlaysBySpaceId),
       spaceByBoundaryEdgeId: Map.unmodifiable(spaceByBoundaryEdgeId),
+      slabsByBuildingId: _freezeSetMap(slabsByBuildingId),
+      slabsByLevelId: _freezeSetMap(slabsByLevelId),
     );
   }
 
   final Map<SiteId, ProjectSiteEntity> sites;
   final Map<BuildingId, ProjectBuildingEntity> buildings;
   final Map<LevelId, ProjectLevelEntity> levels;
+  final Map<SlabId, ProjectSlab> slabs;
   final Map<ZoneId, ProjectStructuralZoneEntity> zones;
   final Map<SpaceId, ProjectSpaceEntity> spaces;
   final Map<OpeningId, ProjectOpeningEntity> openings;
@@ -953,10 +1084,13 @@ final class ProjectIndex {
   final Map<SpaceId, Set<SpaceAdjacencyId>> adjacenciesBySpaceId;
   final Map<SpaceId, Set<OverlayClassificationId>> overlaysBySpaceId;
   final Map<BoundaryEdgeId, SpaceId> spaceByBoundaryEdgeId;
+  final Map<BuildingId, Set<SlabId>> slabsByBuildingId;
+  final Map<LevelId, Set<SlabId>> slabsByLevelId;
 
   ProjectSiteEntity? site(SiteId id) => sites[id];
   ProjectBuildingEntity? building(BuildingId id) => buildings[id];
   ProjectLevelEntity? level(LevelId id) => levels[id];
+  ProjectSlab? slab(SlabId id) => slabs[id];
   ProjectStructuralZoneEntity? zone(ZoneId id) => zones[id];
   ProjectSpaceEntity? space(SpaceId id) => spaces[id];
   ProjectOpeningEntity? opening(OpeningId id) => openings[id];
@@ -967,10 +1101,17 @@ final class ProjectIndex {
   SpaceBoundaryTopology? boundary(SpaceId id) => boundaries[id];
   ProjectBoundaryEdge? boundaryEdge(BoundaryEdgeId id) => boundaryEdges[id];
 
+  Set<SlabId> slabsForBuilding(BuildingId id) =>
+      slabsByBuildingId[id] ?? const <SlabId>{};
+
+  Set<SlabId> slabsForLevel(LevelId id) =>
+      slabsByLevelId[id] ?? const <SlabId>{};
+
   bool isConsistentWith(ProjectEntityStores stores) {
     if (sites.length != stores.sites.length ||
         buildings.length != stores.buildings.length ||
         levels.length != stores.levels.length ||
+        slabs.length != stores.slabs.length ||
         zones.length != stores.zones.length ||
         spaces.length != stores.spaces.length ||
         openings.length != stores.openings.length ||
@@ -984,6 +1125,22 @@ final class ProjectIndex {
     }
     for (final level in stores.levels.values) {
       if (buildingByLevel[level.id] != level.buildingId) return false;
+    }
+    for (final slab in stores.slabs.values) {
+      if (!identical(slabs[slab.id], slab)) return false;
+      if (!(slabsByBuildingId[slab.buildingId]?.contains(slab.id) ?? false)) {
+        return false;
+      }
+      final below = slab.belowLevelId;
+      if (below != null &&
+          !(slabsByLevelId[below]?.contains(slab.id) ?? false)) {
+        return false;
+      }
+      final above = slab.aboveLevelId;
+      if (above != null &&
+          !(slabsByLevelId[above]?.contains(slab.id) ?? false)) {
+        return false;
+      }
     }
     for (final zone in stores.zones.values) {
       if (levelByZone[zone.id] != zone.levelId) return false;
@@ -1051,10 +1208,25 @@ final class ProjectIndex {
             .add(overlay.id);
       }
     }
+    final expectedSlabsByBuildingId = <BuildingId, Set<SlabId>>{};
+    final expectedSlabsByLevelId = <LevelId, Set<SlabId>>{};
+    for (final slab in stores.slabs.values) {
+      (expectedSlabsByBuildingId[slab.buildingId] ??= <SlabId>{}).add(slab.id);
+      final below = slab.belowLevelId;
+      if (below != null) {
+        (expectedSlabsByLevelId[below] ??= <SlabId>{}).add(slab.id);
+      }
+      final above = slab.aboveLevelId;
+      if (above != null) {
+        (expectedSlabsByLevelId[above] ??= <SlabId>{}).add(slab.id);
+      }
+    }
 
     return _setMapEquals(openingsBySpaceId, expectedOpeningsBySpaceId) &&
         _setMapEquals(adjacenciesBySpaceId, expectedAdjacenciesBySpaceId) &&
-        _setMapEquals(overlaysBySpaceId, expectedOverlaysBySpaceId);
+        _setMapEquals(overlaysBySpaceId, expectedOverlaysBySpaceId) &&
+        _setMapEquals(slabsByBuildingId, expectedSlabsByBuildingId) &&
+        _setMapEquals(slabsByLevelId, expectedSlabsByLevelId);
   }
 }
 
