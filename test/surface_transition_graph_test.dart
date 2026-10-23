@@ -71,7 +71,8 @@ void main() {
     );
   });
 
-  test('shared wall creates paired continuation anchors with wall thickness', () {
+  test('shared wall creates paired continuation anchors with wall thickness',
+      () {
     final controller = EditorController.demo();
     final host = controller.selectedSpace!;
     final hostWall = RoomSurfaceResolver.wall(host, 0);
@@ -182,7 +183,8 @@ void main() {
     expect(penetration.exitAnchor.surface, RoomSurfaceRef.floor(upperSpace.id));
   });
 
-  test('slab penetration rejects a concave-room bounding-box false positive', () {
+  test('slab penetration rejects a concave-room bounding-box false positive',
+      () {
     final lowerSpace = EngineeringSpace(
       id: 'lower-room',
       name: 'Lower room',
