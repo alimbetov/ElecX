@@ -182,8 +182,9 @@ abstract final class CanonicalWallConstructionRuntime {
           context,
           penetration.exitAnchor.surface,
         );
-        final touched = (entryHost != null && changedHosts.contains(entryHost)) ||
-            (exitHost != null && changedHosts.contains(exitHost));
+        final touched =
+            (entryHost != null && changedHosts.contains(entryHost)) ||
+                (exitHost != null && changedHosts.contains(exitHost));
         if (!touched) {
           penetrations.add(penetration);
           continue;
@@ -234,7 +235,8 @@ abstract final class CanonicalWallConstructionRuntime {
 
       if (routeChanged) {
         affectedRouteIds.add(route.id);
-        routes.add(route.copyWith(penetrations: List.unmodifiable(penetrations)));
+        routes
+            .add(route.copyWith(penetrations: List.unmodifiable(penetrations)));
       } else {
         routes.add(route);
       }
@@ -293,7 +295,8 @@ abstract final class CanonicalWallConstructionRuntime {
     if (canonicalSpaceId == null) return null;
     final direct = surface.boundaryEdgeId;
     if (direct != null) {
-      final edge = context.coordinator.session.project.index.boundaryEdge(direct);
+      final edge =
+          context.coordinator.session.project.index.boundaryEdge(direct);
       if (edge == null || edge.spaceId != canonicalSpaceId) return null;
       return BoundaryEdgeHostRef(spaceId: canonicalSpaceId, edgeId: direct);
     }
@@ -318,7 +321,8 @@ abstract final class CanonicalWallConstructionRuntime {
       controller,
     );
     final physical =
-        CanonicalRoomSurfaceRuntimeRegistry.physicalRoutingContextFor(controller);
+        CanonicalRoomSurfaceRuntimeRegistry.physicalRoutingContextFor(
+            controller);
     final spaceId = coordinator?.session.navigation.selectedSpaceId;
     if (coordinator == null ||
         owner == null ||
@@ -327,7 +331,8 @@ abstract final class CanonicalWallConstructionRuntime {
       return null;
     }
     final legacySpaceId = coordinator.adapter.binding.legacySpaceIds[spaceId];
-    if (legacySpaceId == null || controller.selectedSpace?.id != legacySpaceId) {
+    if (legacySpaceId == null ||
+        controller.selectedSpace?.id != legacySpaceId) {
       return null;
     }
     return _ConstructionContext(
