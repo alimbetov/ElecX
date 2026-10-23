@@ -1,6 +1,7 @@
 import '../../domain/project_identity.dart';
 import '../../domain/surfaces.dart';
 import '../../domain/vertical_core_route_continuation_plan.dart';
+import '../../domain/vertical_core_slab_crossing_resolver.dart';
 import 'canonical_slab_cable_handoff_authoring.dart';
 import 'editor_controller.dart';
 
@@ -34,7 +35,7 @@ final class CanonicalVerticalCoreContinuationException implements Exception {
 /// slab crossings the editor switches from the arrival horizontal surface to
 /// the departure horizontal surface inside the same target room. The editor's
 /// existing cable-draft lifecycle materializes that switch as a one-point
-/// segment; the matching [VerticalCoreRouteLeg] is attached later by canonical
+/// segment; the matching VerticalCore route leg is attached later by canonical
 /// route assembly and owns the hidden Z-length.
 final class CanonicalVerticalCoreCableContinuationSession {
   CanonicalVerticalCoreCableContinuationSession({
@@ -170,9 +171,10 @@ final class CanonicalVerticalCoreCableContinuationSession {
     }
 
     final departure = editor.activeSurface;
-    final expectedType = completedHop.direction == VerticalCoreCrossingDirection.up
-        ? SurfacePlaneType.ceiling
-        : SurfacePlaneType.floor;
+    final expectedType =
+        completedHop.direction == VerticalCoreCrossingDirection.up
+            ? SurfacePlaneType.ceiling
+            : SurfacePlaneType.floor;
     if (departure == null ||
         departure.spaceId != arrival.spaceId ||
         departure.type != expectedType ||
