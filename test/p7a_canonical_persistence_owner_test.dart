@@ -109,7 +109,8 @@ void main() {
   });
 }
 
-ProjectAggregateRoot _project({required int version, required String siteName}) {
+ProjectAggregateRoot _project(
+    {required int version, required String siteName}) {
   final siteId = SiteId('site');
   return ProjectAggregateRoot(
     id: ProjectId('project'),
