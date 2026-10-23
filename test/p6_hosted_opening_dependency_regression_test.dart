@@ -60,9 +60,7 @@ void main() {
         () => session.commit(
           ProjectMutationRequest(
             expectedVersion: session.current.version,
-            command: const RemoveOpeningCommand(
-              openingId: OpeningId('door-1'),
-            ),
+            command: RemoveOpeningCommand(openingId: OpeningId('door-1')),
           ),
         ),
         throwsA(
