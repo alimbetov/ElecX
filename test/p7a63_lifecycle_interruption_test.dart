@@ -7,7 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P7A-6.3 lifecycle interruption', () {
-    test('cancel after split preview leaves canonical state and history exact', () {
+    test('cancel after split preview leaves canonical state and history exact',
+        () {
       final fixture = _Fixture();
       final initial = fixture.project();
       final mutations = ProjectMutationSession(initial);
