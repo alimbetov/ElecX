@@ -176,6 +176,13 @@ final class CanonicalSpaceSemanticsAdapter {
       (value) => value.id,
     );
     final adjacentSpaces = <SpaceId, ProjectSpaceEntity>{};
+    for (final opening in openings) {
+      for (final connectedSpaceId in opening.connectedSpaceIds) {
+        if (connectedSpaceId == spaceId) continue;
+        final connected = project.index.space(connectedSpaceId);
+        if (connected != null) adjacentSpaces[connected.id] = connected;
+      }
+    }
     for (final adjacency in adjacencies) {
       final otherId = adjacency.spaceAId == spaceId
           ? adjacency.spaceBId
