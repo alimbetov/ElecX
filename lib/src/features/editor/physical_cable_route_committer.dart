@@ -321,6 +321,7 @@ bool _sameSegment(ElectricalRouteSegment a, ElectricalRouteSegment b) {
 bool _samePenetration(dynamic a, dynamic b) =>
     a.id == b.id &&
     a.hostKind == b.hostKind &&
+    a.slabId == b.slabId &&
     a.hostThicknessMm == b.hostThicknessMm &&
     a.pathLengthMm == b.pathLengthMm &&
     a.materialId == b.materialId &&
