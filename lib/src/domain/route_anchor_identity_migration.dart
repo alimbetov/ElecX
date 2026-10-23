@@ -40,15 +40,9 @@ abstract final class RouteAnchorIdentityMigration {
     }
     if (!changed) return route;
 
-    final migrated = ElectricalCableRoute(
-      id: route.id,
-      source: route.source,
-      target: route.target,
-      segments: List.unmodifiable(segments),
-      cableType: route.cableType,
-      medium: route.medium,
-      reservePercent: route.reservePercent,
-    );
+    // Anchor migration is identity-only. Keep the rest of the route aggregate,
+    // especially physical wall/slab penetrations, unchanged.
+    final migrated = route.copyWith(segments: List.unmodifiable(segments));
     _requireUniqueExistingAnchorIds(migrated);
     return migrated;
   }
