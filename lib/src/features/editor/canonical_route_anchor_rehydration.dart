@@ -67,7 +67,8 @@ abstract final class CanonicalRouteAnchorRehydration {
             );
           }
           ids.add(
-              RouteAnchorId(candidates.single.key.substring(prefix.length)));
+            RouteAnchorId(candidates.single.key.substring(prefix.length)),
+          );
         }
         segments.add(
           ElectricalRouteSegment(
@@ -77,17 +78,10 @@ abstract final class CanonicalRouteAnchorRehydration {
           ),
         );
       }
-      routes.add(
-        ElectricalCableRoute(
-          id: route.id,
-          source: route.source,
-          target: route.target,
-          segments: List.unmodifiable(segments),
-          cableType: route.cableType,
-          medium: route.medium,
-          reservePercent: route.reservePercent,
-        ),
-      );
+      // Route rehydration changes identity metadata only. Preserve the complete
+      // physical route aggregate, including wall/slab penetrations and their
+      // hidden cable-length contribution.
+      routes.add(route.copyWith(segments: List.unmodifiable(segments)));
     }
     return p2State.copyWith(routes: List.unmodifiable(routes));
   }
