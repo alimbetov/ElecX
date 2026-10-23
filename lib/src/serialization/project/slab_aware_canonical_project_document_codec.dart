@@ -147,10 +147,8 @@ final class SlabAwareCanonicalProjectDocumentCodec
             _string(json['buildingId'], 'slab.buildingId'),
           ),
           kind: _enumByName(SlabKind.values, json['kind'], 'slab.kind'),
-          belowLevelId:
-              belowLevelId == null ? null : LevelId(belowLevelId),
-          aboveLevelId:
-              aboveLevelId == null ? null : LevelId(aboveLevelId),
+          belowLevelId: belowLevelId == null ? null : LevelId(belowLevelId),
+          aboveLevelId: aboveLevelId == null ? null : LevelId(aboveLevelId),
           bottomElevationMm: _int(
             json['bottomElevationMm'],
             'slab.bottomElevationMm',
