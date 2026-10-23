@@ -25,6 +25,7 @@ enum ProjectAuthoringIssueCode {
   spaceHasBoundaryDependencies,
   openingAlreadyExists,
   openingNotFound,
+  openingHasBoundaryDependencies,
   adjacencyAlreadyExists,
   adjacencyNotFound,
   overlayAlreadyExists,
