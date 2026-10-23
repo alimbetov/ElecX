@@ -65,6 +65,77 @@ void main() {
       );
     });
 
+    test('two proven wall faces change and undo as one canonical mutation', () {
+      final fixture = _fixture();
+      final mutations = ProjectMutationSession(fixture.project);
+      final service = ProjectBoundaryConstructionEditingService(mutations);
+      final profile = BoundaryConstructionProfile(
+        kind: BoundaryConstructionKind.wall,
+        thicknessMm: 250,
+        materialId: 'concrete',
+        fireRatingId: 'EI90',
+      );
+      final first = BoundaryEdgeHostRef(
+        spaceId: fixture.spaceId,
+        edgeId: fixture.edgeId,
+      );
+      final second = BoundaryEdgeHostRef(
+        spaceId: fixture.spaceId,
+        edgeId: fixture.secondEdgeId,
+      );
+
+      final committed = service.setWallConstructions(
+        profiles: {first: profile, second: profile},
+        expectedVersion: mutations.current.version,
+      );
+
+      expect(committed, isNotNull);
+      expect(committed!.project.version, LocalProjectVersion(2));
+      expect(
+        mutations.current.engineeringMetadata.boundaryConstructionRegistry[
+          first
+        ],
+        profile,
+      );
+      expect(
+        mutations.current.engineeringMetadata.boundaryConstructionRegistry[
+          second
+        ],
+        profile,
+      );
+      expect(mutations.canUndo, isTrue);
+
+      final undone = mutations.undo(mutations.current.version);
+      expect(undone, isNotNull);
+      expect(
+        mutations.current.engineeringMetadata.boundaryConstructionRegistry[
+          first
+        ],
+        isNull,
+      );
+      expect(
+        mutations.current.engineeringMetadata.boundaryConstructionRegistry[
+          second
+        ],
+        isNull,
+      );
+
+      final redone = mutations.redo(mutations.current.version);
+      expect(redone, isNotNull);
+      expect(
+        mutations.current.engineeringMetadata.boundaryConstructionRegistry[
+          first
+        ],
+        profile,
+      );
+      expect(
+        mutations.current.engineeringMetadata.boundaryConstructionRegistry[
+          second
+        ],
+        profile,
+      );
+    });
+
     test('repeating identical profile is a no-op', () {
       final fixture = _fixture();
       final mutations = ProjectMutationSession(fixture.project);
@@ -186,6 +257,7 @@ _ConstructionEditFixture _fixture() {
   return _ConstructionEditFixture(
     spaceId: spaceId,
     edgeId: edgeIds.first,
+    secondEdgeId: edgeIds[1],
     project: ProjectAggregateRoot(
       id: projectId,
       siteId: siteId,
@@ -204,10 +276,12 @@ final class _ConstructionEditFixture {
   const _ConstructionEditFixture({
     required this.spaceId,
     required this.edgeId,
+    required this.secondEdgeId,
     required this.project,
   });
 
   final SpaceId spaceId;
   final BoundaryEdgeId edgeId;
+  final BoundaryEdgeId secondEdgeId;
   final ProjectAggregateRoot project;
 }
