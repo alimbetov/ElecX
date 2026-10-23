@@ -1,6 +1,7 @@
 import 'package:elecx/src/domain/boundary_penetration.dart';
 import 'package:elecx/src/domain/electrical_placement.dart';
 import 'package:elecx/src/domain/project_identity.dart';
+import 'package:elecx/src/domain/surface_routing.dart';
 import 'package:elecx/src/domain/surface_transition_graph.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/features/editor/editor_building_workspace.dart';
