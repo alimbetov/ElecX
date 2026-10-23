@@ -93,7 +93,8 @@ final class BoundaryPenetration {
     if (hostKind == BoundaryPenetrationHostKind.wall && slabId != null) {
       throw ArgumentError('Wall penetration cannot reference a SlabId.');
     }
-    if (hostKind == BoundaryPenetrationHostKind.wall && verticalCoreId != null) {
+    if (hostKind == BoundaryPenetrationHostKind.wall &&
+        verticalCoreId != null) {
       throw ArgumentError(
         'Wall penetration cannot reference a VerticalCoreId.',
       );
@@ -295,7 +296,8 @@ final class BoundaryPenetrationRequirement {
         'Stable SlabId is required before committing a new slab penetration.',
       );
     }
-    if (hostKind != BoundaryPenetrationHostKind.slab && verticalCoreId != null) {
+    if (hostKind != BoundaryPenetrationHostKind.slab &&
+        verticalCoreId != null) {
       throw StateError(
         'VerticalCoreId is only valid for a slab penetration requirement.',
       );
