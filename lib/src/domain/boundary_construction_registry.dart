@@ -85,6 +85,94 @@ final class BoundaryConstructionRegistry {
     return BoundaryConstructionRegistry(next);
   }
 
+  /// Migrates physical construction ownership through one explicit topology
+  /// lineage operation.
+  ///
+  /// Split duplicates one physical construction profile onto every collinear
+  /// result edge. Merge is accepted only when every source edge has an explicit
+  /// and identical profile; mixing explicit/implicit or conflicting physical
+  /// data is rejected instead of guessing the resulting wall construction.
+  BoundaryConstructionRegistry remapSpace({
+    required SpaceBoundaryTopology before,
+    required SpaceBoundaryTopology after,
+    required BoundaryTopologyChangeSet lineage,
+  }) {
+    if (before.spaceId != after.spaceId) {
+      throw const BoundaryConstructionRegistryException(
+        'Boundary construction migration cannot change Space owner.',
+      );
+    }
+    before.validateOrThrow();
+    after.validateOrThrow();
+
+    final next = Map<BoundaryEdgeHostRef, BoundaryConstructionProfile>.from(
+      profiles,
+    );
+    BoundaryEdgeHostRef host(BoundaryEdgeId edgeId) =>
+        BoundaryEdgeHostRef(spaceId: before.spaceId, edgeId: edgeId);
+
+    for (final record in lineage.lineage) {
+      switch (record.kind) {
+        case BoundaryEdgeLineageKind.preserved:
+          final sourceId = record.sourceEdgeIds.single;
+          if (before.edges[sourceId] == null || after.edges[sourceId] == null) {
+            throw BoundaryConstructionRegistryException(
+              'Preserved construction edge $sourceId is not active on both '
+              'sides of topology migration.',
+            );
+          }
+        case BoundaryEdgeLineageKind.split:
+          final sourceId = record.sourceEdgeIds.single;
+          final sourceHost = host(sourceId);
+          final profile = next.remove(sourceHost);
+          if (profile == null) continue;
+          for (final resultId in record.resultEdgeIds) {
+            next[host(resultId)] = profile;
+          }
+        case BoundaryEdgeLineageKind.merged:
+          final sourceProfiles = <BoundaryConstructionProfile?>[
+            for (final sourceId in record.sourceEdgeIds) next[host(sourceId)],
+          ];
+          final explicit = sourceProfiles.whereType<BoundaryConstructionProfile>()
+              .toList(growable: false);
+          if (explicit.isEmpty) {
+            for (final sourceId in record.sourceEdgeIds) {
+              next.remove(host(sourceId));
+            }
+            continue;
+          }
+          if (explicit.length != sourceProfiles.length) {
+            throw const BoundaryConstructionRegistryException(
+              'Cannot merge explicitly defined construction with an implicit '
+              'construction profile.',
+            );
+          }
+          final first = explicit.first;
+          if (explicit.any((profile) => profile != first)) {
+            throw const BoundaryConstructionRegistryException(
+              'Cannot merge boundary edges with conflicting physical '
+              'construction profiles.',
+            );
+          }
+          for (final sourceId in record.sourceEdgeIds) {
+            next.remove(host(sourceId));
+          }
+          next[host(record.resultEdgeIds.single)] = first;
+        case BoundaryEdgeLineageKind.created:
+          // New construction is intentionally unknown until explicitly authored.
+          continue;
+        case BoundaryEdgeLineageKind.removed:
+          for (final sourceId in record.sourceEdgeIds) {
+            next.remove(host(sourceId));
+          }
+      }
+    }
+
+    final result = BoundaryConstructionRegistry(next);
+    result.validateAgainst({before.spaceId: after});
+    return result;
+  }
+
   void validateAgainst(Map<SpaceId, SpaceBoundaryTopology> boundaries) {
     for (final entry in profiles.entries) {
       final topology = boundaries[entry.key.spaceId];
