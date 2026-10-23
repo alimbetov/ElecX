@@ -176,7 +176,9 @@ final class StructuralSemanticsAwareCanonicalProjectDocumentCodec
     ];
   }
 
-  static Map<ZoneId, ProjectStructuralZoneKind> _decodeZoneKinds(Object? value) {
+  static Map<ZoneId, ProjectStructuralZoneKind> _decodeZoneKinds(
+    Object? value,
+  ) {
     final result = <ZoneId, ProjectStructuralZoneKind>{};
     for (final raw in _list(value, 'zones')) {
       final json = _map(raw, 'zone');
@@ -199,7 +201,9 @@ final class StructuralSemanticsAwareCanonicalProjectDocumentCodec
       final json = _map(raw, 'space');
       final id = SpaceId(_string(json['id'], 'space.id'));
       if (result.containsKey(id)) {
-        throw FormatException('Duplicate space id $id in structural semantics.');
+        throw FormatException(
+          'Duplicate space id $id in structural semantics.',
+        );
       }
       result[id] = _enumByName(
         ProjectSpaceType.values,
