@@ -1,5 +1,6 @@
 import 'package:elecx/src/application/project/project_boundary_topology_migration.dart';
 import 'package:elecx/src/application/project/project_mutation.dart';
+import 'package:elecx/src/domain/boundary_edge_identity_registry.dart';
 import 'package:elecx/src/domain/boundary_host_migration.dart';
 import 'package:elecx/src/domain/boundary_host_registry.dart';
 import 'package:elecx/src/domain/boundary_topology.dart';
@@ -144,11 +145,18 @@ final class _Fixture {
       BoundaryEdgeHostRef(spaceId: spaceB, edgeId: bBottom):
           WallProfile.rectangle(widthMm: 4000, heightMm: 2800),
     });
+    final boundaries = <SpaceId, SpaceBoundaryTopology>{
+      spaceA: _topology(spaceA, [aBottom, aEast, aNorth, aWest]),
+      spaceB: _topology(spaceB, [bBottom, bEast, bNorth, bWest]),
+    };
+    final identities = const BoundaryEdgeIdentityRegistry.empty()
+        .registerActiveBoundaries(boundaries);
     return ProjectAggregateRoot(
       id: projectId,
       siteId: siteId,
       version: LocalProjectVersion(0),
       engineeringMetadata: ProjectEngineeringMetadata(
+        boundaryEdgeIdentityRegistry: identities,
         boundaryHostedObjectRegistry: hosts,
         boundaryWallProfileRegistry: profiles,
       ),
@@ -182,16 +190,7 @@ final class _Fixture {
           spaceA: ProjectSpaceEntity(id: spaceA, levelId: levelId, name: 'A'),
           spaceB: ProjectSpaceEntity(id: spaceB, levelId: levelId, name: 'B'),
         },
-        boundaries: {
-          spaceA: _topology(
-            spaceA,
-            [aBottom, aEast, aNorth, aWest],
-          ),
-          spaceB: _topology(
-            spaceB,
-            [bBottom, bEast, bNorth, bWest],
-          ),
-        },
+        boundaries: boundaries,
       ),
     );
   }
