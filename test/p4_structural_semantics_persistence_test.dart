@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   const codec = StructuralSemanticsAwareCanonicalProjectDocumentCodec();
 
-  test('schema v10 round-trip preserves P4 structural semantics', () {
+  test('schema v11 round-trip preserves P4 structural semantics', () {
     final snapshot = _snapshot(
       levelKind: ProjectLevelKind.technical,
       floorToFloorHeightMm: 4200,
@@ -21,7 +21,7 @@ void main() {
     final document = codec.encode(snapshot);
     final restored = codec.decode(document);
 
-    expect(document.schemaVersion, 10);
+    expect(document.schemaVersion, 11);
     final level = restored.aggregate.index.level(LevelId('level-1'))!;
     final zone = restored.aggregate.index.zone(ZoneId('zone-1'))!;
     final space = restored.aggregate.index.space(SpaceId('space-1'))!;
@@ -33,8 +33,8 @@ void main() {
     expect(space.usage, SpaceUsage.electricalRoom);
   });
 
-  test('v9 migration does not invent structural classifications', () {
-    const v9 = VerticalCoreAwareCanonicalProjectDocumentCodec();
+  test('v10 migration preserves level semantics without inventing zone/type', () {
+    const v10 = VerticalCoreAwareCanonicalProjectDocumentCodec();
     final source = _snapshot(
       levelKind: ProjectLevelKind.roof,
       floorToFloorHeightMm: 3600,
@@ -42,16 +42,16 @@ void main() {
       spaceType: ProjectSpaceType.shaft,
       usage: SpaceUsage.serviceShaft,
     );
-    final legacyDocument = v9.encode(source);
+    final legacyDocument = v10.encode(source);
 
     final restored = codec.decode(legacyDocument);
     final level = restored.aggregate.index.level(LevelId('level-1'))!;
     final zone = restored.aggregate.index.zone(ZoneId('zone-1'))!;
     final space = restored.aggregate.index.space(SpaceId('space-1'))!;
 
-    expect(legacyDocument.schemaVersion, 9);
-    expect(level.kind, ProjectLevelKind.unknown);
-    expect(level.floorToFloorHeightMm, 3000);
+    expect(legacyDocument.schemaVersion, 10);
+    expect(level.kind, ProjectLevelKind.roof);
+    expect(level.floorToFloorHeightMm, 3600);
     expect(zone.kind, ProjectStructuralZoneKind.unknown);
     expect(space.type, ProjectSpaceType.unknown);
     expect(space.usage, SpaceUsage.serviceShaft);
