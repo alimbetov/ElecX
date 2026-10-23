@@ -20,15 +20,17 @@ void main() {
       segment['anchorIds'] = expected;
 
       final decoded = EditorProjectDocument.fromJson(json);
-      final restoredIds = decoded.p2State.routes.single.segments.single.anchorIds
+      final restoredIds = decoded
+          .p2State.routes.single.segments.single.anchorIds
           .map((id) => id.value)
           .toList(growable: false);
 
       expect(decoded.schemaVersion, 6);
       expect(restoredIds, expected);
-      final encodedSegment = ((((decoded.toJson()['p2']! as Map)['routes']! as List)
-              .single as Map)['segments']! as List)
-          .single as Map;
+      final encodedSegment =
+          ((((decoded.toJson()['p2']! as Map)['routes']! as List).single
+                  as Map)['segments']! as List)
+              .single as Map;
       expect(encodedSegment['anchorIds'], expected);
       fixture.dispose();
     });
