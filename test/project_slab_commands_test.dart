@@ -57,7 +57,8 @@ void main() {
       expect(committed.materialId, 'reinforced-concrete-c30');
     });
 
-    test('remove releases level slab indexes and participates in undo redo', () {
+    test('remove releases level slab indexes and participates in undo redo',
+        () {
       final fixture = _Fixture();
       final slab = fixture.slab();
       final session = ProjectMutationSession(
@@ -73,8 +74,10 @@ void main() {
 
       expect(removed, isNotNull);
       expect(removed!.changeSet.removedEntityIds, {fixture.slabId});
-      expect(removed.project.index.slabsForLevel(fixture.lowerLevelId), isEmpty);
-      expect(removed.project.index.slabsForLevel(fixture.upperLevelId), isEmpty);
+      expect(
+          removed.project.index.slabsForLevel(fixture.lowerLevelId), isEmpty);
+      expect(
+          removed.project.index.slabsForLevel(fixture.upperLevelId), isEmpty);
 
       final undo = session.undo(session.current.version);
       expect(undo, isNotNull);
@@ -119,8 +122,7 @@ void main() {
         ),
       );
       expect(
-        () => RemoveSlabCommand(slabId: fixture.slabId)
-            .buildCandidate(project),
+        () => RemoveSlabCommand(slabId: fixture.slabId).buildCandidate(project),
         throwsA(
           isA<ProjectAuthoringException>().having(
             (error) => error.code,
