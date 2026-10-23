@@ -1,8 +1,8 @@
 import '../../application/project/project_structure_authoring.dart';
 import '../../domain/boundary_construction_registry.dart';
 import '../../domain/boundary_host_migration.dart';
+import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
-import '../../domain/project_model.dart';
 import 'canonical_room_surface_runtime_registry.dart';
 import 'canonical_wall_construction_runtime.dart';
 import 'editor_controller.dart';
