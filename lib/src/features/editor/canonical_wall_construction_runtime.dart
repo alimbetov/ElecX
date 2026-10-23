@@ -241,13 +241,11 @@ abstract final class CanonicalWallConstructionRuntime {
     }
 
     if (affectedRouteIds.isEmpty) return source;
-    final sizingEvidence = Map<String, dynamic>.of(source.sizingEvidenceByRoute)
+    final sizingEvidence = Map.of(source.sizingEvidenceByRoute)
       ..removeWhere((routeId, _) => affectedRouteIds.contains(routeId));
     return source.copyWith(
       routes: List.unmodifiable(routes),
-      sizingEvidenceByRoute: Map.unmodifiable(
-        sizingEvidence.cast<String, dynamic>(),
-      ),
+      sizingEvidenceByRoute: Map.unmodifiable(sizingEvidence),
     );
   }
 
