@@ -1,3 +1,4 @@
+import 'boundary_penetration.dart';
 import 'electrical_routing.dart';
 import 'project_identity.dart';
 import 'route_medium.dart';
@@ -51,7 +52,7 @@ abstract final class VerticalCoreCableRouteAuthoring {
     }
 
     final penetrationIds = <String>{};
-    final penetrations = <dynamic>[];
+    final penetrations = <BoundaryPenetration>[];
     for (var index = 0; index < plan.crossings.length; index++) {
       final planned = plan.crossings[index];
       final materialized = crossings[index];
@@ -86,7 +87,7 @@ abstract final class VerticalCoreCableRouteAuthoring {
       source: source,
       target: target,
       segments: List.unmodifiable(segments),
-      penetrations: List.unmodifiable(penetrations.cast()),
+      penetrations: List.unmodifiable(penetrations),
       verticalCoreLegs: plan.verticalLegs,
       cableType: cableType,
       medium: medium,
