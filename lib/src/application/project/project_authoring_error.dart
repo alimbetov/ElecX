@@ -9,6 +9,7 @@ enum ProjectAuthoringIssueCode {
   levelNotFound,
   levelHasChildren,
   levelHasPhysicalSlabs,
+  levelHasVerticalCores,
   duplicateLevelNumber,
   slabAlreadyExists,
   slabNotFound,
