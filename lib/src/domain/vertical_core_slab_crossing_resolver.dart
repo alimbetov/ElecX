@@ -53,9 +53,8 @@ abstract final class VerticalCoreSlabCrossingResolver {
       return null;
     }
 
-    final lower = fromLevel.elevationMm < toLevel.elevationMm
-        ? fromLevel
-        : toLevel;
+    final lower =
+        fromLevel.elevationMm < toLevel.elevationMm ? fromLevel : toLevel;
     final upper = identical(lower, fromLevel) ? toLevel : fromLevel;
 
     ProjectSlab? matched;
@@ -100,9 +99,8 @@ bool _containsPoint(List<BoundaryPointMm> polygon, BoundaryPointMm point) {
 
     final crosses = (a.yMm > point.yMm) != (b.yMm > point.yMm);
     if (!crosses) continue;
-    final intersectionX = a.xMm +
-        (point.yMm - a.yMm) * (b.xMm - a.xMm) /
-            (b.yMm - a.yMm);
+    final intersectionX =
+        a.xMm + (point.yMm - a.yMm) * (b.xMm - a.xMm) / (b.yMm - a.yMm);
     if (point.xMm < intersectionX) inside = !inside;
   }
   return inside;
