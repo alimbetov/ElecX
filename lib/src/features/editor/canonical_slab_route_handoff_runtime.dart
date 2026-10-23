@@ -74,7 +74,8 @@ final class CanonicalSlabRouteHandoffRuntime {
     if (fromSpaceId == null) {
       throw const CanonicalSlabRouteHandoffRuntimeException(
         code: CanonicalSlabRouteHandoffRuntimeIssueCode.sourceSpaceRequired,
-        message: 'Cross-level route handoff requires a selected source SpaceId.',
+        message:
+            'Cross-level route handoff requires a selected source SpaceId.',
       );
     }
 
@@ -95,7 +96,8 @@ final class CanonicalSlabRouteHandoffRuntime {
     if (evidence == null) {
       _handoff.cancel();
       throw CanonicalSlabRouteHandoffRuntimeException(
-        code: CanonicalSlabRouteHandoffRuntimeIssueCode.verticalEvidenceRejected,
+        code:
+            CanonicalSlabRouteHandoffRuntimeIssueCode.verticalEvidenceRejected,
         entityId: intent.slabId,
         message: 'Materialized vertical geometry does not prove the canonical '
             'slab crossing.',
@@ -106,8 +108,8 @@ final class CanonicalSlabRouteHandoffRuntime {
       coordinator.session.project,
       toSpaceId,
     );
-    final materialization = const ExistingBindingCanonicalEditorMaterializer()
-        .inspect(
+    final materialization =
+        const ExistingBindingCanonicalEditorMaterializer().inspect(
       project: coordinator.session.project,
       navigation: targetNavigation,
       binding: coordinator.adapter.binding,
