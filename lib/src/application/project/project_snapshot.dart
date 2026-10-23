@@ -1,3 +1,4 @@
+import '../../domain/boundary_construction_registry.dart';
 import '../../domain/boundary_geometry_integrity.dart';
 import '../../domain/boundary_host_registry.dart';
 import '../../domain/boundary_opening_profile_validation.dart';
@@ -33,8 +34,11 @@ final class ProjectSnapshot {
         aggregate.engineeringMetadata.boundaryHostedObjectRegistry;
     final wallProfiles =
         aggregate.engineeringMetadata.boundaryWallProfileRegistry;
+    final constructionProfiles =
+        aggregate.engineeringMetadata.boundaryConstructionRegistry;
     hostedObjects.validateAgainst(aggregate.stores.boundaries);
     wallProfiles.validateAgainst(aggregate.stores.boundaries);
+    constructionProfiles.validateAgainst(aggregate.stores.boundaries);
     _validateAdoptedOpeningOwnership(
       aggregate: aggregate,
       hostedObjects: hostedObjects,
