@@ -9,8 +9,9 @@ const int _maximumLevelNumber = 200;
 
 /// Creates one canonical level under an existing building.
 ///
-/// [levelId] is the persistent identity. [levelNumber], [displayOrder] and
-/// [elevationMm] are mutable attributes and must never be used as foreign keys.
+/// [levelId] is the persistent identity. [levelNumber], [displayOrder],
+/// [elevationMm], [kind] and [floorToFloorHeightMm] are structural attributes
+/// and must never be used as foreign keys.
 final class CreateLevelCommand implements ProjectCommand {
   CreateLevelCommand({
     required this.levelId,
@@ -19,9 +20,18 @@ final class CreateLevelCommand implements ProjectCommand {
     required this.levelNumber,
     required this.elevationMm,
     this.displayOrder = 0,
+    this.kind,
+    this.floorToFloorHeightMm = 3000,
   }) {
     if (name.trim().isEmpty) {
       throw ArgumentError.value(name, 'name', 'Level name must be non-empty.');
+    }
+    if (floorToFloorHeightMm <= 0) {
+      throw ArgumentError.value(
+        floorToFloorHeightMm,
+        'floorToFloorHeightMm',
+        'Must be positive.',
+      );
     }
   }
 
@@ -31,6 +41,8 @@ final class CreateLevelCommand implements ProjectCommand {
   final int levelNumber;
   final int displayOrder;
   final int elevationMm;
+  final ProjectLevelKind? kind;
+  final int floorToFloorHeightMm;
 
   @override
   String get commandType => 'project.level.create';
@@ -73,6 +85,8 @@ final class CreateLevelCommand implements ProjectCommand {
       levelNumber: levelNumber,
       displayOrder: displayOrder,
       elevationMm: elevationMm,
+      kind: kind,
+      floorToFloorHeightMm: floorToFloorHeightMm,
     );
 
     return ProjectCommandCandidate.fromState(
@@ -88,7 +102,7 @@ final class CreateLevelCommand implements ProjectCommand {
   }
 }
 
-/// Renames a level while preserving identity, numbering, ordering and height.
+/// Renames a level while preserving identity and all structural semantics.
 final class RenameLevelCommand implements ProjectCommand {
   RenameLevelCommand({required this.levelId, required this.name}) {
     if (name.trim().isEmpty) {
@@ -237,6 +251,8 @@ ProjectCommandCandidate _replaceLevel(
     levelNumber: levelNumber ?? level.levelNumber,
     displayOrder: displayOrder ?? level.displayOrder,
     elevationMm: level.elevationMm,
+    kind: level.kind,
+    floorToFloorHeightMm: level.floorToFloorHeightMm,
     zoneIds: level.zoneIds,
     spaceIds: level.spaceIds,
   );

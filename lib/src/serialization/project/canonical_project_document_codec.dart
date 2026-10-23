@@ -22,17 +22,19 @@ import 'project_document_codec.dart';
 /// - v4: P7A stable boundary topology and durable edge-owner tombstones;
 /// - v5: P7A-5 durable hosted-object ownership by BoundaryEdgeId;
 /// - v6: P7A-5 durable wall-profile payloads by BoundaryEdgeId;
-/// - v7: physical wall construction thickness/material by BoundaryEdgeId.
+/// - v7: physical wall construction thickness/material by BoundaryEdgeId;
+/// - v8: canonical level kind and floor-to-floor height.
 final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
   const CanonicalProjectDocumentCodec();
 
-  static const int schemaVersion = 7;
+  static const int schemaVersion = 8;
   static const int _schemaV1 = 1;
   static const int _schemaV2 = 2;
   static const int _schemaV3 = 3;
   static const int _schemaV4 = 4;
   static const int _schemaV5 = 5;
   static const int _schemaV6 = 6;
+  static const int _schemaV7 = 7;
 
   @override
   int get currentSchemaVersion => schemaVersion;
@@ -166,6 +168,15 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
           levelNumber: _int(json['levelNumber'], 'level.levelNumber'),
           displayOrder: _int(json['displayOrder'], 'level.displayOrder'),
           elevationMm: _int(json['elevationMm'], 'level.elevationMm'),
+          kind: _enumByName(
+            ProjectLevelKind.values,
+            json['kind'],
+            'level.kind',
+          ),
+          floorToFloorHeightMm: _int(
+            json['floorToFloorHeightMm'],
+            'level.floorToFloorHeightMm',
+          ),
           zoneIds: _uniqueStringList(
             json['zoneIds'],
             'level.zoneIds',
@@ -387,6 +398,9 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
     if (migrated.schemaVersion == _schemaV6) {
       migrated = _migrateV6ToV7(migrated);
     }
+    if (migrated.schemaVersion == _schemaV7) {
+      migrated = _migrateV7ToV8(migrated);
+    }
     return migrated;
   }
 
@@ -451,12 +465,34 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
 
   static ProjectDocument _migrateV6ToV7(ProjectDocument document) =>
       ProjectDocument(
-        schemaVersion: schemaVersion,
+        schemaVersion: _schemaV7,
         payload: <String, Object?>{
           ...document.payload,
           'boundaryConstructionRegistry': const <Object?>[],
         },
       );
+
+  static ProjectDocument _migrateV7ToV8(ProjectDocument document) {
+    final levels = <Object?>[
+      for (final raw in _list(document.payload['levels'], 'levels'))
+        () {
+          final json = _map(raw, 'level');
+          final levelNumber = _int(json['levelNumber'], 'level.levelNumber');
+          return <String, Object?>{
+            ...json,
+            'kind': inferProjectLevelKind(levelNumber).name,
+            'floorToFloorHeightMm': 3000,
+          };
+        }(),
+    ];
+    return ProjectDocument(
+      schemaVersion: schemaVersion,
+      payload: <String, Object?>{
+        ...document.payload,
+        'levels': levels,
+      },
+    );
+  }
 
   static ProjectEngineeringNorth? _projectNorth(Object? value) {
     if (value == null) return null;
@@ -522,6 +558,8 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
           'levelNumber': level.levelNumber,
           'displayOrder': level.displayOrder,
           'elevationMm': level.elevationMm,
+          'kind': level.kind.name,
+          'floorToFloorHeightMm': level.floorToFloorHeightMm,
           'zoneIds': _sortedIds(level.zoneIds),
           'spaceIds': _sortedIds(level.spaceIds),
         },

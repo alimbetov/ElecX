@@ -70,11 +70,15 @@ final class CreateLevelRequest {
     required this.levelNumber,
     required this.elevationMm,
     this.displayOrder = 0,
+    this.kind,
+    this.floorToFloorHeightMm = 3000,
   });
   final String name;
   final int levelNumber;
   final int elevationMm;
   final int displayOrder;
+  final ProjectLevelKind? kind;
+  final int floorToFloorHeightMm;
 }
 
 final class CreateRoomRequest {
@@ -296,6 +300,8 @@ final class ProjectStructureAuthoringSession {
       levelNumber: input.levelNumber,
       elevationMm: input.elevationMm,
       displayOrder: input.displayOrder,
+      kind: input.kind,
+      floorToFloorHeightMm: input.floorToFloorHeightMm,
     );
     final request = ProjectMutationRequest(
       expectedVersion: project.version,

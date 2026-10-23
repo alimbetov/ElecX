@@ -71,6 +71,15 @@ final class ProjectBuildingEntity {
   final Set<LevelId> levelIds;
 }
 
+/// Canonical physical role of one building level.
+enum ProjectLevelKind { basement, ground, residential, technical, roof }
+
+ProjectLevelKind inferProjectLevelKind(int levelNumber) {
+  if (levelNumber < 0) return ProjectLevelKind.basement;
+  if (levelNumber == 0) return ProjectLevelKind.ground;
+  return ProjectLevelKind.residential;
+}
+
 final class ProjectLevelEntity {
   ProjectLevelEntity({
     required this.id,
@@ -79,12 +88,25 @@ final class ProjectLevelEntity {
     required this.levelNumber,
     required this.elevationMm,
     this.displayOrder = 0,
+    ProjectLevelKind? kind,
+    this.floorToFloorHeightMm = 3000,
     Iterable<ZoneId> zoneIds = const [],
     Iterable<SpaceId> spaceIds = const [],
-  })  : zoneIds = Set.unmodifiable(zoneIds),
+  })  : kind = kind ?? inferProjectLevelKind(levelNumber),
+        zoneIds = Set.unmodifiable(zoneIds),
         spaceIds = Set.unmodifiable(spaceIds) {
     if (name.trim().isEmpty) {
       throw ArgumentError.value(name, 'name', 'Level name must be non-empty.');
+    }
+    if (levelNumber < -30 || levelNumber > 200) {
+      throw RangeError.range(levelNumber, -30, 200, 'levelNumber');
+    }
+    if (floorToFloorHeightMm <= 0) {
+      throw ArgumentError.value(
+        floorToFloorHeightMm,
+        'floorToFloorHeightMm',
+        'Must be positive.',
+      );
     }
   }
 
@@ -94,6 +116,8 @@ final class ProjectLevelEntity {
   final int levelNumber;
   final int displayOrder;
   final int elevationMm;
+  final ProjectLevelKind kind;
+  final int floorToFloorHeightMm;
   final Set<ZoneId> zoneIds;
   final Set<SpaceId> spaceIds;
 }
