@@ -119,7 +119,8 @@ void main() {
     test('rejects store key identity mismatch', () {
       final slab = _interLevelSlab('slab-a');
 
-      final issues = SlabTopologyValidator.validate({SlabId('wrong-key'): slab});
+      final issues =
+          SlabTopologyValidator.validate({SlabId('wrong-key'): slab});
 
       expect(
         issues.map((issue) => issue.code),
