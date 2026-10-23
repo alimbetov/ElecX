@@ -92,7 +92,8 @@ abstract final class VerticalCoreProjectValidator {
     required VerticalCoreBuildingExists buildingExists,
     required VerticalCoreLevelBuildingResolver levelBuildingResolver,
   }) {
-    final topologyIssues = VerticalCoreTopologyValidator.validate(verticalCores);
+    final topologyIssues =
+        VerticalCoreTopologyValidator.validate(verticalCores);
     if (topologyIssues.isNotEmpty) {
       throw VerticalCoreTopologyValidationException(topologyIssues);
     }
