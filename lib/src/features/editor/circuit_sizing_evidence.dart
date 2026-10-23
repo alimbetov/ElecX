@@ -165,16 +165,36 @@ final class CircuitSizingEvidence {
     );
   }
 
-  static String geometrySignature(ElectricalCableRoute route) => route.segments
-      .map(
-        (segment) => [
-          segment.surface.spaceId,
-          segment.surface.type.name,
-          segment.surface.wallIndex?.toString() ?? '-',
-          for (final point in segment.points) '${point.xMm},${point.yMm}',
-        ].join(':'),
-      )
-      .join('|');
+  static String geometrySignature(ElectricalCableRoute route) {
+    final segmentSignature = route.segments
+        .map(
+          (segment) => [
+            segment.surface.spaceId,
+            segment.surface.type.name,
+            segment.surface.boundaryEdgeId?.value ??
+                segment.surface.wallIndex?.toString() ??
+                '-',
+            for (final point in segment.points) '${point.xMm},${point.yMm}',
+          ].join(':'),
+        )
+        .join('|');
+    final penetrationSignature = route.penetrations
+        .map(
+          (penetration) => [
+            penetration.id,
+            penetration.hostKind.name,
+            penetration.hostThicknessMm,
+            penetration.pathLengthMm,
+            penetration.materialId ?? '-',
+            penetration.entryAnchor.surface.id,
+            '${penetration.entryAnchor.point.xMm},${penetration.entryAnchor.point.yMm}',
+            penetration.exitAnchor.surface.id,
+            '${penetration.exitAnchor.point.xMm},${penetration.exitAnchor.point.yMm}',
+          ].join(':'),
+        )
+        .join('|');
+    return '$segmentSignature#penetrations=$penetrationSignature';
+  }
 
   static Map<String, Object?> _cableToJson(CableSpec value) => {
         'id': value.id,
