@@ -143,9 +143,61 @@ final class CanonicalSlabRouteDraftExternalization {
     return result;
   }
 
+  /// Returns whether this token still owns the exact transient/P2 state needed
+  /// by one handoff attempt. No mutation is performed by this check.
+  bool owns({
+    required EditorController editor,
+    required ProjectSlabRouteHandoffIntent intent,
+  }) =>
+      !_restored &&
+      identical(editorIdentity, editor) &&
+      routeId == intent.routeId &&
+      slabId == intent.slabId &&
+      editor.routeSegments.isEmpty &&
+      editor.p2.history.mutationRevision == p2MutationRevision &&
+      (!hadPhysicalContinuation || editor.physicalRouteContinuationId == routeId);
+
   /// Restores the exact source draft plus one target-level seed point after the
   /// canonical workspace has switched to the target SpaceId.
-  void restore(EditorController editor) {
+  void restoreTarget(EditorController editor) {
+    _requireRestorable(editor);
+    final targetSurface = _materializeExpectedHorizontalSurface(
+      editor: editor,
+      expectedCanonicalSpaceIdResolver: (context) => context
+          .canonicalSpaceIdForSurfaceSpaceId(transition.toSurface.spaceId),
+      expectedType: transition.toSurface.type,
+    );
+
+    editor.routeSegments.addAll(sourceSegments);
+    editor.routeSegments.add(
+      SurfaceRouteSegmentDraft(
+        surface: targetSurface,
+        points: <SurfacePointMm>[transition.toPoint],
+      ),
+    );
+    _restored = true;
+    // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+    editor.notifyListeners();
+  }
+
+  /// Rollback path used when target cutover succeeds but draft restoration fails.
+  /// The legacy workspace must first be returned to the original source SpaceId.
+  void restoreSource(EditorController editor) {
+    _requireRestorable(editor);
+    _materializeExpectedHorizontalSurface(
+      editor: editor,
+      expectedCanonicalSpaceIdResolver: (context) => context
+          .canonicalSpaceIdForSurfaceSpaceId(transition.fromSurface.spaceId),
+      expectedType: transition.fromSurface.type,
+    );
+
+    editor.routeSegments.addAll(sourceSegments);
+    _restored = true;
+    // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+    editor.notifyListeners();
+  }
+
+  void _requireRestorable(EditorController editor) {
     if (_restored) {
       throw const CanonicalSlabRouteDraftExternalizationException(
         code: CanonicalSlabRouteDraftExternalizationIssueCode
@@ -177,6 +229,21 @@ final class CanonicalSlabRouteDraftExternalization {
         message: 'Physical route continuation identity changed during cutover.',
       );
     }
+  }
+
+  RoomSurfaceRef _materializeExpectedHorizontalSurface({
+    required EditorController editor,
+    required SpaceId? Function(CanonicalPhysicalRoutingContext context)
+        expectedCanonicalSpaceIdResolver,
+    required SurfacePlaneType expectedType,
+  }) {
+    if (expectedType == SurfacePlaneType.wall) {
+      throw const CanonicalSlabRouteDraftExternalizationException(
+        code: CanonicalSlabRouteDraftExternalizationIssueCode
+            .targetSurfaceMismatch,
+        message: 'A slab handoff endpoint must be floor or ceiling.',
+      );
+    }
 
     final routingContext =
         CanonicalRoomSurfaceRuntimeRegistry.physicalRoutingContextFor(editor);
@@ -185,52 +252,38 @@ final class CanonicalSlabRouteDraftExternalization {
             routingContext == null
         ? null
         : routingContext.canonicalSpaceIdForSurfaceSpaceId(selectedLegacySpaceId);
+    final expectedCanonicalSpaceId = routingContext == null
+        ? null
+        : expectedCanonicalSpaceIdResolver(routingContext);
     if (selectedCanonicalSpaceId == null ||
-        selectedCanonicalSpaceId !=
-            routingContext!.canonicalSpaceIdForSurfaceSpaceId(
-              transition.toSurface.spaceId,
-            )) {
+        selectedCanonicalSpaceId != expectedCanonicalSpaceId) {
       throw const CanonicalSlabRouteDraftExternalizationException(
         code: CanonicalSlabRouteDraftExternalizationIssueCode
             .targetSurfaceMismatch,
-        message: 'The materialized editor is not on the slab transition target '
-            'SpaceId.',
+        message: 'The materialized editor is not on the expected canonical '
+            'SpaceId for this slab route draft.',
       );
     }
 
     editor.setTool(EditorTool.cableRoute);
-    switch (transition.toSurface.type) {
+    switch (expectedType) {
       case SurfacePlaneType.floor:
         editor.showFloor();
       case SurfacePlaneType.ceiling:
         editor.showCeiling();
       case SurfacePlaneType.wall:
-        throw const CanonicalSlabRouteDraftExternalizationException(
-          code: CanonicalSlabRouteDraftExternalizationIssueCode
-              .targetSurfaceMismatch,
-          message: 'A slab handoff target must be floor or ceiling.',
-        );
+        throw StateError('Handled above.');
     }
-    final targetSurface = editor.activeSurface;
-    if (targetSurface == null ||
-        targetSurface.type != transition.toSurface.type ||
-        targetSurface.spaceId != selectedLegacySpaceId) {
+    final surface = editor.activeSurface;
+    if (surface == null ||
+        surface.type != expectedType ||
+        surface.spaceId != selectedLegacySpaceId) {
       throw const CanonicalSlabRouteDraftExternalizationException(
         code: CanonicalSlabRouteDraftExternalizationIssueCode
             .targetSurfaceMismatch,
-        message: 'Target floor/ceiling surface could not be materialized.',
+        message: 'Expected floor/ceiling surface could not be materialized.',
       );
     }
-
-    editor.routeSegments.addAll(sourceSegments);
-    editor.routeSegments.add(
-      SurfaceRouteSegmentDraft(
-        surface: targetSurface,
-        points: <SurfacePointMm>[transition.toPoint],
-      ),
-    );
-    _restored = true;
-    // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
-    editor.notifyListeners();
+    return surface;
   }
 }
