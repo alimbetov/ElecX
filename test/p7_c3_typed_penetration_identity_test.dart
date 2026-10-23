@@ -55,7 +55,8 @@ void main() {
       },
     );
 
-    test('legacy scalar ingress is promoted losslessly without regeneration', () {
+    test('legacy scalar ingress is promoted losslessly without regeneration',
+        () {
       const legacyId = 'legacy-persisted-penetration';
       final penetration = BoundaryPenetration.slab(
         id: legacyId,
