@@ -700,7 +700,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
         )) {
           return false;
         }
-      }
+    }
     _cableDragHit = hit;
     return true;
   }
