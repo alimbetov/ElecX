@@ -1,4 +1,5 @@
 import 'package:elecx/src/domain/boundary_penetration.dart';
+import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -81,5 +82,78 @@ void main() {
       ),
       throwsArgumentError,
     );
+  });
+
+  test('canonical slab penetration preserves stable physical SlabId', () {
+    final penetration = BoundaryPenetration.slab(
+      id: 'p-slab-1',
+      slabId: SlabId('slab-01-02'),
+      entrySurface: RoomSurfaceRef.ceiling('room-l1'),
+      entryPoint: const SurfacePointMm(1400, 1600),
+      exitSurface: RoomSurfaceRef.floor('room-l2'),
+      exitPoint: const SurfacePointMm(1400, 1600),
+      hostThicknessMm: 200,
+      routeId: 'C-201',
+      materialId: 'reinforced-concrete',
+    );
+
+    expect(penetration.hostKind, BoundaryPenetrationHostKind.slab);
+    expect(penetration.slabId, SlabId('slab-01-02'));
+    expect(penetration.hasStableSlabHostIdentity, isTrue);
+    expect(penetration.routeLengthContributionMm, 200);
+  });
+
+  test('slab requirement propagates SlabId into committed penetration', () {
+    final requirement = BoundaryPenetrationRequirement(
+      hostKind: BoundaryPenetrationHostKind.slab,
+      hostThicknessMm: 220,
+      materialId: 'reinforced-concrete',
+      slabId: SlabId('slab-02-03'),
+    );
+
+    final penetration = requirement.create(
+      penetrationId: 'p-slab-2',
+      routeId: 'C-202',
+      entrySurface: RoomSurfaceRef.ceiling('room-l2'),
+      entryPoint: const SurfacePointMm(800, 900),
+      exitSurface: RoomSurfaceRef.floor('room-l3'),
+      exitPoint: const SurfacePointMm(800, 900),
+    );
+
+    expect(penetration.slabId, SlabId('slab-02-03'));
+    expect(penetration.hostThicknessMm, 220);
+  });
+
+  test('wall penetration rejects accidental SlabId host assignment', () {
+    expect(
+      () => BoundaryPenetration.normal(
+        id: 'p-wall-with-slab',
+        hostKind: BoundaryPenetrationHostKind.wall,
+        entrySurface: RoomSurfaceRef.wall('room-a', 0),
+        entryPoint: const SurfacePointMm(1000, 1200),
+        exitSurface: RoomSurfaceRef.wall('room-b', 2),
+        exitPoint: const SurfacePointMm(1000, 1200),
+        hostThicknessMm: 180,
+        routeId: 'r-1',
+        slabId: SlabId('slab-invalid'),
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test('legacy slab penetration can remain unidentified until migration', () {
+    final legacy = BoundaryPenetration.normal(
+      id: 'legacy-slab',
+      hostKind: BoundaryPenetrationHostKind.slab,
+      entrySurface: RoomSurfaceRef.ceiling('room-l1'),
+      entryPoint: const SurfacePointMm(400, 500),
+      exitSurface: RoomSurfaceRef.floor('room-l2'),
+      exitPoint: const SurfacePointMm(400, 500),
+      hostThicknessMm: 180,
+      routeId: 'legacy-route',
+    );
+
+    expect(legacy.slabId, isNull);
+    expect(legacy.hasStableSlabHostIdentity, isFalse);
   });
 }
