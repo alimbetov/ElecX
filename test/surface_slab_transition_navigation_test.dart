@@ -25,7 +25,8 @@ import 'package:elecx/src/features/editor/surface_transition_navigator.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('canvas-facing selected route projects and follows slab marker safely', () {
+  test('canvas-facing selected route projects and follows slab marker safely',
+      () {
     final fixture = _Fixture();
     addTearDown(fixture.dispose);
     final route = fixture.editor.p2.routes.single;
