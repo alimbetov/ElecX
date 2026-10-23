@@ -28,15 +28,15 @@ void main() {
         throwsA(
           isA<ProjectAuthoringException>()
               .having(
-                (error) => error.code,
-                'code',
-                ProjectAuthoringIssueCode.spaceHasBoundaryDependencies,
-              )
+            (error) => error.code,
+            'code',
+            ProjectAuthoringIssueCode.spaceHasBoundaryDependencies,
+          )
               .having(
-                (error) => error.blockingEntityIds,
-                'blockingEntityIds',
-                <EntityId>{edgeId},
-              ),
+            (error) => error.blockingEntityIds,
+            'blockingEntityIds',
+            <EntityId>{edgeId},
+          ),
         ),
       );
 
