@@ -6,7 +6,8 @@ import 'package:elecx/src/domain/vertical_core_route_leg.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('multi-level riser route counts slab and hidden VerticalCore length', () {
+  test('multi-level riser route counts slab and hidden VerticalCore length',
+      () {
     final coreId = VerticalCoreId('VC-01');
     final slab12 = SlabId('SLAB-12');
     final slab23 = SlabId('SLAB-23');
@@ -80,7 +81,8 @@ void main() {
     expect(route.installationLengthMm, 3600);
   });
 
-  test('hidden floor-to-ceiling jump fails without matching VerticalCore leg', () {
+  test('hidden floor-to-ceiling jump fails without matching VerticalCore leg',
+      () {
     final coreId = VerticalCoreId('VC-01');
     final slab12 = SlabId('SLAB-12');
     final slab23 = SlabId('SLAB-23');
@@ -93,8 +95,7 @@ void main() {
     expect(
       () => ElectricalCableRoute(
         id: 'R-1',
-        source:
-            const ElectricalEndpointRef(componentId: 'SRC', portId: 'OUT'),
+        source: const ElectricalEndpointRef(componentId: 'SRC', portId: 'OUT'),
         target: const ElectricalEndpointRef(componentId: 'DST', portId: 'IN'),
         segments: [
           ElectricalRouteSegment(surface: ceiling1, points: const [point]),
