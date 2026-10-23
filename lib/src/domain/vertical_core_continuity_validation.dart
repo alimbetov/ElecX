@@ -65,7 +65,8 @@ abstract final class VerticalCoreContinuityValidator {
           VerticalCoreContinuityIssue(
             code: VerticalCoreContinuityIssueCode.ambiguousPhysicalLevelOrder,
             verticalCoreId: core.id,
-            message: 'Vertical core ${core.id} cannot resolve a unique physical '
+            message:
+                'Vertical core ${core.id} cannot resolve a unique physical '
                 'level order in building ${core.buildingId}: at least two '
                 'canonical levels share the same elevation.',
           ),
