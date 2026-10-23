@@ -72,12 +72,18 @@ final class RouteHostTransition {
     this.requiresPenetration = false,
     this.siteConnectionId,
     this.slabId,
-  }) : assert(
+    this.verticalCoreId,
+  })  : assert(
           kind == RouteHostTransitionKind.levelPenetration
               ? slabId != null
               : slabId == null,
           'Only levelPenetration transitions may carry a SlabId, and they '
           'must carry one.',
+        ),
+        assert(
+          verticalCoreId == null ||
+              kind == RouteHostTransitionKind.levelPenetration,
+          'VerticalCoreId is only valid for a levelPenetration transition.',
         );
 
   final String id;
@@ -92,6 +98,10 @@ final class RouteHostTransition {
   /// Stable physical slab ownership for an inter-level continuation marker.
   /// Wall penetrations and outdoor transitions intentionally keep this null.
   final SlabId? slabId;
+
+  /// Stable P7B riser/shaft ownership for an inter-level continuation marker.
+  /// Direct slab crossings intentionally keep this null.
+  final VerticalCoreId? verticalCoreId;
 }
 
 abstract final class SiteRouteTransitionResolver {
