@@ -22,9 +22,9 @@ void main() {
       penetrationId: 'P-12',
       routeId: 'R-1',
       entrySurface: RoomSurfaceRef.ceiling('room-l1'),
-      entryPoint: const SurfacePointMm(xMm: 100, yMm: 100),
+      entryPoint: const SurfacePointMm(100, 100),
       exitSurface: RoomSurfaceRef.floor('room-l2'),
-      exitPoint: const SurfacePointMm(xMm: 100, yMm: 100),
+      exitPoint: const SurfacePointMm(100, 100),
     );
 
     expect(penetration.slabId, slabId);
@@ -37,9 +37,9 @@ void main() {
         id: 'P-WALL',
         hostKind: BoundaryPenetrationHostKind.wall,
         entrySurface: RoomSurfaceRef.wall('room-a', 0),
-        entryPoint: const SurfacePointMm(xMm: 100, yMm: 100),
+        entryPoint: const SurfacePointMm(100, 100),
         exitSurface: RoomSurfaceRef.wall('room-b', 0),
-        exitPoint: const SurfacePointMm(xMm: 100, yMm: 100),
+        exitPoint: const SurfacePointMm(100, 100),
         hostThicknessMm: 180,
         routeId: 'R-1',
         verticalCoreId: VerticalCoreId('VC-01'),
@@ -53,7 +53,7 @@ void main() {
     final slabId = SlabId('SLAB-12');
     final ceiling = RoomSurfaceRef.ceiling('room-l1');
     final floor = RoomSurfaceRef.floor('room-l2');
-    const point = SurfacePointMm(xMm: 100, yMm: 100);
+    const point = SurfacePointMm(100, 100);
     final penetration = BoundaryPenetration.slab(
       id: 'P-12',
       slabId: slabId,
