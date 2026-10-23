@@ -27,7 +27,10 @@ final class RouteSelectionSession extends ChangeNotifier {
   HostedRoutePath? get selectedHostedRoute {
     final id = _selectedRouteId;
     if (id == null) return null;
-    return controller.hostedRoutes.byId(id);
+    final explicit = controller.hostedRoutes.byId(id);
+    if (explicit != null) return explicit;
+    final indoor = selectedRoute;
+    return indoor == null ? null : HostedRouteAdapter.fromIndoor(indoor);
   }
 
   bool contains(String routeId) => _selectedRouteId == routeId;
