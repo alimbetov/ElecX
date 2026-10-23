@@ -11,7 +11,8 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   const codec = VerticalCoreAwareCanonicalProjectDocumentCodec();
 
-  test('schema v9 round-trip preserves stable VerticalCore identity and geometry',
+  test(
+      'schema v9 round-trip preserves stable VerticalCore identity and geometry',
       () {
     final fixture = _Fixture();
     final core = fixture.core();
