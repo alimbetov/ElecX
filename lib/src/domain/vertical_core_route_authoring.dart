@@ -4,6 +4,7 @@ import 'project_aggregate.dart';
 import 'project_identity.dart';
 import 'surfaces.dart';
 import 'vertical_core_path_resolver.dart';
+import 'vertical_core_route_leg.dart';
 import 'vertical_core_slab_crossing_resolver.dart';
 
 /// One concrete slab boundary in a planned route through a VerticalCore.
@@ -41,6 +42,7 @@ final class VerticalCoreRouteCrossingPlan {
       BoundaryPenetration.slab(
         id: penetrationId,
         slabId: slabId,
+        verticalCoreId: verticalCoreId,
         entrySurface: entrySurface,
         entryPoint: entryPoint,
         exitSurface: exitSurface,
@@ -56,7 +58,8 @@ final class VerticalCoreRouteCrossingPlan {
 /// [intermediateVerticalLengthMm] is the hidden straight-Z run inside the core
 /// between consecutive slab penetrations. Individual slab thickness remains
 /// owned by penetration entities and is exposed separately so callers never
-/// double-count it.
+/// double-count it. [verticalLegs] carries the same length as durable physical
+/// evidence per consecutive slab pair.
 final class VerticalCoreRouteAuthoringPlan {
   VerticalCoreRouteAuthoringPlan({
     required this.verticalCoreId,
@@ -64,7 +67,9 @@ final class VerticalCoreRouteAuthoringPlan {
     required this.toLevelId,
     required Iterable<VerticalCoreRouteCrossingPlan> crossings,
     required this.intermediateVerticalLengthMm,
-  }) : crossings = List.unmodifiable(crossings) {
+    Iterable<VerticalCoreRouteLeg> verticalLegs = const [],
+  })  : crossings = List.unmodifiable(crossings),
+        verticalLegs = List.unmodifiable(verticalLegs) {
     if (this.crossings.isEmpty) {
       throw ArgumentError('VerticalCore route plan requires a slab crossing.');
     }
@@ -74,6 +79,25 @@ final class VerticalCoreRouteAuthoringPlan {
         'intermediateVerticalLengthMm',
       );
     }
+    final legLength = this.verticalLegs.fold<int>(
+          0,
+          (sum, leg) => sum + leg.lengthMm,
+        );
+    if (this.verticalLegs.isNotEmpty &&
+        legLength != intermediateVerticalLengthMm) {
+      throw ArgumentError(
+        'VerticalCore leg length $legLength does not match planned hidden '
+        'length $intermediateVerticalLengthMm.',
+      );
+    }
+    for (final leg in this.verticalLegs) {
+      if (leg.verticalCoreId != verticalCoreId) {
+        throw ArgumentError(
+          'VerticalCore route leg ${leg.fromSlabId}->${leg.toSlabId} belongs '
+          'to ${leg.verticalCoreId}, not $verticalCoreId.',
+        );
+      }
+    }
   }
 
   final VerticalCoreId verticalCoreId;
@@ -81,6 +105,7 @@ final class VerticalCoreRouteAuthoringPlan {
   final LevelId toLevelId;
   final List<VerticalCoreRouteCrossingPlan> crossings;
   final int intermediateVerticalLengthMm;
+  final List<VerticalCoreRouteLeg> verticalLegs;
 
   int get penetrationLengthMm => crossings.fold(
         0,
@@ -129,6 +154,7 @@ abstract final class VerticalCoreRouteAuthoring {
     }
 
     var intermediateLength = 0;
+    final verticalLegs = <VerticalCoreRouteLeg>[];
     for (var index = 0; index + 1 < path.crossings.length; index++) {
       final current = project.index.slab(path.crossings[index].slabId);
       final next = project.index.slab(path.crossings[index + 1].slabId);
@@ -138,6 +164,14 @@ abstract final class VerticalCoreRouteAuthoring {
           : current.bottomElevationMm - next.topElevationMm;
       if (gap < 0) return null;
       intermediateLength += gap;
+      verticalLegs.add(
+        VerticalCoreRouteLeg(
+          verticalCoreId: verticalCoreId,
+          fromSlabId: current.id,
+          toSlabId: next.id,
+          lengthMm: gap,
+        ),
+      );
     }
 
     return VerticalCoreRouteAuthoringPlan(
@@ -146,6 +180,7 @@ abstract final class VerticalCoreRouteAuthoring {
       toLevelId: toLevelId,
       crossings: crossings,
       intermediateVerticalLengthMm: intermediateLength,
+      verticalLegs: verticalLegs,
     );
   }
 }
