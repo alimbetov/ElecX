@@ -48,7 +48,8 @@ void main() {
       expect(session.undoDepth, beforeUndoDepth);
     });
 
-    test('canonical serialization is independent from input endpoint order', () {
+    test('canonical serialization is independent from input endpoint order',
+        () {
       const codec = CanonicalProjectDocumentCodec();
       final forward = codec.encode(_snapshot(reverseInput: false));
       final reverse = codec.encode(_snapshot(reverseInput: true));
