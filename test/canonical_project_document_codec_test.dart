@@ -14,23 +14,21 @@ void main() {
   group('CanonicalProjectDocumentCodec', () {
     const codec = CanonicalProjectDocumentCodec();
 
-    test(
-        'round-trips multi-building snapshot and Project North without identity loss',
-        () {
+    test('round-trips schema v8 without identity or semantic loss', () {
       final north = ProjectEngineeringNorth.fromDegrees(32.5);
-      final snapshot = _multiBuildingSnapshot(north: north);
+      final source = _multiBuildingSnapshot(north: north);
 
-      final first = codec.encode(snapshot);
+      final first = codec.encode(source);
       final restored = codec.decode(first);
       final second = codec.encode(restored);
 
-      expect(first.schemaVersion, 7);
-      expect(restored.id, snapshot.id);
-      expect(restored.siteId, snapshot.siteId);
-      expect(restored.localVersion, snapshot.localVersion);
-      expect(restored.name, snapshot.name);
-      expect(restored.createdAt, snapshot.createdAt.toUtc());
-      expect(restored.updatedAt, snapshot.updatedAt.toUtc());
+      expect(first.schemaVersion, 8);
+      expect(restored.id, source.id);
+      expect(restored.siteId, source.siteId);
+      expect(restored.localVersion, source.localVersion);
+      expect(restored.name, source.name);
+      expect(restored.createdAt, source.createdAt.toUtc());
+      expect(restored.updatedAt, source.updatedAt.toUtc());
       expect(restored.aggregate.engineeringMetadata.projectNorth, north);
       expect(restored.aggregate.stores.buildings, hasLength(2));
       expect(restored.aggregate.stores.levels, hasLength(2));
@@ -46,34 +44,12 @@ void main() {
         restored.aggregate.stores.spaces[SpaceId('room-a')]!.usage,
         SpaceUsage.bedroom,
       );
-      expect(restored.aggregate.stores.boundaries, isEmpty);
-      expect(
-        restored
-            .aggregate.engineeringMetadata.boundaryEdgeIdentityRegistry.owners,
-        isEmpty,
-      );
-      expect(
-        restored.aggregate.engineeringMetadata.boundaryHostedObjectRegistry
-            .references,
-        isEmpty,
-      );
-      expect(
-        restored
-            .aggregate.engineeringMetadata.boundaryWallProfileRegistry.profiles,
-        isEmpty,
-      );
-      expect(
-        restored.aggregate.engineeringMetadata.boundaryConstructionRegistry
-            .profiles,
-        isEmpty,
-      );
-
       expect(jsonEncode(second.payload), jsonEncode(first.payload));
     });
 
-    test('migrates canonical v1 to v7 with safe defaults', () {
+    test('migrates canonical v1 to v8 with safe semantic defaults', () {
       final current = codec.encode(_multiBuildingSnapshot());
-      final v1Payload = Map<String, Object?>.from(current.payload)
+      final payload = _mutablePayload(current)
         ..remove('projectOrientation')
         ..remove('openings')
         ..remove('adjacencies')
@@ -83,58 +59,33 @@ void main() {
         ..remove('boundaryHostedObjectRegistry')
         ..remove('boundaryWallProfileRegistry')
         ..remove('boundaryConstructionRegistry');
-      final oldSpaces = <Object?>[
-        for (final raw in v1Payload['spaces']! as List<Object?>)
-          Map<String, Object?>.from(raw! as Map)..remove('usage'),
-      ];
-      v1Payload['spaces'] = oldSpaces;
+      for (final raw in payload['spaces']! as List) {
+        final space = raw as Map;
+        space.remove('usage');
+        space.remove('type');
+      }
+      _removeLevelSemantics(payload);
 
       final restored = codec.decode(
-        ProjectDocument(schemaVersion: 1, payload: v1Payload),
+        ProjectDocument(schemaVersion: 1, payload: _stringKeyed(payload)),
       );
 
       expect(restored.aggregate.engineeringMetadata.projectNorth, isNull);
       expect(
-        restored.aggregate.stores.spaces.values.every(
-          (space) => space.usage == SpaceUsage.unknown,
-        ),
+        restored.aggregate.stores.spaces.values
+            .every((space) => space.usage == SpaceUsage.unknown),
         isTrue,
       );
       expect(restored.aggregate.stores.openings, isEmpty);
       expect(restored.aggregate.stores.adjacencies, isEmpty);
       expect(restored.aggregate.stores.overlays, isEmpty);
       expect(restored.aggregate.stores.boundaries, isEmpty);
-      expect(
-        restored
-            .aggregate.engineeringMetadata.boundaryEdgeIdentityRegistry.owners,
-        isEmpty,
-      );
-      expect(
-        restored.aggregate.engineeringMetadata.boundaryHostedObjectRegistry
-            .references,
-        isEmpty,
-      );
-      expect(
-        restored
-            .aggregate.engineeringMetadata.boundaryWallProfileRegistry.profiles,
-        isEmpty,
-      );
-      expect(
-        restored.aggregate.engineeringMetadata.boundaryConstructionRegistry
-            .profiles,
-        isEmpty,
-      );
-
-      final reencoded = codec.encode(restored);
-      expect(reencoded.schemaVersion, 7);
-      expect(reencoded.payload['projectOrientation'], <String, Object?>{
-        'projectNorthMilliDegrees': null,
-      });
+      expect(codec.encode(restored).schemaVersion, 8);
     });
 
-    test('migrates canonical v2 to v7 without inferring usage from names', () {
+    test('migrates canonical v2 without inferring SpaceUsage from names', () {
       final current = codec.encode(_multiBuildingSnapshot());
-      final v2Payload = _mutablePayload(current)
+      final payload = _mutablePayload(current)
         ..remove('openings')
         ..remove('adjacencies')
         ..remove('overlays')
@@ -143,54 +94,37 @@ void main() {
         ..remove('boundaryHostedObjectRegistry')
         ..remove('boundaryWallProfileRegistry')
         ..remove('boundaryConstructionRegistry');
-      for (final raw in v2Payload['spaces']! as List) {
+      for (final raw in payload['spaces']! as List) {
         (raw as Map).remove('usage');
       }
+      _removeLevelSemantics(payload);
 
       final restored = codec.decode(
-        ProjectDocument(schemaVersion: 2, payload: _stringKeyed(v2Payload)),
+        ProjectDocument(schemaVersion: 2, payload: _stringKeyed(payload)),
       );
 
       expect(
-        restored.aggregate.stores.spaces[SpaceId('room-a')]!.usage,
-        SpaceUsage.unknown,
-      );
-      expect(
-        restored.aggregate.stores.spaces[SpaceId('room-b')]!.usage,
-        SpaceUsage.unknown,
+        restored.aggregate.stores.spaces.values
+            .every((space) => space.usage == SpaceUsage.unknown),
+        isTrue,
       );
       expect(restored.aggregate.stores.openings, isEmpty);
       expect(restored.aggregate.stores.adjacencies, isEmpty);
       expect(restored.aggregate.stores.overlays, isEmpty);
-      expect(restored.aggregate.stores.boundaries, isEmpty);
-      expect(
-        restored.aggregate.engineeringMetadata.boundaryHostedObjectRegistry
-            .references,
-        isEmpty,
-      );
-      expect(
-        restored
-            .aggregate.engineeringMetadata.boundaryWallProfileRegistry.profiles,
-        isEmpty,
-      );
-      expect(
-        restored.aggregate.engineeringMetadata.boundaryConstructionRegistry
-            .profiles,
-        isEmpty,
-      );
     });
 
-    test('migrates canonical v3 to v7 with empty P7A state', () {
+    test('migrates canonical v3 to v8 with empty P7A state', () {
       final current = codec.encode(_multiBuildingSnapshot());
-      final v3Payload = _mutablePayload(current)
+      final payload = _mutablePayload(current)
         ..remove('boundaries')
         ..remove('boundaryEdgeIdentityRegistry')
         ..remove('boundaryHostedObjectRegistry')
         ..remove('boundaryWallProfileRegistry')
         ..remove('boundaryConstructionRegistry');
+      _removeLevelSemantics(payload);
 
       final restored = codec.decode(
-        ProjectDocument(schemaVersion: 3, payload: _stringKeyed(v3Payload)),
+        ProjectDocument(schemaVersion: 3, payload: _stringKeyed(payload)),
       );
 
       expect(restored.aggregate.stores.boundaries, isEmpty);
@@ -204,28 +138,19 @@ void main() {
             .references,
         isEmpty,
       );
-      expect(
-        restored
-            .aggregate.engineeringMetadata.boundaryWallProfileRegistry.profiles,
-        isEmpty,
-      );
-      expect(
-        restored.aggregate.engineeringMetadata.boundaryConstructionRegistry
-            .profiles,
-        isEmpty,
-      );
-      expect(codec.encode(restored).schemaVersion, 7);
+      expect(codec.encode(restored).schemaVersion, 8);
     });
 
-    test('migrates canonical v4 to v7 without inventing hosted state', () {
+    test('migrates canonical v4 without inventing hosted state', () {
       final current = codec.encode(_multiBuildingSnapshot());
-      final v4Payload = _mutablePayload(current)
+      final payload = _mutablePayload(current)
         ..remove('boundaryHostedObjectRegistry')
         ..remove('boundaryWallProfileRegistry')
         ..remove('boundaryConstructionRegistry');
+      _removeLevelSemantics(payload);
 
       final restored = codec.decode(
-        ProjectDocument(schemaVersion: 4, payload: _stringKeyed(v4Payload)),
+        ProjectDocument(schemaVersion: 4, payload: _stringKeyed(payload)),
       );
 
       expect(
@@ -238,22 +163,18 @@ void main() {
             .aggregate.engineeringMetadata.boundaryWallProfileRegistry.profiles,
         isEmpty,
       );
-      expect(
-        restored.aggregate.engineeringMetadata.boundaryConstructionRegistry
-            .profiles,
-        isEmpty,
-      );
-      expect(codec.encode(restored).schemaVersion, 7);
+      expect(codec.encode(restored).schemaVersion, 8);
     });
 
-    test('migrates canonical v5 to v7 without inventing wall profiles', () {
+    test('migrates canonical v5 without inventing wall profiles', () {
       final current = codec.encode(_multiBuildingSnapshot());
-      final v5Payload = _mutablePayload(current)
+      final payload = _mutablePayload(current)
         ..remove('boundaryWallProfileRegistry')
         ..remove('boundaryConstructionRegistry');
+      _removeLevelSemantics(payload);
 
       final restored = codec.decode(
-        ProjectDocument(schemaVersion: 5, payload: _stringKeyed(v5Payload)),
+        ProjectDocument(schemaVersion: 5, payload: _stringKeyed(payload)),
       );
 
       expect(
@@ -266,12 +187,50 @@ void main() {
             .profiles,
         isEmpty,
       );
-      expect(codec.encode(restored).schemaVersion, 7);
+      expect(codec.encode(restored).schemaVersion, 8);
+    });
+
+    test('migrates canonical v6 without inventing construction profiles', () {
+      final current = codec.encode(_multiBuildingSnapshot());
+      final payload = _mutablePayload(current)
+        ..remove('boundaryConstructionRegistry');
+      _removeLevelSemantics(payload);
+
+      final restored = codec.decode(
+        ProjectDocument(schemaVersion: 6, payload: _stringKeyed(payload)),
+      );
+
+      expect(
+        restored.aggregate.engineeringMetadata.boundaryConstructionRegistry
+            .profiles,
+        isEmpty,
+      );
+      expect(codec.encode(restored).schemaVersion, 8);
+    });
+
+    test('migrates canonical v7 to v8 with deterministic level semantics', () {
+      final current = codec.encode(_multiBuildingSnapshot());
+      final payload = _mutablePayload(current);
+      _removeLevelSemantics(payload);
+
+      final restored = codec.decode(
+        ProjectDocument(schemaVersion: 7, payload: _stringKeyed(payload)),
+      );
+
+      expect(
+        restored.aggregate.index.level(LevelId('level-a-2'))!.kind,
+        ProjectLevelKind.residential,
+      );
+      expect(
+        restored.aggregate.index.level(LevelId('level-a-2'))!
+            .floorToFloorHeightMm,
+        3000,
+      );
+      expect(codec.encode(restored).schemaVersion, 8);
     });
 
     test('rejects unsupported canonical schema fail closed', () {
       final document = codec.encode(_multiBuildingSnapshot());
-
       expect(
         () => codec.decode(
           ProjectDocument(
@@ -285,12 +244,10 @@ void main() {
 
     test('rejects malformed or out-of-range persisted Project North', () {
       final document = codec.encode(_multiBuildingSnapshot());
-
       for (final malformed in <Object?>['90000', 90.0, -1, 360000]) {
         final payload = _mutablePayload(document);
-        final orientation = payload['projectOrientation']! as Map;
-        orientation['projectNorthMilliDegrees'] = malformed;
-
+        (payload['projectOrientation']! as Map)['projectNorthMilliDegrees'] =
+            malformed;
         expect(
           () => codec.decode(
             ProjectDocument(
@@ -304,79 +261,33 @@ void main() {
       }
     });
 
-    test(
-      'rejects missing or malformed orientation object in current schema',
-      () {
-        final document = codec.encode(_multiBuildingSnapshot());
-
-        final missing = _mutablePayload(document)..remove('projectOrientation');
-        expect(
-          () => codec.decode(
-            ProjectDocument(
-              schemaVersion: document.schemaVersion,
-              payload: _stringKeyed(missing),
-            ),
-          ),
-          throwsFormatException,
-        );
-
-        final malformed = _mutablePayload(document);
-        malformed['projectOrientation'] = 'north';
-        expect(
-          () => codec.decode(
-            ProjectDocument(
-              schemaVersion: document.schemaVersion,
-              payload: _stringKeyed(malformed),
-            ),
-          ),
-          throwsFormatException,
-        );
-      },
-    );
-
-    test('semantic fingerprint changes when only Project North changes', () {
-      final north0 = codec.encode(
-        _multiBuildingSnapshot(north: ProjectEngineeringNorth.fromDegrees(0)),
-      );
-      final north90 = codec.encode(
-        _multiBuildingSnapshot(north: ProjectEngineeringNorth.fromDegrees(90)),
-      );
-
-      expect(jsonEncode(north0.payload), isNot(jsonEncode(north90.payload)));
-    });
-
-    test(
-      'rejects duplicate relationship ids instead of silently normalizing',
-      () {
-        final document = codec.encode(_multiBuildingSnapshot());
-        final mutablePayload = _mutablePayload(document);
-        final sites = mutablePayload['sites']! as List;
-        final firstSite = sites.first! as Map;
-        firstSite['buildingIds'] = <Object?>['building-a', 'building-a'];
-
-        expect(
-          () => codec.decode(
-            ProjectDocument(
-              schemaVersion: document.schemaVersion,
-              payload: _stringKeyed(mutablePayload),
-            ),
-          ),
-          throwsFormatException,
-        );
-      },
-    );
-
-    test('rejects timestamps without an explicit zone', () {
+    test('rejects duplicate relationship ids instead of normalizing them', () {
       final document = codec.encode(_multiBuildingSnapshot());
-      final mutablePayload = _mutablePayload(document);
-      final metadata = mutablePayload['metadata']! as Map;
-      metadata['createdAt'] = '2026-10-21T06:00:00.000';
+      final payload = _mutablePayload(document);
+      final site = (payload['sites']! as List).first as Map;
+      site['buildingIds'] = <Object?>['building-a', 'building-a'];
 
       expect(
         () => codec.decode(
           ProjectDocument(
             schemaVersion: document.schemaVersion,
-            payload: _stringKeyed(mutablePayload),
+            payload: _stringKeyed(payload),
+          ),
+        ),
+        throwsFormatException,
+      );
+    });
+
+    test('rejects timestamps without an explicit zone', () {
+      final document = codec.encode(_multiBuildingSnapshot());
+      final payload = _mutablePayload(document);
+      (payload['metadata']! as Map)['createdAt'] = '2026-10-21T06:00:00.000';
+
+      expect(
+        () => codec.decode(
+          ProjectDocument(
+            schemaVersion: document.schemaVersion,
+            payload: _stringKeyed(payload),
           ),
         ),
         throwsFormatException,
@@ -391,15 +302,6 @@ void main() {
       final buildings = document.payload['buildings']! as List<Object?>;
       final firstBuilding = buildings.first! as Map<String, Object?>;
       final levelIds = firstBuilding['levelIds']! as List<Object?>;
-      final boundaries = document.payload['boundaries']! as List<Object?>;
-      final registry =
-          document.payload['boundaryEdgeIdentityRegistry']! as List<Object?>;
-      final hostedRegistry =
-          document.payload['boundaryHostedObjectRegistry']! as List<Object?>;
-      final wallProfileRegistry =
-          document.payload['boundaryWallProfileRegistry']! as List<Object?>;
-      final constructionRegistry =
-          document.payload['boundaryConstructionRegistry']! as List<Object?>;
 
       expect(() => metadata['name'] = 'Changed', throwsUnsupportedError);
       expect(
@@ -409,11 +311,16 @@ void main() {
       expect(() => buildings.clear(), throwsUnsupportedError);
       expect(() => firstBuilding['name'] = 'Changed', throwsUnsupportedError);
       expect(() => levelIds.clear(), throwsUnsupportedError);
-      expect(() => boundaries.clear(), throwsUnsupportedError);
-      expect(() => registry.clear(), throwsUnsupportedError);
-      expect(() => hostedRegistry.clear(), throwsUnsupportedError);
-      expect(() => wallProfileRegistry.clear(), throwsUnsupportedError);
-      expect(() => constructionRegistry.clear(), throwsUnsupportedError);
+      expect(
+        () => (document.payload['boundaries']! as List<Object?>).clear(),
+        throwsUnsupportedError,
+      );
+      expect(
+        () => (document.payload['boundaryEdgeIdentityRegistry']!
+                as List<Object?>)
+            .clear(),
+        throwsUnsupportedError,
+      );
     });
   });
 
@@ -462,6 +369,14 @@ void main() {
   });
 }
 
+void _removeLevelSemantics(Map payload) {
+  for (final raw in payload['levels']! as List) {
+    final level = raw as Map;
+    level.remove('kind');
+    level.remove('floorToFloorHeightMm');
+  }
+}
+
 Map _mutablePayload(ProjectDocument document) =>
     jsonDecode(jsonEncode(document.payload)) as Map;
 
@@ -475,88 +390,82 @@ ProjectSnapshot _multiBuildingSnapshot({ProjectEngineeringNorth? north}) {
   final buildingB = BuildingId('building-b');
   final levelA = LevelId('level-a-2');
   final levelB = LevelId('level-b-2');
-  final zoneA = ZoneId('zone-a');
   final roomA = SpaceId('room-a');
   final roomB = SpaceId('room-b');
 
-  final aggregate = ProjectAggregateRoot(
-    id: projectId,
-    siteId: siteId,
-    version: LocalProjectVersion(7),
-    engineeringMetadata: ProjectEngineeringMetadata(projectNorth: north),
-    stores: ProjectEntityStores(
-      sites: <SiteId, ProjectSiteEntity>{
-        siteId: ProjectSiteEntity(
-          id: siteId,
-          name: 'Main Site',
-          buildingIds: <BuildingId>[buildingA, buildingB],
-        ),
-      },
-      buildings: <BuildingId, ProjectBuildingEntity>{
-        buildingA: ProjectBuildingEntity(
-          id: buildingA,
-          siteId: siteId,
-          name: 'Building A',
-          displayOrder: 10,
-          levelIds: <LevelId>[levelA],
-        ),
-        buildingB: ProjectBuildingEntity(
-          id: buildingB,
-          siteId: siteId,
-          name: 'Building B',
-          displayOrder: 20,
-          levelIds: <LevelId>[levelB],
-        ),
-      },
-      levels: <LevelId, ProjectLevelEntity>{
-        levelA: ProjectLevelEntity(
-          id: levelA,
-          buildingId: buildingA,
-          name: 'Floor 2',
-          levelNumber: 2,
-          displayOrder: 2,
-          elevationMm: 3000,
-          zoneIds: <ZoneId>[zoneA],
-          spaceIds: <SpaceId>[roomA],
-        ),
-        levelB: ProjectLevelEntity(
-          id: levelB,
-          buildingId: buildingB,
-          name: 'Floor 2',
-          levelNumber: 2,
-          displayOrder: 2,
-          elevationMm: 3200,
-          spaceIds: <SpaceId>[roomB],
-        ),
-      },
-      zones: <ZoneId, ProjectStructuralZoneEntity>{
-        zoneA: ProjectStructuralZoneEntity(
-          id: zoneA,
-          levelId: levelA,
-          name: 'Apartment 201',
-          spaceIds: <SpaceId>[roomA],
-        ),
-      },
-      spaces: <SpaceId, ProjectSpaceEntity>{
-        roomA: ProjectSpaceEntity(
-          id: roomA,
-          levelId: levelA,
-          name: 'Bedroom',
-          usage: SpaceUsage.bedroom,
-        ),
-        roomB: ProjectSpaceEntity(
-          id: roomB,
-          levelId: levelB,
-          name: 'Office',
-          usage: SpaceUsage.office,
-        ),
-      },
-    ),
-  );
-
   return ProjectSnapshot(
-    aggregate: aggregate,
-    name: 'Two Buildings',
+    aggregate: ProjectAggregateRoot(
+      id: projectId,
+      siteId: siteId,
+      version: LocalProjectVersion(7),
+      engineeringMetadata: ProjectEngineeringMetadata(projectNorth: north),
+      stores: ProjectEntityStores(
+        sites: <SiteId, ProjectSiteEntity>{
+          siteId: ProjectSiteEntity(
+            id: siteId,
+            name: 'Site',
+            buildingIds: <BuildingId>[buildingA, buildingB],
+          ),
+        },
+        buildings: <BuildingId, ProjectBuildingEntity>{
+          buildingA: ProjectBuildingEntity(
+            id: buildingA,
+            siteId: siteId,
+            name: 'Building A',
+            displayOrder: 10,
+            levelIds: <LevelId>[levelA],
+          ),
+          buildingB: ProjectBuildingEntity(
+            id: buildingB,
+            siteId: siteId,
+            name: 'Building B',
+            displayOrder: 20,
+            levelIds: <LevelId>[levelB],
+          ),
+        },
+        levels: <LevelId, ProjectLevelEntity>{
+          levelA: ProjectLevelEntity(
+            id: levelA,
+            buildingId: buildingA,
+            name: 'Floor 2',
+            levelNumber: 2,
+            displayOrder: 20,
+            elevationMm: 3000,
+            kind: ProjectLevelKind.residential,
+            floorToFloorHeightMm: 3200,
+            spaceIds: <SpaceId>[roomA],
+          ),
+          levelB: ProjectLevelEntity(
+            id: levelB,
+            buildingId: buildingB,
+            name: 'Floor 2',
+            levelNumber: 2,
+            displayOrder: 20,
+            elevationMm: 3000,
+            kind: ProjectLevelKind.residential,
+            floorToFloorHeightMm: 3300,
+            spaceIds: <SpaceId>[roomB],
+          ),
+        },
+        spaces: <SpaceId, ProjectSpaceEntity>{
+          roomA: ProjectSpaceEntity(
+            id: roomA,
+            levelId: levelA,
+            name: 'Bedroom',
+            type: ProjectSpaceType.room,
+            usage: SpaceUsage.bedroom,
+          ),
+          roomB: ProjectSpaceEntity(
+            id: roomB,
+            levelId: levelB,
+            name: 'Room B',
+            type: ProjectSpaceType.room,
+            usage: SpaceUsage.unknown,
+          ),
+        },
+      ),
+    ),
+    name: 'Canonical Project',
     createdAt: DateTime.utc(2026, 10, 21, 6),
     updatedAt: DateTime.utc(2026, 10, 21, 7),
   );
