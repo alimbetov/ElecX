@@ -12,6 +12,8 @@ enum ProjectAuthoringIssueCode {
   duplicateLevelNumber,
   slabAlreadyExists,
   slabNotFound,
+  verticalCoreAlreadyExists,
+  verticalCoreNotFound,
   structuralZoneAlreadyExists,
   structuralZoneNotFound,
   structuralZoneLevelMismatch,
