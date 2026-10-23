@@ -19,7 +19,7 @@ final class VerticalCoreRouteCrossingMaterialization {
   });
 
   final SlabId slabId;
-  final String penetrationId;
+  final BoundaryPenetrationId penetrationId;
   final RoomSurfaceRef entrySurface;
   final SurfacePointMm entryPoint;
   final RoomSurfaceRef exitSurface;
@@ -51,7 +51,7 @@ abstract final class VerticalCoreCableRouteAuthoring {
       );
     }
 
-    final penetrationIds = <String>{};
+    final penetrationIds = <BoundaryPenetrationId>{};
     final penetrations = <BoundaryPenetration>[];
     for (var index = 0; index < plan.crossings.length; index++) {
       final planned = plan.crossings[index];
@@ -63,11 +63,10 @@ abstract final class VerticalCoreCableRouteAuthoring {
           '${planned.slabId}.',
         );
       }
-      final penetrationId = materialized.penetrationId.trim();
-      if (penetrationId.isEmpty || !penetrationIds.add(penetrationId)) {
+      final penetrationId = materialized.penetrationId;
+      if (!penetrationIds.add(penetrationId)) {
         throw StateError(
-          'VerticalCore crossing penetration identities must be non-empty and '
-          'unique.',
+          'VerticalCore crossing penetration identities must be unique.',
         );
       }
       penetrations.add(
