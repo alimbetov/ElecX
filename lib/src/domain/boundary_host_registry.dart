@@ -38,7 +38,10 @@ final class BoundaryHostedRegistryException implements Exception {
 /// geometry itself rather than remapping one generic hosted reference.
 final class BoundaryHostedObjectRegistry {
   BoundaryHostedObjectRegistry(Map<String, BoundaryHostedReference> references)
-      : references = Map.unmodifiable(references) {
+      : references = Map.unmodifiable(references),
+        _legacyRouteAnchorAliases = Map.unmodifiable(
+          _buildLegacyRouteAnchorAliases(references),
+        ) {
     for (final entry in this.references.entries) {
       if (entry.key.trim().isEmpty) {
         throw ArgumentError('Hosted object registry key must be non-empty.');
@@ -52,9 +55,12 @@ final class BoundaryHostedObjectRegistry {
     }
   }
 
-  const BoundaryHostedObjectRegistry.empty() : references = const {};
+  const BoundaryHostedObjectRegistry.empty()
+      : references = const {},
+        _legacyRouteAnchorAliases = const {};
 
   final Map<String, BoundaryHostedReference> references;
+  final Map<String, BoundaryHostedReference?> _legacyRouteAnchorAliases;
 
   static String openingObjectKey(OpeningId openingId, SpaceId spaceId) =>
       'opening:${openingId.value}:${spaceId.value}';
@@ -81,29 +87,20 @@ final class BoundaryHostedObjectRegistry {
 
     // P7A-6.2 compatibility boundary. Historical route-anchor keys used
     // `route:<routeId>:anchor:<anchorId>`, which cannot be parsed safely because
-    // both identifiers are opaque. We therefore never parse the requested
-    // legacy key. Instead, decode only our own length-prefixed canonical keys,
-    // derive their historical aliases, and require at most one match.
-    if (!objectKey.startsWith('route:')) return null;
-    BoundaryHostedReference? match;
-    for (final reference in references.values) {
-      if (reference.objectKind != BoundaryHostedObjectKind.routeAnchor) {
-        continue;
-      }
-      final identity = _decodeRouteAnchorObjectKey(reference.objectKey);
-      if (identity == null) continue;
-      final legacyAlias =
-          'route:${identity.routeId}:anchor:${identity.anchorId}';
-      if (legacyAlias != objectKey) continue;
-      if (match != null && match.objectKey != reference.objectKey) {
-        throw StateError(
-          'Legacy route-anchor key $objectKey resolves to multiple canonical '
-          'hosted references.',
-        );
-      }
-      match = reference;
+    // both identifiers are opaque. Canonical keys are decoded once when the
+    // immutable registry is built, keeping compatibility lookup O(1).
+    if (!objectKey.startsWith('route:') ||
+        !_legacyRouteAnchorAliases.containsKey(objectKey)) {
+      return null;
     }
-    return match;
+    final legacy = _legacyRouteAnchorAliases[objectKey];
+    if (legacy == null) {
+      throw StateError(
+        'Legacy route-anchor key $objectKey resolves to multiple canonical '
+        'hosted references.',
+      );
+    }
+    return legacy;
   }
 
   BoundaryHostedReference? openingHost(OpeningId openingId, SpaceId spaceId) =>
@@ -235,6 +232,29 @@ final class BoundaryHostedObjectRegistry {
       if (right == null || !_sameReference(entry.value, right)) return false;
     }
     return true;
+  }
+
+  static Map<String, BoundaryHostedReference?> _buildLegacyRouteAnchorAliases(
+    Map<String, BoundaryHostedReference> references,
+  ) {
+    final aliases = <String, BoundaryHostedReference?>{};
+    for (final reference in references.values) {
+      if (reference.objectKind != BoundaryHostedObjectKind.routeAnchor) {
+        continue;
+      }
+      final identity = _decodeRouteAnchorObjectKey(reference.objectKey);
+      if (identity == null) continue;
+      final alias = 'route:${identity.routeId}:anchor:${identity.anchorId}';
+      if (aliases.containsKey(alias)) {
+        final existing = aliases[alias];
+        if (existing == null || existing.objectKey != reference.objectKey) {
+          aliases[alias] = null;
+        }
+      } else {
+        aliases[alias] = reference;
+      }
+    }
+    return aliases;
   }
 
   static ({String routeId, String anchorId})? _decodeRouteAnchorObjectKey(
