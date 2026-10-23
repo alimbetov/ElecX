@@ -145,18 +145,30 @@ abstract final class ProjectAggregateValidator {
     required SiteId rootSiteId,
     required ProjectEntityStores stores,
   }) {
-    final issues = <ProjectAggregateValidationIssue>[
-      for (final issue in legacy.ProjectAggregateValidator.validate(
-        rootSiteId: rootSiteId,
-        stores: _toLegacyStores(stores),
-      ))
+    final issues = <ProjectAggregateValidationIssue>[];
+    for (final issue in legacy.ProjectAggregateValidator.validate(
+      rootSiteId: rootSiteId,
+      stores: _toLegacyStores(stores),
+    )) {
+      // The frozen pre-P7B validator historically framed an unordered Space
+      // pair as a single string separated by NUL. EntityId intentionally accepts
+      // arbitrary non-empty legacy identifiers, including separator characters,
+      // so two distinct pairs can collide in that representation. P6 canonical
+      // entities already normalize endpoints; only retain a duplicate issue when
+      // the referenced adjacency entities really own the same typed pair.
+      if (issue.code == legacy.ProjectAggregateIssueCode.duplicateAdjacencyPair &&
+          !_isActualDuplicateAdjacencyPair(issue, stores.adjacencies)) {
+        continue;
+      }
+      issues.add(
         ProjectAggregateValidationIssue(
           code: _legacyIssueCode(issue.code),
           entityId: issue.entityId,
           relatedEntityId: issue.relatedEntityId,
           message: issue.message,
         ),
-    ];
+      );
+    }
 
     for (final issue
         in VerticalCoreTopologyValidator.validate(stores.verticalCores)) {
@@ -198,6 +210,22 @@ abstract final class ProjectAggregateValidator {
 
     return List.unmodifiable(issues);
   }
+}
+
+bool _isActualDuplicateAdjacencyPair(
+  legacy.ProjectAggregateValidationIssue issue,
+  Map<SpaceAdjacencyId, ProjectSpaceAdjacencyEntity> adjacencies,
+) {
+  final currentId = issue.entityId;
+  final previousId = issue.relatedEntityId;
+  if (currentId is! SpaceAdjacencyId || previousId is! SpaceAdjacencyId) {
+    return true;
+  }
+  final current = adjacencies[currentId];
+  final previous = adjacencies[previousId];
+  if (current == null || previous == null) return true;
+  return current.spaceAId == previous.spaceAId &&
+      current.spaceBId == previous.spaceBId;
 }
 
 ProjectAggregateIssueCode _legacyIssueCode(
