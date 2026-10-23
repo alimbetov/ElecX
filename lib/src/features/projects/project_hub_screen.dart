@@ -5,6 +5,7 @@ import '../editor/canonical_editor_production_bootstrap.dart';
 import '../editor/canonical_owning_editor_project_store.dart';
 import '../editor/editor_project_document.dart';
 import '../editor/editor_project_recovery.dart';
+import '../editor/initial_editor_project_document.dart';
 import '../editor/project_persistence_metadata.dart';
 import '../editor/unified_workspace_editor_screen.dart';
 
@@ -114,9 +115,23 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
       ),
     );
     if (name == null || !mounted) return;
-    await _openEditor(
-      metadata: EditorProjectMetadata.create(projectName: name),
-    );
+
+    final metadata = EditorProjectMetadata.create(projectName: name);
+    final initialDocument = createInitialEditorProjectDocument(metadata);
+    try {
+      final store = await _storeFuture;
+      await store.save(initialDocument);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Не удалось создать проект на диске: $error'),
+        ),
+      );
+      return;
+    }
+    if (!mounted) return;
+    await _openEditor(document: initialDocument);
   }
 
   Future<void> _openEditor({
@@ -245,7 +260,7 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
                     leading: Icon(Icons.history_toggle_off),
                     title: Text('Нет сохранённого проекта'),
                     subtitle: Text(
-                      'Создайте проект и нажмите «Сохранить» в редакторе.',
+                      'Создайте новый проект, чтобы начать работу.',
                     ),
                   ),
                 ),
@@ -261,7 +276,7 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
                     leading: Icon(Icons.folder_outlined),
                     title: Text('Пока пусто'),
                     subtitle: Text(
-                      'Сохранённые проекты появятся здесь после записи на диск.',
+                      'Созданные проекты появятся здесь после записи на диск.',
                     ),
                   ),
                 )
