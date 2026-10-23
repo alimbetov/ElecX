@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import '../../domain/boundary_geometry_integrity.dart';
 import '../../domain/boundary_topology.dart';
 import '../../domain/project_aggregate.dart';
+import '../../domain/project_entity_stores_copy.dart';
 import '../../domain/project_identity.dart';
 import 'project_mutation.dart';
 
@@ -322,21 +323,12 @@ final class _ReplaceBoundaryTopologyCommand implements ProjectCommand {
     topology.validateOrThrow();
     BoundaryGeometryIntegrity.validateOrThrow(topology);
 
-    final stores = current.stores;
     return ProjectCommandCandidate.fromState(
       state: ProjectMutableState(
         engineeringMetadata: current.engineeringMetadata,
-        stores: ProjectEntityStores(
-          sites: stores.sites,
-          buildings: stores.buildings,
-          levels: stores.levels,
-          zones: stores.zones,
-          spaces: stores.spaces,
-          openings: stores.openings,
-          adjacencies: stores.adjacencies,
-          overlays: stores.overlays,
+        stores: current.stores.copyWith(
           boundaries: <SpaceId, SpaceBoundaryTopology>{
-            ...stores.boundaries,
+            ...current.stores.boundaries,
             spaceId: topology,
           },
         ),
