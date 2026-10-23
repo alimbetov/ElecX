@@ -40,16 +40,14 @@ abstract final class BoundaryConstructionTransitionResolver {
         to,
         edgeOrderResolver,
         canonicalSpaceIdResolver,
-      )
-          ?.thicknessMm,
+      )?.thicknessMm,
       materialResolver: (from, to) => _sharedWallProfile(
         constructions,
         from,
         to,
         edgeOrderResolver,
         canonicalSpaceIdResolver,
-      )
-          ?.materialId,
+      )?.materialId,
     );
     for (final candidate in candidates) {
       if (candidate.toSurface == toSurface && candidate.toPoint == toPoint) {
