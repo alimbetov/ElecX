@@ -6,7 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P4 space semantics editing port', () {
-    test('changes structural Space type as one undoable canonical mutation', () {
+    test('changes structural Space type as one undoable canonical mutation',
+        () {
       final mutations = ProjectMutationSession(_project());
       final editing = ProjectSpaceSemanticsEditingSession(mutations);
       final spaceId = SpaceId('space-1');
@@ -58,7 +59,8 @@ void main() {
       expect(redone.project.index.structuralZoneBySpace[spaceId], zoneB);
     });
 
-    test('unassigning an already unassigned space is a version-neutral no-op', () {
+    test('unassigning an already unassigned space is a version-neutral no-op',
+        () {
       final mutations = ProjectMutationSession(_project(unzoned: true));
       final editing = ProjectSpaceSemanticsEditingSession(mutations);
       final before = mutations.current;
