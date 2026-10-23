@@ -166,11 +166,10 @@ final class ElectricalCableRoute {
       }
 
       final crossesSpaces = before.surface.spaceId != after.surface.spaceId;
-      final floorCeilingPair =
-          (before.surface.type == SurfacePlaneType.floor &&
-                  after.surface.type == SurfacePlaneType.ceiling) ||
-              (before.surface.type == SurfacePlaneType.ceiling &&
-                  after.surface.type == SurfacePlaneType.floor);
+      final floorCeilingPair = (before.surface.type == SurfacePlaneType.floor &&
+              after.surface.type == SurfacePlaneType.ceiling) ||
+          (before.surface.type == SurfacePlaneType.ceiling &&
+              after.surface.type == SurfacePlaneType.floor);
       if (!crossesSpaces && !floorCeilingPair) continue;
 
       final hasPhysicalTransition = penetrations.any(
