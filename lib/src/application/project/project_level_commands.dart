@@ -20,7 +20,7 @@ final class CreateLevelCommand implements ProjectCommand {
     required this.levelNumber,
     required this.elevationMm,
     this.displayOrder = 0,
-    this.kind = ProjectLevelKind.unknown,
+    this.kind,
     this.floorToFloorHeightMm = 3000,
   }) {
     if (name.trim().isEmpty) {
@@ -41,7 +41,10 @@ final class CreateLevelCommand implements ProjectCommand {
   final int levelNumber;
   final int displayOrder;
   final int elevationMm;
-  final ProjectLevelKind kind;
+
+  /// Nullable only at the compatibility/application request boundary.
+  /// Canonical state normalizes an omitted classification to [ProjectLevelKind.unknown].
+  final ProjectLevelKind? kind;
   final int floorToFloorHeightMm;
 
   @override
@@ -85,7 +88,7 @@ final class CreateLevelCommand implements ProjectCommand {
       levelNumber: levelNumber,
       displayOrder: displayOrder,
       elevationMm: elevationMm,
-      kind: kind,
+      kind: kind ?? ProjectLevelKind.unknown,
       floorToFloorHeightMm: floorToFloorHeightMm,
     );
 
