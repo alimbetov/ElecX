@@ -13,6 +13,7 @@ final class CreateStructuralZoneCommand implements ProjectCommand {
     required this.zoneId,
     required this.levelId,
     required this.name,
+    this.kind = ProjectStructuralZoneKind.unknown,
   }) {
     if (name.trim().isEmpty) {
       throw ArgumentError.value(
@@ -26,6 +27,7 @@ final class CreateStructuralZoneCommand implements ProjectCommand {
   final ZoneId zoneId;
   final LevelId levelId;
   final String name;
+  final ProjectStructuralZoneKind kind;
 
   @override
   String get commandType => 'project.structural-zone.create';
@@ -56,6 +58,8 @@ final class CreateStructuralZoneCommand implements ProjectCommand {
       levelNumber: level.levelNumber,
       displayOrder: level.displayOrder,
       elevationMm: level.elevationMm,
+      kind: level.kind,
+      floorToFloorHeightMm: level.floorToFloorHeightMm,
       zoneIds: <ZoneId>{...level.zoneIds, zoneId},
       spaceIds: level.spaceIds,
     );
@@ -63,6 +67,7 @@ final class CreateStructuralZoneCommand implements ProjectCommand {
       id: zoneId,
       levelId: level.id,
       name: name,
+      kind: kind,
       spaceIds: const <SpaceId>[],
     );
 
@@ -79,8 +84,8 @@ final class CreateStructuralZoneCommand implements ProjectCommand {
   }
 }
 
-/// Renames one structural zone without changing identity, level ownership or
-/// current space membership.
+/// Renames one structural zone without changing identity, level ownership,
+/// structural kind or current space membership.
 final class RenameStructuralZoneCommand implements ProjectCommand {
   RenameStructuralZoneCommand({required this.zoneId, required this.name}) {
     if (name.trim().isEmpty) {
@@ -108,6 +113,7 @@ final class RenameStructuralZoneCommand implements ProjectCommand {
       id: zone.id,
       levelId: zone.levelId,
       name: name,
+      kind: zone.kind,
       spaceIds: zone.spaceIds,
     );
 
@@ -163,6 +169,7 @@ final class AssignSpaceToStructuralZoneCommand implements ProjectCommand {
         id: previous.id,
         levelId: previous.levelId,
         name: previous.name,
+        kind: previous.kind,
         spaceIds: <SpaceId>{...previous.spaceIds}..remove(space.id),
       );
     }
@@ -170,6 +177,7 @@ final class AssignSpaceToStructuralZoneCommand implements ProjectCommand {
       id: target.id,
       levelId: target.levelId,
       name: target.name,
+      kind: target.kind,
       spaceIds: <SpaceId>{...target.spaceIds, space.id},
     );
 
@@ -216,6 +224,7 @@ final class UnassignSpaceFromStructuralZoneCommand implements ProjectCommand {
       id: zone.id,
       levelId: zone.levelId,
       name: zone.name,
+      kind: zone.kind,
       spaceIds: <SpaceId>{...zone.spaceIds}..remove(space.id),
     );
 
