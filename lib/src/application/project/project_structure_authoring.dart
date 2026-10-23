@@ -13,9 +13,11 @@ import 'project_north_editing.dart';
 import 'project_slab_authoring.dart';
 import 'project_space_commands.dart';
 import 'project_space_semantics_editing.dart';
+import 'project_vertical_core_authoring.dart';
 
 export 'project_navigation_state.dart';
 export 'project_slab_authoring.dart';
+export 'project_vertical_core_authoring.dart';
 
 enum ProjectStructureAuthoringIssueCode {
   navigationSiteMismatch,
@@ -114,6 +116,10 @@ final class ProjectStructureAuthoringSession {
           mutations: mutations,
           idFactory: idFactory,
         ),
+        _verticalCoreAuthoring = ProjectVerticalCoreAuthoringSession(
+          mutations: mutations,
+          idFactory: idFactory,
+        ),
         _idFactory = idFactory,
         _navigation = _initialNavigation(mutations.current, navigation);
 
@@ -125,6 +131,7 @@ final class ProjectStructureAuthoringSession {
   final ProjectBoundaryTopologyMigrationService _boundaryTopologyMigration;
   final ProjectBoundaryHostAdoptionService _boundaryHostAdoption;
   final ProjectSlabAuthoringSession _slabAuthoring;
+  final ProjectVerticalCoreAuthoringSession _verticalCoreAuthoring;
   final EntityIdFactory _idFactory;
   ProjectNavigationState _navigation;
 
@@ -140,6 +147,8 @@ final class ProjectStructureAuthoringSession {
   ProjectBoundaryTopologyMigrationService get boundaryTopologyMigration =>
       _boundaryTopologyMigration;
   ProjectSlabAuthoringSession get slabAuthoring => _slabAuthoring;
+  ProjectVerticalCoreAuthoringSession get verticalCoreAuthoring =>
+      _verticalCoreAuthoring;
 
   /// P7A-5 one-time legacy -> canonical hosted ownership adoption backed by the
   /// exact same P3 mutation session as topology migration and document history.
