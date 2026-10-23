@@ -10,7 +10,7 @@ void main() {
     final coreId = VerticalCoreId('VC-01');
     final slab12 = SlabId('SLAB-12');
     final slab23 = SlabId('SLAB-23');
-    const point = SurfacePointMm(xMm: 100, yMm: 0);
+    const point = SurfacePointMm(100, 0);
     final ceiling1 = RoomSurfaceRef.ceiling('room-l1');
     final floor2 = RoomSurfaceRef.floor('room-l2');
     final ceiling2 = RoomSurfaceRef.ceiling('room-l2');
@@ -48,7 +48,7 @@ void main() {
         ElectricalRouteSegment(
           surface: ceiling1,
           points: const [
-            SurfacePointMm(xMm: 0, yMm: 0),
+            SurfacePointMm(0, 0),
             point,
           ],
         ),
@@ -58,7 +58,7 @@ void main() {
           surface: floor3,
           points: const [
             point,
-            SurfacePointMm(xMm: 200, yMm: 0),
+            SurfacePointMm(200, 0),
           ],
         ),
       ],
@@ -84,7 +84,7 @@ void main() {
     final coreId = VerticalCoreId('VC-01');
     final slab12 = SlabId('SLAB-12');
     final slab23 = SlabId('SLAB-23');
-    const point = SurfacePointMm(xMm: 100, yMm: 0);
+    const point = SurfacePointMm(100, 0);
     final ceiling1 = RoomSurfaceRef.ceiling('room-l1');
     final floor2 = RoomSurfaceRef.floor('room-l2');
     final ceiling2 = RoomSurfaceRef.ceiling('room-l2');
