@@ -33,16 +33,109 @@ class WallConstructionEditor extends StatelessWidget {
             if (baseline == null) {
               return _UnavailableConstructionEditor(compact: compact);
             }
+            if (compact) {
+              return _CompactWallConstructionEditor(
+                controller: controller,
+                baseline: baseline,
+              );
+            }
             return _WallConstructionForm(
-              key: ValueKey(
-                '${identityHashCode(baseline.session)}:'
-                '${baseline.spaceId.value}:${baseline.edgeId.value}',
-              ),
+              key: _formKey(baseline),
               controller: controller,
               baseline: baseline,
-              compact: compact,
+              compact: false,
             );
           },
+        ),
+      );
+
+  static ValueKey<String> _formKey(
+    CanonicalWallConstructionEditBaseline baseline,
+  ) =>
+      ValueKey(
+        '${identityHashCode(baseline.session)}:'
+        '${baseline.spaceId.value}:${baseline.edgeId.value}',
+      );
+}
+
+class _CompactWallConstructionEditor extends StatelessWidget {
+  const _CompactWallConstructionEditor({
+    required this.controller,
+    required this.baseline,
+  });
+
+  final EditorController controller;
+  final CanonicalWallConstructionEditBaseline baseline;
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = baseline.profile;
+    final summary = profile == null
+        ? 'Конструкция не задана'
+        : '${profile.thicknessMm} mm · ${profile.materialId}'
+            '${profile.fireRatingId == null ? '' : ' · ${profile.fireRatingId}'}';
+    return Material(
+      color: Theme.of(context).colorScheme.surfaceContainerHigh,
+      child: InkWell(
+        key: const ValueKey('wall-construction-open-editor'),
+        onTap: () => _openEditor(context),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 56),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            child: Row(
+              children: [
+                const Icon(Icons.layers_outlined, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'СТЕНА / КОНСТРУКЦИЯ',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        summary,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.edit_outlined, size: 18),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openEditor(BuildContext context) => showDialog<void>(
+        context: context,
+        builder: (dialogContext) => Dialog(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 760,
+              maxHeight: MediaQuery.sizeOf(dialogContext).height * 0.82,
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(12),
+              child: _WallConstructionForm(
+                key: WallConstructionEditor._formKey(baseline),
+                controller: controller,
+                baseline: baseline,
+                compact: false,
+              ),
+            ),
+          ),
         ),
       );
 }
