@@ -8,8 +8,11 @@ typedef VerticalCoreBuildingLevelIdsResolver = Iterable<LevelId>? Function(
 typedef VerticalCoreLevelPlacementResolver = PhysicalLevelPlacement? Function(
   LevelId levelId,
 );
+typedef VerticalCorePhysicalAdjacencyResolver
+    = Iterable<PhysicalLevelAdjacency>? Function(BuildingId buildingId);
 
 enum VerticalCoreContinuityIssueCode {
+  unresolvedPhysicalTopology,
   ambiguousPhysicalLevelOrder,
   nonContiguousLevelRange,
 }
@@ -31,44 +34,80 @@ final class VerticalCoreContinuityIssue {
 
 /// P7-C4 validation for one uninterrupted physical VerticalCore span.
 ///
-/// Ownership/dangling-reference checks remain in VerticalCoreProjectValidator.
-/// This validator runs only when the building's canonical level set and every
-/// level placement can be resolved. It never derives adjacency from
-/// levelNumber, displayOrder or Set insertion order.
+/// The validator fails closed when the canonical building/level snapshot cannot
+/// be resolved. Ordering is derived from physical elevation plus canonical slab
+/// adjacency; levelNumber, displayOrder and insertion order are non-semantic.
 abstract final class VerticalCoreContinuityValidator {
   static List<VerticalCoreContinuityIssue> validate({
     required Map<VerticalCoreId, ProjectVerticalCore> verticalCores,
     required VerticalCoreBuildingLevelIdsResolver buildingLevelIdsResolver,
     required VerticalCoreLevelPlacementResolver levelPlacementResolver,
+    VerticalCorePhysicalAdjacencyResolver? physicalAdjacencyResolver,
   }) {
     final issues = <VerticalCoreContinuityIssue>[];
 
     for (final core in verticalCores.values) {
       final buildingLevelIds = buildingLevelIdsResolver(core.buildingId);
-      if (buildingLevelIds == null) continue;
+      if (buildingLevelIds == null) {
+        issues.add(
+          VerticalCoreContinuityIssue(
+            code: VerticalCoreContinuityIssueCode.unresolvedPhysicalTopology,
+            verticalCoreId: core.id,
+            message: 'Vertical core ${core.id} cannot resolve canonical levels '
+                'for building ${core.buildingId}.',
+          ),
+        );
+        continue;
+      }
 
       final placements = <PhysicalLevelPlacement>[];
-      var unresolved = false;
+      var unresolvedLevelId = null as LevelId?;
       for (final levelId in buildingLevelIds) {
         final placement = levelPlacementResolver(levelId);
         if (placement == null || placement.buildingId != core.buildingId) {
-          unresolved = true;
+          unresolvedLevelId = levelId;
           break;
         }
         placements.add(placement);
       }
-      if (unresolved) continue;
+      if (unresolvedLevelId != null) {
+        issues.add(
+          VerticalCoreContinuityIssue(
+            code: VerticalCoreContinuityIssueCode.unresolvedPhysicalTopology,
+            verticalCoreId: core.id,
+            message: 'Vertical core ${core.id} cannot resolve canonical '
+                'physical placement for level $unresolvedLevelId in building '
+                '${core.buildingId}.',
+          ),
+        );
+        continue;
+      }
 
-      final ordered = PhysicalLevelOrder.tryResolve(placements);
+      final adjacencies = physicalAdjacencyResolver?.call(core.buildingId);
+      if (physicalAdjacencyResolver != null && adjacencies == null) {
+        issues.add(
+          VerticalCoreContinuityIssue(
+            code: VerticalCoreContinuityIssueCode.unresolvedPhysicalTopology,
+            verticalCoreId: core.id,
+            message: 'Vertical core ${core.id} cannot resolve canonical slab '
+                'adjacency for building ${core.buildingId}.',
+          ),
+        );
+        continue;
+      }
+
+      final ordered = PhysicalLevelOrder.tryResolve(
+        placements,
+        adjacencies: adjacencies ?? const [],
+      );
       if (ordered == null) {
         issues.add(
           VerticalCoreContinuityIssue(
             code: VerticalCoreContinuityIssueCode.ambiguousPhysicalLevelOrder,
             verticalCoreId: core.id,
-            message:
-                'Vertical core ${core.id} cannot resolve a unique physical '
-                'level order in building ${core.buildingId}: at least two '
-                'canonical levels share the same elevation.',
+            message: 'Vertical core ${core.id} cannot resolve one unique '
+                'physical level order in building ${core.buildingId} from '
+                'canonical elevation and slab topology.',
           ),
         );
         continue;
