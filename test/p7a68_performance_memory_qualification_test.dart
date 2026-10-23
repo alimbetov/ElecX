@@ -63,8 +63,8 @@ void main() {
       for (var index = 0; index < 20000; index++) {
         final routeId = 'route-$index';
         final anchorId = RouteAnchorId('anchor-$index');
-        final key =
-            BoundaryHostedObjectRegistry.routeAnchorObjectKey(routeId, anchorId);
+        final key = BoundaryHostedObjectRegistry.routeAnchorObjectKey(
+            routeId, anchorId);
         references[key] = BoundaryHostedReference.point(
           objectKey: key,
           objectKind: BoundaryHostedObjectKind.routeAnchor,
