@@ -8,7 +8,8 @@ import 'package:elecx/src/features/editor/physical_cable_route_committer.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('physical route replacement preserves route and penetration identity', () {
+  test('physical route replacement preserves route and penetration identity',
+      () {
     final wallA = RoomSurfaceRef.wallByBoundaryEdge(
       'space-a',
       BoundaryEdgeId('edge-a'),
