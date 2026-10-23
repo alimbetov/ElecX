@@ -31,7 +31,8 @@ P7A-6 must preserve:
 - ambiguous host remap fails closed;
 - canonical Undo/Redo preserves exact chronological document order;
 - persistence ownership acknowledgement is required before a canonical mutation is admitted to unified production history;
-- schema-v6 reopen rejects dangling or semantically inconsistent adopted hosted state;
+- current schema-v7 reopen rejects dangling or semantically inconsistent adopted hosted state;
+- schema-v6 documents migrate explicitly to schema v7 with an empty penetration aggregate rather than fabricated physical evidence;
 - no platform-specific fork of boundary identity or mutation semantics.
 
 ## Hardening slices
@@ -182,7 +183,9 @@ Corruption tests must include:
 - missing required opening host in adopted space;
 - incompatible wall profile;
 - malformed lineage-derived topology;
-- future unsupported schema.
+- future unsupported schema;
+- schema-v6 route data migrated to schema v7 without fabricated penetrations;
+- schema-v7 route-anchor ids preserved exactly across save/reopen.
 
 All corruption paths must fail closed with a persistence-domain diagnostic, normally `FormatException` at the codec boundary.
 
@@ -214,7 +217,7 @@ Measure at minimum:
 - split/merge remap cost;
 - route-anchor rehydration;
 - legacy/P2 rematerialization;
-- schema-v6 encode/decode;
+- current schema-v7 encode/decode plus v6→v7 migration;
 - mixed document Undo/Redo;
 - large irregular polygon validation.
 
