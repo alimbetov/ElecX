@@ -75,7 +75,8 @@ final class _FakeEditingPort implements ProjectSpaceSemanticsEditingPort {
     SpaceId spaceId,
     ProjectSpaceType type, {
     LocalProjectVersion? expectedVersion,
-  }) => null;
+  }) =>
+      null;
 
   @override
   ProjectMutationResult? setUsage(
@@ -94,13 +95,15 @@ final class _FakeEditingPort implements ProjectSpaceSemanticsEditingPort {
     SpaceId spaceId,
     ZoneId zoneId, {
     LocalProjectVersion? expectedVersion,
-  }) => null;
+  }) =>
+      null;
 
   @override
   ProjectMutationResult? unassignStructuralZone(
     SpaceId spaceId, {
     LocalProjectVersion? expectedVersion,
-  }) => null;
+  }) =>
+      null;
 }
 
 CanonicalSpaceSemanticsProjection _projection({
