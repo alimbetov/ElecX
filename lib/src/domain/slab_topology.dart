@@ -8,6 +8,45 @@ enum SlabKind {
   roof,
 }
 
+/// Stable side of one physical slab.
+///
+/// The names are geometric, not room-facing UI labels. A room ceiling may
+/// project onto the slab's below face, while the floor of the level above may
+/// project onto the same slab's above face.
+enum SlabFaceSide {
+  below,
+  above,
+}
+
+/// Durable reference to one physical side of a slab.
+///
+/// This is the vertical analogue of stable wall identity: floor/ceiling editor
+/// projections can change independently, while engineering routing continues to
+/// refer to the same [SlabId] and physical side.
+final class SlabFaceRef {
+  const SlabFaceRef({required this.slabId, required this.side});
+
+  final SlabId slabId;
+  final SlabFaceSide side;
+
+  SlabFaceRef get opposite => SlabFaceRef(
+        slabId: slabId,
+        side: side == SlabFaceSide.below
+            ? SlabFaceSide.above
+            : SlabFaceSide.below,
+      );
+
+  @override
+  bool operator ==(Object other) =>
+      other is SlabFaceRef && other.slabId == slabId && other.side == side;
+
+  @override
+  int get hashCode => Object.hash(slabId, side);
+
+  @override
+  String toString() => '${slabId.value}:${side.name}';
+}
+
 /// Canonical physical horizontal boundary of a building.
 ///
 /// A slab is deliberately independent from room floor/ceiling projections.
@@ -95,6 +134,28 @@ final class ProjectSlab {
   final int thicknessMm;
   final String materialId;
   final List<BoundaryPointMm> footprint;
+
+  SlabFaceRef get belowFace =>
+      SlabFaceRef(slabId: id, side: SlabFaceSide.below);
+
+  SlabFaceRef get aboveFace =>
+      SlabFaceRef(slabId: id, side: SlabFaceSide.above);
+
+  /// Returns the canonical level adjacent to [face], or null when that side is
+  /// building exterior/ground.
+  LevelId? levelForFace(SlabFaceRef face) {
+    if (face.slabId != id) {
+      throw ArgumentError.value(
+        face,
+        'face',
+        'Slab face belongs to ${face.slabId}, not $id.',
+      );
+    }
+    return switch (face.side) {
+      SlabFaceSide.below => belowLevelId,
+      SlabFaceSide.above => aboveLevelId,
+    };
+  }
 }
 
 enum SlabTopologyIssueCode {
