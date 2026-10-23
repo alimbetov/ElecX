@@ -1,7 +1,6 @@
 import '../../domain/canonical_slab_route_handoff.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
-import 'project_navigation_state.dart';
 import 'project_structure_authoring.dart';
 
 enum ProjectSlabRouteHandoffIssueCode {
