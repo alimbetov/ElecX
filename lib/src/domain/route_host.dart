@@ -72,7 +72,7 @@ final class RouteHostTransition {
     this.requiresPenetration = false,
     this.siteConnectionId,
     this.slabId,
-  })  : assert(
+  }) : assert(
           kind == RouteHostTransitionKind.levelPenetration
               ? slabId != null
               : slabId == null,
