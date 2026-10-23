@@ -61,10 +61,13 @@ final class CreateBuildingCommand implements ProjectCommand {
       levelIds: const <LevelId>[],
     );
 
-    return ProjectCommandCandidate(
-      stores: current.stores.copyWith(
-        sites: sites,
-        buildings: buildings,
+    return ProjectCommandCandidate.fromState(
+      state: ProjectMutableState(
+        engineeringMetadata: current.engineeringMetadata,
+        stores: current.stores.copyWith(
+          sites: sites,
+          buildings: buildings,
+        ),
       ),
       affectedEntityIds: <EntityId>[site.id, buildingId],
     );
@@ -112,8 +115,11 @@ final class RenameBuildingCommand implements ProjectCommand {
       levelIds: building.levelIds,
     );
 
-    return ProjectCommandCandidate(
-      stores: current.stores.copyWith(buildings: buildings),
+    return ProjectCommandCandidate.fromState(
+      state: ProjectMutableState(
+        engineeringMetadata: current.engineeringMetadata,
+        stores: current.stores.copyWith(buildings: buildings),
+      ),
       affectedEntityIds: <EntityId>[building.id],
     );
   }
