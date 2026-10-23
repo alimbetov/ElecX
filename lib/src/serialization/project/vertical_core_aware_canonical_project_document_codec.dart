@@ -51,7 +51,8 @@ final class VerticalCoreAwareCanonicalProjectDocumentCodec
       return _legacy.decode(document);
     }
 
-    final verticalCores = _decodeVerticalCores(document.payload['verticalCores']);
+    final verticalCores =
+        _decodeVerticalCores(document.payload['verticalCores']);
     final legacyPayload = Map<String, Object?>.of(document.payload)
       ..remove('verticalCores');
     final legacySnapshot = _legacy.decode(
@@ -103,8 +104,9 @@ final class VerticalCoreAwareCanonicalProjectDocumentCodec
           'kind': core.kind.name,
           'name': core.name,
           'levelIds': <Object?>[
-            for (final id in (core.levelIds.toList()
-              ..sort((a, b) => a.value.compareTo(b.value))))
+            for (final id
+                in (core.levelIds.toList()
+                  ..sort((a, b) => a.value.compareTo(b.value))))
               id.value,
           ],
           'footprint': <Object?>[
