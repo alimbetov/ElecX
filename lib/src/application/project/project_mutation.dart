@@ -380,6 +380,12 @@ abstract final class CandidateGraphValidator {
     if (issues.isNotEmpty) {
       throw ProjectCandidateValidationException(issues);
     }
+    state.engineeringMetadata.boundaryHostedObjectRegistry.validateAgainst(
+      state.stores.boundaries,
+    );
+    state.engineeringMetadata.boundaryWallProfileRegistry.validateAgainst(
+      state.stores.boundaries,
+    );
     state.engineeringMetadata.boundaryConstructionRegistry.validateAgainst(
       state.stores.boundaries,
     );
@@ -611,6 +617,10 @@ final class ProjectMutationSession {
     if (issues.isNotEmpty) {
       throw ProjectCandidateValidationException(issues);
     }
+    durableState.engineeringMetadata.boundaryHostedObjectRegistry
+        .validateAgainst(durableState.stores.boundaries);
+    durableState.engineeringMetadata.boundaryWallProfileRegistry
+        .validateAgainst(durableState.stores.boundaries);
     durableState.engineeringMetadata.boundaryConstructionRegistry
         .validateAgainst(durableState.stores.boundaries);
     return ProjectAggregateRoot(
@@ -752,6 +762,8 @@ bool _sameLevel(ProjectLevelEntity a, ProjectLevelEntity b) =>
     a.buildingId == b.buildingId &&
     a.name == b.name &&
     a.levelNumber == b.levelNumber &&
+    a.kind == b.kind &&
+    a.floorToFloorHeightMm == b.floorToFloorHeightMm &&
     a.displayOrder == b.displayOrder &&
     a.elevationMm == b.elevationMm &&
     _sameSet(a.zoneIds, b.zoneIds) &&
@@ -798,12 +810,14 @@ bool _sameZone(ProjectStructuralZoneEntity a, ProjectStructuralZoneEntity b) =>
     a.id == b.id &&
     a.levelId == b.levelId &&
     a.name == b.name &&
+    a.kind == b.kind &&
     _sameSet(a.spaceIds, b.spaceIds);
 
 bool _sameSpace(ProjectSpaceEntity a, ProjectSpaceEntity b) =>
     a.id == b.id &&
     a.levelId == b.levelId &&
     a.name == b.name &&
+    a.type == b.type &&
     a.usage == b.usage;
 
 bool _sameOpening(ProjectOpeningEntity a, ProjectOpeningEntity b) =>
