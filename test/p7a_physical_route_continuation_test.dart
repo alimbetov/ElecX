@@ -98,14 +98,12 @@ void main() {
       fixture.controller.surfaceTap(const SurfacePointMm(1500, 1000));
 
       // Any committed electrical change invalidates the continuation baseline.
-      expect(
-        fixture.controller.p2.placeComponent(
-          type: ElectricalComponentType.junctionBox,
-          surface: fixture.surface,
-          position: const SurfacePointMm(2000, 1200),
-        ),
-        isTrue,
+      final added = fixture.controller.p2.placeComponent(
+        type: ElectricalComponentType.junctionBox,
+        surface: fixture.surface,
+        position: const SurfacePointMm(2000, 1200),
       );
+      expect(added.type, ElectricalComponentType.junctionBox);
       final revisionAfterExternalMutation =
           fixture.controller.p2.history.mutationRevision;
 
