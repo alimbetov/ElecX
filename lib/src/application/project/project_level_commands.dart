@@ -206,8 +206,7 @@ ProjectLevelEntity _requireLevel(
 }
 
 void _validateLevelNumber(int levelNumber) {
-  if (levelNumber < _minimumLevelNumber ||
-      levelNumber > _maximumLevelNumber) {
+  if (levelNumber < _minimumLevelNumber || levelNumber > _maximumLevelNumber) {
     throw RangeError.range(
       levelNumber,
       _minimumLevelNumber,
