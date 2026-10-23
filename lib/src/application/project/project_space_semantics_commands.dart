@@ -67,6 +67,20 @@ final class UpdateOpeningCommand implements ProjectCommand {
   @override
   ProjectCommandCandidate buildCandidate(ProjectAggregateRoot current) {
     final before = _requireOpening(current, opening.id);
+    if (!_sameOpeningPayload(before, opening)) {
+      final boundaryBlockers = _openingBoundaryBlockers(current, before);
+      if (boundaryBlockers.isNotEmpty) {
+        throw ProjectAuthoringException(
+          code: ProjectAuthoringIssueCode.openingHasBoundaryDependencies,
+          entityId: opening.id,
+          relatedEntityId: boundaryBlockers.first,
+          blockingEntityIds: Set<EntityId>.unmodifiable(boundaryBlockers),
+          message: 'Opening ${opening.id} cannot be changed through the P6 '
+              'semantic command while durable boundary hosts reference it. '
+              'Use a host-aware P7 mutation.',
+        );
+      }
+    }
     final openings = Map<OpeningId, ProjectOpeningEntity>.from(
       current.stores.openings,
     )..[opening.id] = opening;
@@ -105,6 +119,17 @@ final class RemoveOpeningCommand implements ProjectCommand {
         blockingEntityIds: Set<EntityId>.unmodifiable(blockers),
         message: 'Opening ${opening.id} cannot be removed while adjacency '
             'entities reference it.',
+      );
+    }
+    final boundaryBlockers = _openingBoundaryBlockers(current, opening);
+    if (boundaryBlockers.isNotEmpty) {
+      throw ProjectAuthoringException(
+        code: ProjectAuthoringIssueCode.openingHasBoundaryDependencies,
+        entityId: opening.id,
+        relatedEntityId: boundaryBlockers.first,
+        blockingEntityIds: Set<EntityId>.unmodifiable(boundaryBlockers),
+        message: 'Opening ${opening.id} cannot be removed while durable '
+            'boundary hosts reference it. Detach the P7 host first.',
       );
     }
     final openings = Map<OpeningId, ProjectOpeningEntity>.from(
@@ -329,6 +354,7 @@ final class RemoveSpaceFromOverlayCommand implements ProjectCommand {
   @override
   ProjectCommandCandidate buildCandidate(ProjectAggregateRoot current) {
     final overlay = _requireOverlay(current, overlayId);
+    _requireSpace(current, spaceId);
     final overlays =
         Map<OverlayClassificationId, ProjectOverlayClassificationEntity>.from(
       current.stores.overlays,
@@ -391,6 +417,28 @@ ProjectCommandCandidate _candidate(
       ),
       affectedEntityIds: affected,
     );
+
+Set<EntityId> _openingBoundaryBlockers(
+  ProjectAggregateRoot current,
+  ProjectOpeningEntity opening,
+) {
+  final registry = current.engineeringMetadata.boundaryHostedObjectRegistry;
+  return <EntityId>{
+    for (final spaceId in opening.connectedSpaceIds)
+      if (registry.openingHost(opening.id, spaceId) case final host?)
+        host.host.edgeId,
+  };
+}
+
+bool _sameOpeningPayload(ProjectOpeningEntity a, ProjectOpeningEntity b) =>
+    a.id == b.id &&
+    a.levelId == b.levelId &&
+    a.kind == b.kind &&
+    a.connectedSpaceIds.length == b.connectedSpaceIds.length &&
+    a.connectedSpaceIds.containsAll(b.connectedSpaceIds) &&
+    a.widthMm == b.widthMm &&
+    a.heightMm == b.heightMm &&
+    a.baseElevationMm == b.baseElevationMm;
 
 ProjectSpaceEntity _requireSpace(ProjectAggregateRoot current, SpaceId id) {
   final value = current.index.space(id);
