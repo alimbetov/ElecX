@@ -1,6 +1,7 @@
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import 'project_authoring_error.dart';
+import 'project_boundary_construction_editing.dart';
 import 'project_boundary_host_adoption.dart';
 import 'project_boundary_topology_editing.dart';
 import 'project_boundary_topology_migration.dart';
@@ -100,6 +101,8 @@ final class ProjectStructureAuthoringSession {
   })  : _mutations = mutations,
         _projectNorthEditing = ProjectNorthEditingSession(mutations),
         _spaceSemanticsEditing = ProjectSpaceSemanticsEditingSession(mutations),
+        _boundaryConstructionEditing =
+            ProjectBoundaryConstructionEditingService(mutations),
         _boundaryTopologyEditing =
             ProjectBoundaryTopologyEditingService(mutations),
         _boundaryTopologyMigration =
@@ -111,6 +114,7 @@ final class ProjectStructureAuthoringSession {
   final ProjectMutationSession _mutations;
   final ProjectNorthEditingPort _projectNorthEditing;
   final ProjectSpaceSemanticsEditingPort _spaceSemanticsEditing;
+  final ProjectBoundaryConstructionEditingService _boundaryConstructionEditing;
   final ProjectBoundaryTopologyEditingPort _boundaryTopologyEditing;
   final ProjectBoundaryTopologyMigrationService _boundaryTopologyMigration;
   final ProjectBoundaryHostAdoptionService _boundaryHostAdoption;
@@ -122,6 +126,8 @@ final class ProjectStructureAuthoringSession {
   ProjectNorthEditingPort get projectNorthEditing => _projectNorthEditing;
   ProjectSpaceSemanticsEditingPort get spaceSemanticsEditing =>
       _spaceSemanticsEditing;
+  ProjectBoundaryConstructionEditingService get boundaryConstructionEditing =>
+      _boundaryConstructionEditing;
   ProjectBoundaryTopologyEditingPort get boundaryTopologyEditing =>
       _boundaryTopologyEditing;
   ProjectBoundaryTopologyMigrationService get boundaryTopologyMigration =>
