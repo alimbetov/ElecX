@@ -92,15 +92,13 @@ void main() {
       expect(committed, isNotNull);
       expect(committed!.project.version, LocalProjectVersion(2));
       expect(
-        mutations.current.engineeringMetadata.boundaryConstructionRegistry[
-          first
-        ],
+        mutations
+            .current.engineeringMetadata.boundaryConstructionRegistry[first],
         profile,
       );
       expect(
-        mutations.current.engineeringMetadata.boundaryConstructionRegistry[
-          second
-        ],
+        mutations
+            .current.engineeringMetadata.boundaryConstructionRegistry[second],
         profile,
       );
       expect(mutations.canUndo, isTrue);
@@ -108,30 +106,26 @@ void main() {
       final undone = mutations.undo(mutations.current.version);
       expect(undone, isNotNull);
       expect(
-        mutations.current.engineeringMetadata.boundaryConstructionRegistry[
-          first
-        ],
+        mutations
+            .current.engineeringMetadata.boundaryConstructionRegistry[first],
         isNull,
       );
       expect(
-        mutations.current.engineeringMetadata.boundaryConstructionRegistry[
-          second
-        ],
+        mutations
+            .current.engineeringMetadata.boundaryConstructionRegistry[second],
         isNull,
       );
 
       final redone = mutations.redo(mutations.current.version);
       expect(redone, isNotNull);
       expect(
-        mutations.current.engineeringMetadata.boundaryConstructionRegistry[
-          first
-        ],
+        mutations
+            .current.engineeringMetadata.boundaryConstructionRegistry[first],
         profile,
       );
       expect(
-        mutations.current.engineeringMetadata.boundaryConstructionRegistry[
-          second
-        ],
+        mutations
+            .current.engineeringMetadata.boundaryConstructionRegistry[second],
         profile,
       );
     });
