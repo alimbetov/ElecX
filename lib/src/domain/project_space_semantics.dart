@@ -97,15 +97,21 @@ final class ProjectOpeningEntity {
 enum SpaceAdjacencyKind { sharedBoundary, opening, openPassage, vertical }
 
 /// Symmetric semantic adjacency between exactly two spaces.
+///
+/// Endpoints are normalized by stable [SpaceId] value so the same unordered
+/// pair has one canonical representation. Swapping authoring input order must
+/// never create a semantic diff, version increment or persistence fingerprint
+/// change.
 final class ProjectSpaceAdjacencyEntity {
   ProjectSpaceAdjacencyEntity({
     required this.id,
-    required this.spaceAId,
-    required this.spaceBId,
+    required SpaceId spaceAId,
+    required SpaceId spaceBId,
     required this.kind,
     this.openingId,
-  }) {
-    if (spaceAId == spaceBId) {
+  })  : spaceAId = _firstSpace(spaceAId, spaceBId),
+        spaceBId = _secondSpace(spaceAId, spaceBId) {
+    if (this.spaceAId == this.spaceBId) {
       throw ArgumentError(
         'Space adjacency cannot reference the same space twice.',
       );
@@ -125,6 +131,12 @@ final class ProjectSpaceAdjacencyEntity {
   final OpeningId? openingId;
 
   Set<SpaceId> get spaceIds => Set.unmodifiable(<SpaceId>{spaceAId, spaceBId});
+
+  static SpaceId _firstSpace(SpaceId left, SpaceId right) =>
+      left.value.compareTo(right.value) <= 0 ? left : right;
+
+  static SpaceId _secondSpace(SpaceId left, SpaceId right) =>
+      left.value.compareTo(right.value) <= 0 ? right : left;
 }
 
 enum OverlayDiscipline {
