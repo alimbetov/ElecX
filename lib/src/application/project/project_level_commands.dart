@@ -1,4 +1,5 @@
 import '../../domain/project_aggregate.dart';
+import '../../domain/project_entity_stores_copy.dart';
 import '../../domain/project_identity.dart';
 import 'project_authoring_error.dart';
 import 'project_mutation.dart';
@@ -71,12 +72,9 @@ final class CreateLevelCommand implements ProjectCommand {
     );
 
     return ProjectCommandCandidate(
-      stores: ProjectEntityStores(
-        sites: current.stores.sites,
+      stores: current.stores.copyWith(
         buildings: buildings,
         levels: levels,
-        zones: current.stores.zones,
-        spaces: current.stores.spaces,
       ),
       affectedEntityIds: <EntityId>[building.id, levelId],
     );
@@ -224,13 +222,7 @@ ProjectCommandCandidate _replaceLevel(
   );
 
   return ProjectCommandCandidate(
-    stores: ProjectEntityStores(
-      sites: current.stores.sites,
-      buildings: current.stores.buildings,
-      levels: levels,
-      zones: current.stores.zones,
-      spaces: current.stores.spaces,
-    ),
+    stores: current.stores.copyWith(levels: levels),
     affectedEntityIds: <EntityId>[level.id],
   );
 }
