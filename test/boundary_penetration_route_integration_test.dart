@@ -110,7 +110,10 @@ void main() {
           isA<ArgumentError>().having(
             (error) => error.message,
             'message',
-            contains('must have exactly one penetration; found 2'),
+            contains(
+              'must have exactly one penetration or one proven VerticalCore leg; '
+              'found 2 penetration(s) and 0 VerticalCore leg(s)',
+            ),
           ),
         ),
       );
