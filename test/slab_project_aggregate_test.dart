@@ -6,7 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('canonical slab aggregate integration', () {
-    test('indexes one inter-level slab by identity, building and both levels', () {
+    test('indexes one inter-level slab by identity, building and both levels',
+        () {
       final fixture = _SlabAggregateFixture();
       final project = fixture.projectWith(
         slabs: {fixture.slab.id: fixture.slab},
