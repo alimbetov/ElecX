@@ -1,9 +1,11 @@
 import '../../domain/boundary_edge_identity_registry.dart';
 import '../../domain/boundary_topology.dart';
 import '../../domain/project_aggregate.dart';
+import '../../domain/project_entity_stores_copy.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/project_orientation.dart';
 import '../../domain/project_space_semantics.dart';
+import '../../domain/slab_topology.dart';
 
 abstract interface class ProjectCommand {
   String get commandType;
@@ -58,16 +60,12 @@ final class ProjectCommandCandidate {
     final legacy = _stores!;
     return ProjectMutableState(
       engineeringMetadata: current.engineeringMetadata,
-      stores: ProjectEntityStores(
+      stores: current.stores.copyWith(
         sites: legacy.sites,
         buildings: legacy.buildings,
         levels: legacy.levels,
         zones: legacy.zones,
         spaces: legacy.spaces,
-        openings: current.stores.openings,
-        adjacencies: current.stores.adjacencies,
-        overlays: current.stores.overlays,
-        boundaries: current.stores.boundaries,
       ),
     );
   }
@@ -120,6 +118,7 @@ final class ProjectEntityDiff {
       removed,
     );
     _diffMap(before.levels, after.levels, _sameLevel, added, updated, removed);
+    _diffMap(before.slabs, after.slabs, _sameSlab, added, updated, removed);
     _diffMap(before.zones, after.zones, _sameZone, added, updated, removed);
     _diffMap(before.spaces, after.spaces, _sameSpace, added, updated, removed);
     _diffMap(
@@ -748,6 +747,26 @@ bool _sameLevel(ProjectLevelEntity a, ProjectLevelEntity b) =>
     a.elevationMm == b.elevationMm &&
     _sameSet(a.zoneIds, b.zoneIds) &&
     _sameSet(a.spaceIds, b.spaceIds);
+
+bool _sameSlab(ProjectSlab a, ProjectSlab b) {
+  if (a.id != b.id ||
+      a.buildingId != b.buildingId ||
+      a.kind != b.kind ||
+      a.belowLevelId != b.belowLevelId ||
+      a.aboveLevelId != b.aboveLevelId ||
+      a.bottomElevationMm != b.bottomElevationMm ||
+      a.thicknessMm != b.thicknessMm ||
+      a.materialId != b.materialId ||
+      a.footprint.length != b.footprint.length) {
+    return false;
+  }
+  for (var index = 0; index < a.footprint.length; index++) {
+    final left = a.footprint[index];
+    final right = b.footprint[index];
+    if (left.xMm != right.xMm || left.yMm != right.yMm) return false;
+  }
+  return true;
+}
 
 bool _sameZone(ProjectStructuralZoneEntity a, ProjectStructuralZoneEntity b) =>
     a.id == b.id &&
