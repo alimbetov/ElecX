@@ -313,8 +313,9 @@ abstract final class SurfaceTransitionGraph {
     List<BoundaryEdgeId>? edgeIds,
     int roomHeightMm,
   ) {
-    if (ref.type != SurfacePlaneType.wall || ref.spaceId != space.id)
+    if (ref.type != SurfacePlaneType.wall || ref.spaceId != space.id) {
       return null;
+    }
     final edgeId = ref.boundaryEdgeId;
     if (edgeId != null) {
       if (edgeIds == null) return null;
