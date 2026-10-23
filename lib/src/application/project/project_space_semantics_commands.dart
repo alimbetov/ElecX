@@ -5,6 +5,30 @@ import '../../domain/project_space_semantics.dart';
 import 'project_authoring_error.dart';
 import 'project_mutation.dart';
 
+final class SetSpaceTypeCommand implements ProjectCommand {
+  const SetSpaceTypeCommand({required this.spaceId, required this.type});
+
+  final SpaceId spaceId;
+  final ProjectSpaceType type;
+
+  @override
+  String get commandType => 'project.space.type.set';
+
+  @override
+  ProjectCommandCandidate buildCandidate(ProjectAggregateRoot current) {
+    final space = _requireSpace(current, spaceId);
+    final spaces = Map<SpaceId, ProjectSpaceEntity>.from(current.stores.spaces);
+    spaces[space.id] = ProjectSpaceEntity(
+      id: space.id,
+      levelId: space.levelId,
+      name: space.name,
+      type: type,
+      usage: space.usage,
+    );
+    return _candidate(current, spaces: spaces, affected: <EntityId>[space.id]);
+  }
+}
+
 final class SetSpaceUsageCommand implements ProjectCommand {
   const SetSpaceUsageCommand({required this.spaceId, required this.usage});
 
@@ -22,6 +46,7 @@ final class SetSpaceUsageCommand implements ProjectCommand {
       id: space.id,
       levelId: space.levelId,
       name: space.name,
+      type: space.type,
       usage: usage,
     );
     return _candidate(current, spaces: spaces, affected: <EntityId>[space.id]);
