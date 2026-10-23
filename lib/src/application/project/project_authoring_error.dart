@@ -22,6 +22,7 @@ enum ProjectAuthoringIssueCode {
   spaceAlreadyExists,
   spaceNotFound,
   spaceHasSemanticDependencies,
+  spaceHasBoundaryDependencies,
   openingAlreadyExists,
   openingNotFound,
   adjacencyAlreadyExists,
