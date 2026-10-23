@@ -282,12 +282,10 @@ class _WallConstructionFormState extends State<_WallConstructionForm> {
                   child: Text(_conflict ? 'Обновить' : 'Отменить'),
                 ),
                 FilledButton.icon(
-                  onPressed: _dirty &&
-                          candidate != null &&
-                          !_saving &&
-                          !_conflict
-                      ? _save
-                      : null,
+                  onPressed:
+                      _dirty && candidate != null && !_saving && !_conflict
+                          ? _save
+                          : null,
                   icon: _saving
                       ? const SizedBox.square(
                           dimension: 16,
