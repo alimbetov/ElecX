@@ -74,7 +74,8 @@ void main() {
     expect(editor.p2.routes.single.id, 'route-physical');
     expect(editor.p2.routes.single.penetrations, hasLength(1));
     expect(
-      editor.p2.routes.single.penetrations.single.exitAnchor.isContinuationStart,
+      editor
+          .p2.routes.single.penetrations.single.exitAnchor.isContinuationStart,
       isTrue,
     );
 
