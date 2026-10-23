@@ -1,4 +1,5 @@
 import '../../domain/project_aggregate.dart';
+import '../../domain/project_entity_stores_copy.dart';
 import '../../domain/project_identity.dart';
 import 'project_authoring_error.dart';
 import 'project_mutation.dart';
@@ -65,13 +66,13 @@ final class CreateStructuralZoneCommand implements ProjectCommand {
       spaceIds: const <SpaceId>[],
     );
 
-    return ProjectCommandCandidate(
-      stores: ProjectEntityStores(
-        sites: current.stores.sites,
-        buildings: current.stores.buildings,
-        levels: levels,
-        zones: zones,
-        spaces: current.stores.spaces,
+    return ProjectCommandCandidate.fromState(
+      state: ProjectMutableState(
+        engineeringMetadata: current.engineeringMetadata,
+        stores: current.stores.copyWith(
+          levels: levels,
+          zones: zones,
+        ),
       ),
       affectedEntityIds: <EntityId>[level.id, zoneId],
     );
@@ -110,13 +111,10 @@ final class RenameStructuralZoneCommand implements ProjectCommand {
       spaceIds: zone.spaceIds,
     );
 
-    return ProjectCommandCandidate(
-      stores: ProjectEntityStores(
-        sites: current.stores.sites,
-        buildings: current.stores.buildings,
-        levels: current.stores.levels,
-        zones: zones,
-        spaces: current.stores.spaces,
+    return ProjectCommandCandidate.fromState(
+      state: ProjectMutableState(
+        engineeringMetadata: current.engineeringMetadata,
+        stores: current.stores.copyWith(zones: zones),
       ),
       affectedEntityIds: <EntityId>[zone.id],
     );
