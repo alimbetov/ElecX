@@ -267,6 +267,11 @@ final class BoundaryPenetrationRequirement {
         'Physical thickness is required before committing a penetration.',
       );
     }
+    if (hostKind == BoundaryPenetrationHostKind.slab && slabId == null) {
+      throw StateError(
+        'Stable SlabId is required before committing a new slab penetration.',
+      );
+    }
     return BoundaryPenetration.normal(
       id: penetrationId,
       hostKind: hostKind,
