@@ -73,9 +73,20 @@ abstract final class CanonicalWallConstructionRuntime {
     String? fireRatingId,
   }) {
     final context = _context(controller);
-    final current = activeWall(controller);
-    if (context == null || current == null) return false;
+    if (context == null) return false;
+    final session = context.coordinator.session;
 
+    // A committed canonical wall state with a failed P2 projection is a hard
+    // consistency latch. No subsequent wall command, even with a different
+    // value, may advance the aggregate until the previous projection has been
+    // reconciled against the exact still-attached canonical session.
+    _recoverPendingProjectionBeforeMutation(
+      controller: controller,
+      session: session,
+    );
+
+    final current = activeWall(controller);
+    if (current == null) return false;
     final profile = BoundaryConstructionProfile(
       kind: BoundaryConstructionKind.wall,
       thicknessMm: thicknessMm,
@@ -91,7 +102,7 @@ abstract final class CanonicalWallConstructionRuntime {
       context: context,
       target: target,
     );
-    final beforeProject = context.coordinator.session.project;
+    final beforeProject = session.project;
     final beforeRegistry =
         beforeProject.engineeringMetadata.boundaryConstructionRegistry;
     var prospectiveRegistry = beforeRegistry;
@@ -111,8 +122,13 @@ abstract final class CanonicalWallConstructionRuntime {
     );
 
     void projectP2ForCurrentCanonicalState() {
-      final currentRegistry = context.coordinator.session.project
-          .engineeringMetadata.boundaryConstructionRegistry;
+      if (!controller.documentHistory.hasCanonicalSessionAffinity(session)) {
+        throw StateError(
+          'Wall penetration projection lost canonical session affinity.',
+        );
+      }
+      final currentRegistry =
+          session.project.engineeringMetadata.boundaryConstructionRegistry;
       final useAfter = _profilesEqual(
         currentRegistry,
         prospectiveRegistry,
@@ -135,30 +151,19 @@ abstract final class CanonicalWallConstructionRuntime {
         registry: currentRegistry,
         changedHosts: linkedHosts,
       );
+      if (!controller.documentHistory.hasCanonicalSessionAffinity(session)) {
+        throw StateError(
+          'Wall penetration projection changed canonical session before apply.',
+        );
+      }
       _applyCanonicalP2Projection(controller, projected);
     }
 
-    final result = context.coordinator.session.boundaryConstructionEditing
-        .setWallConstructions(
+    final result = session.boundaryConstructionEditing.setWallConstructions(
       profiles: {for (final host in linkedHosts) host: profile},
       expectedVersion: beforeProject.version,
     );
-    if (result == null) {
-      final recovery = _pendingProjectionRecovery[controller];
-      if (recovery != null &&
-          identical(recovery.session, context.coordinator.session)) {
-        try {
-          projectP2ForCurrentCanonicalState();
-          _pendingProjectionRecovery[controller] = null;
-        } catch (error) {
-          throw CanonicalWallConstructionEditException(
-            'Wall construction is committed but its penetration projection '
-            'is still inconsistent: $error',
-          );
-        }
-      }
-      return true;
-    }
+    if (result == null) return true;
 
     _finishCommittedTransition(
       controller: controller,
@@ -354,7 +359,9 @@ abstract final class CanonicalWallConstructionRuntime {
     if (coordinator == null ||
         owner == null ||
         physical == null ||
-        spaceId == null) {
+        spaceId == null ||
+        !controller.documentHistory
+            .hasCanonicalSessionAffinity(coordinator.session)) {
       return null;
     }
     final legacySpaceId = coordinator.adapter.binding.legacySpaceIds[spaceId];
@@ -381,15 +388,11 @@ abstract final class CanonicalWallConstructionRuntime {
       context.owner(result);
     } catch (error) {
       controller.documentHistory.invalidateAfterUnownedCanonicalCommit(session);
-      final recovery = _bestEffortRematerializeIfStillAttached(
+      _bestEffortRematerializeIfStillAttached(
         controller: controller,
         session: session,
         rematerialize: rematerialize,
       );
-      if (recovery == _RematerializeRecovery.failed) {
-        _pendingProjectionRecovery[controller] =
-            _WallProjectionRecovery(session);
-      }
       throw CanonicalWallConstructionEditException(
         'Wall construction committed but persistence ownership failed: $error',
       );
@@ -440,8 +443,10 @@ abstract final class CanonicalWallConstructionRuntime {
         session,
       );
       if (controller.documentHistory.hasCanonicalSessionAffinity(session)) {
-        _pendingProjectionRecovery[controller] =
-            _WallProjectionRecovery(session);
+        _pendingProjectionRecovery[controller] = _WallProjectionRecovery(
+          session: session,
+          rematerialize: rematerialize,
+        );
       }
       throw CanonicalWallConstructionEditException(
         'Wall construction committed but penetration projection failed: $error',
@@ -466,6 +471,10 @@ abstract final class CanonicalWallConstructionRuntime {
   }) {
     final history = controller.documentHistory;
     if (!history.hasCanonicalSessionAffinity(session)) {
+      final recovery = _pendingProjectionRecovery[controller];
+      if (recovery != null && identical(recovery.session, session)) {
+        _pendingProjectionRecovery[controller] = null;
+      }
       throw CanonicalWallConstructionEditException(
         'Wall construction lost canonical session affinity after $phase.',
       );
@@ -484,12 +493,43 @@ abstract final class CanonicalWallConstructionRuntime {
     );
   }
 
+  static void _recoverPendingProjectionBeforeMutation({
+    required EditorController controller,
+    required ProjectStructureAuthoringSession session,
+  }) {
+    final recovery = _pendingProjectionRecovery[controller];
+    if (recovery == null) return;
+    if (!identical(recovery.session, session)) {
+      _pendingProjectionRecovery[controller] = null;
+      return;
+    }
+    if (!controller.documentHistory.hasCanonicalSessionAffinity(session)) {
+      _pendingProjectionRecovery[controller] = null;
+      throw const CanonicalWallConstructionEditException(
+        'Wall construction recovery lost canonical session affinity.',
+      );
+    }
+    try {
+      recovery.rematerialize();
+      _pendingProjectionRecovery[controller] = null;
+    } catch (error) {
+      throw CanonicalWallConstructionEditException(
+        'Wall construction has an unresolved penetration projection; '
+        'new wall changes are blocked until recovery succeeds: $error',
+      );
+    }
+  }
+
   static _RematerializeRecovery _bestEffortRematerializeIfStillAttached({
     required EditorController controller,
     required ProjectStructureAuthoringSession session,
     required void Function() rematerialize,
   }) {
     if (!controller.documentHistory.hasCanonicalSessionAffinity(session)) {
+      final recovery = _pendingProjectionRecovery[controller];
+      if (recovery != null && identical(recovery.session, session)) {
+        _pendingProjectionRecovery[controller] = null;
+      }
       return _RematerializeRecovery.notAttached;
     }
     try {
@@ -497,6 +537,10 @@ abstract final class CanonicalWallConstructionRuntime {
       _pendingProjectionRecovery[controller] = null;
       return _RematerializeRecovery.succeeded;
     } catch (_) {
+      _pendingProjectionRecovery[controller] = _WallProjectionRecovery(
+        session: session,
+        rematerialize: rematerialize,
+      );
       return _RematerializeRecovery.failed;
     }
   }
@@ -511,9 +555,13 @@ abstract final class CanonicalWallConstructionRuntime {
 enum _RematerializeRecovery { succeeded, failed, notAttached }
 
 final class _WallProjectionRecovery {
-  const _WallProjectionRecovery(this.session);
+  const _WallProjectionRecovery({
+    required this.session,
+    required this.rematerialize,
+  });
 
   final ProjectStructureAuthoringSession session;
+  final void Function() rematerialize;
 }
 
 final class _ConstructionContext {
