@@ -1,3 +1,4 @@
+import '../../domain/boundary_penetration.dart';
 import '../../domain/cable_penetration_authoring.dart';
 import '../../domain/canonical_slab_transition_resolver.dart';
 import '../../domain/project_identity.dart';
@@ -14,6 +15,7 @@ enum CanonicalSlabCableHandoffIssueCode {
   sourceBindingMismatch,
   targetBindingMissing,
   targetGeometryMissing,
+  verticalCoreMismatch,
   physicalTransitionRejected,
 }
 
@@ -37,11 +39,13 @@ final class CanonicalSlabCableHandoffResult {
     required this.transition,
     required this.slabId,
     required this.routeId,
+    this.verticalCoreId,
   });
 
   final SurfaceTransitionCandidate transition;
   final SlabId slabId;
   final String routeId;
+  final VerticalCoreId? verticalCoreId;
 
   /// Returns transition evidence in the identity regime requested by durable
   /// route commit (legacy projection or canonical SpaceId surfaces).
@@ -78,7 +82,8 @@ final class CanonicalSlabCableHandoffResult {
           storedTo == null ||
           requestedFrom != storedFrom ||
           requestedTo != storedTo ||
-          transition.penetrationRequirement?.slabId != slabId) {
+          transition.penetrationRequirement?.slabId != slabId ||
+          transition.penetrationRequirement?.verticalCoreId != verticalCoreId) {
         return null;
       }
 
@@ -111,6 +116,7 @@ final class CanonicalSlabCableHandoffAuthoring {
     required SpaceId toSpaceId,
     required int fromRoomHeightMm,
     required int toRoomHeightMm,
+    VerticalCoreId? verticalCoreId,
     int verticalToleranceMm = 2,
   }) {
     final coordinator = runtime.coordinator;
@@ -152,6 +158,20 @@ final class CanonicalSlabCableHandoffAuthoring {
         entityId: toSpaceId,
         message: 'Target canonical SpaceId has no valid owning LevelId.',
       );
+    }
+
+    if (verticalCoreId != null) {
+      final core = project.index.verticalCore(verticalCoreId);
+      if (core == null ||
+          !core.servesLevel(fromLevelId) ||
+          !core.servesLevel(targetLevel.id)) {
+        throw CanonicalSlabCableHandoffException(
+          code: CanonicalSlabCableHandoffIssueCode.verticalCoreMismatch,
+          entityId: verticalCoreId,
+          message: 'VerticalCore $verticalCoreId does not own both canonical '
+              'levels $fromLevelId and ${targetLevel.id}.',
+        );
+      }
     }
 
     final sourceLegacyLevelId =
@@ -268,12 +288,19 @@ final class CanonicalSlabCableHandoffAuthoring {
       );
     }
 
+    final effectiveTransition = verticalCoreId == null
+        ? transition
+        : _withVerticalCoreIdentity(
+            transition: transition,
+            verticalCoreId: verticalCoreId,
+          );
+
     CanonicalSlabRouteDraftExternalization externalized;
     try {
       externalized = CanonicalSlabRouteDraftExternalization.externalize(
         editor: editor,
         intent: prepared.intent,
-        transition: transition,
+        transition: effectiveTransition,
       );
     } on Object {
       runtime.cancel();
@@ -282,9 +309,43 @@ final class CanonicalSlabCableHandoffAuthoring {
 
     final plan = runtime.applyNavigation(externalizedDraft: externalized);
     return CanonicalSlabCableHandoffResult(
-      transition: transition,
+      transition: effectiveTransition,
       slabId: plan.slabId,
       routeId: prepared.intent.routeId,
+      verticalCoreId: verticalCoreId,
+    );
+  }
+
+  static SurfaceTransitionCandidate _withVerticalCoreIdentity({
+    required SurfaceTransitionCandidate transition,
+    required VerticalCoreId verticalCoreId,
+  }) {
+    final requirement = transition.penetrationRequirement;
+    if (requirement == null ||
+        transition.kind != SurfaceTransitionKind.levelPenetration ||
+        requirement.hostKind != BoundaryPenetrationHostKind.slab ||
+        requirement.slabId == null) {
+      throw CanonicalSlabCableHandoffException(
+        code: CanonicalSlabCableHandoffIssueCode.physicalTransitionRejected,
+        entityId: verticalCoreId,
+        message: 'VerticalCore route ownership requires a proven canonical '
+            'slab penetration transition.',
+      );
+    }
+    return SurfaceTransitionCandidate(
+      id: transition.id,
+      kind: transition.kind,
+      fromSurface: transition.fromSurface,
+      fromPoint: transition.fromPoint,
+      toSurface: transition.toSurface,
+      toPoint: transition.toPoint,
+      penetrationRequirement: BoundaryPenetrationRequirement(
+        hostKind: requirement.hostKind,
+        hostThicknessMm: requirement.hostThicknessMm,
+        materialId: requirement.materialId,
+        slabId: requirement.slabId,
+        verticalCoreId: verticalCoreId,
+      ),
     );
   }
 }
