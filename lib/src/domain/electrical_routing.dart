@@ -77,18 +77,7 @@ final class ElectricalCableRoute {
     if (reservePercent < 0) {
       throw ArgumentError.value(reservePercent, 'reservePercent');
     }
-    final penetrationIds = <String>{};
-    for (final penetration in penetrations) {
-      if (penetration.routeId != id) {
-        throw ArgumentError(
-          'Penetration ${penetration.id} belongs to route '
-          '${penetration.routeId}, not $id.',
-        );
-      }
-      if (!penetrationIds.add(penetration.id)) {
-        throw ArgumentError('Duplicate penetration id ${penetration.id}.');
-      }
-    }
+    _validatePenetrations();
   }
 
   final String id;
@@ -132,6 +121,81 @@ final class ElectricalCableRoute {
         medium: medium ?? this.medium,
         reservePercent: reservePercent ?? this.reservePercent,
       );
+
+  void _validatePenetrations() {
+    final penetrationIds = <String>{};
+    for (final penetration in penetrations) {
+      if (penetration.routeId != id) {
+        throw ArgumentError(
+          'Penetration ${penetration.id} belongs to route '
+          '${penetration.routeId}, not $id.',
+        );
+      }
+      if (!penetrationIds.add(penetration.id)) {
+        throw ArgumentError('Duplicate penetration id ${penetration.id}.');
+      }
+      var matchCount = 0;
+      for (var index = 0; index + 1 < segments.length; index++) {
+        if (_penetrationMatchesTransition(
+          penetration,
+          segments[index],
+          segments[index + 1],
+        )) {
+          matchCount++;
+        }
+      }
+      if (matchCount != 1) {
+        throw ArgumentError(
+          'Penetration ${penetration.id} must bind to exactly one adjacent '
+          'route-segment transition; found $matchCount.',
+        );
+      }
+    }
+
+    for (var index = 0; index + 1 < segments.length; index++) {
+      final before = segments[index];
+      final after = segments[index + 1];
+      if (before.points.isEmpty || after.points.isEmpty) continue;
+      if (before.surface == after.surface) {
+        if (before.points.last != after.points.first) {
+          throw ArgumentError(
+            'Adjacent route segments on the same surface must be contiguous.',
+          );
+        }
+        continue;
+      }
+
+      final crossesSpaces = before.surface.spaceId != after.surface.spaceId;
+      final floorCeilingPair =
+          (before.surface.type == SurfacePlaneType.floor &&
+                  after.surface.type == SurfacePlaneType.ceiling) ||
+              (before.surface.type == SurfacePlaneType.ceiling &&
+                  after.surface.type == SurfacePlaneType.floor);
+      if (!crossesSpaces && !floorCeilingPair) continue;
+
+      final hasPhysicalTransition = penetrations.any(
+        (penetration) =>
+            _penetrationMatchesTransition(penetration, before, after),
+      );
+      if (!hasPhysicalTransition) {
+        throw ArgumentError(
+          'Route $id crosses a physical boundary without a penetration.',
+        );
+      }
+    }
+  }
+
+  static bool _penetrationMatchesTransition(
+    BoundaryPenetration penetration,
+    ElectricalRouteSegment before,
+    ElectricalRouteSegment after,
+  ) {
+    if (before.points.isEmpty || after.points.isEmpty) return false;
+    return penetration.entryAnchor.surface == before.surface &&
+        penetration.entryAnchor.point == before.points.last &&
+        penetration.exitAnchor.surface == after.surface &&
+        penetration.exitAnchor.point == after.points.first;
+  }
 }
 
 abstract final class ElectricalPortCompatibility {
