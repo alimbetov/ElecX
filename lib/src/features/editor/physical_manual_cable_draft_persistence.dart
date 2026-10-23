@@ -226,7 +226,8 @@ extension PhysicalManualCableDraftPersistence on EditorController {
     if (extensionDraftIndexes.isEmpty) return false;
 
     final firstNewTransitionIndex = before.segments.length - 1;
-    final totalSegmentCount = before.segments.length + extensionDraftIndexes.length;
+    final totalSegmentCount =
+        before.segments.length + extensionDraftIndexes.length;
     final penetrationSlots = <String>[
       for (var index = firstNewTransitionIndex;
           index + 1 < totalSegmentCount;
