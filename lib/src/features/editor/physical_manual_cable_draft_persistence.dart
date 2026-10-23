@@ -394,7 +394,7 @@ extension PhysicalManualCableDraftPersistence on EditorController {
         routeId: resolvedRouteId,
         source: ElectricalEndpointRef(
           componentId: source.component.id,
-          portId: source.portId,
+          portId: source.port.id,
         ),
         target: ElectricalEndpointRef(
           componentId: target.component.id,
