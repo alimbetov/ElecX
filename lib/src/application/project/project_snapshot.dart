@@ -1,4 +1,3 @@
-import '../../domain/boundary_construction_registry.dart';
 import '../../domain/boundary_geometry_integrity.dart';
 import '../../domain/boundary_host_registry.dart';
 import '../../domain/boundary_opening_profile_validation.dart';
