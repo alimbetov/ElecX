@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'boundary_penetration.dart';
 import 'electrical_routing.dart';
 import 'geometry.dart';
 import 'route_host.dart';
@@ -86,7 +87,9 @@ abstract final class HostedRouteAdapter {
               // Keep the domain penetration identity intact so presentation
               // can correlate the marker with the physical aggregate.
               id: penetration.id,
-              kind: RouteHostTransitionKind.roomPenetration,
+              kind: penetration.hostKind == BoundaryPenetrationHostKind.slab
+                  ? RouteHostTransitionKind.levelPenetration
+                  : RouteHostTransitionKind.roomPenetration,
               fromHost: RouteHostRef.indoor(
                 penetration.entryAnchor.surface,
               ),
@@ -102,6 +105,7 @@ abstract final class HostedRouteAdapter {
                 penetration.exitAnchor.point.yMm,
               ),
               requiresPenetration: true,
+              slabId: penetration.slabId,
             ),
         ],
       );
