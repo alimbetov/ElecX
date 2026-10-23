@@ -186,6 +186,8 @@ final class CircuitSizingEvidence {
             penetration.hostThicknessMm,
             penetration.pathLengthMm,
             penetration.materialId ?? '-',
+            penetration.slabId?.value ?? '-',
+            penetration.verticalCoreId?.value ?? '-',
             penetration.entryAnchor.surface.id,
             '${penetration.entryAnchor.point.xMm},${penetration.entryAnchor.point.yMm}',
             penetration.exitAnchor.surface.id,
@@ -193,7 +195,18 @@ final class CircuitSizingEvidence {
           ].join(':'),
         )
         .join('|');
-    return '$segmentSignature#penetrations=$penetrationSignature';
+    final verticalCoreLegSignature = route.verticalCoreLegs
+        .map(
+          (leg) => [
+            leg.verticalCoreId.value,
+            leg.fromSlabId.value,
+            leg.toSlabId.value,
+            leg.lengthMm,
+          ].join(':'),
+        )
+        .join('|');
+    return '$segmentSignature#penetrations=$penetrationSignature'
+        '#verticalCoreLegs=$verticalCoreLegSignature';
   }
 
   static Map<String, Object?> _cableToJson(CableSpec value) => {
