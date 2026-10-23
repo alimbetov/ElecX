@@ -11,7 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   const codec = SlabAwareCanonicalProjectDocumentCodec();
 
-  group('schema v8 slab persistence', () {
+  group('schema v9 slab persistence', () {
     test('round-trips stable slab identity, geometry and reverse indexes', () {
       final fixture = _CodecFixture();
       final snapshot = fixture.snapshotWithSlab();
@@ -20,7 +20,7 @@ void main() {
       final restored = codec.decode(document);
       final slab = restored.aggregate.index.slab(fixture.slabId);
 
-      expect(document.schemaVersion, 8);
+      expect(document.schemaVersion, 9);
       expect(document.payload['slabs'], isA<List<Object?>>());
       expect(slab, isNotNull);
       expect(slab!.id, fixture.slabId);
@@ -47,31 +47,30 @@ void main() {
       );
     });
 
-    test('reads legacy schema v7 with empty slab store and upgrades on save',
-        () {
+    test('reads base schema v8 with empty slab store and upgrades on save', () {
       final fixture = _CodecFixture();
       final legacySnapshot = fixture.snapshotWithoutSlabs();
       const legacyCodec = CanonicalProjectDocumentCodec();
       final legacyDocument = legacyCodec.encode(legacySnapshot);
 
-      expect(legacyDocument.schemaVersion, 7);
+      expect(legacyDocument.schemaVersion, 8);
 
       final migrated = codec.decode(legacyDocument);
       expect(migrated.aggregate.stores.slabs, isEmpty);
 
       final upgraded = codec.encode(migrated);
-      expect(upgraded.schemaVersion, 8);
+      expect(upgraded.schemaVersion, 9);
       expect(upgraded.payload['slabs'], isEmpty);
     });
 
-    test('fails closed when schema v8 omits slab array', () {
+    test('fails closed when schema v9 omits slab array', () {
       final fixture = _CodecFixture();
       final encoded = codec.encode(fixture.snapshotWithoutSlabs());
       final payload = Map<String, Object?>.of(encoded.payload)..remove('slabs');
 
       expect(
         () => codec.decode(
-          ProjectDocument(schemaVersion: 8, payload: payload),
+          ProjectDocument(schemaVersion: 9, payload: payload),
         ),
         throwsA(isA<FormatException>()),
       );
@@ -91,7 +90,7 @@ void main() {
 
       expect(
         () => codec.decode(
-          ProjectDocument(schemaVersion: 8, payload: payload),
+          ProjectDocument(schemaVersion: 9, payload: payload),
         ),
         throwsA(isA<FormatException>()),
       );
@@ -152,7 +151,7 @@ void main() {
 
       expect(
         () => codec.decode(
-          ProjectDocument(schemaVersion: 8, payload: payload),
+          ProjectDocument(schemaVersion: 9, payload: payload),
         ),
         throwsA(isA<FormatException>()),
       );
