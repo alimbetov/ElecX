@@ -71,7 +71,8 @@ void main() {
       expect(secondBoundary.orderedEdgeIds, firstBoundary.orderedEdgeIds);
       expect(firstBoundary.orderedEdgeIds, hasLength(4));
       expect(
-        first.snapshot.aggregate.engineeringMetadata.boundaryEdgeIdentityRegistry
+        first
+            .snapshot.aggregate.engineeringMetadata.boundaryEdgeIdentityRegistry
             .ownerOf(firstBoundary.orderedEdgeIds.first),
         firstSpaceId,
       );
