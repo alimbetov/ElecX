@@ -5,6 +5,7 @@ import 'electrical_placement.dart';
 import 'project_identity.dart';
 import 'route_medium.dart';
 import 'surfaces.dart';
+import 'vertical_core_route_leg.dart';
 
 final class ElectricalEndpointRef {
   const ElectricalEndpointRef({
@@ -60,8 +61,10 @@ final class ElectricalRouteSegment {
 /// cable specification.
 ///
 /// [penetrations] are part of the physical route aggregate. They carry hidden
-/// cable length inside walls/slabs and must therefore survive route mutation,
-/// undo/redo and persistence together with the visible surface segments.
+/// cable length inside walls/slabs. [verticalCoreLegs] carry the additional
+/// hidden straight-Z cable run between consecutive slab penetrations inside a
+/// stable riser/shaft. Both survive route mutation, undo/redo and persistence
+/// together with the visible surface segments.
 final class ElectricalCableRoute {
   ElectricalCableRoute({
     required this.id,
@@ -69,6 +72,7 @@ final class ElectricalCableRoute {
     required this.target,
     required this.segments,
     this.penetrations = const <BoundaryPenetration>[],
+    this.verticalCoreLegs = const <VerticalCoreRouteLeg>[],
     this.cableType,
     this.medium = RouteMediumProfile.generic,
     this.reservePercent = 5,
@@ -78,6 +82,7 @@ final class ElectricalCableRoute {
       throw ArgumentError.value(reservePercent, 'reservePercent');
     }
     _validatePenetrations();
+    _validateVerticalCoreLegs();
   }
 
   final String id;
@@ -85,6 +90,7 @@ final class ElectricalCableRoute {
   final ElectricalEndpointRef target;
   final List<ElectricalRouteSegment> segments;
   final List<BoundaryPenetration> penetrations;
+  final List<VerticalCoreRouteLeg> verticalCoreLegs;
   final String? cableType;
   final RouteMediumProfile medium;
   final int reservePercent;
@@ -97,7 +103,15 @@ final class ElectricalCableRoute {
         (sum, penetration) => sum + penetration.routeLengthContributionMm,
       );
 
-  double get geometricLengthMm => visibleLengthMm + hiddenPenetrationLengthMm;
+  double get hiddenVerticalCoreLengthMm => verticalCoreLegs.fold(
+        0.0,
+        (sum, leg) => sum + leg.lengthMm,
+      );
+
+  double get geometricLengthMm =>
+      visibleLengthMm +
+      hiddenPenetrationLengthMm +
+      hiddenVerticalCoreLengthMm;
 
   double get installationLengthMm =>
       geometricLengthMm * (1 + reservePercent / 100);
@@ -107,6 +121,7 @@ final class ElectricalCableRoute {
     ElectricalEndpointRef? target,
     List<ElectricalRouteSegment>? segments,
     List<BoundaryPenetration>? penetrations,
+    List<VerticalCoreRouteLeg>? verticalCoreLegs,
     String? cableType,
     RouteMediumProfile? medium,
     int? reservePercent,
@@ -117,6 +132,7 @@ final class ElectricalCableRoute {
         target: target ?? this.target,
         segments: segments ?? this.segments,
         penetrations: penetrations ?? this.penetrations,
+        verticalCoreLegs: verticalCoreLegs ?? this.verticalCoreLegs,
         cableType: cableType ?? this.cableType,
         medium: medium ?? this.medium,
         reservePercent: reservePercent ?? this.reservePercent,
@@ -182,6 +198,42 @@ final class ElectricalCableRoute {
         throw ArgumentError(
           'Route $id physical transition ${index + 1} must have exactly one '
           'penetration; found ${physicalTransitionPenetrations.length}.',
+        );
+      }
+    }
+  }
+
+  void _validateVerticalCoreLegs() {
+    final seen = <String>{};
+    for (final leg in verticalCoreLegs) {
+      if (leg.fromSlabId == leg.toSlabId) {
+        throw ArgumentError(
+          'VerticalCore leg cannot connect slab ${leg.fromSlabId} to itself.',
+        );
+      }
+      final key = '${leg.verticalCoreId.value}\u0000'
+          '${leg.fromSlabId.value}\u0000${leg.toSlabId.value}';
+      if (!seen.add(key)) {
+        throw ArgumentError(
+          'Duplicate VerticalCore leg ${leg.fromSlabId}->${leg.toSlabId}.',
+        );
+      }
+
+      final fromMatches = penetrations.where(
+        (penetration) =>
+            penetration.slabId == leg.fromSlabId &&
+            penetration.verticalCoreId == leg.verticalCoreId,
+      );
+      final toMatches = penetrations.where(
+        (penetration) =>
+            penetration.slabId == leg.toSlabId &&
+            penetration.verticalCoreId == leg.verticalCoreId,
+      );
+      if (fromMatches.length != 1 || toMatches.length != 1) {
+        throw ArgumentError(
+          'VerticalCore leg ${leg.fromSlabId}->${leg.toSlabId} requires '
+          'exactly one penetration for each slab with core '
+          '${leg.verticalCoreId}.',
         );
       }
     }
