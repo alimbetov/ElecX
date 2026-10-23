@@ -80,7 +80,11 @@ void main() {
       final fixture = _CodecFixture();
       final encoded = codec.encode(fixture.snapshotWithSlab());
       final slabs = List<Object?>.of(encoded.payload['slabs']! as List);
-      slabs.add(Map<String, Object?>.of(slabs.single! as Map));
+      slabs.add(
+        Map<String, Object?>.of(
+          slabs.single! as Map<String, Object?>,
+        ),
+      );
       final payload = Map<String, Object?>.of(encoded.payload)
         ..['slabs'] = slabs;
 
@@ -96,8 +100,9 @@ void main() {
       final fixture = _CodecFixture();
       final encoded = codec.encode(fixture.snapshotWithSlab());
       final slabs = List<Object?>.of(encoded.payload['slabs']! as List);
-      final slab = Map<String, Object?>.of(slabs.single! as Map)
-        ..['aboveLevelId'] = 'foreign-level';
+      final slab = Map<String, Object?>.of(
+        slabs.single! as Map<String, Object?>,
+      )..['aboveLevelId'] = 'foreign-level';
       slabs[0] = slab;
 
       final legacyPayload = Map<String, Object?>.of(encoded.payload)
@@ -120,19 +125,21 @@ void main() {
         'levelIds': <Object?>['foreign-level'],
       };
       final sites = List<Object?>.of(legacyPayload['sites']! as List);
-      final site = Map<String, Object?>.of(sites.single! as Map);
+      final site = Map<String, Object?>.of(
+        sites.single! as Map<String, Object?>,
+      );
       site['buildingIds'] = <Object?>[
-        ...site['buildingIds']! as List,
+        ...(site['buildingIds']! as List<Object?>),
         'foreign-building',
       ];
       sites[0] = site;
       legacyPayload['sites'] = sites;
       legacyPayload['buildings'] = <Object?>[
-        ...legacyPayload['buildings']! as List,
+        ...(legacyPayload['buildings']! as List<Object?>),
         foreignBuilding,
       ];
       legacyPayload['levels'] = <Object?>[
-        ...legacyPayload['levels']! as List,
+        ...(legacyPayload['levels']! as List<Object?>),
         foreignLevel,
       ];
 
