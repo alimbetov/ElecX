@@ -1,4 +1,5 @@
 import 'package:elecx/src/domain/boundary_host_migration.dart';
+import 'package:elecx/src/domain/boundary_host_registry.dart';
 import 'package:elecx/src/domain/boundary_topology.dart';
 import 'package:elecx/src/domain/electrical_routing.dart';
 import 'package:elecx/src/domain/geometry.dart';
@@ -68,7 +69,7 @@ void main() {
     });
 
     test(
-      'colliding route-anchor object keys fail closed instead of overwriting',
+      'historically colliding route-anchor identities remain distinct',
       () {
         final legacySpace = EngineeringSpace(
           id: 'legacy-room',
@@ -94,21 +95,30 @@ void main() {
           middleAnchor: RouteAnchorId('z'),
         );
 
-        expect(
-          () => CanonicalBoundaryHostProjection.capture(
-            canonicalSpaceId: SpaceId('space'),
-            legacySpace: legacySpace,
-            orderedEdgeIds: [
-              BoundaryEdgeId('bottom'),
-              BoundaryEdgeId('east'),
-              BoundaryEdgeId('north'),
-              BoundaryEdgeId('west'),
-            ],
-            openings: const [],
-            p2State: EditorP2State(routes: [routeA, routeB]),
-          ),
-          throwsStateError,
+        final captured = CanonicalBoundaryHostProjection.capture(
+          canonicalSpaceId: SpaceId('space'),
+          legacySpace: legacySpace,
+          orderedEdgeIds: [
+            BoundaryEdgeId('bottom'),
+            BoundaryEdgeId('east'),
+            BoundaryEdgeId('north'),
+            BoundaryEdgeId('west'),
+          ],
+          openings: const [],
+          p2State: EditorP2State(routes: [routeA, routeB]),
         );
+        final keyA = BoundaryHostedObjectRegistry.routeAnchorObjectKey(
+          routeA.id,
+          RouteAnchorId('y:anchor:z'),
+        );
+        final keyB = BoundaryHostedObjectRegistry.routeAnchorObjectKey(
+          routeB.id,
+          RouteAnchorId('z'),
+        );
+
+        expect(keyA, isNot(keyB));
+        expect(captured[keyA]?.startOffsetMm, 1000);
+        expect(captured[keyB]?.startOffsetMm, 2000);
       },
     );
   });
