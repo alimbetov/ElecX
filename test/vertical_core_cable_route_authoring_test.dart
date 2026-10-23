@@ -79,7 +79,7 @@ void main() {
       crossings: [
         VerticalCoreRouteCrossingMaterialization(
           slabId: slab12,
-          penetrationId: 'P-12',
+          penetrationId: BoundaryPenetrationId('P-12'),
           entrySurface: ceiling1,
           entryPoint: point,
           exitSurface: floor2,
@@ -87,7 +87,7 @@ void main() {
         ),
         VerticalCoreRouteCrossingMaterialization(
           slabId: slab23,
-          penetrationId: 'P-23',
+          penetrationId: BoundaryPenetrationId('P-23'),
           entrySurface: ceiling2,
           entryPoint: point,
           exitSurface: floor3,
@@ -155,7 +155,7 @@ void main() {
         crossings: [
           VerticalCoreRouteCrossingMaterialization(
             slabId: slab23,
-            penetrationId: 'P-23',
+            penetrationId: BoundaryPenetrationId('P-23'),
             entrySurface: RoomSurfaceRef.ceiling('room-l1'),
             entryPoint: const SurfacePointMm(100, 0),
             exitSurface: RoomSurfaceRef.floor('room-l2'),
@@ -163,7 +163,7 @@ void main() {
           ),
           VerticalCoreRouteCrossingMaterialization(
             slabId: slab12,
-            penetrationId: 'P-12',
+            penetrationId: BoundaryPenetrationId('P-12'),
             entrySurface: RoomSurfaceRef.ceiling('room-l2'),
             entryPoint: const SurfacePointMm(100, 0),
             exitSurface: RoomSurfaceRef.floor('room-l3'),
