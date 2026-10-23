@@ -17,48 +17,62 @@ extension ManualCableDraftPersistence on EditorController {
   bool finishManualCableDraft({int endpointSnapRadiusMm = 180}) {
     final routingContext =
         CanonicalRoomSurfaceRuntimeRegistry.physicalRoutingContextFor(this);
-    return finishPhysicalManualCableDraft(
-      endpointSnapRadiusMm: endpointSnapRadiusMm,
-      resolveTransition: (fromSurface, fromPoint, toSurface, toPoint) {
-        final fromSpace = _spaceById(level, fromSurface.spaceId);
-        if (fromSpace == null) return null;
+    SurfaceTransitionCandidate? resolve(
+      fromSurface,
+      fromPoint,
+      toSurface,
+      toPoint,
+    ) {
+      final fromSpace = _spaceById(level, fromSurface.spaceId);
+      if (fromSpace == null) return null;
 
-        if (routingContext != null) {
-          return BoundaryConstructionTransitionResolver.resolve(
-            level: level,
-            fromSpace: fromSpace,
-            fromSurface: fromSurface,
-            fromPoint: fromPoint,
-            toSurface: toSurface,
-            toPoint: toPoint,
-            constructions: routingContext.constructions,
-            edgeOrderResolver: routingContext.edgeOrderForLegacySpace,
-            canonicalSpaceIdResolver: routingContext.canonicalSpaceIdForLegacy,
-          );
-        }
-
-        // Transitional/offline editor sessions have no canonical construction
-        // registry. Ordinary same-room surface adjacency remains available,
-        // while a physical wall crossing has no thickness evidence and is
-        // consequently rejected by CablePenetrationAuthoring.
-        for (final candidate in SurfaceTransitionGraph.candidates(
+      if (routingContext != null) {
+        return BoundaryConstructionTransitionResolver.resolve(
           level: level,
           fromSpace: fromSpace,
           fromSurface: fromSurface,
-          point: fromPoint,
-        )) {
-          if (candidate.toSurface == toSurface &&
-              candidate.toPoint == toPoint &&
-              !candidate.requiresPenetration) {
-            return candidate;
-          }
+          fromPoint: fromPoint,
+          toSurface: toSurface,
+          toPoint: toPoint,
+          constructions: routingContext.constructions,
+          edgeOrderResolver: routingContext.edgeOrderForLegacySpace,
+          canonicalSpaceIdResolver: routingContext.canonicalSpaceIdForLegacy,
+        );
+      }
+
+      // Transitional/offline editor sessions have no canonical construction
+      // registry. Ordinary same-room surface adjacency remains available,
+      // while a physical wall crossing has no thickness evidence and is
+      // consequently rejected by CablePenetrationAuthoring.
+      for (final candidate in SurfaceTransitionGraph.candidates(
+        level: level,
+        fromSpace: fromSpace,
+        fromSurface: fromSurface,
+        point: fromPoint,
+      )) {
+        if (candidate.toSurface == toSurface &&
+            candidate.toPoint == toPoint &&
+            !candidate.requiresPenetration) {
+          return candidate;
         }
-        return null;
-      },
+      }
+      return null;
+    }
+
+    if (hasPhysicalRouteContinuation) {
+      return finishPhysicalRouteContinuation(
+        endpointSnapRadiusMm: endpointSnapRadiusMm,
+        resolveTransition: resolve,
+      );
+    }
+    return finishPhysicalManualCableDraft(
+      endpointSnapRadiusMm: endpointSnapRadiusMm,
+      resolveTransition: resolve,
     );
   }
 
   void cancelManualCableDraft({bool exitTool = false}) {
+    clearPhysicalRouteContinuationIntent();
     if (routeSegments.isNotEmpty) clearRouteDraft();
     if (exitTool && tool == EditorTool.cableRoute) {
       setTool(EditorTool.select);
