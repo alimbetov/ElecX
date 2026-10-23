@@ -10,6 +10,7 @@ import 'package:elecx/src/domain/hosted_routing.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_model.dart';
+import 'package:elecx/src/domain/route_host.dart';
 import 'package:elecx/src/domain/site_outdoor_model.dart';
 import 'package:elecx/src/domain/slab_topology.dart';
 import 'package:elecx/src/domain/surfaces.dart';
@@ -24,12 +25,15 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('VerticalRouteContinuationNavigation', () {
-    test('committed slab marker navigates ceiling to upper floor without route mutation', () {
+    test(
+        'committed slab marker navigates ceiling to upper floor without route mutation',
+        () {
       final fixture = _Fixture();
       addTearDown(fixture.dispose);
       final beforeRevision = fixture.editor.p2.history.mutationRevision;
       final route = fixture.editor.p2.routes.single;
-      final transition = HostedRouteAdapter.fromIndoor(route).transitions.single;
+      final transition =
+          HostedRouteAdapter.fromIndoor(route).transitions.single;
 
       expect(fixture.editor.activeSurface, fixture.legacyLowerCeiling);
 
@@ -46,10 +50,12 @@ void main() {
       expect(fixture.editor.activeSurface, fixture.legacyUpperFloor);
       expect(fixture.editor.p2.history.mutationRevision, beforeRevision);
       expect(fixture.editor.p2.routes.single.id, route.id);
-      expect(fixture.editor.p2.routes.single.penetrations.single.slabId, fixture.slabId);
+      expect(fixture.editor.p2.routes.single.penetrations.single.slabId,
+          fixture.slabId);
     });
 
-    test('mismatched SlabId fails closed without changing canonical navigation', () {
+    test('mismatched SlabId fails closed without changing canonical navigation',
+        () {
       final fixture = _Fixture();
       addTearDown(fixture.dispose);
       final route = fixture.editor.p2.routes.single;
@@ -198,10 +204,14 @@ final class _Fixture {
   final String legacyLowerSpaceId = 'legacy-space-1';
   final String legacyUpperSpaceId = 'legacy-space-2';
 
-  RoomSurfaceRef get canonicalLowerCeiling => RoomSurfaceRef.ceiling(lowerSpaceId.value);
-  RoomSurfaceRef get canonicalUpperFloor => RoomSurfaceRef.floor(upperSpaceId.value);
-  RoomSurfaceRef get legacyLowerCeiling => RoomSurfaceRef.ceiling(legacyLowerSpaceId);
-  RoomSurfaceRef get legacyUpperFloor => RoomSurfaceRef.floor(legacyUpperSpaceId);
+  RoomSurfaceRef get canonicalLowerCeiling =>
+      RoomSurfaceRef.ceiling(lowerSpaceId.value);
+  RoomSurfaceRef get canonicalUpperFloor =>
+      RoomSurfaceRef.floor(upperSpaceId.value);
+  RoomSurfaceRef get legacyLowerCeiling =>
+      RoomSurfaceRef.ceiling(legacyLowerSpaceId);
+  RoomSurfaceRef get legacyUpperFloor =>
+      RoomSurfaceRef.floor(legacyUpperSpaceId);
 
   late final BuildingLevel legacyLower;
   late final BuildingLevel legacyUpper;
