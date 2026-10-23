@@ -1,0 +1,195 @@
+import 'package:elecx/src/domain/boundary_penetration.dart';
+import 'package:elecx/src/domain/electrical_routing.dart';
+import 'package:elecx/src/domain/project_identity.dart';
+import 'package:elecx/src/domain/surfaces.dart';
+import 'package:elecx/src/features/editor/editor_building_workspace.dart';
+import 'package:elecx/src/features/editor/editor_controller.dart';
+import 'package:elecx/src/features/editor/editor_p2_session.dart';
+import 'package:elecx/src/features/editor/editor_project_document.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  group('physical cable penetration integration', () {
+    test('cross-space route fails closed without a wall penetration', () {
+      final segments = _wallSegments();
+
+      expect(
+        () => ElectricalCableRoute(
+          id: 'route-physical',
+          source: const ElectricalEndpointRef(
+            componentId: 'source',
+            portId: 'out',
+          ),
+          target: const ElectricalEndpointRef(
+            componentId: 'target',
+            portId: 'in',
+          ),
+          segments: segments,
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('floor-to-ceiling route fails closed without a slab penetration', () {
+      expect(
+        () => ElectricalCableRoute(
+          id: 'route-level',
+          source: const ElectricalEndpointRef(
+            componentId: 'source',
+            portId: 'out',
+          ),
+          target: const ElectricalEndpointRef(
+            componentId: 'target',
+            portId: 'in',
+          ),
+          segments: [
+            ElectricalRouteSegment(
+              surface: RoomSurfaceRef.ceiling('space-l1'),
+              points: const [
+                SurfacePointMm(100, 100),
+                SurfacePointMm(500, 500),
+              ],
+            ),
+            ElectricalRouteSegment(
+              surface: RoomSurfaceRef.floor('space-l2'),
+              points: const [
+                SurfacePointMm(500, 500),
+                SurfacePointMm(900, 900),
+              ],
+            ),
+          ],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('hidden penetration length contributes to installed cable length', () {
+      final segments = _wallSegments();
+      final penetration = _wallPenetration(segments);
+      final route = _route(segments: segments, penetration: penetration);
+
+      expect(route.visibleLengthMm, 1100);
+      expect(route.hiddenPenetrationLengthMm, 180);
+      expect(route.geometricLengthMm, 1280);
+      expect(route.installationLengthMm, 1344);
+    });
+
+    test('canonical wall and penetration survive project JSON round-trip', () {
+      final editor = EditorController.demo();
+      final workspace = EditorBuildingWorkspace.demo(editor);
+      addTearDown(() {
+        editor.disposeP2State();
+        workspace.dispose();
+        editor.dispose();
+      });
+
+      final base = EditorProjectDocument.capture(workspace);
+      final segments = _wallSegments();
+      final penetration = _wallPenetration(segments);
+      final route = _route(segments: segments, penetration: penetration);
+      final document = EditorProjectDocument(
+        schemaVersion: base.schemaVersion,
+        metadata: base.metadata,
+        building: base.building,
+        site: base.site,
+        workspaceContext: base.workspaceContext,
+        activeLevelNumber: base.activeLevelNumber,
+        selectedZoneId: base.selectedZoneId,
+        activeOutdoorZoneId: base.activeOutdoorZoneId,
+        openingsByLevel: base.openingsByLevel,
+        resume: base.resume,
+        p2State: EditorP2State(routes: [route]),
+      );
+
+      final json = document.toJson();
+      final routeJson = ((json['p2']! as Map)['routes']! as List).single as Map;
+      final firstSurface =
+          ((routeJson['segments']! as List).first as Map)['surface'] as Map;
+      expect(firstSurface['wallIndex'], isNull);
+      expect(firstSurface['boundaryEdgeId'], 'edge-a');
+
+      final restored = EditorProjectDocument.fromJson(json);
+      final restoredRoute = restored.p2State.routes.single;
+      expect(restoredRoute.segments.first.surface.boundaryEdgeId?.value, 'edge-a');
+      expect(restoredRoute.segments.last.surface.boundaryEdgeId?.value, 'edge-b');
+      expect(restoredRoute.penetrations, hasLength(1));
+      expect(restoredRoute.penetrations.single.id, 'penetration-1');
+      expect(restoredRoute.penetrations.single.routeId, 'route-physical');
+      expect(restoredRoute.penetrations.single.hostThicknessMm, 180);
+      expect(restoredRoute.geometricLengthMm, 1280);
+      expect(
+        restoredRoute.penetrations.single.exitAnchor.isContinuationStart,
+        isTrue,
+      );
+    });
+
+    test('copyWith preserves penetration aggregate by default', () {
+      final segments = _wallSegments();
+      final penetration = _wallPenetration(segments);
+      final route = _route(segments: segments, penetration: penetration);
+
+      final changed = route.copyWith(cableType: 'NYM-J 3x2.5');
+
+      expect(changed.penetrations, same(route.penetrations));
+      expect(changed.geometricLengthMm, route.geometricLengthMm);
+    });
+  });
+}
+
+List<ElectricalRouteSegment> _wallSegments() {
+  final entrySurface = RoomSurfaceRef.wallByBoundaryEdge(
+    'space-a',
+    BoundaryEdgeId('edge-a'),
+  );
+  final exitSurface = RoomSurfaceRef.wallByBoundaryEdge(
+    'space-b',
+    BoundaryEdgeId('edge-b'),
+  );
+  return [
+    ElectricalRouteSegment(
+      surface: entrySurface,
+      points: const [
+        SurfacePointMm(0, 1000),
+        SurfacePointMm(500, 1000),
+      ],
+    ),
+    ElectricalRouteSegment(
+      surface: exitSurface,
+      points: const [
+        SurfacePointMm(200, 1000),
+        SurfacePointMm(800, 1000),
+      ],
+    ),
+  ];
+}
+
+BoundaryPenetration _wallPenetration(List<ElectricalRouteSegment> segments) =>
+    BoundaryPenetration.normal(
+      id: 'penetration-1',
+      hostKind: BoundaryPenetrationHostKind.wall,
+      entrySurface: segments.first.surface,
+      entryPoint: segments.first.points.last,
+      exitSurface: segments.last.surface,
+      exitPoint: segments.last.points.first,
+      hostThicknessMm: 180,
+      routeId: 'route-physical',
+      materialId: 'brick',
+    );
+
+ElectricalCableRoute _route({
+  required List<ElectricalRouteSegment> segments,
+  required BoundaryPenetration penetration,
+}) =>
+    ElectricalCableRoute(
+      id: 'route-physical',
+      source: const ElectricalEndpointRef(
+        componentId: 'source',
+        portId: 'out',
+      ),
+      target: const ElectricalEndpointRef(
+        componentId: 'target',
+        portId: 'in',
+      ),
+      segments: segments,
+      penetrations: [penetration],
+    );
