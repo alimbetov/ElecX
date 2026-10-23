@@ -2,6 +2,7 @@ import '../../domain/physical_level_order.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_entity_stores_copy.dart';
 import '../../domain/project_identity.dart';
+import '../../domain/slab_topology.dart';
 import '../../domain/vertical_core.dart';
 import '../../domain/vertical_core_continuity_validation.dart';
 import 'project_authoring_error.dart';
@@ -137,12 +138,29 @@ void _validatePhysicalContinuity(
         elevationMm: level.elevationMm,
       );
     },
+    physicalAdjacencyResolver: (buildingId) sync* {
+      for (final slab in current.stores.slabs.values) {
+        if (slab.buildingId != buildingId || slab.kind != SlabKind.interLevel) {
+          continue;
+        }
+        final below = slab.belowLevelId;
+        final above = slab.aboveLevelId;
+        if (below == null || above == null) continue;
+        yield PhysicalLevelAdjacency(
+          buildingId: buildingId,
+          belowLevelId: below,
+          aboveLevelId: above,
+        );
+      }
+    },
   );
   if (issues.isEmpty) return;
 
   final issue = issues.first;
   throw ProjectAuthoringException(
     code: switch (issue.code) {
+      VerticalCoreContinuityIssueCode.unresolvedPhysicalTopology =>
+        ProjectAuthoringIssueCode.verticalCoreUnresolvedPhysicalTopology,
       VerticalCoreContinuityIssueCode.ambiguousPhysicalLevelOrder =>
         ProjectAuthoringIssueCode.verticalCoreAmbiguousPhysicalLevelOrder,
       VerticalCoreContinuityIssueCode.nonContiguousLevelRange =>
