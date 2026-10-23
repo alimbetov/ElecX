@@ -387,6 +387,15 @@ final class ProjectAggregateRoot {
     if (issues.isNotEmpty) {
       throw ProjectAggregateValidationException(issues);
     }
+    engineeringMetadata.boundaryHostedObjectRegistry.validateAgainst(
+      stores.boundaries,
+    );
+    engineeringMetadata.boundaryWallProfileRegistry.validateAgainst(
+      stores.boundaries,
+    );
+    engineeringMetadata.boundaryConstructionRegistry.validateAgainst(
+      stores.boundaries,
+    );
     final index = ProjectIndex.build(stores);
     assert(index.isConsistentWith(stores));
     return ProjectAggregateRoot._(
