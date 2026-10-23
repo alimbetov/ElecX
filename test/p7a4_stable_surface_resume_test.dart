@@ -44,7 +44,7 @@ void main() {
         ((document.toJson()['workspace']! as Map)['resume']! as Map);
     final canonicalJson = resumeJson['canonicalSurface']! as Map;
 
-    expect(document.schemaVersion, 5);
+    expect(document.schemaVersion, EditorProjectDocument.currentSchemaVersion);
     expect(document.resume.activeSurface, isNull);
     expect(document.resume.canonicalSurface?.spaceId, fixture.spaceId);
     expect(
@@ -155,7 +155,7 @@ void main() {
     };
 
     final migrated = EditorProjectDocument.fromJson(v4);
-    expect(migrated.schemaVersion, 5);
+    expect(migrated.schemaVersion, EditorProjectDocument.currentSchemaVersion);
     expect(migrated.resume.canonicalSurface, isNull);
     expect(migrated.resume.activeSurface?.wallIndex, 1);
   });
