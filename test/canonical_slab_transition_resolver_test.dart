@@ -75,14 +75,16 @@ void main() {
       expect(fixture.resolveUp(), isNull);
     });
 
-    test('fails closed when physical vertical gap disagrees with slab thickness',
+    test(
+        'fails closed when physical vertical gap disagrees with slab thickness',
         () {
       final fixture = _Fixture(legacyUpperElevationMm: 3300);
 
       expect(fixture.resolveUp(), isNull);
     });
 
-    test('fails closed when target room does not overlap penetration plan point',
+    test(
+        'fails closed when target room does not overlap penetration plan point',
         () {
       final fixture = _Fixture(upperRoomOffsetMm: 10000);
 
