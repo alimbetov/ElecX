@@ -1,7 +1,7 @@
 final class EditorProjectSchemaMigrator {
   const EditorProjectSchemaMigrator._();
 
-  static const int currentSchemaVersion = 5;
+  static const int currentSchemaVersion = 6;
 
   static Map<String, Object?> migrate(
     Map<String, Object?> source, {
@@ -29,6 +29,7 @@ final class EditorProjectSchemaMigrator {
         2 => _v2ToV3(result),
         3 => _v3ToV4(result),
         4 => _v4ToV5(result),
+        5 => _v5ToV6(result),
         _ => throw FormatException(
             'No ElecX migration registered from schema $version.',
           ),
@@ -36,6 +37,61 @@ final class EditorProjectSchemaMigrator {
       version = result['schemaVersion']! as int;
     }
     return result;
+  }
+
+  /// Schema v5 persisted route geometry but omitted durable RouteAnchorId
+  /// values. Migration must never invent identities from point or segment
+  /// ordinals, so every legacy segment is marked explicitly with an empty
+  /// anchorIds array. P7A adoption can then assign durable identities through
+  /// its explicit migration path before canonical wall-host capture.
+  static Map<String, Object?> _v5ToV6(Map<String, Object?> source) {
+    final p2Raw = source['p2'];
+    if (p2Raw is! Map) {
+      throw const FormatException('p2 must be an object for schema v5.');
+    }
+    final p2 = p2Raw.map((key, value) => MapEntry(key.toString(), value));
+    final routesRaw = p2['routes'];
+    if (routesRaw is! List) {
+      throw const FormatException('p2.routes must be an array for schema v5.');
+    }
+
+    final routes = <Object?>[];
+    for (final routeRaw in routesRaw) {
+      if (routeRaw is! Map) {
+        throw const FormatException('p2.routes item must be an object.');
+      }
+      final route =
+          routeRaw.map((key, value) => MapEntry(key.toString(), value));
+      final segmentsRaw = route['segments'];
+      if (segmentsRaw is! List) {
+        throw const FormatException('route.segments must be an array.');
+      }
+      final segments = <Object?>[];
+      for (final segmentRaw in segmentsRaw) {
+        if (segmentRaw is! Map) {
+          throw const FormatException('route.segment must be an object.');
+        }
+        final segment =
+            segmentRaw.map((key, value) => MapEntry(key.toString(), value));
+        segments.add(<String, Object?>{
+          ...segment,
+          'anchorIds': const <Object?>[],
+        });
+      }
+      routes.add(<String, Object?>{
+        ...route,
+        'segments': segments,
+      });
+    }
+
+    return <String, Object?>{
+      ...source,
+      'schemaVersion': 6,
+      'p2': <String, Object?>{
+        ...p2,
+        'routes': routes,
+      },
+    };
   }
 
   static Map<String, Object?> _v4ToV5(Map<String, Object?> source) {
