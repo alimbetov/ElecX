@@ -185,6 +185,7 @@ final class ProjectEngineeringMetadataDiff {
     this.boundaryEdgeIdentityRegistryChanged = false,
     this.boundaryHostedObjectRegistryChanged = false,
     this.boundaryWallProfileRegistryChanged = false,
+    this.boundaryConstructionRegistryChanged = false,
   });
 
   const ProjectEngineeringMetadataDiff.empty()
@@ -192,7 +193,8 @@ final class ProjectEngineeringMetadataDiff {
         afterProjectNorth = null,
         boundaryEdgeIdentityRegistryChanged = false,
         boundaryHostedObjectRegistryChanged = false,
-        boundaryWallProfileRegistryChanged = false;
+        boundaryWallProfileRegistryChanged = false,
+        boundaryConstructionRegistryChanged = false;
 
   factory ProjectEngineeringMetadataDiff.between(
     ProjectEngineeringMetadata before,
@@ -209,6 +211,9 @@ final class ProjectEngineeringMetadataDiff {
             .sameAs(after.boundaryHostedObjectRegistry),
         boundaryWallProfileRegistryChanged: !before.boundaryWallProfileRegistry
             .sameAs(after.boundaryWallProfileRegistry),
+        boundaryConstructionRegistryChanged: !before
+            .boundaryConstructionRegistry
+            .sameAs(after.boundaryConstructionRegistry),
       );
 
   final ProjectEngineeringNorth? beforeProjectNorth;
@@ -216,13 +221,15 @@ final class ProjectEngineeringMetadataDiff {
   final bool boundaryEdgeIdentityRegistryChanged;
   final bool boundaryHostedObjectRegistryChanged;
   final bool boundaryWallProfileRegistryChanged;
+  final bool boundaryConstructionRegistryChanged;
 
   bool get projectNorthChanged => beforeProjectNorth != afterProjectNorth;
   bool get isEmpty =>
       !projectNorthChanged &&
       !boundaryEdgeIdentityRegistryChanged &&
       !boundaryHostedObjectRegistryChanged &&
-      !boundaryWallProfileRegistryChanged;
+      !boundaryWallProfileRegistryChanged &&
+      !boundaryConstructionRegistryChanged;
   bool get isNotEmpty => !isEmpty;
 }
 
@@ -365,6 +372,9 @@ abstract final class CandidateGraphValidator {
     if (issues.isNotEmpty) {
       throw ProjectCandidateValidationException(issues);
     }
+    state.engineeringMetadata.boundaryConstructionRegistry.validateAgainst(
+      state.stores.boundaries,
+    );
     final index = ProjectIndex.build(state.stores);
     if (!index.isConsistentWith(state.stores)) {
       throw StateError('Candidate ProjectIndex is inconsistent with stores.');
@@ -593,6 +603,8 @@ final class ProjectMutationSession {
     if (issues.isNotEmpty) {
       throw ProjectCandidateValidationException(issues);
     }
+    durableState.engineeringMetadata.boundaryConstructionRegistry
+        .validateAgainst(durableState.stores.boundaries);
     return ProjectAggregateRoot(
       id: before.id,
       siteId: before.siteId,
