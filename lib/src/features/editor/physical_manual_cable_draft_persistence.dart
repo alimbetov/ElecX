@@ -479,7 +479,8 @@ bool _routeGeometryIsValidForContinuation(
   for (final segment in route.segments) {
     final geometrySurface = _surfaceForLegacyGeometry(segment.surface, context);
     if (geometrySurface == null) return false;
-    final normativeContext = controller.routeNormativeContextFor(geometrySurface);
+    final normativeContext =
+        controller.routeNormativeContextFor(geometrySurface);
     if (normativeContext == null ||
         !NormativeRouteEngine.validate(
           points: segment.points,
