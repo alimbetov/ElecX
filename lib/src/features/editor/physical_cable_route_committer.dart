@@ -26,6 +26,10 @@ extension PhysicalCableRouteCommitter on EditorP2Session {
     }
 
     history.execute(_AddPhysicalCableRouteCommand(route));
+    // This extension is part of the EditorP2Session mutation surface. The
+    // command has already committed synchronously; notify the same listeners as
+    // native session mutation methods so canvas/panels cannot observe stale UI.
+    // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
     notifyListeners();
     return true;
   }
