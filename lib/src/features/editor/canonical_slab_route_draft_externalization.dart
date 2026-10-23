@@ -157,7 +157,8 @@ final class CanonicalSlabRouteDraftExternalization {
       slabId == intent.slabId &&
       editor.routeSegments.isEmpty &&
       editor.p2.history.mutationRevision == p2MutationRevision &&
-      (!hadPhysicalContinuation || editor.physicalRouteContinuationId == routeId);
+      (!hadPhysicalContinuation ||
+          editor.physicalRouteContinuationId == routeId);
 
   /// Restores the exact source draft plus one target-level seed point after the
   /// canonical workspace has switched to the target SpaceId.
