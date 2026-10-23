@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'geometry.dart';
+import 'project_identity.dart';
 import 'project_model.dart';
 import 'surfaces.dart';
 
@@ -36,12 +37,22 @@ abstract final class SurfaceTransitionResolver {
     required RoomSurfaceRef to,
     int roomHeightMm = 3000,
     int toleranceMm = 2,
+    List<BoundaryEdgeId>? orderedBoundaryEdgeIds,
   }) {
     if (from.spaceId != space.id || to.spaceId != space.id) return null;
     if (from == to) return point;
 
     if (from.type == SurfacePlaneType.wall) {
-      final fromWall = RoomSurfaceResolver.wall(space, from.wallIndex!);
+      final fromWall = _resolveWall(
+        space: space,
+        ref: from,
+        orderedBoundaryEdgeIds: orderedBoundaryEdgeIds,
+        defaultHeightMm: roomHeightMm,
+      );
+      if (fromWall == null ||
+          !fromWall.profile.containsPoint(point.xMm, point.yMm)) {
+        return null;
+      }
       final planPoint = RoomSurfaceResolver.wallLocalToPlan(
         fromWall,
         point.xMm,
@@ -59,16 +70,27 @@ abstract final class SurfaceTransitionResolver {
           space: space,
           fromWall: fromWall,
           fromPoint: point,
-          toWallIndex: to.wallIndex!,
+          to: to,
           toleranceMm: toleranceMm,
+          roomHeightMm: roomHeightMm,
+          orderedBoundaryEdgeIds: orderedBoundaryEdgeIds,
         );
       }
       return null;
     }
 
+    if (point.xMm < 0 || point.yMm < 0) return null;
+    final planPoint = _horizontalToPlan(space, point);
+    if (!_containsOrTouches(space.boundary, planPoint)) return null;
+
     if (to.type == SurfacePlaneType.wall) {
-      final planPoint = _horizontalToPlan(space, point);
-      final toWall = RoomSurfaceResolver.wall(space, to.wallIndex!);
+      final toWall = _resolveWall(
+        space: space,
+        ref: to,
+        orderedBoundaryEdgeIds: orderedBoundaryEdgeIds,
+        defaultHeightMm: roomHeightMm,
+      );
+      if (toWall == null) return null;
       final x = _distanceAlongWallIfOnSegment(
         toWall,
         planPoint,
@@ -76,11 +98,51 @@ abstract final class SurfaceTransitionResolver {
       );
       if (x == null) return null;
       final y = from.type == SurfacePlaneType.ceiling ? roomHeightMm : 0;
+      if (!toWall.profile.containsPoint(x, y)) return null;
       return SurfacePointMm(x, y);
     }
 
     // Floor and ceiling do not directly touch each other.
     return null;
+  }
+
+  static RoomWallSurface? _resolveWall({
+    required EngineeringSpace space,
+    required RoomSurfaceRef ref,
+    required int defaultHeightMm,
+    required List<BoundaryEdgeId>? orderedBoundaryEdgeIds,
+  }) {
+    if (ref.type != SurfacePlaneType.wall || ref.spaceId != space.id) {
+      return null;
+    }
+    final edgeId = ref.boundaryEdgeId;
+    if (edgeId != null) {
+      final edgeIds = orderedBoundaryEdgeIds;
+      if (edgeIds == null) return null;
+      try {
+        return RoomSurfaceResolver.wallByBoundaryEdge(
+          space,
+          edgeIds,
+          edgeId,
+          defaultHeightMm: defaultHeightMm,
+        );
+      } on StateError {
+        return null;
+      } on ArgumentError {
+        return null;
+      }
+    }
+    final wallIndex = ref.wallIndex;
+    if (wallIndex == null) return null;
+    try {
+      return RoomSurfaceResolver.wall(
+        space,
+        wallIndex,
+        defaultHeightMm: defaultHeightMm,
+      );
+    } on RangeError {
+      return null;
+    }
   }
 
   static SurfacePointMm _planToHorizontal(
@@ -103,8 +165,10 @@ abstract final class SurfaceTransitionResolver {
     required EngineeringSpace space,
     required RoomWallSurface fromWall,
     required SurfacePointMm fromPoint,
-    required int toWallIndex,
+    required RoomSurfaceRef to,
     required int toleranceMm,
+    required int roomHeightMm,
+    required List<BoundaryEdgeId>? orderedBoundaryEdgeIds,
   }) {
     final fromLength = fromWall.lengthMm.round();
     final atStart = fromPoint.xMm.abs() <= toleranceMm;
@@ -112,15 +176,24 @@ abstract final class SurfaceTransitionResolver {
     if (!atStart && !atEnd) return null;
 
     final worldVertex = atStart ? fromWall.start : fromWall.end;
-    final toWall = RoomSurfaceResolver.wall(space, toWallIndex);
+    final toWall = _resolveWall(
+      space: space,
+      ref: to,
+      orderedBoundaryEdgeIds: orderedBoundaryEdgeIds,
+      defaultHeightMm: roomHeightMm,
+    );
+    if (toWall == null) return null;
     final atToStart = worldVertex.distanceTo(toWall.start) <= toleranceMm;
     final atToEnd = worldVertex.distanceTo(toWall.end) <= toleranceMm;
     if (!atToStart && !atToEnd) return null;
 
-    return SurfacePointMm(
+    final result = SurfacePointMm(
       atToStart ? 0 : toWall.lengthMm.round(),
       fromPoint.yMm,
     );
+    return toWall.profile.containsPoint(result.xMm, result.yMm)
+        ? result
+        : null;
   }
 
   static int? _distanceAlongWallIfOnSegment(
@@ -149,5 +222,28 @@ abstract final class SurfaceTransitionResolver {
     );
     if (distance > toleranceMm) return null;
     return (math.sqrt(lengthSquared) * t).round();
+  }
+
+  static bool _containsOrTouches(MmPolygon polygon, MmPoint point) {
+    if (polygon.contains(point)) return true;
+    final vertices = polygon.vertices;
+    for (var i = 0; i < vertices.length; i++) {
+      final a = vertices[i];
+      final b = vertices[(i + 1) % vertices.length];
+      final cross =
+          (point.x - a.x) * (b.y - a.y) - (point.y - a.y) * (b.x - a.x);
+      if (cross != 0) continue;
+      final minX = math.min(a.x, b.x);
+      final maxX = math.max(a.x, b.x);
+      final minY = math.min(a.y, b.y);
+      final maxY = math.max(a.y, b.y);
+      if (point.x >= minX &&
+          point.x <= maxX &&
+          point.y >= minY &&
+          point.y <= maxY) {
+        return true;
+      }
+    }
+    return false;
   }
 }
