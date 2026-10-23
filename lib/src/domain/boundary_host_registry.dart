@@ -49,6 +49,7 @@ final class BoundaryHostedObjectRegistry {
           'reference key ${entry.value.objectKey}.',
         );
       }
+      _requireUnambiguousRouteAnchorKey(entry.value);
     }
   }
 
@@ -78,22 +79,11 @@ final class BoundaryHostedObjectRegistry {
   Iterable<BoundaryHostedReference> forSpace(SpaceId spaceId) =>
       references.values.where((reference) => reference.host.spaceId == spaceId);
 
-  BoundaryHostedObjectRegistry put(BoundaryHostedReference reference) {
-    final existing = references[reference.objectKey];
-    if (existing != null &&
-        !_sameReference(existing, reference) &&
-        (existing.objectKind == BoundaryHostedObjectKind.routeAnchor ||
-            reference.objectKind == BoundaryHostedObjectKind.routeAnchor)) {
-      throw StateError(
-        'Canonical route-anchor key ${reference.objectKey} resolves to '
-        'multiple hosted references.',
-      );
-    }
-    return BoundaryHostedObjectRegistry({
-      ...references,
-      reference.objectKey: reference,
-    });
-  }
+  BoundaryHostedObjectRegistry put(BoundaryHostedReference reference) =>
+      BoundaryHostedObjectRegistry({
+        ...references,
+        reference.objectKey: reference,
+      });
 
   BoundaryHostedObjectRegistry putOpening({
     required OpeningId openingId,
@@ -212,6 +202,25 @@ final class BoundaryHostedObjectRegistry {
       if (right == null || !_sameReference(entry.value, right)) return false;
     }
     return true;
+  }
+
+  static void _requireUnambiguousRouteAnchorKey(
+    BoundaryHostedReference reference,
+  ) {
+    if (reference.objectKind != BoundaryHostedObjectKind.routeAnchor) return;
+    const prefix = 'route:';
+    const separator = ':anchor:';
+    final key = reference.objectKey;
+    if (!key.startsWith(prefix)) return;
+    final first = key.indexOf(separator, prefix.length);
+    if (first < 0) return;
+    final second = key.indexOf(separator, first + separator.length);
+    if (second >= 0) {
+      throw StateError(
+        'Canonical route-anchor key $key is ambiguous because route or anchor '
+        'identity contains the reserved $separator separator.',
+      );
+    }
   }
 
   static BoundaryHostedReference _rebuild(BoundaryHostedRemap result) =>
