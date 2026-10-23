@@ -106,6 +106,7 @@ abstract final class HostedRouteAdapter {
               ),
               requiresPenetration: true,
               slabId: penetration.slabId,
+              verticalCoreId: penetration.verticalCoreId,
             ),
         ],
       );
