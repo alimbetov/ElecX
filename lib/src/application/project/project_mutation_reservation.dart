@@ -53,7 +53,11 @@ final class MutationIdentityReservation {
     for (final entry in entitySlots.entries) {
       final slot = _validatedSlot(entry.key);
       if (!allSlots.add(slot)) {
-        throw ArgumentError.value(slot, 'entitySlots', 'Duplicate reservation slot.');
+        throw ArgumentError.value(
+          slot,
+          'entitySlots',
+          'Duplicate reservation slot.',
+        );
       }
       entityIds[slot] = _allocateEntityId(factory, entry.value);
     }
@@ -117,12 +121,17 @@ final class MutationIdentityReservation {
 String _validatedSlot(String raw) {
   final value = raw.trim();
   if (value.isEmpty) {
-    throw ArgumentError.value(raw, 'slot', 'Reservation slot must be non-empty.');
+    throw ArgumentError.value(
+      raw,
+      'slot',
+      'Reservation slot must be non-empty.',
+    );
   }
   return value;
 }
 
-EntityId _allocateEntityId(EntityIdFactory factory, ReservedEntityIdKind kind) =>
+EntityId _allocateEntityId(
+        EntityIdFactory factory, ReservedEntityIdKind kind) =>
     switch (kind) {
       ReservedEntityIdKind.project => factory.newProjectId(),
       ReservedEntityIdKind.site => factory.newSiteId(),
@@ -238,7 +247,8 @@ final class AttachPenetrationToSlabOperation extends ProjectSemanticOperation {
   final SlabId slabId;
 
   @override
-  String get semanticKey => 'attachPenetrationToSlab|$penetrationId|${slabId.value}';
+  String get semanticKey =>
+      'attachPenetrationToSlab|$penetrationId|${slabId.value}';
 }
 
 final class BindPenetrationToVerticalCoreOperation
@@ -270,7 +280,8 @@ final class AddRouteAnchorOperation extends ProjectSemanticOperation {
       'addRouteAnchor|${routeId.value}|${routeAnchorId.value}';
 }
 
-final class AddHiddenVerticalRouteLegOperation extends ProjectSemanticOperation {
+final class AddHiddenVerticalRouteLegOperation
+    extends ProjectSemanticOperation {
   const AddHiddenVerticalRouteLegOperation({
     required this.routeId,
     required this.verticalCoreId,
@@ -286,7 +297,8 @@ final class AddHiddenVerticalRouteLegOperation extends ProjectSemanticOperation 
       'addHiddenVerticalRouteLeg|${routeId.value}|${verticalCoreId.value}|$lengthMm';
 }
 
-final class UpdateEngineeringEvidenceOperation extends ProjectSemanticOperation {
+final class UpdateEngineeringEvidenceOperation
+    extends ProjectSemanticOperation {
   const UpdateEngineeringEvidenceOperation({
     required this.entityId,
     required this.lengthDeltaMm,
@@ -338,7 +350,8 @@ final class ProjectSemanticChangeSet {
   bool sameAs(ProjectSemanticChangeSet other) {
     if (operations.length != other.operations.length) return false;
     for (var index = 0; index < operations.length; index++) {
-      if (operations[index].semanticKey != other.operations[index].semanticKey) {
+      if (operations[index].semanticKey !=
+          other.operations[index].semanticKey) {
         return false;
       }
     }
@@ -394,7 +407,8 @@ final class ConsumedMutationReservationException implements Exception {
   const ConsumedMutationReservationException();
 
   @override
-  String toString() => 'Mutation identity reservation has already been consumed.';
+  String toString() =>
+      'Mutation identity reservation has already been consumed.';
 }
 
 /// C5 preview/apply coordinator layered on the existing ProjectMutationSession.
