@@ -10,6 +10,8 @@ enum ProjectAuthoringIssueCode {
   levelHasChildren,
   levelHasPhysicalSlabs,
   duplicateLevelNumber,
+  slabAlreadyExists,
+  slabNotFound,
   structuralZoneAlreadyExists,
   structuralZoneNotFound,
   structuralZoneLevelMismatch,
