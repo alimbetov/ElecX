@@ -21,7 +21,8 @@ void main() {
       ]);
       final references = <BoundaryHostedReference>[];
       for (var index = 0; index < 20000; index++) {
-        final edgeId = topology.orderedEdgeIds[index % topology.orderedEdgeIds.length];
+        final edgeId =
+            topology.orderedEdgeIds[index % topology.orderedEdgeIds.length];
         final edge = topology.edges[edgeId]!;
         final length = math.sqrt(
           math.pow(edge.end.xMm - edge.start.xMm, 2) +
