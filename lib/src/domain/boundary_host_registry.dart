@@ -75,8 +75,36 @@ final class BoundaryHostedObjectRegistry {
       'route-anchor:${routeId.length}:$routeId:'
       '${anchorId.value.length}:${anchorId.value}';
 
-  BoundaryHostedReference? operator [](String objectKey) =>
-      references[objectKey];
+  BoundaryHostedReference? operator [](String objectKey) {
+    final exact = references[objectKey];
+    if (exact != null) return exact;
+
+    // P7A-6.2 compatibility boundary. Historical route-anchor keys used
+    // `route:<routeId>:anchor:<anchorId>`, which cannot be parsed safely because
+    // both identifiers are opaque. We therefore never parse the requested
+    // legacy key. Instead, decode only our own length-prefixed canonical keys,
+    // derive their historical aliases, and require at most one match.
+    if (!objectKey.startsWith('route:')) return null;
+    BoundaryHostedReference? match;
+    for (final reference in references.values) {
+      if (reference.objectKind != BoundaryHostedObjectKind.routeAnchor) {
+        continue;
+      }
+      final identity = _decodeRouteAnchorObjectKey(reference.objectKey);
+      if (identity == null) continue;
+      final legacyAlias =
+          'route:${identity.routeId}:anchor:${identity.anchorId}';
+      if (legacyAlias != objectKey) continue;
+      if (match != null && match.objectKey != reference.objectKey) {
+        throw StateError(
+          'Legacy route-anchor key $objectKey resolves to multiple canonical '
+          'hosted references.',
+        );
+      }
+      match = reference;
+    }
+    return match;
+  }
 
   BoundaryHostedReference? openingHost(OpeningId openingId, SpaceId spaceId) =>
       references[openingObjectKey(openingId, spaceId)];
@@ -207,6 +235,34 @@ final class BoundaryHostedObjectRegistry {
       if (right == null || !_sameReference(entry.value, right)) return false;
     }
     return true;
+  }
+
+  static ({String routeId, String anchorId})? _decodeRouteAnchorObjectKey(
+    String key,
+  ) {
+    const prefix = 'route-anchor:';
+    if (!key.startsWith(prefix)) return null;
+    var cursor = prefix.length;
+
+    final routeLengthEnd = key.indexOf(':', cursor);
+    if (routeLengthEnd < 0) return null;
+    final routeLength = int.tryParse(key.substring(cursor, routeLengthEnd));
+    if (routeLength == null || routeLength < 0) return null;
+    final routeStart = routeLengthEnd + 1;
+    final routeEnd = routeStart + routeLength;
+    if (routeEnd >= key.length || key[routeEnd] != ':') return null;
+    final routeId = key.substring(routeStart, routeEnd);
+
+    cursor = routeEnd + 1;
+    final anchorLengthEnd = key.indexOf(':', cursor);
+    if (anchorLengthEnd < 0) return null;
+    final anchorLength = int.tryParse(key.substring(cursor, anchorLengthEnd));
+    if (anchorLength == null || anchorLength < 0) return null;
+    final anchorStart = anchorLengthEnd + 1;
+    final anchorEnd = anchorStart + anchorLength;
+    if (anchorEnd != key.length) return null;
+    final anchorId = key.substring(anchorStart, anchorEnd);
+    return (routeId: routeId, anchorId: anchorId);
   }
 
   static BoundaryHostedReference _rebuild(BoundaryHostedRemap result) =>
