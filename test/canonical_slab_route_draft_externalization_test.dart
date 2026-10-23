@@ -22,7 +22,8 @@ import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('live ceiling draft survives canonical slab level cutover without P2 mutation',
+  test(
+      'live ceiling draft survives canonical slab level cutover without P2 mutation',
       () {
     final fixture = _Fixture();
     addTearDown(fixture.dispose);
@@ -87,7 +88,8 @@ void main() {
     expect(fixture.editor.level.id, 'legacy-level-2');
     expect(fixture.editor.selectedSpaceId, 'legacy-space-2');
     expect(fixture.editor.tool, EditorTool.cableRoute);
-    expect(fixture.editor.activeSurface, RoomSurfaceRef.floor('legacy-space-2'));
+    expect(
+        fixture.editor.activeSurface, RoomSurfaceRef.floor('legacy-space-2'));
     expect(fixture.editor.routeSegments, hasLength(2));
     expect(fixture.editor.routeSegments.first.surface, sourceSurface);
     expect(
