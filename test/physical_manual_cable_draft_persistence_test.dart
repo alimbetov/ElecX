@@ -33,16 +33,16 @@ void main() {
 
     editor.setTool(EditorTool.cableRoute);
     editor.routeSegments.addAll([
-      const SurfaceRouteSegmentDraft(
+      SurfaceRouteSegmentDraft(
         surface: RoomSurfaceRef.wall('room-a', 1),
-        points: [
+        points: const [
           SurfacePointMm(100, 1200),
           SurfacePointMm(1500, 1200),
         ],
       ),
-      const SurfaceRouteSegmentDraft(
+      SurfaceRouteSegmentDraft(
         surface: RoomSurfaceRef.wall('room-b', 3),
-        points: [
+        points: const [
           SurfacePointMm(1500, 1200),
           SurfacePointMm(900, 1200),
         ],
@@ -104,16 +104,16 @@ void main() {
     );
     editor.setTool(EditorTool.cableRoute);
     editor.routeSegments.addAll([
-      const SurfaceRouteSegmentDraft(
+      SurfaceRouteSegmentDraft(
         surface: RoomSurfaceRef.wall('room-a', 1),
-        points: [
+        points: const [
           SurfacePointMm(100, 1200),
           SurfacePointMm(1500, 1200),
         ],
       ),
-      const SurfaceRouteSegmentDraft(
+      SurfaceRouteSegmentDraft(
         surface: RoomSurfaceRef.wall('room-b', 3),
-        points: [
+        points: const [
           SurfacePointMm(1500, 1200),
           SurfacePointMm(900, 1200),
         ],
