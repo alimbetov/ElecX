@@ -52,23 +52,25 @@ void main() {
       fixture.dispose();
     });
 
-    test('schema v6 explicitly migrates routes to empty penetration aggregate',
-        () {
-      final fixture = _routeDocumentJson();
-      fixture.json['schemaVersion'] = 6;
-      final route =
-          ((fixture.json['p2']! as Map)['routes']! as List).single as Map;
-      route.remove('penetrations');
+    test(
+      'schema v6 explicitly migrates routes to empty penetration aggregate',
+      () {
+        final fixture = _routeDocumentJson();
+        fixture.json['schemaVersion'] = 6;
+        final route =
+            ((fixture.json['p2']! as Map)['routes']! as List).single as Map;
+        route.remove('penetrations');
 
-      final decoded = EditorProjectDocument.fromJson(fixture.json);
+        final decoded = EditorProjectDocument.fromJson(fixture.json);
 
-      expect(decoded.schemaVersion, 7);
-      expect(decoded.p2State.routes.single.penetrations, isEmpty);
-      final encodedRoute =
-          ((decoded.toJson()['p2']! as Map)['routes']! as List).single as Map;
-      expect(encodedRoute['penetrations'], isEmpty);
-      fixture.dispose();
-    });
+        expect(decoded.schemaVersion, 7);
+        expect(decoded.p2State.routes.single.penetrations, isEmpty);
+        final encodedRoute =
+            ((decoded.toJson()['p2']! as Map)['routes']! as List).single as Map;
+        expect(encodedRoute['penetrations'], isEmpty);
+        fixture.dispose();
+      },
+    );
 
     test('schema v7 rejects anchor count that differs from route points', () {
       final fixture = _routeDocumentJson();
