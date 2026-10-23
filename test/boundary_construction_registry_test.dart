@@ -7,18 +7,31 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('BoundaryConstructionRegistry', () {
     final spaceId = SpaceId('space-a');
-    final edgeId = BoundaryEdgeId('edge-a');
+    final edgeIds = [
+      BoundaryEdgeId('edge-a'),
+      BoundaryEdgeId('edge-b'),
+      BoundaryEdgeId('edge-c'),
+      BoundaryEdgeId('edge-d'),
+    ];
+    final edgeId = edgeIds.first;
     final host = BoundaryEdgeHostRef(spaceId: spaceId, edgeId: edgeId);
+    final points = const [
+      BoundaryPointMm(xMm: 0, yMm: 0),
+      BoundaryPointMm(xMm: 4000, yMm: 0),
+      BoundaryPointMm(xMm: 4000, yMm: 3000),
+      BoundaryPointMm(xMm: 0, yMm: 3000),
+    ];
     final topology = SpaceBoundaryTopology(
       spaceId: spaceId,
-      orderedEdgeIds: [edgeId],
+      orderedEdgeIds: edgeIds,
       edges: {
-        edgeId: ProjectBoundaryEdge(
-          id: edgeId,
-          spaceId: spaceId,
-          start: const BoundaryPointMm(xMm: 0, yMm: 0),
-          end: const BoundaryPointMm(xMm: 4000, yMm: 0),
-        ),
+        for (var index = 0; index < edgeIds.length; index++)
+          edgeIds[index]: ProjectBoundaryEdge(
+            id: edgeIds[index],
+            spaceId: spaceId,
+            start: points[index],
+            end: points[(index + 1) % points.length],
+          ),
       },
     );
 
