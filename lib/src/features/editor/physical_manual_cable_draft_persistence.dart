@@ -5,6 +5,7 @@ import '../../domain/electrical_routing.dart';
 import '../../domain/surface_routing.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/editor_layers.dart';
+import '../../engine/normative_route_engine.dart';
 import '../../engine/port_snap_resolver.dart';
 import 'canonical_room_surface_runtime_registry.dart';
 import 'editor_controller.dart';
@@ -299,7 +300,15 @@ extension PhysicalManualCableDraftPersistence on EditorController {
       return false;
     }
 
-    if (!p2.replacePhysicalCableRoute(before: before, after: after)) {
+    if (!p2.replacePhysicalCableRoute(
+      before: before,
+      after: after,
+      geometryValidator: (route) => _routeGeometryIsValidForContinuation(
+        this,
+        route,
+        routingContext,
+      ),
+    )) {
       return false;
     }
     _continuationIntents[this] = null;
@@ -445,7 +454,9 @@ RoomSurfaceRef? _surfaceForRouteIdentity(
       if (direct != null) {
         if (!topology.orderedEdgeIds.contains(direct)) return null;
         return RoomSurfaceRef.wallByBoundaryEdge(
-            canonicalSpaceId.value, direct);
+          canonicalSpaceId.value,
+          direct,
+        );
       }
       final ordinal = draftSurface.wallIndex;
       if (ordinal == null ||
@@ -457,6 +468,61 @@ RoomSurfaceRef? _surfaceForRouteIdentity(
         canonicalSpaceId.value,
         topology.orderedEdgeIds[ordinal],
       );
+  }
+}
+
+bool _routeGeometryIsValidForContinuation(
+  EditorController controller,
+  ElectricalCableRoute route,
+  CanonicalPhysicalRoutingContext? context,
+) {
+  for (final segment in route.segments) {
+    final geometrySurface = _surfaceForLegacyGeometry(segment.surface, context);
+    if (geometrySurface == null) return false;
+    final normativeContext = controller.routeNormativeContextFor(geometrySurface);
+    if (normativeContext == null ||
+        !NormativeRouteEngine.validate(
+          points: segment.points,
+          context: normativeContext,
+        ).isValid) {
+      return false;
+    }
+  }
+  return true;
+}
+
+RoomSurfaceRef? _surfaceForLegacyGeometry(
+  RoomSurfaceRef surface,
+  CanonicalPhysicalRoutingContext? context,
+) {
+  if (context == null) return surface;
+  final canonicalSpaceId =
+      context.canonicalSpaceIdForSurfaceSpaceId(surface.spaceId);
+  if (canonicalSpaceId == null) return null;
+  final legacySpaceId = context.legacySpaceIdForCanonical(canonicalSpaceId);
+  if (legacySpaceId == null) return null;
+
+  switch (surface.type) {
+    case SurfacePlaneType.floor:
+      return RoomSurfaceRef.floor(legacySpaceId);
+    case SurfacePlaneType.ceiling:
+      return RoomSurfaceRef.ceiling(legacySpaceId);
+    case SurfacePlaneType.wall:
+      final topology = context.project.index.boundary(canonicalSpaceId);
+      if (topology == null) return null;
+      final direct = surface.boundaryEdgeId;
+      if (direct != null) {
+        final ordinal = topology.orderedEdgeIds.indexOf(direct);
+        if (ordinal < 0) return null;
+        return RoomSurfaceRef.wall(legacySpaceId, ordinal);
+      }
+      final ordinal = surface.wallIndex;
+      if (ordinal == null ||
+          ordinal < 0 ||
+          ordinal >= topology.orderedEdgeIds.length) {
+        return null;
+      }
+      return RoomSurfaceRef.wall(legacySpaceId, ordinal);
   }
 }
 
