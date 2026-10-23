@@ -23,7 +23,8 @@ void main() {
       expect(plan.direction, CanonicalSlabRouteHandoffDirection.upward);
       expect(plan.fromLevelId, fixture.lowerLevelId);
       expect(plan.toLevelId, fixture.upperLevelId);
-      expect(plan.fromSurface, RoomSurfaceRef.ceiling(fixture.lowerSpaceId.value));
+      expect(
+          plan.fromSurface, RoomSurfaceRef.ceiling(fixture.lowerSpaceId.value));
       expect(plan.toSurface, RoomSurfaceRef.floor(fixture.upperSpaceId.value));
       expect(plan.entryFace, fixture.slab.belowFace);
       expect(plan.exitFace, fixture.slab.aboveFace);
@@ -42,8 +43,10 @@ void main() {
       expect(plan, isNotNull);
       expect(plan!.slabId, fixture.slabId);
       expect(plan.direction, CanonicalSlabRouteHandoffDirection.downward);
-      expect(plan.fromSurface, RoomSurfaceRef.floor(fixture.upperSpaceId.value));
-      expect(plan.toSurface, RoomSurfaceRef.ceiling(fixture.lowerSpaceId.value));
+      expect(
+          plan.fromSurface, RoomSurfaceRef.floor(fixture.upperSpaceId.value));
+      expect(
+          plan.toSurface, RoomSurfaceRef.ceiling(fixture.lowerSpaceId.value));
       expect(plan.entryFace, fixture.slab.aboveFace);
       expect(plan.exitFace, fixture.slab.belowFace);
       expect(plan.isUpward, isFalse);
