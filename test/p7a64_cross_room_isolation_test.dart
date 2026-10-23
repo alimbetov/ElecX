@@ -38,14 +38,14 @@ void main() {
       final initial = fixture.project();
       final mutations = ProjectMutationSession(initial);
       final beforeB = initial.index.boundary(fixture.spaceB)!;
-      final beforeBHost = initial.engineeringMetadata
-          .boundaryHostedObjectRegistry['component:b']!;
+      final beforeBHost = initial
+          .engineeringMetadata.boundaryHostedObjectRegistry['component:b']!;
       final bProfileHost = BoundaryEdgeHostRef(
         spaceId: fixture.spaceB,
         edgeId: fixture.bBottom,
       );
-      final beforeBProfile = initial.engineeringMetadata
-          .boundaryWallProfileRegistry[bProfileHost]!;
+      final beforeBProfile = initial
+          .engineeringMetadata.boundaryWallProfileRegistry[bProfileHost]!;
 
       final edit = ProjectBoundaryTopologyMigrationService(mutations).begin(
         spaceId: fixture.spaceA,
@@ -72,8 +72,8 @@ void main() {
         expect(after.end, before.end);
       }
 
-      final afterBHost = result.engineeringMetadata
-          .boundaryHostedObjectRegistry['component:b']!;
+      final afterBHost = result
+          .engineeringMetadata.boundaryHostedObjectRegistry['component:b']!;
       expect(afterBHost.objectKey, beforeBHost.objectKey);
       expect(afterBHost.objectKind, beforeBHost.objectKind);
       expect(afterBHost.host, beforeBHost.host);
@@ -96,8 +96,7 @@ void main() {
       );
       expect(
         result.engineeringMetadata.boundaryHostedObjectRegistry['component:a']!
-            .host
-            .edgeId,
+            .host.edgeId,
         fixture.aBottom1,
       );
     });
