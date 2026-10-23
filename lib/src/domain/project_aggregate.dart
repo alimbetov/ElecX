@@ -289,8 +289,7 @@ final class ProjectIndex {
   Map<LevelId, Set<SlabId>> get slabsByLevelId => _legacy.slabsByLevelId;
 
   legacy.ProjectSiteEntity? site(SiteId id) => _legacy.site(id);
-  legacy.ProjectBuildingEntity? building(BuildingId id) =>
-      _legacy.building(id);
+  legacy.ProjectBuildingEntity? building(BuildingId id) => _legacy.building(id);
   legacy.ProjectLevelEntity? level(LevelId id) => _legacy.level(id);
   ProjectSlab? slab(SlabId id) => _legacy.slab(id);
   ProjectVerticalCore? verticalCore(VerticalCoreId id) => verticalCores[id];
@@ -307,8 +306,7 @@ final class ProjectIndex {
   ProjectBoundaryEdge? boundaryEdge(BoundaryEdgeId id) =>
       _legacy.boundaryEdge(id);
 
-  Set<SlabId> slabsForBuilding(BuildingId id) =>
-      _legacy.slabsForBuilding(id);
+  Set<SlabId> slabsForBuilding(BuildingId id) => _legacy.slabsForBuilding(id);
 
   Set<SlabId> slabsForLevel(LevelId id) => _legacy.slabsForLevel(id);
 
