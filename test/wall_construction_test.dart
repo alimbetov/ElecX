@@ -61,4 +61,33 @@ void main() {
       throwsArgumentError,
     );
   });
+
+  test('wall construction rejects invalid persisted or user input at runtime',
+      () {
+    expect(
+      () => WallConstruction(id: 'wall-1', thicknessMm: 0),
+      throwsArgumentError,
+    );
+    expect(
+      () => WallConstruction(id: '   ', thicknessMm: 200),
+      throwsArgumentError,
+    );
+    expect(
+      () => WallConstruction(
+        id: 'wall-1',
+        thicknessMm: 200,
+        materialId: '   ',
+      ),
+      throwsArgumentError,
+    );
+
+    final construction = WallConstruction(
+      id: ' wall-1 ',
+      thicknessMm: 200,
+      materialId: ' concrete ',
+    );
+    expect(construction.id, 'wall-1');
+    expect(construction.thicknessMm, 200);
+    expect(construction.materialId, 'concrete');
+  });
 }
