@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:elecx/src/application/project/project_level_commands.dart';
 import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/project_snapshot.dart';
 import 'package:elecx/src/application/project/project_structure_authoring.dart';
@@ -58,6 +59,53 @@ void main() {
       expect(createKind(1), ProjectLevelKind.residential);
       expect(_level(1).kind, ProjectLevelKind.unknown);
       expect(_level(1).floorToFloorHeightMm, 3000);
+    });
+
+    test('level semantics update preserves identity and structural coordinates', () {
+      final level = ProjectLevelEntity(
+        id: LevelId('level-technical'),
+        buildingId: BuildingId('building-a'),
+        name: 'Level 5',
+        levelNumber: 5,
+        elevationMm: 15000,
+        displayOrder: 7,
+        kind: ProjectLevelKind.residential,
+        floorToFloorHeightMm: 3000,
+      );
+      final mutations = ProjectMutationSession(_project(level: level));
+      final result = mutations.commit(
+        ProjectMutationRequest(
+          expectedVersion: mutations.current.version,
+          command: UpdateLevelSemanticsCommand(
+            levelId: level.id,
+            kind: ProjectLevelKind.technical,
+            floorToFloorHeightMm: 4500,
+          ),
+        ),
+      );
+
+      expect(result, isNotNull);
+      final updated = result!.project.index.level(level.id)!;
+      expect(updated.id, level.id);
+      expect(updated.buildingId, level.buildingId);
+      expect(updated.name, level.name);
+      expect(updated.levelNumber, level.levelNumber);
+      expect(updated.elevationMm, level.elevationMm);
+      expect(updated.displayOrder, level.displayOrder);
+      expect(updated.kind, ProjectLevelKind.technical);
+      expect(updated.floorToFloorHeightMm, 4500);
+      expect(result.changeSet.affectedEntityIds, contains(level.id));
+    });
+
+    test('level semantics update rejects non-positive height before mutation', () {
+      expect(
+        () => UpdateLevelSemanticsCommand(
+          levelId: LevelId('level-1'),
+          kind: ProjectLevelKind.technical,
+          floorToFloorHeightMm: 0,
+        ),
+        throwsArgumentError,
+      );
     });
 
     test('invalid floor-to-floor height fails closed', () {
