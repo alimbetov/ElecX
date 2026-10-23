@@ -63,8 +63,7 @@ abstract final class VerticalCoreContinuityValidator {
       if (ordered == null) {
         issues.add(
           VerticalCoreContinuityIssue(
-            code:
-                VerticalCoreContinuityIssueCode.ambiguousPhysicalLevelOrder,
+            code: VerticalCoreContinuityIssueCode.ambiguousPhysicalLevelOrder,
             verticalCoreId: core.id,
             message: 'Vertical core ${core.id} cannot resolve a unique physical '
                 'level order in building ${core.buildingId}: at least two '
