@@ -18,6 +18,12 @@ abstract interface class ProjectSpaceSemanticsEditingPort {
 
   ProjectSpaceEntity? space(SpaceId spaceId);
 
+  ProjectMutationResult? setType(
+    SpaceId spaceId,
+    ProjectSpaceType type, {
+    LocalProjectVersion? expectedVersion,
+  });
+
   ProjectMutationResult? setUsage(
     SpaceId spaceId,
     SpaceUsage usage, {
@@ -62,6 +68,20 @@ final class ProjectSpaceSemanticsEditingSession
   @override
   ProjectSpaceEntity? space(SpaceId spaceId) =>
       _mutations.current.index.space(spaceId);
+
+  @override
+  ProjectMutationResult? setType(
+    SpaceId spaceId,
+    ProjectSpaceType type, {
+    LocalProjectVersion? expectedVersion,
+  }) {
+    return _mutations.commit(
+      ProjectMutationRequest(
+        expectedVersion: expectedVersion ?? _mutations.current.version,
+        command: SetSpaceTypeCommand(spaceId: spaceId, type: type),
+      ),
+    );
+  }
 
   @override
   ProjectMutationResult? setUsage(
