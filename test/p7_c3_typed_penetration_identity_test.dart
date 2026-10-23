@@ -30,28 +30,30 @@ void main() {
       expect(penetration.hostKind, BoundaryPenetrationHostKind.slab);
     });
 
-    test('typed requirement materializes without scalar identity regeneration',
-        () {
-      final id = BoundaryPenetrationId('penetration-02');
-      final requirement = BoundaryPenetrationRequirement(
-        hostKind: BoundaryPenetrationHostKind.slab,
-        hostThicknessMm: 180,
-        slabId: SlabId('slab-02'),
-      );
+    test(
+      'typed requirement materializes without scalar identity regeneration',
+      () {
+        final id = BoundaryPenetrationId('penetration-02');
+        final requirement = BoundaryPenetrationRequirement(
+          hostKind: BoundaryPenetrationHostKind.slab,
+          hostThicknessMm: 180,
+          slabId: SlabId('slab-02'),
+        );
 
-      final penetration = requirement.createTyped(
-        penetrationId: id,
-        routeId: 'route-02',
-        entrySurface: RoomSurfaceRef.ceiling('space-l1'),
-        entryPoint: const SurfacePointMm(25, 25),
-        exitSurface: RoomSurfaceRef.floor('space-l2'),
-        exitPoint: const SurfacePointMm(25, 25),
-      );
+        final penetration = requirement.createTyped(
+          penetrationId: id,
+          routeId: 'route-02',
+          entrySurface: RoomSurfaceRef.ceiling('space-l1'),
+          entryPoint: const SurfacePointMm(25, 25),
+          exitSurface: RoomSurfaceRef.floor('space-l2'),
+          exitPoint: const SurfacePointMm(25, 25),
+        );
 
-      expect(penetration.id, id);
-      expect(penetration.entryAnchor.penetrationId, id);
-      expect(penetration.exitAnchor.penetrationId, id);
-    });
+        expect(penetration.id, id);
+        expect(penetration.entryAnchor.penetrationId, id);
+        expect(penetration.exitAnchor.penetrationId, id);
+      },
+    );
 
     test('legacy scalar ingress is promoted losslessly without regeneration', () {
       const legacyId = 'legacy-persisted-penetration';
@@ -80,22 +82,24 @@ void main() {
       expect(penetration.slabId, SlabId('slab-legacy'));
     });
 
-    test('canonical typed boundary fails closed on empty penetration identity',
-        () {
-      expect(
-        () => BoundaryPenetration.slabTyped(
-          id: BoundaryPenetrationId(''),
-          slabId: SlabId('slab-03'),
-          entrySurface: RoomSurfaceRef.ceiling('space-l1'),
-          entryPoint: const SurfacePointMm(10, 10),
-          exitSurface: RoomSurfaceRef.floor('space-l2'),
-          exitPoint: const SurfacePointMm(10, 10),
-          hostThicknessMm: 200,
-          routeId: 'route-03',
-        ),
-        throwsArgumentError,
-      );
-    });
+    test(
+      'canonical typed boundary fails closed on empty penetration identity',
+      () {
+        expect(
+          () => BoundaryPenetration.slabTyped(
+            id: BoundaryPenetrationId(''),
+            slabId: SlabId('slab-03'),
+            entrySurface: RoomSurfaceRef.ceiling('space-l1'),
+            entryPoint: const SurfacePointMm(10, 10),
+            exitSurface: RoomSurfaceRef.floor('space-l2'),
+            exitPoint: const SurfacePointMm(10, 10),
+            hostThicknessMm: 200,
+            routeId: 'route-03',
+          ),
+          throwsArgumentError,
+        );
+      },
+    );
 
     test('identity factory allocates typed non-empty penetration ids', () {
       final factory = SecureRandomEntityIdFactory();
