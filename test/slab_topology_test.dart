@@ -29,7 +29,7 @@ void main() {
         kind: SlabKind.interLevel,
         belowLevelId: LevelId('level-01'),
         aboveLevelId: LevelId('level-02'),
-        elevationMm: 3200,
+        bottomElevationMm: 3000,
         thicknessMm: 200,
         materialId: 'reinforced-concrete',
         footprint: _rectangle,
@@ -38,6 +38,8 @@ void main() {
       expect(slab.id, SlabId('slab-01-02'));
       expect(slab.belowLevelId, LevelId('level-01'));
       expect(slab.aboveLevelId, LevelId('level-02'));
+      expect(slab.bottomElevationMm, 3000);
+      expect(slab.topElevationMm, 3200);
       expect(slab.thicknessMm, 200);
     });
 
@@ -71,7 +73,7 @@ void main() {
         buildingId: BuildingId('building-a'),
         kind: SlabKind.foundation,
         aboveLevelId: LevelId('level-01'),
-        elevationMm: 0,
+        bottomElevationMm: -300,
         thicknessMm: 300,
         materialId: 'reinforced-concrete',
         footprint: _rectangle,
@@ -81,7 +83,7 @@ void main() {
         buildingId: BuildingId('building-a'),
         kind: SlabKind.roof,
         belowLevelId: LevelId('level-03'),
-        elevationMm: 9600,
+        bottomElevationMm: 9600,
         thicknessMm: 220,
         materialId: 'reinforced-concrete',
         footprint: _rectangle,
@@ -101,7 +103,7 @@ void main() {
           kind: SlabKind.interLevel,
           belowLevelId: LevelId('level-01'),
           aboveLevelId: LevelId('level-02'),
-          elevationMm: 3200,
+          bottomElevationMm: 3000,
           thicknessMm: 200,
           materialId: 'reinforced-concrete',
           footprint: const [
@@ -118,7 +120,7 @@ void main() {
           buildingId: BuildingId('building-a'),
           kind: SlabKind.roof,
           aboveLevelId: LevelId('level-03'),
-          elevationMm: 9600,
+          bottomElevationMm: 9600,
           thicknessMm: 220,
           materialId: 'reinforced-concrete',
           footprint: _rectangle,
@@ -162,7 +164,7 @@ ProjectSlab _interLevelSlab(String id) => ProjectSlab(
       kind: SlabKind.interLevel,
       belowLevelId: LevelId('level-01'),
       aboveLevelId: LevelId('level-02'),
-      elevationMm: 3200,
+      bottomElevationMm: 3000,
       thicknessMm: 200,
       materialId: 'reinforced-concrete',
       footprint: _rectangle,
