@@ -261,7 +261,9 @@ abstract final class CanonicalEditorLegacyBootstrap {
     return topology;
   }
 
-  static String _id(String kind, String first, [
+  static String _id(
+    String kind,
+    String first, [
     String? second,
     String? third,
     String? fourth,
