@@ -125,7 +125,7 @@ ProjectAggregateRoot _projectWithVerticalCores() {
           id: coreB,
           buildingId: buildingId,
           kind: VerticalCoreKind.shaft,
-          levelIds: [level1, level3],
+          levelIds: [level1, level2],
           footprint: footprint,
         ),
       },

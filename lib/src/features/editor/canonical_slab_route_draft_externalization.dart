@@ -81,7 +81,8 @@ final class CanonicalSlabRouteDraftExternalization {
       throw CanonicalSlabRouteDraftExternalizationException(
         code: CanonicalSlabRouteDraftExternalizationIssueCode
             .routeIdentityMismatch,
-        message: 'Physical continuation route $continuationId does not match '
+        message:
+            'Physical continuation route $continuationId does not match '
             'handoff route ${intent.routeId}.',
       );
     }
@@ -98,10 +99,12 @@ final class CanonicalSlabRouteDraftExternalization {
 
     final last = editor.routeSegments.last;
     final requirement = transition.penetrationRequirement;
-    final canonicalFrom = routingContext
-        .canonicalSpaceIdForSurfaceSpaceId(transition.fromSurface.spaceId);
-    final canonicalTo = routingContext
-        .canonicalSpaceIdForSurfaceSpaceId(transition.toSurface.spaceId);
+    final canonicalFrom = routingContext.canonicalSpaceIdForSurfaceSpaceId(
+      transition.fromSurface.spaceId,
+    );
+    final canonicalTo = routingContext.canonicalSpaceIdForSurfaceSpaceId(
+      transition.toSurface.spaceId,
+    );
     if (transition.kind != SurfaceTransitionKind.levelPenetration ||
         requirement?.slabId != intent.slabId ||
         canonicalFrom != intent.plan.fromSpaceId ||
@@ -115,7 +118,8 @@ final class CanonicalSlabRouteDraftExternalization {
         code:
             CanonicalSlabRouteDraftExternalizationIssueCode.transitionMismatch,
         entityId: requirement?.slabId,
-        message: 'The concrete level penetration does not match the prepared '
+        message:
+            'The concrete level penetration does not match the prepared '
             'SlabId handoff and live route endpoint.',
       );
     }
@@ -200,6 +204,41 @@ final class CanonicalSlabRouteDraftExternalization {
     editor.notifyListeners();
   }
 
+  /// Rolls back a successfully restored target draft after a later part of a
+  /// multi-level continuation failed. The caller must first move canonical
+  /// navigation back to the source, which leaves the target editor empty.
+  void rollbackTarget(EditorController editor) {
+    if (!_restored || !identical(editorIdentity, editor)) {
+      throw const CanonicalSlabRouteDraftExternalizationException(
+        code:
+            CanonicalSlabRouteDraftExternalizationIssueCode.draftStateConflict,
+        message:
+            'The restored slab route draft cannot be rolled back from the '
+            'current editor state.',
+      );
+    }
+    if (editor.routeSegments.isNotEmpty) {
+      editor.routeSegments.clear();
+    }
+    _restored = false;
+    try {
+      _materializeExpectedHorizontalSurface(
+        editor: editor,
+        expectedCanonicalSpaceIdResolver: (context) => context
+            .canonicalSpaceIdForSurfaceSpaceId(transition.fromSurface.spaceId),
+        expectedType: transition.fromSurface.type,
+      );
+      editor.routeSegments.addAll(sourceSegments);
+      _restored = true;
+    } catch (_) {
+      // Keep the token unusable if source restoration did not complete. The
+      // runtime reports the failed atomic rollback to its caller.
+      rethrow;
+    }
+    // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+    editor.notifyListeners();
+  }
+
   void _requireRestorable(EditorController editor) {
     if (_restored) {
       throw const CanonicalSlabRouteDraftExternalizationException(
@@ -212,14 +251,16 @@ final class CanonicalSlabRouteDraftExternalization {
       throw const CanonicalSlabRouteDraftExternalizationException(
         code:
             CanonicalSlabRouteDraftExternalizationIssueCode.draftStateConflict,
-        message: 'The target editor is not in the empty state owned by this '
+        message:
+            'The target editor is not in the empty state owned by this '
             'externalized route draft.',
       );
     }
     if (editor.p2.history.mutationRevision != p2MutationRevision) {
       throw const CanonicalSlabRouteDraftExternalizationException(
         code: CanonicalSlabRouteDraftExternalizationIssueCode.p2RevisionChanged,
-        message: 'Electrical P2 state changed while the route draft was '
+        message:
+            'Electrical P2 state changed while the route draft was '
             'externalized.',
       );
     }
@@ -236,7 +277,7 @@ final class CanonicalSlabRouteDraftExternalization {
   RoomSurfaceRef _materializeExpectedHorizontalSurface({
     required EditorController editor,
     required SpaceId? Function(CanonicalPhysicalRoutingContext context)
-        expectedCanonicalSpaceIdResolver,
+    expectedCanonicalSpaceIdResolver,
     required SurfacePlaneType expectedType,
   }) {
     if (expectedType == SurfacePlaneType.wall) {
@@ -252,9 +293,10 @@ final class CanonicalSlabRouteDraftExternalization {
     final selectedLegacySpaceId = editor.selectedSpaceId;
     final selectedCanonicalSpaceId =
         selectedLegacySpaceId == null || routingContext == null
-            ? null
-            : routingContext
-                .canonicalSpaceIdForSurfaceSpaceId(selectedLegacySpaceId);
+        ? null
+        : routingContext.canonicalSpaceIdForSurfaceSpaceId(
+            selectedLegacySpaceId,
+          );
     final expectedCanonicalSpaceId = routingContext == null
         ? null
         : expectedCanonicalSpaceIdResolver(routingContext);
@@ -263,7 +305,8 @@ final class CanonicalSlabRouteDraftExternalization {
       throw const CanonicalSlabRouteDraftExternalizationException(
         code: CanonicalSlabRouteDraftExternalizationIssueCode
             .targetSurfaceMismatch,
-        message: 'The materialized editor is not on the expected canonical '
+        message:
+            'The materialized editor is not on the expected canonical '
             'SpaceId for this slab route draft.',
       );
     }

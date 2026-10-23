@@ -38,8 +38,8 @@ final class MutationIdentityReservation {
   MutationIdentityReservation._({
     required Map<String, EntityId> entityIds,
     required Map<String, BoundaryPenetrationId> penetrationIds,
-  })  : _entityIds = Map.unmodifiable(entityIds),
-        _penetrationIds = Map.unmodifiable(penetrationIds);
+  }) : _entityIds = Map.unmodifiable(entityIds),
+       _penetrationIds = Map.unmodifiable(penetrationIds);
 
   factory MutationIdentityReservation.allocate({
     required EntityIdFactory factory,
@@ -86,10 +86,8 @@ final class MutationIdentityReservation {
   final Map<String, EntityId> _entityIds;
   final Map<String, BoundaryPenetrationId> _penetrationIds;
 
-  Set<String> get slots => Set.unmodifiable({
-        ..._entityIds.keys,
-        ..._penetrationIds.keys,
-      });
+  Set<String> get slots =>
+      Set.unmodifiable({..._entityIds.keys, ..._penetrationIds.keys});
 
   Set<EntityId> get entityIds => Set.unmodifiable(_entityIds.values);
 
@@ -131,34 +129,35 @@ String _validatedSlot(String raw) {
 }
 
 EntityId _allocateEntityId(
-        EntityIdFactory factory, ReservedEntityIdKind kind) =>
-    switch (kind) {
-      ReservedEntityIdKind.project => factory.newProjectId(),
-      ReservedEntityIdKind.site => factory.newSiteId(),
-      ReservedEntityIdKind.building => factory.newBuildingId(),
-      ReservedEntityIdKind.level => factory.newLevelId(),
-      ReservedEntityIdKind.zone => factory.newZoneId(),
-      ReservedEntityIdKind.space => factory.newSpaceId(),
-      ReservedEntityIdKind.opening => factory.newOpeningId(),
-      ReservedEntityIdKind.spaceAdjacency => factory.newSpaceAdjacencyId(),
-      ReservedEntityIdKind.overlayClassification =>
-        factory.newOverlayClassificationId(),
-      ReservedEntityIdKind.boundaryEdge => factory.newBoundaryEdgeId(),
-      ReservedEntityIdKind.slab => factory.newSlabId(),
-      ReservedEntityIdKind.verticalCore => factory.newVerticalCoreId(),
-      ReservedEntityIdKind.serviceEntry => factory.newServiceEntryId(),
-      ReservedEntityIdKind.component => factory.newComponentId(),
-      ReservedEntityIdKind.port => factory.newPortId(),
-      ReservedEntityIdKind.circuit => factory.newCircuitId(),
-      ReservedEntityIdKind.route => factory.newRouteId(),
-      ReservedEntityIdKind.routeAnchor => factory.newRouteAnchorId(),
-      ReservedEntityIdKind.generation => factory.newGenerationId(),
-      ReservedEntityIdKind.template => factory.newTemplateId(),
-      ReservedEntityIdKind.typicalFloorDefinition =>
-        factory.newTypicalFloorDefinitionId(),
-      ReservedEntityIdKind.engineeringConnection =>
-        factory.newEngineeringConnectionId(),
-    };
+  EntityIdFactory factory,
+  ReservedEntityIdKind kind,
+) => switch (kind) {
+  ReservedEntityIdKind.project => factory.newProjectId(),
+  ReservedEntityIdKind.site => factory.newSiteId(),
+  ReservedEntityIdKind.building => factory.newBuildingId(),
+  ReservedEntityIdKind.level => factory.newLevelId(),
+  ReservedEntityIdKind.zone => factory.newZoneId(),
+  ReservedEntityIdKind.space => factory.newSpaceId(),
+  ReservedEntityIdKind.opening => factory.newOpeningId(),
+  ReservedEntityIdKind.spaceAdjacency => factory.newSpaceAdjacencyId(),
+  ReservedEntityIdKind.overlayClassification =>
+    factory.newOverlayClassificationId(),
+  ReservedEntityIdKind.boundaryEdge => factory.newBoundaryEdgeId(),
+  ReservedEntityIdKind.slab => factory.newSlabId(),
+  ReservedEntityIdKind.verticalCore => factory.newVerticalCoreId(),
+  ReservedEntityIdKind.serviceEntry => factory.newServiceEntryId(),
+  ReservedEntityIdKind.component => factory.newComponentId(),
+  ReservedEntityIdKind.port => factory.newPortId(),
+  ReservedEntityIdKind.circuit => factory.newCircuitId(),
+  ReservedEntityIdKind.route => factory.newRouteId(),
+  ReservedEntityIdKind.routeAnchor => factory.newRouteAnchorId(),
+  ReservedEntityIdKind.generation => factory.newGenerationId(),
+  ReservedEntityIdKind.template => factory.newTemplateId(),
+  ReservedEntityIdKind.typicalFloorDefinition =>
+    factory.newTypicalFloorDefinitionId(),
+  ReservedEntityIdKind.engineeringConnection =>
+    factory.newEngineeringConnectionId(),
+};
 
 /// C5 commands are pure planners over current canonical state plus one immutable
 /// reservation. They do not allocate identities from buildCandidate.
@@ -328,10 +327,14 @@ final class RemovePhysicalDependencyOperation extends ProjectSemanticOperation {
 
 final class ProjectSemanticChangeSet {
   ProjectSemanticChangeSet(Iterable<ProjectSemanticOperation> operations)
-      : operations = List.unmodifiable(
-          List<ProjectSemanticOperation>.of(operations)
-            ..sort((a, b) => a.semanticKey.compareTo(b.semanticKey)),
-        ) {
+    : operations = List.unmodifiable(
+        List<ProjectSemanticOperation>.of(operations)..sort((a, b) {
+          final categoryComparison = _semanticOperationCategory(a)
+              .compareTo(_semanticOperationCategory(b));
+          if (categoryComparison != 0) return categoryComparison;
+          return a.semanticKey.compareTo(b.semanticKey);
+        }),
+      ) {
     final keys = <String>{};
     for (final operation in this.operations) {
       if (!keys.add(operation.semanticKey)) {
@@ -359,6 +362,22 @@ final class ProjectSemanticChangeSet {
   }
 }
 
+/// Stable execution order for typed mutation effects.
+///
+/// A semantic key remains the deterministic tie-breaker within one phase, but
+/// dependency phases are explicit: entities are created before their bindings,
+/// route effects follow those bindings, engineering evidence follows the route,
+/// and removals are applied last.
+int _semanticOperationCategory(ProjectSemanticOperation operation) =>
+    switch (operation) {
+      CreateEntityOperation() || CreatePenetrationOperation() => 0,
+      AttachPenetrationToSlabOperation() ||
+      BindPenetrationToVerticalCoreOperation() => 1,
+      AddRouteAnchorOperation() || AddHiddenVerticalRouteLegOperation() => 2,
+      UpdateEntityOperation() || UpdateEngineeringEvidenceOperation() => 3,
+      RemovePhysicalDependencyOperation() || RemoveEntityOperation() => 4,
+    };
+
 final class ReservedProjectMutationPreview {
   ReservedProjectMutationPreview._({
     required Object sessionIdentity,
@@ -368,8 +387,8 @@ final class ReservedProjectMutationPreview {
     required this.preview,
     required this.semanticChangeSet,
     required ReservedProjectCommand command,
-  })  : _sessionIdentity = sessionIdentity,
-        _command = command;
+  }) : _sessionIdentity = sessionIdentity,
+       _command = command;
 
   final Object _sessionIdentity;
   final ReservedProjectCommand _command;

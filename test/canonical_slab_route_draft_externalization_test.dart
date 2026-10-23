@@ -109,6 +109,95 @@ void main() {
     );
     expect(fixture.editor.p2.history.mutationRevision, beforeP2Revision);
   });
+
+  test('a committed cutover can be compensated and retried from the source',
+      () {
+    final fixture = _Fixture();
+    addTearDown(fixture.dispose);
+
+    final runtime = CanonicalSlabRouteHandoffRuntime(
+      coordinator: fixture.coordinator,
+    );
+    runtime.prepare(
+      routeId: 'C-vertical-01',
+      toSpaceId: fixture.upperSpaceId,
+      fromLevelElevationMm: 0,
+      toLevelElevationMm: 3200,
+      fromRoomHeightMm: 3000,
+      toRoomHeightMm: 3000,
+    );
+
+    fixture.editor.setTool(EditorTool.cableRoute);
+    fixture.editor.showCeiling();
+    final sourceSurface = fixture.editor.activeSurface!;
+    fixture.editor.routeSegments.add(
+      SurfaceRouteSegmentDraft(
+        surface: sourceSurface,
+        points: const [
+          SurfacePointMm(600, 1200),
+          SurfacePointMm(1500, 1200),
+        ],
+      ),
+    );
+    final transition = CanonicalSlabTransitionResolver.resolve(
+      project: fixture.session.project,
+      buildingLevels: fixture.legacyLevels,
+      fromLevel: fixture.legacyLower,
+      fromSpace: fixture.legacyLower.spaces.single,
+      fromSurface: sourceSurface,
+      point: const SurfacePointMm(1500, 1200),
+      fromRoomHeightMm: 3000,
+      toLevel: fixture.legacyUpper,
+      toSpace: fixture.legacyUpper.spaces.single,
+      toRoomHeightMm: 3000,
+      canonicalSpaceIdResolver: fixture.canonicalSpaceId,
+    )!;
+    final externalized = CanonicalSlabRouteDraftExternalization.externalize(
+      editor: fixture.editor,
+      intent: runtime.prepared!.intent,
+      transition: transition,
+    );
+    runtime.applyNavigation(externalizedDraft: externalized);
+
+    runtime.rollbackLastCommittedNavigation();
+
+    expect(fixture.session.navigation.selectedSpaceId, fixture.lowerSpaceId);
+    expect(fixture.editor.level.id, 'legacy-level-1');
+    expect(fixture.editor.selectedSpaceId, 'legacy-space-1');
+    expect(fixture.editor.activeSurface, sourceSurface);
+    expect(fixture.editor.routeSegments, hasLength(1));
+
+    runtime.prepare(
+      routeId: 'C-vertical-01',
+      toSpaceId: fixture.upperSpaceId,
+      fromLevelElevationMm: 0,
+      toLevelElevationMm: 3200,
+      fromRoomHeightMm: 3000,
+      toRoomHeightMm: 3000,
+    );
+    final retryTransition = CanonicalSlabTransitionResolver.resolve(
+      project: fixture.session.project,
+      buildingLevels: fixture.legacyLevels,
+      fromLevel: fixture.legacyLower,
+      fromSpace: fixture.legacyLower.spaces.single,
+      fromSurface: fixture.editor.activeSurface!,
+      point: const SurfacePointMm(1500, 1200),
+      fromRoomHeightMm: 3000,
+      toLevel: fixture.legacyUpper,
+      toSpace: fixture.legacyUpper.spaces.single,
+      toRoomHeightMm: 3000,
+      canonicalSpaceIdResolver: fixture.canonicalSpaceId,
+    )!;
+    final retryDraft = CanonicalSlabRouteDraftExternalization.externalize(
+      editor: fixture.editor,
+      intent: runtime.prepared!.intent,
+      transition: retryTransition,
+    );
+    runtime.applyNavigation(externalizedDraft: retryDraft);
+
+    expect(fixture.session.navigation.selectedSpaceId, fixture.upperSpaceId);
+    expect(fixture.editor.routeSegments, hasLength(2));
+  });
 }
 
 final class _Fixture {

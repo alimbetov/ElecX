@@ -3,8 +3,10 @@ import 'project_aggregate_legacy.dart' as legacy;
 import 'project_identity.dart';
 import 'project_orientation.dart';
 import 'project_space_semantics.dart';
+import 'physical_level_order.dart';
 import 'slab_topology.dart';
 import 'vertical_core.dart';
+import 'vertical_core_continuity_validation.dart';
 import 'vertical_core_project_validation.dart';
 
 export 'project_aggregate_legacy.dart'
@@ -81,8 +83,8 @@ final class ProjectLevelEntity {
     this.displayOrder = 0,
     Iterable<ZoneId> zoneIds = const [],
     Iterable<SpaceId> spaceIds = const [],
-  })  : zoneIds = Set.unmodifiable(zoneIds),
-        spaceIds = Set.unmodifiable(spaceIds) {
+  }) : zoneIds = Set.unmodifiable(zoneIds),
+       spaceIds = Set.unmodifiable(spaceIds) {
     if (name.trim().isEmpty) {
       throw ArgumentError.value(name, 'name', 'Level name must be non-empty.');
     }
@@ -172,17 +174,17 @@ final class ProjectEntityStores {
     Map<OverlayClassificationId, ProjectOverlayClassificationEntity> overlays =
         const {},
     Map<SpaceId, SpaceBoundaryTopology> boundaries = const {},
-  })  : sites = Map.unmodifiable(sites),
-        buildings = Map.unmodifiable(buildings),
-        levels = Map.unmodifiable(levels),
-        slabs = Map.unmodifiable(slabs),
-        verticalCores = Map.unmodifiable(verticalCores),
-        zones = Map.unmodifiable(zones),
-        spaces = Map.unmodifiable(spaces),
-        openings = Map.unmodifiable(openings),
-        adjacencies = Map.unmodifiable(adjacencies),
-        overlays = Map.unmodifiable(overlays),
-        boundaries = Map.unmodifiable(boundaries);
+  }) : sites = Map.unmodifiable(sites),
+       buildings = Map.unmodifiable(buildings),
+       levels = Map.unmodifiable(levels),
+       slabs = Map.unmodifiable(slabs),
+       verticalCores = Map.unmodifiable(verticalCores),
+       zones = Map.unmodifiable(zones),
+       spaces = Map.unmodifiable(spaces),
+       openings = Map.unmodifiable(openings),
+       adjacencies = Map.unmodifiable(adjacencies),
+       overlays = Map.unmodifiable(overlays),
+       boundaries = Map.unmodifiable(boundaries);
 
   final Map<SiteId, legacy.ProjectSiteEntity> sites;
   final Map<BuildingId, legacy.ProjectBuildingEntity> buildings;
@@ -194,7 +196,7 @@ final class ProjectEntityStores {
   final Map<OpeningId, ProjectOpeningEntity> openings;
   final Map<SpaceAdjacencyId, ProjectSpaceAdjacencyEntity> adjacencies;
   final Map<OverlayClassificationId, ProjectOverlayClassificationEntity>
-      overlays;
+  overlays;
   final Map<SpaceId, SpaceBoundaryTopology> boundaries;
 }
 
@@ -215,6 +217,7 @@ enum ProjectAggregateIssueCode {
   slabLevelOrderMismatch,
   invalidSlabTopology,
   invalidVerticalCoreTopology,
+  invalidVerticalCoreContinuity,
   danglingVerticalCoreBuilding,
   danglingVerticalCoreLevel,
   verticalCoreLevelBuildingMismatch,
@@ -307,8 +310,9 @@ abstract final class ProjectAggregateValidator {
       );
     }
 
-    for (final issue
-        in VerticalCoreTopologyValidator.validate(stores.verticalCores)) {
+    for (final issue in VerticalCoreTopologyValidator.validate(
+      stores.verticalCores,
+    )) {
       issues.add(
         ProjectAggregateValidationIssue(
           code: switch (issue.code) {
@@ -345,6 +349,49 @@ abstract final class ProjectAggregateValidator {
       );
     }
 
+    // Continuity is a property of the candidate aggregate itself. Keeping it
+    // here makes mutation validation and document loading enforce the same
+    // invariant, including when a new physical Level is inserted between two
+    // existing levels served by a VerticalCore.
+    for (final issue in VerticalCoreContinuityValidator.validate(
+      verticalCores: stores.verticalCores,
+      buildingLevelIdsResolver: (buildingId) =>
+          stores.buildings[buildingId]?.levelIds,
+      levelPlacementResolver: (levelId) {
+        final level = stores.levels[levelId];
+        if (level == null) return null;
+        return PhysicalLevelPlacement(
+          levelId: level.id,
+          buildingId: level.buildingId,
+          elevationMm: level.elevationMm,
+        );
+      },
+      physicalAdjacencyResolver: (buildingId) sync* {
+        for (final slab in stores.slabs.values) {
+          if (slab.buildingId != buildingId ||
+              slab.kind != SlabKind.interLevel) {
+            continue;
+          }
+          final belowLevelId = slab.belowLevelId;
+          final aboveLevelId = slab.aboveLevelId;
+          if (belowLevelId == null || aboveLevelId == null) continue;
+          yield PhysicalLevelAdjacency(
+            buildingId: buildingId,
+            belowLevelId: belowLevelId,
+            aboveLevelId: aboveLevelId,
+          );
+        }
+      },
+    )) {
+      issues.add(
+        ProjectAggregateValidationIssue(
+          code: ProjectAggregateIssueCode.invalidVerticalCoreContinuity,
+          entityId: issue.verticalCoreId,
+          message: issue.message,
+        ),
+      );
+    }
+
     return List.unmodifiable(issues);
   }
 }
@@ -367,10 +414,9 @@ bool _isActualDuplicateAdjacencyPair(
 
 ProjectAggregateIssueCode _legacyIssueCode(
   legacy.ProjectAggregateIssueCode code,
-) =>
-    ProjectAggregateIssueCode.values.firstWhere(
-      (candidate) => candidate.name == code.name,
-    );
+) => ProjectAggregateIssueCode.values.firstWhere(
+  (candidate) => candidate.name == code.name,
+);
 
 legacy.ProjectEntityStores _toLegacyStores(ProjectEntityStores stores) =>
     legacy.ProjectEntityStores(
@@ -431,8 +477,9 @@ final class ProjectIndex {
     final verticalCoresByLevelId = <LevelId, Set<VerticalCoreId>>{};
 
     for (final core in stores.verticalCores.values) {
-      (verticalCoresByBuildingId[core.buildingId] ??= <VerticalCoreId>{})
-          .add(core.id);
+      (verticalCoresByBuildingId[core.buildingId] ??= <VerticalCoreId>{}).add(
+        core.id,
+      );
       for (final levelId in core.levelIds) {
         (verticalCoresByLevelId[levelId] ??= <VerticalCoreId>{}).add(core.id);
       }
@@ -465,7 +512,7 @@ final class ProjectIndex {
   Map<SpaceAdjacencyId, ProjectSpaceAdjacencyEntity> get adjacencies =>
       _legacy.adjacencies;
   Map<OverlayClassificationId, ProjectOverlayClassificationEntity>
-      get overlays => _legacy.overlays;
+  get overlays => _legacy.overlays;
   Map<SpaceId, SpaceBoundaryTopology> get boundaries => _legacy.boundaries;
   Map<BoundaryEdgeId, ProjectBoundaryEdge> get boundaryEdges =>
       _legacy.boundaryEdges;
@@ -497,9 +544,7 @@ final class ProjectIndex {
   ProjectOpeningEntity? opening(OpeningId id) => _legacy.opening(id);
   ProjectSpaceAdjacencyEntity? adjacency(SpaceAdjacencyId id) =>
       _legacy.adjacency(id);
-  ProjectOverlayClassificationEntity? overlay(
-    OverlayClassificationId id,
-  ) =>
+  ProjectOverlayClassificationEntity? overlay(OverlayClassificationId id) =>
       _legacy.overlay(id);
   SpaceBoundaryTopology? boundary(SpaceId id) => _legacy.boundary(id);
   ProjectBoundaryEdge? boundaryEdge(BoundaryEdgeId id) =>
@@ -569,9 +614,9 @@ bool _setMapEquals<K, V>(Map<K, Set<V>> left, Map<K, Set<V>> right) {
 }
 
 Map<K, Set<V>> _freezeSetMap<K, V>(Map<K, Set<V>> source) => Map.unmodifiable({
-      for (final entry in source.entries)
-        entry.key: Set<V>.unmodifiable(entry.value),
-    });
+  for (final entry in source.entries)
+    entry.key: Set<V>.unmodifiable(entry.value),
+});
 
 final class ProjectAggregateRoot {
   ProjectAggregateRoot._({
