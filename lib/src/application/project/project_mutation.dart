@@ -6,6 +6,7 @@ import '../../domain/project_identity.dart';
 import '../../domain/project_orientation.dart';
 import '../../domain/project_space_semantics.dart';
 import '../../domain/slab_topology.dart';
+import '../../domain/vertical_core.dart';
 
 abstract interface class ProjectCommand {
   String get commandType;
@@ -119,6 +120,14 @@ final class ProjectEntityDiff {
     );
     _diffMap(before.levels, after.levels, _sameLevel, added, updated, removed);
     _diffMap(before.slabs, after.slabs, _sameSlab, added, updated, removed);
+    _diffMap(
+      before.verticalCores,
+      after.verticalCores,
+      _sameVerticalCore,
+      added,
+      updated,
+      removed,
+    );
     _diffMap(before.zones, after.zones, _sameZone, added, updated, removed);
     _diffMap(before.spaces, after.spaces, _sameSpace, added, updated, removed);
     _diffMap(
@@ -757,6 +766,23 @@ bool _sameSlab(ProjectSlab a, ProjectSlab b) {
       a.bottomElevationMm != b.bottomElevationMm ||
       a.thicknessMm != b.thicknessMm ||
       a.materialId != b.materialId ||
+      a.footprint.length != b.footprint.length) {
+    return false;
+  }
+  for (var index = 0; index < a.footprint.length; index++) {
+    final left = a.footprint[index];
+    final right = b.footprint[index];
+    if (left.xMm != right.xMm || left.yMm != right.yMm) return false;
+  }
+  return true;
+}
+
+bool _sameVerticalCore(ProjectVerticalCore a, ProjectVerticalCore b) {
+  if (a.id != b.id ||
+      a.buildingId != b.buildingId ||
+      a.kind != b.kind ||
+      a.name != b.name ||
+      !_sameSet(a.levelIds, b.levelIds) ||
       a.footprint.length != b.footprint.length) {
     return false;
   }
