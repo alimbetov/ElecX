@@ -15,6 +15,7 @@ enum ProjectAuthoringIssueCode {
   slabNotFound,
   verticalCoreAlreadyExists,
   verticalCoreNotFound,
+  verticalCoreUnresolvedPhysicalTopology,
   verticalCoreAmbiguousPhysicalLevelOrder,
   verticalCoreNonContiguousLevelRange,
   structuralZoneAlreadyExists,
