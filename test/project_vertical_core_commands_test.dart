@@ -124,8 +124,8 @@ void main() {
 
       final empty = fixture.project();
       expect(
-        () => UpdateVerticalCoreCommand(verticalCore: core)
-            .buildCandidate(empty),
+        () =>
+            UpdateVerticalCoreCommand(verticalCore: core).buildCandidate(empty),
         throwsA(
           isA<ProjectAuthoringException>().having(
             (error) => error.code,
