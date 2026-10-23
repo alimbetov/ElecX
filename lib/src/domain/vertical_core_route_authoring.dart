@@ -32,7 +32,7 @@ final class VerticalCoreRouteCrossingPlan {
   /// Materializes the physical hole only after the editor supplies the exact
   /// canonical ceiling/floor surfaces for this level pair.
   BoundaryPenetration createPenetration({
-    required String penetrationId,
+    required BoundaryPenetrationId penetrationId,
     required String routeId,
     required RoomSurfaceRef entrySurface,
     required SurfacePointMm entryPoint,

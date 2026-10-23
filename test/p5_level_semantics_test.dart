@@ -61,7 +61,8 @@ void main() {
       expect(_level(1).floorToFloorHeightMm, 3000);
     });
 
-    test('level semantics update preserves identity and structural coordinates', () {
+    test('level semantics update preserves identity and structural coordinates',
+        () {
       final level = ProjectLevelEntity(
         id: LevelId('level-technical'),
         buildingId: BuildingId('building-a'),
@@ -97,7 +98,8 @@ void main() {
       expect(result.changeSet.affectedEntityIds, contains(level.id));
     });
 
-    test('level semantics update rejects non-positive height before mutation', () {
+    test('level semantics update rejects non-positive height before mutation',
+        () {
       expect(
         () => UpdateLevelSemanticsCommand(
           levelId: LevelId('level-1'),

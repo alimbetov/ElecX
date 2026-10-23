@@ -14,11 +14,30 @@ enum PenetrationAnchorSide {
 /// One durable continuation point exposed on a visible surface.
 ///
 /// The entry and exit anchors of one penetration are created together and
-/// always keep the same [penetrationId] and [routeId]. The exit anchor can be
-/// rendered on the opposite surface as the start point for continuing the same
-/// logical route.
+/// always keep the same typed [penetrationId] and [routeId]. The exit anchor can
+/// be rendered on the opposite surface as the start point for continuing the
+/// same logical route.
 final class BoundaryPenetrationAnchor {
+  /// Legacy scalar compatibility boundary.
   BoundaryPenetrationAnchor({
+    required String id,
+    required String penetrationId,
+    required PenetrationAnchorSide side,
+    required RoomSurfaceRef surface,
+    required SurfacePointMm point,
+    required String routeId,
+  }) : this.typed(
+          id: id,
+          penetrationId: BoundaryPenetrationId(penetrationId),
+          side: side,
+          surface: surface,
+          point: point,
+          routeId: routeId,
+        );
+
+  /// Canonical constructor. New authoring must enter with an already allocated
+  /// or reserved typed penetration identity.
+  BoundaryPenetrationAnchor.typed({
     required this.id,
     required this.penetrationId,
     required this.side,
@@ -27,7 +46,7 @@ final class BoundaryPenetrationAnchor {
     required this.routeId,
   }) {
     if (id.isEmpty) throw ArgumentError('Penetration anchor id is required.');
-    if (penetrationId.isEmpty) {
+    if (penetrationId.trim().isEmpty) {
       throw ArgumentError('Penetration id is required.');
     }
     if (routeId.isEmpty) throw ArgumentError('Route id is required.');
@@ -39,7 +58,7 @@ final class BoundaryPenetrationAnchor {
   }
 
   final String id;
-  final String penetrationId;
+  final BoundaryPenetrationId penetrationId;
   final PenetrationAnchorSide side;
   final RoomSurfaceRef surface;
   final SurfacePointMm point;
@@ -61,7 +80,32 @@ final class BoundaryPenetrationAnchor {
 /// crossing to the stable multi-level routing volume. Direct slab crossings and
 /// legacy records may leave [verticalCoreId] null.
 final class BoundaryPenetration {
+  /// Compatibility constructor for persisted legacy scalar ids.
   BoundaryPenetration({
+    required String id,
+    required BoundaryPenetrationHostKind hostKind,
+    required BoundaryPenetrationAnchor entryAnchor,
+    required BoundaryPenetrationAnchor exitAnchor,
+    required int hostThicknessMm,
+    required double pathLengthMm,
+    String? materialId,
+    SlabId? slabId,
+    VerticalCoreId? verticalCoreId,
+  }) : this.typed(
+          id: BoundaryPenetrationId(id),
+          hostKind: hostKind,
+          entryAnchor: entryAnchor,
+          exitAnchor: exitAnchor,
+          hostThicknessMm: hostThicknessMm,
+          pathLengthMm: pathLengthMm,
+          materialId: materialId,
+          slabId: slabId,
+          verticalCoreId: verticalCoreId,
+        );
+
+  /// Canonical aggregate constructor. New authoring must use the already
+  /// allocated/reserved [BoundaryPenetrationId] without scalar reallocation.
+  BoundaryPenetration.typed({
     required this.id,
     required this.hostKind,
     required this.entryAnchor,
@@ -72,7 +116,9 @@ final class BoundaryPenetration {
     this.slabId,
     this.verticalCoreId,
   }) {
-    if (id.isEmpty) throw ArgumentError('Penetration id is required.');
+    if (id.trim().isEmpty) {
+      throw ArgumentError('Penetration id is required.');
+    }
     if (hostThicknessMm <= 0) {
       throw ArgumentError.value(
         hostThicknessMm,
@@ -125,6 +171,7 @@ final class BoundaryPenetration {
     _validateHostSurfaces();
   }
 
+  /// Low-level compatibility factory for scalar persisted identifiers.
   factory BoundaryPenetration.normal({
     required String id,
     required BoundaryPenetrationHostKind hostKind,
@@ -138,19 +185,47 @@ final class BoundaryPenetration {
     SlabId? slabId,
     VerticalCoreId? verticalCoreId,
   }) =>
-      BoundaryPenetration(
+      BoundaryPenetration.normalTyped(
+        id: BoundaryPenetrationId(id),
+        hostKind: hostKind,
+        entrySurface: entrySurface,
+        entryPoint: entryPoint,
+        exitSurface: exitSurface,
+        exitPoint: exitPoint,
+        hostThicknessMm: hostThicknessMm,
+        routeId: routeId,
+        materialId: materialId,
+        slabId: slabId,
+        verticalCoreId: verticalCoreId,
+      );
+
+  /// Canonical low-level factory using a preallocated typed identity.
+  factory BoundaryPenetration.normalTyped({
+    required BoundaryPenetrationId id,
+    required BoundaryPenetrationHostKind hostKind,
+    required RoomSurfaceRef entrySurface,
+    required SurfacePointMm entryPoint,
+    required RoomSurfaceRef exitSurface,
+    required SurfacePointMm exitPoint,
+    required int hostThicknessMm,
+    required String routeId,
+    String? materialId,
+    SlabId? slabId,
+    VerticalCoreId? verticalCoreId,
+  }) =>
+      BoundaryPenetration.typed(
         id: id,
         hostKind: hostKind,
-        entryAnchor: BoundaryPenetrationAnchor(
-          id: '$id:entry',
+        entryAnchor: BoundaryPenetrationAnchor.typed(
+          id: '${id.value}:entry',
           penetrationId: id,
           side: PenetrationAnchorSide.entry,
           surface: entrySurface,
           point: entryPoint,
           routeId: routeId,
         ),
-        exitAnchor: BoundaryPenetrationAnchor(
-          id: '$id:exit',
+        exitAnchor: BoundaryPenetrationAnchor.typed(
+          id: '${id.value}:exit',
           penetrationId: id,
           side: PenetrationAnchorSide.exit,
           surface: exitSurface,
@@ -164,10 +239,7 @@ final class BoundaryPenetration {
         verticalCoreId: verticalCoreId,
       );
 
-  /// Creates a new canonical slab penetration with stable physical host
-  /// identity. Legacy slab penetrations without [SlabId] must not use this
-  /// factory. [verticalCoreId] is supplied only when this crossing belongs to a
-  /// canonical riser/shaft path.
+  /// Compatibility factory for persisted/legacy scalar ids.
   factory BoundaryPenetration.slab({
     required String id,
     required SlabId slabId,
@@ -180,7 +252,33 @@ final class BoundaryPenetration {
     String? materialId,
     VerticalCoreId? verticalCoreId,
   }) =>
-      BoundaryPenetration.normal(
+      BoundaryPenetration.slabTyped(
+        id: BoundaryPenetrationId(id),
+        slabId: slabId,
+        entrySurface: entrySurface,
+        entryPoint: entryPoint,
+        exitSurface: exitSurface,
+        exitPoint: exitPoint,
+        hostThicknessMm: hostThicknessMm,
+        routeId: routeId,
+        materialId: materialId,
+        verticalCoreId: verticalCoreId,
+      );
+
+  /// Canonical slab factory. Slab authoring cannot regress to a scalar id.
+  factory BoundaryPenetration.slabTyped({
+    required BoundaryPenetrationId id,
+    required SlabId slabId,
+    required RoomSurfaceRef entrySurface,
+    required SurfacePointMm entryPoint,
+    required RoomSurfaceRef exitSurface,
+    required SurfacePointMm exitPoint,
+    required int hostThicknessMm,
+    required String routeId,
+    String? materialId,
+    VerticalCoreId? verticalCoreId,
+  }) =>
+      BoundaryPenetration.normalTyped(
         id: id,
         hostKind: BoundaryPenetrationHostKind.slab,
         entrySurface: entrySurface,
@@ -194,7 +292,7 @@ final class BoundaryPenetration {
         verticalCoreId: verticalCoreId,
       );
 
-  final String id;
+  final BoundaryPenetrationId id;
   final BoundaryPenetrationHostKind hostKind;
   final BoundaryPenetrationAnchor entryAnchor;
   final BoundaryPenetrationAnchor exitAnchor;
@@ -276,8 +374,30 @@ final class BoundaryPenetrationRequirement {
   final SlabId? slabId;
   final VerticalCoreId? verticalCoreId;
 
+  /// Legacy scalar compatibility boundary.
   BoundaryPenetration create({
     required String penetrationId,
+    required String routeId,
+    required RoomSurfaceRef entrySurface,
+    required SurfacePointMm entryPoint,
+    required RoomSurfaceRef exitSurface,
+    required SurfacePointMm exitPoint,
+    int? thicknessMm,
+  }) =>
+      createTyped(
+        penetrationId: BoundaryPenetrationId(penetrationId),
+        routeId: routeId,
+        entrySurface: entrySurface,
+        entryPoint: entryPoint,
+        exitSurface: exitSurface,
+        exitPoint: exitPoint,
+        thicknessMm: thicknessMm,
+      );
+
+  /// Canonical authoring boundary. The durable identity must already be
+  /// allocated/reserved before the physical penetration is materialized.
+  BoundaryPenetration createTyped({
+    required BoundaryPenetrationId penetrationId,
     required String routeId,
     required RoomSurfaceRef entrySurface,
     required SurfacePointMm entryPoint,
@@ -302,7 +422,7 @@ final class BoundaryPenetrationRequirement {
         'VerticalCoreId is only valid for a slab penetration requirement.',
       );
     }
-    return BoundaryPenetration.normal(
+    return BoundaryPenetration.normalTyped(
       id: penetrationId,
       hostKind: hostKind,
       entrySurface: entrySurface,

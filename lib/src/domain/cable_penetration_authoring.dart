@@ -1,5 +1,6 @@
 import 'boundary_penetration.dart';
 import 'electrical_routing.dart';
+import 'project_identity.dart';
 import 'route_medium.dart';
 import 'surface_transition_graph.dart';
 import 'surfaces.dart';
@@ -11,7 +12,7 @@ typedef RouteTransitionResolver = SurfaceTransitionCandidate? Function(
   SurfacePointMm toPoint,
 );
 
-typedef PenetrationIdFactory = String Function(
+typedef PenetrationIdFactory = BoundaryPenetrationId Function(
   int transitionIndex,
   SurfaceTransitionCandidate transition,
 );
@@ -45,7 +46,7 @@ abstract final class CablePenetrationAuthoring {
     }
 
     final penetrations = <BoundaryPenetration>[];
-    final penetrationIds = <String>{};
+    final penetrationIds = <BoundaryPenetrationId>{};
     for (var index = 0; index + 1 < segments.length; index++) {
       final before = segments[index];
       final after = segments[index + 1];
@@ -73,15 +74,15 @@ abstract final class CablePenetrationAuthoring {
       _requireExactTransition(transition, before, after);
       if (!transition.requiresPenetration) continue;
 
-      final penetrationId = penetrationIdFactory(index, transition).trim();
-      if (penetrationId.isEmpty) {
+      final penetrationId = penetrationIdFactory(index, transition);
+      if (penetrationId.trim().isEmpty) {
         throw StateError('Penetration id factory returned an empty id.');
       }
       if (!penetrationIds.add(penetrationId)) {
         throw StateError('Duplicate penetration id $penetrationId.');
       }
       penetrations.add(
-        transition.createPenetration(
+        transition.createPenetrationTyped(
           penetrationId: penetrationId,
           routeId: routeId,
         ),

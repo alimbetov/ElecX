@@ -8,13 +8,16 @@ void main() {
     test('preserve legacy non-empty values without changing identity text', () {
       final projectId = ProjectId('legacy-project-42');
       final siteId = SiteId('site-legacy-project-42');
+      final penetrationId = BoundaryPenetrationId('legacy-penetration-42');
 
       expect(projectId.value, 'legacy-project-42');
       expect(siteId.value, 'site-legacy-project-42');
       expect(projectId.toString(), 'legacy-project-42');
+      expect(penetrationId.value, 'legacy-penetration-42');
+      expect(penetrationId, 'legacy-penetration-42');
     });
 
-    test('reject empty and whitespace-only values', () {
+    test('reject empty and whitespace-only entity values', () {
       expect(() => ProjectId(''), throwsArgumentError);
       expect(() => LevelId('   '), throwsArgumentError);
     });
@@ -54,21 +57,28 @@ void main() {
         factory.newTypicalFloorDefinitionId(),
         factory.newEngineeringConnectionId(),
       ];
+      final penetrationId = factory.newBoundaryPenetrationId();
 
       expect(ids.every((id) => uuidV4.hasMatch(id.value)), isTrue);
       expect(ids.map((id) => id.value).toSet().length, ids.length);
+      expect(uuidV4.hasMatch(penetrationId.value), isTrue);
     });
 
     test('successive allocations produce distinct stable value objects', () {
       final factory = SecureRandomEntityIdFactory(random: Random(7));
       final first = factory.newLevelId();
       final second = factory.newLevelId();
+      final firstPenetration = factory.newBoundaryPenetrationId();
+      final secondPenetration = factory.newBoundaryPenetrationId();
 
       expect(first, isNot(second));
       expect(first.value.length, 36);
       expect(second.value.length, 36);
       expect(LevelId(first.value), first);
       expect(LevelId(second.value), second);
+      expect(firstPenetration, isNot(secondPenetration));
+      expect(firstPenetration.value.length, 36);
+      expect(secondPenetration.value.length, 36);
     });
   });
 }

@@ -191,7 +191,7 @@ final class SlabTopologyIssue {
 abstract final class SlabTopologyValidator {
   static List<SlabTopologyIssue> validate(Map<SlabId, ProjectSlab> slabs) {
     final issues = <SlabTopologyIssue>[];
-    final levelPairs = <String, SlabId>{};
+    final levelPairs = <_SlabLevelPairKey, SlabId>{};
 
     for (final entry in slabs.entries) {
       final slab = entry.value;
@@ -243,6 +243,33 @@ final class SlabTopologyValidationException implements Exception {
   String toString() => 'Invalid slab topology:\n${issues.join('\n')}';
 }
 
+final class _SlabLevelPairKey {
+  const _SlabLevelPairKey({
+    required this.buildingId,
+    required this.belowLevelId,
+    required this.aboveLevelId,
+  });
+
+  final BuildingId buildingId;
+  final LevelId? belowLevelId;
+  final LevelId? aboveLevelId;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _SlabLevelPairKey &&
+      other.buildingId == buildingId &&
+      other.belowLevelId == belowLevelId &&
+      other.aboveLevelId == aboveLevelId;
+
+  @override
+  int get hashCode => Object.hash(buildingId, belowLevelId, aboveLevelId);
+
+  @override
+  String toString() => '${buildingId.value}|'
+      '${belowLevelId?.value ?? '<exterior>'}|'
+      '${aboveLevelId?.value ?? '<exterior>'}';
+}
+
 int _signedDoubleArea(List<BoundaryPointMm> points) {
   var area = 0;
   for (var index = 0; index < points.length; index++) {
@@ -253,6 +280,8 @@ int _signedDoubleArea(List<BoundaryPointMm> points) {
   return area;
 }
 
-String _levelPairKey(ProjectSlab slab) =>
-    '${slab.buildingId.value}|${slab.belowLevelId?.value ?? 'exterior'}|'
-    '${slab.aboveLevelId?.value ?? 'exterior'}';
+_SlabLevelPairKey _levelPairKey(ProjectSlab slab) => _SlabLevelPairKey(
+      buildingId: slab.buildingId,
+      belowLevelId: slab.belowLevelId,
+      aboveLevelId: slab.aboveLevelId,
+    );

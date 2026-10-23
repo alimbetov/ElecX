@@ -147,6 +147,58 @@ void main() {
       );
     });
 
+    test('create rejects a core that skips an intermediate physical level', () {
+      final fixture = _Fixture();
+      final project = fixture.project();
+      final discontinuous = fixture.core(
+        levelIds: [fixture.level1Id, fixture.level3Id],
+      );
+
+      expect(
+        () => CreateVerticalCoreCommand(verticalCore: discontinuous)
+            .buildCandidate(project),
+        throwsA(
+          isA<ProjectAuthoringException>().having(
+            (error) => error.code,
+            'code',
+            ProjectAuthoringIssueCode.verticalCoreNonContiguousLevelRange,
+          ),
+        ),
+      );
+    });
+
+    test('physical continuity ignores level set order and presentation number',
+        () {
+      final fixture = _Fixture();
+      final project = fixture.project(scrambledLevelNumbers: true);
+      final reversedContiguous = fixture.core(
+        levelIds: [fixture.level3Id, fixture.level2Id],
+      );
+
+      expect(
+        () => CreateVerticalCoreCommand(verticalCore: reversedContiguous)
+            .buildCandidate(project),
+        returnsNormally,
+      );
+    });
+
+    test('create fails closed when physical level order is ambiguous', () {
+      final fixture = _Fixture();
+      final project = fixture.project(duplicateElevation: true);
+
+      expect(
+        () => CreateVerticalCoreCommand(verticalCore: fixture.core())
+            .buildCandidate(project),
+        throwsA(
+          isA<ProjectAuthoringException>().having(
+            (error) => error.code,
+            'code',
+            ProjectAuthoringIssueCode.verticalCoreAmbiguousPhysicalLevelOrder,
+          ),
+        ),
+      );
+    });
+
     test('stale expected version rejects VerticalCore mutation', () {
       final fixture = _Fixture();
       final session = ProjectMutationSession(fixture.project());
@@ -176,11 +228,13 @@ final class _Fixture {
   final BuildingId buildingId = BuildingId('building');
   final LevelId level1Id = LevelId('level-01');
   final LevelId level2Id = LevelId('level-02');
+  final LevelId level3Id = LevelId('level-03');
   final VerticalCoreId coreId = VerticalCoreId('core-01');
 
   ProjectVerticalCore core({
     VerticalCoreKind kind = VerticalCoreKind.riser,
     String? name = 'Riser 1',
+    Iterable<LevelId>? levelIds,
     List<BoundaryPointMm> footprint = const [
       BoundaryPointMm(xMm: 1000, yMm: 1000),
       BoundaryPointMm(xMm: 1400, yMm: 1000),
@@ -192,13 +246,15 @@ final class _Fixture {
         id: coreId,
         buildingId: buildingId,
         kind: kind,
-        levelIds: [level1Id, level2Id],
+        levelIds: levelIds ?? [level1Id, level2Id],
         footprint: footprint,
         name: name,
       );
 
   ProjectAggregateRoot project({
     Map<VerticalCoreId, ProjectVerticalCore> verticalCores = const {},
+    bool duplicateElevation = false,
+    bool scrambledLevelNumbers = false,
   }) =>
       ProjectAggregateRoot(
         id: projectId,
@@ -217,7 +273,7 @@ final class _Fixture {
               id: buildingId,
               siteId: siteId,
               name: 'Building',
-              levelIds: [level1Id, level2Id],
+              levelIds: [level1Id, level2Id, level3Id],
             ),
           },
           levels: {
@@ -225,15 +281,22 @@ final class _Fixture {
               id: level1Id,
               buildingId: buildingId,
               name: 'Level 1',
-              levelNumber: 1,
+              levelNumber: scrambledLevelNumbers ? 30 : 1,
               elevationMm: 0,
             ),
             level2Id: ProjectLevelEntity(
               id: level2Id,
               buildingId: buildingId,
               name: 'Level 2',
-              levelNumber: 2,
-              elevationMm: 3200,
+              levelNumber: scrambledLevelNumbers ? -2 : 2,
+              elevationMm: duplicateElevation ? 0 : 3200,
+            ),
+            level3Id: ProjectLevelEntity(
+              id: level3Id,
+              buildingId: buildingId,
+              name: 'Level 3',
+              levelNumber: scrambledLevelNumbers ? 7 : 3,
+              elevationMm: 6400,
             ),
           },
           verticalCores: verticalCores,

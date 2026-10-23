@@ -1,7 +1,9 @@
+import '../../application/project/project_mutation_reservation.dart';
 import '../../domain/boundary_penetration.dart';
 import '../../domain/cable_penetration_authoring.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/electrical_routing.dart';
+import '../../domain/project_identity.dart';
 import '../../domain/surface_routing.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/editor_layers.dart';
@@ -124,13 +126,15 @@ extension PhysicalManualCableDraftPersistence on EditorController {
   /// Commits a continuation by replacing the original aggregate with the same
   /// route id in one P2 history command.
   ///
-  /// The extension preserves the original route's surface-identity regime. A
-  /// legacy route remains legacy. A canonical route converts transient canvas
-  /// ordinals back to canonical SpaceId/BoundaryEdgeId immediately before the
-  /// durable aggregate is constructed.
+  /// All new durable identities are reserved before candidate materialization.
+  /// Resolver/candidate construction may run arbitrary validation, but the
+  /// commit path never allocates replacement identities. Exact P2 revision and
+  /// canonical session/version affinity are rechecked after materialization so
+  /// a re-entrant or stale preview fails closed.
   bool finishPhysicalRouteContinuation({
     required RouteTransitionResolver resolveTransition,
     int endpointSnapRadiusMm = 180,
+    EntityIdFactory? identityFactory,
   }) {
     final intent = _continuationIntents[this];
     if (intent == null ||
@@ -202,15 +206,51 @@ extension PhysicalManualCableDraftPersistence on EditorController {
       return false;
     }
 
-    final extensionSegments = <ElectricalRouteSegment>[];
+    final extensionDraftIndexes = <int>[];
+    final entitySlots = <String, ReservedEntityIdKind>{};
     for (var index = 0; index < routeSegments.length; index++) {
       final draft = routeSegments[index];
       if (draft.points.isEmpty) return false;
-      // The first draft point is the already committed route endpoint. A
-      // one-point first segment carries no visible extension and is omitted so
-      // we do not manufacture a zero-length durable segment.
       if (index == 0 && draft.points.length == 1) continue;
       if (draft.points.length < 2) return false;
+      extensionDraftIndexes.add(index);
+      if (canonicalSession != null) {
+        for (var pointIndex = 0;
+            pointIndex < draft.points.length;
+            pointIndex++) {
+          entitySlots[_routeAnchorSlot(index, pointIndex)] =
+              ReservedEntityIdKind.routeAnchor;
+        }
+      }
+    }
+    if (extensionDraftIndexes.isEmpty) return false;
+
+    final firstNewTransitionIndex = before.segments.length - 1;
+    final totalSegmentCount =
+        before.segments.length + extensionDraftIndexes.length;
+    final penetrationSlots = <String>[
+      for (var index = firstNewTransitionIndex;
+          index + 1 < totalSegmentCount;
+          index++)
+        _penetrationSlot(index),
+    ];
+
+    late final MutationIdentityReservation reservation;
+    try {
+      reservation = MutationIdentityReservation.allocate(
+        factory: identityFactory ?? SecureRandomEntityIdFactory(),
+        entitySlots: entitySlots,
+        boundaryPenetrationSlots: penetrationSlots,
+      );
+    } on ArgumentError {
+      return false;
+    } on StateError {
+      return false;
+    }
+
+    final extensionSegments = <ElectricalRouteSegment>[];
+    for (final index in extensionDraftIndexes) {
+      final draft = routeSegments[index];
       final routeSurface = _surfaceForRouteIdentity(
         draft.surface,
         routingContext,
@@ -224,13 +264,16 @@ extension PhysicalManualCableDraftPersistence on EditorController {
           anchorIds: canonicalSession == null
               ? const []
               : List.unmodifiable([
-                  for (final _ in draft.points)
-                    canonicalSession.allocateRouteAnchorId(),
+                  for (var pointIndex = 0;
+                      pointIndex < draft.points.length;
+                      pointIndex++)
+                    reservation.entityId<RouteAnchorId>(
+                      _routeAnchorSlot(index, pointIndex),
+                    ),
                 ]),
         ),
       );
     }
-    if (extensionSegments.isEmpty) return false;
 
     final segments = <ElectricalRouteSegment>[
       ...before.segments,
@@ -238,8 +281,6 @@ extension PhysicalManualCableDraftPersistence on EditorController {
     ];
     final penetrations = <BoundaryPenetration>[...before.penetrations];
     final penetrationIds = penetrations.map((item) => item.id).toSet();
-    var penetrationSequence = penetrations.length;
-    final firstNewTransitionIndex = before.segments.length - 1;
     try {
       for (var index = firstNewTransitionIndex;
           index + 1 < segments.length;
@@ -266,12 +307,9 @@ extension PhysicalManualCableDraftPersistence on EditorController {
         }
         if (!transition.requiresPenetration) continue;
 
-        String penetrationId;
-        do {
-          penetrationId = '${before.id}:penetration:$penetrationSequence';
-          penetrationSequence++;
-        } while (penetrationIds.contains(penetrationId));
-        penetrationIds.add(penetrationId);
+        final penetrationId =
+            reservation.penetrationId(_penetrationSlot(index));
+        if (!penetrationIds.add(penetrationId)) return false;
         penetrations.add(
           transition.createPenetration(
             penetrationId: penetrationId,
@@ -301,6 +339,15 @@ extension PhysicalManualCableDraftPersistence on EditorController {
       return false;
     }
 
+    final currentCanonicalSession =
+        CanonicalRoomSurfaceRuntimeRegistry.coordinatorFor(this)?.session;
+    if (p2.history.mutationRevision != intent.p2MutationRevision ||
+        !identical(currentCanonicalSession, intent.canonicalSessionIdentity) ||
+        currentCanonicalSession?.project.version.value !=
+            intent.canonicalProjectVersion) {
+      return false;
+    }
+
     if (!p2.replacePhysicalCableRoute(
       before: before,
       after: after,
@@ -320,14 +367,16 @@ extension PhysicalManualCableDraftPersistence on EditorController {
 
   /// Commits the current manual cable draft as one physical route aggregate.
   ///
-  /// Cross-surface transitions are never inferred from adjacency alone. The
-  /// supplied resolver must prove each transition; wall/slab crossings must
-  /// also provide construction thickness so CablePenetrationAuthoring can
-  /// materialize BoundaryPenetration records before history commit.
+  /// Cross-surface transitions are never inferred from adjacency alone. All
+  /// durable route-anchor and penetration identities are reserved before the
+  /// candidate is materialized. Commit then revalidates the exact P2 revision
+  /// and canonical session/version and publishes that frozen candidate without
+  /// invoking the allocator a second time.
   bool finishPhysicalManualCableDraft({
     required RouteTransitionResolver resolveTransition,
     String? routeId,
     int endpointSnapRadiusMm = 180,
+    EntityIdFactory? identityFactory,
   }) {
     if (tool != EditorTool.cableRoute ||
         routeSegments.isEmpty ||
@@ -340,6 +389,10 @@ extension PhysicalManualCableDraftPersistence on EditorController {
       return false;
     }
 
+    final observedP2Revision = p2.history.mutationRevision;
+    final canonicalSession =
+        CanonicalRoomSurfaceRuntimeRegistry.coordinatorFor(this)?.session;
+    final canonicalProjectVersion = canonicalSession?.project.version.value;
     final firstDraft = routeSegments.first;
     final lastDraft = routeSegments.last;
     final source = _nearestPhysicalEndpoint(
@@ -361,8 +414,40 @@ extension PhysicalManualCableDraftPersistence on EditorController {
     );
     if (target == null) return false;
 
-    final canonicalSession =
-        CanonicalRoomSurfaceRuntimeRegistry.coordinatorFor(this)?.session;
+    final entitySlots = <String, ReservedEntityIdKind>{};
+    if (canonicalSession != null) {
+      for (var segmentIndex = 0;
+          segmentIndex < routeSegments.length;
+          segmentIndex++) {
+        final draft = routeSegments[segmentIndex];
+        for (var pointIndex = 0;
+            pointIndex < draft.points.length;
+            pointIndex++) {
+          entitySlots[_routeAnchorSlot(segmentIndex, pointIndex)] =
+              ReservedEntityIdKind.routeAnchor;
+        }
+      }
+    }
+    final penetrationSlots = <String>[
+      for (var transitionIndex = 0;
+          transitionIndex + 1 < routeSegments.length;
+          transitionIndex++)
+        _penetrationSlot(transitionIndex),
+    ];
+
+    late final MutationIdentityReservation reservation;
+    try {
+      reservation = MutationIdentityReservation.allocate(
+        factory: identityFactory ?? SecureRandomEntityIdFactory(),
+        entitySlots: entitySlots,
+        boundaryPenetrationSlots: penetrationSlots,
+      );
+    } on ArgumentError {
+      return false;
+    } on StateError {
+      return false;
+    }
+
     final segments = <ElectricalRouteSegment>[];
     for (var index = 0; index < routeSegments.length; index++) {
       final draft = routeSegments[index];
@@ -378,8 +463,12 @@ extension PhysicalManualCableDraftPersistence on EditorController {
           anchorIds: canonicalSession == null
               ? const []
               : List.unmodifiable([
-                  for (final _ in points)
-                    canonicalSession.allocateRouteAnchorId(),
+                  for (var pointIndex = 0;
+                      pointIndex < points.length;
+                      pointIndex++)
+                    reservation.entityId<RouteAnchorId>(
+                      _routeAnchorSlot(index, pointIndex),
+                    ),
                 ]),
         ),
       );
@@ -403,11 +492,20 @@ extension PhysicalManualCableDraftPersistence on EditorController {
         segments: List.unmodifiable(segments),
         resolveTransition: resolveTransition,
         penetrationIdFactory: (transitionIndex, transition) =>
-            '$resolvedRouteId:penetration:$transitionIndex',
+            reservation.penetrationId(_penetrationSlot(transitionIndex)),
       );
     } on ArgumentError {
       return false;
     } on StateError {
+      return false;
+    }
+
+    final currentCanonicalSession =
+        CanonicalRoomSurfaceRuntimeRegistry.coordinatorFor(this)?.session;
+    if (p2.history.mutationRevision != observedP2Revision ||
+        !identical(currentCanonicalSession, canonicalSession) ||
+        currentCanonicalSession?.project.version.value !=
+            canonicalProjectVersion) {
       return false;
     }
 
@@ -417,6 +515,12 @@ extension PhysicalManualCableDraftPersistence on EditorController {
     return true;
   }
 }
+
+String _routeAnchorSlot(int segmentIndex, int pointIndex) =>
+    'route-anchor:$segmentIndex:$pointIndex';
+
+String _penetrationSlot(int transitionIndex) =>
+    'boundary-penetration:$transitionIndex';
 
 bool _usesCanonicalSurfaceIdentity(
   RoomSurfaceRef surface,

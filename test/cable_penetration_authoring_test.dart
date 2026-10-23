@@ -48,19 +48,23 @@ void main() {
           ),
         );
 
-    test('materializes wall penetration into one route aggregate', () {
+    test('materializes typed wall penetration into one route aggregate', () {
       final route = CablePenetrationAuthoring.build(
         routeId: 'route-1',
         source: const ElectricalEndpointRef(componentId: 'a', portId: 'out'),
         target: const ElectricalEndpointRef(componentId: 'b', portId: 'in'),
         segments: segments,
         resolveTransition: (_, __, ___, ____) => wallTransition(),
-        penetrationIdFactory: (index, transition) => 'route-1:p$index',
+        penetrationIdFactory: (index, transition) =>
+            BoundaryPenetrationId('route-1:p$index'),
       );
 
       expect(route.penetrations, hasLength(1));
       final penetration = route.penetrations.single;
-      expect(penetration.id, 'route-1:p0');
+      final penetrationId = BoundaryPenetrationId('route-1:p0');
+      expect(penetration.id, penetrationId);
+      expect(penetration.entryAnchor.penetrationId, penetrationId);
+      expect(penetration.exitAnchor.penetrationId, penetrationId);
       expect(penetration.routeId, 'route-1');
       expect(penetration.hostThicknessMm, 180);
       expect(penetration.materialId, 'brick');
@@ -68,6 +72,31 @@ void main() {
       expect(penetration.exitAnchor.surface, wallB);
       expect(penetration.exitAnchor.isContinuationStart, isTrue);
       expect(route.hiddenPenetrationLengthMm, 180);
+    });
+
+    test('same geometry can allocate two distinct penetration identities', () {
+      ElectricalCableRoute build(String rawId) =>
+          CablePenetrationAuthoring.build(
+            routeId: 'route-1',
+            source: const ElectricalEndpointRef(
+              componentId: 'a',
+              portId: 'out',
+            ),
+            target: const ElectricalEndpointRef(
+              componentId: 'b',
+              portId: 'in',
+            ),
+            segments: segments,
+            resolveTransition: (_, __, ___, ____) => wallTransition(),
+            penetrationIdFactory: (_, __) => BoundaryPenetrationId(rawId),
+          );
+
+      final first = build('penetration-a').penetrations.single;
+      final second = build('penetration-b').penetrations.single;
+
+      expect(first.entryAnchor.point, second.entryAnchor.point);
+      expect(first.exitAnchor.point, second.exitAnchor.point);
+      expect(first.id, isNot(second.id));
     });
 
     test('missing construction thickness rejects the whole route', () {
@@ -79,7 +108,8 @@ void main() {
           segments: segments,
           resolveTransition: (_, __, ___, ____) =>
               wallTransition(thicknessMm: null),
-          penetrationIdFactory: (index, transition) => 'route-1:p$index',
+          penetrationIdFactory: (index, transition) =>
+              BoundaryPenetrationId('route-1:p$index'),
         ),
         throwsStateError,
       );
@@ -93,7 +123,8 @@ void main() {
           target: const ElectricalEndpointRef(componentId: 'b', portId: 'in'),
           segments: segments,
           resolveTransition: (_, __, ___, ____) => null,
-          penetrationIdFactory: (index, transition) => 'route-1:p$index',
+          penetrationIdFactory: (index, transition) =>
+              BoundaryPenetrationId('route-1:p$index'),
         ),
         throwsStateError,
       );
@@ -120,7 +151,8 @@ void main() {
           target: const ElectricalEndpointRef(componentId: 'b', portId: 'in'),
           segments: segments,
           resolveTransition: (_, __, ___, ____) => invalid,
-          penetrationIdFactory: (index, transition) => 'route-1:p$index',
+          penetrationIdFactory: (index, transition) =>
+              BoundaryPenetrationId('route-1:p$index'),
         ),
         throwsStateError,
       );

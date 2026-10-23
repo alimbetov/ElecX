@@ -46,6 +46,9 @@ abstract final class CanonicalSlabTransitionResolver {
     if (canonicalFromLevel.buildingId != canonicalToLevel.buildingId) {
       return null;
     }
+    if (!_containsMaterializedLevels(buildingLevels, fromLevel, toLevel)) {
+      return null;
+    }
 
     final lowerLevel =
         canonicalFromLevel.elevationMm < canonicalToLevel.elevationMm
@@ -73,17 +76,32 @@ abstract final class CanonicalSlabTransitionResolver {
     }
     if (slab == null) return null;
 
+    // The editor still materializes legacy BuildingLevel ids, while ProjectSlab
+    // owns canonical LevelId references. Projecting the already-proven
+    // canonical identities onto the materialized geometry keeps those two
+    // identity domains explicit: canonical ids prove topology; legacy objects
+    // contribute geometry only. No adjacency or slab ownership is fabricated.
+    final projectedFromLevel = _withCanonicalIdentity(
+      fromLevel,
+      canonicalFromLevel.id,
+    );
+    final projectedToLevel = _withCanonicalIdentity(
+      toLevel,
+      canonicalToLevel.id,
+    );
+
     final geometric = SurfaceTransitionGraph.levelPenetration(
-      buildingLevels: buildingLevels,
-      fromLevel: fromLevel,
+      buildingLevels: [projectedFromLevel, projectedToLevel],
+      fromLevel: projectedFromLevel,
       fromSpace: fromSpace,
       fromSurface: fromSurface,
       point: point,
       fromRoomHeightMm: fromRoomHeightMm,
-      toLevel: toLevel,
+      toLevel: projectedToLevel,
       toSpace: toSpace,
       toRoomHeightMm: toRoomHeightMm,
       slabThicknessMm: slab.thicknessMm,
+      slab: slab,
       verticalToleranceMm: verticalToleranceMm,
       materialId: slab.materialId,
     );
@@ -106,5 +124,30 @@ abstract final class CanonicalSlabTransitionResolver {
         slabId: slab.id,
       ),
     );
+  }
+
+  static BuildingLevel _withCanonicalIdentity(
+    BuildingLevel materialized,
+    LevelId canonicalId,
+  ) =>
+      BuildingLevel(
+        id: canonicalId.value,
+        name: materialized.name,
+        elevationMm: materialized.elevationMm,
+        spaces: materialized.spaces,
+      );
+
+  static bool _containsMaterializedLevels(
+    Iterable<BuildingLevel> levels,
+    BuildingLevel fromLevel,
+    BuildingLevel toLevel,
+  ) {
+    var fromMatches = 0;
+    var toMatches = 0;
+    for (final level in levels) {
+      if (level.id == fromLevel.id) fromMatches++;
+      if (level.id == toLevel.id) toMatches++;
+    }
+    return fromMatches == 1 && toMatches == 1;
   }
 }

@@ -1,8 +1,10 @@
 import 'package:elecx/src/domain/adjacent_room.dart';
 import 'package:elecx/src/domain/boundary_penetration.dart';
+import 'package:elecx/src/domain/boundary_topology.dart';
 import 'package:elecx/src/domain/geometry.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_model.dart';
+import 'package:elecx/src/domain/slab_topology.dart';
 import 'package:elecx/src/domain/surface_transition_graph.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
@@ -109,10 +111,14 @@ void main() {
     expect(roomTransition.requiresPenetration, isTrue);
     expect(roomTransition.toPoint.yMm, 1200);
 
+    final penetrationId = BoundaryPenetrationId('penetration-1');
     final penetration = roomTransition.createPenetration(
-      penetrationId: 'penetration-1',
+      penetrationId: penetrationId,
       routeId: 'cable-route-1',
     );
+    expect(penetration.id, penetrationId);
+    expect(penetration.entryAnchor.penetrationId, penetrationId);
+    expect(penetration.exitAnchor.penetrationId, penetrationId);
     expect(penetration.hostKind, BoundaryPenetrationHostKind.wall);
     expect(penetration.hostThicknessMm, 180);
     expect(penetration.routeLengthContributionMm, 180);
@@ -126,8 +132,7 @@ void main() {
     );
   });
 
-  test(
-      'ceiling to upper floor proves geometry but cannot commit without SlabId',
+  test('level penetration fails closed without exact canonical slab evidence',
       () {
     final lowerSpace = EngineeringSpace(
       id: 'lower-room',
@@ -170,17 +175,123 @@ void main() {
       materialId: 'reinforced-concrete',
     );
 
+    expect(candidate, isNull);
+  });
+
+  test('canonical inter-level slab proves typed penetration continuation', () {
+    final lowerSpace = EngineeringSpace(
+      id: 'lower-room',
+      name: 'Lower room',
+      type: SpaceType.room,
+      boundary: controllerRoomBoundary(),
+      referenceFrame: const RoomReferenceFrame(origin: MmPoint(0, 0)),
+    );
+    final upperSpace = EngineeringSpace(
+      id: 'upper-room',
+      name: 'Upper room',
+      type: SpaceType.room,
+      boundary: controllerRoomBoundary(),
+      referenceFrame: const RoomReferenceFrame(origin: MmPoint(0, 0)),
+    );
+    final lower = BuildingLevel(
+      id: 'L1',
+      name: 'Level 1',
+      elevationMm: 0,
+      spaces: [lowerSpace],
+    );
+    final upper = BuildingLevel(
+      id: 'L2',
+      name: 'Level 2',
+      elevationMm: 3220,
+      spaces: [upperSpace],
+    );
+    final slab = _interLevelSlab(
+      id: 'slab-L1-L2',
+      belowLevelId: 'L1',
+      aboveLevelId: 'L2',
+      bottomElevationMm: 3000,
+      thicknessMm: 220,
+    );
+
+    final candidate = SurfaceTransitionGraph.levelPenetration(
+      buildingLevels: [lower, upper],
+      fromLevel: lower,
+      fromSpace: lowerSpace,
+      fromSurface: RoomSurfaceRef.ceiling(lowerSpace.id),
+      point: const SurfacePointMm(1500, 1000),
+      fromRoomHeightMm: 3000,
+      toLevel: upper,
+      toSpace: upperSpace,
+      toRoomHeightMm: 3000,
+      slabThicknessMm: 220,
+      slab: slab,
+      materialId: 'reinforced-concrete',
+    );
+
     expect(candidate, isNotNull);
     expect(candidate!.kind, SurfaceTransitionKind.levelPenetration);
-    expect(candidate.requiresPenetration, isTrue);
-    expect(candidate.toSurface, RoomSurfaceRef.floor(upperSpace.id));
-    expect(
-      () => candidate.createPenetration(
-        penetrationId: 'slab-penetration-1',
-        routeId: 'route-up',
-      ),
-      throwsStateError,
+    expect(candidate.penetrationRequirement!.slabId, slab.id);
+    final penetrationId = BoundaryPenetrationId('slab-penetration-1');
+    final penetration = candidate.createPenetration(
+      penetrationId: penetrationId,
+      routeId: 'route-up',
     );
+    expect(penetration.id, penetrationId);
+    expect(penetration.slabId, slab.id);
+    expect(penetration.entryAnchor.penetrationId, penetrationId);
+    expect(penetration.exitAnchor.penetrationId, penetrationId);
+  });
+
+  test('wrong canonical slab adjacency is rejected fail closed', () {
+    final lowerSpace = EngineeringSpace(
+      id: 'lower-room',
+      name: 'Lower room',
+      type: SpaceType.room,
+      boundary: controllerRoomBoundary(),
+      referenceFrame: const RoomReferenceFrame(origin: MmPoint(0, 0)),
+    );
+    final upperSpace = EngineeringSpace(
+      id: 'upper-room',
+      name: 'Upper room',
+      type: SpaceType.room,
+      boundary: controllerRoomBoundary(),
+      referenceFrame: const RoomReferenceFrame(origin: MmPoint(0, 0)),
+    );
+    final lower = BuildingLevel(
+      id: 'L1',
+      name: 'Level 1',
+      elevationMm: 0,
+      spaces: [lowerSpace],
+    );
+    final upper = BuildingLevel(
+      id: 'L2',
+      name: 'Level 2',
+      elevationMm: 3220,
+      spaces: [upperSpace],
+    );
+    final foreignSlab = _interLevelSlab(
+      id: 'slab-L1-L3',
+      belowLevelId: 'L1',
+      aboveLevelId: 'L3',
+      bottomElevationMm: 3000,
+      thicknessMm: 220,
+    );
+
+    final candidate = SurfaceTransitionGraph.levelPenetration(
+      buildingLevels: [lower, upper],
+      fromLevel: lower,
+      fromSpace: lowerSpace,
+      fromSurface: RoomSurfaceRef.ceiling(lowerSpace.id),
+      point: const SurfacePointMm(1500, 1000),
+      fromRoomHeightMm: 3000,
+      toLevel: upper,
+      toSpace: upperSpace,
+      toRoomHeightMm: 3000,
+      slabThicknessMm: 220,
+      slab: foreignSlab,
+    );
+
+    expect(candidate, isNull);
   });
 
   test('slab penetration rejects a concave-room bounding-box false positive',
@@ -221,6 +332,13 @@ void main() {
       elevationMm: 3200,
       spaces: [upperSpace],
     );
+    final slab = _interLevelSlab(
+      id: 'slab-L1-L2',
+      belowLevelId: 'L1',
+      aboveLevelId: 'L2',
+      bottomElevationMm: 3000,
+      thicknessMm: 200,
+    );
 
     final candidate = SurfaceTransitionGraph.levelPenetration(
       buildingLevels: [lower, upper],
@@ -233,6 +351,7 @@ void main() {
       toSpace: upperSpace,
       toRoomHeightMm: 3000,
       slabThicknessMm: 200,
+      slab: slab,
     );
 
     expect(candidate, isNull);
@@ -242,4 +361,28 @@ void main() {
 MmPolygon controllerRoomBoundary() => MmPolygon.rectangle(
       const MmPoint(0, 0),
       const MmPoint(4000, 3000),
+    );
+
+ProjectSlab _interLevelSlab({
+  required String id,
+  required String belowLevelId,
+  required String aboveLevelId,
+  required int bottomElevationMm,
+  required int thicknessMm,
+}) =>
+    ProjectSlab(
+      id: SlabId(id),
+      buildingId: BuildingId('building-1'),
+      kind: SlabKind.interLevel,
+      belowLevelId: LevelId(belowLevelId),
+      aboveLevelId: LevelId(aboveLevelId),
+      bottomElevationMm: bottomElevationMm,
+      thicknessMm: thicknessMm,
+      materialId: 'reinforced-concrete',
+      footprint: const [
+        BoundaryPointMm(xMm: 0, yMm: 0),
+        BoundaryPointMm(xMm: 4000, yMm: 0),
+        BoundaryPointMm(xMm: 4000, yMm: 4000),
+        BoundaryPointMm(xMm: 0, yMm: 4000),
+      ],
     );

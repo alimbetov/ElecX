@@ -144,6 +144,41 @@ void main() {
       expect(issues.single.code, SlabTopologyIssueCode.duplicateLevelPair);
     });
 
+    test('does not confuse a real exterior id with the exterior sentinel', () {
+      final foundation = ProjectSlab(
+        id: SlabId('foundation-exterior-id'),
+        buildingId: BuildingId('building-a'),
+        kind: SlabKind.foundation,
+        aboveLevelId: LevelId('exterior'),
+        bottomElevationMm: -300,
+        thicknessMm: 300,
+        materialId: 'reinforced-concrete',
+        footprint: _rectangle,
+      );
+      final roof = ProjectSlab(
+        id: SlabId('roof-exterior-id'),
+        buildingId: BuildingId('building-a'),
+        kind: SlabKind.roof,
+        belowLevelId: LevelId('exterior'),
+        bottomElevationMm: 3200,
+        thicknessMm: 220,
+        materialId: 'reinforced-concrete',
+        footprint: _rectangle,
+      );
+
+      final issues = SlabTopologyValidator.validate({
+        foundation.id: foundation,
+        roof.id: roof,
+      });
+
+      expect(
+        issues.where(
+          (issue) => issue.code == SlabTopologyIssueCode.duplicateLevelPair,
+        ),
+        isEmpty,
+      );
+    });
+
     test('rejects store key identity mismatch', () {
       final slab = _interLevelSlab('slab-a');
 

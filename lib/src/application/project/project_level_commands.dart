@@ -297,8 +297,7 @@ ProjectCommandCandidate _replaceLevel(
     displayOrder: displayOrder ?? level.displayOrder,
     elevationMm: level.elevationMm,
     kind: kind ?? level.kind,
-    floorToFloorHeightMm:
-        floorToFloorHeightMm ?? level.floorToFloorHeightMm,
+    floorToFloorHeightMm: floorToFloorHeightMm ?? level.floorToFloorHeightMm,
     zoneIds: level.zoneIds,
     spaceIds: level.spaceIds,
   );
