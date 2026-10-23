@@ -30,7 +30,8 @@ void main() {
       expect(penetration.hostKind, BoundaryPenetrationHostKind.slab);
     });
 
-    test('typed requirement materializes without scalar identity regeneration', () {
+    test('typed requirement materializes without scalar identity regeneration',
+        () {
       final id = BoundaryPenetrationId('penetration-02');
       final requirement = BoundaryPenetrationRequirement(
         hostKind: BoundaryPenetrationHostKind.slab,
@@ -48,11 +49,39 @@ void main() {
       );
 
       expect(penetration.id, id);
-      expect(penetration.entryAnchor.penetrationId, same(id));
-      expect(penetration.exitAnchor.penetrationId, same(id));
+      expect(penetration.entryAnchor.penetrationId, id);
+      expect(penetration.exitAnchor.penetrationId, id);
     });
 
-    test('canonical typed boundary fails closed on empty penetration identity', () {
+    test('legacy scalar ingress is promoted losslessly without regeneration', () {
+      const legacyId = 'legacy-persisted-penetration';
+      final penetration = BoundaryPenetration.slab(
+        id: legacyId,
+        slabId: SlabId('slab-legacy'),
+        entrySurface: RoomSurfaceRef.ceiling('space-l1'),
+        entryPoint: const SurfacePointMm(50, 50),
+        exitSurface: RoomSurfaceRef.floor('space-l2'),
+        exitPoint: const SurfacePointMm(50, 50),
+        hostThicknessMm: 220,
+        routeId: 'route-legacy',
+      );
+
+      expect(penetration.id, BoundaryPenetrationId(legacyId));
+      expect(penetration.id.value, legacyId);
+      expect(
+        penetration.entryAnchor.penetrationId,
+        BoundaryPenetrationId(legacyId),
+      );
+      expect(
+        penetration.exitAnchor.penetrationId,
+        BoundaryPenetrationId(legacyId),
+      );
+      expect(penetration.hostKind, BoundaryPenetrationHostKind.slab);
+      expect(penetration.slabId, SlabId('slab-legacy'));
+    });
+
+    test('canonical typed boundary fails closed on empty penetration identity',
+        () {
       expect(
         () => BoundaryPenetration.slabTyped(
           id: BoundaryPenetrationId(''),
