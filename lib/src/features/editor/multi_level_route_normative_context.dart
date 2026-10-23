@@ -64,8 +64,6 @@ abstract final class MultiLevelRouteNormativeContext {
         );
       } on ArgumentError {
         return null;
-      } on RangeError {
-        return null;
       } on StateError {
         return null;
       }
