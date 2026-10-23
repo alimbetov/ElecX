@@ -149,7 +149,10 @@ abstract final class VerticalRouteContinuationNavigation {
     }
   }
 
-  static void _showSurface(EditorController controller, dynamic type) {
+  static void _showSurface(
+    EditorController controller,
+    SurfacePlaneType type,
+  ) {
     switch (type) {
       case SurfacePlaneType.floor:
         controller.showFloor();
