@@ -153,19 +153,19 @@ final class _Fixture {
             id: space1Id,
             levelId: level1Id,
             name: 'Room L1',
-            usage: SpaceUsage.technical,
+            usage: SpaceUsage.serviceShaft,
           ),
           space2Id: ProjectSpaceEntity(
             id: space2Id,
             levelId: level2Id,
             name: 'Room L2',
-            usage: SpaceUsage.technical,
+            usage: SpaceUsage.serviceShaft,
           ),
           space3Id: ProjectSpaceEntity(
             id: space3Id,
             levelId: level3Id,
             name: 'Room L3',
-            usage: SpaceUsage.technical,
+            usage: SpaceUsage.serviceShaft,
           ),
         },
         slabs: {
