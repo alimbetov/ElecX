@@ -18,7 +18,7 @@ void main() {
       final restored = codec.decode(document);
       final stores = restored.aggregate.stores;
 
-      expect(document.schemaVersion, 7);
+      expect(document.schemaVersion, 8);
       expect(stores.spaces[SpaceId('room-a')]!.usage, SpaceUsage.bedroom);
       expect(stores.spaces[SpaceId('room-b')]!.usage, SpaceUsage.corridor);
 
