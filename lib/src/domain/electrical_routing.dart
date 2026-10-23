@@ -194,10 +194,22 @@ final class ElectricalCableRoute {
                 _penetrationMatchesTransition(penetration, before, after),
           )
           .toList(growable: false);
-      if (physicalTransitionPenetrations.length != 1) {
+      final hiddenVerticalLegs = verticalCoreLegs
+          .where((leg) => _verticalCoreLegMatchesTransition(leg, before, after))
+          .toList(growable: false);
+      final hasExactlyOnePhysicalTransition =
+          physicalTransitionPenetrations.length == 1 &&
+              hiddenVerticalLegs.isEmpty;
+      final hasExactlyOneHiddenCoreTransition =
+          physicalTransitionPenetrations.isEmpty &&
+              hiddenVerticalLegs.length == 1;
+      if (!hasExactlyOnePhysicalTransition &&
+          !hasExactlyOneHiddenCoreTransition) {
         throw ArgumentError(
           'Route $id physical transition ${index + 1} must have exactly one '
-          'penetration; found ${physicalTransitionPenetrations.length}.',
+          'penetration or one proven VerticalCore leg; found '
+          '${physicalTransitionPenetrations.length} penetration(s) and '
+          '${hiddenVerticalLegs.length} VerticalCore leg(s).',
         );
       }
     }
@@ -237,6 +249,35 @@ final class ElectricalCableRoute {
         );
       }
     }
+  }
+
+  bool _verticalCoreLegMatchesTransition(
+    VerticalCoreRouteLeg leg,
+    ElectricalRouteSegment before,
+    ElectricalRouteSegment after,
+  ) {
+    if (before.points.isEmpty || after.points.isEmpty) return false;
+    final fromMatches = penetrations
+        .where(
+          (penetration) =>
+              penetration.slabId == leg.fromSlabId &&
+              penetration.verticalCoreId == leg.verticalCoreId,
+        )
+        .toList(growable: false);
+    final toMatches = penetrations
+        .where(
+          (penetration) =>
+              penetration.slabId == leg.toSlabId &&
+              penetration.verticalCoreId == leg.verticalCoreId,
+        )
+        .toList(growable: false);
+    if (fromMatches.length != 1 || toMatches.length != 1) return false;
+    final from = fromMatches.single;
+    final to = toMatches.single;
+    return from.exitAnchor.surface == before.surface &&
+        from.exitAnchor.point == before.points.last &&
+        to.entryAnchor.surface == after.surface &&
+        to.entryAnchor.point == after.points.first;
   }
 
   static bool _penetrationMatchesTransition(
