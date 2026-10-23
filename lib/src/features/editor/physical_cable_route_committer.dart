@@ -274,7 +274,8 @@ bool _constraintsAllowReplacement({
   }
   for (final waypoint in constraints.mandatoryWaypoints) {
     if (waypoint.segmentIndex >= after.segments.length ||
-        !after.segments[waypoint.segmentIndex].points.contains(waypoint.point)) {
+        !after.segments[waypoint.segmentIndex].points
+            .contains(waypoint.point)) {
       return false;
     }
   }
