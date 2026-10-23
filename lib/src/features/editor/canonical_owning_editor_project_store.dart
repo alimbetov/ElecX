@@ -30,7 +30,8 @@ final class CanonicalOwningEditorProjectStore implements EditorProjectStore {
   }
 
   @override
-  Future<EditorProjectDocument?> load(String projectId) => legacy.load(projectId);
+  Future<EditorProjectDocument?> load(String projectId) =>
+      legacy.load(projectId);
 
   @override
   Future<List<EditorProjectDocument>> list() => legacy.list();
