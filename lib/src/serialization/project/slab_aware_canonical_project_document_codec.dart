@@ -11,14 +11,10 @@ import 'project_document_codec.dart';
 /// Schema history compatibility is intentionally asymmetric because an earlier
 /// development revision assigned schema 8 to slabs before the base canonical
 /// codec later assigned schema 8 to Level kind/floor-to-floor semantics.
-/// Consequently v8 has two historical shapes:
-///
-/// - base-v8 document: Level semantics, no `slabs` field;
-/// - legacy slab-v8 document: `slabs` field layered over base-v7.
-///
-/// Decode distinguishes those shapes by the additive `slabs` field. New slab
-/// documents always encode as v9, restoring a single unambiguous meaning for
-/// every schema number going forward.
+/// Consequently v8 has historical shapes both with and without persisted Level
+/// semantics. Decode distinguishes them from the additive `slabs` field and,
+/// for slab-v8, from the Level semantic fields themselves. New slab documents
+/// always encode as v9, restoring one unambiguous meaning per schema number.
 final class SlabAwareCanonicalProjectDocumentCodec
     implements ProjectDocumentCodec {
   const SlabAwareCanonicalProjectDocumentCodec();
@@ -68,7 +64,8 @@ final class SlabAwareCanonicalProjectDocumentCodec
     final slabs = _decodeSlabs(document.payload['slabs']);
     final basePayload = Map<String, Object?>.of(document.payload)
       ..remove('slabs');
-    final baseVersion = document.schemaVersion == _legacySlabSchemaVersion
+    final baseVersion = document.schemaVersion == _legacySlabSchemaVersion &&
+            !_hasPersistedLevelSemantics(basePayload['levels'])
         ? _preLevelSemanticsSchemaVersion
         : _baseSchemaVersion;
     final baseSnapshot = _base.decode(
@@ -104,6 +101,18 @@ final class SlabAwareCanonicalProjectDocumentCodec
     } on ArgumentError catch (error) {
       throw FormatException('Invalid canonical slab value: $error');
     }
+  }
+
+  static bool _hasPersistedLevelSemantics(Object? value) {
+    if (value is! List) return false;
+    for (final raw in value) {
+      if (raw is! Map) return false;
+      if (!raw.containsKey('kind') ||
+          !raw.containsKey('floorToFloorHeightMm')) {
+        return false;
+      }
+    }
+    return true;
   }
 
   static List<Object?> _encodeSlabs(Map<SlabId, ProjectSlab> slabs) {
