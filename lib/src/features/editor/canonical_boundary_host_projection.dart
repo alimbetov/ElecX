@@ -28,6 +28,7 @@ abstract final class CanonicalBoundaryHostProjection {
         const BoundaryHostedObjectRegistry.empty(),
   }) {
     _requireAffinity(legacySpace, orderedEdgeIds);
+    _requireLegacyRouteAnchorFallbackUnambiguous(p2State, base);
     var registry = base;
 
     for (final opening in openings) {
@@ -108,6 +109,12 @@ abstract final class CanonicalBoundaryHostProjection {
               : isRouteEnd
                   ? BoundaryHostedObjectRegistry.cableTargetObjectKey(route.id)
                   : _routeAnchorKey(route.id, anchorId!);
+          if (!isRouteStart && !isRouteEnd) {
+            final legacyKey = _legacyRouteAnchorKey(route.id, anchorId!);
+            if (legacyKey != key && registry[legacyKey] != null) {
+              registry = registry.remove(legacyKey);
+            }
+          }
           registry = registry.put(
             BoundaryHostedReference.point(
               objectKey: key,
@@ -205,6 +212,7 @@ abstract final class CanonicalBoundaryHostProjection {
     required EditorP2State p2State,
   }) {
     _requireAffinity(legacySpace, orderedEdgeIds);
+    _requireLegacyRouteAnchorFallbackUnambiguous(p2State, registry);
     int ordinalFor(BoundaryHostedReference reference) {
       if (reference.host.spaceId != canonicalSpaceId) {
         throw StateError(
@@ -401,7 +409,9 @@ abstract final class CanonicalBoundaryHostProjection {
             : isRouteEnd
                 ? BoundaryHostedObjectRegistry.cableTargetObjectKey(route.id)
                 : _routeAnchorKey(route.id, anchorId);
-        final reference = registry[key];
+        final reference = isRouteStart || isRouteEnd
+            ? registry[key]
+            : _routeAnchorReference(registry, route.id, anchorId);
         if (reference == null) {
           throw StateError(
             'Route $key has no canonical hosted reference during P7A-5 '
@@ -710,6 +720,86 @@ abstract final class CanonicalBoundaryHostProjection {
 
   static String _routeAnchorKey(String routeId, RouteAnchorId anchorId) =>
       BoundaryHostedObjectRegistry.routeAnchorObjectKey(routeId, anchorId);
+
+  static String _legacyRouteAnchorKey(
+    String routeId,
+    RouteAnchorId anchorId,
+  ) =>
+      'route:$routeId:anchor:${anchorId.value}';
+
+  static BoundaryHostedReference? _routeAnchorReference(
+    BoundaryHostedObjectRegistry registry,
+    String routeId,
+    RouteAnchorId anchorId,
+  ) {
+    final canonicalKey = _routeAnchorKey(routeId, anchorId);
+    final canonical = registry[canonicalKey];
+    final legacy = registry[_legacyRouteAnchorKey(routeId, anchorId)];
+    if (canonical != null && legacy != null && !_sameReference(canonical, legacy)) {
+      throw StateError(
+        'Route anchor $canonicalKey has conflicting canonical and legacy '
+        'hosted references.',
+      );
+    }
+    return canonical ?? legacy;
+  }
+
+  static void _requireLegacyRouteAnchorFallbackUnambiguous(
+    EditorP2State state,
+    BoundaryHostedObjectRegistry registry,
+  ) {
+    final claims = <String, String>{};
+    for (final route in state.routes) {
+      for (var segmentIndex = 0;
+          segmentIndex < route.segments.length;
+          segmentIndex++) {
+        final segment = route.segments[segmentIndex];
+        for (var pointIndex = 0;
+            pointIndex < segment.points.length;
+            pointIndex++) {
+          final isRouteStart = segmentIndex == 0 && pointIndex == 0;
+          final isRouteEnd = segmentIndex == route.segments.length - 1 &&
+              pointIndex == segment.points.length - 1;
+          if (isRouteStart || isRouteEnd) continue;
+          final anchorId = segment.anchorIdAt(pointIndex);
+          if (anchorId == null || _isProjectionOnlyTransitionAnchor(anchorId)) {
+            continue;
+          }
+          final canonicalKey = _routeAnchorKey(route.id, anchorId);
+          final legacyKey = _legacyRouteAnchorKey(route.id, anchorId);
+          final canonical = registry[canonicalKey];
+          final legacy = registry[legacyKey];
+          if (canonical != null &&
+              legacy != null &&
+              !_sameReference(canonical, legacy)) {
+            throw StateError(
+              'Route anchor $canonicalKey has conflicting canonical and legacy '
+              'hosted references.',
+            );
+          }
+          if (canonical != null || legacy == null) continue;
+          final previousClaim = claims[legacyKey];
+          if (previousClaim != null && previousClaim != canonicalKey) {
+            throw StateError(
+              'Legacy route-anchor key $legacyKey is ambiguous between '
+              '$previousClaim and $canonicalKey.',
+            );
+          }
+          claims[legacyKey] = canonicalKey;
+        }
+      }
+    }
+  }
+
+  static bool _sameReference(
+    BoundaryHostedReference left,
+    BoundaryHostedReference right,
+  ) =>
+      left.objectKind == right.objectKind &&
+      left.host == right.host &&
+      left.geometryKind == right.geometryKind &&
+      left.startOffsetMm == right.startOffsetMm &&
+      left.endOffsetMm == right.endOffsetMm;
 }
 
 final class CanonicalBoundaryHostMaterialization {
