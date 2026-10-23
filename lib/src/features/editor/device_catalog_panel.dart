@@ -12,6 +12,7 @@ import 'editor_ui_tokens.dart';
 import 'engineering_placement_cursor_session.dart';
 import 'engineering_selection_inspector.dart';
 import 'route_selection_session.dart';
+import 'wall_construction_editor.dart';
 
 class DeviceCatalogPanel extends StatefulWidget {
   const DeviceCatalogPanel({required this.controller, super.key});
@@ -41,6 +42,7 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
     final catalog = controller.componentCatalog;
     return ListenableBuilder(
       listenable: Listenable.merge([
+        controller,
         catalog,
         controller.placementCursor,
         controller.p2,
@@ -57,8 +59,33 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
             onBackToCatalog: _clearEngineeringSelection,
           );
         }
-        return _catalog(context, catalog);
+        return _catalogWithWallConstruction(context, catalog);
       },
+    );
+  }
+
+  Widget _catalogWithWallConstruction(
+    BuildContext context,
+    ComponentCatalogSession catalog,
+  ) {
+    final showWallConstruction =
+        controller.activeSurface?.type == SurfacePlaneType.wall;
+    return Column(
+      children: [
+        if (showWallConstruction) ...[
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 300),
+            child: SingleChildScrollView(
+              child: WallConstructionEditor(
+                controller: controller,
+                compact: true,
+              ),
+            ),
+          ),
+          const Divider(height: 1),
+        ],
+        Expanded(child: _catalog(context, catalog)),
+      ],
     );
   }
 
