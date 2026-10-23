@@ -1,3 +1,4 @@
+import 'boundary_construction_registry.dart';
 import 'boundary_edge_identity_registry.dart';
 import 'boundary_host_registry.dart';
 import 'boundary_wall_profile_registry.dart';
@@ -91,6 +92,10 @@ final class ProjectEngineeringNorth {
 /// [boundaryWallProfileRegistry] owns non-default wall profile payloads by the
 /// same stable `(SpaceId, BoundaryEdgeId)` identity so split/merge can transform
 /// profile geometry inside the same canonical mutation.
+///
+/// [boundaryConstructionRegistry] owns physical wall thickness/material data.
+/// It is intentionally separate from wall elevation geometry and is the only
+/// canonical source a penetration authoring flow may use for wall thickness.
 final class ProjectEngineeringMetadata {
   const ProjectEngineeringMetadata({
     this.projectNorth,
@@ -100,12 +105,15 @@ final class ProjectEngineeringMetadata {
         const BoundaryHostedObjectRegistry.empty(),
     this.boundaryWallProfileRegistry =
         const BoundaryWallProfileRegistry.empty(),
+    this.boundaryConstructionRegistry =
+        const BoundaryConstructionRegistry.empty(),
   });
 
   final ProjectEngineeringNorth? projectNorth;
   final BoundaryEdgeIdentityRegistry boundaryEdgeIdentityRegistry;
   final BoundaryHostedObjectRegistry boundaryHostedObjectRegistry;
   final BoundaryWallProfileRegistry boundaryWallProfileRegistry;
+  final BoundaryConstructionRegistry boundaryConstructionRegistry;
 
   ProjectEngineeringMetadata copyWith({
     ProjectEngineeringNorth? projectNorth,
@@ -113,6 +121,7 @@ final class ProjectEngineeringMetadata {
     BoundaryEdgeIdentityRegistry? boundaryEdgeIdentityRegistry,
     BoundaryHostedObjectRegistry? boundaryHostedObjectRegistry,
     BoundaryWallProfileRegistry? boundaryWallProfileRegistry,
+    BoundaryConstructionRegistry? boundaryConstructionRegistry,
   }) {
     if (clearProjectNorth && projectNorth != null) {
       throw ArgumentError(
@@ -128,6 +137,8 @@ final class ProjectEngineeringMetadata {
           boundaryHostedObjectRegistry ?? this.boundaryHostedObjectRegistry,
       boundaryWallProfileRegistry:
           boundaryWallProfileRegistry ?? this.boundaryWallProfileRegistry,
+      boundaryConstructionRegistry:
+          boundaryConstructionRegistry ?? this.boundaryConstructionRegistry,
     );
   }
 
@@ -152,13 +163,19 @@ final class ProjectEngineeringMetadata {
   ) =>
       copyWith(boundaryWallProfileRegistry: registry);
 
+  ProjectEngineeringMetadata withBoundaryConstructionRegistry(
+    BoundaryConstructionRegistry registry,
+  ) =>
+      copyWith(boundaryConstructionRegistry: registry);
+
   @override
   bool operator ==(Object other) =>
       other is ProjectEngineeringMetadata &&
       other.projectNorth == projectNorth &&
       other.boundaryEdgeIdentityRegistry.sameAs(boundaryEdgeIdentityRegistry) &&
       other.boundaryHostedObjectRegistry.sameAs(boundaryHostedObjectRegistry) &&
-      other.boundaryWallProfileRegistry.sameAs(boundaryWallProfileRegistry);
+      other.boundaryWallProfileRegistry.sameAs(boundaryWallProfileRegistry) &&
+      other.boundaryConstructionRegistry.sameAs(boundaryConstructionRegistry);
 
   @override
   int get hashCode {
@@ -194,6 +211,23 @@ final class ProjectEngineeringMetadata {
       for (final point in entry.value.vertices) {
         result = Object.hash(result, point.xMm, point.yMm);
       }
+    }
+    final constructionEntries =
+        boundaryConstructionRegistry.profiles.entries.toList()
+          ..sort((a, b) {
+            final bySpace = a.key.spaceId.value.compareTo(b.key.spaceId.value);
+            if (bySpace != 0) return bySpace;
+            return a.key.edgeId.value.compareTo(b.key.edgeId.value);
+          });
+    for (final entry in constructionEntries) {
+      result = Object.hash(
+        result,
+        entry.key,
+        entry.value.kind,
+        entry.value.thicknessMm,
+        entry.value.materialId,
+        entry.value.fireRatingId,
+      );
     }
     return result;
   }
