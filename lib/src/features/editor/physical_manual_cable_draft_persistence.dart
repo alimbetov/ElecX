@@ -24,10 +24,14 @@ final class _PhysicalRouteContinuationIntent {
   const _PhysicalRouteContinuationIntent({
     required this.route,
     required this.p2MutationRevision,
+    required this.canonicalSessionIdentity,
+    required this.canonicalProjectVersion,
   });
 
   final ElectricalCableRoute route;
   final int p2MutationRevision;
+  final Object? canonicalSessionIdentity;
+  final int? canonicalProjectVersion;
 }
 
 final Expando<_PhysicalRouteContinuationIntent> _continuationIntents =
@@ -42,10 +46,10 @@ extension PhysicalManualCableDraftPersistence on EditorController {
 
   /// Starts an edit draft at the current target of an already committed route.
   ///
-  /// The committed aggregate is not changed here. The exact P2 mutation
-  /// revision is captured and must still match on finish, so an unrelated
-  /// electrical edit, wall projection or route replacement invalidates this
-  /// draft instead of being overwritten by a stale continuation.
+  /// The committed aggregate is not changed here. The exact P2 revision and,
+  /// when present, exact canonical authoring session/version are captured and
+  /// must still match on finish. A stale continuation therefore cannot publish
+  /// into a replacement document session.
   bool beginPhysicalRouteContinuation(String routeId) {
     final normalizedId = routeId.trim();
     if (normalizedId.isEmpty ||
@@ -83,14 +87,21 @@ extension PhysicalManualCableDraftPersistence on EditorController {
     if (!SurfaceTransitionNavigator.navigate(this, lastSegment.surface)) {
       return false;
     }
+    final draftSurface = activeSurface;
+    if (draftSurface == null) return false;
+
+    final canonicalSession =
+        CanonicalRoomSurfaceRuntimeRegistry.coordinatorFor(this)?.session;
     setTool(EditorTool.cableRoute);
     _continuationIntents[this] = _PhysicalRouteContinuationIntent(
       route: route,
       p2MutationRevision: p2.history.mutationRevision,
+      canonicalSessionIdentity: canonicalSession,
+      canonicalProjectVersion: canonicalSession?.project.version.value,
     );
     routeSegments.add(
       SurfaceRouteSegmentDraft(
-        surface: lastSegment.surface,
+        surface: draftSurface,
         points: [continuationPoint],
       ),
     );
@@ -111,10 +122,10 @@ extension PhysicalManualCableDraftPersistence on EditorController {
   /// Commits a continuation by replacing the original aggregate with the same
   /// route id in one P2 history command.
   ///
-  /// Existing segments and penetrations are preserved verbatim. Only newly
-  /// authored surface transitions are resolved and, when required, receive new
-  /// penetration records. The final route then passes the same production
-  /// connectivity/physical-anchor validators as ordinary route replacement.
+  /// The extension preserves the original route's surface-identity regime. A
+  /// legacy route remains legacy. A canonical route converts transient canvas
+  /// ordinals back to canonical SpaceId/BoundaryEdgeId immediately before the
+  /// durable aggregate is constructed.
   bool finishPhysicalRouteContinuation({
     required RouteTransitionResolver resolveTransition,
     int endpointSnapRadiusMm = 180,
@@ -127,6 +138,13 @@ extension PhysicalManualCableDraftPersistence on EditorController {
         p2.history.mutationRevision != intent.p2MutationRevision ||
         !p2.layers.isVisible(EditorLayerId.cableRoutes) ||
         p2.layers.isLocked(EditorLayerId.cableRoutes)) {
+      return false;
+    }
+
+    final canonicalSession =
+        CanonicalRoomSurfaceRuntimeRegistry.coordinatorFor(this)?.session;
+    if (!identical(canonicalSession, intent.canonicalSessionIdentity) ||
+        canonicalSession?.project.version.value != intent.canonicalProjectVersion) {
       return false;
     }
 
@@ -143,7 +161,17 @@ extension PhysicalManualCableDraftPersistence on EditorController {
     final firstDraft = routeSegments.first;
     final lastDraft = routeSegments.last;
     final beforeLast = before.segments.last;
-    if (firstDraft.surface != beforeLast.surface ||
+    final routingContext =
+        CanonicalRoomSurfaceRuntimeRegistry.physicalRoutingContextFor(this);
+    final canonicalIdentity =
+        _usesCanonicalSurfaceIdentity(beforeLast.surface, routingContext);
+    final firstRouteSurface = _surfaceForRouteIdentity(
+      firstDraft.surface,
+      routingContext,
+      canonicalIdentity: canonicalIdentity,
+    );
+    if (firstRouteSurface == null ||
+        firstRouteSurface != beforeLast.surface ||
         firstDraft.points.isEmpty ||
         firstDraft.points.first != beforeLast.points.last) {
       return false;
@@ -162,6 +190,8 @@ extension PhysicalManualCableDraftPersistence on EditorController {
       radiusMm: endpointSnapRadiusMm,
       excludeComponentId: before.source.componentId,
       counterpartKind: sourcePort.kind,
+      routingContext: routingContext,
+      canonicalIdentity: canonicalIdentity,
     );
     if (target == null ||
         (target.component.id == before.target.componentId &&
@@ -169,8 +199,6 @@ extension PhysicalManualCableDraftPersistence on EditorController {
       return false;
     }
 
-    final canonicalSession =
-        CanonicalRoomSurfaceRuntimeRegistry.coordinatorFor(this)?.session;
     final extensionSegments = <ElectricalRouteSegment>[];
     for (var index = 0; index < routeSegments.length; index++) {
       final draft = routeSegments[index];
@@ -180,9 +208,15 @@ extension PhysicalManualCableDraftPersistence on EditorController {
       // we do not manufacture a zero-length durable segment.
       if (index == 0 && draft.points.length == 1) continue;
       if (draft.points.length < 2) return false;
+      final routeSurface = _surfaceForRouteIdentity(
+        draft.surface,
+        routingContext,
+        canonicalIdentity: canonicalIdentity,
+      );
+      if (routeSurface == null) return false;
       extensionSegments.add(
         ElectricalRouteSegment(
-          surface: draft.surface,
+          surface: routeSurface,
           points: List.unmodifiable(draft.points),
           anchorIds: canonicalSession == null
               ? const []
@@ -373,6 +407,56 @@ extension PhysicalManualCableDraftPersistence on EditorController {
   }
 }
 
+bool _usesCanonicalSurfaceIdentity(
+  RoomSurfaceRef surface,
+  CanonicalPhysicalRoutingContext? context,
+) {
+  if (context == null) return false;
+  final canonicalSpaceId =
+      context.canonicalSpaceIdForSurfaceSpaceId(surface.spaceId);
+  if (canonicalSpaceId == null || surface.spaceId != canonicalSpaceId.value) {
+    return false;
+  }
+  return surface.type != SurfacePlaneType.wall || surface.boundaryEdgeId != null;
+}
+
+RoomSurfaceRef? _surfaceForRouteIdentity(
+  RoomSurfaceRef draftSurface,
+  CanonicalPhysicalRoutingContext? context, {
+  required bool canonicalIdentity,
+}) {
+  if (!canonicalIdentity) return draftSurface;
+  if (context == null) return null;
+  final canonicalSpaceId =
+      context.canonicalSpaceIdForSurfaceSpaceId(draftSurface.spaceId);
+  if (canonicalSpaceId == null) return null;
+
+  switch (draftSurface.type) {
+    case SurfacePlaneType.floor:
+      return RoomSurfaceRef.floor(canonicalSpaceId.value);
+    case SurfacePlaneType.ceiling:
+      return RoomSurfaceRef.ceiling(canonicalSpaceId.value);
+    case SurfacePlaneType.wall:
+      final topology = context.project.index.boundary(canonicalSpaceId);
+      if (topology == null) return null;
+      final direct = draftSurface.boundaryEdgeId;
+      if (direct != null) {
+        if (!topology.orderedEdgeIds.contains(direct)) return null;
+        return RoomSurfaceRef.wallByBoundaryEdge(canonicalSpaceId.value, direct);
+      }
+      final ordinal = draftSurface.wallIndex;
+      if (ordinal == null ||
+          ordinal < 0 ||
+          ordinal >= topology.orderedEdgeIds.length) {
+        return null;
+      }
+      return RoomSurfaceRef.wallByBoundaryEdge(
+        canonicalSpaceId.value,
+        topology.orderedEdgeIds[ordinal],
+      );
+  }
+}
+
 String _nextPhysicalRouteId(Iterable<ElectricalCableRoute> routes) {
   final used = routes.map((route) => route.id).toSet();
   var sequence = 1;
@@ -390,11 +474,26 @@ _PhysicalManualEndpoint? _nearestPhysicalEndpoint({
   required int radiusMm,
   String? excludeComponentId,
   ElectricalPortKind? counterpartKind,
+  CanonicalPhysicalRoutingContext? routingContext,
+  bool canonicalIdentity = false,
 }) {
+  final requestedSurface = _surfaceForRouteIdentity(
+    surface,
+    routingContext,
+    canonicalIdentity: canonicalIdentity,
+  );
+  if (requestedSurface == null) return null;
+
   _PhysicalManualEndpoint? best;
   var bestDistanceSquared = radiusMm * radiusMm + 1;
   for (final component in components) {
-    if (component.surface != surface || component.id == excludeComponentId) {
+    final componentSurface = _surfaceForRouteIdentity(
+      component.surface,
+      routingContext,
+      canonicalIdentity: canonicalIdentity,
+    );
+    if (componentSurface != requestedSurface ||
+        component.id == excludeComponentId) {
       continue;
     }
     final dx = component.position.xMm - point.xMm;
