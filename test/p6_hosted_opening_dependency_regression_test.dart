@@ -38,15 +38,15 @@ void main() {
         throwsA(
           isA<ProjectAuthoringException>()
               .having(
-                (error) => error.code,
-                'code',
-                ProjectAuthoringIssueCode.openingHasBoundaryDependencies,
-              )
+            (error) => error.code,
+            'code',
+            ProjectAuthoringIssueCode.openingHasBoundaryDependencies,
+          )
               .having(
-                (error) => error.blockingEntityIds,
-                'blocking boundary edges',
-                <EntityId>{BoundaryEdgeId('edge-a')},
-              ),
+            (error) => error.blockingEntityIds,
+            'blocking boundary edges',
+            <EntityId>{BoundaryEdgeId('edge-a')},
+          ),
         ),
       );
       expect(session.current, same(before));
