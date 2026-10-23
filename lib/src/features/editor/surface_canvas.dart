@@ -44,6 +44,7 @@ import 'editor_viewport_commands.dart';
 import 'hosted_route_session.dart';
 import 'manual_cable_draft_persistence.dart';
 import 'route_selection_session.dart';
+import 'surface_transition_navigator.dart';
 import 'viewport_zoom_policy.dart';
 
 class SurfaceCanvas extends StatefulWidget {
@@ -567,17 +568,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
   }
 
   void _navigateToSurface(RoomSurfaceRef target) {
-    if (controller.selectedSpaceId != target.spaceId) {
-      controller.selectSpace(target.spaceId);
-    }
-    switch (target.type) {
-      case SurfacePlaneType.wall:
-        controller.showWall(target.wallIndex!);
-      case SurfacePlaneType.floor:
-        controller.showFloor();
-      case SurfacePlaneType.ceiling:
-        controller.showCeiling();
-    }
+    SurfaceTransitionNavigator.navigate(controller, target);
   }
 
   void _followTransition(
@@ -709,7 +700,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
         )) {
           return false;
         }
-    }
+      }
     _cableDragHit = hit;
     return true;
   }
