@@ -5,6 +5,8 @@ import 'project_model.dart';
 import 'surface_transition_graph.dart';
 import 'surfaces.dart';
 
+typedef CanonicalSpaceIdResolver = SpaceId? Function(String legacySpaceId);
+
 /// Resolves route transitions using canonical physical construction metadata.
 ///
 /// Shared-wall penetration is permitted only when both wall faces resolve to
@@ -20,6 +22,7 @@ abstract final class BoundaryConstructionTransitionResolver {
     required SurfacePointMm toPoint,
     required BoundaryConstructionRegistry constructions,
     required List<BoundaryEdgeId>? Function(String spaceId) edgeOrderResolver,
+    required CanonicalSpaceIdResolver canonicalSpaceIdResolver,
     int roomHeightMm = 3000,
     int toleranceMm = 2,
   }) {
@@ -36,6 +39,7 @@ abstract final class BoundaryConstructionTransitionResolver {
         from,
         to,
         edgeOrderResolver,
+        canonicalSpaceIdResolver,
       )
           ?.thicknessMm,
       materialResolver: (from, to) => _sharedWallProfile(
@@ -43,6 +47,7 @@ abstract final class BoundaryConstructionTransitionResolver {
         from,
         to,
         edgeOrderResolver,
+        canonicalSpaceIdResolver,
       )
           ?.materialId,
     );
@@ -63,14 +68,23 @@ abstract final class BoundaryConstructionTransitionResolver {
     RoomSurfaceRef from,
     RoomSurfaceRef to,
     List<BoundaryEdgeId>? Function(String spaceId) edgeOrderResolver,
+    CanonicalSpaceIdResolver canonicalSpaceIdResolver,
   ) {
     if (from.type != SurfacePlaneType.wall ||
         to.type != SurfacePlaneType.wall ||
         from.spaceId == to.spaceId) {
       return null;
     }
-    final fromHost = _hostFor(from, edgeOrderResolver);
-    final toHost = _hostFor(to, edgeOrderResolver);
+    final fromHost = _hostFor(
+      from,
+      edgeOrderResolver,
+      canonicalSpaceIdResolver,
+    );
+    final toHost = _hostFor(
+      to,
+      edgeOrderResolver,
+      canonicalSpaceIdResolver,
+    );
     if (fromHost == null || toHost == null) return null;
     final left = registry[fromHost];
     final right = registry[toHost];
@@ -88,11 +102,14 @@ abstract final class BoundaryConstructionTransitionResolver {
   static BoundaryEdgeHostRef? _hostFor(
     RoomSurfaceRef surface,
     List<BoundaryEdgeId>? Function(String spaceId) edgeOrderResolver,
+    CanonicalSpaceIdResolver canonicalSpaceIdResolver,
   ) {
+    final canonicalSpaceId = canonicalSpaceIdResolver(surface.spaceId);
+    if (canonicalSpaceId == null) return null;
     final direct = surface.boundaryEdgeId;
     if (direct != null) {
       return BoundaryEdgeHostRef(
-        spaceId: SpaceId(surface.spaceId),
+        spaceId: canonicalSpaceId,
         edgeId: direct,
       );
     }
@@ -105,7 +122,7 @@ abstract final class BoundaryConstructionTransitionResolver {
       return null;
     }
     return BoundaryEdgeHostRef(
-      spaceId: SpaceId(surface.spaceId),
+      spaceId: canonicalSpaceId,
       edgeId: ordered[ordinal],
     );
   }
