@@ -34,7 +34,8 @@ abstract final class SurfaceTransitionNavigator {
       canonicalSpaceId =
           physical.canonicalSpaceIdForSurfaceSpaceId(target.spaceId);
       if (canonicalSpaceId == null) return _failClosed(controller);
-      final legacySpaceId = physical.legacySpaceIdForCanonical(canonicalSpaceId);
+      final legacySpaceId =
+          physical.legacySpaceIdForCanonical(canonicalSpaceId);
       if (legacySpaceId == null) return _failClosed(controller);
       targetLegacySpaceId = legacySpaceId;
     }
@@ -99,9 +100,8 @@ abstract final class SurfaceTransitionNavigator {
       if (transition.kind != RouteHostTransitionKind.levelPenetration) continue;
       final from = transition.fromHost.surface;
       final to = transition.toHost.surface;
-      final matches =
-          (from == currentCanonical && to == targetCanonical) ||
-              (to == currentCanonical && from == targetCanonical);
+      final matches = (from == currentCanonical && to == targetCanonical) ||
+          (to == currentCanonical && from == targetCanonical);
       if (!matches) continue;
       VerticalRouteContinuationNavigation.follow(
         controller: controller,
