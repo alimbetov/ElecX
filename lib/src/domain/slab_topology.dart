@@ -53,12 +53,17 @@ final class SlabFaceRef {
 /// [belowLevelId] and [aboveLevelId] describe the two level-side identities of
 /// the physical construction. Exterior sides are represented by `null`:
 /// foundation = null -> level, roof = level -> null, inter-level = level -> level.
+///
+/// Vertical placement is explicit: [bottomElevationMm] is the global project-Z
+/// coordinate of the slab underside and [topElevationMm] is derived from the
+/// physical thickness. No caller may interpret a generic "slab elevation" as
+/// centerline, top face or finished-floor level.
 final class ProjectSlab {
   ProjectSlab({
     required this.id,
     required this.buildingId,
     required this.kind,
-    required this.elevationMm,
+    required this.bottomElevationMm,
     required this.thicknessMm,
     required this.materialId,
     required Iterable<BoundaryPointMm> footprint,
@@ -130,10 +135,12 @@ final class ProjectSlab {
   final SlabKind kind;
   final LevelId? belowLevelId;
   final LevelId? aboveLevelId;
-  final int elevationMm;
+  final int bottomElevationMm;
   final int thicknessMm;
   final String materialId;
   final List<BoundaryPointMm> footprint;
+
+  int get topElevationMm => bottomElevationMm + thicknessMm;
 
   SlabFaceRef get belowFace =>
       SlabFaceRef(slabId: id, side: SlabFaceSide.below);
