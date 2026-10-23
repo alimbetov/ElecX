@@ -1,6 +1,10 @@
-import 'project_aggregate.dart';
 import 'project_identity.dart';
 import 'vertical_core.dart';
+
+typedef VerticalCoreBuildingExists = bool Function(BuildingId buildingId);
+typedef VerticalCoreLevelBuildingResolver = BuildingId? Function(
+  LevelId levelId,
+);
 
 enum VerticalCoreProjectIssueCode {
   danglingBuilding,
@@ -32,14 +36,14 @@ final class VerticalCoreProjectIssue {
 /// every level traversed by the core must exist in that same building.
 abstract final class VerticalCoreProjectValidator {
   static List<VerticalCoreProjectIssue> validate({
-    required ProjectEntityStores stores,
     required Map<VerticalCoreId, ProjectVerticalCore> verticalCores,
+    required VerticalCoreBuildingExists buildingExists,
+    required VerticalCoreLevelBuildingResolver levelBuildingResolver,
   }) {
     final issues = <VerticalCoreProjectIssue>[];
 
     for (final core in verticalCores.values) {
-      final building = stores.buildings[core.buildingId];
-      if (building == null) {
+      if (!buildingExists(core.buildingId)) {
         issues.add(
           VerticalCoreProjectIssue(
             code: VerticalCoreProjectIssueCode.danglingBuilding,
@@ -52,8 +56,8 @@ abstract final class VerticalCoreProjectValidator {
       }
 
       for (final levelId in core.levelIds) {
-        final level = stores.levels[levelId];
-        if (level == null) {
+        final levelBuildingId = levelBuildingResolver(levelId);
+        if (levelBuildingId == null) {
           issues.add(
             VerticalCoreProjectIssue(
               code: VerticalCoreProjectIssueCode.danglingLevel,
@@ -65,15 +69,15 @@ abstract final class VerticalCoreProjectValidator {
           );
           continue;
         }
-        if (level.buildingId != core.buildingId) {
+        if (levelBuildingId != core.buildingId) {
           issues.add(
             VerticalCoreProjectIssue(
               code: VerticalCoreProjectIssueCode.levelBuildingMismatch,
               verticalCoreId: core.id,
-              relatedEntityId: level.id,
+              relatedEntityId: levelId,
               message: 'Vertical core ${core.id} belongs to building '
-                  '${core.buildingId} but level ${level.id} belongs to '
-                  '${level.buildingId}.',
+                  '${core.buildingId} but level $levelId belongs to '
+                  '$levelBuildingId.',
             ),
           );
         }
@@ -84,14 +88,19 @@ abstract final class VerticalCoreProjectValidator {
   }
 
   static void validateOrThrow({
-    required ProjectEntityStores stores,
     required Map<VerticalCoreId, ProjectVerticalCore> verticalCores,
+    required VerticalCoreBuildingExists buildingExists,
+    required VerticalCoreLevelBuildingResolver levelBuildingResolver,
   }) {
     final topologyIssues = VerticalCoreTopologyValidator.validate(verticalCores);
     if (topologyIssues.isNotEmpty) {
       throw VerticalCoreTopologyValidationException(topologyIssues);
     }
-    final issues = validate(stores: stores, verticalCores: verticalCores);
+    final issues = validate(
+      verticalCores: verticalCores,
+      buildingExists: buildingExists,
+      levelBuildingResolver: levelBuildingResolver,
+    );
     if (issues.isNotEmpty) {
       throw VerticalCoreProjectValidationException(issues);
     }
