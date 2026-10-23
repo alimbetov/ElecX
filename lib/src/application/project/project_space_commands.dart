@@ -90,11 +90,14 @@ final class CreateSpaceCommand implements ProjectCommand {
       usage: usage,
     );
 
-    return ProjectCommandCandidate(
-      stores: current.stores.copyWith(
-        levels: levels,
-        zones: zones,
-        spaces: spaces,
+    return ProjectCommandCandidate.fromState(
+      state: ProjectMutableState(
+        engineeringMetadata: current.engineeringMetadata,
+        stores: current.stores.copyWith(
+          levels: levels,
+          zones: zones,
+          spaces: spaces,
+        ),
       ),
       affectedEntityIds: <EntityId>[
         level.id,
@@ -130,8 +133,11 @@ final class RenameSpaceCommand implements ProjectCommand {
       usage: space.usage,
     );
 
-    return ProjectCommandCandidate(
-      stores: current.stores.copyWith(spaces: spaces),
+    return ProjectCommandCandidate.fromState(
+      state: ProjectMutableState(
+        engineeringMetadata: current.engineeringMetadata,
+        stores: current.stores.copyWith(spaces: spaces),
+      ),
       affectedEntityIds: <EntityId>[space.id],
     );
   }
@@ -171,13 +177,13 @@ ProjectSpaceEntity _requireSpace(
   ProjectAggregateRoot current,
   SpaceId spaceId,
 ) {
-    final space = current.index.space(spaceId);
-    if (space == null) {
-      throw ProjectAuthoringException(
-        code: ProjectAuthoringIssueCode.spaceNotFound,
-        entityId: spaceId,
-        message: 'Space $spaceId does not exist.',
-      );
-    }
-    return space;
+  final space = current.index.space(spaceId);
+  if (space == null) {
+    throw ProjectAuthoringException(
+      code: ProjectAuthoringIssueCode.spaceNotFound,
+      entityId: spaceId,
+      message: 'Space $spaceId does not exist.',
+    );
+  }
+  return space;
 }
