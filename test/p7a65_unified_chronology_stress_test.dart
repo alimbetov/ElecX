@@ -79,8 +79,8 @@ void main() {
 
     // 5. P3 metadata mutation. Register it on the same production journal using
     // the exact shared canonical session and persistence owner contract.
-    final northResult = ProjectNorthEditingSession(fixture.mutations)
-        .setProjectNorth(
+    final northResult =
+        ProjectNorthEditingSession(fixture.mutations).setProjectNorth(
       ProjectEngineeringNorth.fromDegrees(37.5),
       expectedVersion: fixture.session.project.version,
     );
