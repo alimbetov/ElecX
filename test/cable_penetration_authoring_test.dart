@@ -74,8 +74,7 @@ void main() {
       expect(
         () => CablePenetrationAuthoring.build(
           routeId: 'route-1',
-          source:
-              const ElectricalEndpointRef(componentId: 'a', portId: 'out'),
+          source: const ElectricalEndpointRef(componentId: 'a', portId: 'out'),
           target: const ElectricalEndpointRef(componentId: 'b', portId: 'in'),
           segments: segments,
           resolveTransition: (_, __, ___, ____) =>
@@ -90,8 +89,7 @@ void main() {
       expect(
         () => CablePenetrationAuthoring.build(
           routeId: 'route-1',
-          source:
-              const ElectricalEndpointRef(componentId: 'a', portId: 'out'),
+          source: const ElectricalEndpointRef(componentId: 'a', portId: 'out'),
           target: const ElectricalEndpointRef(componentId: 'b', portId: 'in'),
           segments: segments,
           resolveTransition: (_, __, ___, ____) => null,
@@ -118,8 +116,7 @@ void main() {
       expect(
         () => CablePenetrationAuthoring.build(
           routeId: 'route-1',
-          source:
-              const ElectricalEndpointRef(componentId: 'a', portId: 'out'),
+          source: const ElectricalEndpointRef(componentId: 'a', portId: 'out'),
           target: const ElectricalEndpointRef(componentId: 'b', portId: 'in'),
           segments: segments,
           resolveTransition: (_, __, ___, ____) => invalid,
