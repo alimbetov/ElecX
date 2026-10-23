@@ -1,4 +1,5 @@
 import '../../domain/project_aggregate.dart';
+import '../../domain/project_entity_stores_copy.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/project_space_semantics.dart';
 import 'project_authoring_error.dart';
@@ -381,16 +382,11 @@ ProjectCommandCandidate _candidate(
     ProjectCommandCandidate.fromState(
       state: ProjectMutableState(
         engineeringMetadata: current.engineeringMetadata,
-        stores: ProjectEntityStores(
-          sites: current.stores.sites,
-          buildings: current.stores.buildings,
-          levels: current.stores.levels,
-          zones: current.stores.zones,
-          spaces: spaces ?? current.stores.spaces,
-          openings: openings ?? current.stores.openings,
-          adjacencies: adjacencies ?? current.stores.adjacencies,
-          overlays: overlays ?? current.stores.overlays,
-          boundaries: current.stores.boundaries,
+        stores: current.stores.copyWith(
+          spaces: spaces,
+          openings: openings,
+          adjacencies: adjacencies,
+          overlays: overlays,
         ),
       ),
       affectedEntityIds: affected,
