@@ -20,7 +20,7 @@ final class CreateLevelCommand implements ProjectCommand {
     required this.levelNumber,
     required this.elevationMm,
     this.displayOrder = 0,
-    this.kind,
+    this.kind = ProjectLevelKind.unknown,
     this.floorToFloorHeightMm = 3000,
   }) {
     if (name.trim().isEmpty) {
@@ -41,7 +41,7 @@ final class CreateLevelCommand implements ProjectCommand {
   final int levelNumber;
   final int displayOrder;
   final int elevationMm;
-  final ProjectLevelKind? kind;
+  final ProjectLevelKind kind;
   final int floorToFloorHeightMm;
 
   @override
