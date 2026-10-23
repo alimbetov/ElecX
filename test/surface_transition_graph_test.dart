@@ -126,7 +126,8 @@ void main() {
     );
   });
 
-  test('ceiling to upper floor requires an adjacent physical slab', () {
+  test('ceiling to upper floor proves geometry but cannot commit without SlabId',
+      () {
     final lowerSpace = EngineeringSpace(
       id: 'lower-room',
       name: 'Lower room',
@@ -172,15 +173,13 @@ void main() {
     expect(candidate!.kind, SurfaceTransitionKind.levelPenetration);
     expect(candidate.requiresPenetration, isTrue);
     expect(candidate.toSurface, RoomSurfaceRef.floor(upperSpace.id));
-
-    final penetration = candidate.createPenetration(
-      penetrationId: 'slab-penetration-1',
-      routeId: 'route-up',
+    expect(
+      () => candidate.createPenetration(
+        penetrationId: 'slab-penetration-1',
+        routeId: 'route-up',
+      ),
+      throwsStateError,
     );
-    expect(penetration.hostKind, BoundaryPenetrationHostKind.slab);
-    expect(penetration.hostThicknessMm, 220);
-    expect(penetration.exitAnchor.isContinuationStart, isTrue);
-    expect(penetration.exitAnchor.surface, RoomSurfaceRef.floor(upperSpace.id));
   });
 
   test('slab penetration rejects a concave-room bounding-box false positive',
