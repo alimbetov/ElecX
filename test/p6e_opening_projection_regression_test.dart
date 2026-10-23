@@ -12,7 +12,8 @@ import 'package:elecx/src/features/editor/editor_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('opening-connected Space resolves without a separate adjacency entity', () {
+  test('opening-connected Space resolves without a separate adjacency entity',
+      () {
     final adapter = CanonicalSpaceSemanticsAdapter(
       workspace: _workspace(),
       binding: _binding(),
