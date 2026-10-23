@@ -56,7 +56,8 @@ void main() {
       expect(BoundaryGeometryIntegrity.validate(topology), isEmpty);
     });
 
-    test('near-collinear concave geometry is not normalized into collinear', () {
+    test('near-collinear concave geometry is not normalized into collinear',
+        () {
       final topology = _polygon(
         SpaceId('near-collinear'),
         const [
@@ -86,8 +87,7 @@ void main() {
       );
 
       expect(
-        BoundaryGeometryIntegrity.validate(topology)
-            .map((issue) => issue.code),
+        BoundaryGeometryIntegrity.validate(topology).map((issue) => issue.code),
         contains(BoundaryGeometryIssueCode.degenerateArea),
       );
     });
@@ -104,8 +104,7 @@ void main() {
       );
 
       expect(
-        BoundaryGeometryIntegrity.validate(topology)
-            .map((issue) => issue.code),
+        BoundaryGeometryIntegrity.validate(topology).map((issue) => issue.code),
         contains(BoundaryGeometryIssueCode.selfIntersection),
       );
     });
