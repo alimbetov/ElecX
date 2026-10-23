@@ -1,7 +1,6 @@
 import 'package:elecx/src/domain/geometry.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/route_host.dart';
-import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/features/editor/vertical_route_continuation_marker.dart';
 import 'package:flutter_test/flutter_test.dart';
 
