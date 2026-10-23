@@ -40,14 +40,7 @@ abstract final class VerticalRouteContinuationNavigation {
     required RouteHostTransition transition,
   }) {
     final currentSurface = controller.activeSurface;
-    final marker = currentSurface == null
-        ? null
-        : VerticalRouteContinuationMarkerResolver.resolve(
-            routeId: routeId,
-            transition: transition,
-            currentSurface: currentSurface,
-          );
-    if (marker == null) {
+    if (currentSurface == null) {
       throw const VerticalRouteContinuationNavigationException(
         code: VerticalRouteContinuationNavigationIssueCode.markerUnavailable,
         message: 'The selected transition is not an active inter-level marker.',
@@ -57,23 +50,56 @@ abstract final class VerticalRouteContinuationNavigation {
     final coordinator =
         CanonicalRoomSurfaceRuntimeRegistry.coordinatorFor(controller);
     final routing =
-        CanonicalRoomSurfaceRuntimeRegistry.physicalRoutingContextFor(controller);
+        CanonicalRoomSurfaceRuntimeRegistry.physicalRoutingContextFor(
+      controller,
+    );
     if (coordinator == null || routing == null) {
       throw const VerticalRouteContinuationNavigationException(
-        code:
-            VerticalRouteContinuationNavigationIssueCode.canonicalRuntimeRequired,
+        code: VerticalRouteContinuationNavigationIssueCode
+            .canonicalRuntimeRequired,
         message: 'Canonical runtime is required for inter-level navigation.',
       );
     }
 
-    final sourceSpaceId =
-        routing.canonicalSpaceIdForSurfaceSpaceId(marker.currentSurface.spaceId);
+    final currentSpaceId =
+        routing.canonicalSpaceIdForSurfaceSpaceId(currentSurface.spaceId);
+    if (currentSpaceId == null) {
+      throw const VerticalRouteContinuationNavigationException(
+        code:
+            VerticalRouteContinuationNavigationIssueCode.targetSpaceUnresolved,
+        message: 'Active surface cannot be resolved to a canonical SpaceId.',
+      );
+    }
+
+    final canonicalCurrentSurface = switch (currentSurface.type) {
+      SurfacePlaneType.floor => RoomSurfaceRef.floor(currentSpaceId.value),
+      SurfacePlaneType.ceiling => RoomSurfaceRef.ceiling(currentSpaceId.value),
+      SurfacePlaneType.wall => null,
+    };
+    final marker = canonicalCurrentSurface == null
+        ? null
+        : VerticalRouteContinuationMarkerResolver.resolve(
+            routeId: routeId,
+            transition: transition,
+            currentSurface: canonicalCurrentSurface,
+          );
+    if (marker == null) {
+      throw const VerticalRouteContinuationNavigationException(
+        code: VerticalRouteContinuationNavigationIssueCode.markerUnavailable,
+        message: 'The selected transition is not an active inter-level marker.',
+      );
+    }
+
+    final sourceSpaceId = routing
+        .canonicalSpaceIdForSurfaceSpaceId(marker.currentSurface.spaceId);
     final targetSpaceId =
         routing.canonicalSpaceIdForSurfaceSpaceId(marker.targetSurface.spaceId);
     if (sourceSpaceId == null || targetSpaceId == null) {
       throw const VerticalRouteContinuationNavigationException(
-        code: VerticalRouteContinuationNavigationIssueCode.targetSpaceUnresolved,
-        message: 'Marker surfaces cannot be resolved to canonical SpaceId values.',
+        code:
+            VerticalRouteContinuationNavigationIssueCode.targetSpaceUnresolved,
+        message:
+            'Marker surfaces cannot be resolved to canonical SpaceId values.',
       );
     }
 
@@ -85,15 +111,18 @@ abstract final class VerticalRouteContinuationNavigation {
     );
     if (plan == null || plan.slabId != marker.slabId) {
       throw const VerticalRouteContinuationNavigationException(
-        code: VerticalRouteContinuationNavigationIssueCode.slabOwnershipMismatch,
-        message: 'Marker SlabId does not own the canonical source/target levels.',
+        code:
+            VerticalRouteContinuationNavigationIssueCode.slabOwnershipMismatch,
+        message:
+            'Marker SlabId does not own the canonical source/target levels.',
       );
     }
 
     final sourceNavigation = coordinator.session.navigation;
-    final targetNavigation = sourceNavigation.selectSpace(project, targetSpaceId);
-    final materialization = const ExistingBindingCanonicalEditorMaterializer()
-        .inspect(
+    final targetNavigation =
+        sourceNavigation.selectSpace(project, targetSpaceId);
+    final materialization =
+        const ExistingBindingCanonicalEditorMaterializer().inspect(
       project: project,
       navigation: targetNavigation,
       binding: coordinator.adapter.binding,
@@ -132,7 +161,7 @@ abstract final class VerticalRouteContinuationNavigation {
       try {
         coordinator.session.adoptNavigation(sourceNavigation);
         coordinator.pushCanonicalToEditor();
-        _showSurface(controller, marker.currentSurface.type);
+        _showSurface(controller, currentSurface.type);
       } on Object {
         throw const VerticalRouteContinuationNavigationException(
           code: VerticalRouteContinuationNavigationIssueCode.rollbackFailed,
