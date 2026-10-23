@@ -76,6 +76,45 @@ void main() {
       expect(route.installationLengthMm, 1344);
     });
 
+    test('one physical transition rejects two different penetrations', () {
+      final segments = _wallSegments();
+      final first = _wallPenetration(segments);
+      final second = BoundaryPenetration.normal(
+        id: 'penetration-2',
+        hostKind: BoundaryPenetrationHostKind.wall,
+        entrySurface: segments.first.surface,
+        entryPoint: segments.first.points.last,
+        exitSurface: segments.last.surface,
+        exitPoint: segments.last.points.first,
+        hostThicknessMm: 180,
+        routeId: 'route-physical',
+        materialId: 'brick',
+      );
+
+      expect(
+        () => ElectricalCableRoute(
+          id: 'route-physical',
+          source: const ElectricalEndpointRef(
+            componentId: 'source',
+            portId: 'out',
+          ),
+          target: const ElectricalEndpointRef(
+            componentId: 'target',
+            portId: 'in',
+          ),
+          segments: segments,
+          penetrations: [first, second],
+        ),
+        throwsA(
+          isA<ArgumentError>().having(
+            (error) => error.message,
+            'message',
+            contains('must have exactly one penetration; found 2'),
+          ),
+        ),
+      );
+    });
+
     test('hosted adapter exposes penetration identity as explicit transition',
         () {
       final segments = _wallSegments();
