@@ -1,6 +1,7 @@
 import 'package:elecx/src/application/project/project_authoring_error.dart';
 import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/project_space_semantics_commands.dart';
+import 'package:elecx/src/domain/boundary_edge_identity_registry.dart';
 import 'package:elecx/src/domain/boundary_host_migration.dart';
 import 'package:elecx/src/domain/boundary_host_registry.dart';
 import 'package:elecx/src/domain/boundary_topology.dart';
@@ -146,12 +147,16 @@ ProjectAggregateRoot _hostedOpeningProject() {
       ),
     },
   );
+  final boundaries = <SpaceId, SpaceBoundaryTopology>{roomA: boundary};
+  final identityRegistry = const BoundaryEdgeIdentityRegistry.empty()
+      .registerActiveBoundaries(boundaries);
 
   return ProjectAggregateRoot(
     id: ProjectId('project-1'),
     siteId: siteId,
     version: LocalProjectVersion(0),
     engineeringMetadata: ProjectEngineeringMetadata(
+      boundaryEdgeIdentityRegistry: identityRegistry,
       boundaryHostedObjectRegistry: hostedObjects,
     ),
     stores: ProjectEntityStores(
@@ -194,7 +199,7 @@ ProjectAggregateRoot _hostedOpeningProject() {
           heightMm: 2100,
         ),
       },
-      boundaries: <SpaceId, SpaceBoundaryTopology>{roomA: boundary},
+      boundaries: boundaries,
     ),
   );
 }
