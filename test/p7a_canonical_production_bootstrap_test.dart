@@ -8,76 +8,81 @@ import 'package:elecx/src/domain/project_model.dart';
 import 'package:elecx/src/features/editor/canonical_editor_production_bootstrap.dart';
 import 'package:elecx/src/features/editor/editor_building_workspace.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
+import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:elecx/src/features/editor/editor_project_document.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('first open persists sidecar and reopen reuses exact canonical identity',
-      () async {
-    final fixture = _LegacyFixture();
-    addTearDown(fixture.dispose);
-    final repository = _MemoryProjectRepository();
+  test(
+    'first open persists sidecar and reopen reuses exact canonical identity',
+    () async {
+      final fixture = _LegacyFixture();
+      addTearDown(fixture.dispose);
+      final repository = _MemoryProjectRepository();
 
-    final first = await CanonicalEditorProductionHandle.loadOrBootstrap(
-      legacyDocument: fixture.document,
-      repository: repository,
-    );
-    expect(repository.saveCount, 1);
-    final firstSpaceIds = first.owner.project.stores.spaces.keys.toList();
-    final firstEdges = {
-      for (final entry in first.owner.project.stores.boundaries.entries)
-        entry.key: List<BoundaryEdgeId>.of(entry.value.orderedEdgeIds),
-    };
-
-    final reopened = await CanonicalEditorProductionHandle.loadOrBootstrap(
-      legacyDocument: fixture.document,
-      repository: repository,
-    );
-    expect(repository.saveCount, 1);
-    expect(reopened.owner.project.stores.spaces.keys, firstSpaceIds);
-    for (final entry in firstEdges.entries) {
-      expect(
-        reopened.owner.project.index.boundary(entry.key)?.orderedEdgeIds,
-        entry.value,
+      final first = await CanonicalEditorProductionHandle.loadOrBootstrap(
+        legacyDocument: fixture.document,
+        repository: repository,
       );
-    }
-  });
+      expect(repository.saveCount, 1);
+      final firstSpaceIds = first.owner.project.stores.spaces.keys.toList();
+      final firstEdges = {
+        for (final entry in first.owner.project.stores.boundaries.entries)
+          entry.key: List<BoundaryEdgeId>.of(entry.value.orderedEdgeIds),
+      };
 
-  test('mutation receipt owns synchronously and disk changes only on save',
-      () async {
-    final fixture = _LegacyFixture();
-    addTearDown(fixture.dispose);
-    final repository = _MemoryProjectRepository();
-    final handle = await CanonicalEditorProductionHandle.loadOrBootstrap(
-      legacyDocument: fixture.document,
-      repository: repository,
-    );
-    final persistedVersion = repository.saved!.localVersion;
+      final reopened = await CanonicalEditorProductionHandle.loadOrBootstrap(
+        legacyDocument: fixture.document,
+        repository: repository,
+      );
+      expect(repository.saveCount, 1);
+      expect(reopened.owner.project.stores.spaces.keys, firstSpaceIds);
+      for (final entry in firstEdges.entries) {
+        expect(
+          reopened.owner.project.index.boundary(entry.key)?.orderedEdgeIds,
+          entry.value,
+        );
+      }
+    },
+  );
 
-    final authored = handle.session.createBuilding(
-      const CreateBuildingRequest(name: 'Added building'),
-    );
-    final mutation = ProjectMutationResult(
-      project: authored.project,
-      changeSet: authored.changeSet,
-    );
-    handle.runtimeConfig.onCanonicalMutationCommitted!(
-      handle.session,
-      mutation,
-    );
-    handle.runtimeConfig.onAuthoringCommitted!(
-      handle.session,
-      authored.createdId,
-    );
+  test(
+    'mutation receipt owns synchronously and disk changes only on save',
+    () async {
+      final fixture = _LegacyFixture();
+      addTearDown(fixture.dispose);
+      final repository = _MemoryProjectRepository();
+      final handle = await CanonicalEditorProductionHandle.loadOrBootstrap(
+        legacyDocument: fixture.document,
+        repository: repository,
+      );
+      final persistedVersion = repository.saved!.localVersion;
 
-    expect(handle.owner.project, same(handle.session.project));
-    expect(handle.owner.version, persistedVersion.next());
-    expect(repository.saved!.localVersion, persistedVersion);
+      final authored = handle.session.createBuilding(
+        const CreateBuildingRequest(name: 'Added building'),
+      );
+      final mutation = ProjectMutationResult(
+        project: authored.project,
+        changeSet: authored.changeSet,
+      );
+      handle.runtimeConfig.onCanonicalMutationCommitted!(
+        handle.session,
+        mutation,
+      );
+      handle.runtimeConfig.onAuthoringCommitted!(
+        handle.session,
+        authored.createdId,
+      );
 
-    await handle.saveCanonical();
-    expect(repository.saved!.localVersion, handle.owner.version);
-    expect(repository.saveCount, 2);
-  });
+      expect(handle.owner.project, same(handle.session.project));
+      expect(handle.owner.version, persistedVersion.next());
+      expect(repository.saved!.localVersion, persistedVersion);
+
+      await handle.saveCanonical();
+      expect(repository.saved!.localVersion, handle.owner.version);
+      expect(repository.saveCount, 2);
+    },
+  );
 }
 
 final class _LegacyFixture {
