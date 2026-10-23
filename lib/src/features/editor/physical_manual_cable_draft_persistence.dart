@@ -144,7 +144,8 @@ extension PhysicalManualCableDraftPersistence on EditorController {
     final canonicalSession =
         CanonicalRoomSurfaceRuntimeRegistry.coordinatorFor(this)?.session;
     if (!identical(canonicalSession, intent.canonicalSessionIdentity) ||
-        canonicalSession?.project.version.value != intent.canonicalProjectVersion) {
+        canonicalSession?.project.version.value !=
+            intent.canonicalProjectVersion) {
       return false;
     }
 
@@ -417,7 +418,8 @@ bool _usesCanonicalSurfaceIdentity(
   if (canonicalSpaceId == null || surface.spaceId != canonicalSpaceId.value) {
     return false;
   }
-  return surface.type != SurfacePlaneType.wall || surface.boundaryEdgeId != null;
+  return surface.type != SurfacePlaneType.wall ||
+      surface.boundaryEdgeId != null;
 }
 
 RoomSurfaceRef? _surfaceForRouteIdentity(
@@ -442,7 +444,8 @@ RoomSurfaceRef? _surfaceForRouteIdentity(
       final direct = draftSurface.boundaryEdgeId;
       if (direct != null) {
         if (!topology.orderedEdgeIds.contains(direct)) return null;
-        return RoomSurfaceRef.wallByBoundaryEdge(canonicalSpaceId.value, direct);
+        return RoomSurfaceRef.wallByBoundaryEdge(
+            canonicalSpaceId.value, direct);
       }
       final ordinal = draftSurface.wallIndex;
       if (ordinal == null ||
