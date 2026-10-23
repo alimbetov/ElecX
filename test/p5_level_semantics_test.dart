@@ -35,10 +35,27 @@ void main() {
       expect(level.elevationMm, 30000);
     });
 
-    test('legacy-compatible defaults infer kind deterministically', () {
-      expect(_level(-1).kind, ProjectLevelKind.basement);
-      expect(_level(0).kind, ProjectLevelKind.ground);
-      expect(_level(1).kind, ProjectLevelKind.residential);
+    test('authoring without explicit kind infers physical role deterministically',
+        () {
+      ProjectLevelKind createKind(int number) {
+        final session = ProjectStructureAuthoringSession(
+          mutations: ProjectMutationSession(_project()),
+          idFactory: SecureRandomEntityIdFactory(random: Random(number + 40)),
+        );
+        final result = session.createLevel(
+          CreateLevelRequest(
+            name: 'Level $number',
+            levelNumber: number,
+            elevationMm: number * 3000,
+          ),
+        );
+        return result.project.index.level(result.createdId)!.kind;
+      }
+
+      expect(createKind(-1), ProjectLevelKind.basement);
+      expect(createKind(0), ProjectLevelKind.ground);
+      expect(createKind(1), ProjectLevelKind.residential);
+      expect(_level(1).kind, ProjectLevelKind.unknown);
       expect(_level(1).floorToFloorHeightMm, 3000);
     });
 
