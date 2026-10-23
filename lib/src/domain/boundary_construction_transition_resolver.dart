@@ -50,15 +50,65 @@ abstract final class BoundaryConstructionTransitionResolver {
       )?.materialId,
     );
     for (final candidate in candidates) {
-      if (candidate.toSurface == toSurface && candidate.toPoint == toPoint) {
-        if (candidate.kind == SurfaceTransitionKind.roomPenetration &&
-            candidate.penetrationRequirement?.hostThicknessMm == null) {
-          return null;
-        }
+      if (!_sameSurfaceIdentity(
+            candidate.toSurface,
+            toSurface,
+            edgeOrderResolver,
+            canonicalSpaceIdResolver,
+          ) ||
+          candidate.toPoint != toPoint) {
+        continue;
+      }
+      if (candidate.kind == SurfaceTransitionKind.roomPenetration &&
+          candidate.penetrationRequirement?.hostThicknessMm == null) {
+        return null;
+      }
+
+      // SurfaceTransitionGraph deliberately prefers durable BoundaryEdgeId
+      // references whenever canonical edge order is available. The editor
+      // draft, however, may still be materialized with transient wall ordinals.
+      // Return the same proven physical transition in the caller's coordinate
+      // identity so CablePenetrationAuthoring can keep its strict exact-match
+      // invariant without treating stable and transient aliases as different
+      // physical walls.
+      if (candidate.fromSurface == fromSurface &&
+          candidate.toSurface == toSurface) {
         return candidate;
       }
+      return SurfaceTransitionCandidate(
+        id: candidate.id,
+        kind: candidate.kind,
+        fromSurface: fromSurface,
+        fromPoint: fromPoint,
+        toSurface: toSurface,
+        toPoint: toPoint,
+        penetrationRequirement: candidate.penetrationRequirement,
+      );
     }
     return null;
+  }
+
+  static bool _sameSurfaceIdentity(
+    RoomSurfaceRef left,
+    RoomSurfaceRef right,
+    List<BoundaryEdgeId>? Function(String spaceId) edgeOrderResolver,
+    CanonicalSpaceIdResolver canonicalSpaceIdResolver,
+  ) {
+    if (left == right) return true;
+    if (left.type != right.type || left.spaceId != right.spaceId) return false;
+    if (left.type != SurfacePlaneType.wall) return false;
+
+    final leftHost = _hostFor(
+      left,
+      edgeOrderResolver,
+      canonicalSpaceIdResolver,
+    );
+    final rightHost = _hostFor(
+      right,
+      edgeOrderResolver,
+      canonicalSpaceIdResolver,
+    );
+    return leftHost != null && leftHost == rightHost;
   }
 
   static BoundaryConstructionProfile? _sharedWallProfile(
