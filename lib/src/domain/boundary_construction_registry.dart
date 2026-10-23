@@ -45,8 +45,7 @@ final class BoundaryConstructionProfile {
       other.fireRatingId == fireRatingId;
 
   @override
-  int get hashCode =>
-      Object.hash(kind, thicknessMm, materialId, fireRatingId);
+  int get hashCode => Object.hash(kind, thicknessMm, materialId, fireRatingId);
 }
 
 final class BoundaryConstructionRegistryException implements Exception {
@@ -133,7 +132,8 @@ final class BoundaryConstructionRegistry {
           final sourceProfiles = <BoundaryConstructionProfile?>[
             for (final sourceId in record.sourceEdgeIds) next[host(sourceId)],
           ];
-          final explicit = sourceProfiles.whereType<BoundaryConstructionProfile>()
+          final explicit = sourceProfiles
+              .whereType<BoundaryConstructionProfile>()
               .toList(growable: false);
           if (explicit.isEmpty) {
             for (final sourceId in record.sourceEdgeIds) {
