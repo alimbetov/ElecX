@@ -152,8 +152,11 @@ final class RemoveStructuralZoneCommand implements ProjectCommand {
       spaceIds: level.spaceIds,
     );
 
-    return ProjectCommandCandidate(
-      stores: current.stores.copyWith(levels: levels, zones: zones),
+    return ProjectCommandCandidate.fromState(
+      state: ProjectMutableState(
+        engineeringMetadata: current.engineeringMetadata,
+        stores: current.stores.copyWith(levels: levels, zones: zones),
+      ),
       affectedEntityIds: <EntityId>[zone.id, level.id],
     );
   }
@@ -195,7 +198,7 @@ final class RemoveLevelCommand implements ProjectCommand {
     final slabIds = current.index.slabsForLevel(level.id);
     if (slabIds.isNotEmpty) {
       throw ProjectAuthoringException(
-        code: ProjectAuthoringIssueCode.levelHasChildren,
+        code: ProjectAuthoringIssueCode.levelHasPhysicalSlabs,
         entityId: level.id,
         relatedEntityId: slabIds.first,
         blockingEntityIds: Set<EntityId>.unmodifiable(slabIds),
@@ -219,10 +222,13 @@ final class RemoveLevelCommand implements ProjectCommand {
       levelIds: <LevelId>{...building.levelIds}..remove(level.id),
     );
 
-    return ProjectCommandCandidate(
-      stores: current.stores.copyWith(
-        buildings: buildings,
-        levels: levels,
+    return ProjectCommandCandidate.fromState(
+      state: ProjectMutableState(
+        engineeringMetadata: current.engineeringMetadata,
+        stores: current.stores.copyWith(
+          buildings: buildings,
+          levels: levels,
+        ),
       ),
       affectedEntityIds: <EntityId>[level.id, building.id],
     );
@@ -261,7 +267,7 @@ final class RemoveBuildingCommand implements ProjectCommand {
     final slabIds = current.index.slabsForBuilding(building.id);
     if (slabIds.isNotEmpty) {
       throw ProjectAuthoringException(
-        code: ProjectAuthoringIssueCode.buildingHasLevels,
+        code: ProjectAuthoringIssueCode.buildingHasPhysicalSlabs,
         entityId: building.id,
         relatedEntityId: slabIds.first,
         blockingEntityIds: Set<EntityId>.unmodifiable(slabIds),
@@ -282,10 +288,13 @@ final class RemoveBuildingCommand implements ProjectCommand {
       buildingIds: <BuildingId>{...site.buildingIds}..remove(building.id),
     );
 
-    return ProjectCommandCandidate(
-      stores: current.stores.copyWith(
-        sites: sites,
-        buildings: buildings,
+    return ProjectCommandCandidate.fromState(
+      state: ProjectMutableState(
+        engineeringMetadata: current.engineeringMetadata,
+        stores: current.stores.copyWith(
+          sites: sites,
+          buildings: buildings,
+        ),
       ),
       affectedEntityIds: <EntityId>[building.id, site.id],
     );
