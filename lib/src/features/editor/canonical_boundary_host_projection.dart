@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import '../../domain/boundary_host_migration.dart';
 import '../../domain/boundary_host_registry.dart';
+import '../../domain/boundary_penetration.dart';
 import '../../domain/boundary_topology.dart';
 import '../../domain/boundary_wall_profile_registry.dart';
 import '../../domain/electrical_placement.dart';
@@ -537,18 +538,103 @@ abstract final class CanonicalBoundaryHostProjection {
       oldSegmentToNew: oldSegmentToNew,
       oldPointToNew: oldPointToNew,
     );
+    final nextPenetrations = _remapPenetrations(
+      sourceRoute: route,
+      resultSegments: segments,
+      oldPointToNew: oldPointToNew,
+    );
     return _RouteMaterialization(
-      route: ElectricalCableRoute(
-        id: route.id,
-        source: route.source,
-        target: route.target,
+      route: route.copyWith(
         segments: List.unmodifiable(segments),
-        cableType: route.cableType,
-        medium: route.medium,
-        reservePercent: route.reservePercent,
+        penetrations: nextPenetrations,
       ),
       constraints: nextConstraints,
     );
+  }
+
+  static List<BoundaryPenetration> _remapPenetrations({
+    required ElectricalCableRoute sourceRoute,
+    required List<ElectricalRouteSegment> resultSegments,
+    required Map<String, _RoutePointLocation> oldPointToNew,
+  }) {
+    if (sourceRoute.penetrations.isEmpty) return sourceRoute.penetrations;
+    final result = <BoundaryPenetration>[];
+    for (final penetration in sourceRoute.penetrations) {
+      int? sourceTransitionIndex;
+      for (var index = 0; index + 1 < sourceRoute.segments.length; index++) {
+        final before = sourceRoute.segments[index];
+        final after = sourceRoute.segments[index + 1];
+        if (before.points.isEmpty || after.points.isEmpty) continue;
+        final matches = penetration.entryAnchor.surface == before.surface &&
+            penetration.entryAnchor.point == before.points.last &&
+            penetration.exitAnchor.surface == after.surface &&
+            penetration.exitAnchor.point == after.points.first;
+        if (!matches) continue;
+        if (sourceTransitionIndex != null) {
+          throw StateError(
+            'Penetration ${penetration.id} matches multiple route transitions.',
+          );
+        }
+        sourceTransitionIndex = index;
+      }
+      if (sourceTransitionIndex == null) {
+        throw StateError(
+          'Penetration ${penetration.id} is detached from route '
+          '${sourceRoute.id}.',
+        );
+      }
+
+      final sourceBefore = sourceRoute.segments[sourceTransitionIndex];
+      final entryLocation = oldPointToNew[
+          '$sourceTransitionIndex:${sourceBefore.points.length - 1}'];
+      final exitLocation = oldPointToNew['${sourceTransitionIndex + 1}:0'];
+      if (entryLocation == null || exitLocation == null) {
+        throw StateError(
+          'Penetration ${penetration.id} could not be rebound after topology '
+          'materialization.',
+        );
+      }
+      if (entryLocation.segmentIndex >= resultSegments.length ||
+          exitLocation.segmentIndex >= resultSegments.length) {
+        throw StateError(
+          'Penetration ${penetration.id} rebound outside result route.',
+        );
+      }
+      final entrySegment = resultSegments[entryLocation.segmentIndex];
+      final exitSegment = resultSegments[exitLocation.segmentIndex];
+      if (entryLocation.pointIndex >= entrySegment.points.length ||
+          exitLocation.pointIndex >= exitSegment.points.length) {
+        throw StateError(
+          'Penetration ${penetration.id} rebound to an invalid route point.',
+        );
+      }
+      result.add(
+        BoundaryPenetration(
+          id: penetration.id,
+          hostKind: penetration.hostKind,
+          entryAnchor: BoundaryPenetrationAnchor(
+            id: penetration.entryAnchor.id,
+            penetrationId: penetration.id,
+            side: PenetrationAnchorSide.entry,
+            surface: entrySegment.surface,
+            point: entrySegment.points[entryLocation.pointIndex],
+            routeId: penetration.routeId,
+          ),
+          exitAnchor: BoundaryPenetrationAnchor(
+            id: penetration.exitAnchor.id,
+            penetrationId: penetration.id,
+            side: PenetrationAnchorSide.exit,
+            surface: exitSegment.surface,
+            point: exitSegment.points[exitLocation.pointIndex],
+            routeId: penetration.routeId,
+          ),
+          hostThicknessMm: penetration.hostThicknessMm,
+          pathLengthMm: penetration.pathLengthMm,
+          materialId: penetration.materialId,
+        ),
+      );
+    }
+    return List.unmodifiable(result);
   }
 
   static CableRouteConstraints _remapConstraints({
