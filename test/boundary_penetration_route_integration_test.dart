@@ -1,7 +1,9 @@
 import 'package:elecx/src/domain/boundary_penetration.dart';
 import 'package:elecx/src/domain/electrical_routing.dart';
+import 'package:elecx/src/domain/hosted_routing.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/surfaces.dart';
+import 'package:elecx/src/features/editor/circuit_sizing_evidence.dart';
 import 'package:elecx/src/features/editor/editor_building_workspace.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
 import 'package:elecx/src/features/editor/editor_p2_session.dart';
@@ -74,6 +76,55 @@ void main() {
       expect(route.installationLengthMm, 1344);
     });
 
+    test('hosted adapter exposes penetration identity as explicit transition',
+        () {
+      final segments = _wallSegments();
+      final penetration = _wallPenetration(segments);
+      final route = _route(segments: segments, penetration: penetration);
+
+      final hosted = HostedRouteAdapter.fromIndoor(route);
+
+      expect(hosted.routeId, route.id);
+      expect(hosted.transitions, hasLength(1));
+      final transition = hosted.transitions.single;
+      expect(transition.id, penetration.id);
+      expect(transition.requiresPenetration, isTrue);
+      expect(transition.fromHost.surface, penetration.entryAnchor.surface);
+      expect(transition.toHost.surface, penetration.exitAnchor.surface);
+      expect(transition.fromPoint.x, penetration.entryAnchor.point.xMm);
+      expect(transition.fromPoint.y, penetration.entryAnchor.point.yMm);
+      expect(transition.toPoint.x, penetration.exitAnchor.point.xMm);
+      expect(transition.toPoint.y, penetration.exitAnchor.point.yMm);
+    });
+
+    test('penetration geometry change invalidates cable sizing signature', () {
+      final segments = _wallSegments();
+      final originalPenetration = _wallPenetration(segments);
+      final original = _route(
+        segments: segments,
+        penetration: originalPenetration,
+      );
+      final longerPenetration = BoundaryPenetration(
+        id: originalPenetration.id,
+        hostKind: originalPenetration.hostKind,
+        entryAnchor: originalPenetration.entryAnchor,
+        exitAnchor: originalPenetration.exitAnchor,
+        hostThicknessMm: originalPenetration.hostThicknessMm,
+        pathLengthMm: 240,
+        materialId: originalPenetration.materialId,
+      );
+      final changed = _route(
+        segments: segments,
+        penetration: longerPenetration,
+      );
+
+      expect(
+        CircuitSizingEvidence.geometrySignature(changed),
+        isNot(CircuitSizingEvidence.geometrySignature(original)),
+      );
+      expect(changed.geometricLengthMm, original.geometricLengthMm + 60);
+    });
+
     test('canonical wall and penetration survive project JSON round-trip', () {
       final editor = EditorController.demo();
       final workspace = EditorBuildingWorkspace.demo(editor);
@@ -102,6 +153,7 @@ void main() {
       );
 
       final json = document.toJson();
+      expect(json['schemaVersion'], 7);
       final routeJson = ((json['p2']! as Map)['routes']! as List).single as Map;
       final firstSurface =
           ((routeJson['segments']! as List).first as Map)['surface'] as Map;
@@ -111,9 +163,13 @@ void main() {
       final restored = EditorProjectDocument.fromJson(json);
       final restoredRoute = restored.p2State.routes.single;
       expect(
-          restoredRoute.segments.first.surface.boundaryEdgeId?.value, 'edge-a');
+        restoredRoute.segments.first.surface.boundaryEdgeId?.value,
+        'edge-a',
+      );
       expect(
-          restoredRoute.segments.last.surface.boundaryEdgeId?.value, 'edge-b');
+        restoredRoute.segments.last.surface.boundaryEdgeId?.value,
+        'edge-b',
+      );
       expect(restoredRoute.penetrations, hasLength(1));
       expect(restoredRoute.penetrations.single.id, 'penetration-1');
       expect(restoredRoute.penetrations.single.routeId, 'route-physical');
