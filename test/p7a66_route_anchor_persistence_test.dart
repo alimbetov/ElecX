@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P7A-6.6 route anchor persistence', () {
-    test('schema v7 round-trip preserves durable route anchor ids exactly', () {
+    test('schema v8 round-trip preserves durable route anchor ids exactly', () {
       final fixture = _routeDocumentJson();
       final json = fixture.json;
       final segment = fixture.segment;
@@ -26,7 +26,7 @@ void main() {
           .toList(growable: false);
 
       expect(decoded.schemaVersion, EditorProjectDocument.currentSchemaVersion);
-      expect(decoded.schemaVersion, 7);
+      expect(decoded.schemaVersion, 8);
       expect(restoredIds, expected);
       final encodedRoute =
           ((decoded.toJson()['p2']! as Map)['routes']! as List).single as Map;
@@ -46,7 +46,7 @@ void main() {
 
       final decoded = EditorProjectDocument.fromJson(json);
 
-      expect(decoded.schemaVersion, 7);
+      expect(decoded.schemaVersion, 8);
       expect(decoded.p2State.routes.single.segments.single.anchorIds, isEmpty);
       expect(decoded.p2State.routes.single.penetrations, isEmpty);
       fixture.dispose();
@@ -63,7 +63,7 @@ void main() {
 
         final decoded = EditorProjectDocument.fromJson(fixture.json);
 
-        expect(decoded.schemaVersion, 7);
+        expect(decoded.schemaVersion, 8);
         expect(decoded.p2State.routes.single.penetrations, isEmpty);
         final encodedRoute =
             ((decoded.toJson()['p2']! as Map)['routes']! as List).single as Map;
@@ -72,7 +72,7 @@ void main() {
       },
     );
 
-    test('schema v7 rejects anchor count that differs from route points', () {
+    test('schema v8 rejects anchor count that differs from route points', () {
       final fixture = _routeDocumentJson();
       fixture.segment['anchorIds'] = ['only-one'];
 
@@ -83,7 +83,7 @@ void main() {
       fixture.dispose();
     });
 
-    test('schema v7 rejects duplicate durable anchor ids route-wide', () {
+    test('schema v8 rejects duplicate durable anchor ids route-wide', () {
       final fixture = _routeDocumentJson();
       final pointCount = (fixture.segment['points']! as List).length;
       fixture.segment['anchorIds'] = [
@@ -98,7 +98,7 @@ void main() {
       fixture.dispose();
     });
 
-    test('schema v7 rejects projection-only transition anchor identity', () {
+    test('schema v8 rejects projection-only transition anchor identity', () {
       final fixture = _routeDocumentJson();
       final pointCount = (fixture.segment['points']! as List).length;
       fixture.segment['anchorIds'] = [
