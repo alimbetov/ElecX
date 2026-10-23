@@ -149,8 +149,7 @@ void main() {
       () => VerticalCoreCableRouteAuthoring.build(
         plan: plan,
         routeId: 'R-1',
-        source:
-            const ElectricalEndpointRef(componentId: 'SRC', portId: 'OUT'),
+        source: const ElectricalEndpointRef(componentId: 'SRC', portId: 'OUT'),
         target: const ElectricalEndpointRef(componentId: 'DST', portId: 'IN'),
         segments: const [],
         crossings: [
