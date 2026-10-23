@@ -41,7 +41,8 @@ void main() {
 
     expect(authoring.project.version, LocalProjectVersion(2));
     expect(authoring.project.index.slab(slab.slabId), isNotNull);
-    expect(authoring.project.index.verticalCore(core.verticalCoreId), isNotNull);
+    expect(
+        authoring.project.index.verticalCore(core.verticalCoreId), isNotNull);
 
     final undoCore = authoring.undoCanonicalMutation();
     expect(undoCore, isNotNull);
@@ -60,7 +61,8 @@ void main() {
 
     final redoCore = authoring.redoCanonicalMutation();
     expect(redoCore, isNotNull);
-    expect(authoring.project.index.verticalCore(core.verticalCoreId), isNotNull);
+    expect(
+        authoring.project.index.verticalCore(core.verticalCoreId), isNotNull);
   });
 }
 
