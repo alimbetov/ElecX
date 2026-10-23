@@ -1,6 +1,7 @@
 import '../../domain/boundary_construction_transition_resolver.dart';
 import '../../domain/project_model.dart';
 import '../../domain/surface_transition_graph.dart';
+import '../../domain/surfaces.dart';
 import 'canonical_room_surface_runtime_registry.dart';
 import 'editor_controller.dart';
 import 'physical_manual_cable_draft_persistence.dart';
@@ -18,10 +19,10 @@ extension ManualCableDraftPersistence on EditorController {
     final routingContext =
         CanonicalRoomSurfaceRuntimeRegistry.physicalRoutingContextFor(this);
     SurfaceTransitionCandidate? resolve(
-      fromSurface,
-      fromPoint,
-      toSurface,
-      toPoint,
+      RoomSurfaceRef fromSurface,
+      SurfacePointMm fromPoint,
+      RoomSurfaceRef toSurface,
+      SurfacePointMm toPoint,
     ) {
       final fromSpace = _spaceById(level, fromSurface.spaceId);
       if (fromSpace == null) return null;
