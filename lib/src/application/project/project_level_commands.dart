@@ -26,13 +26,7 @@ final class CreateLevelCommand implements ProjectCommand {
     if (name.trim().isEmpty) {
       throw ArgumentError.value(name, 'name', 'Level name must be non-empty.');
     }
-    if (floorToFloorHeightMm <= 0) {
-      throw ArgumentError.value(
-        floorToFloorHeightMm,
-        'floorToFloorHeightMm',
-        'Must be positive.',
-      );
-    }
+    _validateFloorToFloorHeight(floorToFloorHeightMm);
   }
 
   final LevelId levelId;
@@ -156,6 +150,36 @@ final class RenumberLevelCommand implements ProjectCommand {
   }
 }
 
+/// Updates the canonical physical classification of a level without changing
+/// its identity, numbering, elevation, hierarchy membership or display order.
+final class UpdateLevelSemanticsCommand implements ProjectCommand {
+  UpdateLevelSemanticsCommand({
+    required this.levelId,
+    required this.kind,
+    required this.floorToFloorHeightMm,
+  }) {
+    _validateFloorToFloorHeight(floorToFloorHeightMm);
+  }
+
+  final LevelId levelId;
+  final ProjectLevelKind kind;
+  final int floorToFloorHeightMm;
+
+  @override
+  String get commandType => 'project.level.update-semantics';
+
+  @override
+  ProjectCommandCandidate buildCandidate(ProjectAggregateRoot current) {
+    final level = _requireLevel(current, levelId);
+    return _replaceLevel(
+      current,
+      level,
+      kind: kind,
+      floorToFloorHeightMm: floorToFloorHeightMm,
+    );
+  }
+}
+
 /// Changes structural navigator ordering without changing numbering or identity.
 final class ReorderLevelCommand implements ProjectCommand {
   const ReorderLevelCommand({
@@ -223,6 +247,16 @@ void _validateLevelNumber(int levelNumber) {
   }
 }
 
+void _validateFloorToFloorHeight(int floorToFloorHeightMm) {
+  if (floorToFloorHeightMm <= 0) {
+    throw ArgumentError.value(
+      floorToFloorHeightMm,
+      'floorToFloorHeightMm',
+      'Must be positive.',
+    );
+  }
+}
+
 void _ensureLevelNumberAvailable(
   ProjectAggregateRoot current, {
   required ProjectBuildingEntity building,
@@ -251,6 +285,8 @@ ProjectCommandCandidate _replaceLevel(
   String? name,
   int? levelNumber,
   int? displayOrder,
+  ProjectLevelKind? kind,
+  int? floorToFloorHeightMm,
 }) {
   final levels = Map<LevelId, ProjectLevelEntity>.from(current.stores.levels);
   levels[level.id] = ProjectLevelEntity(
@@ -260,8 +296,9 @@ ProjectCommandCandidate _replaceLevel(
     levelNumber: levelNumber ?? level.levelNumber,
     displayOrder: displayOrder ?? level.displayOrder,
     elevationMm: level.elevationMm,
-    kind: level.kind,
-    floorToFloorHeightMm: level.floorToFloorHeightMm,
+    kind: kind ?? level.kind,
+    floorToFloorHeightMm:
+        floorToFloorHeightMm ?? level.floorToFloorHeightMm,
     zoneIds: level.zoneIds,
     spaceIds: level.spaceIds,
   );
