@@ -149,17 +149,17 @@ final class _SlabAggregateFixture {
   final LevelId upperLevelId = LevelId('level-02');
   final LevelId otherBuildingLevelId = LevelId('level-b-02');
 
-  ProjectSlab get slab => ProjectSlab(
-        id: SlabId('slab-01-02'),
-        buildingId: buildingId,
-        kind: SlabKind.interLevel,
-        belowLevelId: lowerLevelId,
-        aboveLevelId: upperLevelId,
-        bottomElevationMm: 3000,
-        thicknessMm: 200,
-        materialId: 'reinforced-concrete',
-        footprint: _rectangle,
-      );
+  late final ProjectSlab slab = ProjectSlab(
+    id: SlabId('slab-01-02'),
+    buildingId: buildingId,
+    kind: SlabKind.interLevel,
+    belowLevelId: lowerLevelId,
+    aboveLevelId: upperLevelId,
+    bottomElevationMm: 3000,
+    thicknessMm: 200,
+    materialId: 'reinforced-concrete',
+    footprint: _rectangle,
+  );
 
   ProjectAggregateRoot projectWith({
     Map<SlabId, ProjectSlab> slabs = const {},
