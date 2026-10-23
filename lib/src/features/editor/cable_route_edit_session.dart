@@ -98,8 +98,6 @@ final class CableRouteEditSession extends ChangeNotifier
   @override
   bool begin() => _origin != null;
 
-  /// Rebuilds the edited segment automatically while preserving mandatory
-  /// waypoints. Each mandatory point becomes a hard intermediate routing node.
   bool autoRoute() {
     final origin = _origin;
     final index = _segmentIndex;
@@ -136,10 +134,6 @@ final class CableRouteEditSession extends ChangeNotifier
     return preview(_removeConsecutiveDuplicates(rebuilt));
   }
 
-  /// Applies an engineer-authored route preview. In AUTO/ASSISTED mode invalid
-  /// geometry is exposed visually but cannot be committed. MANUAL+GUARDRAILS
-  /// uses the same rule by default; a future explicit normative override is a
-  /// separate audited command rather than an implicit bypass here.
   bool preview(List<SurfacePointMm> points) {
     final origin = _origin;
     final index = _segmentIndex;
@@ -151,7 +145,14 @@ final class CableRouteEditSession extends ChangeNotifier
       surface: origin.segments[index].surface,
       points: List.unmodifiable(points),
     );
-    final route = _replaceSegment(origin, index, replacement);
+    ElectricalCableRoute route;
+    try {
+      route = _replaceSegment(origin, index, replacement);
+    } on ArgumentError {
+      _phase = EditorEditSessionPhase.invalid;
+      notifyListeners();
+      return false;
+    }
     _preview = CableRouteEditPreview(
       route: route,
       validation: validation,
@@ -248,17 +249,11 @@ final class CableRouteEditSession extends ChangeNotifier
     int index,
     ElectricalRouteSegment replacement,
   ) =>
-      ElectricalCableRoute(
-        id: route.id,
-        source: route.source,
-        target: route.target,
+      route.copyWith(
         segments: [
           for (var i = 0; i < route.segments.length; i++)
             if (i == index) replacement else route.segments[i],
         ],
-        cableType: route.cableType,
-        medium: route.medium,
-        reservePercent: route.reservePercent,
       );
 
   static List<SurfacePointMm> _removeConsecutiveDuplicates(
