@@ -6,20 +6,29 @@ import '../../domain/slab_topology.dart';
 import 'canonical_project_document_codec.dart';
 import 'project_document_codec.dart';
 
-/// Schema-v8 additive persistence layer for canonical physical slabs.
+/// Schema-v9 additive persistence layer for canonical physical slabs.
 ///
-/// The proven v1-v7 codec remains authoritative for all pre-slab fields and
-/// migrations. This decorator owns only the `slabs` payload introduced by v8,
-/// which keeps the vertical-topology migration independent from the frozen P7A
-/// wall persistence contract.
+/// Schema history compatibility is intentionally asymmetric because an earlier
+/// development revision assigned schema 8 to slabs before the base canonical
+/// codec later assigned schema 8 to Level kind/floor-to-floor semantics.
+/// Consequently v8 has two historical shapes:
+///
+/// - base-v8 document: Level semantics, no `slabs` field;
+/// - legacy slab-v8 document: `slabs` field layered over base-v7.
+///
+/// Decode distinguishes those shapes by the additive `slabs` field. New slab
+/// documents always encode as v9, restoring a single unambiguous meaning for
+/// every schema number going forward.
 final class SlabAwareCanonicalProjectDocumentCodec
     implements ProjectDocumentCodec {
   const SlabAwareCanonicalProjectDocumentCodec();
 
-  static const int schemaVersion = 8;
-  static const int _legacySchemaVersion = 7;
+  static const int schemaVersion = 9;
+  static const int _baseSchemaVersion = 8;
+  static const int _legacySlabSchemaVersion = 8;
+  static const int _preLevelSemanticsSchemaVersion = 7;
 
-  static const CanonicalProjectDocumentCodec _legacy =
+  static const CanonicalProjectDocumentCodec _base =
       CanonicalProjectDocumentCodec();
 
   @override
@@ -27,11 +36,11 @@ final class SlabAwareCanonicalProjectDocumentCodec
 
   @override
   ProjectDocument encode(ProjectSnapshot snapshot) {
-    final legacy = _legacy.encode(snapshot);
+    final base = _base.encode(snapshot);
     return ProjectDocument(
       schemaVersion: schemaVersion,
       payload: <String, Object?>{
-        ...legacy.payload,
+        ...base.payload,
         'slabs': _encodeSlabs(snapshot.aggregate.stores.slabs),
       },
     );
@@ -46,27 +55,36 @@ final class SlabAwareCanonicalProjectDocumentCodec
       );
     }
 
-    if (document.schemaVersion <= _legacySchemaVersion) {
-      return _legacy.decode(document);
+    if (document.schemaVersion < _legacySlabSchemaVersion) {
+      return _base.decode(document);
+    }
+
+    if (document.schemaVersion == _legacySlabSchemaVersion &&
+        !document.payload.containsKey('slabs')) {
+      // Unambiguous base-v8 document introduced for Level semantics.
+      return _base.decode(document);
     }
 
     final slabs = _decodeSlabs(document.payload['slabs']);
-    final legacyPayload = Map<String, Object?>.of(document.payload)
+    final basePayload = Map<String, Object?>.of(document.payload)
       ..remove('slabs');
-    final legacySnapshot = _legacy.decode(
+    final baseVersion = document.schemaVersion == _legacySlabSchemaVersion
+        ? _preLevelSemanticsSchemaVersion
+        : _baseSchemaVersion;
+    final baseSnapshot = _base.decode(
       ProjectDocument(
-        schemaVersion: _legacySchemaVersion,
-        payload: legacyPayload,
+        schemaVersion: baseVersion,
+        payload: basePayload,
       ),
     );
-    final stores = legacySnapshot.aggregate.stores;
+    final stores = baseSnapshot.aggregate.stores;
 
     try {
       final aggregate = ProjectAggregateRoot(
-        id: legacySnapshot.id,
-        siteId: legacySnapshot.siteId,
-        version: legacySnapshot.localVersion,
-        engineeringMetadata: legacySnapshot.aggregate.engineeringMetadata,
+        id: baseSnapshot.id,
+        siteId: baseSnapshot.siteId,
+        version: baseSnapshot.localVersion,
+        engineeringMetadata: baseSnapshot.aggregate.engineeringMetadata,
         stores: ProjectEntityStores(
           sites: stores.sites,
           buildings: stores.buildings,
@@ -80,7 +98,7 @@ final class SlabAwareCanonicalProjectDocumentCodec
           boundaries: stores.boundaries,
         ),
       );
-      return legacySnapshot.copyWith(aggregate: aggregate);
+      return baseSnapshot.copyWith(aggregate: aggregate);
     } on ProjectAggregateValidationException catch (error) {
       throw FormatException('Invalid canonical slab graph: $error');
     } on ArgumentError catch (error) {
