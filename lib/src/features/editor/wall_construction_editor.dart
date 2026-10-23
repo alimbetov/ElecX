@@ -296,7 +296,7 @@ class _WallConstructionFormState extends State<_WallConstructionForm> {
     } on ArgumentError catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message ?? 'Некорректные параметры стены')),
+        SnackBar(content: Text(error.toString())),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
