@@ -628,12 +628,10 @@ abstract final class ProjectAggregateValidator {
         );
       }
 
-      final below = slab.belowLevelId == null
-          ? null
-          : stores.levels[slab.belowLevelId!];
-      final above = slab.aboveLevelId == null
-          ? null
-          : stores.levels[slab.aboveLevelId!];
+      final below =
+          slab.belowLevelId == null ? null : stores.levels[slab.belowLevelId!];
+      final above =
+          slab.aboveLevelId == null ? null : stores.levels[slab.aboveLevelId!];
 
       if (slab.belowLevelId != null && below == null) {
         issues.add(
