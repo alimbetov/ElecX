@@ -8,36 +8,39 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P7A canonical production persistence owner', () {
-    test('accept is synchronous while disk durability remains explicit', () async {
-      final repository = _MemoryProjectRepository();
-      final before = _project(version: 0, siteName: 'Site');
-      final owner = CanonicalProjectPersistenceOwner(
-        snapshot: ProjectSnapshot(
-          aggregate: before,
-          name: 'Project',
-          createdAt: DateTime.utc(2026, 10, 23, 5),
-          updatedAt: DateTime.utc(2026, 10, 23, 5),
-        ),
-        repository: repository,
-      );
-      final after = _project(version: 1, siteName: 'Updated site');
-      final result = _result(before: before, after: after);
+    test(
+      'accept is synchronous while disk durability remains explicit',
+      () async {
+        final repository = _MemoryProjectRepository();
+        final before = _project(version: 0, siteName: 'Site');
+        final owner = CanonicalProjectPersistenceOwner(
+          snapshot: ProjectSnapshot(
+            aggregate: before,
+            name: 'Project',
+            createdAt: DateTime.utc(2026, 10, 23, 5),
+            updatedAt: DateTime.utc(2026, 10, 23, 5),
+          ),
+          repository: repository,
+        );
+        final after = _project(version: 1, siteName: 'Updated site');
+        final result = _result(before: before, after: after);
 
-      owner.acceptMutation(
-        sessionProject: after,
-        result: result,
-        now: DateTime.utc(2026, 10, 23, 6),
-      );
+        owner.acceptMutation(
+          sessionProject: after,
+          result: result,
+          now: DateTime.utc(2026, 10, 23, 6),
+        );
 
-      expect(owner.project, same(after));
-      expect(owner.version, LocalProjectVersion(1));
-      expect(repository.saved, isNull);
+        expect(owner.project, same(after));
+        expect(owner.version, LocalProjectVersion(1));
+        expect(repository.saved, isNull);
 
-      await owner.save();
+        await owner.save();
 
-      expect(repository.saved?.aggregate, same(after));
-      expect(repository.saveCount, 1);
-    });
+        expect(repository.saved?.aggregate, same(after));
+        expect(repository.saveCount, 1);
+      },
+    );
 
     test('replay and version gaps are rejected without changing owner', () {
       final repository = _MemoryProjectRepository();
