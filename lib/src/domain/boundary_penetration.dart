@@ -1,3 +1,4 @@
+import 'project_identity.dart';
 import 'surfaces.dart';
 
 enum BoundaryPenetrationHostKind {
@@ -32,7 +33,8 @@ final class BoundaryPenetrationAnchor {
     if (routeId.isEmpty) throw ArgumentError('Route id is required.');
     if (point.xMm < 0 || point.yMm < 0) {
       throw ArgumentError(
-          'Penetration anchor coordinates must be non-negative.');
+        'Penetration anchor coordinates must be non-negative.',
+      );
     }
   }
 
@@ -53,6 +55,11 @@ final class BoundaryPenetrationAnchor {
 /// anchors. [hostThicknessMm] is the normal thickness of the construction.
 /// [pathLengthMm] is the actual cable length through it and therefore may be
 /// larger for an angled penetration, but never smaller.
+///
+/// Canonical slab penetrations additionally own [slabId]. Legacy persisted slab
+/// penetrations may temporarily have a null [slabId] until migration assigns
+/// physical slab identity. New canonical vertical authoring must use
+/// [BoundaryPenetration.slab] or provide [slabId] through the requirement.
 final class BoundaryPenetration {
   BoundaryPenetration({
     required this.id,
@@ -62,6 +69,7 @@ final class BoundaryPenetration {
     required this.hostThicknessMm,
     required this.pathLengthMm,
     this.materialId,
+    this.slabId,
   }) {
     if (id.isEmpty) throw ArgumentError('Penetration id is required.');
     if (hostThicknessMm <= 0) {
@@ -80,6 +88,9 @@ final class BoundaryPenetration {
     }
     if (materialId != null && materialId!.isEmpty) {
       throw ArgumentError('materialId must be null or non-empty.');
+    }
+    if (hostKind == BoundaryPenetrationHostKind.wall && slabId != null) {
+      throw ArgumentError('Wall penetration cannot reference a SlabId.');
     }
     if (entryAnchor.penetrationId != id || exitAnchor.penetrationId != id) {
       throw ArgumentError('Both anchors must belong to penetration $id.');
@@ -112,6 +123,7 @@ final class BoundaryPenetration {
     required int hostThicknessMm,
     required String routeId,
     String? materialId,
+    SlabId? slabId,
   }) =>
       BoundaryPenetration(
         id: id,
@@ -135,6 +147,34 @@ final class BoundaryPenetration {
         hostThicknessMm: hostThicknessMm,
         pathLengthMm: hostThicknessMm.toDouble(),
         materialId: materialId,
+        slabId: slabId,
+      );
+
+  /// Creates a new canonical slab penetration with stable physical host
+  /// identity. Legacy slab penetrations without [SlabId] must not use this
+  /// factory.
+  factory BoundaryPenetration.slab({
+    required String id,
+    required SlabId slabId,
+    required RoomSurfaceRef entrySurface,
+    required SurfacePointMm entryPoint,
+    required RoomSurfaceRef exitSurface,
+    required SurfacePointMm exitPoint,
+    required int hostThicknessMm,
+    required String routeId,
+    String? materialId,
+  }) =>
+      BoundaryPenetration.normal(
+        id: id,
+        hostKind: BoundaryPenetrationHostKind.slab,
+        entrySurface: entrySurface,
+        entryPoint: entryPoint,
+        exitSurface: exitSurface,
+        exitPoint: exitPoint,
+        hostThicknessMm: hostThicknessMm,
+        routeId: routeId,
+        materialId: materialId,
+        slabId: slabId,
       );
 
   final String id;
@@ -145,7 +185,16 @@ final class BoundaryPenetration {
   final double pathLengthMm;
   final String? materialId;
 
+  /// Stable physical host identity for a canonical slab crossing.
+  ///
+  /// Null is permitted only for legacy slab penetration records that predate
+  /// SlabId migration. New canonical slab authoring must populate this field.
+  final SlabId? slabId;
+
   String get routeId => entryAnchor.routeId;
+
+  bool get hasStableSlabHostIdentity =>
+      hostKind != BoundaryPenetrationHostKind.slab || slabId != null;
 
   /// Physical route length contributed by the hidden part inside the wall/slab.
   double get routeLengthContributionMm => pathLengthMm;
@@ -154,7 +203,8 @@ final class BoundaryPenetration {
     if (entryAnchor.surface == surface) return exitAnchor;
     if (exitAnchor.surface == surface) return entryAnchor;
     throw StateError(
-        'Surface ${surface.id} does not belong to penetration $id.');
+      'Surface ${surface.id} does not belong to penetration $id.',
+    );
   }
 
   void _validateHostSurfaces() {
@@ -194,11 +244,13 @@ final class BoundaryPenetrationRequirement {
     required this.hostKind,
     this.hostThicknessMm,
     this.materialId,
+    this.slabId,
   });
 
   final BoundaryPenetrationHostKind hostKind;
   final int? hostThicknessMm;
   final String? materialId;
+  final SlabId? slabId;
 
   BoundaryPenetration create({
     required String penetrationId,
@@ -225,6 +277,7 @@ final class BoundaryPenetrationRequirement {
       hostThicknessMm: resolvedThickness,
       routeId: routeId,
       materialId: materialId,
+      slabId: slabId,
     );
   }
 }
