@@ -2,6 +2,7 @@ import 'package:elecx/src/domain/boundary_penetration.dart';
 import 'package:elecx/src/domain/electrical_routing.dart';
 import 'package:elecx/src/domain/hosted_routing.dart';
 import 'package:elecx/src/domain/project_identity.dart';
+import 'package:elecx/src/domain/route_host.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/features/editor/circuit_sizing_evidence.dart';
 import 'package:elecx/src/features/editor/editor_building_workspace.dart';
@@ -127,6 +128,8 @@ void main() {
       expect(hosted.transitions, hasLength(1));
       final transition = hosted.transitions.single;
       expect(transition.id, penetration.id);
+      expect(transition.kind, RouteHostTransitionKind.roomPenetration);
+      expect(transition.slabId, isNull);
       expect(transition.requiresPenetration, isTrue);
       expect(transition.fromHost.surface, penetration.entryAnchor.surface);
       expect(transition.toHost.surface, penetration.exitAnchor.surface);
@@ -134,6 +137,35 @@ void main() {
       expect(transition.fromPoint.y, penetration.entryAnchor.point.yMm);
       expect(transition.toPoint.x, penetration.exitAnchor.point.xMm);
       expect(transition.toPoint.y, penetration.exitAnchor.point.yMm);
+    });
+
+    test('hosted adapter exposes slab continuation as stable level transition',
+        () {
+      final segments = _slabSegments();
+      final penetration = _slabPenetration(segments);
+      final route = ElectricalCableRoute(
+        id: 'route-level',
+        source: const ElectricalEndpointRef(
+          componentId: 'source',
+          portId: 'out',
+        ),
+        target: const ElectricalEndpointRef(
+          componentId: 'target',
+          portId: 'in',
+        ),
+        segments: segments,
+        penetrations: [penetration],
+      );
+
+      final hosted = HostedRouteAdapter.fromIndoor(route);
+      final transition = hosted.transitions.single;
+
+      expect(transition.id, penetration.id);
+      expect(transition.kind, RouteHostTransitionKind.levelPenetration);
+      expect(transition.slabId, SlabId('slab-01-02'));
+      expect(transition.requiresPenetration, isTrue);
+      expect(transition.fromHost.surface, RoomSurfaceRef.ceiling('space-l1'));
+      expect(transition.toHost.surface, RoomSurfaceRef.floor('space-l2'));
     });
 
     test('penetration geometry change invalidates cable sizing signature', () {
@@ -192,7 +224,7 @@ void main() {
       );
 
       final json = document.toJson();
-      expect(json['schemaVersion'], 7);
+      expect(json['schemaVersion'], 8);
       final routeJson = ((json['p2']! as Map)['routes']! as List).single as Map;
       final firstSurface =
           ((routeJson['segments']! as List).first as Map)['surface'] as Map;
@@ -260,6 +292,23 @@ List<ElectricalRouteSegment> _wallSegments() {
   ];
 }
 
+List<ElectricalRouteSegment> _slabSegments() => [
+      ElectricalRouteSegment(
+        surface: RoomSurfaceRef.ceiling('space-l1'),
+        points: const [
+          SurfacePointMm(100, 500),
+          SurfacePointMm(500, 500),
+        ],
+      ),
+      ElectricalRouteSegment(
+        surface: RoomSurfaceRef.floor('space-l2'),
+        points: const [
+          SurfacePointMm(500, 500),
+          SurfacePointMm(900, 500),
+        ],
+      ),
+    ];
+
 BoundaryPenetration _wallPenetration(List<ElectricalRouteSegment> segments) =>
     BoundaryPenetration.normal(
       id: 'penetration-1',
@@ -271,6 +320,20 @@ BoundaryPenetration _wallPenetration(List<ElectricalRouteSegment> segments) =>
       hostThicknessMm: 180,
       routeId: 'route-physical',
       materialId: 'brick',
+    );
+
+BoundaryPenetration _slabPenetration(List<ElectricalRouteSegment> segments) =>
+    BoundaryPenetration.normal(
+      id: 'penetration-level',
+      hostKind: BoundaryPenetrationHostKind.slab,
+      entrySurface: segments.first.surface,
+      entryPoint: segments.first.points.last,
+      exitSurface: segments.last.surface,
+      exitPoint: segments.last.points.first,
+      hostThicknessMm: 200,
+      routeId: 'route-level',
+      materialId: 'reinforced-concrete',
+      slabId: SlabId('slab-01-02'),
     );
 
 ElectricalCableRoute _route({
