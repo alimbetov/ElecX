@@ -207,6 +207,18 @@ final class RemoveLevelCommand implements ProjectCommand {
       );
     }
 
+    final verticalCoreIds = current.index.verticalCoresForLevel(level.id);
+    if (verticalCoreIds.isNotEmpty) {
+      throw ProjectAuthoringException(
+        code: ProjectAuthoringIssueCode.levelHasVerticalCores,
+        entityId: level.id,
+        relatedEntityId: verticalCoreIds.first,
+        blockingEntityIds: Set<EntityId>.unmodifiable(verticalCoreIds),
+        message: 'Level ${level.id} cannot be removed while '
+            '${verticalCoreIds.length} vertical core(s) reference it.',
+      );
+    }
+
     final building = current.index.building(level.buildingId)!;
     final buildings = Map<BuildingId, ProjectBuildingEntity>.from(
       current.stores.buildings,
