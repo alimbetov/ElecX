@@ -49,7 +49,6 @@ final class BoundaryHostedObjectRegistry {
           'reference key ${entry.value.objectKey}.',
         );
       }
-      _requireUnambiguousRouteAnchorKey(entry.value);
     }
   }
 
@@ -67,8 +66,14 @@ final class BoundaryHostedObjectRegistry {
 
   static String cableTargetObjectKey(String routeId) => 'cable:$routeId:target';
 
-  static String routeAnchorObjectKey(RouteAnchorId anchorId) =>
-      'route-anchor:${anchorId.value}';
+  /// Collision-free canonical key for a durable route anchor.
+  ///
+  /// Entity identifiers are opaque and may legally contain every historical
+  /// separator (including `:anchor:`). Length prefixes define framing; callers
+  /// must never parse semantic identity back out of this registry key.
+  static String routeAnchorObjectKey(String routeId, RouteAnchorId anchorId) =>
+      'route-anchor:${routeId.length}:$routeId:'
+      '${anchorId.value.length}:${anchorId.value}';
 
   BoundaryHostedReference? operator [](String objectKey) =>
       references[objectKey];
@@ -202,25 +207,6 @@ final class BoundaryHostedObjectRegistry {
       if (right == null || !_sameReference(entry.value, right)) return false;
     }
     return true;
-  }
-
-  static void _requireUnambiguousRouteAnchorKey(
-    BoundaryHostedReference reference,
-  ) {
-    if (reference.objectKind != BoundaryHostedObjectKind.routeAnchor) return;
-    const prefix = 'route:';
-    const separator = ':anchor:';
-    final key = reference.objectKey;
-    if (!key.startsWith(prefix)) return;
-    final first = key.indexOf(separator, prefix.length);
-    if (first < 0) return;
-    final second = key.indexOf(separator, first + separator.length);
-    if (second >= 0) {
-      throw StateError(
-        'Canonical route-anchor key $key is ambiguous because route or anchor '
-        'identity contains the reserved $separator separator.',
-      );
-    }
   }
 
   static BoundaryHostedReference _rebuild(BoundaryHostedRemap result) =>
