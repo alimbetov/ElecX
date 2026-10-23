@@ -12,7 +12,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('canonical slab route persistence qualification', () {
-    test('undo redo reopen preserves SlabId and full physical cable length', () {
+    test('undo redo reopen preserves SlabId and full physical cable length',
+        () {
       final editor = EditorController.demo();
       final workspace = EditorBuildingWorkspace.demo(editor);
       addTearDown(() {
