@@ -181,15 +181,14 @@ void _validateLoadedSidecar({
       }
     }
     if (legacySpace == null ||
-        legacySpace.boundary.vertices.length != topology.orderedEdgeIds.length) {
+        legacySpace.boundary.vertices.length !=
+            topology.orderedEdgeIds.length) {
       throw StateError(
         'Canonical sidecar geometry does not match materialized legacy space '
         '${entry.value}.',
       );
     }
-    for (var index = 0;
-        index < legacySpace.boundary.vertices.length;
-        index++) {
+    for (var index = 0; index < legacySpace.boundary.vertices.length; index++) {
       final legacyPoint = legacySpace.boundary.vertices[index];
       final edge = topology.edges[topology.orderedEdgeIds[index]];
       if (edge == null ||
@@ -217,24 +216,24 @@ ProjectNavigationState _navigationForLegacyResume({
           binding.legacyLevelIds,
           legacyLevel.level.id,
         );
-  final selectedZoneId = legacyDocument.selectedZoneId == null ||
-          activeLevelId == null
-      ? null
-      : _canonicalForLegacy(
-          binding.legacyZoneIds,
-          legacyDocument.selectedZoneId!,
-          where: (zoneId) =>
-              owner.project.index.zone(zoneId)?.levelId == activeLevelId,
-        );
-  final selectedSpaceId = legacyDocument.resume.selectedSpaceId == null ||
-          activeLevelId == null
-      ? null
-      : _canonicalForLegacy(
-          binding.legacySpaceIds,
-          legacyDocument.resume.selectedSpaceId!,
-          where: (spaceId) =>
-              owner.project.index.space(spaceId)?.levelId == activeLevelId,
-        );
+  final selectedZoneId =
+      legacyDocument.selectedZoneId == null || activeLevelId == null
+          ? null
+          : _canonicalForLegacy(
+              binding.legacyZoneIds,
+              legacyDocument.selectedZoneId!,
+              where: (zoneId) =>
+                  owner.project.index.zone(zoneId)?.levelId == activeLevelId,
+            );
+  final selectedSpaceId =
+      legacyDocument.resume.selectedSpaceId == null || activeLevelId == null
+          ? null
+          : _canonicalForLegacy(
+              binding.legacySpaceIds,
+              legacyDocument.resume.selectedSpaceId!,
+              where: (spaceId) =>
+                  owner.project.index.space(spaceId)?.levelId == activeLevelId,
+            );
   return ProjectNavigationState.restore(
     owner.project,
     activeBuildingId: binding.buildingId,
