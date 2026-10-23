@@ -43,7 +43,8 @@ final class CreateLevelCommand implements ProjectCommand {
   final int elevationMm;
 
   /// Nullable only at the compatibility/application request boundary.
-  /// Canonical state normalizes an omitted classification to [ProjectLevelKind.unknown].
+  /// Canonical state derives a deterministic physical role from the authored
+  /// level number when the request does not provide an explicit classification.
   final ProjectLevelKind? kind;
   final int floorToFloorHeightMm;
 
@@ -88,7 +89,7 @@ final class CreateLevelCommand implements ProjectCommand {
       levelNumber: levelNumber,
       displayOrder: displayOrder,
       elevationMm: elevationMm,
-      kind: kind ?? ProjectLevelKind.unknown,
+      kind: kind ?? _inferAuthoredLevelKind(levelNumber),
       floorToFloorHeightMm: floorToFloorHeightMm,
     );
 
@@ -173,6 +174,12 @@ final class ReorderLevelCommand implements ProjectCommand {
     final level = _requireLevel(current, levelId);
     return _replaceLevel(current, level, displayOrder: displayOrder);
   }
+}
+
+ProjectLevelKind _inferAuthoredLevelKind(int levelNumber) {
+  if (levelNumber < 0) return ProjectLevelKind.basement;
+  if (levelNumber == 0) return ProjectLevelKind.ground;
+  return ProjectLevelKind.residential;
 }
 
 ProjectBuildingEntity _requireBuilding(
