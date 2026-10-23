@@ -10,6 +10,7 @@ import 'circuit_cable_registry_session.dart';
 import 'component_catalog_session.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
+import 'physical_manual_cable_draft_persistence.dart';
 import 'route_selection_session.dart';
 
 class EngineeringSelectionInspector extends StatelessWidget {
@@ -25,12 +26,14 @@ class EngineeringSelectionInspector extends StatelessWidget {
         controller.routeSelection,
         controller.componentCatalog,
         controller.circuitCableRegistry,
+        controller,
       ]),
       builder: (context, _) {
         final route = controller.routeSelection.selectedRoute;
         final hostedRoute = controller.routeSelection.selectedHostedRoute;
         if (route != null) {
           return _RouteInspector(
+            controller: controller,
             route: route,
             bundle: controller.circuitCableRegistry.bundleByRouteId(route.id),
           );
@@ -109,8 +112,13 @@ class _ComponentInspector extends StatelessWidget {
 }
 
 class _RouteInspector extends StatelessWidget {
-  const _RouteInspector({required this.route, required this.bundle});
+  const _RouteInspector({
+    required this.controller,
+    required this.route,
+    required this.bundle,
+  });
 
+  final EditorController controller;
   final ElectricalCableRoute route;
   final CircuitCableBundle? bundle;
 
@@ -118,11 +126,20 @@ class _RouteInspector extends StatelessWidget {
   Widget build(BuildContext context) {
     final assigned = bundle != null;
     final engineering = EngineeringColors.of(context);
+    final continuing = controller.physicalRouteContinuationId == route.id;
     return _InspectorScaffold(
       title: bundle?.cable.designation ?? route.id,
       subtitle: route.medium.displayName,
-      status: assigned ? 'REGISTERED' : 'UNASSIGNED',
-      statusColor: assigned ? engineering.registered : engineering.warning,
+      status: continuing
+          ? 'EXTENDING'
+          : assigned
+              ? 'REGISTERED'
+              : 'UNASSIGNED',
+      statusColor: continuing
+          ? engineering.active
+          : assigned
+              ? engineering.registered
+              : engineering.warning,
       children: [
         if (bundle case final registry?) _registrySections(registry),
         _section('CONNECTION', [
@@ -142,6 +159,40 @@ class _RouteInspector extends StatelessWidget {
           _row('GEOMETRY', '${route.geometricLengthMm.round()} mm'),
           _row('INSTALL', '${route.installationLengthMm.round()} mm'),
           _row('SEGMENTS', '${route.segments.length}'),
+          _row('PENETRATIONS', '${route.penetrations.length}'),
+        ]),
+        _section('AUTHORING', [
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              key: const ValueKey('continue-physical-route'),
+              onPressed: continuing
+                  ? null
+                  : () {
+                      final started =
+                          controller.beginPhysicalRouteContinuation(route.id);
+                      if (started) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Продолжение трассы сейчас недоступно: проверьте '
+                            'слой, endpoint и актуальность маршрута.',
+                          ),
+                        ),
+                      );
+                    },
+              icon: const Icon(Icons.alt_route, size: 18),
+              label: Text(
+                continuing ? 'Продолжение активно' : 'Продолжить кабель',
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Переход по маркеру только открывает другую поверхность. Эта '
+            'команда расширяет тот же routeId и фиксируется одним Undo.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
         ]),
         _section('ENGINEERING', [
           _row('CHANNEL', 'NOT ASSIGNED'),
