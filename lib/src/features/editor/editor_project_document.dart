@@ -10,6 +10,7 @@ import '../../domain/circuit_cable_registry.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/electrical_routing.dart';
 import '../../domain/geometry.dart';
+import '../../domain/project_identity.dart';
 import '../../domain/project_model.dart';
 import '../../domain/route_medium.dart';
 import '../../domain/site_orientation.dart';
@@ -1102,14 +1103,17 @@ Map<String, Object?> _routeToJson(ElectricalCableRoute value) => {
 
 ElectricalCableRoute _routeFromJson(Map<String, Object?> json) {
   final medium = _map(json['medium'], 'route.medium');
+  final routeId = _string(json['id'], 'route.id');
+  final segments = [
+    for (final item in _list(json['segments'], 'route.segments'))
+      _segmentFromJson(_map(item, 'route.segment')),
+  ];
+  _validatePersistedRouteAnchorIds(routeId, segments);
   return ElectricalCableRoute(
-    id: _string(json['id'], 'route.id'),
+    id: routeId,
     source: _endpointFromJson(_map(json['source'], 'route.source')),
     target: _endpointFromJson(_map(json['target'], 'route.target')),
-    segments: [
-      for (final item in _list(json['segments'], 'route.segments'))
-        _segmentFromJson(_map(item, 'route.segment')),
-    ],
+    segments: segments,
     cableType: _nullableString(json['cableType']),
     reservePercent: _int(json['reservePercent'], 'route.reservePercent'),
     medium: RouteMediumProfile(
@@ -1149,22 +1153,58 @@ Map<String, Object?> _segmentToJson(ElectricalRouteSegment value) => {
       'points': [
         for (final point in value.points) {'xMm': point.xMm, 'yMm': point.yMm},
       ],
+      'anchorIds': [for (final anchorId in value.anchorIds) anchorId.value],
     };
 
-ElectricalRouteSegment _segmentFromJson(Map<String, Object?> json) =>
-    ElectricalRouteSegment(
-      surface: _surfaceFromJson(_map(json['surface'], 'segment.surface')),
-      points: [
-        for (final item in _list(json['points'], 'segment.points'))
-          () {
-            final point = _map(item, 'segment.point');
-            return SurfacePointMm(
-              _int(point['xMm'], 'segment.xMm'),
-              _int(point['yMm'], 'segment.yMm'),
-            );
-          }(),
-      ],
+ElectricalRouteSegment _segmentFromJson(Map<String, Object?> json) {
+  final points = [
+    for (final item in _list(json['points'], 'segment.points'))
+      () {
+        final point = _map(item, 'segment.point');
+        return SurfacePointMm(
+          _int(point['xMm'], 'segment.xMm'),
+          _int(point['yMm'], 'segment.yMm'),
+        );
+      }(),
+  ];
+  final anchorIds = [
+    for (final item in _list(json['anchorIds'], 'segment.anchorIds'))
+      RouteAnchorId(_string(item, 'segment.anchorId')),
+  ];
+  if (anchorIds.isNotEmpty && anchorIds.length != points.length) {
+    throw FormatException(
+      'segment.anchorIds must be empty for a legacy segment or match the '
+      'segment.points length exactly.',
     );
+  }
+  return ElectricalRouteSegment(
+    surface: _surfaceFromJson(_map(json['surface'], 'segment.surface')),
+    points: points,
+    anchorIds: anchorIds,
+  );
+}
+
+void _validatePersistedRouteAnchorIds(
+  String routeId,
+  List<ElectricalRouteSegment> segments,
+) {
+  final seen = <String>{};
+  for (final segment in segments) {
+    for (final anchorId in segment.anchorIds) {
+      if (anchorId.value.startsWith('p7a-transition:')) {
+        throw FormatException(
+          'Route $routeId persists projection-only anchor ${anchorId.value}.',
+        );
+      }
+      if (!seen.add(anchorId.value)) {
+        throw FormatException(
+          'Route $routeId contains duplicate durable anchor id '
+          '${anchorId.value}.',
+        );
+      }
+    }
+  }
+}
 
 Map<String, Object?> _map(Object? value, String field) {
   if (value is! Map) throw FormatException('$field must be an object.');
