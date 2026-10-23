@@ -77,8 +77,7 @@ abstract final class CanonicalSlabVerticalEvidenceResolver {
     final upperLevelElevationMm =
         isUpward ? toLevelElevationMm : fromLevelElevationMm;
 
-    final lowerCeilingElevationMm =
-        lowerLevelElevationMm + lowerRoomHeightMm;
+    final lowerCeilingElevationMm = lowerLevelElevationMm + lowerRoomHeightMm;
     if ((lowerCeilingElevationMm - slab.bottomElevationMm).abs() >
         verticalToleranceMm) {
       return null;
