@@ -6,6 +6,7 @@ import '../../domain/boundary_opening_profile_validation.dart';
 import '../../domain/boundary_topology.dart';
 import '../../domain/boundary_wall_profile_registry.dart';
 import '../../domain/project_aggregate.dart';
+import '../../domain/project_entity_stores_copy.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/project_space_semantics.dart';
 import 'project_mutation.dart';
@@ -480,17 +481,7 @@ final class _ReplaceBoundaryTopologyWithHostsCommand implements ProjectCommand {
     return ProjectCommandCandidate.fromState(
       state: ProjectMutableState(
         engineeringMetadata: metadata,
-        stores: ProjectEntityStores(
-          sites: stores.sites,
-          buildings: stores.buildings,
-          levels: stores.levels,
-          zones: stores.zones,
-          spaces: stores.spaces,
-          openings: stores.openings,
-          adjacencies: stores.adjacencies,
-          overlays: stores.overlays,
-          boundaries: boundaries,
-        ),
+        stores: stores.copyWith(boundaries: boundaries),
       ),
       affectedEntityIds: <EntityId>{
         spaceId,
