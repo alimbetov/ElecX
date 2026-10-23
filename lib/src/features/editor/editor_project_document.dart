@@ -1216,6 +1216,7 @@ Map<String, Object?> _penetrationToJson(BoundaryPenetration value) => {
       'hostThicknessMm': value.hostThicknessMm,
       'pathLengthMm': value.pathLengthMm,
       'materialId': value.materialId,
+      'slabId': value.slabId?.value,
       'entryAnchor': _penetrationAnchorToJson(value.entryAnchor),
       'exitAnchor': _penetrationAnchorToJson(value.exitAnchor),
     };
@@ -1237,6 +1238,9 @@ BoundaryPenetration _penetrationFromJson(Map<String, Object?> json) =>
         'penetration.pathLengthMm',
       ),
       materialId: _nullableString(json['materialId']),
+      slabId: _nullableString(json['slabId']) == null
+          ? null
+          : SlabId(_nullableString(json['slabId'])!),
       entryAnchor: _penetrationAnchorFromJson(
         _map(json['entryAnchor'], 'penetration.entryAnchor'),
       ),
