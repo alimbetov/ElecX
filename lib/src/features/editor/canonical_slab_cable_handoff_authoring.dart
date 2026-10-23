@@ -1,3 +1,4 @@
+import '../../domain/cable_penetration_authoring.dart';
 import '../../domain/canonical_slab_transition_resolver.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/surface_transition_graph.dart';
@@ -5,6 +6,7 @@ import '../../domain/surfaces.dart';
 import 'canonical_room_surface_runtime_registry.dart';
 import 'canonical_slab_route_draft_externalization.dart';
 import 'canonical_slab_route_handoff_runtime.dart';
+import 'editor_controller.dart';
 
 enum CanonicalSlabCableHandoffIssueCode {
   canonicalRuntimeRequired,
@@ -40,6 +42,57 @@ final class CanonicalSlabCableHandoffResult {
   final SurfaceTransitionCandidate transition;
   final SlabId slabId;
   final String routeId;
+
+  /// Returns transition evidence in the identity regime requested by durable
+  /// route commit (legacy projection or canonical SpaceId surfaces).
+  ///
+  /// The stored handoff transition is built from the concrete legacy workspace.
+  /// Canonical route continuation, however, normalizes transient draft surfaces
+  /// to canonical SpaceId before it asks for transition evidence. This adapter
+  /// permits that representation change only when the current canonical routing
+  /// context proves both requested surfaces resolve to the exact same source and
+  /// target SpaceIds, plane types and physical points as the stored handoff.
+  RouteTransitionResolver resolverFor(EditorController editor) {
+    return (fromSurface, fromPoint, toSurface, toPoint) {
+      final context =
+          CanonicalRoomSurfaceRuntimeRegistry.physicalRoutingContextFor(editor);
+      if (context == null ||
+          fromPoint != transition.fromPoint ||
+          toPoint != transition.toPoint ||
+          fromSurface.type != transition.fromSurface.type ||
+          toSurface.type != transition.toSurface.type) {
+        return null;
+      }
+
+      final storedFrom = context.canonicalSpaceIdForSurfaceSpaceId(
+        transition.fromSurface.spaceId,
+      );
+      final storedTo = context.canonicalSpaceIdForSurfaceSpaceId(
+        transition.toSurface.spaceId,
+      );
+      final requestedFrom =
+          context.canonicalSpaceIdForSurfaceSpaceId(fromSurface.spaceId);
+      final requestedTo =
+          context.canonicalSpaceIdForSurfaceSpaceId(toSurface.spaceId);
+      if (storedFrom == null ||
+          storedTo == null ||
+          requestedFrom != storedFrom ||
+          requestedTo != storedTo ||
+          transition.penetrationRequirement?.slabId != slabId) {
+        return null;
+      }
+
+      return SurfaceTransitionCandidate(
+        id: transition.id,
+        kind: transition.kind,
+        fromSurface: fromSurface,
+        fromPoint: fromPoint,
+        toSurface: toSurface,
+        toPoint: toPoint,
+        penetrationRequirement: transition.penetrationRequirement,
+      );
+    };
+  }
 }
 
 /// Production authoring boundary for one live ceiling↔floor route handoff.
