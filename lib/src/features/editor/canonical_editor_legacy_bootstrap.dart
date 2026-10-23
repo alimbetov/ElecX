@@ -1,6 +1,7 @@
 import '../../application/project/project_snapshot.dart';
 import '../../domain/boundary_edge_identity_registry.dart';
 import '../../domain/boundary_topology.dart';
+import '../../domain/geometry.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/project_orientation.dart';
@@ -220,7 +221,7 @@ abstract final class CanonicalEditorLegacyBootstrap {
     required String buildingId,
     required String levelId,
     required String legacySpaceId,
-    required List<dynamic> vertices,
+    required List<MmPoint> vertices,
   }) {
     if (vertices.length < 3) {
       throw StateError(
@@ -247,8 +248,8 @@ abstract final class CanonicalEditorLegacyBootstrap {
       edges[edgeId] = ProjectBoundaryEdge(
         id: edgeId,
         spaceId: spaceId,
-        start: BoundaryPointMm(xMm: start.x as int, yMm: start.y as int),
-        end: BoundaryPointMm(xMm: end.x as int, yMm: end.y as int),
+        start: BoundaryPointMm(xMm: start.x, yMm: start.y),
+        end: BoundaryPointMm(xMm: end.x, yMm: end.y),
       );
     }
     final topology = SpaceBoundaryTopology(
