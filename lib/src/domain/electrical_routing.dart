@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'boundary_penetration.dart';
 import 'electrical_placement.dart';
 import 'project_identity.dart';
 import 'route_medium.dart';
@@ -57,12 +58,17 @@ final class ElectricalRouteSegment {
 /// fire/security loops and project-specific wired media. [medium] carries the
 /// engineering/visual semantics while [cableType] keeps the exact conductor or
 /// cable specification.
+///
+/// [penetrations] are part of the physical route aggregate. They carry hidden
+/// cable length inside walls/slabs and must therefore survive route mutation,
+/// undo/redo and persistence together with the visible surface segments.
 final class ElectricalCableRoute {
   ElectricalCableRoute({
     required this.id,
     required this.source,
     required this.target,
     required this.segments,
+    this.penetrations = const <BoundaryPenetration>[],
     this.cableType,
     this.medium = RouteMediumProfile.generic,
     this.reservePercent = 5,
@@ -71,21 +77,61 @@ final class ElectricalCableRoute {
     if (reservePercent < 0) {
       throw ArgumentError.value(reservePercent, 'reservePercent');
     }
+    final penetrationIds = <String>{};
+    for (final penetration in penetrations) {
+      if (penetration.routeId != id) {
+        throw ArgumentError(
+          'Penetration ${penetration.id} belongs to route '
+          '${penetration.routeId}, not $id.',
+        );
+      }
+      if (!penetrationIds.add(penetration.id)) {
+        throw ArgumentError('Duplicate penetration id ${penetration.id}.');
+      }
+    }
   }
 
   final String id;
   final ElectricalEndpointRef source;
   final ElectricalEndpointRef target;
   final List<ElectricalRouteSegment> segments;
+  final List<BoundaryPenetration> penetrations;
   final String? cableType;
   final RouteMediumProfile medium;
   final int reservePercent;
 
-  double get geometricLengthMm =>
+  double get visibleLengthMm =>
       segments.fold(0.0, (sum, segment) => sum + segment.lengthMm);
+
+  double get hiddenPenetrationLengthMm => penetrations.fold(
+        0.0,
+        (sum, penetration) => sum + penetration.routeLengthContributionMm,
+      );
+
+  double get geometricLengthMm => visibleLengthMm + hiddenPenetrationLengthMm;
 
   double get installationLengthMm =>
       geometricLengthMm * (1 + reservePercent / 100);
+
+  ElectricalCableRoute copyWith({
+    ElectricalEndpointRef? source,
+    ElectricalEndpointRef? target,
+    List<ElectricalRouteSegment>? segments,
+    List<BoundaryPenetration>? penetrations,
+    String? cableType,
+    RouteMediumProfile? medium,
+    int? reservePercent,
+  }) =>
+      ElectricalCableRoute(
+        id: id,
+        source: source ?? this.source,
+        target: target ?? this.target,
+        segments: segments ?? this.segments,
+        penetrations: penetrations ?? this.penetrations,
+        cableType: cableType ?? this.cableType,
+        medium: medium ?? this.medium,
+        reservePercent: reservePercent ?? this.reservePercent,
+      );
 }
 
 abstract final class ElectricalPortCompatibility {
