@@ -24,12 +24,14 @@ void main() {
       expect(intent.routeId, 'C-103');
       expect(intent.slabId, fixture.slabId);
       expect(intent.expectedVersion, beforeVersion);
-      expect(fixture.structure.navigation.selectedSpaceId, fixture.lowerSpaceId);
+      expect(
+          fixture.structure.navigation.selectedSpaceId, fixture.lowerSpaceId);
 
       final plan = handoff.commitNavigation();
 
       expect(plan.slabId, fixture.slabId);
-      expect(fixture.structure.navigation.selectedSpaceId, fixture.upperSpaceId);
+      expect(
+          fixture.structure.navigation.selectedSpaceId, fixture.upperSpaceId);
       expect(fixture.structure.project.version, beforeVersion);
       expect(handoff.hasPending, isFalse);
     });
@@ -87,7 +89,8 @@ void main() {
       expect(handoff.hasPending, isTrue);
     });
 
-    test('cancel clears only the handoff intent and leaves navigation untouched',
+    test(
+        'cancel clears only the handoff intent and leaves navigation untouched',
         () {
       final fixture = _Fixture();
       final handoff = ProjectSlabRouteHandoffSession(fixture.structure);
@@ -100,7 +103,8 @@ void main() {
       handoff.cancel();
 
       expect(handoff.hasPending, isFalse);
-      expect(fixture.structure.navigation.selectedSpaceId, fixture.lowerSpaceId);
+      expect(
+          fixture.structure.navigation.selectedSpaceId, fixture.lowerSpaceId);
       expect(
         handoff.commitNavigation,
         throwsA(
