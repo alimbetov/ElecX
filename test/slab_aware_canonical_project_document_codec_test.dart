@@ -47,7 +47,8 @@ void main() {
       );
     });
 
-    test('reads legacy schema v7 with empty slab store and upgrades on save', () {
+    test('reads legacy schema v7 with empty slab store and upgrades on save',
+        () {
       final fixture = _CodecFixture();
       final legacySnapshot = fixture.snapshotWithoutSlabs();
       const legacyCodec = CanonicalProjectDocumentCodec();
@@ -96,7 +97,8 @@ void main() {
       );
     });
 
-    test('fails closed when persisted slab points to another building level', () {
+    test('fails closed when persisted slab points to another building level',
+        () {
       final fixture = _CodecFixture();
       final encoded = codec.encode(fixture.snapshotWithSlab());
       final slabs = List<Object?>.of(encoded.payload['slabs']! as List);
