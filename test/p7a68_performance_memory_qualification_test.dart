@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:elecx/src/domain/boundary_host_migration.dart';
+import 'package:elecx/src/domain/boundary_host_registry.dart';
 import 'package:elecx/src/domain/boundary_topology.dart';
 import 'package:elecx/src/domain/electrical_placement.dart';
 import 'package:elecx/src/domain/project_identity.dart';
@@ -52,6 +53,34 @@ void main() {
         remapped.map((item) => item.source.objectKey).toSet(),
         hasLength(references.length),
       );
+      expect(stopwatch.elapsed, lessThan(const Duration(seconds: 15)));
+    });
+
+    test('20k legacy route-anchor aliases resolve through indexed lookup', () {
+      final spaceId = SpaceId('perf-space');
+      final edgeId = BoundaryEdgeId('perf-edge');
+      final references = <String, BoundaryHostedReference>{};
+      for (var index = 0; index < 20000; index++) {
+        final routeId = 'route-$index';
+        final anchorId = RouteAnchorId('anchor-$index');
+        final key =
+            BoundaryHostedObjectRegistry.routeAnchorObjectKey(routeId, anchorId);
+        references[key] = BoundaryHostedReference.point(
+          objectKey: key,
+          objectKind: BoundaryHostedObjectKind.routeAnchor,
+          host: BoundaryEdgeHostRef(spaceId: spaceId, edgeId: edgeId),
+          offsetMm: index,
+        );
+      }
+      final registry = BoundaryHostedObjectRegistry(references);
+
+      final stopwatch = Stopwatch()..start();
+      for (var index = 0; index < 20000; index++) {
+        final legacyKey = 'route:route-$index:anchor:anchor-$index';
+        expect(registry[legacyKey]?.startOffsetMm, index);
+      }
+      stopwatch.stop();
+
       expect(stopwatch.elapsed, lessThan(const Duration(seconds: 15)));
     });
 
