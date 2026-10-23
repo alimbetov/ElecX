@@ -1,7 +1,7 @@
 final class EditorProjectSchemaMigrator {
   const EditorProjectSchemaMigrator._();
 
-  static const int currentSchemaVersion = 7;
+  static const int currentSchemaVersion = 8;
 
   static Map<String, Object?> migrate(
     Map<String, Object?> source, {
@@ -31,6 +31,7 @@ final class EditorProjectSchemaMigrator {
         4 => _v4ToV5(result),
         5 => _v5ToV6(result),
         6 => _v6ToV7(result),
+        7 => _v7ToV8(result),
         _ => throw FormatException(
             'No ElecX migration registered from schema $version.',
           ),
@@ -38,6 +39,64 @@ final class EditorProjectSchemaMigrator {
       version = result['schemaVersion']! as int;
     }
     return result;
+  }
+
+  /// Schema v7 persisted physical penetration aggregates but predated stable
+  /// SlabId ownership. Migration never guesses a slab from geometry or level
+  /// order: every legacy penetration receives an explicit null slabId. New v8
+  /// authoring can then persist canonical slab identity, while v7 readers reject
+  /// v8 instead of silently dropping engineering-significant host identity.
+  static Map<String, Object?> _v7ToV8(Map<String, Object?> source) {
+    final p2Raw = source['p2'];
+    if (p2Raw is! Map) {
+      throw const FormatException('p2 must be an object for schema v7.');
+    }
+    final p2 = p2Raw.map((key, value) => MapEntry(key.toString(), value));
+    final routesRaw = p2['routes'];
+    if (routesRaw is! List) {
+      throw const FormatException('p2.routes must be an array for schema v7.');
+    }
+
+    final routes = <Object?>[];
+    for (final routeRaw in routesRaw) {
+      if (routeRaw is! Map) {
+        throw const FormatException('p2.routes item must be an object.');
+      }
+      final route =
+          routeRaw.map((key, value) => MapEntry(key.toString(), value));
+      final penetrationsRaw = route['penetrations'];
+      if (penetrationsRaw is! List) {
+        throw const FormatException(
+          'route.penetrations must be an array for schema v7.',
+        );
+      }
+      final penetrations = <Object?>[];
+      for (final penetrationRaw in penetrationsRaw) {
+        if (penetrationRaw is! Map) {
+          throw const FormatException('route.penetration must be an object.');
+        }
+        final penetration = penetrationRaw.map(
+          (key, value) => MapEntry(key.toString(), value),
+        );
+        penetrations.add(<String, Object?>{
+          ...penetration,
+          'slabId': null,
+        });
+      }
+      routes.add(<String, Object?>{
+        ...route,
+        'penetrations': penetrations,
+      });
+    }
+
+    return <String, Object?>{
+      ...source,
+      'schemaVersion': 8,
+      'p2': <String, Object?>{
+        ...p2,
+        'routes': routes,
+      },
+    };
   }
 
   /// Schema v6 has durable route-anchor identity but predates physical
