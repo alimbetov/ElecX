@@ -10,7 +10,6 @@ import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_model.dart';
 import 'package:elecx/src/domain/site_outdoor_model.dart';
 import 'package:elecx/src/domain/slab_topology.dart';
-import 'package:elecx/src/domain/surface_routing.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/features/editor/canonical_editor_runtime_cutover.dart';
 import 'package:elecx/src/features/editor/canonical_editor_workspace_adapter.dart';
@@ -104,7 +103,10 @@ void main() {
 
       fixture.editor.p2.redo();
       expect(fixture.editor.p2.routes.single.id, 'C-103');
-      expect(fixture.editor.p2.routes.single.penetrations.single.slabId, fixture.slabId);
+      expect(
+        fixture.editor.p2.routes.single.penetrations.single.slabId,
+        fixture.slabId,
+      );
     },
   );
 }
