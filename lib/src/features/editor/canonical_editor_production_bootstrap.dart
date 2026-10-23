@@ -4,6 +4,7 @@ import '../../application/project/project_navigation_state.dart';
 import '../../application/project/project_repository.dart';
 import '../../application/project/project_structure_authoring.dart';
 import '../../domain/project_identity.dart';
+import '../../domain/project_model.dart';
 import 'canonical_editor_legacy_bootstrap.dart';
 import 'canonical_editor_production_runtime.dart';
 import 'canonical_editor_workspace_adapter.dart';
@@ -168,12 +169,20 @@ void _validateLoadedSidecar({
         'Canonical space ${entry.key} has no bound legacy level.',
       );
     }
-    final legacyLevel = legacyDocument.building.building.levels
-        .where((level) => level.id == legacyLevelId)
-        .firstOrNull;
-    final legacySpace = legacyLevel?.spaces
-        .where((candidate) => candidate.id == entry.value)
-        .firstOrNull;
+    BuildingLevel? legacyLevel;
+    for (final candidate in legacyDocument.building.building.levels) {
+      if (candidate.id == legacyLevelId) {
+        legacyLevel = candidate;
+        break;
+      }
+    }
+    EngineeringSpace? legacySpace;
+    for (final candidate in legacyLevel?.spaces ?? const <EngineeringSpace>[]) {
+      if (candidate.id == entry.value) {
+        legacySpace = candidate;
+        break;
+      }
+    }
     if (legacySpace == null ||
         legacySpace.boundary.vertices.length != topology.orderedEdgeIds.length) {
       throw StateError(
