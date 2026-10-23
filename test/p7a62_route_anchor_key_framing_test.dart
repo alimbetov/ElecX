@@ -25,7 +25,8 @@ void main() {
     expect(canonicalB, contains('${routeB.length}:$routeB'));
   });
 
-  test('ambiguous historical alias fails closed during compatibility lookup', () {
+  test('ambiguous historical alias fails closed during compatibility lookup',
+      () {
     const separator = ':anchor:';
     const routeA = 'route-a';
     final anchorA = RouteAnchorId('x${separator}y');
