@@ -121,6 +121,114 @@ final class RenameStructuralZoneCommand implements ProjectCommand {
   }
 }
 
+/// Moves one existing Space into [zoneId] atomically.
+///
+/// Structural-zone membership is exclusive. If the Space already belongs to a
+/// different structural zone on the same Level, it is removed from the old
+/// zone and added to the requested zone in the same canonical mutation and Undo
+/// boundary. Cross-level assignment is rejected fail-closed.
+final class AssignSpaceToStructuralZoneCommand implements ProjectCommand {
+  const AssignSpaceToStructuralZoneCommand({
+    required this.spaceId,
+    required this.zoneId,
+  });
+
+  final SpaceId spaceId;
+  final ZoneId zoneId;
+
+  @override
+  String get commandType => 'project.structural-zone.space.assign';
+
+  @override
+  ProjectCommandCandidate buildCandidate(ProjectAggregateRoot current) {
+    final space = _requireSpace(current, spaceId);
+    final target = _requireStructuralZone(current, zoneId);
+    if (target.levelId != space.levelId) {
+      throw ProjectAuthoringException(
+        code: ProjectAuthoringIssueCode.structuralZoneLevelMismatch,
+        entityId: target.id,
+        relatedEntityId: target.levelId,
+        message: 'Structural zone ${target.id} belongs to level '
+            '${target.levelId}, not Space ${space.id} level ${space.levelId}.',
+      );
+    }
+
+    final currentZoneId = current.index.structuralZoneBySpace[space.id];
+    final zones = Map<ZoneId, ProjectStructuralZoneEntity>.from(
+      current.stores.zones,
+    );
+    if (currentZoneId != null && currentZoneId != target.id) {
+      final previous = current.index.zone(currentZoneId)!;
+      zones[previous.id] = ProjectStructuralZoneEntity(
+        id: previous.id,
+        levelId: previous.levelId,
+        name: previous.name,
+        spaceIds: <SpaceId>{...previous.spaceIds}..remove(space.id),
+      );
+    }
+    zones[target.id] = ProjectStructuralZoneEntity(
+      id: target.id,
+      levelId: target.levelId,
+      name: target.name,
+      spaceIds: <SpaceId>{...target.spaceIds, space.id},
+    );
+
+    return ProjectCommandCandidate.fromState(
+      state: ProjectMutableState(
+        engineeringMetadata: current.engineeringMetadata,
+        stores: current.stores.copyWith(zones: zones),
+      ),
+      affectedEntityIds: <EntityId>[
+        space.id,
+        if (currentZoneId != null) currentZoneId,
+        target.id,
+      ],
+    );
+  }
+}
+
+/// Removes the Space from its current structural zone without changing Level
+/// ownership or any overlay classification.
+final class UnassignSpaceFromStructuralZoneCommand implements ProjectCommand {
+  const UnassignSpaceFromStructuralZoneCommand({required this.spaceId});
+
+  final SpaceId spaceId;
+
+  @override
+  String get commandType => 'project.structural-zone.space.unassign';
+
+  @override
+  ProjectCommandCandidate buildCandidate(ProjectAggregateRoot current) {
+    final space = _requireSpace(current, spaceId);
+    final currentZoneId = current.index.structuralZoneBySpace[space.id];
+    if (currentZoneId == null) {
+      return ProjectCommandCandidate.fromState(
+        state: ProjectMutableState.fromProject(current),
+        affectedEntityIds: <EntityId>[space.id],
+      );
+    }
+
+    final zone = current.index.zone(currentZoneId)!;
+    final zones = Map<ZoneId, ProjectStructuralZoneEntity>.from(
+      current.stores.zones,
+    );
+    zones[zone.id] = ProjectStructuralZoneEntity(
+      id: zone.id,
+      levelId: zone.levelId,
+      name: zone.name,
+      spaceIds: <SpaceId>{...zone.spaceIds}..remove(space.id),
+    );
+
+    return ProjectCommandCandidate.fromState(
+      state: ProjectMutableState(
+        engineeringMetadata: current.engineeringMetadata,
+        stores: current.stores.copyWith(zones: zones),
+      ),
+      affectedEntityIds: <EntityId>[space.id, zone.id],
+    );
+  }
+}
+
 ProjectLevelEntity _requireLevel(
   ProjectAggregateRoot current,
   LevelId levelId,
@@ -149,4 +257,16 @@ ProjectStructuralZoneEntity _requireStructuralZone(
     );
   }
   return zone;
+}
+
+ProjectSpaceEntity _requireSpace(ProjectAggregateRoot current, SpaceId spaceId) {
+  final space = current.index.space(spaceId);
+  if (space == null) {
+    throw ProjectAuthoringException(
+      code: ProjectAuthoringIssueCode.spaceNotFound,
+      entityId: spaceId,
+      message: 'Space $spaceId does not exist.',
+    );
+  }
+  return space;
 }
