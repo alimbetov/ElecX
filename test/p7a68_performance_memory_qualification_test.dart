@@ -7,6 +7,7 @@ import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
 import 'package:elecx/src/features/editor/editor_document_history.dart';
+import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -50,9 +51,6 @@ void main() {
         remapped.map((item) => item.source.objectKey).toSet(),
         hasLength(references.length),
       );
-      // Regression budget, not a microbenchmark. It is deliberately broad so
-      // hosted CI variance does not manufacture performance failures while a
-      // major accidental O(hosts * allEdges) regression remains visible.
       expect(stopwatch.elapsed, lessThan(const Duration(seconds: 15)));
     });
 
