@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
+import '../../domain/boundary_penetration.dart';
 import '../../domain/building_composition.dart';
 import '../../domain/cable_identity.dart';
 import '../../domain/circuit_cable_registry.dart';
@@ -112,9 +113,6 @@ final class EditorProjectDocument {
     DateTime? now,
   }) {
     final editor = workspace.editor;
-    // Keep the low-level persistence contract stable for callers that use
-    // capture() directly. User-facing structured diagnostics run in the
-    // editor preflight before capture.
     if (editor.p2.isManipulating) {
       throw StateError('Cannot save while a component transform is active.');
     }
@@ -151,8 +149,6 @@ final class EditorProjectDocument {
       resume: EditorProjectResumeState(
         selectedSpaceId: editor.selectedSpaceId,
         selectedOpeningId: editor.selectedOpeningId,
-        // Once canonical runtime owns the workspace we never serialize a wall
-        // ordinal. If stable resolution is blocked, Save resumes at Plan.
         activeSurface: canonicalRuntime ? null : editor.activeSurface,
         canonicalSurface: canonicalSurface,
         viewMode: canonicalRuntime ? EditorViewMode.plan : editor.viewMode,
@@ -323,7 +319,6 @@ final class JsonFileEditorProjectStore implements EditorProjectStore {
     if (decoded is! Map) {
       throw StateError('Encoded ElecX project is not a JSON object.');
     }
-    // Validate the complete payload before touching the current on-disk file.
     EditorProjectDocument.fromJson(
       decoded.map((key, value) => MapEntry(key.toString(), value)),
     );
@@ -412,10 +407,8 @@ final class JsonFileEditorProjectStore implements EditorProjectStore {
           ),
         );
       } on FormatException {
-        // One damaged project must not hide every healthy project in the Hub.
         continue;
       } on FileSystemException {
-        // A file can disappear between directory enumeration and read.
         continue;
       }
     }
@@ -830,6 +823,7 @@ Map<String, Object?> _surfaceToJson(RoomSurfaceRef value) => {
       'spaceId': value.spaceId,
       'type': value.type.name,
       'wallIndex': value.wallIndex,
+      'boundaryEdgeId': value.boundaryEdgeId?.value,
     };
 
 RoomSurfaceRef _surfaceFromJson(Map<String, Object?> json) {
@@ -839,14 +833,35 @@ RoomSurfaceRef _surfaceFromJson(Map<String, Object?> json) {
     _string(json['type'], 'surface.type'),
     'surface.type',
   );
-  return switch (type) {
-    SurfacePlaneType.floor => RoomSurfaceRef.floor(spaceId),
-    SurfacePlaneType.ceiling => RoomSurfaceRef.ceiling(spaceId),
-    SurfacePlaneType.wall => RoomSurfaceRef.wall(
-        spaceId,
-        _int(json['wallIndex'], 'surface.wallIndex'),
-      ),
-  };
+  final wallIndexRaw = json['wallIndex'];
+  final boundaryEdgeId = _nullableString(json['boundaryEdgeId']);
+
+  if (type != SurfacePlaneType.wall) {
+    if (wallIndexRaw != null || boundaryEdgeId != null) {
+      throw const FormatException(
+        'Floor/ceiling surface must not carry wall identity.',
+      );
+    }
+    return type == SurfacePlaneType.floor
+        ? RoomSurfaceRef.floor(spaceId)
+        : RoomSurfaceRef.ceiling(spaceId);
+  }
+
+  if ((wallIndexRaw == null) == (boundaryEdgeId == null)) {
+    throw const FormatException(
+      'Wall surface must carry exactly one of wallIndex or boundaryEdgeId.',
+    );
+  }
+  if (boundaryEdgeId != null) {
+    return RoomSurfaceRef.wallByBoundaryEdge(
+      spaceId,
+      BoundaryEdgeId(boundaryEdgeId),
+    );
+  }
+  return RoomSurfaceRef.wall(
+    spaceId,
+    _int(wallIndexRaw, 'surface.wallIndex'),
+  );
 }
 
 Map<String, Object?> _openingToJson(ArchitecturalOpening value) => {
@@ -1090,6 +1105,9 @@ Map<String, Object?> _routeToJson(ElectricalCableRoute value) => {
       'source': _endpointToJson(value.source),
       'target': _endpointToJson(value.target),
       'segments': [for (final item in value.segments) _segmentToJson(item)],
+      'penetrations': [
+        for (final item in value.penetrations) _penetrationToJson(item),
+      ],
       'cableType': value.cableType,
       'reservePercent': value.reservePercent,
       'medium': {
@@ -1108,12 +1126,20 @@ ElectricalCableRoute _routeFromJson(Map<String, Object?> json) {
     for (final item in _list(json['segments'], 'route.segments'))
       _segmentFromJson(_map(item, 'route.segment')),
   ];
+  final penetrationRaw = json['penetrations'];
+  final penetrations = penetrationRaw == null
+      ? const <BoundaryPenetration>[]
+      : [
+          for (final item in _list(penetrationRaw, 'route.penetrations'))
+            _penetrationFromJson(_map(item, 'route.penetration')),
+        ];
   _validatePersistedRouteAnchorIds(routeId, segments);
   return ElectricalCableRoute(
     id: routeId,
     source: _endpointFromJson(_map(json['source'], 'route.source')),
     target: _endpointFromJson(_map(json['target'], 'route.target')),
     segments: segments,
+    penetrations: penetrations,
     cableType: _nullableString(json['cableType']),
     reservePercent: _int(json['reservePercent'], 'route.reservePercent'),
     medium: RouteMediumProfile(
@@ -1181,6 +1207,79 @@ ElectricalRouteSegment _segmentFromJson(Map<String, Object?> json) {
     surface: _surfaceFromJson(_map(json['surface'], 'segment.surface')),
     points: points,
     anchorIds: anchorIds,
+  );
+}
+
+Map<String, Object?> _penetrationToJson(BoundaryPenetration value) => {
+      'id': value.id,
+      'hostKind': value.hostKind.name,
+      'hostThicknessMm': value.hostThicknessMm,
+      'pathLengthMm': value.pathLengthMm,
+      'materialId': value.materialId,
+      'entryAnchor': _penetrationAnchorToJson(value.entryAnchor),
+      'exitAnchor': _penetrationAnchorToJson(value.exitAnchor),
+    };
+
+BoundaryPenetration _penetrationFromJson(Map<String, Object?> json) =>
+    BoundaryPenetration(
+      id: _string(json['id'], 'penetration.id'),
+      hostKind: _enumValue(
+        BoundaryPenetrationHostKind.values,
+        _string(json['hostKind'], 'penetration.hostKind'),
+        'penetration.hostKind',
+      ),
+      hostThicknessMm: _int(
+        json['hostThicknessMm'],
+        'penetration.hostThicknessMm',
+      ),
+      pathLengthMm: _double(
+        json['pathLengthMm'],
+        'penetration.pathLengthMm',
+      ),
+      materialId: _nullableString(json['materialId']),
+      entryAnchor: _penetrationAnchorFromJson(
+        _map(json['entryAnchor'], 'penetration.entryAnchor'),
+      ),
+      exitAnchor: _penetrationAnchorFromJson(
+        _map(json['exitAnchor'], 'penetration.exitAnchor'),
+      ),
+    );
+
+Map<String, Object?> _penetrationAnchorToJson(
+  BoundaryPenetrationAnchor value,
+) =>
+    {
+      'id': value.id,
+      'penetrationId': value.penetrationId,
+      'side': value.side.name,
+      'surface': _surfaceToJson(value.surface),
+      'point': {'xMm': value.point.xMm, 'yMm': value.point.yMm},
+      'routeId': value.routeId,
+    };
+
+BoundaryPenetrationAnchor _penetrationAnchorFromJson(
+  Map<String, Object?> json,
+) {
+  final point = _map(json['point'], 'penetrationAnchor.point');
+  return BoundaryPenetrationAnchor(
+    id: _string(json['id'], 'penetrationAnchor.id'),
+    penetrationId: _string(
+      json['penetrationId'],
+      'penetrationAnchor.penetrationId',
+    ),
+    side: _enumValue(
+      PenetrationAnchorSide.values,
+      _string(json['side'], 'penetrationAnchor.side'),
+      'penetrationAnchor.side',
+    ),
+    surface: _surfaceFromJson(
+      _map(json['surface'], 'penetrationAnchor.surface'),
+    ),
+    point: SurfacePointMm(
+      _int(point['xMm'], 'penetrationAnchor.xMm'),
+      _int(point['yMm'], 'penetrationAnchor.yMm'),
+    ),
+    routeId: _string(json['routeId'], 'penetrationAnchor.routeId'),
   );
 }
 
