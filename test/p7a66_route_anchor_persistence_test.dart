@@ -30,8 +30,7 @@ void main() {
       expect(restoredIds, expected);
       final encodedRoute =
           ((decoded.toJson()['p2']! as Map)['routes']! as List).single as Map;
-      final encodedSegment =
-          (encodedRoute['segments']! as List).single as Map;
+      final encodedSegment = (encodedRoute['segments']! as List).single as Map;
       expect(encodedSegment['anchorIds'], expected);
       expect(encodedRoute['penetrations'], isEmpty);
       fixture.dispose();
