@@ -109,9 +109,7 @@ final class ElectricalCableRoute {
       );
 
   double get geometricLengthMm =>
-      visibleLengthMm +
-      hiddenPenetrationLengthMm +
-      hiddenVerticalCoreLengthMm;
+      visibleLengthMm + hiddenPenetrationLengthMm + hiddenVerticalCoreLengthMm;
 
   double get installationLengthMm =>
       geometricLengthMm * (1 + reservePercent / 100);
