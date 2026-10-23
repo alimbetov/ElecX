@@ -43,21 +43,24 @@ void main() {
         edgeId: fixture.edgeId,
       );
       expect(
-        mutations.current.engineeringMetadata.boundaryConstructionRegistry[host],
+        mutations
+            .current.engineeringMetadata.boundaryConstructionRegistry[host],
         profile,
       );
 
       final undone = mutations.undo(mutations.current.version);
       expect(undone, isNotNull);
       expect(
-        mutations.current.engineeringMetadata.boundaryConstructionRegistry[host],
+        mutations
+            .current.engineeringMetadata.boundaryConstructionRegistry[host],
         isNull,
       );
 
       final redone = mutations.redo(mutations.current.version);
       expect(redone, isNotNull);
       expect(
-        mutations.current.engineeringMetadata.boundaryConstructionRegistry[host],
+        mutations
+            .current.engineeringMetadata.boundaryConstructionRegistry[host],
         profile,
       );
     });
