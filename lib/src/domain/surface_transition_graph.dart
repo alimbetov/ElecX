@@ -4,6 +4,7 @@ import 'boundary_penetration.dart';
 import 'geometry.dart';
 import 'project_identity.dart';
 import 'project_model.dart';
+import 'slab_topology.dart';
 import 'surface_routing.dart';
 import 'surfaces.dart';
 
@@ -53,7 +54,7 @@ final class SurfaceTransitionCandidate {
   bool get requiresPenetration => penetrationRequirement != null;
 
   BoundaryPenetration createPenetration({
-    required String penetrationId,
+    required BoundaryPenetrationId penetrationId,
     required String routeId,
     int? thicknessMm,
   }) {
@@ -158,8 +159,13 @@ abstract final class SurfaceTransitionGraph {
     return List.unmodifiable(unique.values);
   }
 
-  /// Resolves a slab penetration only between physically adjacent levels and
-  /// where source and target room polygons overlap at the same plan point.
+  /// Resolves a slab penetration only when the exact canonical slab proves the
+  /// physical transition between source and target levels and both room
+  /// polygons overlap at the same plan point.
+  ///
+  /// [buildingLevels] is retained as a compatibility input for legacy editor
+  /// geometry, but it is never used to manufacture level adjacency. A missing,
+  /// wrong-kind or mismatched [slab] fails closed.
   static SurfaceTransitionCandidate? levelPenetration({
     required Iterable<BuildingLevel> buildingLevels,
     required BuildingLevel fromLevel,
@@ -171,6 +177,7 @@ abstract final class SurfaceTransitionGraph {
     required EngineeringSpace toSpace,
     required int toRoomHeightMm,
     required int slabThicknessMm,
+    ProjectSlab? slab,
     int verticalToleranceMm = 2,
     String? materialId,
   }) {
@@ -196,9 +203,23 @@ abstract final class SurfaceTransitionGraph {
         !_levelContainsSpace(toLevel, toSpace)) {
       return null;
     }
-    if (!_areAdjacentLevels(buildingLevels, fromLevel, toLevel)) return null;
+    if (!_containsCanonicalLevels(buildingLevels, fromLevel, toLevel)) {
+      return null;
+    }
+
+    final canonicalSlab = slab;
+    if (canonicalSlab == null ||
+        canonicalSlab.kind != SlabKind.interLevel ||
+        !_slabConnectsLevels(canonicalSlab, fromLevel, toLevel) ||
+        canonicalSlab.thicknessMm != slabThicknessMm) {
+      return null;
+    }
+    if (materialId != null && materialId != canonicalSlab.materialId) {
+      return null;
+    }
 
     final isUp = toLevel.elevationMm > fromLevel.elevationMm;
+    if (toLevel.elevationMm == fromLevel.elevationMm) return null;
     final expectedFrom =
         isUp ? SurfacePlaneType.ceiling : SurfacePlaneType.floor;
     final expectedTo = isUp ? SurfacePlaneType.floor : SurfacePlaneType.ceiling;
@@ -208,11 +229,28 @@ abstract final class SurfaceTransitionGraph {
     }
     if (!_horizontalPointIsValid(fromSpace, point)) return null;
 
+    final belowIsFrom = canonicalSlab.belowLevelId!.value == fromLevel.id;
+    final belowLevel = belowIsFrom ? fromLevel : toLevel;
+    final aboveLevel = belowIsFrom ? toLevel : fromLevel;
+    final belowRoomHeightMm =
+        belowIsFrom ? fromRoomHeightMm : toRoomHeightMm;
+    if (belowLevel.elevationMm >= aboveLevel.elevationMm) return null;
+
+    final expectedSlabBottomMm =
+        belowLevel.elevationMm + belowRoomHeightMm;
+    if ((canonicalSlab.bottomElevationMm - expectedSlabBottomMm).abs() >
+            verticalToleranceMm ||
+        (canonicalSlab.topElevationMm - aboveLevel.elevationMm).abs() >
+            verticalToleranceMm) {
+      return null;
+    }
+
     final physicalGapMm = isUp
         ? toLevel.elevationMm - (fromLevel.elevationMm + fromRoomHeightMm)
         : fromLevel.elevationMm - (toLevel.elevationMm + toRoomHeightMm);
     if (physicalGapMm <= 0 ||
-        (physicalGapMm - slabThicknessMm).abs() > verticalToleranceMm) {
+        (physicalGapMm - canonicalSlab.thicknessMm).abs() >
+            verticalToleranceMm) {
       return null;
     }
 
@@ -232,8 +270,9 @@ abstract final class SurfaceTransitionGraph {
       toPoint: mapped,
       penetrationRequirement: BoundaryPenetrationRequirement(
         hostKind: BoundaryPenetrationHostKind.slab,
-        hostThicknessMm: slabThicknessMm,
-        materialId: materialId,
+        hostThicknessMm: canonicalSlab.thicknessMm,
+        materialId: canonicalSlab.materialId,
+        slabId: canonicalSlab.id,
       ),
     );
   }
@@ -353,17 +392,30 @@ abstract final class SurfaceTransitionGraph {
   ) =>
       level.spaces.any((candidate) => candidate.id == space.id);
 
-  static bool _areAdjacentLevels(
+  static bool _containsCanonicalLevels(
     Iterable<BuildingLevel> buildingLevels,
     BuildingLevel a,
     BuildingLevel b,
   ) {
-    final levels = buildingLevels.toList()
-      ..sort((left, right) => left.elevationMm.compareTo(right.elevationMm));
-    final aIndex = levels.indexWhere((level) => level.id == a.id);
-    final bIndex = levels.indexWhere((level) => level.id == b.id);
-    if (aIndex < 0 || bIndex < 0) return false;
-    return (aIndex - bIndex).abs() == 1;
+    var aMatches = 0;
+    var bMatches = 0;
+    for (final level in buildingLevels) {
+      if (level.id == a.id) aMatches++;
+      if (level.id == b.id) bMatches++;
+    }
+    return aMatches == 1 && bMatches == 1;
+  }
+
+  static bool _slabConnectsLevels(
+    ProjectSlab slab,
+    BuildingLevel a,
+    BuildingLevel b,
+  ) {
+    final below = slab.belowLevelId?.value;
+    final above = slab.aboveLevelId?.value;
+    if (below == null || above == null || below == above) return false;
+    return (below == a.id && above == b.id) ||
+        (below == b.id && above == a.id);
   }
 
   static bool _horizontalPointIsValid(

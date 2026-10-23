@@ -78,6 +78,16 @@ final class BoundaryEdgeId extends EntityId {
   BoundaryEdgeId(super.value);
 }
 
+/// Stable compile-time identity for one physical boundary penetration.
+///
+/// The representation intentionally remains the exact persisted string so
+/// legacy project JSON can migrate losslessly without a schema rewrite. New
+/// authoring APIs use this type instead of raw String, preventing accidental
+/// penetration identity allocation from coordinates, list indexes or display
+/// values. The unified identity is valid for both wall and slab penetrations;
+/// slab ownership remains proven separately by [SlabId].
+extension type BoundaryPenetrationId(String value) implements String {}
+
 /// Stable identity for one physical horizontal building slab.
 ///
 /// A slab is not a floor/ceiling surface ordinal and is not owned by a room.
@@ -149,6 +159,7 @@ abstract interface class EntityIdFactory {
   SpaceAdjacencyId newSpaceAdjacencyId();
   OverlayClassificationId newOverlayClassificationId();
   BoundaryEdgeId newBoundaryEdgeId();
+  BoundaryPenetrationId newBoundaryPenetrationId();
   SlabId newSlabId();
   VerticalCoreId newVerticalCoreId();
   ServiceEntryId newServiceEntryId();
@@ -200,6 +211,10 @@ final class SecureRandomEntityIdFactory implements EntityIdFactory {
 
   @override
   BoundaryEdgeId newBoundaryEdgeId() => BoundaryEdgeId(_nextUuidV4());
+
+  @override
+  BoundaryPenetrationId newBoundaryPenetrationId() =>
+      BoundaryPenetrationId(_nextUuidV4());
 
   @override
   SlabId newSlabId() => SlabId(_nextUuidV4());

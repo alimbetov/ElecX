@@ -11,7 +11,7 @@ void main() {
 
     expect(
       () => requirement.create(
-        penetrationId: 'p-1',
+        penetrationId: BoundaryPenetrationId('p-1'),
         routeId: 'r-1',
         entrySurface: RoomSurfaceRef.wall('room-a', 0),
         entryPoint: const SurfacePointMm(1000, 1200),
@@ -84,9 +84,10 @@ void main() {
     );
   });
 
-  test('canonical slab penetration preserves stable physical SlabId', () {
+  test('canonical slab penetration preserves typed identity and SlabId', () {
+    final penetrationId = BoundaryPenetrationId('p-slab-1');
     final penetration = BoundaryPenetration.slab(
-      id: 'p-slab-1',
+      id: penetrationId,
       slabId: SlabId('slab-01-02'),
       entrySurface: RoomSurfaceRef.ceiling('room-l1'),
       entryPoint: const SurfacePointMm(1400, 1600),
@@ -97,22 +98,26 @@ void main() {
       materialId: 'reinforced-concrete',
     );
 
+    expect(penetration.id, penetrationId);
+    expect(penetration.entryAnchor.penetrationId, penetrationId);
+    expect(penetration.exitAnchor.penetrationId, penetrationId);
     expect(penetration.hostKind, BoundaryPenetrationHostKind.slab);
     expect(penetration.slabId, SlabId('slab-01-02'));
     expect(penetration.hasStableSlabHostIdentity, isTrue);
     expect(penetration.routeLengthContributionMm, 200);
   });
 
-  test('slab requirement propagates SlabId into committed penetration', () {
+  test('slab requirement propagates typed id and SlabId into penetration', () {
     final requirement = BoundaryPenetrationRequirement(
       hostKind: BoundaryPenetrationHostKind.slab,
       hostThicknessMm: 220,
       materialId: 'reinforced-concrete',
       slabId: SlabId('slab-02-03'),
     );
+    final penetrationId = BoundaryPenetrationId('p-slab-2');
 
     final penetration = requirement.create(
-      penetrationId: 'p-slab-2',
+      penetrationId: penetrationId,
       routeId: 'C-202',
       entrySurface: RoomSurfaceRef.ceiling('room-l2'),
       entryPoint: const SurfacePointMm(800, 900),
@@ -120,6 +125,7 @@ void main() {
       exitPoint: const SurfacePointMm(800, 900),
     );
 
+    expect(penetration.id, penetrationId);
     expect(penetration.slabId, SlabId('slab-02-03'));
     expect(penetration.hostThicknessMm, 220);
   });
@@ -141,7 +147,7 @@ void main() {
     );
   });
 
-  test('legacy slab penetration can remain unidentified until migration', () {
+  test('legacy slab penetration keeps exact scalar identity for migration', () {
     final legacy = BoundaryPenetration.normal(
       id: 'legacy-slab',
       hostKind: BoundaryPenetrationHostKind.slab,
@@ -153,6 +159,9 @@ void main() {
       routeId: 'legacy-route',
     );
 
+    expect(legacy.id.value, 'legacy-slab');
+    expect(legacy.entryAnchor.penetrationId.value, 'legacy-slab');
+    expect(legacy.exitAnchor.penetrationId.value, 'legacy-slab');
     expect(legacy.slabId, isNull);
     expect(legacy.hasStableSlabHostIdentity, isFalse);
   });
