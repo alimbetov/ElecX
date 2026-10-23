@@ -63,9 +63,11 @@ void main() {
     test('merge preserves identical explicit construction', () {
       final e1 = BoundaryEdgeId('e1');
       final e2 = BoundaryEdgeId('e2');
+      final e3 = BoundaryEdgeId('e3');
+      final e4 = BoundaryEdgeId('e4');
       final result = BoundaryEdgeId('merged');
-      final before = _topology(spaceId, [e1, e2, BoundaryEdgeId('e3')]);
-      final after = _topology(spaceId, [result, BoundaryEdgeId('e3')]);
+      final before = _topology(spaceId, [e1, e2, e3, e4]);
+      final after = _topology(spaceId, [result, e3, e4]);
       final registry = BoundaryConstructionRegistry({
         BoundaryEdgeHostRef(spaceId: spaceId, edgeId: e1): wall(),
         BoundaryEdgeHostRef(spaceId: spaceId, edgeId: e2): wall(),
@@ -75,7 +77,8 @@ void main() {
           sourceEdgeIds: [e1, e2],
           resultEdgeId: result,
         ),
-        BoundaryEdgeLineage.preserved(BoundaryEdgeId('e3')),
+        BoundaryEdgeLineage.preserved(e3),
+        BoundaryEdgeLineage.preserved(e4),
       ]);
 
       final migrated = registry.remapSpace(
@@ -93,9 +96,11 @@ void main() {
     test('merge rejects conflicting physical construction', () {
       final e1 = BoundaryEdgeId('e1');
       final e2 = BoundaryEdgeId('e2');
+      final e3 = BoundaryEdgeId('e3');
+      final e4 = BoundaryEdgeId('e4');
       final result = BoundaryEdgeId('merged');
-      final before = _topology(spaceId, [e1, e2, BoundaryEdgeId('e3')]);
-      final after = _topology(spaceId, [result, BoundaryEdgeId('e3')]);
+      final before = _topology(spaceId, [e1, e2, e3, e4]);
+      final after = _topology(spaceId, [result, e3, e4]);
       final registry = BoundaryConstructionRegistry({
         BoundaryEdgeHostRef(spaceId: spaceId, edgeId: e1): wall(),
         BoundaryEdgeHostRef(spaceId: spaceId, edgeId: e2):
@@ -106,7 +111,8 @@ void main() {
           sourceEdgeIds: [e1, e2],
           resultEdgeId: result,
         ),
-        BoundaryEdgeLineage.preserved(BoundaryEdgeId('e3')),
+        BoundaryEdgeLineage.preserved(e3),
+        BoundaryEdgeLineage.preserved(e4),
       ]);
 
       expect(
@@ -122,9 +128,11 @@ void main() {
     test('merge rejects explicit plus unknown construction', () {
       final e1 = BoundaryEdgeId('e1');
       final e2 = BoundaryEdgeId('e2');
+      final e3 = BoundaryEdgeId('e3');
+      final e4 = BoundaryEdgeId('e4');
       final result = BoundaryEdgeId('merged');
-      final before = _topology(spaceId, [e1, e2, BoundaryEdgeId('e3')]);
-      final after = _topology(spaceId, [result, BoundaryEdgeId('e3')]);
+      final before = _topology(spaceId, [e1, e2, e3, e4]);
+      final after = _topology(spaceId, [result, e3, e4]);
       final registry = BoundaryConstructionRegistry({
         BoundaryEdgeHostRef(spaceId: spaceId, edgeId: e1): wall(),
       });
@@ -133,7 +141,8 @@ void main() {
           sourceEdgeIds: [e1, e2],
           resultEdgeId: result,
         ),
-        BoundaryEdgeLineage.preserved(BoundaryEdgeId('e3')),
+        BoundaryEdgeLineage.preserved(e3),
+        BoundaryEdgeLineage.preserved(e4),
       ]);
 
       expect(
@@ -152,10 +161,20 @@ SpaceBoundaryTopology _topology(
   SpaceId spaceId,
   List<BoundaryEdgeId> ids,
 ) {
-  final points = <BoundaryPointMm>[
-    for (var index = 0; index < ids.length; index++)
-      BoundaryPointMm(xMm: index * 1000, yMm: index == ids.length - 1 ? 1000 : 0),
-  ];
+  final points = switch (ids.length) {
+    3 => const [
+        BoundaryPointMm(xMm: 0, yMm: 0),
+        BoundaryPointMm(xMm: 3000, yMm: 0),
+        BoundaryPointMm(xMm: 0, yMm: 2000),
+      ],
+    4 => const [
+        BoundaryPointMm(xMm: 0, yMm: 0),
+        BoundaryPointMm(xMm: 1500, yMm: 0),
+        BoundaryPointMm(xMm: 3000, yMm: 0),
+        BoundaryPointMm(xMm: 0, yMm: 2000),
+      ],
+    _ => throw ArgumentError('Fixture supports only 3 or 4 boundary edges.'),
+  };
   final edges = <BoundaryEdgeId, ProjectBoundaryEdge>{};
   for (var index = 0; index < ids.length; index++) {
     edges[ids[index]] = ProjectBoundaryEdge(
