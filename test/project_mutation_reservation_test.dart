@@ -10,14 +10,16 @@ void main() {
     test('preview reserves once and commit keeps exact preview identity', () {
       final session = ProjectMutationSession(_project());
       final coordinator = ReservedProjectMutationCoordinator(session);
-      final planned = coordinator.preview(const _CreateBuildingReservedCommand());
+      final planned =
+          coordinator.preview(const _CreateBuildingReservedCommand());
       final reservedId = planned.reservation.entityId<BuildingId>('building');
 
       expect(planned.candidate.stores.buildings.keys, {reservedId});
       expect(session.current.stores.buildings, isEmpty);
       expect(session.undoDepth, 0);
       expect(
-        planned.semanticChangeSet.operations.whereType<CreateEntityOperation>()
+        planned.semanticChangeSet.operations
+            .whereType<CreateEntityOperation>()
             .single
             .entityId,
         reservedId,
@@ -41,7 +43,8 @@ void main() {
     test('old preview fails closed after canonical version changes', () {
       final session = ProjectMutationSession(_project());
       final coordinator = ReservedProjectMutationCoordinator(session);
-      final planned = coordinator.preview(const _CreateBuildingReservedCommand());
+      final planned =
+          coordinator.preview(const _CreateBuildingReservedCommand());
 
       session.commit(
         ProjectMutationRequest(
@@ -73,7 +76,8 @@ void main() {
     test('a committed reservation cannot be consumed twice', () {
       final session = ProjectMutationSession(_project());
       final coordinator = ReservedProjectMutationCoordinator(session);
-      final planned = coordinator.preview(const _CreateBuildingReservedCommand());
+      final planned =
+          coordinator.preview(const _CreateBuildingReservedCommand());
 
       expect(coordinator.commitPreview(planned), isNotNull);
       expect(
@@ -82,7 +86,8 @@ void main() {
       );
     });
 
-    test('semantic operation ordering is canonical and independent of input', () {
+    test('semantic operation ordering is canonical and independent of input',
+        () {
       final siteId = SiteId('site');
       final buildingId = BuildingId('building');
       final first = ProjectSemanticChangeSet([
@@ -177,8 +182,7 @@ final class _CreateBuildingReservedCommand implements ReservedProjectCommand {
       );
     final buildings = Map<BuildingId, ProjectBuildingEntity>.from(
       current.stores.buildings,
-    )
-      ..[buildingId] = ProjectBuildingEntity(
+    )..[buildingId] = ProjectBuildingEntity(
         id: buildingId,
         siteId: site.id,
         name: 'Building',
