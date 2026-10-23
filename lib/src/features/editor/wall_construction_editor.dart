@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/boundary_construction_registry.dart';
+import 'canonical_wall_construction_runtime.dart';
 import 'editor_controller.dart';
 import 'editor_document_history.dart';
 import 'wall_construction_edit_contract.dart';
