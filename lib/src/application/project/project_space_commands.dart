@@ -12,6 +12,7 @@ final class CreateSpaceCommand implements ProjectCommand {
     required this.levelId,
     required this.name,
     this.structuralZoneId,
+    this.type = ProjectSpaceType.unknown,
     this.usage = SpaceUsage.unknown,
   }) {
     if (name.trim().isEmpty) {
@@ -23,6 +24,7 @@ final class CreateSpaceCommand implements ProjectCommand {
   final LevelId levelId;
   final String name;
   final ZoneId? structuralZoneId;
+  final ProjectSpaceType type;
   final SpaceUsage usage;
 
   @override
@@ -70,6 +72,8 @@ final class CreateSpaceCommand implements ProjectCommand {
       levelNumber: level.levelNumber,
       displayOrder: level.displayOrder,
       elevationMm: level.elevationMm,
+      kind: level.kind,
+      floorToFloorHeightMm: level.floorToFloorHeightMm,
       zoneIds: level.zoneIds,
       spaceIds: <SpaceId>{...level.spaceIds, spaceId},
     );
@@ -79,6 +83,7 @@ final class CreateSpaceCommand implements ProjectCommand {
         id: zone.id,
         levelId: zone.levelId,
         name: zone.name,
+        kind: zone.kind,
         spaceIds: <SpaceId>{...zone.spaceIds, spaceId},
       );
     }
@@ -87,6 +92,7 @@ final class CreateSpaceCommand implements ProjectCommand {
       id: spaceId,
       levelId: level.id,
       name: name,
+      type: type,
       usage: usage,
     );
 
@@ -108,7 +114,7 @@ final class CreateSpaceCommand implements ProjectCommand {
   }
 }
 
-/// Renames a space while preserving identity, ownership and semantic usage.
+/// Renames a space while preserving identity, ownership and all semantics.
 final class RenameSpaceCommand implements ProjectCommand {
   RenameSpaceCommand({required this.spaceId, required this.name}) {
     if (name.trim().isEmpty) {
@@ -130,6 +136,7 @@ final class RenameSpaceCommand implements ProjectCommand {
       id: space.id,
       levelId: space.levelId,
       name: name,
+      type: space.type,
       usage: space.usage,
     );
 
