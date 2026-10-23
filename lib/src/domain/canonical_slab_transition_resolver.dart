@@ -47,9 +47,10 @@ abstract final class CanonicalSlabTransitionResolver {
       return null;
     }
 
-    final lowerLevel = canonicalFromLevel.elevationMm < canonicalToLevel.elevationMm
-        ? canonicalFromLevel
-        : canonicalToLevel;
+    final lowerLevel =
+        canonicalFromLevel.elevationMm < canonicalToLevel.elevationMm
+            ? canonicalFromLevel
+            : canonicalToLevel;
     final upperLevel = identical(lowerLevel, canonicalFromLevel)
         ? canonicalToLevel
         : canonicalFromLevel;
