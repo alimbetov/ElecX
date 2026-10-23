@@ -74,7 +74,8 @@ void main() {
       );
     });
 
-    test('foreign surface cannot activate a marker by geometry coincidence', () {
+    test('foreign surface cannot activate a marker by geometry coincidence',
+        () {
       expect(
         VerticalRouteContinuationMarkerResolver.resolve(
           routeId: 'C-103',
