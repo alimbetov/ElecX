@@ -24,7 +24,6 @@ final class StructuralSemanticsAwareCanonicalProjectDocumentCodec
 
   static const int schemaVersion = 10;
   static const int _legacySchemaVersion = 9;
-  static const int _legacyFloorToFloorHeightMm = 3000;
 
   static const VerticalCoreAwareCanonicalProjectDocumentCodec _legacy =
       VerticalCoreAwareCanonicalProjectDocumentCodec();
