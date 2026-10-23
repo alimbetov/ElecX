@@ -84,7 +84,8 @@ void main() {
 
     expect(session.commitPhysicalCableRoute(route), isTrue);
     expect(session.routes.single.penetrations.single.id, 'p-1');
-    expect(session.history.undoLabel, 'Create physical cable route with penetrations');
+    expect(session.history.undoLabel,
+        'Create physical cable route with penetrations');
 
     session.undo();
     expect(session.routes, isEmpty);
