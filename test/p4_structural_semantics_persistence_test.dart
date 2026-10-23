@@ -33,7 +33,8 @@ void main() {
     expect(space.usage, SpaceUsage.electricalRoom);
   });
 
-  test('v10 migration preserves level semantics without inventing zone/type', () {
+  test('v10 migration preserves level semantics without inventing zone/type',
+      () {
     const v10 = VerticalCoreAwareCanonicalProjectDocumentCodec();
     final source = _snapshot(
       levelKind: ProjectLevelKind.roof,
