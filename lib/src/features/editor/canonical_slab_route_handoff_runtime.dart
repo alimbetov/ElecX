@@ -3,6 +3,7 @@ import '../../domain/canonical_slab_route_handoff.dart';
 import '../../domain/canonical_slab_vertical_evidence.dart';
 import '../../domain/project_identity.dart';
 import 'canonical_editor_runtime_cutover.dart';
+import 'canonical_slab_route_draft_externalization.dart';
 import 'physical_manual_cable_draft_persistence.dart';
 
 enum CanonicalSlabRouteHandoffRuntimeIssueCode {
@@ -12,6 +13,7 @@ enum CanonicalSlabRouteHandoffRuntimeIssueCode {
   cutoverBusy,
   transientRouteDraftNotExternalized,
   cutoverFailed,
+  rollbackFailed,
 }
 
 final class CanonicalSlabRouteHandoffRuntimeException implements Exception {
@@ -42,11 +44,12 @@ final class CanonicalSlabRouteHandoffPrepared {
 /// Fail-closed bridge between canonical slab handoff admission and the legacy
 /// editor level cutover.
 ///
-/// This runtime intentionally does not buffer route draft state yet. Applying a
-/// level switch while [EditorController.routeSegments] or a physical route
-/// continuation intent is still owned by the controller would erase transient
-/// authoring state in `EditorBuildingWorkspace._resetEditorForLevel()`. Until a
-/// dedicated buffer/restore transaction is introduced, such a switch is denied.
+/// A live route draft must be externalized into an exact
+/// [CanonicalSlabRouteDraftExternalization] before the level switch. The token
+/// preserves route identity, SlabId, P2 revision and source geometry while the
+/// legacy workspace resets transient canvas state. On success the draft is
+/// restored on the target floor/ceiling. On failure both canonical navigation
+/// and the legacy workspace are rolled back before the source draft is restored.
 final class CanonicalSlabRouteHandoffRuntime {
   CanonicalSlabRouteHandoffRuntime({required this.coordinator})
       : _handoff = ProjectSlabRouteHandoffSession(coordinator.session);
@@ -126,7 +129,9 @@ final class CanonicalSlabRouteHandoffRuntime {
     return result;
   }
 
-  CanonicalSlabRouteHandoffPlan applyNavigation() {
+  CanonicalSlabRouteHandoffPlan applyNavigation({
+    CanonicalSlabRouteDraftExternalization? externalizedDraft,
+  }) {
     final prepared = _prepared;
     if (prepared == null) {
       throw const ProjectSlabRouteHandoffException(
@@ -142,12 +147,18 @@ final class CanonicalSlabRouteHandoffRuntime {
     }
 
     final editor = coordinator.adapter.workspace.editor;
-    if (editor.routeSegments.isNotEmpty || editor.hasPhysicalRouteContinuation) {
+    if (editor.routeSegments.isNotEmpty ||
+        (editor.hasPhysicalRouteContinuation && externalizedDraft == null) ||
+        (externalizedDraft != null &&
+            !externalizedDraft.owns(
+              editor: editor,
+              intent: prepared.intent,
+            ))) {
       throw const CanonicalSlabRouteHandoffRuntimeException(
         code: CanonicalSlabRouteHandoffRuntimeIssueCode
             .transientRouteDraftNotExternalized,
-        message: 'Cross-level navigation cannot clear an active route draft. '
-            'Externalize the draft before applying the slab handoff.',
+        message: 'Cross-level navigation requires an exact externalized route '
+            'draft token before the legacy level can be switched.',
       );
     }
 
@@ -156,18 +167,36 @@ final class CanonicalSlabRouteHandoffRuntime {
     try {
       plan = _handoff.commitNavigation();
       coordinator.pushCanonicalToEditor();
+      externalizedDraft?.restoreTarget(editor);
     } on ProjectSlabRouteHandoffException {
+      _restoreExternalizedSourceIfPossible(
+        externalizedDraft,
+        sourceNavigation: sourceNavigation,
+      );
+      _handoff.cancel();
+      _prepared = null;
       rethrow;
     } catch (_) {
-      if (coordinator.session.navigation != sourceNavigation) {
-        coordinator.session.adoptNavigation(sourceNavigation);
+      final rolledBack = _rollbackToSource(
+        sourceNavigation: sourceNavigation,
+        externalizedDraft: externalizedDraft,
+      );
+      if (!rolledBack) {
+        _handoff.cancel();
+        _prepared = null;
+        throw CanonicalSlabRouteHandoffRuntimeException(
+          code: CanonicalSlabRouteHandoffRuntimeIssueCode.rollbackFailed,
+          entityId: prepared.intent.plan.fromSpaceId,
+          message: 'Cross-level cutover failed and the source editor context '
+              'could not be restored atomically.',
+        );
       }
       _restorePending(prepared);
       throw CanonicalSlabRouteHandoffRuntimeException(
         code: CanonicalSlabRouteHandoffRuntimeIssueCode.cutoverFailed,
         entityId: prepared.intent.plan.toSpaceId,
-        message: 'Legacy editor cutover failed; canonical navigation was '
-            'restored to the source route context.',
+        message: 'Cross-level cutover failed; canonical navigation, legacy '
+            'workspace and route draft were restored to the source context.',
       );
     }
 
@@ -178,6 +207,41 @@ final class CanonicalSlabRouteHandoffRuntime {
   void cancel() {
     _handoff.cancel();
     _prepared = null;
+  }
+
+  bool _rollbackToSource({
+    required ProjectNavigationState sourceNavigation,
+    required CanonicalSlabRouteDraftExternalization? externalizedDraft,
+  }) {
+    try {
+      if (coordinator.session.navigation != sourceNavigation) {
+        coordinator.session.adoptNavigation(sourceNavigation);
+      }
+      coordinator.pushCanonicalToEditor();
+      if (externalizedDraft != null && !externalizedDraft.isRestored) {
+        externalizedDraft.restoreSource(coordinator.adapter.workspace.editor);
+      }
+      return true;
+    } on Object {
+      return false;
+    }
+  }
+
+  void _restoreExternalizedSourceIfPossible(
+    CanonicalSlabRouteDraftExternalization? externalizedDraft, {
+    required ProjectNavigationState sourceNavigation,
+  }) {
+    if (externalizedDraft == null || externalizedDraft.isRestored) return;
+    try {
+      if (coordinator.session.navigation != sourceNavigation) {
+        coordinator.session.adoptNavigation(sourceNavigation);
+      }
+      coordinator.pushCanonicalToEditor();
+      externalizedDraft.restoreSource(coordinator.adapter.workspace.editor);
+    } on Object {
+      // The primary typed ProjectSlabRouteHandoffException is more actionable.
+      // A later retry is impossible because this runtime is cancelled below.
+    }
   }
 
   void _restorePending(CanonicalSlabRouteHandoffPrepared prepared) {
