@@ -113,7 +113,8 @@ final class BoundaryPenetration {
     }
     if (entryAnchor.penetrationId != this.id ||
         exitAnchor.penetrationId != this.id) {
-      throw ArgumentError('Both anchors must belong to penetration ${this.id}.');
+      throw ArgumentError(
+          'Both anchors must belong to penetration ${this.id}.');
     }
     if (entryAnchor.id == exitAnchor.id) {
       throw ArgumentError('Penetration anchors must have distinct identities.');
@@ -176,12 +177,13 @@ final class BoundaryPenetration {
     );
   }
 
-  /// Creates a new canonical slab penetration with stable physical host
-  /// identity. Legacy slab penetrations without [SlabId] must not use this
-  /// factory. [verticalCoreId] is supplied only when this crossing belongs to a
-  /// canonical riser/shaft path.
+  /// Compatibility factory for persisted/legacy scalar ids.
+  ///
+  /// Canonical authoring should pass a preallocated [BoundaryPenetrationId];
+  /// because the extension type implements String, the exact persisted scalar
+  /// is preserved without regeneration.
   factory BoundaryPenetration.slab({
-    required BoundaryPenetrationId id,
+    required String id,
     required SlabId slabId,
     required RoomSurfaceRef entrySurface,
     required SurfacePointMm entryPoint,
@@ -288,7 +290,29 @@ final class BoundaryPenetrationRequirement {
   final SlabId? slabId;
   final VerticalCoreId? verticalCoreId;
 
+  /// Legacy scalar compatibility boundary.
   BoundaryPenetration create({
+    required String penetrationId,
+    required String routeId,
+    required RoomSurfaceRef entrySurface,
+    required SurfacePointMm entryPoint,
+    required RoomSurfaceRef exitSurface,
+    required SurfacePointMm exitPoint,
+    int? thicknessMm,
+  }) =>
+      createTyped(
+        penetrationId: BoundaryPenetrationId(penetrationId),
+        routeId: routeId,
+        entrySurface: entrySurface,
+        entryPoint: entryPoint,
+        exitSurface: exitSurface,
+        exitPoint: exitPoint,
+        thicknessMm: thicknessMm,
+      );
+
+  /// Canonical authoring boundary. The durable identity must already be
+  /// allocated/reserved before the physical penetration is materialized.
+  BoundaryPenetration createTyped({
     required BoundaryPenetrationId penetrationId,
     required String routeId,
     required RoomSurfaceRef entrySurface,

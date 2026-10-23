@@ -75,7 +75,8 @@ void main() {
     });
 
     test('same geometry can allocate two distinct penetration identities', () {
-      ElectricalCableRoute build(String rawId) => CablePenetrationAuthoring.build(
+      ElectricalCableRoute build(String rawId) =>
+          CablePenetrationAuthoring.build(
             routeId: 'route-1',
             source: const ElectricalEndpointRef(
               componentId: 'a',

@@ -2,6 +2,7 @@ import '../../domain/boundary_penetration.dart';
 import '../../domain/cable_penetration_authoring.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/electrical_routing.dart';
+import '../../domain/project_identity.dart';
 import '../../domain/surface_routing.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/editor_layers.dart';
@@ -266,9 +267,11 @@ extension PhysicalManualCableDraftPersistence on EditorController {
         }
         if (!transition.requiresPenetration) continue;
 
-        String penetrationId;
+        BoundaryPenetrationId penetrationId;
         do {
-          penetrationId = '${before.id}:penetration:$penetrationSequence';
+          penetrationId = BoundaryPenetrationId(
+            '${before.id}:penetration:$penetrationSequence',
+          );
           penetrationSequence++;
         } while (penetrationIds.contains(penetrationId));
         penetrationIds.add(penetrationId);
@@ -403,7 +406,9 @@ extension PhysicalManualCableDraftPersistence on EditorController {
         segments: List.unmodifiable(segments),
         resolveTransition: resolveTransition,
         penetrationIdFactory: (transitionIndex, transition) =>
-            '$resolvedRouteId:penetration:$transitionIndex',
+            BoundaryPenetrationId(
+          '$resolvedRouteId:penetration:$transitionIndex',
+        ),
       );
     } on ArgumentError {
       return false;

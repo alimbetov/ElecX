@@ -82,7 +82,7 @@ abstract final class CablePenetrationAuthoring {
         throw StateError('Duplicate penetration id $penetrationId.');
       }
       penetrations.add(
-        transition.createPenetration(
+        transition.createPenetrationTyped(
           penetrationId: penetrationId,
           routeId: routeId,
         ),

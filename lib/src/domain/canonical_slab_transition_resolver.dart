@@ -84,6 +84,7 @@ abstract final class CanonicalSlabTransitionResolver {
       toSpace: toSpace,
       toRoomHeightMm: toRoomHeightMm,
       slabThicknessMm: slab.thicknessMm,
+      slab: slab,
       verticalToleranceMm: verticalToleranceMm,
       materialId: slab.materialId,
     );

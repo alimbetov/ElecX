@@ -53,7 +53,21 @@ final class SurfaceTransitionCandidate {
 
   bool get requiresPenetration => penetrationRequirement != null;
 
+  /// Compatibility boundary for callers that still hold a persisted scalar.
   BoundaryPenetration createPenetration({
+    required String penetrationId,
+    required String routeId,
+    int? thicknessMm,
+  }) =>
+      createPenetrationTyped(
+        penetrationId: BoundaryPenetrationId(penetrationId),
+        routeId: routeId,
+        thicknessMm: thicknessMm,
+      );
+
+  /// Canonical route-authoring boundary. Identity must be allocated before
+  /// materialization and cannot be regenerated from transition geometry.
+  BoundaryPenetration createPenetrationTyped({
     required BoundaryPenetrationId penetrationId,
     required String routeId,
     int? thicknessMm,
@@ -62,7 +76,7 @@ final class SurfaceTransitionCandidate {
     if (requirement == null) {
       throw StateError('Transition $id does not require a penetration.');
     }
-    return requirement.create(
+    return requirement.createTyped(
       penetrationId: penetrationId,
       routeId: routeId,
       entrySurface: fromSurface,
@@ -232,12 +246,10 @@ abstract final class SurfaceTransitionGraph {
     final belowIsFrom = canonicalSlab.belowLevelId!.value == fromLevel.id;
     final belowLevel = belowIsFrom ? fromLevel : toLevel;
     final aboveLevel = belowIsFrom ? toLevel : fromLevel;
-    final belowRoomHeightMm =
-        belowIsFrom ? fromRoomHeightMm : toRoomHeightMm;
+    final belowRoomHeightMm = belowIsFrom ? fromRoomHeightMm : toRoomHeightMm;
     if (belowLevel.elevationMm >= aboveLevel.elevationMm) return null;
 
-    final expectedSlabBottomMm =
-        belowLevel.elevationMm + belowRoomHeightMm;
+    final expectedSlabBottomMm = belowLevel.elevationMm + belowRoomHeightMm;
     if ((canonicalSlab.bottomElevationMm - expectedSlabBottomMm).abs() >
             verticalToleranceMm ||
         (canonicalSlab.topElevationMm - aboveLevel.elevationMm).abs() >
@@ -414,8 +426,7 @@ abstract final class SurfaceTransitionGraph {
     final below = slab.belowLevelId?.value;
     final above = slab.aboveLevelId?.value;
     if (below == null || above == null || below == above) return false;
-    return (below == a.id && above == b.id) ||
-        (below == b.id && above == a.id);
+    return (below == a.id && above == b.id) || (below == b.id && above == a.id);
   }
 
   static bool _horizontalPointIsValid(
