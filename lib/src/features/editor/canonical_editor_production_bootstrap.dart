@@ -155,11 +155,45 @@ void _validateLoadedSidecar({
   }
   for (final entry in binding.legacySpaceIds.entries) {
     final space = project.index.space(entry.key);
-    if (space == null || project.index.boundary(entry.key) == null) {
+    final topology = project.index.boundary(entry.key);
+    if (space == null || topology == null) {
       throw StateError(
         'Canonical sidecar is missing bound space ${entry.key} '
         '(${entry.value}).',
       );
+    }
+    final legacyLevelId = binding.legacyLevelIds[space.levelId];
+    if (legacyLevelId == null) {
+      throw StateError(
+        'Canonical space ${entry.key} has no bound legacy level.',
+      );
+    }
+    final legacyLevel = legacyDocument.building.building.levels
+        .where((level) => level.id == legacyLevelId)
+        .firstOrNull;
+    final legacySpace = legacyLevel?.spaces
+        .where((candidate) => candidate.id == entry.value)
+        .firstOrNull;
+    if (legacySpace == null ||
+        legacySpace.boundary.vertices.length != topology.orderedEdgeIds.length) {
+      throw StateError(
+        'Canonical sidecar geometry does not match materialized legacy space '
+        '${entry.value}.',
+      );
+    }
+    for (var index = 0;
+        index < legacySpace.boundary.vertices.length;
+        index++) {
+      final legacyPoint = legacySpace.boundary.vertices[index];
+      final edge = topology.edges[topology.orderedEdgeIds[index]];
+      if (edge == null ||
+          edge.start.xMm != legacyPoint.x ||
+          edge.start.yMm != legacyPoint.y) {
+        throw StateError(
+          'Canonical sidecar geometry diverged from materialized legacy space '
+          '${entry.value} at boundary vertex $index.',
+        );
+      }
     }
   }
 }
@@ -173,18 +207,27 @@ ProjectNavigationState _navigationForLegacyResume({
       legacyDocument.building.levelByNumber(legacyDocument.activeLevelNumber);
   final activeLevelId = legacyLevel == null
       ? null
-      : _canonicalForLegacy(binding.legacyLevelIds, legacyLevel.level.id);
-  final selectedZoneId = legacyDocument.selectedZoneId == null
+      : _canonicalForLegacy(
+          binding.legacyLevelIds,
+          legacyLevel.level.id,
+        );
+  final selectedZoneId = legacyDocument.selectedZoneId == null ||
+          activeLevelId == null
       ? null
       : _canonicalForLegacy(
           binding.legacyZoneIds,
           legacyDocument.selectedZoneId!,
+          where: (zoneId) =>
+              owner.project.index.zone(zoneId)?.levelId == activeLevelId,
         );
-  final selectedSpaceId = legacyDocument.resume.selectedSpaceId == null
+  final selectedSpaceId = legacyDocument.resume.selectedSpaceId == null ||
+          activeLevelId == null
       ? null
       : _canonicalForLegacy(
           binding.legacySpaceIds,
           legacyDocument.resume.selectedSpaceId!,
+          where: (spaceId) =>
+              owner.project.index.space(spaceId)?.levelId == activeLevelId,
         );
   return ProjectNavigationState.restore(
     owner.project,
@@ -197,10 +240,13 @@ ProjectNavigationState _navigationForLegacyResume({
 
 T? _canonicalForLegacy<T extends EntityId>(
   Map<T, String> mapping,
-  String legacyId,
-) {
+  String legacyId, {
+  bool Function(T id)? where,
+}) {
   for (final entry in mapping.entries) {
-    if (entry.value == legacyId) return entry.key;
+    if (entry.value == legacyId && (where == null || where(entry.key))) {
+      return entry.key;
+    }
   }
   return null;
 }
