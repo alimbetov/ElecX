@@ -268,7 +268,8 @@ ProjectStructuralZoneEntity _requireStructuralZone(
   return zone;
 }
 
-ProjectSpaceEntity _requireSpace(ProjectAggregateRoot current, SpaceId spaceId) {
+ProjectSpaceEntity _requireSpace(
+    ProjectAggregateRoot current, SpaceId spaceId) {
   final space = current.index.space(spaceId);
   if (space == null) {
     throw ProjectAuthoringException(
