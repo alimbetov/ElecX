@@ -48,7 +48,7 @@ void main() {
     )!;
 
     final penetration = plan.crossings.single.createPenetration(
-      penetrationId: 'P-12',
+      penetrationId: BoundaryPenetrationId('P-12'),
       routeId: 'C-1',
       entrySurface: RoomSurfaceRef.ceiling('space-l1'),
       entryPoint: const SurfacePointMm(1200, 1200),
