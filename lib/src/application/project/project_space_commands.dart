@@ -1,4 +1,5 @@
 import '../../domain/project_aggregate.dart';
+import '../../domain/project_entity_stores_copy.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/project_space_semantics.dart';
 import 'project_authoring_error.dart';
@@ -90,9 +91,7 @@ final class CreateSpaceCommand implements ProjectCommand {
     );
 
     return ProjectCommandCandidate(
-      stores: ProjectEntityStores(
-        sites: current.stores.sites,
-        buildings: current.stores.buildings,
+      stores: current.stores.copyWith(
         levels: levels,
         zones: zones,
         spaces: spaces,
@@ -132,13 +131,7 @@ final class RenameSpaceCommand implements ProjectCommand {
     );
 
     return ProjectCommandCandidate(
-      stores: ProjectEntityStores(
-        sites: current.stores.sites,
-        buildings: current.stores.buildings,
-        levels: current.stores.levels,
-        zones: current.stores.zones,
-        spaces: spaces,
-      ),
+      stores: current.stores.copyWith(spaces: spaces),
       affectedEntityIds: <EntityId>[space.id],
     );
   }
@@ -178,13 +171,13 @@ ProjectSpaceEntity _requireSpace(
   ProjectAggregateRoot current,
   SpaceId spaceId,
 ) {
-  final space = current.index.space(spaceId);
-  if (space == null) {
-    throw ProjectAuthoringException(
-      code: ProjectAuthoringIssueCode.spaceNotFound,
-      entityId: spaceId,
-      message: 'Space $spaceId does not exist.',
-    );
-  }
-  return space;
+    final space = current.index.space(spaceId);
+    if (space == null) {
+      throw ProjectAuthoringException(
+        code: ProjectAuthoringIssueCode.spaceNotFound,
+        entityId: spaceId,
+        message: 'Space $spaceId does not exist.',
+      );
+    }
+    return space;
 }
