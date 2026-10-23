@@ -110,8 +110,10 @@ void main() {
 
       final restored = EditorProjectDocument.fromJson(json);
       final restoredRoute = restored.p2State.routes.single;
-      expect(restoredRoute.segments.first.surface.boundaryEdgeId?.value, 'edge-a');
-      expect(restoredRoute.segments.last.surface.boundaryEdgeId?.value, 'edge-b');
+      expect(
+          restoredRoute.segments.first.surface.boundaryEdgeId?.value, 'edge-a');
+      expect(
+          restoredRoute.segments.last.surface.boundaryEdgeId?.value, 'edge-b');
       expect(restoredRoute.penetrations, hasLength(1));
       expect(restoredRoute.penetrations.single.id, 'penetration-1');
       expect(restoredRoute.penetrations.single.routeId, 'route-physical');
