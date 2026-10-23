@@ -71,10 +71,13 @@ final class CreateLevelCommand implements ProjectCommand {
       elevationMm: elevationMm,
     );
 
-    return ProjectCommandCandidate(
-      stores: current.stores.copyWith(
-        buildings: buildings,
-        levels: levels,
+    return ProjectCommandCandidate.fromState(
+      state: ProjectMutableState(
+        engineeringMetadata: current.engineeringMetadata,
+        stores: current.stores.copyWith(
+          buildings: buildings,
+          levels: levels,
+        ),
       ),
       affectedEntityIds: <EntityId>[building.id, levelId],
     );
@@ -221,8 +224,11 @@ ProjectCommandCandidate _replaceLevel(
     spaceIds: level.spaceIds,
   );
 
-  return ProjectCommandCandidate(
-    stores: current.stores.copyWith(levels: levels),
+  return ProjectCommandCandidate.fromState(
+    state: ProjectMutableState(
+      engineeringMetadata: current.engineeringMetadata,
+      stores: current.stores.copyWith(levels: levels),
+    ),
     affectedEntityIds: <EntityId>[level.id],
   );
 }
