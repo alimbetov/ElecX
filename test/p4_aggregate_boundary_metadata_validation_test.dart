@@ -6,7 +6,8 @@ import 'package:elecx/src/domain/project_orientation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('aggregate rejects hosted metadata without owning boundary topology', () {
+  test('aggregate rejects hosted metadata without owning boundary topology',
+      () {
     final siteId = SiteId('site-root');
     final buildingId = BuildingId('building-a');
     final levelId = LevelId('level-1');
