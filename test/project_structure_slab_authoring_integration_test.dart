@@ -9,7 +9,8 @@ import 'package:elecx/src/domain/slab_topology.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('project structure session and slab authoring share one mutation history',
+  test(
+      'project structure session and slab authoring share one mutation history',
       () {
     final fixture = _Fixture();
     final authoring = ProjectStructureAuthoringSession(
