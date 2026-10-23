@@ -122,7 +122,7 @@ final class BoundaryPenetration {
           routeId: routeId,
         ),
         hostThicknessMm: hostThicknessMm,
-        pathLengthMm: hostThicknessMm,
+        pathLengthMm: hostThicknessMm.toDouble(),
         materialId: materialId,
       );
 
