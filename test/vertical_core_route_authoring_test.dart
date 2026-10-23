@@ -28,9 +28,15 @@ void main() {
     expect(plan.intermediateVerticalLengthMm, 3000);
     expect(plan.penetrationLengthMm, 400);
     expect(plan.totalHiddenLengthMm, 3400);
+    expect(plan.verticalLegs, hasLength(1));
+    final leg = plan.verticalLegs.single;
+    expect(leg.verticalCoreId, fixture.coreId);
+    expect(leg.fromSlabId, fixture.slab12Id);
+    expect(leg.toSlabId, fixture.slab23Id);
+    expect(leg.lengthMm, 3000);
   });
 
-  test('crossing plan materializes canonical slab penetration', () {
+  test('crossing plan materializes canonical slab and VerticalCore identity', () {
     final fixture = _Fixture();
     final plan = VerticalCoreRouteAuthoring.plan(
       project: fixture.project,
@@ -51,6 +57,7 @@ void main() {
 
     expect(penetration.hostKind, BoundaryPenetrationHostKind.slab);
     expect(penetration.slabId, fixture.slab12Id);
+    expect(penetration.verticalCoreId, fixture.coreId);
     expect(penetration.hostThicknessMm, 200);
     expect(penetration.materialId, 'reinforced-concrete');
   });
