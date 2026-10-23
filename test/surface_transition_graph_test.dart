@@ -1,5 +1,6 @@
 import 'package:elecx/src/domain/adjacent_room.dart';
 import 'package:elecx/src/domain/boundary_penetration.dart';
+import 'package:elecx/src/domain/geometry.dart';
 import 'package:elecx/src/domain/project_model.dart';
 import 'package:elecx/src/domain/surface_transition_graph.dart';
 import 'package:elecx/src/domain/surfaces.dart';
