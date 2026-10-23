@@ -26,7 +26,8 @@ class WallConstructionEditor extends StatelessWidget {
         builder: (context, _) => ListenableBuilder(
           listenable: controller.documentHistory,
           builder: (context, _) {
-            final wall = CanonicalWallConstructionRuntime.activeWall(controller);
+            final wall =
+                CanonicalWallConstructionRuntime.activeWall(controller);
             if (wall == null) {
               return _UnavailableConstructionEditor(compact: compact);
             }
@@ -99,9 +100,8 @@ class _WallConstructionFormState extends State<_WallConstructionForm> {
         kind: BoundaryConstructionKind.wall,
         thicknessMm: thicknessMm,
         materialId: materialId,
-        fireRatingId: _fireRating.text.trim().isEmpty
-            ? null
-            : _fireRating.text.trim(),
+        fireRatingId:
+            _fireRating.text.trim().isEmpty ? null : _fireRating.text.trim(),
       );
     } on ArgumentError {
       return null;
@@ -232,9 +232,8 @@ class _WallConstructionFormState extends State<_WallConstructionForm> {
                   child: const Text('Отменить'),
                 ),
                 FilledButton.icon(
-                  onPressed: _dirty && candidate != null && !_saving
-                      ? _save
-                      : null,
+                  onPressed:
+                      _dirty && candidate != null && !_saving ? _save : null,
                   icon: _saving
                       ? const SizedBox.square(
                           dimension: 16,
