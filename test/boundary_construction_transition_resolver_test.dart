@@ -83,13 +83,17 @@ void main() {
 
     test('resolves shared wall only from matching two-sided construction data',
         () {
+      final fromSurface = RoomSurfaceRef.wall('room-a', 1);
+      final toSurface = RoomSurfaceRef.wall('room-b', 3);
+      const fromPoint = SurfacePointMm(1500, 1200);
+      const toPoint = SurfacePointMm(1500, 1200);
       final result = BoundaryConstructionTransitionResolver.resolve(
         level: level,
         fromSpace: roomA,
-        fromSurface: RoomSurfaceRef.wall('room-a', 1),
-        fromPoint: const SurfacePointMm(1500, 1200),
-        toSurface: RoomSurfaceRef.wall('room-b', 3),
-        toPoint: const SurfacePointMm(1500, 1200),
+        fromSurface: fromSurface,
+        fromPoint: fromPoint,
+        toSurface: toSurface,
+        toPoint: toPoint,
         constructions: registry(),
         edgeOrderResolver: edgeOrder,
         canonicalSpaceIdResolver: canonicalSpace,
@@ -97,6 +101,10 @@ void main() {
 
       expect(result, isNotNull);
       expect(result!.kind, SurfaceTransitionKind.roomPenetration);
+      expect(result.fromSurface, fromSurface);
+      expect(result.fromPoint, fromPoint);
+      expect(result.toSurface, toSurface);
+      expect(result.toPoint, toPoint);
       expect(result.penetrationRequirement!.hostThicknessMm, 180);
       expect(result.penetrationRequirement!.materialId, 'brick');
     });
