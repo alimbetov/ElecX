@@ -47,15 +47,6 @@ final class CanonicalSlabCableHandoffResult {
   final String routeId;
   final VerticalCoreId? verticalCoreId;
 
-  /// Returns transition evidence in the identity regime requested by durable
-  /// route commit (legacy projection or canonical SpaceId surfaces).
-  ///
-  /// The stored handoff transition is built from the concrete legacy workspace.
-  /// Canonical route continuation, however, normalizes transient draft surfaces
-  /// to canonical SpaceId before it asks for transition evidence. This adapter
-  /// permits that representation change only when the current canonical routing
-  /// context proves both requested surfaces resolve to the exact same source and
-  /// target SpaceIds, plane types and physical points as the stored handoff.
   RouteTransitionResolver resolverFor(EditorController editor) {
     return (fromSurface, fromPoint, toSurface, toPoint) {
       final context =
@@ -100,12 +91,6 @@ final class CanonicalSlabCableHandoffResult {
   }
 }
 
-/// Production authoring boundary for one live ceiling↔floor route handoff.
-///
-/// This service resolves all canonical/legacy bindings before mutating
-/// navigation, proves the concrete slab transition at the live draft endpoint,
-/// externalizes transient draft geometry, performs the rollback-safe level
-/// cutover and restores the draft on the target horizontal surface.
 final class CanonicalSlabCableHandoffAuthoring {
   const CanonicalSlabCableHandoffAuthoring({required this.runtime});
 
@@ -117,6 +102,7 @@ final class CanonicalSlabCableHandoffAuthoring {
     required int fromRoomHeightMm,
     required int toRoomHeightMm,
     VerticalCoreId? verticalCoreId,
+    SlabId? expectedSlabId,
     int verticalToleranceMm = 2,
   }) {
     final coordinator = runtime.coordinator;
@@ -261,6 +247,15 @@ final class CanonicalSlabCableHandoffAuthoring {
       toRoomHeightMm: toRoomHeightMm,
       verticalToleranceMm: verticalToleranceMm,
     );
+    if (expectedSlabId != null && prepared.intent.slabId != expectedSlabId) {
+      runtime.cancel();
+      throw CanonicalSlabCableHandoffException(
+        code: CanonicalSlabCableHandoffIssueCode.physicalTransitionRejected,
+        entityId: expectedSlabId,
+        message: 'Prepared slab ${prepared.intent.slabId} does not match '
+            'planned VerticalCore slab $expectedSlabId.',
+      );
+    }
 
     final transition = CanonicalSlabTransitionResolver.resolve(
       project: project,
