@@ -4,28 +4,32 @@ import '../../domain/project_identity.dart';
 import 'project_document_codec.dart';
 import 'vertical_core_aware_canonical_project_document_codec.dart';
 
-/// Schema-v10 additive persistence for P4 structural semantics.
+/// Schema-v11 additive persistence for P4 structural semantics.
 ///
-/// v9 remains authoritative for all existing hierarchy, P6/P7A semantics,
-/// SlabId and VerticalCore payloads. v10 adds only attributes that were
-/// previously absent from canonical persistence:
+/// The lower codec chain owns:
 ///
-/// - Level.kind
-/// - Level.floorToFloorHeightMm
-/// - StructuralZone.kind
-/// - Space.type
+/// - v8: Level.kind + Level.floorToFloorHeightMm;
+/// - v9: SlabId topology;
+/// - v10: VerticalCore topology.
 ///
-/// Documents from v1..v9 migrate deterministically to `unknown` structural
-/// classifications and the historical 3000 mm floor-to-floor default. No
-/// semantic classification is guessed from labels or SpaceUsage.
+/// This layer therefore owns only the structural semantics still absent below:
+///
+/// - StructuralZone.kind;
+/// - Space.type.
+///
+/// A short-lived development build emitted these fields as schema v10 before
+/// the underlying slab/VerticalCore schema-number collision was repaired. Such
+/// documents remain readable: v10 is treated as historical P4 structural data
+/// only when the additive zone/space fields are actually present. New writes
+/// are always schema v11.
 final class StructuralSemanticsAwareCanonicalProjectDocumentCodec
     implements ProjectDocumentCodec {
   const StructuralSemanticsAwareCanonicalProjectDocumentCodec();
 
-  static const int schemaVersion = 10;
-  static const int _legacySchemaVersion = 9;
+  static const int schemaVersion = 11;
+  static const int _verticalCoreSchemaVersion = 10;
 
-  static const VerticalCoreAwareCanonicalProjectDocumentCodec _legacy =
+  static const VerticalCoreAwareCanonicalProjectDocumentCodec _vertical =
       VerticalCoreAwareCanonicalProjectDocumentCodec();
 
   @override
@@ -33,49 +37,37 @@ final class StructuralSemanticsAwareCanonicalProjectDocumentCodec
 
   @override
   ProjectDocument encode(ProjectSnapshot snapshot) {
-    final legacy = _legacy.encode(snapshot);
+    final vertical = _vertical.encode(snapshot);
     final stores = snapshot.aggregate.stores;
 
     return ProjectDocument(
       schemaVersion: schemaVersion,
       payload: <String, Object?>{
-        ...legacy.payload,
-        'levels': _augmentEntities(
-          legacy.payload['levels'],
-          'levels',
-          (json) {
-            final id = LevelId(_string(json['id'], 'level.id'));
-            final level = stores.levels[id];
-            if (level == null) {
-              throw StateError('Persisted level payload references missing $id.');
-            }
-            return <String, Object?>{
-              ...json,
-              'kind': level.kind.name,
-              'floorToFloorHeightMm': level.floorToFloorHeightMm,
-            };
-          },
-        ),
+        ...vertical.payload,
         'zones': _augmentEntities(
-          legacy.payload['zones'],
+          vertical.payload['zones'],
           'zones',
           (json) {
             final id = ZoneId(_string(json['id'], 'zone.id'));
             final zone = stores.zones[id];
             if (zone == null) {
-              throw StateError('Persisted zone payload references missing $id.');
+              throw StateError(
+                'Persisted zone payload references missing $id.',
+              );
             }
             return <String, Object?>{...json, 'kind': zone.kind.name};
           },
         ),
         'spaces': _augmentEntities(
-          legacy.payload['spaces'],
+          vertical.payload['spaces'],
           'spaces',
           (json) {
             final id = SpaceId(_string(json['id'], 'space.id'));
             final space = stores.spaces[id];
             if (space == null) {
-              throw StateError('Persisted space payload references missing $id.');
+              throw StateError(
+                'Persisted space payload references missing $id.',
+              );
             }
             return <String, Object?>{...json, 'type': space.type.name};
           },
@@ -93,43 +85,29 @@ final class StructuralSemanticsAwareCanonicalProjectDocumentCodec
       );
     }
 
-    if (document.schemaVersion <= _legacySchemaVersion) {
-      return _legacy.decode(document);
+    if (document.schemaVersion < _verticalCoreSchemaVersion) {
+      return _vertical.decode(document);
     }
 
-    final levelSemantics = _decodeLevelSemantics(document.payload['levels']);
+    if (document.schemaVersion == _verticalCoreSchemaVersion &&
+        !_containsHistoricalStructuralSemantics(document.payload)) {
+      return _vertical.decode(document);
+    }
+
     final zoneKinds = _decodeZoneKinds(document.payload['zones']);
     final spaceTypes = _decodeSpaceTypes(document.payload['spaces']);
-
-    final legacySnapshot = _legacy.decode(
+    final verticalSnapshot = _vertical.decode(
       ProjectDocument(
-        schemaVersion: _legacySchemaVersion,
+        schemaVersion: _verticalCoreSchemaVersion,
         payload: document.payload,
       ),
     );
-    final stores = legacySnapshot.aggregate.stores;
+    final stores = verticalSnapshot.aggregate.stores;
 
-    _requireExactKeys('levels', stores.levels.keys, levelSemantics.keys);
     _requireExactKeys('zones', stores.zones.keys, zoneKinds.keys);
     _requireExactKeys('spaces', stores.spaces.keys, spaceTypes.keys);
 
     try {
-      final levels = <LevelId, ProjectLevelEntity>{
-        for (final entry in stores.levels.entries)
-          entry.key: ProjectLevelEntity(
-            id: entry.value.id,
-            buildingId: entry.value.buildingId,
-            name: entry.value.name,
-            levelNumber: entry.value.levelNumber,
-            displayOrder: entry.value.displayOrder,
-            elevationMm: entry.value.elevationMm,
-            kind: levelSemantics[entry.key]!.kind,
-            floorToFloorHeightMm:
-                levelSemantics[entry.key]!.floorToFloorHeightMm,
-            zoneIds: entry.value.zoneIds,
-            spaceIds: entry.value.spaceIds,
-          ),
-      };
       final zones = <ZoneId, ProjectStructuralZoneEntity>{
         for (final entry in stores.zones.entries)
           entry.key: ProjectStructuralZoneEntity(
@@ -152,14 +130,14 @@ final class StructuralSemanticsAwareCanonicalProjectDocumentCodec
       };
 
       final aggregate = ProjectAggregateRoot(
-        id: legacySnapshot.id,
-        siteId: legacySnapshot.siteId,
-        version: legacySnapshot.localVersion,
-        engineeringMetadata: legacySnapshot.aggregate.engineeringMetadata,
+        id: verticalSnapshot.id,
+        siteId: verticalSnapshot.siteId,
+        version: verticalSnapshot.localVersion,
+        engineeringMetadata: verticalSnapshot.aggregate.engineeringMetadata,
         stores: ProjectEntityStores(
           sites: stores.sites,
           buildings: stores.buildings,
-          levels: levels,
+          levels: stores.levels,
           slabs: stores.slabs,
           verticalCores: stores.verticalCores,
           zones: zones,
@@ -170,12 +148,21 @@ final class StructuralSemanticsAwareCanonicalProjectDocumentCodec
           boundaries: stores.boundaries,
         ),
       );
-      return legacySnapshot.copyWith(aggregate: aggregate);
+      return verticalSnapshot.copyWith(aggregate: aggregate);
     } on ProjectAggregateValidationException catch (error) {
       throw FormatException('Invalid canonical P4 structural graph: $error');
     } on ArgumentError catch (error) {
       throw FormatException('Invalid canonical P4 structural value: $error');
     }
+  }
+
+  static bool _containsHistoricalStructuralSemantics(
+    Map<String, Object?> payload,
+  ) {
+    final zones = _list(payload['zones'], 'zones');
+    final spaces = _list(payload['spaces'], 'spaces');
+    return zones.any((raw) => _map(raw, 'zone').containsKey('kind')) ||
+        spaces.any((raw) => _map(raw, 'space').containsKey('type'));
   }
 
   static List<Object?> _augmentEntities(
@@ -189,36 +176,13 @@ final class StructuralSemanticsAwareCanonicalProjectDocumentCodec
     ];
   }
 
-  static Map<LevelId, _LevelSemantics> _decodeLevelSemantics(Object? value) {
-    final result = <LevelId, _LevelSemantics>{};
-    for (final raw in _list(value, 'levels')) {
-      final json = _map(raw, 'level');
-      final id = LevelId(_string(json['id'], 'level.id'));
-      if (result.containsKey(id)) {
-        throw FormatException('Duplicate level id $id in v10 semantics.');
-      }
-      result[id] = _LevelSemantics(
-        kind: _enumByName(
-          ProjectLevelKind.values,
-          json['kind'],
-          'level.kind',
-        ),
-        floorToFloorHeightMm: _positiveInt(
-          json['floorToFloorHeightMm'],
-          'level.floorToFloorHeightMm',
-        ),
-      );
-    }
-    return Map.unmodifiable(result);
-  }
-
   static Map<ZoneId, ProjectStructuralZoneKind> _decodeZoneKinds(Object? value) {
     final result = <ZoneId, ProjectStructuralZoneKind>{};
     for (final raw in _list(value, 'zones')) {
       final json = _map(raw, 'zone');
       final id = ZoneId(_string(json['id'], 'zone.id'));
       if (result.containsKey(id)) {
-        throw FormatException('Duplicate zone id $id in v10 semantics.');
+        throw FormatException('Duplicate zone id $id in structural semantics.');
       }
       result[id] = _enumByName(
         ProjectStructuralZoneKind.values,
@@ -235,7 +199,7 @@ final class StructuralSemanticsAwareCanonicalProjectDocumentCodec
       final json = _map(raw, 'space');
       final id = SpaceId(_string(json['id'], 'space.id'));
       if (result.containsKey(id)) {
-        throw FormatException('Duplicate space id $id in v10 semantics.');
+        throw FormatException('Duplicate space id $id in structural semantics.');
       }
       result[id] = _enumByName(
         ProjectSpaceType.values,
@@ -261,16 +225,6 @@ final class StructuralSemanticsAwareCanonicalProjectDocumentCodec
   }
 }
 
-final class _LevelSemantics {
-  const _LevelSemantics({
-    required this.kind,
-    required this.floorToFloorHeightMm,
-  });
-
-  final ProjectLevelKind kind;
-  final int floorToFloorHeightMm;
-}
-
 Map<String, Object?> _map(Object? value, String field) {
   if (value is! Map) {
     throw FormatException('$field must be an object.');
@@ -288,13 +242,6 @@ List<Object?> _list(Object? value, String field) {
 String _string(Object? value, String field) {
   if (value is! String || value.trim().isEmpty) {
     throw FormatException('$field must be a non-empty string.');
-  }
-  return value;
-}
-
-int _positiveInt(Object? value, String field) {
-  if (value is! int || value <= 0) {
-    throw FormatException('$field must be a positive integer.');
   }
   return value;
 }
