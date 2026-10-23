@@ -1,6 +1,7 @@
 import 'boundary_topology.dart';
 import 'project_aggregate.dart';
 import 'project_identity.dart';
+import 'project_space_semantics.dart';
 import 'slab_topology.dart';
 
 /// Lossless reconstruction contract for canonical normalized stores.
