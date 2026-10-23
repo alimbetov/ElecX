@@ -10,6 +10,7 @@ import 'package:elecx/src/domain/geometry.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_model.dart';
+import 'package:elecx/src/domain/project_orientation.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/features/editor/canonical_editor_runtime_cutover.dart';
 import 'package:elecx/src/features/editor/canonical_editor_workspace_adapter.dart';
@@ -17,47 +18,53 @@ import 'package:elecx/src/features/editor/canonical_room_surface_runtime_registr
 import 'package:elecx/src/features/editor/editor_building_workspace.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
 import 'package:elecx/src/features/editor/editor_p2_session.dart';
+import 'package:elecx/src/features/editor/physical_cable_route_committer.dart';
 import 'package:elecx/src/features/editor/physical_manual_cable_draft_persistence.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('canonical continuation keeps SpaceId/BoundaryEdgeId and durable anchors',
-      () {
-    final fixture = _Fixture();
-    addTearDown(fixture.dispose);
+  test(
+    'canonical continuation keeps SpaceId/BoundaryEdgeId and durable anchors',
+    () {
+      final fixture = _Fixture();
+      addTearDown(fixture.dispose);
 
-    expect(
-      fixture.controller.beginPhysicalRouteContinuation(fixture.route.id),
-      isTrue,
-    );
-    expect(fixture.controller.activeSurface?.isLegacyWall, isTrue);
-    expect(fixture.controller.routeSegments.single.surface.isLegacyWall, isTrue);
+      expect(
+        fixture.controller.beginPhysicalRouteContinuation(fixture.route.id),
+        isTrue,
+      );
+      expect(fixture.controller.activeSurface?.isLegacyWall, isTrue);
+      expect(
+        fixture.controller.routeSegments.single.surface.isLegacyWall,
+        isTrue,
+      );
 
-    fixture.controller.surfaceTap(const SurfacePointMm(1200, 1000));
-    fixture.controller.surfaceTap(const SurfacePointMm(1500, 1000));
+      fixture.controller.surfaceTap(const SurfacePointMm(1200, 1000));
+      fixture.controller.surfaceTap(const SurfacePointMm(1500, 1000));
 
-    expect(
-      fixture.controller.finishPhysicalRouteContinuation(
-        resolveTransition: (_, __, ___, ____) => null,
-      ),
-      isTrue,
-    );
+      expect(
+        fixture.controller.finishPhysicalRouteContinuation(
+          resolveTransition: (_, __, ___, ____) => null,
+        ),
+        isTrue,
+      );
 
-    final committed = fixture.controller.p2.routes.single;
-    expect(committed.id, 'C-103');
-    expect(committed.segments, hasLength(2));
-    for (final segment in committed.segments) {
-      expect(segment.surface.spaceId, fixture.spaceId.value);
-      expect(segment.surface.boundaryEdgeId, fixture.edgeId);
-      expect(segment.surface.wallIndex, isNull);
-      expect(segment.anchorIds, hasLength(segment.points.length));
-    }
-    expect(
-      committed.segments.expand((segment) => segment.anchorIds).toSet(),
-      hasLength(5),
-    );
-    expect(committed.target.componentId, 'target-b');
-  });
+      final committed = fixture.controller.p2.routes.single;
+      expect(committed.id, 'C-103');
+      expect(committed.segments, hasLength(2));
+      for (final segment in committed.segments) {
+        expect(segment.surface.spaceId, fixture.spaceId.value);
+        expect(segment.surface.boundaryEdgeId, fixture.edgeId);
+        expect(segment.surface.wallIndex, isNull);
+        expect(segment.anchorIds, hasLength(segment.points.length));
+      }
+      expect(
+        committed.segments.expand((segment) => segment.anchorIds).toSet(),
+        hasLength(5),
+      );
+      expect(committed.target.componentId, 'target-b');
+    },
+  );
 }
 
 final class _Fixture {
