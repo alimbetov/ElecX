@@ -201,16 +201,15 @@ abstract final class SurfaceTransitionGraph {
     final isUp = toLevel.elevationMm > fromLevel.elevationMm;
     final expectedFrom =
         isUp ? SurfacePlaneType.ceiling : SurfacePlaneType.floor;
-    final expectedTo =
-        isUp ? SurfacePlaneType.floor : SurfacePlaneType.ceiling;
-    if (fromSurface.type != expectedFrom || fromSurface.spaceId != fromSpace.id) {
+    final expectedTo = isUp ? SurfacePlaneType.floor : SurfacePlaneType.ceiling;
+    if (fromSurface.type != expectedFrom ||
+        fromSurface.spaceId != fromSpace.id) {
       return null;
     }
     if (!_horizontalPointIsValid(fromSpace, point)) return null;
 
     final physicalGapMm = isUp
-        ? toLevel.elevationMm -
-            (fromLevel.elevationMm + fromRoomHeightMm)
+        ? toLevel.elevationMm - (fromLevel.elevationMm + fromRoomHeightMm)
         : fromLevel.elevationMm - (toLevel.elevationMm + toRoomHeightMm);
     if (physicalGapMm <= 0 ||
         (physicalGapMm - slabThicknessMm).abs() > verticalToleranceMm) {
@@ -314,7 +313,8 @@ abstract final class SurfaceTransitionGraph {
     List<BoundaryEdgeId>? edgeIds,
     int roomHeightMm,
   ) {
-    if (ref.type != SurfacePlaneType.wall || ref.spaceId != space.id) return null;
+    if (ref.type != SurfacePlaneType.wall || ref.spaceId != space.id)
+      return null;
     final edgeId = ref.boundaryEdgeId;
     if (edgeId != null) {
       if (edgeIds == null) return null;
@@ -444,8 +444,7 @@ abstract final class SurfaceTransitionGraph {
     final px = ax + t * dx;
     final py = ay + t * dy;
     final distance = math.sqrt(
-      (point.x - px) * (point.x - px) +
-          (point.y - py) * (point.y - py),
+      (point.x - px) * (point.x - px) + (point.y - py) * (point.y - py),
     );
     if (distance > toleranceMm) return null;
     return (math.sqrt(lengthSquared) * t).round();
