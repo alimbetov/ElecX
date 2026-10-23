@@ -1,5 +1,6 @@
 import '../../domain/boundary_topology.dart';
 import '../../domain/project_aggregate.dart';
+import '../../domain/project_entity_stores_copy.dart';
 import '../../domain/project_identity.dart';
 import 'project_authoring_error.dart';
 import 'project_mutation.dart';
@@ -88,15 +89,10 @@ final class RemoveSpaceCommand implements ProjectCommand {
     return ProjectCommandCandidate.fromState(
       state: ProjectMutableState(
         engineeringMetadata: current.engineeringMetadata,
-        stores: ProjectEntityStores(
-          sites: current.stores.sites,
-          buildings: current.stores.buildings,
+        stores: current.stores.copyWith(
           levels: levels,
           zones: zones,
           spaces: spaces,
-          openings: current.stores.openings,
-          adjacencies: current.stores.adjacencies,
-          overlays: current.stores.overlays,
           boundaries: boundaries,
         ),
       ),
@@ -157,13 +153,7 @@ final class RemoveStructuralZoneCommand implements ProjectCommand {
     );
 
     return ProjectCommandCandidate(
-      stores: ProjectEntityStores(
-        sites: current.stores.sites,
-        buildings: current.stores.buildings,
-        levels: levels,
-        zones: zones,
-        spaces: current.stores.spaces,
-      ),
+      stores: current.stores.copyWith(levels: levels, zones: zones),
       affectedEntityIds: <EntityId>[zone.id, level.id],
     );
   }
@@ -202,6 +192,18 @@ final class RemoveLevelCommand implements ProjectCommand {
       );
     }
 
+    final slabIds = current.index.slabsForLevel(level.id);
+    if (slabIds.isNotEmpty) {
+      throw ProjectAuthoringException(
+        code: ProjectAuthoringIssueCode.levelHasChildren,
+        entityId: level.id,
+        relatedEntityId: slabIds.first,
+        blockingEntityIds: Set<EntityId>.unmodifiable(slabIds),
+        message: 'Level ${level.id} cannot be removed while '
+            '${slabIds.length} physical slab(s) reference it.',
+      );
+    }
+
     final building = current.index.building(level.buildingId)!;
     final buildings = Map<BuildingId, ProjectBuildingEntity>.from(
       current.stores.buildings,
@@ -218,12 +220,9 @@ final class RemoveLevelCommand implements ProjectCommand {
     );
 
     return ProjectCommandCandidate(
-      stores: ProjectEntityStores(
-        sites: current.stores.sites,
+      stores: current.stores.copyWith(
         buildings: buildings,
         levels: levels,
-        zones: current.stores.zones,
-        spaces: current.stores.spaces,
       ),
       affectedEntityIds: <EntityId>[level.id, building.id],
     );
@@ -259,6 +258,18 @@ final class RemoveBuildingCommand implements ProjectCommand {
       );
     }
 
+    final slabIds = current.index.slabsForBuilding(building.id);
+    if (slabIds.isNotEmpty) {
+      throw ProjectAuthoringException(
+        code: ProjectAuthoringIssueCode.buildingHasLevels,
+        entityId: building.id,
+        relatedEntityId: slabIds.first,
+        blockingEntityIds: Set<EntityId>.unmodifiable(slabIds),
+        message: 'Building ${building.id} cannot be removed while '
+            '${slabIds.length} physical slab(s) reference it.',
+      );
+    }
+
     final site = current.index.site(building.siteId)!;
     final sites = Map<SiteId, ProjectSiteEntity>.from(current.stores.sites);
     final buildings = Map<BuildingId, ProjectBuildingEntity>.from(
@@ -272,12 +283,9 @@ final class RemoveBuildingCommand implements ProjectCommand {
     );
 
     return ProjectCommandCandidate(
-      stores: ProjectEntityStores(
+      stores: current.stores.copyWith(
         sites: sites,
         buildings: buildings,
-        levels: current.stores.levels,
-        zones: current.stores.zones,
-        spaces: current.stores.spaces,
       ),
       affectedEntityIds: <EntityId>[building.id, site.id],
     );
