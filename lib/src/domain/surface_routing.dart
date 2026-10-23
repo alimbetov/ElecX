@@ -191,9 +191,7 @@ abstract final class SurfaceTransitionResolver {
       atToStart ? 0 : toWall.lengthMm.round(),
       fromPoint.yMm,
     );
-    return toWall.profile.containsPoint(result.xMm, result.yMm)
-        ? result
-        : null;
+    return toWall.profile.containsPoint(result.xMm, result.yMm) ? result : null;
   }
 
   static int? _distanceAlongWallIfOnSegment(
