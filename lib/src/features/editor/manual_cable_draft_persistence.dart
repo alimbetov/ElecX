@@ -24,7 +24,9 @@ extension ManualCableDraftPersistence on EditorController {
       RoomSurfaceRef toSurface,
       SurfacePointMm toPoint,
     ) {
-      final fromSpace = _spaceById(level, fromSurface.spaceId);
+      final fromSpace = routingContext == null
+          ? _spaceById(level, fromSurface.spaceId)
+          : _spaceForRoutingSurface(level, fromSurface, routingContext);
       if (fromSpace == null) return null;
 
       if (routingContext != null) {
@@ -37,7 +39,8 @@ extension ManualCableDraftPersistence on EditorController {
           toPoint: toPoint,
           constructions: routingContext.constructions,
           edgeOrderResolver: routingContext.edgeOrderForLegacySpace,
-          canonicalSpaceIdResolver: routingContext.canonicalSpaceIdForLegacy,
+          canonicalSpaceIdResolver:
+              routingContext.canonicalSpaceIdForSurfaceSpaceId,
         );
       }
 
@@ -79,6 +82,20 @@ extension ManualCableDraftPersistence on EditorController {
       setTool(EditorTool.select);
     }
   }
+}
+
+EngineeringSpace? _spaceForRoutingSurface(
+  BuildingLevel level,
+  RoomSurfaceRef surface,
+  CanonicalPhysicalRoutingContext context,
+) {
+  final direct = _spaceById(level, surface.spaceId);
+  if (direct != null) return direct;
+  final canonicalSpaceId =
+      context.canonicalSpaceIdForSurfaceSpaceId(surface.spaceId);
+  if (canonicalSpaceId == null) return null;
+  final legacySpaceId = context.legacySpaceIdForCanonical(canonicalSpaceId);
+  return legacySpaceId == null ? null : _spaceById(level, legacySpaceId);
 }
 
 EngineeringSpace? _spaceById(BuildingLevel level, String spaceId) {
