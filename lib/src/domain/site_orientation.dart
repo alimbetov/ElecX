@@ -1,10 +1,16 @@
 import 'dart:math' as math;
 
-/// Orientation of the project coordinate system relative to true north.
+import 'site_true_north_reference.dart';
+
+/// Transitional compatibility wrapper for the legacy site/daylight model.
 ///
-/// [northAzimuthDegrees] is the clockwise angle from the plan +Y axis to true
-/// north. Zero means plan-up is north. Keeping this at site/project level makes
-/// every room, wall and window derive a consistent world orientation.
+/// Despite the historical name, this value represents a **true-north
+/// reference**, not canonical P5D Project North. New canonical engineering
+/// orientation must use `ProjectEngineeringNorth` from project_orientation.dart.
+///
+/// This wrapper remains temporarily so legacy ProjectSite/editor persistence and
+/// existing visual components can keep their public shape while all true-north
+/// calculations are routed through [SiteTrueNorthReference].
 final class ProjectNorth {
   const ProjectNorth({this.northAzimuthDegrees = 0})
       : assert(northAzimuthDegrees >= 0),
@@ -15,14 +21,17 @@ final class ProjectNorth {
   double get northAzimuthRadians => northAzimuthDegrees * math.pi / 180;
 
   ProjectNorth copyWith({double? northAzimuthDegrees}) => ProjectNorth(
-        northAzimuthDegrees:
-            _normalize(northAzimuthDegrees ?? this.northAzimuthDegrees),
+        northAzimuthDegrees: _normalize(
+          northAzimuthDegrees ?? this.northAzimuthDegrees,
+        ),
       );
 
-  /// Converts a plan-space clockwise azimuth (0 = plan-up) into true-world
-  /// azimuth where 0 = north, 90 = east, 180 = south, 270 = west.
+  /// Converts plan-space clockwise azimuth (0 = plan-up) into true-world
+  /// azimuth. The authoritative compatibility semantics live in
+  /// [SiteTrueNorthReference].
   double toTrueAzimuth(double planAzimuthDegrees) =>
-      _normalize(planAzimuthDegrees - northAzimuthDegrees);
+      SiteTrueNorthReference.fromDegrees(northAzimuthDegrees)
+          .toTrueAzimuth(planAzimuthDegrees);
 
   static double _normalize(double value) {
     var result = value % 360;

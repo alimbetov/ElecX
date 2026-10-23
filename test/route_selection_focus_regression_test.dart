@@ -41,8 +41,12 @@ void main() {
 
     controller.cableUi.toggleActiveSegmentLock();
     expect(
-        controller.p2.routeConstraintsFor('route-a').lockedSegments, isEmpty);
+      controller.p2.routeConstraintsFor('route-a').lockedSegments,
+      isEmpty,
+    );
     expect(
-        controller.p2.routeConstraintsFor('route-b').lockedSegments, isEmpty);
+      controller.p2.routeConstraintsFor('route-b').lockedSegments,
+      isEmpty,
+    );
   });
 }

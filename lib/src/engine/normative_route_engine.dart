@@ -315,12 +315,14 @@ abstract final class NormativeRouteEngine {
         final validation = validate(points: [a, b], context: context);
         if (!validation.isValid) continue;
         final length = (a.xMm - b.xMm).abs() + (a.yMm - b.yMm).abs();
-        adjacency
-            .putIfAbsent(aIndex, () => <(int, int)>[])
-            .add((bIndex, length));
-        adjacency
-            .putIfAbsent(bIndex, () => <(int, int)>[])
-            .add((aIndex, length));
+        adjacency.putIfAbsent(aIndex, () => <(int, int)>[]).add((
+          bIndex,
+          length,
+        ));
+        adjacency.putIfAbsent(bIndex, () => <(int, int)>[]).add((
+          aIndex,
+          length,
+        ));
       }
     }
 
@@ -561,11 +563,7 @@ abstract final class NormativeRouteEngine {
   static int _cross(SurfacePointMm a, SurfacePointMm b, SurfacePointMm p) =>
       (b.xMm - a.xMm) * (p.yMm - a.yMm) - (b.yMm - a.yMm) * (p.xMm - a.xMm);
 
-  static bool _onSegment(
-    SurfacePointMm a,
-    SurfacePointMm p,
-    SurfacePointMm b,
-  ) {
+  static bool _onSegment(SurfacePointMm a, SurfacePointMm p, SurfacePointMm b) {
     if (_cross(a, b, p) != 0) return false;
     final minX = a.xMm < b.xMm ? a.xMm : b.xMm;
     final maxX = a.xMm > b.xMm ? a.xMm : b.xMm;

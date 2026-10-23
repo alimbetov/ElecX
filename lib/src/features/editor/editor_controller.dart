@@ -158,12 +158,30 @@ final class EditorController extends ChangeNotifier {
   int openingSequence = 1;
   double zoom = 1.0;
   final ValueNotifier<int> _editCancellationRevision = ValueNotifier<int>(0);
+  bool _surfaceNavigationNotification = false;
 
   ValueListenable<int> get editCancellationListenable =>
       _editCancellationRevision;
 
+  /// True only while listeners are being notified about a view/surface switch.
+  ///
+  /// P5E uses this narrow synchronous marker to keep Plan/Floor/Ceiling/Wall
+  /// navigation out of engineering dirty/revision bookkeeping. The state is
+  /// still part of the editor resume context and regular listeners continue to
+  /// receive the notification so canvas/RSN presentation updates immediately.
+  bool get isSurfaceNavigationNotification => _surfaceNavigationNotification;
+
   void requestEditCancellation() {
     _editCancellationRevision.value++;
+  }
+
+  void _notifySurfaceNavigationChanged() {
+    _surfaceNavigationNotification = true;
+    try {
+      notifyListeners();
+    } finally {
+      _surfaceNavigationNotification = false;
+    }
   }
 
   EngineeringSpace? get selectedSpace {
@@ -504,7 +522,7 @@ final class EditorController extends ChangeNotifier {
     viewMode = EditorViewMode.plan;
     activeSurface = null;
     selectedOpeningId = null;
-    notifyListeners();
+    _notifySurfaceNavigationChanged();
   }
 
   void showFloor() {
@@ -592,7 +610,7 @@ final class EditorController extends ChangeNotifier {
 
     viewMode = EditorViewMode.surface;
     activeSurface = target;
-    notifyListeners();
+    _notifySurfaceNavigationChanged();
   }
 
   void previousWall() {

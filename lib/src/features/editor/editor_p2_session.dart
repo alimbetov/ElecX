@@ -195,15 +195,7 @@ final class EditorP2Session extends ChangeNotifier {
     if (bundle == null) return false;
     final route = _routeForId(bundle.cable.routeId);
     if (route == null) return false;
-    final replacementRoute = ElectricalCableRoute(
-      id: route.id,
-      source: route.source,
-      target: route.target,
-      segments: route.segments,
-      cableType: normalized,
-      medium: route.medium,
-      reservePercent: route.reservePercent,
-    );
+    final replacementRoute = route.copyWith(cableType: normalized);
     final replacementCable = CableIdentity(
       id: bundle.cable.id,
       routeId: bundle.cable.routeId,
@@ -453,10 +445,7 @@ final class EditorP2Session extends ChangeNotifier {
           originState.routeConstraints[route.id] ?? CableRouteConstraints.empty;
       ElectricalCableRoute? transformed;
       if (sourceSelected && targetSelected) {
-        // Internal group wiring belongs to the transform. Explicitly locked
-        // geometry/waypoints are absolute authoring constraints, so the whole
-        // transaction must fail rather than silently breaking them.
-        if (!constraints.isEmpty) {
+        if (!constraints.isEmpty || route.penetrations.isNotEmpty) {
           _movePreviewValid = false;
           return false;
         }
@@ -592,8 +581,6 @@ final class EditorP2Session extends ChangeNotifier {
     if (assignedBundle != null) {
       if (assignedBundle.protectiveDevice != null &&
           after.source.componentId != before.source.componentId) {
-        // Moving a protected circuit to another board requires an explicit
-        // protective-device reassignment workflow; never do it implicitly.
         return false;
       }
       final targetComponent = _componentForId(state, after.target.componentId);
@@ -973,7 +960,9 @@ final class EditorP2Session extends ChangeNotifier {
           if (candidate.validation.isValid) {
             return [
               ElectricalRouteSegment(
-                  surface: surface, points: candidate.points),
+                surface: surface,
+                points: candidate.points,
+              ),
             ];
           }
         }
@@ -1004,9 +993,7 @@ final class EditorP2Session extends ChangeNotifier {
     return solution == null ? null : RouteEngine.toSegments(graph, solution);
   }
 
-  static List<SurfacePointMm> _compactOrthogonal(
-    List<SurfacePointMm> points,
-  ) {
+  static List<SurfacePointMm> _compactOrthogonal(List<SurfacePointMm> points) {
     final result = <SurfacePointMm>[];
     for (final point in points) {
       if (result.isEmpty || result.last != point) result.add(point);
@@ -1161,15 +1148,18 @@ final class EditorP2Session extends ChangeNotifier {
     }
     final context = _routeContextResolver?.call(segment.surface);
     if (context == null) {
-      // Context-free unit sessions preserve the old component-only behavior.
       final points = segment.points.toList();
       if (isSource) {
         points[0] = movedComponent.position;
       } else {
         points[points.length - 1] = movedComponent.position;
       }
-      final replacement = _routeWithSegment(route, segmentIndex, points);
-      return _routeGeometryIsValid(replacement) ? replacement : null;
+      try {
+        final replacement = _routeWithSegment(route, segmentIndex, points);
+        return _routeGeometryIsValid(replacement) ? replacement : null;
+      } on ArgumentError {
+        return null;
+      }
     }
 
     final waypoints = constraints.mandatoryWaypoints
@@ -1195,7 +1185,12 @@ final class EditorP2Session extends ChangeNotifier {
     }
     final points = _routeThroughAnchors(anchors, context);
     if (points == null) return null;
-    final replacement = _routeWithSegment(route, segmentIndex, points);
+    ElectricalCableRoute replacement;
+    try {
+      replacement = _routeWithSegment(route, segmentIndex, points);
+    } on ArgumentError {
+      return null;
+    }
     if (!_routeGeometryIsValid(replacement) ||
         !_constraintsAllowReplacement(
           before: route,
@@ -1238,10 +1233,7 @@ final class EditorP2Session extends ChangeNotifier {
     required int dxMm,
     required int dyMm,
   }) =>
-      ElectricalCableRoute(
-        id: route.id,
-        source: route.source,
-        target: route.target,
+      route.copyWith(
         segments: [
           for (final segment in route.segments)
             ElectricalRouteSegment(
@@ -1250,11 +1242,9 @@ final class EditorP2Session extends ChangeNotifier {
                 for (final point in segment.points)
                   SurfacePointMm(point.xMm + dxMm, point.yMm + dyMm),
               ]),
+              anchorIds: segment.anchorIds,
             ),
         ],
-        cableType: route.cableType,
-        medium: route.medium,
-        reservePercent: route.reservePercent,
       );
 
   static ElectricalCableRoute _routeWithSegment(
@@ -1262,10 +1252,7 @@ final class EditorP2Session extends ChangeNotifier {
     int segmentIndex,
     List<SurfacePointMm> points,
   ) =>
-      ElectricalCableRoute(
-        id: route.id,
-        source: route.source,
-        target: route.target,
+      route.copyWith(
         segments: [
           for (var i = 0; i < route.segments.length; i++)
             if (i == segmentIndex)
@@ -1276,9 +1263,6 @@ final class EditorP2Session extends ChangeNotifier {
             else
               route.segments[i],
         ],
-        cableType: route.cableType,
-        medium: route.medium,
-        reservePercent: route.reservePercent,
       );
 
   static ElectricalComponentPlacement? _componentForId(
@@ -1291,10 +1275,7 @@ final class EditorP2Session extends ChangeNotifier {
     return null;
   }
 
-  bool _movePreviewValidState(
-    EditorP2State preview,
-    Set<String> componentIds,
-  ) {
+  bool _movePreviewValidState(EditorP2State preview, Set<String> componentIds) {
     for (final route in preview.routes) {
       if (!componentIds.contains(route.source.componentId) &&
           !componentIds.contains(route.target.componentId)) {
@@ -1377,8 +1358,9 @@ final class EditorP2Session extends ChangeNotifier {
     }
     for (final waypoint in constraints.mandatoryWaypoints) {
       if (waypoint.segmentIndex >= after.segments.length ||
-          !after.segments[waypoint.segmentIndex].points
-              .contains(waypoint.point)) {
+          !after.segments[waypoint.segmentIndex].points.contains(
+            waypoint.point,
+          )) {
         return false;
       }
     }
@@ -1391,25 +1373,49 @@ final class EditorP2Session extends ChangeNotifier {
         a.source.portId != b.source.portId ||
         a.target.componentId != b.target.componentId ||
         a.target.portId != b.target.portId ||
-        a.segments.length != b.segments.length) {
+        a.segments.length != b.segments.length ||
+        a.penetrations.length != b.penetrations.length) {
       return false;
     }
     for (var i = 0; i < a.segments.length; i++) {
-      if (!_sameSegment(a.segments[i], b.segments[i])) {
-        return false;
-      }
+      if (!_sameSegment(a.segments[i], b.segments[i])) return false;
+    }
+    for (var i = 0; i < a.penetrations.length; i++) {
+      if (!_samePenetration(a.penetrations[i], b.penetrations[i])) return false;
     }
     return true;
   }
 
+  static bool _samePenetration(dynamic a, dynamic b) =>
+      a.id == b.id &&
+      a.hostKind == b.hostKind &&
+      a.hostThicknessMm == b.hostThicknessMm &&
+      a.pathLengthMm == b.pathLengthMm &&
+      a.materialId == b.materialId &&
+      a.entryAnchor.id == b.entryAnchor.id &&
+      a.entryAnchor.penetrationId == b.entryAnchor.penetrationId &&
+      a.entryAnchor.side == b.entryAnchor.side &&
+      a.entryAnchor.surface == b.entryAnchor.surface &&
+      a.entryAnchor.point == b.entryAnchor.point &&
+      a.entryAnchor.routeId == b.entryAnchor.routeId &&
+      a.exitAnchor.id == b.exitAnchor.id &&
+      a.exitAnchor.penetrationId == b.exitAnchor.penetrationId &&
+      a.exitAnchor.side == b.exitAnchor.side &&
+      a.exitAnchor.surface == b.exitAnchor.surface &&
+      a.exitAnchor.point == b.exitAnchor.point &&
+      a.exitAnchor.routeId == b.exitAnchor.routeId;
+
   static bool _sameSegment(ElectricalRouteSegment a, ElectricalRouteSegment b) {
-    if (a.surface != b.surface || a.points.length != b.points.length) {
+    if (a.surface != b.surface ||
+        a.points.length != b.points.length ||
+        a.anchorIds.length != b.anchorIds.length) {
       return false;
     }
     for (var i = 0; i < a.points.length; i++) {
-      if (a.points[i] != b.points[i]) {
-        return false;
-      }
+      if (a.points[i] != b.points[i]) return false;
+    }
+    for (var i = 0; i < a.anchorIds.length; i++) {
+      if (a.anchorIds[i] != b.anchorIds[i]) return false;
     }
     return true;
   }

@@ -11,10 +11,8 @@ final Expando<CableEndpointTransformSession> _endpointTransformSessions =
 );
 
 extension CableEditSessionAccess on EditorController {
-  CableRouteEditSession get cableRouteEdit =>
-      _routeEditSessions[this] ??= CableRouteEditSession(
-        onCommit: p2.replaceCableRoute,
-      );
+  CableRouteEditSession get cableRouteEdit => _routeEditSessions[this] ??=
+      CableRouteEditSession(onCommit: p2.replaceCableRoute);
 
   CableEndpointTransformSession get cableEndpointTransform =>
       _endpointTransformSessions[this] ??= CableEndpointTransformSession(

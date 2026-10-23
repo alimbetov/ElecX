@@ -2,24 +2,37 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../domain/project_orientation.dart';
 import '../../domain/route_host.dart';
+import 'canonical_editor_production_runtime.dart';
+import 'canonical_editor_runtime_cutover.dart';
+import 'canonical_editor_screen_cutover_binding.dart';
+import 'canonical_editor_workspace_adapter.dart';
+import 'canonical_space_semantics_adapter.dart';
+import 'canonical_project_navigator.dart';
 import 'context_minimap.dart';
 import 'device_catalog_panel.dart';
 import 'editor_building_workspace.dart';
 import 'editor_controller.dart';
+import 'editor_document_history.dart';
 import 'editor_keyboard_scope.dart';
 import 'editor_layout_policy.dart';
 import 'editor_p2_session.dart';
 import 'editor_project_document.dart';
 import 'editor_project_recovery.dart';
+import 'project_north_edit_dialog.dart';
 import 'project_persistence_metadata.dart';
 import 'project_save_diagnostics.dart';
 import 'room_circuit_overview.dart';
 import 'room_circuit_panel.dart';
+import 'room_surface_navigator.dart';
+import 'space_semantics_inspector.dart';
+import 'space_semantics_inspector_editing.dart';
 import 'editor_shell_state.dart';
 import 'editor_ui_tokens.dart';
 import 'engineering_placement_cursor_hud.dart';
 import 'project_compass_overlay.dart';
+import 'project_compass_projection.dart';
 import 'site_map_canvas.dart';
 import 'site_map_interaction.dart';
 import 'spatial_canvas.dart';
@@ -36,29 +49,16 @@ class UnifiedWorkspaceEditorScreen extends StatefulWidget {
     this.initialDocument,
     this.initialRecovery,
     this.initialMetadata,
+    this.canonicalRuntime,
   }) : assert(initialDocument == null || initialRecovery == null);
 
-  /// Optional injection point used by tests and project-hub routing.
-  /// Production lazily opens the application documents project store.
   final EditorProjectStore? projectStore;
-
-  /// Recovery storage is intentionally separate from explicit project files.
   final EditorProjectRecoveryStore? recoveryStore;
-
-  /// Debounce used by recovery autosave. Exposed for deterministic tests.
   final Duration autosaveDelay;
-
-  /// When provided, the screen starts from the persisted canonical document
-  /// instead of constructing the demo workspace.
   final EditorProjectDocument? initialDocument;
-
-  /// Explicit recovery entry opened from Project Hub. Recovery is never
-  /// treated as an explicit Save: the editor starts in Modified state.
   final EditorProjectRecoverySnapshot? initialRecovery;
-
-  /// Identity for a newly created unsaved project. The physical site keeps
-  /// its own ids; project identity is independent and immutable.
   final EditorProjectMetadata? initialMetadata;
+  final CanonicalEditorProductionRuntimeConfig? canonicalRuntime;
 
   @override
   State<UnifiedWorkspaceEditorScreen> createState() =>
@@ -85,10 +85,72 @@ class _UnifiedWorkspaceEditorScreenState
   int _savedRevision = 0;
   int _lastP2CommittedRevision = 0;
   bool _allowPop = false;
+  CanonicalEditorResolvedRuntime? _canonicalResolvedRuntime;
+  CanonicalEditorScreenCutoverBinding? _canonicalCutoverBinding;
+  CanonicalEditorMaterializationResult? _canonicalBlocked;
 
   bool get _hasUnsavedChanges =>
       _projectRevision != _savedRevision ||
       _saveStatus == EditorProjectSaveStatus.saveFailed;
+
+  bool get _canonicalRuntimeActive => _canonicalCutoverBinding != null;
+
+  bool get _canonicalProjectMatchesScreen {
+    final resolved = _canonicalResolvedRuntime;
+    return resolved != null &&
+        resolved.session.project.id.value == _projectMetadata.projectId;
+  }
+
+  bool get _canEditProjectNorth {
+    final resolved = _canonicalResolvedRuntime;
+    final config = widget.canonicalRuntime;
+    if (resolved == null ||
+        config?.onCanonicalMutationCommitted == null ||
+        config?.onProjectNorthCommitted == null) {
+      return false;
+    }
+    if (!_canonicalProjectMatchesScreen) return false;
+
+    final canonicalProject = resolved.session.project;
+    final editing = resolved.session.projectNorthEditing;
+    return editing.canEdit &&
+        editing.projectId == canonicalProject.id &&
+        editing.version == canonicalProject.version &&
+        resolved.persistenceOwnerProjectId == canonicalProject.id;
+  }
+
+  bool get _canEditSpaceSemantics {
+    final resolved = _canonicalResolvedRuntime;
+    final config = widget.canonicalRuntime;
+    if (resolved == null ||
+        config?.onCanonicalMutationCommitted == null ||
+        config?.onSpaceSemanticsCommitted == null) {
+      return false;
+    }
+    if (!_canonicalProjectMatchesScreen) return false;
+
+    final canonicalProject = resolved.session.project;
+    final editing = resolved.session.spaceSemanticsEditing;
+    return editing.canEdit &&
+        editing.projectId == canonicalProject.id &&
+        editing.version == canonicalProject.version &&
+        resolved.persistenceOwnerProjectId == canonicalProject.id;
+  }
+
+  CompassProjectionState _compassProjectionState() {
+    if (_canonicalBlocked != null ||
+        workspace.context == EditorWorkspaceContext.siteOutdoor ||
+        controller.viewMode != EditorViewMode.plan ||
+        !_canonicalProjectMatchesScreen) {
+      return ProjectCompassProjection.unavailable;
+    }
+
+    final resolved = _canonicalResolvedRuntime;
+    if (resolved == null) return ProjectCompassProjection.unavailable;
+    return ProjectCompassProjection.forPlan(
+      resolved.session.project.engineeringMetadata.projectNorth,
+    );
+  }
 
   @override
   void initState() {
@@ -128,22 +190,36 @@ class _UnifiedWorkspaceEditorScreenState
     controller.p2.addListener(_onP2Changed);
     siteInteraction = SiteMapInteractionController();
     shell = EditorShellState()..addListener(_refresh);
+    _installCanonicalRuntime(pushInitialCanonicalState: false);
     final injectedStore = widget.projectStore;
     if (injectedStore != null) {
       _projectStoreFuture = Future<EditorProjectStore>.value(injectedStore);
     }
     final injectedRecoveryStore = widget.recoveryStore;
     if (injectedRecoveryStore != null) {
-      _recoveryStoreFuture =
-          Future<EditorProjectRecoveryStore>.value(injectedRecoveryStore);
+      _recoveryStoreFuture = Future<EditorProjectRecoveryStore>.value(
+        injectedRecoveryStore,
+      );
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      _pushCanonicalToEditor();
       _scheduleAutosave();
       if (widget.initialRecovery == null) {
         _offerRecoveryIfNewer();
       }
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant UnifiedWorkspaceEditorScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.canonicalRuntime, widget.canonicalRuntime)) {
+      _installCanonicalRuntime(pushInitialCanonicalState: false);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _pushCanonicalToEditor();
+      });
+    }
   }
 
   Future<EditorProjectStore> _projectStore() =>
@@ -175,6 +251,12 @@ class _UnifiedWorkspaceEditorScreenState
   }
 
   void _onProjectChanged() {
+    if (controller.isSurfaceNavigationNotification) return;
+
+    if (_canonicalCutoverBinding?.coordinator.isSynchronizing == true) {
+      _refresh();
+      return;
+    }
     _projectRevision++;
     if (_saveStatus != EditorProjectSaveStatus.saving &&
         _saveStatus != EditorProjectSaveStatus.saveFailed) {
@@ -182,6 +264,231 @@ class _UnifiedWorkspaceEditorScreenState
     }
     _refresh();
     _scheduleAutosave();
+  }
+
+  void _installCanonicalRuntime({required bool pushInitialCanonicalState}) {
+    _canonicalCutoverBinding?.dispose();
+    _canonicalResolvedRuntime = null;
+    _canonicalCutoverBinding = null;
+    _canonicalBlocked = null;
+
+    final config = widget.canonicalRuntime;
+    if (config == null) return;
+
+    try {
+      final resolved = config.resolveRuntime(workspace, _projectMetadata);
+      if (resolved == null) return;
+      final coordinator = CanonicalEditorRuntimeCutoverCoordinator(
+        session: resolved.session,
+        adapter: CanonicalEditorWorkspaceAdapter(
+          workspace: workspace,
+          binding: resolved.binding,
+        ),
+        materializer: resolved.materializer,
+      );
+      final ownsExactProject =
+          resolved.persistenceOwnerProjectId == resolved.session.project.id &&
+              resolved.session.project.id.value == _projectMetadata.projectId;
+      final canonicalOwner =
+          ownsExactProject ? config.onCanonicalMutationCommitted : null;
+      final topologyHook =
+          ownsExactProject ? config.onBoundaryTopologyCommitted : null;
+      final binding = CanonicalEditorScreenCutoverBinding(
+        coordinator: coordinator,
+        onCanonicalNavigationChanged: (_) {
+          _canonicalBlocked = null;
+          _refresh();
+        },
+        onCanonicalMutationReplayed: canonicalOwner == null
+            ? null
+            : (result) {
+                canonicalOwner(resolved.session, result);
+                _refresh();
+              },
+        onBoundaryTopologyCommitted: canonicalOwner == null
+            ? null
+            : (editing, result) {
+                canonicalOwner(resolved.session, result);
+                topologyHook?.call(editing, result);
+                _refresh();
+              },
+        onBlocked: _handleCanonicalBlocked,
+        onError: _reportCanonicalCutoverError,
+      );
+      binding.start(pushInitialCanonicalState: pushInitialCanonicalState);
+      _canonicalResolvedRuntime = resolved;
+      _canonicalCutoverBinding = binding;
+    } catch (error, stackTrace) {
+      _reportCanonicalCutoverError(error, stackTrace);
+      _canonicalResolvedRuntime = null;
+      _canonicalCutoverBinding = null;
+    }
+  }
+
+  void _disposeCanonicalRuntime() {
+    _canonicalCutoverBinding?.dispose();
+    _canonicalResolvedRuntime = null;
+    _canonicalCutoverBinding = null;
+    _canonicalBlocked = null;
+  }
+
+  void _handleCanonicalBlocked(CanonicalEditorMaterializationResult result) {
+    _canonicalBlocked = result;
+    _refresh();
+  }
+
+  void _reportCanonicalCutoverError(Object error, StackTrace stackTrace) {
+    FlutterError.reportError(
+      FlutterErrorDetails(
+        exception: error,
+        stack: stackTrace,
+        library: 'ElecX canonical editor cutover',
+      ),
+    );
+  }
+
+  CanonicalEditorMaterializationResult? _pushCanonicalToEditor() {
+    final binding = _canonicalCutoverBinding;
+    if (binding == null) return null;
+    try {
+      final result = binding.pushCanonicalToEditor();
+      if (result.canOpen && _canonicalBlocked != null) {
+        _canonicalBlocked = null;
+        _refresh();
+      }
+      return result;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Widget? _spaceSemanticsInspector({required bool compact}) {
+    final resolved = _canonicalResolvedRuntime;
+    final config = widget.canonicalRuntime;
+    if (resolved == null || config == null || !_canonicalProjectMatchesScreen) {
+      return null;
+    }
+    final spaceId = resolved.session.navigation.selectedSpaceId;
+    if (spaceId == null) return null;
+
+    late final CanonicalSpaceSemanticsProjection projection;
+    try {
+      projection = CanonicalSpaceSemanticsAdapter(
+        workspace: workspace,
+        binding: resolved.binding,
+      ).resolve(project: resolved.session.project, spaceId: spaceId);
+    } on CanonicalSpaceSemanticsException {
+      return null;
+    } catch (error, stackTrace) {
+      _reportCanonicalCutoverError(error, stackTrace);
+      return null;
+    }
+
+    final editing = resolved.session.spaceSemanticsEditing;
+    final coordinator = SpaceSemanticsInspectorEditingCoordinator(editing);
+    final onUsageChanged = _canEditSpaceSemantics
+        ? (usage) {
+            try {
+              final result = coordinator.setUsage(projection, usage);
+              if (result == null) return;
+              controller.documentHistory.recordCanonicalCommit(
+                session: resolved.session,
+                label: result.changeSet.commandType,
+                rematerialize: () {
+                  _pushCanonicalToEditor();
+                },
+              );
+              try {
+                config.onCanonicalMutationCommitted!(resolved.session, result);
+                config.onSpaceSemanticsCommitted?.call(editing, result);
+              } finally {
+                _refresh();
+              }
+            } catch (error, stackTrace) {
+              _reportCanonicalCutoverError(error, stackTrace);
+            }
+          }
+        : null;
+
+    return ConstrainedBox(
+      key: const ValueKey('space-semantics-production-inspector'),
+      constraints: BoxConstraints(maxHeight: compact ? 360 : 320),
+      child: SingleChildScrollView(
+        child: SpaceSemanticsInspector(
+          projection: projection,
+          onUsageChanged: onUsageChanged,
+        ),
+      ),
+    );
+  }
+
+  Widget _projectNavigator({required bool compact}) {
+    final cutover = _canonicalCutoverBinding;
+    final config = widget.canonicalRuntime;
+    if (cutover == null || config == null) {
+      return UnifiedSiteNavigator(
+        workspace: workspace,
+        interaction: siteInteraction,
+        onOpenSiteMap: _openMiniMap,
+        compact: compact,
+      );
+    }
+
+    final session = cutover.coordinator.session;
+    final selectedCanonicalSpaceId = session.navigation.selectedSpaceId;
+    final selectedLegacySpaceId = selectedCanonicalSpaceId == null
+        ? null
+        : cutover.coordinator.adapter.binding
+            .legacySpaceIds[selectedCanonicalSpaceId];
+    final authoringEnabled = config.authoringEnabled;
+    final navigator = CanonicalProjectNavigator(
+      session: session,
+      requestBuilding: authoringEnabled ? config.requestBuilding : null,
+      requestLevel: authoringEnabled ? config.requestLevel : null,
+      requestRoom: authoringEnabled ? config.requestRoom : null,
+      onNavigationChanged: (_) {
+        _pushCanonicalToEditor();
+        _refresh();
+      },
+      onAuthoringCommitted: authoringEnabled
+          ? (session, result) {
+              final mutation = ProjectMutationResult(
+                project: result.project,
+                changeSet: result.changeSet,
+              );
+              controller.documentHistory.recordCanonicalCommit(
+                session: session,
+                label: result.changeSet.commandType,
+                rematerialize: () {
+                  _pushCanonicalToEditor();
+                },
+              );
+              try {
+                config.onCanonicalMutationCommitted!(session, mutation);
+                config.onAuthoringCommitted?.call(session, result.createdId);
+              } finally {
+                _pushCanonicalToEditor();
+                _refresh();
+              }
+            }
+          : null,
+      onError: (error) =>
+          _reportCanonicalCutoverError(error, StackTrace.current),
+      compact: compact,
+    );
+
+    return Column(
+      children: [
+        Expanded(child: navigator),
+        RoomSurfaceNavigator(
+          controller: controller,
+          canonicalSpaceId: selectedCanonicalSpaceId,
+          legacySpaceId: selectedLegacySpaceId,
+          collapsed: shell.roomSurfaceNavigatorCollapsed,
+          onToggleCollapsed: shell.toggleRoomSurfaceNavigatorCollapsed,
+        ),
+      ],
+    );
   }
 
   void _scheduleAutosave() {
@@ -243,7 +550,7 @@ class _UnifiedWorkspaceEditorScreenState
       final snapshot = await store.load(_projectMetadata.projectId);
       if (!mounted || snapshot == null) return;
       if (!snapshot.capturedAt.isAfter(_projectMetadata.updatedAt)) {
-        await store.discard(_projectMetadata.projectId);
+        await store.discard(snapshot.projectId);
         return;
       }
       final restore = await showDialog<bool>(
@@ -374,8 +681,9 @@ class _UnifiedWorkspaceEditorScreenState
       );
     } catch (error) {
       if (!mounted) return;
-      final detail =
-          EditorProjectSaveDiagnostics.unexpectedPersistenceMessage(error);
+      final detail = EditorProjectSaveDiagnostics.unexpectedPersistenceMessage(
+        error,
+      );
       await _showSaveFailure(
         title: 'Не удалось сохранить проект',
         detail: detail,
@@ -428,9 +736,11 @@ class _UnifiedWorkspaceEditorScreenState
     final previousController = controller;
     final previousWorkspace = workspace;
 
+    _disposeCanonicalRuntime();
     previousWorkspace.removeListener(_onProjectChanged);
     previousController.removeListener(_onProjectChanged);
     previousController.p2.removeListener(_onP2Changed);
+    previousController.disposeDocumentHistory();
     previousController.disposeP2State();
     previousWorkspace.dispose();
     previousController.dispose();
@@ -448,6 +758,10 @@ class _UnifiedWorkspaceEditorScreenState
         : EditorProjectSaveStatus.modified;
     _saveFailureHint = null;
     siteInteraction.clear();
+    _installCanonicalRuntime(pushInitialCanonicalState: false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _pushCanonicalToEditor();
+    });
     setState(() {});
   }
 
@@ -504,51 +818,111 @@ class _UnifiedWorkspaceEditorScreenState
   }
 
   Future<void> _editProjectNorth() async {
-    final current = workspace.site.site.projectNorth;
-    final input = TextEditingController(
-      text: current.northAzimuthDegrees.toStringAsFixed(1),
-    );
-    final value = await showDialog<double>(
+    final resolved = _canonicalResolvedRuntime;
+    final config = widget.canonicalRuntime;
+    if (!_canEditProjectNorth || resolved == null || config == null) {
+      _showProjectMessage(
+        'Редактирование Project North недоступно без canonical persistence owner.',
+        isError: true,
+      );
+      return;
+    }
+
+    final editing = resolved.session.projectNorthEditing;
+    final capturedProjectId = editing.projectId;
+    final capturedVersion = editing.version;
+    final canonicalOwner = config.onCanonicalMutationCommitted!;
+    final featureCallback = config.onProjectNorthCommitted!;
+
+    final value = await showDialog<ProjectEngineeringNorth>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Ориентация проекта'),
-        content: TextField(
-          controller: input,
-          autofocus: true,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(
-            labelText: 'Азимут севера',
-            suffixText: '°',
-            helperText: '0° = север вверх по плану, угол по часовой стрелке',
-          ),
-          onSubmitted: (text) {
-            final parsed = double.tryParse(text.replaceAll(',', '.'));
-            if (parsed != null && parsed >= 0 && parsed < 360) {
-              Navigator.of(dialogContext).pop(parsed);
-            }
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final parsed = double.tryParse(input.text.replaceAll(',', '.'));
-              if (parsed == null || parsed < 0 || parsed >= 360) return;
-              Navigator.of(dialogContext).pop(parsed);
-            },
-            child: const Text('Применить'),
-          ),
-        ],
-      ),
+      builder: (_) =>
+          ProjectNorthEditDialog(initialValue: editing.currentProjectNorth),
     );
-    input.dispose();
     if (value == null || !mounted) return;
-    workspace.updateProjectNorth(
-      current.copyWith(northAzimuthDegrees: value),
+
+    final currentResolved = _canonicalResolvedRuntime;
+    final currentConfig = widget.canonicalRuntime;
+    final currentEditing = resolved.session.projectNorthEditing;
+    final currentProject = resolved.session.project;
+    final affinityValid = identical(currentResolved, resolved) &&
+        identical(currentConfig, config) &&
+        _canonicalProjectMatchesScreen &&
+        currentProject.id == capturedProjectId &&
+        currentProject.version == capturedVersion &&
+        currentEditing.canEdit &&
+        currentEditing.projectId == capturedProjectId &&
+        currentEditing.version == capturedVersion &&
+        resolved.persistenceOwnerProjectId == capturedProjectId &&
+        currentConfig?.onCanonicalMutationCommitted != null &&
+        currentConfig?.onProjectNorthCommitted != null;
+    if (!affinityValid) {
+      _showProjectMessage(
+        'Project North не изменён: canonical edit context изменился во время редактирования.',
+        isError: true,
+      );
+      _refresh();
+      return;
+    }
+
+    ProjectMutationResult? result;
+    try {
+      result = currentEditing.setProjectNorth(
+        value,
+        expectedVersion: capturedVersion,
+      );
+    } catch (error) {
+      _showProjectMessage(
+        'Не удалось изменить Project North: $error',
+        isError: true,
+      );
+      return;
+    }
+
+    if (result == null) {
+      _refresh();
+      return;
+    }
+
+    final afterProject = resolved.session.project;
+    if (afterProject.id != capturedProjectId ||
+        afterProject.version.value != capturedVersion.value + 1 ||
+        currentEditing.version != afterProject.version ||
+        currentEditing.currentProjectNorth !=
+            afterProject.engineeringMetadata.projectNorth ||
+        result.project.id != afterProject.id ||
+        result.project.version != afterProject.version ||
+        result.changeSet.beforeVersion != capturedVersion ||
+        result.changeSet.afterVersion != afterProject.version) {
+      _showProjectMessage(
+        'Project North committed, но canonical runtime потерял mutation affinity.',
+        isError: true,
+      );
+      _refresh();
+      return;
+    }
+
+    controller.documentHistory.recordCanonicalCommit(
+      session: resolved.session,
+      label: result.changeSet.commandType,
+      rematerialize: () {
+        _pushCanonicalToEditor();
+      },
     );
+
+    try {
+      canonicalOwner(resolved.session, result);
+      featureCallback(currentEditing, result);
+    } catch (error) {
+      _showProjectMessage(
+        'Project North committed, но persistence owner не подтвердил владение: $error',
+        isError: true,
+      );
+      _refresh();
+      return;
+    }
+
+    _refresh();
   }
 
   void _openMiniMap() {
@@ -556,6 +930,9 @@ class _UnifiedWorkspaceEditorScreenState
       context: context,
       workspace: workspace,
       siteInteraction: siteInteraction,
+      onEntityOpen: _canonicalRuntimeActive ? _openSiteEntity : null,
+      onSpaceSelected:
+          _canonicalRuntimeActive ? _selectLegacySpaceThroughCanonical : null,
     );
   }
 
@@ -565,11 +942,43 @@ class _UnifiedWorkspaceEditorScreenState
         final id = entity.targetId;
         if (id != null) workspace.selectOutdoorZone(id);
       case SiteMapEntityKind.building:
-        workspace.selectLevel(1);
+        final cutover = _canonicalCutoverBinding;
+        if (cutover == null) {
+          workspace.selectLevel(1);
+          return;
+        }
+        cutover.coordinator.session.activateBuilding(
+          cutover.coordinator.adapter.binding.buildingId,
+        );
+        _pushCanonicalToEditor();
+        _refresh();
       case SiteMapEntityKind.lot:
       case SiteMapEntityKind.network:
         break;
     }
+  }
+
+  void _selectLegacySpaceThroughCanonical(String legacySpaceId) {
+    final cutover = _canonicalCutoverBinding;
+    if (cutover == null) {
+      controller.selectSpace(legacySpaceId);
+      return;
+    }
+    final canonicalSpaceId = cutover.coordinator.adapter.binding
+        .canonicalSpaceIdForLegacy(legacySpaceId);
+    if (canonicalSpaceId == null) {
+      _handleCanonicalBlocked(
+        CanonicalEditorMaterializationResult(
+          status: CanonicalEditorMaterializationStatus
+              .blockedMissingRuntimeRepresentation,
+          message: 'Legacy Space $legacySpaceId has no canonical binding.',
+        ),
+      );
+      return;
+    }
+    cutover.coordinator.session.selectRoom(canonicalSpaceId);
+    _pushCanonicalToEditor();
+    _refresh();
   }
 
   void _followOutdoorTransition(RouteHostTransition transition) {
@@ -598,19 +1007,27 @@ class _UnifiedWorkspaceEditorScreenState
         : workspace.site.connections
             .where((item) => item.id == connectionId)
             .firstOrNull;
-    if (connection != null) {
-      workspace.selectLevel(connection.levelNumber);
-    }
 
     final surface = indoor.surface;
     if (surface == null) return;
     final preferredSpaceId = connection?.targetSpaceId ?? surface.spaceId;
-    if (controller.level.spaces.any((space) => space.id == preferredSpaceId)) {
-      controller.selectSpace(preferredSpaceId);
-    } else if (controller.level.spaces.any(
-      (space) => space.id == surface.spaceId,
-    )) {
-      controller.selectSpace(surface.spaceId);
+
+    if (_canonicalRuntimeActive) {
+      _selectLegacySpaceThroughCanonical(preferredSpaceId);
+      if (controller.selectedSpaceId != preferredSpaceId) return;
+    } else {
+      if (connection != null) {
+        workspace.selectLevel(connection.levelNumber);
+      }
+      if (controller.level.spaces.any(
+        (space) => space.id == preferredSpaceId,
+      )) {
+        controller.selectSpace(preferredSpaceId);
+      } else if (controller.level.spaces.any(
+        (space) => space.id == surface.spaceId,
+      )) {
+        controller.selectSpace(surface.spaceId);
+      }
     }
 
     switch (surface.type) {
@@ -630,6 +1047,7 @@ class _UnifiedWorkspaceEditorScreenState
   @override
   void dispose() {
     _autosaveTimer?.cancel();
+    _disposeCanonicalRuntime();
     shell.removeListener(_refresh);
     shell.dispose();
     siteInteraction.dispose();
@@ -637,6 +1055,7 @@ class _UnifiedWorkspaceEditorScreenState
     workspace.dispose();
     controller.removeListener(_onProjectChanged);
     controller.p2.removeListener(_onP2Changed);
+    controller.disposeDocumentHistory();
     controller.disposeP2State();
     controller.dispose();
     super.dispose();
@@ -655,44 +1074,49 @@ class _UnifiedWorkspaceEditorScreenState
           builder: (context, constraints) {
             final mode = EditorLayoutPolicy.forWidth(constraints.maxWidth);
             final desktop = mode == EditorLayoutMode.desktop;
-            final rawCanvas =
-                workspace.context == EditorWorkspaceContext.siteOutdoor
-                    ? SiteMapCanvas(
-                        entities: SiteMapProjection.tower(workspace),
-                        interaction: siteInteraction,
-                        routeController: controller,
-                        onRouteTransitionTap: _followSiteTransition,
-                        onEntityOpen: _openSiteEntity,
-                      )
-                    : controller.viewMode == EditorViewMode.plan
-                        ? SpatialCanvas(controller: controller)
-                        : SurfaceCanvas(
-                            controller: controller,
-                            onOutdoorTransition: _followOutdoorTransition,
-                          );
-            final planContext =
-                workspace.context == EditorWorkspaceContext.siteOutdoor ||
-                    controller.viewMode == EditorViewMode.plan;
-            final canvas = Stack(
-              children: [
-                Positioned.fill(child: rawCanvas),
-                if (planContext)
-                  Positioned(
-                    right: 12,
-                    top: 12,
-                    child: ProjectCompassOverlay(
-                      projectNorth: workspace.site.site.projectNorth,
-                      onTap: _editProjectNorth,
-                    ),
-                  ),
-                if (workspace.context != EditorWorkspaceContext.siteOutdoor)
-                  Positioned(
-                    right: 12,
-                    bottom: 52,
-                    child:
-                        EngineeringPlacementCursorHud(controller: controller),
-                  ),
-              ],
+            final canvas = AnimatedBuilder(
+              animation: controller,
+              builder: (context, _) {
+                final rawCanvas =
+                    workspace.context == EditorWorkspaceContext.siteOutdoor
+                        ? SiteMapCanvas(
+                            entities: SiteMapProjection.tower(workspace),
+                            interaction: siteInteraction,
+                            routeController: controller,
+                            onRouteTransitionTap: _followSiteTransition,
+                            onEntityOpen: _openSiteEntity,
+                          )
+                        : controller.viewMode == EditorViewMode.plan
+                            ? SpatialCanvas(controller: controller)
+                            : SurfaceCanvas(
+                                controller: controller,
+                                onOutdoorTransition: _followOutdoorTransition,
+                              );
+                final compassProjection = _compassProjectionState();
+                return Stack(
+                  children: [
+                    Positioned.fill(child: rawCanvas),
+                    if (shell.compassVisible)
+                      Positioned(
+                        right: 12,
+                        top: 12,
+                        child: ProjectCompassOverlay(
+                          state: compassProjection,
+                          onTap:
+                              _canEditProjectNorth ? _editProjectNorth : null,
+                        ),
+                      ),
+                    if (workspace.context != EditorWorkspaceContext.siteOutdoor)
+                      Positioned(
+                        right: 12,
+                        bottom: 52,
+                        child: EngineeringPlacementCursorHud(
+                          controller: controller,
+                        ),
+                      ),
+                  ],
+                );
+              },
             );
 
             return Scaffold(
@@ -700,14 +1124,7 @@ class _UnifiedWorkspaceEditorScreenState
                   ? null
                   : Drawer(
                       width: EditorLayoutPolicy.navigatorWidth(mode),
-                      child: SafeArea(
-                        child: UnifiedSiteNavigator(
-                          workspace: workspace,
-                          interaction: siteInteraction,
-                          onOpenSiteMap: _openMiniMap,
-                          compact: true,
-                        ),
-                      ),
+                      child: SafeArea(child: _projectNavigator(compact: true)),
                     ),
               endDrawer: desktop
                   ? null
@@ -716,6 +1133,11 @@ class _UnifiedWorkspaceEditorScreenState
                       child: SafeArea(
                         child: Column(
                           children: [
+                            if (_spaceSemanticsInspector(compact: true)
+                                case final semanticsInspector?) ...[
+                              semanticsInspector,
+                              const Divider(height: 1),
+                            ],
                             RoomCircuitOverviewPanel(controller: controller),
                             RoomCircuitPanel(controller: controller),
                             const Divider(height: 1),
@@ -744,6 +1166,8 @@ class _UnifiedWorkspaceEditorScreenState
                     controller: controller,
                     compact: !desktop,
                   ),
+                  if (_canonicalBlocked != null)
+                    _CanonicalCutoverBlockedBanner(result: _canonicalBlocked!),
                   if (shell.contextBarVisible)
                     _ContextStrip(workspace: workspace),
                   Expanded(
@@ -751,9 +1175,11 @@ class _UnifiedWorkspaceEditorScreenState
                         ? _DesktopWorkspace(
                             workspace: workspace,
                             shell: shell,
-                            interaction: siteInteraction,
                             canvas: canvas,
-                            onOpenMiniMap: _openMiniMap,
+                            navigator: _projectNavigator(compact: false),
+                            semanticsInspector: _spaceSemanticsInspector(
+                              compact: false,
+                            ),
                           )
                         : Stack(
                             children: [
@@ -780,16 +1206,16 @@ class _DesktopWorkspace extends StatelessWidget {
   const _DesktopWorkspace({
     required this.workspace,
     required this.shell,
-    required this.interaction,
     required this.canvas,
-    required this.onOpenMiniMap,
+    required this.navigator,
+    required this.semanticsInspector,
   });
 
   final EditorBuildingWorkspace workspace;
   final EditorShellState shell;
-  final SiteMapInteractionController interaction;
   final Widget canvas;
-  final VoidCallback onOpenMiniMap;
+  final Widget navigator;
+  final Widget? semanticsInspector;
 
   @override
   Widget build(BuildContext context) {
@@ -808,11 +1234,7 @@ class _DesktopWorkspace extends StatelessWidget {
         if (shell.navigatorVisible)
           SizedBox(
             width: EditorUiTokens.desktopNavigatorWidth,
-            child: UnifiedSiteNavigator(
-              workspace: workspace,
-              interaction: interaction,
-              onOpenSiteMap: onOpenMiniMap,
-            ),
+            child: navigator,
           )
         else
           _SideRail(
@@ -837,6 +1259,7 @@ class _DesktopWorkspace extends StatelessWidget {
             child: _CatalogPanel(
               controller: workspace.editor,
               onCollapse: shell.toggleInspector,
+              semanticsInspector: semanticsInspector,
             ),
           )
         else
@@ -846,6 +1269,38 @@ class _DesktopWorkspace extends StatelessWidget {
             onPressed: shell.toggleInspector,
           ),
       ],
+    );
+  }
+}
+
+class _CanonicalCutoverBlockedBanner extends StatelessWidget {
+  const _CanonicalCutoverBlockedBanner({required this.result});
+
+  final CanonicalEditorMaterializationResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      key: const ValueKey('canonical-cutover-blocked'),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      color: scheme.errorContainer,
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, size: 16, color: scheme.onErrorContainer),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              result.message ?? 'Текущий объект пока нельзя открыть на canvas.',
+              style: Theme.of(context)
+                  .textTheme
+                  .labelMedium
+                  ?.copyWith(color: scheme.onErrorContainer),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -927,6 +1382,23 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.save_outlined),
+        ),
+        Semantics(
+          label: 'Compass',
+          checked: shell.compassRequestedVisible,
+          button: true,
+          child: IconButton(
+            key: const ValueKey('project-compass-toggle'),
+            tooltip: shell.compassRequestedVisible
+                ? 'Скрыть компас'
+                : 'Показать компас',
+            onPressed: shell.toggleCompass,
+            icon: Icon(
+              shell.compassRequestedVisible
+                  ? Icons.explore
+                  : Icons.explore_outlined,
+            ),
+          ),
         ),
         IconButton(
           tooltip: 'Контекстная карта',
@@ -1023,10 +1495,15 @@ class _SideRail extends StatelessWidget {
 }
 
 class _CatalogPanel extends StatelessWidget {
-  const _CatalogPanel({required this.controller, required this.onCollapse});
+  const _CatalogPanel({
+    required this.controller,
+    required this.onCollapse,
+    required this.semanticsInspector,
+  });
 
   final EditorController controller;
   final VoidCallback onCollapse;
+  final Widget? semanticsInspector;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -1037,10 +1514,14 @@ class _CatalogPanel extends StatelessWidget {
             trailing: IconButton(
               tooltip: 'Свернуть каталог',
               onPressed: onCollapse,
-              icon: const Icon(Icons.chevron_right),
+              icon: Icon(Icons.chevron_right),
             ),
           ),
           const Divider(height: 1),
+          if (semanticsInspector != null) ...[
+            semanticsInspector!,
+            const Divider(height: 1),
+          ],
           RoomCircuitOverviewPanel(controller: controller),
           RoomCircuitPanel(controller: controller),
           const Divider(height: 1),

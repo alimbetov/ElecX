@@ -172,24 +172,29 @@ final class CableEndpointTransformSession extends ChangeNotifier
       return false;
     }
 
-    final route = ElectricalCableRoute(
-      id: origin.id,
-      source: role == CableEndpointRole.source ? endpoint : origin.source,
-      target: role == CableEndpointRole.target ? endpoint : origin.target,
-      segments: [
-        for (var i = 0; i < origin.segments.length; i++)
-          if (i == segmentIndex)
-            ElectricalRouteSegment(
-              surface: segment.surface,
-              points: routed.points,
-            )
-          else
-            origin.segments[i],
-      ],
-      cableType: origin.cableType,
-      medium: origin.medium,
-      reservePercent: origin.reservePercent,
-    );
+    ElectricalCableRoute route;
+    try {
+      route = origin.copyWith(
+        source: role == CableEndpointRole.source ? endpoint : origin.source,
+        target: role == CableEndpointRole.target ? endpoint : origin.target,
+        segments: [
+          for (var i = 0; i < origin.segments.length; i++)
+            if (i == segmentIndex)
+              ElectricalRouteSegment(
+                surface: segment.surface,
+                points: routed.points,
+              )
+            else
+              origin.segments[i],
+        ],
+      );
+    } on ArgumentError {
+      // A physical penetration is immutable unless the edited segment keeps
+      // its exact penetration anchor. Never silently detach a cable from its
+      // wall/slab passage while dragging an endpoint.
+      _invalidate();
+      return false;
+    }
     _preview = CableEndpointTransformPreview(
       route: route,
       snap: snap,
@@ -274,10 +279,7 @@ final class CableEndpointTransformSession extends ChangeNotifier
       points: combined,
       context: context,
     );
-    return (
-      points: List.unmodifiable(combined),
-      validation: validation,
-    );
+    return (points: List.unmodifiable(combined), validation: validation);
   }
 
   ElectricalPortKind? _portKindForEndpoint(ElectricalEndpointRef endpoint) {

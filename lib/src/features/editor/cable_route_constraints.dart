@@ -65,9 +65,8 @@ final class CableRouteConstraints {
   bool isSegmentLocked(int segmentIndex) =>
       lockedSegments.contains(segmentIndex);
 
-  bool segmentHasWaypoints(int segmentIndex) => mandatoryWaypoints.any(
-        (item) => item.segmentIndex == segmentIndex,
-      );
+  bool segmentHasWaypoints(int segmentIndex) =>
+      mandatoryWaypoints.any((item) => item.segmentIndex == segmentIndex);
 
   bool isWaypoint(int segmentIndex, int pointIndex) => mandatoryWaypoints.any(
         (item) =>

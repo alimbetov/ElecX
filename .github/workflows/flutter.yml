@@ -14,7 +14,29 @@ jobs:
         with:
           channel: stable
       - run: flutter pub get
-      - run: dart format --output=none --set-exit-if-changed lib test
+      - name: Check Dart formatting
+        id: format
+        continue-on-error: true
+        run: |
+          set +e
+          dart format --output=none --set-exit-if-changed lib test
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            dart format lib test
+            git diff -- lib test > dart-format.diff
+          fi
+          exit "$status"
+      - name: Upload formatter diff
+        if: steps.format.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dart-format-diff
+          path: dart-format.diff
+          if-no-files-found: error
+      - name: Enforce Dart formatting
+        if: steps.format.outcome == 'failure'
+        run: exit 1
       - run: flutter analyze
       - run: flutter test
 

@@ -82,8 +82,9 @@ void main() {
     expect(document.p2State.routes, isEmpty);
   });
 
-  testWidgets('F22 new-project screen saves a truly blank document',
-      (tester) async {
+  testWidgets('F22 new-project screen saves a truly blank document', (
+    tester,
+  ) async {
     final store = _F22MemoryStore();
     final metadata = EditorProjectMetadata.create(
       projectId: 'ui-blank-project',

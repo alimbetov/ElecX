@@ -53,9 +53,7 @@ void main() {
   });
 
   testWidgets('valid preview announces that commit is allowed', (tester) async {
-    await tester.pumpWidget(
-      host(validation: const RouteConstraintResult([])),
-    );
+    await tester.pumpWidget(host(validation: const RouteConstraintResult([])));
 
     expect(find.text('Маршрут допустим к фиксации.'), findsOneWidget);
     expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);

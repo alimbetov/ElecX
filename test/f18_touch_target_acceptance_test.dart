@@ -18,8 +18,9 @@ void main() {
     );
   });
 
-  testWidgets('F18 viewport navigator exposes 48dp hit regions',
-      (tester) async {
+  testWidgets('F18 viewport navigator exposes 48dp hit regions', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -39,8 +40,9 @@ void main() {
     expect(size.height, greaterThanOrEqualTo(48));
   });
 
-  testWidgets('F18 component controls expose 48dp move and delete targets',
-      (tester) async {
+  testWidgets('F18 component controls expose 48dp move and delete targets', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -64,8 +66,9 @@ void main() {
     expect(delete.height, greaterThanOrEqualTo(48));
   });
 
-  testWidgets('F18 editor toolbar target fits inside command bar',
-      (tester) async {
+  testWidgets('F18 editor toolbar target fits inside command bar', (
+    tester,
+  ) async {
     final controller = EditorController.demo();
     addTearDown(() {
       controller.disposeP2State();

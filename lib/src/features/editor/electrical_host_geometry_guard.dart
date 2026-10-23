@@ -132,10 +132,7 @@ abstract final class ElectricalHostGeometryGuard {
     return true;
   }
 
-  static bool _insideObstacle(
-    SurfacePointMm point,
-    RouteObstacleMm obstacle,
-  ) =>
+  static bool _insideObstacle(SurfacePointMm point, RouteObstacleMm obstacle) =>
       point.xMm > math.min(obstacle.leftMm, obstacle.rightMm) &&
       point.xMm < math.max(obstacle.leftMm, obstacle.rightMm) &&
       point.yMm > math.min(obstacle.topMm, obstacle.bottomMm) &&

@@ -1,8 +1,11 @@
 import 'dart:math' as math;
 
+import 'boundary_penetration.dart';
 import 'electrical_placement.dart';
+import 'project_identity.dart';
 import 'route_medium.dart';
 import 'surfaces.dart';
+import 'vertical_core_route_leg.dart';
 
 final class ElectricalEndpointRef {
   const ElectricalEndpointRef({
@@ -15,10 +18,26 @@ final class ElectricalEndpointRef {
 }
 
 final class ElectricalRouteSegment {
-  const ElectricalRouteSegment({required this.surface, required this.points});
+  const ElectricalRouteSegment({
+    required this.surface,
+    required this.points,
+    this.anchorIds = const <RouteAnchorId>[],
+  }) : assert(anchorIds.length == 0 || anchorIds.length == points.length);
 
   final RoomSurfaceRef surface;
   final List<SurfacePointMm> points;
+
+  /// Stable identities corresponding 1:1 with [points]. Empty means this is a
+  /// legacy route segment that has not yet been migrated to durable anchors.
+  /// P7A-5 wall-host persistence must fail closed for interior points in that
+  /// state rather than derive identity from segment/point indexes.
+  final List<RouteAnchorId> anchorIds;
+
+  bool get hasStableAnchorIdentity =>
+      points.isEmpty || anchorIds.length == points.length;
+
+  RouteAnchorId? anchorIdAt(int pointIndex) =>
+      anchorIds.isEmpty ? null : anchorIds[pointIndex];
 
   double get lengthMm {
     var length = 0.0;
@@ -40,12 +59,20 @@ final class ElectricalRouteSegment {
 /// fire/security loops and project-specific wired media. [medium] carries the
 /// engineering/visual semantics while [cableType] keeps the exact conductor or
 /// cable specification.
+///
+/// [penetrations] are part of the physical route aggregate. They carry hidden
+/// cable length inside walls/slabs. [verticalCoreLegs] carry the additional
+/// hidden straight-Z cable run between consecutive slab penetrations inside a
+/// stable riser/shaft. Both survive route mutation, undo/redo and persistence
+/// together with the visible surface segments.
 final class ElectricalCableRoute {
   ElectricalCableRoute({
     required this.id,
     required this.source,
     required this.target,
     required this.segments,
+    this.penetrations = const <BoundaryPenetration>[],
+    this.verticalCoreLegs = const <VerticalCoreRouteLeg>[],
     this.cableType,
     this.medium = RouteMediumProfile.generic,
     this.reservePercent = 5,
@@ -54,21 +81,214 @@ final class ElectricalCableRoute {
     if (reservePercent < 0) {
       throw ArgumentError.value(reservePercent, 'reservePercent');
     }
+    _validatePenetrations();
+    _validateVerticalCoreLegs();
   }
 
   final String id;
   final ElectricalEndpointRef source;
   final ElectricalEndpointRef target;
   final List<ElectricalRouteSegment> segments;
+  final List<BoundaryPenetration> penetrations;
+  final List<VerticalCoreRouteLeg> verticalCoreLegs;
   final String? cableType;
   final RouteMediumProfile medium;
   final int reservePercent;
 
-  double get geometricLengthMm =>
+  double get visibleLengthMm =>
       segments.fold(0.0, (sum, segment) => sum + segment.lengthMm);
+
+  double get hiddenPenetrationLengthMm => penetrations.fold(
+        0.0,
+        (sum, penetration) => sum + penetration.routeLengthContributionMm,
+      );
+
+  double get hiddenVerticalCoreLengthMm => verticalCoreLegs.fold(
+        0.0,
+        (sum, leg) => sum + leg.lengthMm,
+      );
+
+  double get geometricLengthMm =>
+      visibleLengthMm + hiddenPenetrationLengthMm + hiddenVerticalCoreLengthMm;
 
   double get installationLengthMm =>
       geometricLengthMm * (1 + reservePercent / 100);
+
+  ElectricalCableRoute copyWith({
+    ElectricalEndpointRef? source,
+    ElectricalEndpointRef? target,
+    List<ElectricalRouteSegment>? segments,
+    List<BoundaryPenetration>? penetrations,
+    List<VerticalCoreRouteLeg>? verticalCoreLegs,
+    String? cableType,
+    RouteMediumProfile? medium,
+    int? reservePercent,
+  }) =>
+      ElectricalCableRoute(
+        id: id,
+        source: source ?? this.source,
+        target: target ?? this.target,
+        segments: segments ?? this.segments,
+        penetrations: penetrations ?? this.penetrations,
+        verticalCoreLegs: verticalCoreLegs ?? this.verticalCoreLegs,
+        cableType: cableType ?? this.cableType,
+        medium: medium ?? this.medium,
+        reservePercent: reservePercent ?? this.reservePercent,
+      );
+
+  void _validatePenetrations() {
+    final penetrationIds = <String>{};
+    for (final penetration in penetrations) {
+      if (penetration.routeId != id) {
+        throw ArgumentError(
+          'Penetration ${penetration.id} belongs to route '
+          '${penetration.routeId}, not $id.',
+        );
+      }
+      if (!penetrationIds.add(penetration.id)) {
+        throw ArgumentError('Duplicate penetration id ${penetration.id}.');
+      }
+      var matchCount = 0;
+      for (var index = 0; index + 1 < segments.length; index++) {
+        if (_penetrationMatchesTransition(
+          penetration,
+          segments[index],
+          segments[index + 1],
+        )) {
+          matchCount++;
+        }
+      }
+      if (matchCount != 1) {
+        throw ArgumentError(
+          'Penetration ${penetration.id} must bind to exactly one adjacent '
+          'route-segment transition; found $matchCount.',
+        );
+      }
+    }
+
+    for (var index = 0; index + 1 < segments.length; index++) {
+      final before = segments[index];
+      final after = segments[index + 1];
+      if (before.points.isEmpty || after.points.isEmpty) continue;
+      if (before.surface == after.surface) {
+        if (before.points.last != after.points.first) {
+          throw ArgumentError(
+            'Adjacent route segments on the same surface must be contiguous.',
+          );
+        }
+        continue;
+      }
+
+      final crossesSpaces = before.surface.spaceId != after.surface.spaceId;
+      final floorCeilingPair = (before.surface.type == SurfacePlaneType.floor &&
+              after.surface.type == SurfacePlaneType.ceiling) ||
+          (before.surface.type == SurfacePlaneType.ceiling &&
+              after.surface.type == SurfacePlaneType.floor);
+      if (!crossesSpaces && !floorCeilingPair) continue;
+
+      final physicalTransitionPenetrations = penetrations
+          .where(
+            (penetration) =>
+                _penetrationMatchesTransition(penetration, before, after),
+          )
+          .toList(growable: false);
+      final hiddenVerticalLegs = verticalCoreLegs
+          .where((leg) => _verticalCoreLegMatchesTransition(leg, before, after))
+          .toList(growable: false);
+      final hasExactlyOnePhysicalTransition =
+          physicalTransitionPenetrations.length == 1 &&
+              hiddenVerticalLegs.isEmpty;
+      final hasExactlyOneHiddenCoreTransition =
+          physicalTransitionPenetrations.isEmpty &&
+              hiddenVerticalLegs.length == 1;
+      if (!hasExactlyOnePhysicalTransition &&
+          !hasExactlyOneHiddenCoreTransition) {
+        throw ArgumentError(
+          'Route $id physical transition ${index + 1} must have exactly one '
+          'penetration or one proven VerticalCore leg; found '
+          '${physicalTransitionPenetrations.length} penetration(s) and '
+          '${hiddenVerticalLegs.length} VerticalCore leg(s).',
+        );
+      }
+    }
+  }
+
+  void _validateVerticalCoreLegs() {
+    final seen = <String>{};
+    for (final leg in verticalCoreLegs) {
+      if (leg.fromSlabId == leg.toSlabId) {
+        throw ArgumentError(
+          'VerticalCore leg cannot connect slab ${leg.fromSlabId} to itself.',
+        );
+      }
+      final key = '${leg.verticalCoreId.value}\u0000'
+          '${leg.fromSlabId.value}\u0000${leg.toSlabId.value}';
+      if (!seen.add(key)) {
+        throw ArgumentError(
+          'Duplicate VerticalCore leg ${leg.fromSlabId}->${leg.toSlabId}.',
+        );
+      }
+
+      final fromMatches = penetrations.where(
+        (penetration) =>
+            penetration.slabId == leg.fromSlabId &&
+            penetration.verticalCoreId == leg.verticalCoreId,
+      );
+      final toMatches = penetrations.where(
+        (penetration) =>
+            penetration.slabId == leg.toSlabId &&
+            penetration.verticalCoreId == leg.verticalCoreId,
+      );
+      if (fromMatches.length != 1 || toMatches.length != 1) {
+        throw ArgumentError(
+          'VerticalCore leg ${leg.fromSlabId}->${leg.toSlabId} requires '
+          'exactly one penetration for each slab with core '
+          '${leg.verticalCoreId}.',
+        );
+      }
+    }
+  }
+
+  bool _verticalCoreLegMatchesTransition(
+    VerticalCoreRouteLeg leg,
+    ElectricalRouteSegment before,
+    ElectricalRouteSegment after,
+  ) {
+    if (before.points.isEmpty || after.points.isEmpty) return false;
+    final fromMatches = penetrations
+        .where(
+          (penetration) =>
+              penetration.slabId == leg.fromSlabId &&
+              penetration.verticalCoreId == leg.verticalCoreId,
+        )
+        .toList(growable: false);
+    final toMatches = penetrations
+        .where(
+          (penetration) =>
+              penetration.slabId == leg.toSlabId &&
+              penetration.verticalCoreId == leg.verticalCoreId,
+        )
+        .toList(growable: false);
+    if (fromMatches.length != 1 || toMatches.length != 1) return false;
+    final from = fromMatches.single;
+    final to = toMatches.single;
+    return from.exitAnchor.surface == before.surface &&
+        from.exitAnchor.point == before.points.last &&
+        to.entryAnchor.surface == after.surface &&
+        to.entryAnchor.point == after.points.first;
+  }
+
+  static bool _penetrationMatchesTransition(
+    BoundaryPenetration penetration,
+    ElectricalRouteSegment before,
+    ElectricalRouteSegment after,
+  ) {
+    if (before.points.isEmpty || after.points.isEmpty) return false;
+    return penetration.entryAnchor.surface == before.surface &&
+        penetration.entryAnchor.point == before.points.last &&
+        penetration.exitAnchor.surface == after.surface &&
+        penetration.exitAnchor.point == after.points.first;
+  }
 }
 
 abstract final class ElectricalPortCompatibility {

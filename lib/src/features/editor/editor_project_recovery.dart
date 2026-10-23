@@ -139,12 +139,14 @@ final class JsonFileEditorProjectRecoveryStore
       }
       final snapshot = await _tryRead(entity);
       if (snapshot == null) continue;
-      final existingIndex =
-          result.indexWhere((item) => item.projectId == snapshot.projectId);
+      final existingIndex = result.indexWhere(
+        (item) => item.projectId == snapshot.projectId,
+      );
       if (existingIndex == -1) {
         result.add(snapshot);
-      } else if (snapshot.capturedAt
-          .isAfter(result[existingIndex].capturedAt)) {
+      } else if (snapshot.capturedAt.isAfter(
+        result[existingIndex].capturedAt,
+      )) {
         result[existingIndex] = snapshot;
       }
     }

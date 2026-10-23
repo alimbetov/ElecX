@@ -12,8 +12,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('F17 canvas publishes component and route semantics',
-      (tester) async {
+  testWidgets('F17 canvas publishes component and route semantics', (
+    tester,
+  ) async {
     final controller = EditorController.demo();
     addTearDown(() {
       controller.disposeP2State();
@@ -57,63 +58,60 @@ void main() {
     );
   });
 
-  testWidgets('F17 Tab and Shift Tab traverse visible scene objects',
-      (tester) async {
-    final controller = EditorController.demo();
-    addTearDown(() {
-      controller.disposeP2State();
-      controller.dispose();
-    });
-    controller.showWall(1);
-    final surface = controller.activeSurface!;
-    final first = controller.p2.placeComponent(
-      type: ElectricalComponentType.powerSource,
-      surface: surface,
-      position: const SurfacePointMm(300, 900),
-    );
-    final second = controller.p2.placeComponent(
-      type: ElectricalComponentType.socketOutlet,
-      surface: surface,
-      position: const SurfacePointMm(2400, 900),
-    );
-    controller.p2.select(first.id);
-    controller.p2.select(second.id, mode: SelectionMode.add);
-    expect(
-      controller.p2.autoRouteSelectedPair(space: controller.selectedSpace),
-      isTrue,
-    );
-    final routeId = controller.p2.routes.single.id;
-    controller.p2.clearSelection();
-    controller.routeSelection.clear();
-    await tester.pumpWidget(
-      MaterialApp(
-        home: EditorKeyboardScope(
-          controller: controller,
-          child: const Scaffold(body: SizedBox.expand()),
+  testWidgets(
+    'F17 Ctrl+Tab and Ctrl+Shift+Tab traverse visible scene objects',
+    (tester) async {
+      final controller = EditorController.demo();
+      addTearDown(() {
+        controller.disposeP2State();
+        controller.dispose();
+      });
+      controller.showWall(1);
+      final surface = controller.activeSurface!;
+      final first = controller.p2.placeComponent(
+        type: ElectricalComponentType.powerSource,
+        surface: surface,
+        position: const SurfacePointMm(300, 900),
+      );
+      final second = controller.p2.placeComponent(
+        type: ElectricalComponentType.socketOutlet,
+        surface: surface,
+        position: const SurfacePointMm(2400, 900),
+      );
+      controller.p2.select(first.id);
+      controller.p2.select(second.id, mode: SelectionMode.add);
+      expect(
+        controller.p2.autoRouteSelectedPair(space: controller.selectedSpace),
+        isTrue,
+      );
+      final routeId = controller.p2.routes.single.id;
+      controller.p2.clearSelection();
+      controller.routeSelection.clear();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: EditorKeyboardScope(
+            controller: controller,
+            child: const Scaffold(body: SizedBox.expand()),
+          ),
         ),
-      ),
-    );
-    await tester.pump();
-    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-    await tester.pump();
-    expect(controller.p2.selection.primaryId, first.id);
-    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-    await tester.pump();
-    expect(controller.p2.selection.primaryId, second.id);
-    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-    await tester.pump();
-    expect(controller.routeSelection.selectedRouteId, routeId);
-    expect(controller.p2.selection.ids, isEmpty);
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
-    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
-    await tester.pump();
-    expect(controller.p2.selection.primaryId, second.id);
-    expect(controller.routeSelection.selectedRouteId, isNull);
-  });
+      );
+      await tester.pump();
+      await _sendControlTab(tester);
+      expect(controller.p2.selection.primaryId, first.id);
+      await _sendControlTab(tester);
+      expect(controller.p2.selection.primaryId, second.id);
+      await _sendControlTab(tester);
+      expect(controller.routeSelection.selectedRouteId, routeId);
+      expect(controller.p2.selection.ids, isEmpty);
+      await _sendControlTab(tester, reverse: true);
+      expect(controller.p2.selection.primaryId, second.id);
+      expect(controller.routeSelection.selectedRouteId, isNull);
+    },
+  );
 
-  testWidgets('F17 hidden layers are omitted from keyboard traversal',
-      (tester) async {
+  testWidgets('F17 hidden layers are omitted from keyboard scene traversal', (
+    tester,
+  ) async {
     final controller = EditorController.demo();
     addTearDown(() {
       controller.disposeP2State();
@@ -136,8 +134,23 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-    await tester.pump();
+    await _sendControlTab(tester);
     expect(controller.p2.selection.contains(component.id), isFalse);
   });
+}
+
+Future<void> _sendControlTab(
+  WidgetTester tester, {
+  bool reverse = false,
+}) async {
+  await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+  if (reverse) {
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+  }
+  await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+  if (reverse) {
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+  }
+  await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+  await tester.pump();
 }

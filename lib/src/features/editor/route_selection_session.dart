@@ -2,7 +2,9 @@ import 'package:flutter/foundation.dart';
 
 import '../../domain/electrical_routing.dart';
 import '../../domain/hosted_routing.dart';
+import '../../domain/route_host.dart';
 import 'cable_editor_ui_session.dart';
+import 'canonical_room_surface_runtime_registry.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 import 'hosted_route_session.dart';
@@ -27,7 +29,60 @@ final class RouteSelectionSession extends ChangeNotifier {
   HostedRoutePath? get selectedHostedRoute {
     final id = _selectedRouteId;
     if (id == null) return null;
-    return controller.hostedRoutes.byId(id);
+    final explicit = controller.hostedRoutes.byId(id);
+    final indoor = selectedRoute;
+    final route = explicit ??
+        (indoor == null ? null : HostedRouteAdapter.fromIndoor(indoor));
+    return route == null ? null : _projectActiveSlabHost(route);
+  }
+
+  HostedRoutePath _projectActiveSlabHost(HostedRoutePath route) {
+    final activeSurface = controller.activeSurface;
+    final context =
+        CanonicalRoomSurfaceRuntimeRegistry.physicalRoutingContextFor(
+      controller,
+    );
+    if (activeSurface == null || context == null) return route;
+
+    final activeCanonicalSpaceId =
+        context.canonicalSpaceIdForSurfaceSpaceId(activeSurface.spaceId);
+    if (activeCanonicalSpaceId == null) return route;
+
+    var changed = false;
+    RouteHostRef projectHost(RouteHostRef host) {
+      final surface = host.surface;
+      if (surface == null || surface.type != activeSurface.type) return host;
+      final canonicalSpaceId =
+          context.canonicalSpaceIdForSurfaceSpaceId(surface.spaceId);
+      if (canonicalSpaceId != activeCanonicalSpaceId) return host;
+      changed = true;
+      return RouteHostRef.indoor(activeSurface);
+    }
+
+    final transitions = <RouteHostTransition>[
+      for (final transition in route.transitions)
+        if (transition.kind == RouteHostTransitionKind.levelPenetration)
+          RouteHostTransition(
+            id: transition.id,
+            kind: transition.kind,
+            fromHost: projectHost(transition.fromHost),
+            fromPoint: transition.fromPoint,
+            toHost: projectHost(transition.toHost),
+            toPoint: transition.toPoint,
+            requiresPenetration: transition.requiresPenetration,
+            siteConnectionId: transition.siteConnectionId,
+            slabId: transition.slabId,
+          )
+        else
+          transition,
+    ];
+    if (!changed) return route;
+    return HostedRoutePath(
+      routeId: route.routeId,
+      segments: route.segments,
+      transitions: transitions,
+      medium: route.medium,
+    );
   }
 
   bool contains(String routeId) => _selectedRouteId == routeId;

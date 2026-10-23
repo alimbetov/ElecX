@@ -157,9 +157,7 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
         value.northAzimuthDegrees) {
       return;
     }
-    site = site.copyWith(
-      site: site.site.copyWith(projectNorth: value),
-    );
+    site = site.copyWith(site: site.site.copyWith(projectNorth: value));
     notifyListeners();
   }
 
@@ -270,8 +268,9 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
     final current = building.levelByNumber(_activeLevelNumber);
     if (current == null) return;
 
-    _openingsByLevel[_activeLevelNumber] =
-        List<ArchitecturalOpening>.of(editor.openings);
+    _openingsByLevel[_activeLevelNumber] = List<ArchitecturalOpening>.of(
+      editor.openings,
+    );
     final updatedLevel = ComposedBuildingLevel(
       level: editor.level,
       levelNumber: current.levelNumber,

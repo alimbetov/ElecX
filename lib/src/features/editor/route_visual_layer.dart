@@ -6,6 +6,7 @@ import '../../domain/route_host.dart';
 import '../../domain/route_medium.dart';
 import '../../engine/route_flow_visualization.dart';
 import '../../engine/route_interaction_engine.dart';
+import 'vertical_route_continuation_marker.dart';
 
 /// Maps route-host millimetre coordinates into the active canvas viewport.
 /// SurfaceCanvas and SiteMapCanvas provide their own camera/projection adapter,
@@ -174,6 +175,35 @@ final class RouteVisualPainter extends CustomPainter {
       }
       if (point == null) continue;
       final center = mapper.toViewport(point);
+      final currentSurface = mapper.host.surface;
+      final marker = currentSurface == null
+          ? null
+          : VerticalRouteContinuationMarkerResolver.resolve(
+              routeId: route.routeId,
+              transition: transition,
+              currentSurface: currentSurface,
+            );
+      if (marker != null) {
+        canvas.drawCircle(center, 10, fill);
+        canvas.drawCircle(center, 10, stroke);
+        final text = TextPainter(
+          text: TextSpan(
+            text: marker.glyph,
+            style: TextStyle(
+              color: colorScheme.tertiary,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              height: 1,
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        text.paint(
+          canvas,
+          center - Offset(text.width / 2, text.height / 2),
+        );
+        continue;
+      }
       canvas.drawCircle(center, 7, fill);
       canvas.drawCircle(center, 7, stroke);
       canvas.drawCircle(center, 2.5, Paint()..color = colorScheme.tertiary);

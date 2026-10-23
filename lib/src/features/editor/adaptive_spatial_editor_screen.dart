@@ -631,8 +631,9 @@ class _Inspector extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => controller
-                        .addOpeningGuarded(ArchitecturalOpeningType.door),
+                    onPressed: () => controller.addOpeningGuarded(
+                      ArchitecturalOpeningType.door,
+                    ),
                     icon: const Icon(Icons.door_front_door_outlined),
                     label: const Text('Дверь'),
                   ),
@@ -640,8 +641,9 @@ class _Inspector extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => controller
-                        .addOpeningGuarded(ArchitecturalOpeningType.window),
+                    onPressed: () => controller.addOpeningGuarded(
+                      ArchitecturalOpeningType.window,
+                    ),
                     icon: const Icon(Icons.window_outlined),
                     label: const Text('Окно'),
                   ),
@@ -839,7 +841,8 @@ class _OpeningEditor extends StatelessWidget {
             label: 'Позиция от начала стены',
             value: opening.offsetFromStartMm,
             onSubmit: (value) => controller.updateSelectedOpeningGuarded(
-                offsetFromStartMm: value),
+              offsetFromStartMm: value,
+            ),
           ),
           const SizedBox(height: 8),
           _SubmitIntField(

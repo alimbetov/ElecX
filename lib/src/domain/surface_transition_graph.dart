@@ -1,7 +1,10 @@
 import 'dart:math' as math;
 
+import 'boundary_penetration.dart';
 import 'geometry.dart';
+import 'project_identity.dart';
 import 'project_model.dart';
+import 'slab_topology.dart';
 import 'surface_routing.dart';
 import 'surfaces.dart';
 
@@ -10,7 +13,22 @@ enum SurfaceTransitionKind {
   wallToFloor,
   wallToCeiling,
   roomPenetration,
+  levelPenetration,
 }
+
+typedef BoundaryThicknessResolver = int? Function(
+  RoomSurfaceRef fromSurface,
+  RoomSurfaceRef toSurface,
+);
+
+typedef BoundaryMaterialResolver = String? Function(
+  RoomSurfaceRef fromSurface,
+  RoomSurfaceRef toSurface,
+);
+
+typedef BoundaryEdgeOrderResolver = List<BoundaryEdgeId>? Function(
+  String spaceId,
+);
 
 /// One physical continuation point represented on two surface coordinate
 /// systems. Both anchors refer to the same place in the building.
@@ -22,7 +40,7 @@ final class SurfaceTransitionCandidate {
     required this.fromPoint,
     required this.toSurface,
     required this.toPoint,
-    this.requiresPenetration = false,
+    this.penetrationRequirement,
   });
 
   final String id;
@@ -31,15 +49,46 @@ final class SurfaceTransitionCandidate {
   final SurfacePointMm fromPoint;
   final RoomSurfaceRef toSurface;
   final SurfacePointMm toPoint;
-  final bool requiresPenetration;
+  final BoundaryPenetrationRequirement? penetrationRequirement;
+
+  bool get requiresPenetration => penetrationRequirement != null;
+
+  /// Compatibility boundary for callers that still hold a persisted scalar.
+  BoundaryPenetration createPenetration({
+    required String penetrationId,
+    required String routeId,
+    int? thicknessMm,
+  }) =>
+      createPenetrationTyped(
+        penetrationId: BoundaryPenetrationId(penetrationId),
+        routeId: routeId,
+        thicknessMm: thicknessMm,
+      );
+
+  /// Canonical route-authoring boundary. Identity must be allocated before
+  /// materialization and cannot be regenerated from transition geometry.
+  BoundaryPenetration createPenetrationTyped({
+    required BoundaryPenetrationId penetrationId,
+    required String routeId,
+    int? thicknessMm,
+  }) {
+    final requirement = penetrationRequirement;
+    if (requirement == null) {
+      throw StateError('Transition $id does not require a penetration.');
+    }
+    return requirement.createTyped(
+      penetrationId: penetrationId,
+      routeId: routeId,
+      entrySurface: fromSurface,
+      entryPoint: fromPoint,
+      exitSurface: toSurface,
+      exitPoint: toPoint,
+      thicknessMm: thicknessMm,
+    );
+  }
 }
 
 /// Discovers physically valid continuation points for an in-progress route.
-///
-/// Same-room transitions reuse [SurfaceTransitionResolver]. Cross-room
-/// transitions are only exposed when two walls are collinear/coincident at the
-/// physical route point. Cross-room transitions are conservatively marked as
-/// requiring a penetration until a future opening/sleeve model proves one.
 abstract final class SurfaceTransitionGraph {
   static List<SurfaceTransitionCandidate> candidates({
     required BuildingLevel level,
@@ -48,7 +97,12 @@ abstract final class SurfaceTransitionGraph {
     required SurfacePointMm point,
     int roomHeightMm = 3000,
     int toleranceMm = 2,
+    BoundaryThicknessResolver? thicknessResolver,
+    BoundaryMaterialResolver? materialResolver,
+    BoundaryEdgeOrderResolver? boundaryEdgeOrderResolver,
   }) {
+    if (fromSurface.spaceId != fromSpace.id) return const [];
+    final sourceEdgeIds = boundaryEdgeOrderResolver?.call(fromSpace.id);
     final result = <SurfaceTransitionCandidate>[];
 
     void addSameRoom(RoomSurfaceRef target, SurfaceTransitionKind kind) {
@@ -59,6 +113,7 @@ abstract final class SurfaceTransitionGraph {
         to: target,
         roomHeightMm: roomHeightMm,
         toleranceMm: toleranceMm,
+        orderedBoundaryEdgeIds: sourceEdgeIds,
       );
       if (mapped == null) return;
       result.add(
@@ -82,7 +137,7 @@ abstract final class SurfaceTransitionGraph {
         RoomSurfaceRef.ceiling(fromSpace.id),
         SurfaceTransitionKind.wallToCeiling,
       );
-      for (final wall in RoomSurfaceResolver.walls(fromSpace)) {
+      for (final wall in _wallsForSpace(fromSpace, sourceEdgeIds)) {
         if (wall.ref == fromSurface) continue;
         addSameRoom(wall.ref, SurfaceTransitionKind.wallToWall);
       }
@@ -93,10 +148,15 @@ abstract final class SurfaceTransitionGraph {
           fromSurface: fromSurface,
           point: point,
           toleranceMm: toleranceMm,
+          roomHeightMm: roomHeightMm,
+          thicknessResolver: thicknessResolver,
+          materialResolver: materialResolver,
+          boundaryEdgeOrderResolver: boundaryEdgeOrderResolver,
         ),
       );
     } else {
-      for (final wall in RoomSurfaceResolver.walls(fromSpace)) {
+      if (!_horizontalPointIsValid(fromSpace, point)) return const [];
+      for (final wall in _wallsForSpace(fromSpace, sourceEdgeIds)) {
         addSameRoom(
           wall.ref,
           fromSurface.type == SurfacePlaneType.floor
@@ -113,30 +173,158 @@ abstract final class SurfaceTransitionGraph {
     return List.unmodifiable(unique.values);
   }
 
+  /// Resolves a slab penetration only when the exact canonical slab proves the
+  /// physical transition between source and target levels and both room
+  /// polygons overlap at the same plan point.
+  ///
+  /// [buildingLevels] is retained as a compatibility input for legacy editor
+  /// geometry, but it is never used to manufacture level adjacency. A missing,
+  /// wrong-kind or mismatched [slab] fails closed.
+  static SurfaceTransitionCandidate? levelPenetration({
+    required Iterable<BuildingLevel> buildingLevels,
+    required BuildingLevel fromLevel,
+    required EngineeringSpace fromSpace,
+    required RoomSurfaceRef fromSurface,
+    required SurfacePointMm point,
+    required int fromRoomHeightMm,
+    required BuildingLevel toLevel,
+    required EngineeringSpace toSpace,
+    required int toRoomHeightMm,
+    required int slabThicknessMm,
+    ProjectSlab? slab,
+    int verticalToleranceMm = 2,
+    String? materialId,
+  }) {
+    if (fromRoomHeightMm <= 0 || toRoomHeightMm <= 0) {
+      throw ArgumentError('Room heights must be positive.');
+    }
+    if (slabThicknessMm <= 0) {
+      throw ArgumentError.value(
+        slabThicknessMm,
+        'slabThicknessMm',
+        'Must be positive.',
+      );
+    }
+    if (verticalToleranceMm < 0) {
+      throw ArgumentError.value(
+        verticalToleranceMm,
+        'verticalToleranceMm',
+        'Must be non-negative.',
+      );
+    }
+    if (fromLevel.id == toLevel.id) return null;
+    if (!_levelContainsSpace(fromLevel, fromSpace) ||
+        !_levelContainsSpace(toLevel, toSpace)) {
+      return null;
+    }
+    if (!_containsCanonicalLevels(buildingLevels, fromLevel, toLevel)) {
+      return null;
+    }
+
+    final canonicalSlab = slab;
+    if (canonicalSlab == null ||
+        canonicalSlab.kind != SlabKind.interLevel ||
+        !_slabConnectsLevels(canonicalSlab, fromLevel, toLevel) ||
+        canonicalSlab.thicknessMm != slabThicknessMm) {
+      return null;
+    }
+    if (materialId != null && materialId != canonicalSlab.materialId) {
+      return null;
+    }
+
+    final isUp = toLevel.elevationMm > fromLevel.elevationMm;
+    if (toLevel.elevationMm == fromLevel.elevationMm) return null;
+    final expectedFrom =
+        isUp ? SurfacePlaneType.ceiling : SurfacePlaneType.floor;
+    final expectedTo = isUp ? SurfacePlaneType.floor : SurfacePlaneType.ceiling;
+    if (fromSurface.type != expectedFrom ||
+        fromSurface.spaceId != fromSpace.id) {
+      return null;
+    }
+    if (!_horizontalPointIsValid(fromSpace, point)) return null;
+
+    final belowIsFrom = canonicalSlab.belowLevelId!.value == fromLevel.id;
+    final belowLevel = belowIsFrom ? fromLevel : toLevel;
+    final aboveLevel = belowIsFrom ? toLevel : fromLevel;
+    final belowRoomHeightMm = belowIsFrom ? fromRoomHeightMm : toRoomHeightMm;
+    if (belowLevel.elevationMm >= aboveLevel.elevationMm) return null;
+
+    final expectedSlabBottomMm = belowLevel.elevationMm + belowRoomHeightMm;
+    if ((canonicalSlab.bottomElevationMm - expectedSlabBottomMm).abs() >
+            verticalToleranceMm ||
+        (canonicalSlab.topElevationMm - aboveLevel.elevationMm).abs() >
+            verticalToleranceMm) {
+      return null;
+    }
+
+    final physicalGapMm = isUp
+        ? toLevel.elevationMm - (fromLevel.elevationMm + fromRoomHeightMm)
+        : fromLevel.elevationMm - (toLevel.elevationMm + toRoomHeightMm);
+    if (physicalGapMm <= 0 ||
+        (physicalGapMm - canonicalSlab.thicknessMm).abs() >
+            verticalToleranceMm) {
+      return null;
+    }
+
+    final planPoint = _horizontalToPlan(fromSpace, point);
+    if (!_containsOrTouches(toSpace.boundary, planPoint)) return null;
+
+    final target = expectedTo == SurfacePlaneType.floor
+        ? RoomSurfaceRef.floor(toSpace.id)
+        : RoomSurfaceRef.ceiling(toSpace.id);
+    final mapped = _planToHorizontal(toSpace, planPoint);
+    return SurfaceTransitionCandidate(
+      id: _id(fromSurface, point, target, mapped),
+      kind: SurfaceTransitionKind.levelPenetration,
+      fromSurface: fromSurface,
+      fromPoint: point,
+      toSurface: target,
+      toPoint: mapped,
+      penetrationRequirement: BoundaryPenetrationRequirement(
+        hostKind: BoundaryPenetrationHostKind.slab,
+        hostThicknessMm: canonicalSlab.thicknessMm,
+        materialId: canonicalSlab.materialId,
+        slabId: canonicalSlab.id,
+      ),
+    );
+  }
+
   static List<SurfaceTransitionCandidate> _crossRoomCandidates({
     required BuildingLevel level,
     required EngineeringSpace fromSpace,
     required RoomSurfaceRef fromSurface,
     required SurfacePointMm point,
     required int toleranceMm,
+    required int roomHeightMm,
+    required BoundaryThicknessResolver? thicknessResolver,
+    required BoundaryMaterialResolver? materialResolver,
+    required BoundaryEdgeOrderResolver? boundaryEdgeOrderResolver,
   }) {
-    final fromWall = RoomSurfaceResolver.wall(
+    final sourceEdgeIds = boundaryEdgeOrderResolver?.call(fromSpace.id);
+    final fromWall = _wallForRef(
       fromSpace,
-      fromSurface.wallIndex!,
+      fromSurface,
+      sourceEdgeIds,
+      roomHeightMm,
     );
+    if (fromWall == null ||
+        !fromWall.profile.containsPoint(point.xMm, point.yMm)) {
+      return const [];
+    }
     final worldPoint = RoomSurfaceResolver.wallLocalToPlan(fromWall, point.xMm);
     final result = <SurfaceTransitionCandidate>[];
 
     for (final space in level.spaces) {
       if (space.id == fromSpace.id) continue;
-      for (final wall in RoomSurfaceResolver.walls(space)) {
+      final targetEdgeIds = boundaryEdgeOrderResolver?.call(space.id);
+      for (final wall in _wallsForSpace(space, targetEdgeIds)) {
         if (!_collinear(fromWall, wall, toleranceMm: toleranceMm)) continue;
         final x = _distanceAlongWallIfOnSegment(
           wall,
           worldPoint,
           toleranceMm: toleranceMm,
         );
-        if (x == null) continue;
+        if (x == null || !wall.profile.containsPoint(x, point.yMm)) continue;
         final mapped = SurfacePointMm(x, point.yMm);
         result.add(
           SurfaceTransitionCandidate(
@@ -146,12 +334,146 @@ abstract final class SurfaceTransitionGraph {
             fromPoint: point,
             toSurface: wall.ref,
             toPoint: mapped,
-            requiresPenetration: true,
+            penetrationRequirement: BoundaryPenetrationRequirement(
+              hostKind: BoundaryPenetrationHostKind.wall,
+              hostThicknessMm: thicknessResolver?.call(fromSurface, wall.ref),
+              materialId: materialResolver?.call(fromSurface, wall.ref),
+            ),
           ),
         );
       }
     }
     return result;
+  }
+
+  static List<RoomWallSurface> _wallsForSpace(
+    EngineeringSpace space,
+    List<BoundaryEdgeId>? edgeIds,
+  ) {
+    if (edgeIds == null) return RoomSurfaceResolver.walls(space);
+    try {
+      return RoomSurfaceResolver.wallsByBoundaryEdges(space, edgeIds);
+    } on ArgumentError {
+      return const [];
+    }
+  }
+
+  static RoomWallSurface? _wallForRef(
+    EngineeringSpace space,
+    RoomSurfaceRef ref,
+    List<BoundaryEdgeId>? edgeIds,
+    int roomHeightMm,
+  ) {
+    if (ref.type != SurfacePlaneType.wall || ref.spaceId != space.id) {
+      return null;
+    }
+    final edgeId = ref.boundaryEdgeId;
+    if (edgeId != null) {
+      if (edgeIds == null) {
+        return null;
+      }
+      try {
+        return RoomSurfaceResolver.wallByBoundaryEdge(
+          space,
+          edgeIds,
+          edgeId,
+          defaultHeightMm: roomHeightMm,
+        );
+      } on StateError {
+        return null;
+      } on ArgumentError {
+        return null;
+      }
+    }
+    final wallIndex = ref.wallIndex;
+    if (wallIndex == null) return null;
+    try {
+      return RoomSurfaceResolver.wall(
+        space,
+        wallIndex,
+        defaultHeightMm: roomHeightMm,
+      );
+    } on RangeError {
+      return null;
+    }
+  }
+
+  static bool _levelContainsSpace(
+    BuildingLevel level,
+    EngineeringSpace space,
+  ) =>
+      level.spaces.any((candidate) => candidate.id == space.id);
+
+  static bool _containsCanonicalLevels(
+    Iterable<BuildingLevel> buildingLevels,
+    BuildingLevel a,
+    BuildingLevel b,
+  ) {
+    var aMatches = 0;
+    var bMatches = 0;
+    for (final level in buildingLevels) {
+      if (level.id == a.id) aMatches++;
+      if (level.id == b.id) bMatches++;
+    }
+    return aMatches == 1 && bMatches == 1;
+  }
+
+  static bool _slabConnectsLevels(
+    ProjectSlab slab,
+    BuildingLevel a,
+    BuildingLevel b,
+  ) {
+    final below = slab.belowLevelId?.value;
+    final above = slab.aboveLevelId?.value;
+    if (below == null || above == null || below == above) return false;
+    return (below == a.id && above == b.id) || (below == b.id && above == a.id);
+  }
+
+  static bool _horizontalPointIsValid(
+    EngineeringSpace space,
+    SurfacePointMm point,
+  ) {
+    if (point.xMm < 0 || point.yMm < 0) return false;
+    return _containsOrTouches(space.boundary, _horizontalToPlan(space, point));
+  }
+
+  static SurfacePointMm _planToHorizontal(
+    EngineeringSpace space,
+    MmPoint point,
+  ) {
+    final bounds = space.boundary.bounds;
+    return SurfacePointMm(point.x - bounds.left, point.y - bounds.bottom);
+  }
+
+  static MmPoint _horizontalToPlan(
+    EngineeringSpace space,
+    SurfacePointMm point,
+  ) {
+    final bounds = space.boundary.bounds;
+    return MmPoint(bounds.left + point.xMm, bounds.bottom + point.yMm);
+  }
+
+  static bool _containsOrTouches(MmPolygon polygon, MmPoint point) {
+    if (polygon.contains(point)) return true;
+    final vertices = polygon.vertices;
+    for (var i = 0; i < vertices.length; i++) {
+      final a = vertices[i];
+      final b = vertices[(i + 1) % vertices.length];
+      final cross =
+          (point.x - a.x) * (b.y - a.y) - (point.y - a.y) * (b.x - a.x);
+      if (cross != 0) continue;
+      final minX = math.min(a.x, b.x);
+      final maxX = math.max(a.x, b.x);
+      final minY = math.min(a.y, b.y);
+      final maxY = math.max(a.y, b.y);
+      if (point.x >= minX &&
+          point.x <= maxX &&
+          point.y >= minY &&
+          point.y <= maxY) {
+        return true;
+      }
+    }
+    return false;
   }
 
   static bool _collinear(

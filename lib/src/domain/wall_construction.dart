@@ -4,15 +4,41 @@ import 'geometry.dart';
 import 'surfaces.dart';
 
 final class WallConstruction {
-  const WallConstruction({
-    required this.id,
-    required this.thicknessMm,
-    this.materialId,
-  }) : assert(thicknessMm > 0);
+  WallConstruction({
+    required String id,
+    required int thicknessMm,
+    String? materialId,
+  })  : id = _requireId(id),
+        thicknessMm = _requirePositiveThickness(thicknessMm),
+        materialId = _normalizeMaterialId(materialId);
 
   final String id;
   final int thicknessMm;
   final String? materialId;
+
+  static String _requireId(String value) {
+    final normalized = value.trim();
+    if (normalized.isEmpty) {
+      throw ArgumentError.value(value, 'id', 'Must be non-empty.');
+    }
+    return normalized;
+  }
+
+  static int _requirePositiveThickness(int value) {
+    if (value <= 0) {
+      throw ArgumentError.value(value, 'thicknessMm', 'Must be positive.');
+    }
+    return value;
+  }
+
+  static String? _normalizeMaterialId(String? value) {
+    if (value == null) return null;
+    final normalized = value.trim();
+    if (normalized.isEmpty) {
+      throw ArgumentError.value(value, 'materialId', 'Must be non-empty.');
+    }
+    return normalized;
+  }
 }
 
 /// Plan projection of a wall with a physical interior and exterior face.

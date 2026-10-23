@@ -30,10 +30,7 @@ void main() {
     return widthScale > heightScale ? widthScale : heightScale;
   }
 
-  Offset viewportPoint(
-    EditorController controller,
-    SurfacePointMm point,
-  ) {
+  Offset viewportPoint(EditorController controller, SurfacePointMm point) {
     final wall = controller.activeWall!;
     final scale = mmPerPixel(controller);
     return Offset(
@@ -344,8 +341,10 @@ void main() {
     await drainGestureTimers(tester);
 
     final committed = controller.p2.routes.single;
-    expect(committed.segments.single.points,
-        isNot(original.segments.single.points));
+    expect(
+      committed.segments.single.points,
+      isNot(original.segments.single.points),
+    );
     expect(committed.segments.single.points.first, points.first);
     expect(committed.segments.single.points.last, points.last);
     expect(controller.p2.history.undoDepth, depthBefore + 1);
@@ -354,60 +353,60 @@ void main() {
     expect(controller.p2.routes.single.segments.single.points, points);
   });
 
-  testWidgets('endpoint outside compatible ports is invalid and not committed',
-      (
-    tester,
-  ) async {
-    final controller = controllerWithClearWall();
-    addTearDown(controller.dispose);
-    final surface = controller.activeSurface!;
-    final source = controller.p2.placeComponent(
-      type: ElectricalComponentType.powerSource,
-      surface: surface,
-      position: const SurfacePointMm(600, 1500),
-    );
-    final oldTarget = controller.p2.placeComponent(
-      type: ElectricalComponentType.socketOutlet,
-      surface: surface,
-      position: const SurfacePointMm(2600, 1500),
-    );
-    controller.p2.select(source.id);
-    controller.p2.select(oldTarget.id, mode: SelectionMode.add);
-    expect(
-      controller.p2.autoRouteSelectedPair(space: controller.selectedSpace),
-      isTrue,
-    );
-    final originalRoute = controller.p2.routes.single;
-    controller.routeSelection.select(originalRoute.id);
-    final depthBefore = controller.p2.history.undoDepth;
+  testWidgets(
+    'endpoint outside compatible ports is invalid and not committed',
+    (tester) async {
+      final controller = controllerWithClearWall();
+      addTearDown(controller.dispose);
+      final surface = controller.activeSurface!;
+      final source = controller.p2.placeComponent(
+        type: ElectricalComponentType.powerSource,
+        surface: surface,
+        position: const SurfacePointMm(600, 1500),
+      );
+      final oldTarget = controller.p2.placeComponent(
+        type: ElectricalComponentType.socketOutlet,
+        surface: surface,
+        position: const SurfacePointMm(2600, 1500),
+      );
+      controller.p2.select(source.id);
+      controller.p2.select(oldTarget.id, mode: SelectionMode.add);
+      expect(
+        controller.p2.autoRouteSelectedPair(space: controller.selectedSpace),
+        isTrue,
+      );
+      final originalRoute = controller.p2.routes.single;
+      controller.routeSelection.select(originalRoute.id);
+      final depthBefore = controller.p2.history.undoDepth;
 
-    await pumpCanvas(tester, controller);
-    final origin = tester.getTopLeft(find.byType(SurfaceCanvas));
-    final start = origin +
-        viewportPoint(controller, originalRoute.segments.last.points.last);
-    final emptyPoint =
-        origin + viewportPoint(controller, const SurfacePointMm(1600, 700));
+      await pumpCanvas(tester, controller);
+      final origin = tester.getTopLeft(find.byType(SurfaceCanvas));
+      final start = origin +
+          viewportPoint(controller, originalRoute.segments.last.points.last);
+      final emptyPoint =
+          origin + viewportPoint(controller, const SurfacePointMm(1600, 700));
 
-    final gesture = await tester.startGesture(
-      start,
-      kind: PointerDeviceKind.mouse,
-    );
-    await gesture.moveTo(emptyPoint);
-    await tester.pump();
+      final gesture = await tester.startGesture(
+        start,
+        kind: PointerDeviceKind.mouse,
+      );
+      await gesture.moveTo(emptyPoint);
+      await tester.pump();
 
-    expect(controller.cableEndpointTransform.active, isTrue);
-    expect(controller.cableEndpointTransform.previewState, isNull);
-    expect(find.textContaining('Недопустимый preview'), findsOneWidget);
-    expect(controller.p2.routes.single.target, originalRoute.target);
+      expect(controller.cableEndpointTransform.active, isTrue);
+      expect(controller.cableEndpointTransform.previewState, isNull);
+      expect(find.textContaining('Недопустимый preview'), findsOneWidget);
+      expect(controller.p2.routes.single.target, originalRoute.target);
 
-    await gesture.up();
-    await drainGestureTimers(tester);
+      await gesture.up();
+      await drainGestureTimers(tester);
 
-    expect(controller.p2.routes.single.target, originalRoute.target);
-    expect(
-      controller.p2.routes.single.segments.last.points.last,
-      originalRoute.segments.last.points.last,
-    );
-    expect(controller.p2.history.undoDepth, depthBefore);
-  });
+      expect(controller.p2.routes.single.target, originalRoute.target);
+      expect(
+        controller.p2.routes.single.segments.last.points.last,
+        originalRoute.segments.last.points.last,
+      );
+      expect(controller.p2.history.undoDepth, depthBefore);
+    },
+  );
 }

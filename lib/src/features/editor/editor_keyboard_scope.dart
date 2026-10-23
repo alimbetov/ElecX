@@ -5,6 +5,7 @@ import '../../domain/geometry.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/editor_layers.dart';
 import 'cable_edit_access.dart';
+import 'canonical_boundary_topology_migration_runtime.dart';
 import 'component_transform_session.dart';
 import 'editor_controller.dart';
 import 'editor_document_history.dart';
@@ -35,6 +36,11 @@ class EditorKeyboardScope extends StatelessWidget {
       controller.cableRouteEdit.active ||
       controller.componentTransform.active ||
       controller.placementCursor.active;
+
+  int? get _activeWallOrdinal =>
+      controller.activeSurface?.type == SurfacePlaneType.wall
+          ? controller.activeSurface?.wallIndex
+          : null;
 
   bool _selectedPointIsUsable(SurfacePointMm point) {
     final component = controller.p2.selectedComponent;
@@ -119,6 +125,35 @@ class EditorKeyboardScope extends StatelessWidget {
     }
   }
 
+  void _adoptStableWallHosts() {
+    if (_persistentEditActive || _activeWallOrdinal == null) return;
+    try {
+      CanonicalBoundaryTopologyMigrationRuntime.adoptLegacyHosts(
+        controller: controller,
+      );
+    } catch (_) {
+      // Fail closed. Pointer/touch UI exposes the actionable error surface.
+    }
+  }
+
+  void _splitActiveWall() {
+    final ordinal = _activeWallOrdinal;
+    if (_persistentEditActive || ordinal == null) return;
+    CanonicalBoundaryTopologyMigrationRuntime.splitLegacyWallAtMidpoint(
+      controller: controller,
+      wallOrdinal: ordinal,
+    );
+  }
+
+  void _mergeActiveWallWithNext() {
+    final ordinal = _activeWallOrdinal;
+    if (_persistentEditActive || ordinal == null) return;
+    CanonicalBoundaryTopologyMigrationRuntime.mergeLegacyWallWithNext(
+      controller: controller,
+      wallOrdinal: ordinal,
+    );
+  }
+
   void _cycleSceneSelection({required bool reverse}) {
     if (_persistentEditActive) return;
     final surface = controller.activeSurface;
@@ -191,11 +226,24 @@ class EditorKeyboardScope extends StatelessWidget {
             controller.setTool(EditorTool.guide),
         const SingleActivator(LogicalKeyboardKey.keyC): () =>
             controller.setTool(EditorTool.cableRoute),
+        const SingleActivator(LogicalKeyboardKey.keyA, alt: true):
+            _adoptStableWallHosts,
+        const SingleActivator(LogicalKeyboardKey.keyS, alt: true):
+            _splitActiveWall,
+        const SingleActivator(LogicalKeyboardKey.keyM, alt: true):
+            _mergeActiveWallWithNext,
         const SingleActivator(LogicalKeyboardKey.escape): _cancelActiveEdit,
-        const SingleActivator(LogicalKeyboardKey.tab): () =>
+        // Keep plain Tab/Shift+Tab available to Flutter's focus traversal so
+        // AppBar, navigator and inspector controls remain keyboard reachable.
+        // Scene-object cycling is an explicit CAD shortcut instead of a global
+        // accessibility override.
+        const SingleActivator(LogicalKeyboardKey.tab, control: true): () =>
             _cycleSceneSelection(reverse: false),
-        const SingleActivator(LogicalKeyboardKey.tab, shift: true): () =>
-            _cycleSceneSelection(reverse: true),
+        const SingleActivator(
+          LogicalKeyboardKey.tab,
+          control: true,
+          shift: true,
+        ): () => _cycleSceneSelection(reverse: true),
         const SingleActivator(LogicalKeyboardKey.enter): _commitActiveEdit,
         const SingleActivator(LogicalKeyboardKey.numpadEnter):
             _commitActiveEdit,
@@ -206,11 +254,8 @@ class EditorKeyboardScope extends StatelessWidget {
           control: true,
           shift: true,
         ): _redo,
-        const SingleActivator(
-          LogicalKeyboardKey.keyZ,
-          meta: true,
-          shift: true,
-        ): _redo,
+        const SingleActivator(LogicalKeyboardKey.keyZ, meta: true, shift: true):
+            _redo,
         const SingleActivator(LogicalKeyboardKey.keyY, control: true): _redo,
         const SingleActivator(LogicalKeyboardKey.arrowLeft): () =>
             _nudgeActive(-1, 0),

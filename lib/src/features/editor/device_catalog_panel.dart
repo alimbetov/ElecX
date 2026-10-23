@@ -12,6 +12,7 @@ import 'editor_ui_tokens.dart';
 import 'engineering_placement_cursor_session.dart';
 import 'engineering_selection_inspector.dart';
 import 'route_selection_session.dart';
+import 'wall_construction_editor.dart';
 
 class DeviceCatalogPanel extends StatefulWidget {
   const DeviceCatalogPanel({required this.controller, super.key});
@@ -41,6 +42,7 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
     final catalog = controller.componentCatalog;
     return ListenableBuilder(
       listenable: Listenable.merge([
+        controller,
         catalog,
         controller.placementCursor,
         controller.p2,
@@ -57,15 +59,42 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
             onBackToCatalog: _clearEngineeringSelection,
           );
         }
-        return _catalog(context, catalog);
+        return _catalogWithWallConstruction(context, catalog);
       },
+    );
+  }
+
+  Widget _catalogWithWallConstruction(
+    BuildContext context,
+    ComponentCatalogSession catalog,
+  ) {
+    final showWallConstruction =
+        controller.activeSurface?.type == SurfacePlaneType.wall;
+    return Column(
+      children: [
+        if (showWallConstruction) ...[
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 300),
+            child: SingleChildScrollView(
+              child: WallConstructionEditor(
+                controller: controller,
+                compact: true,
+              ),
+            ),
+          ),
+          const Divider(height: 1),
+        ],
+        Expanded(child: _catalog(context, catalog)),
+      ],
     );
   }
 
   Widget _catalog(BuildContext context, ComponentCatalogSession catalog) {
     final scheme = Theme.of(context).colorScheme;
     final entries = _filteredEntries(catalog.entries);
-    return Column(
+    return ListView(
+      key: const ValueKey('device-catalog-scroll'),
+      padding: EdgeInsets.zero,
       children: [
         _CatalogHeader(
           count: entries.length,
@@ -142,16 +171,21 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
           height: 1,
           color: scheme.outlineVariant.withValues(alpha: 0.55),
         ),
-        Expanded(
-          child: catalog.loading
-              ? const Center(child: CircularProgressIndicator())
-              : entries.isEmpty
-                  ? const _EmptyCatalogState()
-                  : ListView(
-                      padding: const EdgeInsets.fromLTRB(8, 7, 8, 18),
-                      children: _buildGrouped(entries),
-                    ),
-        ),
+        if (catalog.loading)
+          const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (entries.isEmpty)
+          const _EmptyCatalogState()
+        else
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 7, 8, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: _buildGrouped(entries),
+            ),
+          ),
       ],
     );
   }
@@ -324,18 +358,12 @@ class _CatalogHeader extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
         border: Border(
-          bottom: BorderSide(
-            color: engineering.info.withValues(alpha: 0.16),
-          ),
+          bottom: BorderSide(color: engineering.info.withValues(alpha: 0.16)),
         ),
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.widgets_outlined,
-            size: 17,
-            color: engineering.info,
-          ),
+          Icon(Icons.widgets_outlined, size: 17, color: engineering.info),
           const SizedBox(width: 7),
           Expanded(
             child: Text(
@@ -349,11 +377,7 @@ class _CatalogHeader extends StatelessWidget {
           if (activeComponentTypeId != null)
             Padding(
               padding: const EdgeInsets.only(right: 7),
-              child: Icon(
-                Icons.radar,
-                size: 15,
-                color: engineering.active,
-              ),
+              child: Icon(Icons.radar, size: 15, color: engineering.active),
             ),
           Text(
             '$count',

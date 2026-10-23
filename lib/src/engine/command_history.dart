@@ -1,4 +1,4 @@
-enum CommandHistoryMutationKind { execute, undo, redo }
+enum CommandHistoryMutationKind { execute, undo, redo, projection }
 
 abstract interface class EditorCommand<T> {
   String get label;
@@ -64,10 +64,25 @@ final class CommandHistory<T> {
     return _state;
   }
 
-  void replaceState(T state, {bool clearHistory = true}) {
+  /// Replaces a materialized state without manufacturing a local undo entry.
+  ///
+  /// [countAsProjection] is used for authoritative canonical -> editor
+  /// projections. It advances the observable mutation revision so dirty-state
+  /// and autosave listeners see the new persisted payload, while the unified
+  /// document history suppresses a duplicate P2 undo record for the same
+  /// canonical operation.
+  void replaceState(
+    T state, {
+    bool clearHistory = true,
+    bool countAsProjection = false,
+  }) {
     _state = state;
     if (clearHistory) {
       clear();
+    }
+    if (countAsProjection) {
+      _mutationRevision++;
+      _lastMutationKind = CommandHistoryMutationKind.projection;
     }
   }
 

@@ -65,8 +65,9 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     _sceneIndex = SpatialSceneIndex();
     _lastViewportRevision = controller.viewportCommandRevision;
     controller.viewportCommandListenable.addListener(_onViewportCommand);
-    controller.editCancellationListenable
-        .addListener(_cancelTransientInteraction);
+    controller.editCancellationListenable.addListener(
+      _cancelTransientInteraction,
+    );
     _rebuildIndex(force: true);
   }
 
@@ -82,8 +83,9 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
       );
       _lastViewportRevision = controller.viewportCommandRevision;
       controller.viewportCommandListenable.addListener(_onViewportCommand);
-      controller.editCancellationListenable
-          .addListener(_cancelTransientInteraction);
+      controller.editCancellationListenable.addListener(
+        _cancelTransientInteraction,
+      );
       _selectedExternalEdgeIndex = null;
       _selectedExternalSpaceId = null;
       _selectedExternalPullSign = 1;
@@ -94,8 +96,9 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
   @override
   void dispose() {
     controller.viewportCommandListenable.removeListener(_onViewportCommand);
-    controller.editCancellationListenable
-        .removeListener(_cancelTransientInteraction);
+    controller.editCancellationListenable.removeListener(
+      _cancelTransientInteraction,
+    );
     super.dispose();
   }
 

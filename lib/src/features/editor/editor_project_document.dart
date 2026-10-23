@@ -4,20 +4,25 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
+import '../../domain/boundary_penetration.dart';
 import '../../domain/building_composition.dart';
 import '../../domain/cable_identity.dart';
 import '../../domain/circuit_cable_registry.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/electrical_routing.dart';
 import '../../domain/geometry.dart';
+import '../../domain/project_identity.dart';
 import '../../domain/project_model.dart';
 import '../../domain/route_medium.dart';
 import '../../domain/site_orientation.dart';
 import '../../domain/site_outdoor_model.dart';
 import '../../domain/surfaces.dart';
+import '../../domain/vertical_core_route_leg.dart';
 import '../../domain/wall_profile.dart';
 import '../../engine/selection_engine.dart';
 import 'cable_route_constraints.dart';
+import 'canonical_room_surface_resume.dart';
+import 'canonical_room_surface_runtime_registry.dart';
 import 'circuit_sizing_evidence.dart';
 import 'editor_building_workspace.dart';
 import 'editor_controller.dart';
@@ -38,11 +43,16 @@ final class EditorProjectResumeState {
     required this.zoom,
     required this.roomSequence,
     required this.openingSequence,
+    this.canonicalSurface,
   });
 
   final String? selectedSpaceId;
   final String? selectedOpeningId;
+
+  /// Legacy-only resume address. Canonical runtime writes this as null and
+  /// persists [canonicalSurface] instead, so wallIndex cannot survive Save.
   final RoomSurfaceRef? activeSurface;
+  final CanonicalRoomSurfaceResume? canonicalSurface;
   final EditorViewMode viewMode;
   final bool snapEnabled;
   final bool dimensionsVisible;
@@ -104,9 +114,6 @@ final class EditorProjectDocument {
     DateTime? now,
   }) {
     final editor = workspace.editor;
-    // Keep the low-level persistence contract stable for callers that use
-    // capture() directly. User-facing structured diagnostics run in the
-    // editor preflight before capture.
     if (editor.p2.isManipulating) {
       throw StateError('Cannot save while a component transform is active.');
     }
@@ -124,6 +131,12 @@ final class EditorProjectDocument {
           projectId: workspace.site.site.id,
           now: now,
         );
+    final canonicalRuntime =
+        CanonicalRoomSurfaceRuntimeRegistry.hasCanonicalRuntime(editor);
+    final canonicalSurface = canonicalRuntime
+        ? CanonicalRoomSurfaceRuntimeRegistry.capture(editor)
+        : null;
+
     return EditorProjectDocument(
       schemaVersion: currentSchemaVersion,
       metadata: projectMetadata,
@@ -137,8 +150,9 @@ final class EditorProjectDocument {
       resume: EditorProjectResumeState(
         selectedSpaceId: editor.selectedSpaceId,
         selectedOpeningId: editor.selectedOpeningId,
-        activeSurface: editor.activeSurface,
-        viewMode: editor.viewMode,
+        activeSurface: canonicalRuntime ? null : editor.activeSurface,
+        canonicalSurface: canonicalSurface,
+        viewMode: canonicalRuntime ? EditorViewMode.plan : editor.viewMode,
         snapEnabled: editor.snapEnabled,
         dimensionsVisible: editor.dimensionsVisible,
         floorGridMm: editor.floorGridMm,
@@ -171,11 +185,12 @@ final class EditorProjectDocument {
       selectedZoneId: selectedZoneId,
       activeOutdoorZoneId: activeOutdoorZoneId,
     );
+    final stableResume = resume.canonicalSurface;
     editor.restoreResumeState(
       selectedSpaceId: resume.selectedSpaceId,
       selectedOpeningId: resume.selectedOpeningId,
-      activeSurface: resume.activeSurface,
-      viewMode: resume.viewMode,
+      activeSurface: stableResume == null ? resume.activeSurface : null,
+      viewMode: stableResume == null ? resume.viewMode : EditorViewMode.plan,
       snapEnabled: resume.snapEnabled,
       dimensionsVisible: resume.dimensionsVisible,
       floorGridMm: resume.floorGridMm,
@@ -183,6 +198,9 @@ final class EditorProjectDocument {
       roomSequence: resume.roomSequence,
       openingSequence: resume.openingSequence,
     );
+    if (stableResume != null) {
+      CanonicalRoomSurfaceRuntimeRegistry.stageResume(editor, stableResume);
+    }
     editor.restoreP2State(p2State);
     return RestoredEditorProject(editor: editor, workspace: workspace);
   }
@@ -249,8 +267,10 @@ final class EditorProjectDocument {
       schemaVersion: version,
       metadata: EditorProjectMetadata(
         projectId: _string(metadataJson['projectId'], 'metadata.projectId'),
-        projectName:
-            _string(metadataJson['projectName'], 'metadata.projectName'),
+        projectName: _string(
+          metadataJson['projectName'],
+          'metadata.projectName',
+        ),
         createdAt: createdAt,
         updatedAt: updatedAt,
       ),
@@ -261,8 +281,10 @@ final class EditorProjectDocument {
         _string(workspace['context'], 'workspace.context'),
         'workspace.context',
       ),
-      activeLevelNumber:
-          _int(workspace['activeLevelNumber'], 'workspace.activeLevelNumber'),
+      activeLevelNumber: _int(
+        workspace['activeLevelNumber'],
+        'workspace.activeLevelNumber',
+      ),
       selectedZoneId: _nullableString(workspace['selectedZoneId']),
       activeOutdoorZoneId: _nullableString(workspace['activeOutdoorZoneId']),
       openingsByLevel: Map.unmodifiable(openings),
@@ -298,7 +320,6 @@ final class JsonFileEditorProjectStore implements EditorProjectStore {
     if (decoded is! Map) {
       throw StateError('Encoded ElecX project is not a JSON object.');
     }
-    // Validate the complete payload before touching the current on-disk file.
     EditorProjectDocument.fromJson(
       decoded.map((key, value) => MapEntry(key.toString(), value)),
     );
@@ -349,7 +370,8 @@ final class JsonFileEditorProjectStore implements EditorProjectStore {
     );
     if (document.projectId != projectId) {
       throw FormatException(
-          'Persisted project id does not match requested id.');
+        'Persisted project id does not match requested id.',
+      );
     }
     return document;
   }
@@ -386,10 +408,8 @@ final class JsonFileEditorProjectStore implements EditorProjectStore {
           ),
         );
       } on FormatException {
-        // One damaged project must not hide every healthy project in the Hub.
         continue;
       } on FileSystemException {
-        // A file can disappear between directory enumeration and read.
         continue;
       }
     }
@@ -410,6 +430,7 @@ Map<String, Object?> _resumeToJson(EditorProjectResumeState value) => {
       'activeSurface': value.activeSurface == null
           ? null
           : _surfaceToJson(value.activeSurface!),
+      'canonicalSurface': value.canonicalSurface?.toJson(),
       'viewMode': value.viewMode.name,
       'snapEnabled': value.snapEnabled,
       'dimensionsVisible': value.dimensionsVisible,
@@ -419,25 +440,32 @@ Map<String, Object?> _resumeToJson(EditorProjectResumeState value) => {
       'openingSequence': value.openingSequence,
     };
 
-EditorProjectResumeState _resumeFromJson(Map<String, Object?> json) =>
-    EditorProjectResumeState(
-      selectedSpaceId: _nullableString(json['selectedSpaceId']),
-      selectedOpeningId: _nullableString(json['selectedOpeningId']),
-      activeSurface: json['activeSurface'] == null
-          ? null
-          : _surfaceFromJson(_map(json['activeSurface'], 'activeSurface')),
-      viewMode: _enumValue(
-        EditorViewMode.values,
-        _string(json['viewMode'], 'viewMode'),
-        'viewMode',
-      ),
-      snapEnabled: _bool(json['snapEnabled'], 'snapEnabled'),
-      dimensionsVisible: _bool(json['dimensionsVisible'], 'dimensionsVisible'),
-      floorGridMm: _int(json['floorGridMm'], 'floorGridMm'),
-      zoom: _double(json['zoom'], 'zoom'),
-      roomSequence: _int(json['roomSequence'], 'roomSequence'),
-      openingSequence: _int(json['openingSequence'], 'openingSequence'),
-    );
+EditorProjectResumeState _resumeFromJson(Map<String, Object?> json) {
+  final canonicalRaw = json['canonicalSurface'];
+  return EditorProjectResumeState(
+    selectedSpaceId: _nullableString(json['selectedSpaceId']),
+    selectedOpeningId: _nullableString(json['selectedOpeningId']),
+    activeSurface: json['activeSurface'] == null
+        ? null
+        : _surfaceFromJson(_map(json['activeSurface'], 'activeSurface')),
+    canonicalSurface: canonicalRaw == null
+        ? null
+        : CanonicalRoomSurfaceResume.fromJson(
+            _map(canonicalRaw, 'canonicalSurface'),
+          ),
+    viewMode: _enumValue(
+      EditorViewMode.values,
+      _string(json['viewMode'], 'viewMode'),
+      'viewMode',
+    ),
+    snapEnabled: _bool(json['snapEnabled'], 'snapEnabled'),
+    dimensionsVisible: _bool(json['dimensionsVisible'], 'dimensionsVisible'),
+    floorGridMm: _int(json['floorGridMm'], 'floorGridMm'),
+    zoom: _double(json['zoom'], 'zoom'),
+    roomSequence: _int(json['roomSequence'], 'roomSequence'),
+    openingSequence: _int(json['openingSequence'], 'openingSequence'),
+  );
+}
 
 Map<String, Object?> _buildingToJson(ComposedBuilding value) => {
       'building': _plainBuildingToJson(value.building),
@@ -447,7 +475,9 @@ Map<String, Object?> _buildingToJson(ComposedBuilding value) => {
       ],
     };
 
-ComposedBuilding _buildingFromJson(Map<String, Object?> json) =>
+ComposedBuilding _buildingFromJson(
+  Map<String, Object?> json,
+) =>
     ComposedBuilding(
       building:
           _plainBuildingFromJson(_map(json['building'], 'building.building')),
@@ -494,8 +524,10 @@ ComposedBuildingLevel _composedLevelFromJson(Map<String, Object?> json) =>
         _string(json['kind'], 'level.kind'),
         'level.kind',
       ),
-      floorToFloorHeightMm:
-          _int(json['floorToFloorHeightMm'], 'floorToFloorHeightMm'),
+      floorToFloorHeightMm: _int(
+        json['floorToFloorHeightMm'],
+        'floorToFloorHeightMm',
+      ),
       zones: [
         for (final item in _list(json['zones'], 'zones'))
           _zoneFromJson(_map(item, 'zone')),
@@ -547,8 +579,10 @@ VerticalCore _verticalCoreFromJson(Map<String, Object?> json) {
       'verticalCore.kind',
     ),
     servedLevelNumbers: [
-      for (final item
-          in _list(json['servedLevelNumbers'], 'servedLevelNumbers'))
+      for (final item in _list(
+        json['servedLevelNumbers'],
+        'servedLevelNumbers',
+      ))
         _int(item, 'servedLevelNumber'),
     ],
     spaceIdByLevel: {
@@ -608,18 +642,24 @@ ProjectSite _projectSiteFromJson(Map<String, Object?> json) {
         _plainBuildingFromJson(_map(item, 'site.building')),
     ],
     projectNorth: ProjectNorth(
-      northAzimuthDegrees:
-          _double(json['projectNorthDegrees'], 'site.projectNorthDegrees'),
+      northAzimuthDegrees: _double(
+        json['projectNorthDegrees'],
+        'site.projectNorthDegrees',
+      ),
     ),
     solarContext: solarRaw == null
         ? null
         : () {
             final solar = _map(solarRaw, 'site.solarContext');
             return SolarSiteContext(
-              latitudeDegrees:
-                  _double(solar['latitudeDegrees'], 'solar.latitudeDegrees'),
-              longitudeDegrees:
-                  _double(solar['longitudeDegrees'], 'solar.longitudeDegrees'),
+              latitudeDegrees: _double(
+                solar['latitudeDegrees'],
+                'solar.latitudeDegrees',
+              ),
+              longitudeDegrees: _double(
+                solar['longitudeDegrees'],
+                'solar.longitudeDegrees',
+              ),
               timeZoneOffsetMinutes: _int(
                 solar['timeZoneOffsetMinutes'],
                 'solar.timeZoneOffsetMinutes',
@@ -660,7 +700,9 @@ Map<String, Object?> _siteConnectionToJson(SiteBuildingConnection value) => {
       'targetSpaceId': value.targetSpaceId,
     };
 
-SiteBuildingConnection _siteConnectionFromJson(Map<String, Object?> json) =>
+SiteBuildingConnection _siteConnectionFromJson(
+  Map<String, Object?> json,
+) =>
     SiteBuildingConnection(
       id: _string(json['id'], 'connection.id'),
       kind: _enumValue(
@@ -728,8 +770,10 @@ EngineeringSpace _spaceFromJson(Map<String, Object?> json) {
     boundary: _polygonFromJson(_list(json['boundary'], 'space.boundary')),
     referenceFrame: RoomReferenceFrame(
       origin: _pointFromJson(_map(frame['origin'], 'referenceFrame.origin')),
-      rotationRadians:
-          _double(frame['rotationRadians'], 'referenceFrame.rotationRadians'),
+      rotationRadians: _double(
+        frame['rotationRadians'],
+        'referenceFrame.rotationRadians',
+      ),
     ),
     grid: _gridFromJson(_map(json['grid'], 'space.grid')),
     wallProfiles: {
@@ -760,25 +804,27 @@ GridDefinition _gridFromJson(Map<String, Object?> json) => GridDefinition(
       majorEvery: _int(json['majorEvery'], 'grid.majorEvery'),
     );
 
-List<Object?> _polygonToJson(MmPolygon value) =>
-    [for (final point in value.vertices) _pointToJson(point)];
+List<Object?> _polygonToJson(MmPolygon value) => [
+      for (final point in value.vertices) _pointToJson(point),
+    ];
 
 MmPolygon _polygonFromJson(List<Object?> json) => MmPolygon([
       for (final item in json) _pointFromJson(_map(item, 'polygon.point')),
     ]);
 
-Map<String, Object?> _pointToJson(MmPoint value) =>
-    {'x': value.x, 'y': value.y};
+Map<String, Object?> _pointToJson(MmPoint value) => {
+      'x': value.x,
+      'y': value.y,
+    };
 
-MmPoint _pointFromJson(Map<String, Object?> json) => MmPoint(
-      _int(json['x'], 'point.x'),
-      _int(json['y'], 'point.y'),
-    );
+MmPoint _pointFromJson(Map<String, Object?> json) =>
+    MmPoint(_int(json['x'], 'point.x'), _int(json['y'], 'point.y'));
 
 Map<String, Object?> _surfaceToJson(RoomSurfaceRef value) => {
       'spaceId': value.spaceId,
       'type': value.type.name,
       'wallIndex': value.wallIndex,
+      'boundaryEdgeId': value.boundaryEdgeId?.value,
     };
 
 RoomSurfaceRef _surfaceFromJson(Map<String, Object?> json) {
@@ -788,12 +834,35 @@ RoomSurfaceRef _surfaceFromJson(Map<String, Object?> json) {
     _string(json['type'], 'surface.type'),
     'surface.type',
   );
-  return switch (type) {
-    SurfacePlaneType.floor => RoomSurfaceRef.floor(spaceId),
-    SurfacePlaneType.ceiling => RoomSurfaceRef.ceiling(spaceId),
-    SurfacePlaneType.wall => RoomSurfaceRef.wall(
-        spaceId, _int(json['wallIndex'], 'surface.wallIndex')),
-  };
+  final wallIndexRaw = json['wallIndex'];
+  final boundaryEdgeId = _nullableString(json['boundaryEdgeId']);
+
+  if (type != SurfacePlaneType.wall) {
+    if (wallIndexRaw != null || boundaryEdgeId != null) {
+      throw const FormatException(
+        'Floor/ceiling surface must not carry wall identity.',
+      );
+    }
+    return type == SurfacePlaneType.floor
+        ? RoomSurfaceRef.floor(spaceId)
+        : RoomSurfaceRef.ceiling(spaceId);
+  }
+
+  if ((wallIndexRaw == null) == (boundaryEdgeId == null)) {
+    throw const FormatException(
+      'Wall surface must carry exactly one of wallIndex or boundaryEdgeId.',
+    );
+  }
+  if (boundaryEdgeId != null) {
+    return RoomSurfaceRef.wallByBoundaryEdge(
+      spaceId,
+      BoundaryEdgeId(boundaryEdgeId),
+    );
+  }
+  return RoomSurfaceRef.wall(
+    spaceId,
+    _int(wallIndexRaw, 'surface.wallIndex'),
+  );
 }
 
 Map<String, Object?> _openingToJson(ArchitecturalOpening value) => {
@@ -815,8 +884,10 @@ ArchitecturalOpening _openingFromJson(Map<String, Object?> json) =>
         _string(json['type'], 'opening.type'),
         'opening.type',
       ),
-      offsetFromStartMm:
-          _int(json['offsetFromStartMm'], 'opening.offsetFromStartMm'),
+      offsetFromStartMm: _int(
+        json['offsetFromStartMm'],
+        'opening.offsetFromStartMm',
+      ),
       widthMm: _int(json['widthMm'], 'opening.widthMm'),
       heightMm: _int(json['heightMm'], 'opening.heightMm'),
       sillHeightMm: _int(json['sillHeightMm'], 'opening.sillHeightMm'),
@@ -847,8 +918,10 @@ Map<String, Object?> _p2ToJson(EditorP2State value) => {
 EditorP2State _p2FromJson(Map<String, Object?> json) {
   final selection = _map(json['selection'], 'p2.selection');
   final constraints = _map(json['routeConstraints'], 'p2.routeConstraints');
-  final sizingEvidence =
-      _map(json['sizingEvidenceByRoute'], 'p2.sizingEvidenceByRoute');
+  final sizingEvidence = _map(
+    json['sizingEvidenceByRoute'],
+    'p2.sizingEvidenceByRoute',
+  );
   return EditorP2State(
     components: [
       for (final item in _list(json['components'], 'p2.components'))
@@ -937,8 +1010,10 @@ CircuitCableBundle _circuitBundleFromJson(Map<String, Object?> json) {
           return ProtectiveDeviceRef(
             id: _string(device['id'], 'protectiveDevice.id'),
             boardId: _string(device['boardId'], 'protectiveDevice.boardId'),
-            designation:
-                _string(device['designation'], 'protectiveDevice.designation'),
+            designation: _string(
+              device['designation'],
+              'protectiveDevice.designation',
+            ),
             poleCount: device['poleCount'] == null
                 ? null
                 : _int(device['poleCount'], 'protectiveDevice.poleCount'),
@@ -994,8 +1069,10 @@ ElectricalComponentPlacement _componentFromJson(Map<String, Object?> json) {
       _string(json['type'], 'component.type'),
       'component.type',
     ),
-    componentTypeId:
-        _string(json['componentTypeId'], 'component.componentTypeId'),
+    componentTypeId: _string(
+      json['componentTypeId'],
+      'component.componentTypeId',
+    ),
     surface: _surfaceFromJson(_map(json['surface'], 'component.surface')),
     position: SurfacePointMm(
       _int(position['xMm'], 'component.xMm'),
@@ -1029,6 +1106,18 @@ Map<String, Object?> _routeToJson(ElectricalCableRoute value) => {
       'source': _endpointToJson(value.source),
       'target': _endpointToJson(value.target),
       'segments': [for (final item in value.segments) _segmentToJson(item)],
+      'penetrations': [
+        for (final item in value.penetrations) _penetrationToJson(item),
+      ],
+      'verticalCoreLegs': [
+        for (final leg in value.verticalCoreLegs)
+          {
+            'verticalCoreId': leg.verticalCoreId.value,
+            'fromSlabId': leg.fromSlabId.value,
+            'toSlabId': leg.toSlabId.value,
+            'lengthMm': leg.lengthMm,
+          },
+      ],
       'cableType': value.cableType,
       'reservePercent': value.reservePercent,
       'medium': {
@@ -1042,14 +1131,60 @@ Map<String, Object?> _routeToJson(ElectricalCableRoute value) => {
 
 ElectricalCableRoute _routeFromJson(Map<String, Object?> json) {
   final medium = _map(json['medium'], 'route.medium');
+  final routeId = _string(json['id'], 'route.id');
+  final segments = [
+    for (final item in _list(json['segments'], 'route.segments'))
+      _segmentFromJson(_map(item, 'route.segment')),
+  ];
+  final penetrationRaw = json['penetrations'];
+  final penetrations = penetrationRaw == null
+      ? const <BoundaryPenetration>[]
+      : [
+          for (final item in _list(penetrationRaw, 'route.penetrations'))
+            _penetrationFromJson(_map(item, 'route.penetration')),
+        ];
+  final verticalCoreLegRaw = json['verticalCoreLegs'];
+  final verticalCoreLegs = verticalCoreLegRaw == null
+      ? const <VerticalCoreRouteLeg>[]
+      : [
+          for (final item
+              in _list(verticalCoreLegRaw, 'route.verticalCoreLegs'))
+            () {
+              final leg = _map(item, 'route.verticalCoreLeg');
+              return VerticalCoreRouteLeg(
+                verticalCoreId: VerticalCoreId(
+                  _string(
+                    leg['verticalCoreId'],
+                    'route.verticalCoreLeg.verticalCoreId',
+                  ),
+                ),
+                fromSlabId: SlabId(
+                  _string(
+                    leg['fromSlabId'],
+                    'route.verticalCoreLeg.fromSlabId',
+                  ),
+                ),
+                toSlabId: SlabId(
+                  _string(
+                    leg['toSlabId'],
+                    'route.verticalCoreLeg.toSlabId',
+                  ),
+                ),
+                lengthMm: _int(
+                  leg['lengthMm'],
+                  'route.verticalCoreLeg.lengthMm',
+                ),
+              );
+            }(),
+        ];
+  _validatePersistedRouteAnchorIds(routeId, segments);
   return ElectricalCableRoute(
-    id: _string(json['id'], 'route.id'),
+    id: routeId,
     source: _endpointFromJson(_map(json['source'], 'route.source')),
     target: _endpointFromJson(_map(json['target'], 'route.target')),
-    segments: [
-      for (final item in _list(json['segments'], 'route.segments'))
-        _segmentFromJson(_map(item, 'route.segment')),
-    ],
+    segments: segments,
+    penetrations: penetrations,
+    verticalCoreLegs: verticalCoreLegs,
     cableType: _nullableString(json['cableType']),
     reservePercent: _int(json['reservePercent'], 'route.reservePercent'),
     medium: RouteMediumProfile(
@@ -1064,8 +1199,10 @@ ElectricalCableRoute _routeFromJson(Map<String, Object?> json) {
         _string(medium['flowVisual'], 'route.medium.flowVisual'),
         'route.medium.flowVisual',
       ),
-      bidirectional:
-          _bool(medium['bidirectional'], 'route.medium.bidirectional'),
+      bidirectional: _bool(
+        medium['bidirectional'],
+        'route.medium.bidirectional',
+      ),
       protocol: _nullableString(medium['protocol']),
     ),
   );
@@ -1087,22 +1224,139 @@ Map<String, Object?> _segmentToJson(ElectricalRouteSegment value) => {
       'points': [
         for (final point in value.points) {'xMm': point.xMm, 'yMm': point.yMm},
       ],
+      'anchorIds': [for (final anchorId in value.anchorIds) anchorId.value],
     };
 
-ElectricalRouteSegment _segmentFromJson(Map<String, Object?> json) =>
-    ElectricalRouteSegment(
-      surface: _surfaceFromJson(_map(json['surface'], 'segment.surface')),
-      points: [
-        for (final item in _list(json['points'], 'segment.points'))
-          () {
-            final point = _map(item, 'segment.point');
-            return SurfacePointMm(
-              _int(point['xMm'], 'segment.xMm'),
-              _int(point['yMm'], 'segment.yMm'),
-            );
-          }(),
-      ],
+ElectricalRouteSegment _segmentFromJson(Map<String, Object?> json) {
+  final points = [
+    for (final item in _list(json['points'], 'segment.points'))
+      () {
+        final point = _map(item, 'segment.point');
+        return SurfacePointMm(
+          _int(point['xMm'], 'segment.xMm'),
+          _int(point['yMm'], 'segment.yMm'),
+        );
+      }(),
+  ];
+  final anchorIds = [
+    for (final item in _list(json['anchorIds'], 'segment.anchorIds'))
+      RouteAnchorId(_string(item, 'segment.anchorId')),
+  ];
+  if (anchorIds.isNotEmpty && anchorIds.length != points.length) {
+    throw FormatException(
+      'segment.anchorIds must be empty for a legacy segment or match the '
+      'segment.points length exactly.',
     );
+  }
+  return ElectricalRouteSegment(
+    surface: _surfaceFromJson(_map(json['surface'], 'segment.surface')),
+    points: points,
+    anchorIds: anchorIds,
+  );
+}
+
+Map<String, Object?> _penetrationToJson(BoundaryPenetration value) => {
+      'id': value.id,
+      'hostKind': value.hostKind.name,
+      'hostThicknessMm': value.hostThicknessMm,
+      'pathLengthMm': value.pathLengthMm,
+      'materialId': value.materialId,
+      'slabId': value.slabId?.value,
+      'verticalCoreId': value.verticalCoreId?.value,
+      'entryAnchor': _penetrationAnchorToJson(value.entryAnchor),
+      'exitAnchor': _penetrationAnchorToJson(value.exitAnchor),
+    };
+
+BoundaryPenetration _penetrationFromJson(Map<String, Object?> json) =>
+    BoundaryPenetration(
+      id: _string(json['id'], 'penetration.id'),
+      hostKind: _enumValue(
+        BoundaryPenetrationHostKind.values,
+        _string(json['hostKind'], 'penetration.hostKind'),
+        'penetration.hostKind',
+      ),
+      hostThicknessMm: _int(
+        json['hostThicknessMm'],
+        'penetration.hostThicknessMm',
+      ),
+      pathLengthMm: _double(
+        json['pathLengthMm'],
+        'penetration.pathLengthMm',
+      ),
+      materialId: _nullableString(json['materialId']),
+      slabId: _nullableString(json['slabId']) == null
+          ? null
+          : SlabId(_nullableString(json['slabId'])!),
+      verticalCoreId: _nullableString(json['verticalCoreId']) == null
+          ? null
+          : VerticalCoreId(_nullableString(json['verticalCoreId'])!),
+      entryAnchor: _penetrationAnchorFromJson(
+        _map(json['entryAnchor'], 'penetration.entryAnchor'),
+      ),
+      exitAnchor: _penetrationAnchorFromJson(
+        _map(json['exitAnchor'], 'penetration.exitAnchor'),
+      ),
+    );
+
+Map<String, Object?> _penetrationAnchorToJson(
+  BoundaryPenetrationAnchor value,
+) =>
+    {
+      'id': value.id,
+      'penetrationId': value.penetrationId,
+      'side': value.side.name,
+      'surface': _surfaceToJson(value.surface),
+      'point': {'xMm': value.point.xMm, 'yMm': value.point.yMm},
+      'routeId': value.routeId,
+    };
+
+BoundaryPenetrationAnchor _penetrationAnchorFromJson(
+  Map<String, Object?> json,
+) {
+  final point = _map(json['point'], 'penetrationAnchor.point');
+  return BoundaryPenetrationAnchor(
+    id: _string(json['id'], 'penetrationAnchor.id'),
+    penetrationId: _string(
+      json['penetrationId'],
+      'penetrationAnchor.penetrationId',
+    ),
+    side: _enumValue(
+      PenetrationAnchorSide.values,
+      _string(json['side'], 'penetrationAnchor.side'),
+      'penetrationAnchor.side',
+    ),
+    surface: _surfaceFromJson(
+      _map(json['surface'], 'penetrationAnchor.surface'),
+    ),
+    point: SurfacePointMm(
+      _int(point['xMm'], 'penetrationAnchor.xMm'),
+      _int(point['yMm'], 'penetrationAnchor.yMm'),
+    ),
+    routeId: _string(json['routeId'], 'penetrationAnchor.routeId'),
+  );
+}
+
+void _validatePersistedRouteAnchorIds(
+  String routeId,
+  List<ElectricalRouteSegment> segments,
+) {
+  final seen = <String>{};
+  for (final segment in segments) {
+    for (final anchorId in segment.anchorIds) {
+      if (anchorId.value.startsWith('p7a-transition:')) {
+        throw FormatException(
+          'Route $routeId persists projection-only anchor ${anchorId.value}.',
+        );
+      }
+      if (!seen.add(anchorId.value)) {
+        throw FormatException(
+          'Route $routeId contains duplicate durable anchor id '
+          '${anchorId.value}.',
+        );
+      }
+    }
+  }
+}
 
 Map<String, Object?> _map(Object? value, String field) {
   if (value is! Map) throw FormatException('$field must be an object.');

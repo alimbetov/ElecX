@@ -334,21 +334,24 @@ class RoomCircuitPanel extends StatelessWidget {
                           ? 'Введите подтверждённый расчётный ток.'
                           : 'P/U≈$preliminaryCurrent A только как подсказка; подтвердите расчётный ток.',
                     ),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     onChanged: (value) => designCurrentText = value,
                   ),
                   TextFormField(
                     initialValue: designCurrentSource,
                     decoration: const InputDecoration(
-                        labelText: 'Источник расчётного тока'),
+                      labelText: 'Источник расчётного тока',
+                    ),
                     onChanged: (value) => designCurrentSource = value,
                   ),
                   TextFormField(
                     initialValue: powerFactorText,
                     decoration: const InputDecoration(labelText: 'cosφ'),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     onChanged: (value) => powerFactorText = value,
                   ),
                   TextFormField(
@@ -357,8 +360,9 @@ class RoomCircuitPanel extends StatelessWidget {
                       labelText: 'Допустимое падение напряжения',
                       suffixText: '%',
                     ),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     onChanged: (value) => voltageDropText = value,
                   ),
                   const Divider(height: 24),
@@ -368,19 +372,25 @@ class RoomCircuitPanel extends StatelessWidget {
                       labelText: 'Наружный диаметр кабеля',
                       suffixText: 'мм',
                     ),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     onChanged: (value) => diameterText = value,
                   ),
                   DropdownButtonFormField<ConductorMaterial>(
                     initialValue: material,
-                    decoration:
-                        const InputDecoration(labelText: 'Материал жил'),
+                    decoration: const InputDecoration(
+                      labelText: 'Материал жил',
+                    ),
                     items: const [
                       DropdownMenuItem(
-                          value: ConductorMaterial.copper, child: Text('Cu')),
+                        value: ConductorMaterial.copper,
+                        child: Text('Cu'),
+                      ),
                       DropdownMenuItem(
-                          value: ConductorMaterial.aluminum, child: Text('Al')),
+                        value: ConductorMaterial.aluminum,
+                        child: Text('Al'),
+                      ),
                     ],
                     onChanged: (value) {
                       if (value != null) {
@@ -390,8 +400,9 @@ class RoomCircuitPanel extends StatelessWidget {
                   ),
                   TextFormField(
                     initialValue: conductorCountText,
-                    decoration:
-                        const InputDecoration(labelText: 'Количество жил'),
+                    decoration: const InputDecoration(
+                      labelText: 'Количество жил',
+                    ),
                     keyboardType: TextInputType.number,
                     onChanged: (value) => conductorCountText = value,
                   ),
@@ -401,8 +412,9 @@ class RoomCircuitPanel extends StatelessWidget {
                       labelText: 'Сечение жилы',
                       suffixText: 'мм²',
                     ),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     onChanged: (value) => crossSectionText = value,
                   ),
                   const Divider(height: 24),
@@ -415,22 +427,26 @@ class RoomCircuitPanel extends StatelessWidget {
                       helperText:
                           'Оставьте пустым → current check = INDETERMINATE.',
                     ),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     onChanged: (value) => baseAmpacityText = value,
                   ),
                   TextFormField(
                     initialValue: correctionText,
                     decoration: const InputDecoration(
-                        labelText: 'Суммарный correction factor'),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                      labelText: 'Суммарный correction factor',
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     onChanged: (value) => correctionText = value,
                   ),
                   TextFormField(
                     initialValue: ampacitySource,
-                    decoration:
-                        const InputDecoration(labelText: 'Источник ampacity'),
+                    decoration: const InputDecoration(
+                      labelText: 'Источник ampacity',
+                    ),
                     onChanged: (value) => ampacitySource = value,
                   ),
                   TextFormField(
@@ -442,22 +458,27 @@ class RoomCircuitPanel extends StatelessWidget {
                       helperText:
                           'Оставьте пустым → voltage-drop check = INDETERMINATE.',
                     ),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     onChanged: (value) => resistanceText = value,
                   ),
                   TextFormField(
                     initialValue: reactanceText,
                     decoration: const InputDecoration(
-                        labelText: 'X', suffixText: 'Ω/км'),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                      labelText: 'X',
+                      suffixText: 'Ω/км',
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     onChanged: (value) => reactanceText = value,
                   ),
                   TextFormField(
                     initialValue: impedanceSource,
-                    decoration:
-                        const InputDecoration(labelText: 'Источник impedance'),
+                    decoration: const InputDecoration(
+                      labelText: 'Источник impedance',
+                    ),
                     onChanged: (value) => impedanceSource = value,
                   ),
                 ],
@@ -513,14 +534,18 @@ class RoomCircuitPanel extends StatelessWidget {
         correction <= 0 ||
         specId == null) {
       _showResult(
-          context, 'Проверьте обязательные параметры расчёта и CableSpec.');
+        context,
+        'Проверьте обязательные параметры расчёта и CableSpec.',
+      );
       return;
     }
     if ((baseAmpacity != null && baseAmpacity <= 0) ||
         (resistance != null && resistance < 0) ||
         reactance < 0) {
       _showResult(
-          context, 'Ampacity/R/X не могут иметь отрицательные значения.');
+        context,
+        'Ampacity/R/X не могут иметь отрицательные значения.',
+      );
       return;
     }
 
@@ -736,8 +761,9 @@ class RoomCircuitPanel extends StatelessWidget {
                 labelText: 'Номинальный ток',
                 suffixText: 'A',
               ),
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               onChanged: (value) => ratedCurrentText = value,
             ),
             TextFormField(

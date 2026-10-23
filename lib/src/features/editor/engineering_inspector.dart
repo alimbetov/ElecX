@@ -256,8 +256,9 @@ class EngineeringInspector extends StatelessWidget {
             const SizedBox(width: 6),
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () => controller
-                    .addOpeningGuarded(ArchitecturalOpeningType.window),
+                onPressed: () => controller.addOpeningGuarded(
+                  ArchitecturalOpeningType.window,
+                ),
                 icon: const Icon(Icons.window_outlined, size: 17),
                 label: const Text('Окно'),
               ),
@@ -523,7 +524,8 @@ class _OpeningEditor extends StatelessWidget {
               label: 'Позиция от начала стены',
               value: opening.offsetFromStartMm,
               onCommit: (value) => controller.updateSelectedOpeningGuarded(
-                  offsetFromStartMm: value),
+                offsetFromStartMm: value,
+              ),
             ),
             const SizedBox(height: 6),
             _CommitIntField(

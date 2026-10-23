@@ -146,121 +146,115 @@ void main() {
   });
 
   test(
-    'multi-surface endpoint reroute preserves target-segment waypoint and transition',
-    () {
-      final wall = RoomSurfaceRef.wall('room', 0);
-      final ceiling = RoomSurfaceRef.ceiling('room');
-      const transition = SurfacePointMm(100, 900);
-      const waypoint = SurfacePointMm(500, 500);
-      final route = ElectricalCableRoute(
-        id: 'r-waypoint',
-        source: const ElectricalEndpointRef(
-          componentId: 'source',
-          portId: 'power-out',
-        ),
-        target: const ElectricalEndpointRef(
-          componentId: 'old',
-          portId: 'power-in',
-        ),
-        segments: [
-          ElectricalRouteSegment(
-            surface: wall,
-            points: const [SurfacePointMm(100, 100), transition],
-          ),
-          ElectricalRouteSegment(
-            surface: ceiling,
-            points: const [
-              transition,
-              SurfacePointMm(500, 900),
-              waypoint,
-              SurfacePointMm(900, 500),
-            ],
-          ),
-        ],
-      );
-      final components = [
-        ElectricalComponentPlacement(
-          id: 'source',
-          type: ElectricalComponentType.powerSource,
+      'multi-surface endpoint reroute preserves target-segment waypoint and transition',
+      () {
+    final wall = RoomSurfaceRef.wall('room', 0);
+    final ceiling = RoomSurfaceRef.ceiling('room');
+    const transition = SurfacePointMm(100, 900);
+    const waypoint = SurfacePointMm(500, 500);
+    final route = ElectricalCableRoute(
+      id: 'r-waypoint',
+      source: const ElectricalEndpointRef(
+        componentId: 'source',
+        portId: 'power-out',
+      ),
+      target: const ElectricalEndpointRef(
+        componentId: 'old',
+        portId: 'power-in',
+      ),
+      segments: [
+        ElectricalRouteSegment(
           surface: wall,
-          position: const SurfacePointMm(100, 100),
-          label: 'Source',
-          ports: ElectricalComponentDefaults.portsFor(
-            ElectricalComponentType.powerSource,
-          ),
+          points: const [SurfacePointMm(100, 100), transition],
         ),
-        ElectricalComponentPlacement(
-          id: 'old',
-          type: ElectricalComponentType.socketOutlet,
+        ElectricalRouteSegment(
           surface: ceiling,
-          position: const SurfacePointMm(900, 500),
-          label: 'Old',
-          ports: ElectricalComponentDefaults.portsFor(
-            ElectricalComponentType.socketOutlet,
-          ),
+          points: const [
+            transition,
+            SurfacePointMm(500, 900),
+            waypoint,
+            SurfacePointMm(900, 500),
+          ],
         ),
-        ElectricalComponentPlacement(
-          id: 'new',
-          type: ElectricalComponentType.socketOutlet,
+      ],
+    );
+    final components = [
+      ElectricalComponentPlacement(
+        id: 'source',
+        type: ElectricalComponentType.powerSource,
+        surface: wall,
+        position: const SurfacePointMm(100, 100),
+        label: 'Source',
+        ports: ElectricalComponentDefaults.portsFor(
+          ElectricalComponentType.powerSource,
+        ),
+      ),
+      ElectricalComponentPlacement(
+        id: 'old',
+        type: ElectricalComponentType.socketOutlet,
+        surface: ceiling,
+        position: const SurfacePointMm(900, 500),
+        label: 'Old',
+        ports: ElectricalComponentDefaults.portsFor(
+          ElectricalComponentType.socketOutlet,
+        ),
+      ),
+      ElectricalComponentPlacement(
+        id: 'new',
+        type: ElectricalComponentType.socketOutlet,
+        surface: ceiling,
+        position: const SurfacePointMm(800, 200),
+        label: 'New',
+        ports: ElectricalComponentDefaults.portsFor(
+          ElectricalComponentType.socketOutlet,
+        ),
+      ),
+    ];
+    final constraints = CableRouteConstraints(
+      mandatoryWaypoints: const [
+        CableMandatoryWaypoint(segmentIndex: 1, pointIndex: 2, point: waypoint),
+      ],
+    );
+    ElectricalCableRoute? committed;
+    final session = CableEndpointTransformSession(
+      onCommit: (_, after) {
+        committed = after;
+        return true;
+      },
+    );
+    addTearDown(session.dispose);
+
+    expect(
+      session.start(
+        route: route,
+        role: CableEndpointRole.target,
+        components: components,
+        context: RouteNormativeContext(
           surface: ceiling,
-          position: const SurfacePointMm(800, 200),
-          label: 'New',
-          ports: ElectricalComponentDefaults.portsFor(
-            ElectricalComponentType.socketOutlet,
-          ),
+          widthMm: 1000,
+          heightMm: 1000,
+          edgeClearanceMm: 0,
         ),
-      ];
-      final constraints = CableRouteConstraints(
-        mandatoryWaypoints: const [
-          CableMandatoryWaypoint(
-            segmentIndex: 1,
-            pointIndex: 2,
-            point: waypoint,
-          ),
-        ],
-      );
-      ElectricalCableRoute? committed;
-      final session = CableEndpointTransformSession(
-        onCommit: (_, after) {
-          committed = after;
-          return true;
-        },
-      );
-      addTearDown(session.dispose);
+        constraints: constraints,
+      ),
+      isTrue,
+    );
+    expect(
+      session.preview(
+        rawPoint: const MmPoint(800, 200),
+        acquisitionRadiusMm: 50,
+        releaseRadiusMm: 80,
+        gridStepMm: 100,
+      ),
+      isTrue,
+    );
+    expect(session.commit(), isTrue);
 
-      expect(
-        session.start(
-          route: route,
-          role: CableEndpointRole.target,
-          components: components,
-          context: RouteNormativeContext(
-            surface: ceiling,
-            widthMm: 1000,
-            heightMm: 1000,
-            edgeClearanceMm: 0,
-          ),
-          constraints: constraints,
-        ),
-        isTrue,
-      );
-      expect(
-        session.preview(
-          rawPoint: const MmPoint(800, 200),
-          acquisitionRadiusMm: 50,
-          releaseRadiusMm: 80,
-          gridStepMm: 100,
-        ),
-        isTrue,
-      );
-      expect(session.commit(), isTrue);
-
-      expect(committed, isNotNull);
-      expect(committed!.segments.first.points, route.segments.first.points);
-      expect(committed!.segments[1].points.first, transition);
-      expect(committed!.segments[1].points, contains(waypoint));
-      expect(
-          committed!.segments[1].points.last, const SurfacePointMm(800, 200));
-      expect(committed!.target.componentId, 'new');
-    },
-  );
+    expect(committed, isNotNull);
+    expect(committed!.segments.first.points, route.segments.first.points);
+    expect(committed!.segments[1].points.first, transition);
+    expect(committed!.segments[1].points, contains(waypoint));
+    expect(committed!.segments[1].points.last, const SurfacePointMm(800, 200));
+    expect(committed!.target.componentId, 'new');
+  });
 }

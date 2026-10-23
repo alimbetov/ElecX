@@ -1,0 +1,468 @@
+import '../../domain/project_aggregate.dart';
+import '../../domain/project_identity.dart';
+import 'project_authoring_error.dart';
+import 'project_boundary_construction_editing.dart';
+import 'project_boundary_host_adoption.dart';
+import 'project_boundary_topology_editing.dart';
+import 'project_boundary_topology_migration.dart';
+import 'project_building_commands.dart';
+import 'project_level_commands.dart';
+import 'project_mutation.dart';
+import 'project_navigation_state.dart';
+import 'project_north_editing.dart';
+import 'project_slab_authoring.dart';
+import 'project_space_commands.dart';
+import 'project_space_semantics_editing.dart';
+import 'project_vertical_core_authoring.dart';
+
+export 'project_navigation_state.dart';
+export 'project_slab_authoring.dart';
+export 'project_vertical_core_authoring.dart';
+
+enum ProjectStructureAuthoringIssueCode {
+  navigationSiteMismatch,
+  navigationStateMismatch,
+  activeBuildingRequired,
+  activeLevelRequired,
+  authoringContextChanged,
+  reconciliationProjectMismatch,
+  reconciliationVersionMismatch,
+}
+
+final class ProjectStructureAuthoringException implements Exception {
+  const ProjectStructureAuthoringException({
+    required this.code,
+    required this.message,
+    this.entityId,
+    this.relatedEntityId,
+  });
+
+  final ProjectStructureAuthoringIssueCode code;
+  final String message;
+  final EntityId? entityId;
+  final EntityId? relatedEntityId;
+
+  @override
+  String toString() => '${code.name}: $message';
+}
+
+final class ProjectStructureAuthoringAvailability {
+  const ProjectStructureAuthoringAvailability({
+    required this.canAddBuilding,
+    required this.canAddLevel,
+    required this.canAddRoom,
+  });
+
+  final bool canAddBuilding;
+  final bool canAddLevel;
+  final bool canAddRoom;
+}
+
+final class CreateBuildingRequest {
+  const CreateBuildingRequest({required this.name, this.displayOrder = 0});
+  final String name;
+  final int displayOrder;
+}
+
+final class CreateLevelRequest {
+  const CreateLevelRequest({
+    required this.name,
+    required this.levelNumber,
+    required this.elevationMm,
+    this.displayOrder = 0,
+    this.kind,
+    this.floorToFloorHeightMm = 3000,
+  });
+  final String name;
+  final int levelNumber;
+  final int elevationMm;
+  final int displayOrder;
+  final ProjectLevelKind? kind;
+  final int floorToFloorHeightMm;
+}
+
+final class CreateRoomRequest {
+  const CreateRoomRequest({required this.name, this.structuralZoneId});
+  final String name;
+  final ZoneId? structuralZoneId;
+}
+
+final class ProjectStructureAuthoringResult<T extends EntityId> {
+  const ProjectStructureAuthoringResult({
+    required this.createdId,
+    required this.project,
+    required this.navigation,
+    required this.changeSet,
+  });
+
+  final T createdId;
+  final ProjectAggregateRoot project;
+  final ProjectNavigationState navigation;
+  final ProjectChangeSet changeSet;
+}
+
+final class ProjectStructureAuthoringSession {
+  ProjectStructureAuthoringSession({
+    required ProjectMutationSession mutations,
+    required EntityIdFactory idFactory,
+    ProjectNavigationState? navigation,
+  })  : _mutations = mutations,
+        _projectNorthEditing = ProjectNorthEditingSession(mutations),
+        _spaceSemanticsEditing = ProjectSpaceSemanticsEditingSession(mutations),
+        _boundaryConstructionEditing =
+            ProjectBoundaryConstructionEditingService(mutations),
+        _boundaryTopologyEditing =
+            ProjectBoundaryTopologyEditingService(mutations),
+        _boundaryTopologyMigration =
+            ProjectBoundaryTopologyMigrationService(mutations),
+        _boundaryHostAdoption = ProjectBoundaryHostAdoptionService(mutations),
+        _slabAuthoring = ProjectSlabAuthoringSession(
+          mutations: mutations,
+          idFactory: idFactory,
+        ),
+        _verticalCoreAuthoring = ProjectVerticalCoreAuthoringSession(
+          mutations: mutations,
+          idFactory: idFactory,
+        ),
+        _idFactory = idFactory,
+        _navigation = _initialNavigation(mutations.current, navigation);
+
+  final ProjectMutationSession _mutations;
+  final ProjectNorthEditingPort _projectNorthEditing;
+  final ProjectSpaceSemanticsEditingPort _spaceSemanticsEditing;
+  final ProjectBoundaryConstructionEditingService _boundaryConstructionEditing;
+  final ProjectBoundaryTopologyEditingPort _boundaryTopologyEditing;
+  final ProjectBoundaryTopologyMigrationService _boundaryTopologyMigration;
+  final ProjectBoundaryHostAdoptionService _boundaryHostAdoption;
+  final ProjectSlabAuthoringSession _slabAuthoring;
+  final ProjectVerticalCoreAuthoringSession _verticalCoreAuthoring;
+  final EntityIdFactory _idFactory;
+  ProjectNavigationState _navigation;
+
+  ProjectAggregateRoot get project => _mutations.current;
+  ProjectNavigationState get navigation => _navigation;
+  ProjectNorthEditingPort get projectNorthEditing => _projectNorthEditing;
+  ProjectSpaceSemanticsEditingPort get spaceSemanticsEditing =>
+      _spaceSemanticsEditing;
+  ProjectBoundaryConstructionEditingService get boundaryConstructionEditing =>
+      _boundaryConstructionEditing;
+  ProjectBoundaryTopologyEditingPort get boundaryTopologyEditing =>
+      _boundaryTopologyEditing;
+  ProjectBoundaryTopologyMigrationService get boundaryTopologyMigration =>
+      _boundaryTopologyMigration;
+  ProjectSlabAuthoringSession get slabAuthoring => _slabAuthoring;
+  ProjectVerticalCoreAuthoringSession get verticalCoreAuthoring =>
+      _verticalCoreAuthoring;
+
+  /// P7A-5 one-time legacy -> canonical hosted ownership adoption backed by the
+  /// exact same P3 mutation session as topology migration and document history.
+  ProjectBoundaryHostAdoptionService get boundaryHostAdoption =>
+      _boundaryHostAdoption;
+
+  /// Allocates one durable route-point identity from the same canonical ID
+  /// source used by all project authoring operations. Allocation does not mutate
+  /// the project version; the identity becomes durable only when its route
+  /// aggregate is committed by the owning editor transaction.
+  RouteAnchorId allocateRouteAnchorId() => _idFactory.newRouteAnchorId();
+
+  bool get canUndoCanonicalMutation => _mutations.canUndo;
+  bool get canRedoCanonicalMutation => _mutations.canRedo;
+
+  ProjectMutationResult? undoCanonicalMutation() {
+    final before = project;
+    final result = _mutations.undo(before.version);
+    if (result == null) return null;
+    _navigation = _navigation.reconcileAfterMutation(
+      before: before,
+      after: result.project,
+    );
+    return result;
+  }
+
+  ProjectMutationResult? redoCanonicalMutation() {
+    final before = project;
+    final result = _mutations.redo(before.version);
+    if (result == null) return null;
+    _navigation = _navigation.reconcileAfterMutation(
+      before: before,
+      after: result.project,
+    );
+    return result;
+  }
+
+  void activateBuilding(BuildingId buildingId) {
+    _navigation = _navigation.activateBuilding(project, buildingId);
+  }
+
+  void activateLevel(LevelId levelId) {
+    _navigation = _navigation.activateLevel(project, levelId);
+  }
+
+  void selectZone(ZoneId zoneId) {
+    _navigation = _navigation.selectZone(project, zoneId);
+  }
+
+  void selectRoom(SpaceId spaceId) {
+    _navigation = _navigation.selectSpace(project, spaceId);
+  }
+
+  void clearSelection() {
+    _navigation = _navigation.clearSelection();
+  }
+
+  void adoptNavigation(ProjectNavigationState next) {
+    if (next.siteId != project.siteId) {
+      throw ProjectStructureAuthoringException(
+        code: ProjectStructureAuthoringIssueCode.navigationSiteMismatch,
+        entityId: next.siteId,
+        relatedEntityId: project.siteId,
+        message: 'Navigation belongs to site ${next.siteId}, not current site '
+            '${project.siteId}.',
+      );
+    }
+    final validated = next.reconcile(project);
+    if (validated != next) {
+      throw ProjectStructureAuthoringException(
+        code: ProjectStructureAuthoringIssueCode.navigationStateMismatch,
+        entityId: next.selectedSpaceId ??
+            next.selectedZoneId ??
+            next.activeLevelId ??
+            next.activeBuildingId,
+        message: 'Navigation state is not coherent with the current canonical '
+            'project and cannot be adopted without repair.',
+      );
+    }
+    _navigation = next;
+  }
+
+  ProjectStructureAuthoringAvailability get availability {
+    final current = _mutations.current;
+    final buildingId = _navigation.activeBuildingId;
+    final levelId = _navigation.activeLevelId;
+    final building =
+        buildingId == null ? null : current.index.building(buildingId);
+    final level = levelId == null ? null : current.index.level(levelId);
+    final hasBuilding = building != null && building.siteId == current.siteId;
+    final hasLevel =
+        level != null && hasBuilding && level.buildingId == building.id;
+    return ProjectStructureAuthoringAvailability(
+      canAddBuilding: current.index.site(current.siteId) != null,
+      canAddLevel: hasBuilding,
+      canAddRoom: hasLevel,
+    );
+  }
+
+  ProjectStructureAuthoringResult<BuildingId> createBuilding(
+    CreateBuildingRequest input,
+  ) {
+    final id = _idFactory.newBuildingId();
+    final command = CreateBuildingCommand(
+      buildingId: id,
+      name: input.name,
+      displayOrder: input.displayOrder,
+    );
+    final request = ProjectMutationRequest(
+      expectedVersion: project.version,
+      command: command,
+    );
+    final preview = _mutations.preview(request);
+    final nextNavigation = _navigation.activateBuilding(preview.candidate, id);
+    final committed = _requireCommit(_mutations.commit(request), command);
+    _navigation = nextNavigation;
+    return ProjectStructureAuthoringResult<BuildingId>(
+      createdId: id,
+      project: committed.project,
+      navigation: _navigation,
+      changeSet: committed.changeSet,
+    );
+  }
+
+  ProjectStructureAuthoringResult<LevelId> createLevel(
+    CreateLevelRequest input, {
+    BuildingId? expectedActiveBuildingId,
+  }) {
+    final buildingId = _requireActiveBuilding();
+    if (expectedActiveBuildingId != null &&
+        buildingId != expectedActiveBuildingId) {
+      throw ProjectStructureAuthoringException(
+        code: ProjectStructureAuthoringIssueCode.authoringContextChanged,
+        entityId: buildingId,
+        relatedEntityId: expectedActiveBuildingId,
+        message: 'Active Building changed while +Level authoring was in '
+            'progress.',
+      );
+    }
+    final id = _idFactory.newLevelId();
+    final command = CreateLevelCommand(
+      levelId: id,
+      buildingId: buildingId,
+      name: input.name,
+      levelNumber: input.levelNumber,
+      elevationMm: input.elevationMm,
+      displayOrder: input.displayOrder,
+      kind: input.kind,
+      floorToFloorHeightMm: input.floorToFloorHeightMm,
+    );
+    final request = ProjectMutationRequest(
+      expectedVersion: project.version,
+      command: command,
+    );
+    final preview = _mutations.preview(request);
+    final nextNavigation = _navigation.activateLevel(preview.candidate, id);
+    final committed = _requireCommit(_mutations.commit(request), command);
+    _navigation = nextNavigation;
+    return ProjectStructureAuthoringResult<LevelId>(
+      createdId: id,
+      project: committed.project,
+      navigation: _navigation,
+      changeSet: committed.changeSet,
+    );
+  }
+
+  ProjectStructureAuthoringResult<SpaceId> createRoom(
+    CreateRoomRequest input, {
+    LevelId? expectedActiveLevelId,
+  }) {
+    final levelId = _requireActiveLevel();
+    if (expectedActiveLevelId != null && levelId != expectedActiveLevelId) {
+      throw ProjectStructureAuthoringException(
+        code: ProjectStructureAuthoringIssueCode.authoringContextChanged,
+        entityId: levelId,
+        relatedEntityId: expectedActiveLevelId,
+        message: 'Active Level changed while +Room authoring was in progress.',
+      );
+    }
+    final zoneId = input.structuralZoneId;
+    if (zoneId != null) {
+      final zone = project.index.zone(zoneId);
+      if (zone == null) {
+        throw ProjectAuthoringException(
+          code: ProjectAuthoringIssueCode.structuralZoneNotFound,
+          entityId: zoneId,
+          message: 'Structural zone $zoneId does not exist.',
+        );
+      }
+      if (zone.levelId != levelId) {
+        throw ProjectAuthoringException(
+          code: ProjectAuthoringIssueCode.structuralZoneLevelMismatch,
+          entityId: zone.id,
+          relatedEntityId: zone.levelId,
+          message:
+              'Structural zone ${zone.id} belongs to level ${zone.levelId}, '
+              'not active level $levelId.',
+        );
+      }
+    }
+    final id = _idFactory.newSpaceId();
+    final command = CreateSpaceCommand(
+      spaceId: id,
+      levelId: levelId,
+      name: input.name,
+      structuralZoneId: zoneId,
+    );
+    final request = ProjectMutationRequest(
+      expectedVersion: project.version,
+      command: command,
+    );
+    final preview = _mutations.preview(request);
+    final nextNavigation = _navigation.selectSpace(preview.candidate, id);
+    final committed = _requireCommit(_mutations.commit(request), command);
+    _navigation = nextNavigation;
+    return ProjectStructureAuthoringResult<SpaceId>(
+      createdId: id,
+      project: committed.project,
+      navigation: _navigation,
+      changeSet: committed.changeSet,
+    );
+  }
+
+  void reconcileNavigation({
+    required ProjectAggregateRoot before,
+    required ProjectAggregateRoot after,
+  }) {
+    final current = project;
+    if (before.id != current.id ||
+        after.id != current.id ||
+        before.siteId != current.siteId ||
+        after.siteId != current.siteId) {
+      throw ProjectStructureAuthoringException(
+        code: ProjectStructureAuthoringIssueCode.reconciliationProjectMismatch,
+        entityId: current.id,
+        message: 'Navigation reconciliation snapshots must belong to the '
+            'current project and site.',
+      );
+    }
+    if (after.version != current.version ||
+        after.version.value != before.version.value + 1) {
+      throw ProjectStructureAuthoringException(
+        code: ProjectStructureAuthoringIssueCode.reconciliationVersionMismatch,
+        entityId: current.id,
+        message: 'Navigation reconciliation requires the immediate committed '
+            'before/after versions ending at ${current.version}.',
+      );
+    }
+    _navigation = _navigation.reconcileAfterMutation(
+      before: before,
+      after: after,
+    );
+  }
+
+  BuildingId _requireActiveBuilding() {
+    final id = _navigation.activeBuildingId;
+    final building = id == null ? null : project.index.building(id);
+    if (building == null || building.siteId != project.siteId) {
+      throw ProjectStructureAuthoringException(
+        code: ProjectStructureAuthoringIssueCode.activeBuildingRequired,
+        entityId: id,
+        relatedEntityId: project.siteId,
+        message: '+Level requires an explicit active BuildingId in the '
+            'current site.',
+      );
+    }
+    return building.id;
+  }
+
+  LevelId _requireActiveLevel() {
+    final id = _navigation.activeLevelId;
+    final level = id == null ? null : project.index.level(id);
+    if (level == null || level.buildingId != _navigation.activeBuildingId) {
+      throw ProjectStructureAuthoringException(
+        code: ProjectStructureAuthoringIssueCode.activeLevelRequired,
+        entityId: id,
+        relatedEntityId: _navigation.activeBuildingId,
+        message: '+Room requires a valid active BuildingId/LevelId context.',
+      );
+    }
+    return level.id;
+  }
+
+  ProjectMutationResult _requireCommit(
+    ProjectMutationResult? result,
+    ProjectCommand command,
+  ) {
+    if (result == null) {
+      throw StateError(
+        '${command.commandType} unexpectedly produced an empty mutation.',
+      );
+    }
+    return result;
+  }
+}
+
+ProjectNavigationState _initialNavigation(
+  ProjectAggregateRoot project,
+  ProjectNavigationState? navigation,
+) {
+  if (navigation != null && navigation.siteId != project.siteId) {
+    throw ProjectStructureAuthoringException(
+      code: ProjectStructureAuthoringIssueCode.navigationSiteMismatch,
+      entityId: navigation.siteId,
+      relatedEntityId: project.siteId,
+      message: 'Authoring navigation belongs to site ${navigation.siteId}, '
+          'not current site ${project.siteId}.',
+    );
+  }
+  return (navigation ?? ProjectNavigationState.initial(project)).reconcile(
+    project,
+  );
+}

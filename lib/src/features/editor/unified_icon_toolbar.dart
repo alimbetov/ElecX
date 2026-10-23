@@ -5,8 +5,10 @@ import '../../domain/engineering_graph.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/editor_layers.dart';
 import '../../engine/route_engine.dart';
+import 'canonical_boundary_topology_migration_runtime.dart';
 import 'component_catalog_session.dart';
 import 'editor_controller.dart';
+import 'editor_document_history.dart';
 import 'editor_p2_session.dart';
 import 'editor_ui_tokens.dart';
 import 'editor_viewport_commands.dart';
@@ -28,14 +30,35 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final history = controller.documentHistory;
     return ListenableBuilder(
-      listenable: controller.p2,
-      builder: (context, _) => _buildToolbar(context),
+      listenable: Listenable.merge(<Listenable>[controller.p2, history]),
+      builder: (context, _) => _buildToolbar(context, history),
     );
   }
 
-  Widget _buildToolbar(BuildContext context) {
+  Widget _buildToolbar(
+    BuildContext context,
+    EditorDocumentHistory history,
+  ) {
     final p2 = controller.p2;
+    final activeWallOrdinal =
+        controller.activeSurface?.type == SurfacePlaneType.wall
+            ? controller.activeSurface?.wallIndex
+            : null;
+    final stableEdgeId = activeWallOrdinal == null
+        ? null
+        : CanonicalBoundaryTopologyMigrationRuntime.edgeIdAtLegacyWallOrdinal(
+            controller,
+            activeWallOrdinal,
+          );
+    final identityChangeReady = activeWallOrdinal != null &&
+        stableEdgeId != null &&
+        CanonicalBoundaryTopologyMigrationRuntime.canChangeLegacyWallIdentity(
+          controller,
+          activeWallOrdinal,
+        );
+
     final buttons = <Widget>[
       _toolButton(
         context,
@@ -62,6 +85,56 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
         icon: Icons.alt_route,
         tooltip: 'Ручная кабельная трасса (C)',
       ),
+      if (stableEdgeId != null) ...[
+        const _ToolbarDivider(),
+        if (!identityChangeReady)
+          _iconButton(
+            context,
+            buttonKey: const ValueKey('boundary-adopt-hosts'),
+            icon: Icons.link,
+            tooltip: 'Подготовить стабильные привязки стены (Alt+A)',
+            onPressed: () => _invokeBoundaryAction(
+              context,
+              () => CanonicalBoundaryTopologyMigrationRuntime.adoptLegacyHosts(
+                controller: controller,
+              ),
+              failureMessage:
+                  'Не удалось подготовить стабильные привязки стены.',
+            ),
+          )
+        else ...[
+          _iconButton(
+            context,
+            buttonKey: const ValueKey('boundary-split-edge'),
+            icon: Icons.call_split,
+            tooltip: 'Разделить стену пополам (Alt+S)',
+            onPressed: () => _invokeBoundaryAction(
+              context,
+              () => CanonicalBoundaryTopologyMigrationRuntime
+                  .splitLegacyWallAtMidpoint(
+                controller: controller,
+                wallOrdinal: activeWallOrdinal,
+              ),
+              failureMessage: 'Разделение стены отклонено проверками проекта.',
+            ),
+          ),
+          _iconButton(
+            context,
+            buttonKey: const ValueKey('boundary-merge-edge'),
+            icon: Icons.merge_type,
+            tooltip: 'Объединить со следующей стеной (Alt+M)',
+            onPressed: () => _invokeBoundaryAction(
+              context,
+              () => CanonicalBoundaryTopologyMigrationRuntime
+                  .mergeLegacyWallWithNext(
+                controller: controller,
+                wallOrdinal: activeWallOrdinal,
+              ),
+              failureMessage: 'Объединение стены отклонено проверками проекта.',
+            ),
+          ),
+        ],
+      ],
       const _ToolbarDivider(),
       _ComponentCatalogPaletteButton(controller: controller, target: _target),
       _toggleButton(
@@ -86,14 +159,18 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
       _iconButton(
         context,
         icon: Icons.undo,
-        tooltip: 'Отменить',
-        onPressed: p2.canUndo ? p2.undo : null,
+        tooltip: history.undoLabel == null
+            ? 'Отменить'
+            : 'Отменить: ${history.undoLabel}',
+        onPressed: history.canUndo ? history.undo : null,
       ),
       _iconButton(
         context,
         icon: Icons.redo,
-        tooltip: 'Повторить',
-        onPressed: p2.canRedo ? p2.redo : null,
+        tooltip: history.redoLabel == null
+            ? 'Повторить'
+            : 'Повторить: ${history.redoLabel}',
+        onPressed: history.canRedo ? history.redo : null,
       ),
       const _ToolbarDivider(),
       _iconButton(
@@ -152,6 +229,25 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
     );
   }
 
+  void _invokeBoundaryAction(
+    BuildContext context,
+    bool Function() action, {
+    required String failureMessage,
+  }) {
+    var message = failureMessage;
+    try {
+      if (action()) return;
+    } on CanonicalBoundaryPostCommitException {
+      message = 'Изменение уже применено к модели проекта, но его '
+          'сохранение или синхронизация представления завершились ошибкой. '
+          'История отмены очищена; проверьте текущее состояние проекта.';
+    } catch (_) {
+      // Pre-commit domain/runtime rejection keeps the operation-specific text.
+    }
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    messenger?.showSnackBar(SnackBar(content: Text(message)));
+  }
+
   ButtonStyle _commandStyle(BuildContext context, {bool selected = false}) =>
       IconButton.styleFrom(
         minimumSize: Size(_target, _target),
@@ -199,6 +295,7 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
 
   Widget _iconButton(
     BuildContext context, {
+    Key? buttonKey,
     required IconData icon,
     required String tooltip,
     required VoidCallback? onPressed,
@@ -206,6 +303,7 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 1),
         child: IconButton(
+          key: buttonKey,
           onPressed: onPressed,
           tooltip: tooltip,
           icon: Icon(icon, size: 20),

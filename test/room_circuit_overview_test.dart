@@ -130,8 +130,9 @@ void main() {
     expect(model.entries.first.kind, RoomCircuitOverviewKind.fail);
   });
 
-  testWidgets('overview entry selects load for detailed engineering workflow',
-      (tester) async {
+  testWidgets('overview entry selects load for detailed engineering workflow', (
+    tester,
+  ) async {
     final editor = EditorController.demo();
     final workspace = EditorBuildingWorkspace.demo(editor);
     addTearDown(() {
@@ -166,8 +167,9 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester
-        .tap(find.byKey(const ValueKey('room-circuit-overview-expansion')));
+    await tester.tap(
+      find.byKey(const ValueKey('room-circuit-overview-expansion')),
+    );
     await tester.pumpAndSettle();
     final entryKey = ValueKey('room-circuit-overview-entry-${load.id}');
     expect(find.byKey(entryKey), findsOneWidget);

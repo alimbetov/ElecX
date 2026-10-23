@@ -1,10 +1,18 @@
 import 'package:flutter/foundation.dart';
 
+import '../../application/project/project_mutation.dart';
+import '../../application/project/project_structure_authoring.dart';
+import '../../domain/project_aggregate.dart';
 import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/command_history.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
+
+typedef CanonicalHistoryRematerializer = void Function();
+typedef CanonicalHistoryReplayOwner = void Function(
+  ProjectMutationResult result,
+);
 
 final class EditorDocumentHistory extends ChangeNotifier {
   EditorDocumentHistory(this.controller)
@@ -22,17 +30,145 @@ final class EditorDocumentHistory extends ChangeNotifier {
   final EditorP2Session _p2;
   int _p2Revision;
   bool _replaying = false;
+  int _canonicalProjectionDepth = 0;
+  ProjectStructureAuthoringSession? _canonicalSession;
+  LocalProjectVersion? _canonicalObservedVersion;
+  CanonicalHistoryReplayOwner? _canonicalReplayOwner;
 
-  bool get canUndo => _undo.isNotEmpty;
-  bool get canRedo => _redo.isNotEmpty;
+  bool get _canonicalJournalIsCurrent {
+    final session = _canonicalSession;
+    if (session == null) return true;
+    final observed = _canonicalObservedVersion;
+    return observed != null && session.project.version == observed;
+  }
+
+  bool get canUndo => _undo.isNotEmpty && _canonicalJournalIsCurrent;
+  bool get canRedo => _redo.isNotEmpty && _canonicalJournalIsCurrent;
   int get undoDepth => _undo.length;
   int get redoDepth => _redo.length;
-  String? get undoLabel => _undo.isEmpty ? null : _undo.last.label;
-  String? get redoLabel => _redo.isEmpty ? null : _redo.last.label;
+  String? get undoLabel => canUndo ? _undo.last.label : null;
+  String? get redoLabel => canRedo ? _redo.last.label : null;
+
+  bool hasCanonicalSessionAffinity(
+    ProjectStructureAuthoringSession session,
+  ) =>
+      identical(_canonicalSession, session);
+
+  void attachCanonicalSession(
+    ProjectStructureAuthoringSession session, {
+    CanonicalHistoryReplayOwner? onReplayed,
+  }) {
+    if (identical(_canonicalSession, session)) {
+      _canonicalObservedVersion ??= session.project.version;
+      _canonicalReplayOwner = onReplayed;
+      return;
+    }
+    final hadPreviousSession = _canonicalSession != null;
+    if (hadPreviousSession) _clearTimeline();
+    _canonicalSession = session;
+    _canonicalObservedVersion = session.project.version;
+    _canonicalReplayOwner = onReplayed;
+    if (hadPreviousSession) notifyListeners();
+  }
+
+  void detachCanonicalSession(ProjectStructureAuthoringSession session) {
+    if (!identical(_canonicalSession, session)) return;
+    _canonicalSession = null;
+    _canonicalObservedVersion = null;
+    _canonicalReplayOwner = null;
+    _clearTimeline();
+    notifyListeners();
+  }
+
+  /// A canonical mutation has already advanced the in-memory project, but the
+  /// production persistence owner failed to acknowledge it. The transition
+  /// must not remain on the unified Undo/Redo journal because its durability
+  /// cannot be proven. Keep only the new canonical version baseline and clear
+  /// the chronological timeline fail-closed.
+  void invalidateAfterUnownedCanonicalCommit(
+    ProjectStructureAuthoringSession session,
+  ) {
+    if (!identical(_canonicalSession, session)) return;
+    _canonicalObservedVersion = session.project.version;
+    _clearTimeline();
+    notifyListeners();
+  }
+
+  /// A canonical transition is already authoritative and persistence ownership
+  /// may have succeeded, but a later callback, journal registration or legacy
+  /// projection diverged from that exact committed version. Discard the mixed
+  /// timeline and re-baseline against the state that is actually authoritative.
+  void invalidateAfterCommittedCanonicalDivergence(
+    ProjectStructureAuthoringSession session,
+  ) {
+    if (!identical(_canonicalSession, session)) return;
+    _clearTimeline();
+    _refreshBaselines();
+    notifyListeners();
+  }
+
+  /// Records one already-committed P3 mutation in the same chronological
+  /// journal as legacy architecture and P2 electrical edits.
+  ///
+  /// The version must be exactly one step after the last observed canonical
+  /// version. Any gap means a canonical mutation bypassed this production
+  /// journal, so chronological Undo can no longer be proven and is discarded.
+  void recordCanonicalCommit({
+    required ProjectStructureAuthoringSession session,
+    required String label,
+    required CanonicalHistoryRematerializer rematerialize,
+  }) {
+    if (_replaying) {
+      throw StateError(
+        'Canonical production history cannot register a new commit during replay.',
+      );
+    }
+    if (!identical(_canonicalSession, session)) {
+      throw StateError(
+        'Canonical production history lost session affinity before commit registration.',
+      );
+    }
+
+    final observed = _canonicalObservedVersion;
+    final current = session.project.version;
+    if (observed == null || current.value != observed.value + 1) {
+      _canonicalObservedVersion = current;
+      _clearTimeline();
+      notifyListeners();
+      return;
+    }
+
+    _canonicalObservedVersion = current;
+    _push(
+      _CanonicalEntry(
+        label: label,
+        session: session,
+        rematerialize: rematerialize,
+      ),
+    );
+  }
+
+  /// Runs canonical -> legacy projection without manufacturing a second legacy
+  /// architecture/P2 history entry. Screen dirty-state listeners remain active;
+  /// this suppression is scoped only to the unified document-history journal.
+  T runCanonicalProjection<T>(T Function() action) {
+    _canonicalProjectionDepth++;
+    try {
+      return action();
+    } finally {
+      _canonicalProjectionDepth--;
+      _architecture = _ArchitectureSnapshot.capture(controller);
+      _p2Revision = _p2.history.mutationRevision;
+    }
+  }
 
   void _onArchitectureChanged() {
     if (_replaying) return;
     final next = _ArchitectureSnapshot.capture(controller);
+    if (_canonicalProjectionDepth > 0) {
+      _architecture = next;
+      return;
+    }
     if (!_architecture.sameDocumentIdentity(next)) {
       _push(_ArchitectureEntry(before: _architecture, after: next));
     }
@@ -42,15 +178,15 @@ final class EditorDocumentHistory extends ChangeNotifier {
   void _onP2Changed() {
     if (_replaying) return;
     final revision = _p2.history.mutationRevision;
+    if (_canonicalProjectionDepth > 0) {
+      _p2Revision = revision;
+      return;
+    }
     if (revision == _p2Revision) return;
 
-    // Local undo/redo outside this journal destroys global chronological
-    // ordering. Fail closed by resetting the global journal rather than
-    // presenting an incorrect Undo operation.
     if (_p2.history.lastMutationKind != CommandHistoryMutationKind.execute ||
         revision != _p2Revision + 1) {
-      _undo.clear();
-      _redo.clear();
+      _clearTimeline();
       _p2Revision = revision;
       notifyListeners();
       return;
@@ -67,39 +203,104 @@ final class EditorDocumentHistory extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _clearTimeline() {
+    _undo.clear();
+    _redo.clear();
+  }
+
   bool undo() {
-    if (_undo.isEmpty || _p2.isManipulating) return false;
+    if (_p2.isManipulating) return false;
+    if (_rejectCanonicalVersionGap()) return false;
+    if (_undo.isEmpty) return false;
     final entry = _undo.removeLast();
     _replaying = true;
+    var succeeded = false;
     try {
       entry.undo(this);
       _redo.add(entry);
       _refreshBaselines();
-    } finally {
-      _replaying = false;
-    }
-    notifyListeners();
-    return true;
-  }
-
-  bool redo() {
-    if (_redo.isEmpty || _p2.isManipulating) return false;
-    final entry = _redo.removeLast();
-    _replaying = true;
-    try {
-      entry.redo(this);
-      _undo.add(entry);
+      succeeded = true;
+    } catch (_) {
+      _reconcileCanonicalAfterHistoryFailure(entry);
+      _clearTimeline();
       _refreshBaselines();
     } finally {
       _replaying = false;
     }
     notifyListeners();
+    return succeeded;
+  }
+
+  bool redo() {
+    if (_p2.isManipulating) return false;
+    if (_rejectCanonicalVersionGap()) return false;
+    if (_redo.isEmpty) return false;
+    final entry = _redo.removeLast();
+    _replaying = true;
+    var succeeded = false;
+    try {
+      entry.redo(this);
+      _undo.add(entry);
+      _refreshBaselines();
+      succeeded = true;
+    } catch (_) {
+      _reconcileCanonicalAfterHistoryFailure(entry);
+      _clearTimeline();
+      _refreshBaselines();
+    } finally {
+      _replaying = false;
+    }
+    notifyListeners();
+    return succeeded;
+  }
+
+  /// Rejects every document-history replay when the attached canonical session
+  /// has advanced outside this journal. This guard deliberately runs before
+  /// examining the top entry: a P2/legacy entry must not be replayed "through"
+  /// a hidden P3 transition just because it happens to sit above the last
+  /// canonical entry.
+  bool _rejectCanonicalVersionGap() {
+    final session = _canonicalSession;
+    if (session == null) return false;
+    final observed = _canonicalObservedVersion;
+    if (observed != null && session.project.version == observed) return false;
+
+    final topEntry =
+        _undo.isNotEmpty ? _undo.last : (_redo.isNotEmpty ? _redo.last : null);
+    if (topEntry is _CanonicalEntry) {
+      _reconcileCanonicalAfterHistoryFailure(topEntry);
+    }
+    _clearTimeline();
+    _refreshBaselines();
+    notifyListeners();
     return true;
+  }
+
+  /// A canonical replay can fail before mutation because the observed version
+  /// is stale, or after mutation because rematerialization/ownership failed.
+  /// In both cases canonical state remains authoritative. Re-project it when
+  /// the entry still belongs to the attached canonical session so the legacy
+  /// editor cannot remain a second, stale representation after the timeline is
+  /// invalidated.
+  void _reconcileCanonicalAfterHistoryFailure(_DocumentEntry entry) {
+    if (entry is! _CanonicalEntry) return;
+    final session = _canonicalSession;
+    if (session == null || !identical(session, entry.session)) return;
+    try {
+      entry.rematerialize();
+    } catch (_) {
+      // The timeline is still invalidated below. A rematerialization failure is
+      // intentionally not allowed to trigger a second history mutation.
+    }
   }
 
   void _refreshBaselines() {
     _architecture = _ArchitectureSnapshot.capture(controller);
     _p2Revision = _p2.history.mutationRevision;
+    final canonical = _canonicalSession;
+    if (canonical != null) {
+      _canonicalObservedVersion = canonical.project.version;
+    }
   }
 
   void _restoreArchitecture(_ArchitectureSnapshot snapshot) {
@@ -115,6 +316,80 @@ final class EditorDocumentHistory extends ChangeNotifier {
 
   void _undoP2() => _p2.undo();
   void _redoP2() => _p2.redo();
+
+  void _undoCanonical(_CanonicalEntry entry) {
+    final session = _requireCanonicalAffinity(entry);
+    final owner = _requireCanonicalReplayOwner();
+    final result = session.undoCanonicalMutation();
+    if (result == null) {
+      throw StateError('Canonical history expected an undoable P3 mutation.');
+    }
+    _canonicalObservedVersion = result.project.version;
+
+    // A canonical replay is already authoritative once ProjectMutationSession
+    // advances. Persistence ownership must therefore be attempted before any
+    // compatibility projection that can fail. This mirrors the normal P7A-5
+    // commit path and guarantees that rematerialization failure cannot prevent
+    // the persistence owner from seeing the committed canonical transition.
+    owner(result);
+    _requireCanonicalReplayResultCurrent(session, result);
+    entry.rematerialize();
+    _requireCanonicalReplayResultCurrent(session, result);
+  }
+
+  void _redoCanonical(_CanonicalEntry entry) {
+    final session = _requireCanonicalAffinity(entry);
+    final owner = _requireCanonicalReplayOwner();
+    final result = session.redoCanonicalMutation();
+    if (result == null) {
+      throw StateError('Canonical history expected a redoable P3 mutation.');
+    }
+    _canonicalObservedVersion = result.project.version;
+    owner(result);
+    _requireCanonicalReplayResultCurrent(session, result);
+    entry.rematerialize();
+    _requireCanonicalReplayResultCurrent(session, result);
+  }
+
+  void _requireCanonicalReplayResultCurrent(
+    ProjectStructureAuthoringSession session,
+    ProjectMutationResult result,
+  ) {
+    if (!identical(_canonicalSession, session)) {
+      throw StateError(
+        'Canonical production history switched sessions during replay.',
+      );
+    }
+    if (session.project.version != result.project.version) {
+      throw StateError(
+        'Canonical project advanced re-entrantly during history replay.',
+      );
+    }
+  }
+
+  ProjectStructureAuthoringSession _requireCanonicalAffinity(
+    _CanonicalEntry entry,
+  ) {
+    final session = _canonicalSession;
+    if (session == null || !identical(session, entry.session)) {
+      throw StateError('Canonical production history lost session affinity.');
+    }
+    final observed = _canonicalObservedVersion;
+    if (observed == null || session.project.version != observed) {
+      throw StateError('Canonical production history observed a version gap.');
+    }
+    return session;
+  }
+
+  CanonicalHistoryReplayOwner _requireCanonicalReplayOwner() {
+    final owner = _canonicalReplayOwner;
+    if (owner == null) {
+      throw StateError(
+        'Canonical production history has no persistence owner for replay.',
+      );
+    }
+    return owner;
+  }
 
   @override
   void dispose() {
@@ -159,6 +434,25 @@ final class _P2Entry extends _DocumentEntry {
 
   @override
   void redo(EditorDocumentHistory history) => history._redoP2();
+}
+
+final class _CanonicalEntry extends _DocumentEntry {
+  const _CanonicalEntry({
+    required this.label,
+    required this.session,
+    required this.rematerialize,
+  });
+
+  @override
+  final String label;
+  final ProjectStructureAuthoringSession session;
+  final CanonicalHistoryRematerializer rematerialize;
+
+  @override
+  void undo(EditorDocumentHistory history) => history._undoCanonical(this);
+
+  @override
+  void redo(EditorDocumentHistory history) => history._redoCanonical(this);
 }
 
 final class _ArchitectureSnapshot {

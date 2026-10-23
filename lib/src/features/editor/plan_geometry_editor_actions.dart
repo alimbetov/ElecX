@@ -5,12 +5,27 @@ import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/normative_route_engine.dart';
 import '../../engine/plan_geometry_editing.dart';
+import 'canonical_boundary_topology_editing_runtime.dart';
 import 'editor_controller.dart';
 import 'electrical_host_geometry_guard.dart';
 import 'editor_p2_session.dart';
 
 extension PlanGeometryEditorActions on EditorController {
   bool commitSelectedBoundary(MmPolygon candidate) {
+    if (CanonicalBoundaryTopologyEditingRuntime.hasCanonicalRuntime(this)) {
+      return CanonicalBoundaryTopologyEditingRuntime.commitCandidate(
+        this,
+        candidate,
+        materializeLegacy: _commitSelectedBoundaryLegacy,
+      );
+    }
+    return _commitSelectedBoundaryLegacy(candidate);
+  }
+
+  /// Transitional materialization path. Canonical runtime may call this only
+  /// after the P3 topology mutation has committed successfully. Legacy-only
+  /// workspaces continue to use it directly until their cutover is complete.
+  bool _commitSelectedBoundaryLegacy(MmPolygon candidate) {
     final current = selectedSpace;
     if (current == null || !PlanGeometryEditing.isValid(candidate)) {
       return false;
@@ -23,20 +38,14 @@ extension PlanGeometryEditorActions on EditorController {
 
     final replacements = <String, EngineeringSpace>{current.id: candidateSpace};
     for (final neighbor in level.spaces) {
-      if (neighbor.id == current.id) {
-        continue;
-      }
+      if (neighbor.id == current.id) continue;
       final propagated = _propagateSharedEdges(
         source: current,
         editedSource: candidateSpace,
         neighbor: neighbor,
       );
-      if (propagated == null) {
-        return false;
-      }
-      if (propagated != neighbor) {
-        replacements[neighbor.id] = propagated;
-      }
+      if (propagated == null) return false;
+      if (propagated != neighbor) replacements[neighbor.id] = propagated;
     }
 
     for (final replacement in replacements.values) {
@@ -51,9 +60,6 @@ extension PlanGeometryEditorActions on EditorController {
         for (final space in level.spaces) replacements[space.id] ?? space,
       ],
     );
-
-    // Draft routes use surface-local coordinates based on the old geometry.
-    // Clearing the draft is safer than silently keeping stale coordinates.
     routeSegments.clear();
     selectSpace(current.id);
     return true;
@@ -63,22 +69,14 @@ extension PlanGeometryEditorActions on EditorController {
     final walls = RoomSurfaceResolver.walls(candidateSpace);
     for (final entry in candidateSpace.wallProfiles.entries) {
       final index = entry.key;
-      if (index < 0 || index >= walls.length) {
-        return false;
-      }
-      if (entry.value.maxX != walls[index].lengthMm.round()) {
-        return false;
-      }
+      if (index < 0 || index >= walls.length) return false;
+      if (entry.value.maxX != walls[index].lengthMm.round()) return false;
     }
 
     for (final opening in openings) {
-      if (opening.hostWall.spaceId != candidateSpace.id) {
-        continue;
-      }
+      if (opening.hostWall.spaceId != candidateSpace.id) continue;
       final index = opening.hostWall.wallIndex;
-      if (index == null || index < 0 || index >= walls.length) {
-        return false;
-      }
+      if (index == null || index < 0 || index >= walls.length) return false;
       if (!RoomSurfaceResolver.openingFitsWall(
         opening: opening,
         wall: walls[index],
@@ -188,8 +186,6 @@ extension PlanGeometryEditorActions on EditorController {
     return true;
   }
 
-  /// Returns true only when this selected-room edge is not shared by another
-  /// room. Partial collinear overlap also counts as a shared/internal edge.
   bool isSelectedWallExternal(int wallIndex) {
     final space = selectedSpace;
     if (space == null ||
@@ -207,9 +203,7 @@ extension PlanGeometryEditorActions on EditorController {
       for (var i = 0; i < other.length; i++) {
         final c = other[i];
         final d = other[(i + 1) % other.length];
-        if (_collinearOverlap(a, b, c, d)) {
-          return false;
-        }
+        if (_collinearOverlap(a, b, c, d)) return false;
       }
     }
     return true;
@@ -240,9 +234,6 @@ extension PlanGeometryEditorActions on EditorController {
     return bestIndex;
   }
 
-  /// Moves a concrete selected-room boundary edge parallel to itself.
-  /// Directional gizmos call this method directly so no surface-mode switch is
-  /// needed while working on the plan.
   bool nudgeSelectedBoundaryEdgeNormal(int wallIndex, int distanceMm) {
     final space = selectedSpace;
     if (space == null ||
@@ -258,9 +249,7 @@ extension PlanGeometryEditorActions on EditorController {
     final dx = (b.x - a.x).toDouble();
     final dy = (b.y - a.y).toDouble();
     final length = math.sqrt(dx * dx + dy * dy);
-    if (length == 0) {
-      return false;
-    }
+    if (length == 0) return false;
     final midpoint = MmPoint((a.x + b.x) ~/ 2, (a.y + b.y) ~/ 2);
     final target = MmPoint(
       (midpoint.x - dy / length * distanceMm).round(),
@@ -275,8 +264,6 @@ extension PlanGeometryEditorActions on EditorController {
     return candidate != null && commitSelectedBoundary(candidate);
   }
 
-  /// Moves the active wall parallel to itself by [distanceMm].
-  /// Movement controls are intentionally available only for external walls.
   bool nudgeActiveWallNormal(int distanceMm) {
     final wallIndex = activeSurface?.wallIndex;
     if (wallIndex == null) return false;
@@ -285,8 +272,6 @@ extension PlanGeometryEditorActions on EditorController {
 
   void selectOpeningForPlan(ArchitecturalOpening opening) {
     selectOpening(opening.id);
-    // selectOpening establishes the host wall needed by opening validation.
-    // Keep the Plan projection active so direct manipulation stays in place.
     viewMode = EditorViewMode.plan;
     activeSurface = opening.hostWall;
   }
@@ -294,19 +279,14 @@ extension PlanGeometryEditorActions on EditorController {
   bool moveSelectedOpeningAlongWall(int targetCenterMm) {
     final opening = selectedOpening;
     final wall = activeWall;
-    if (opening == null || wall == null) {
-      return false;
-    }
+    if (opening == null || wall == null) return false;
     final offset = targetCenterMm - opening.widthMm ~/ 2;
     return updateSelectedOpeningGuarded(offsetFromStartMm: offset);
   }
 
-  /// Moves the selected window/door along its host wall.
   bool nudgeSelectedOpening(int deltaMm) {
     final opening = selectedOpening;
-    if (opening == null || deltaMm == 0) {
-      return false;
-    }
+    if (opening == null || deltaMm == 0) return false;
     return updateSelectedOpeningGuarded(
       offsetFromStartMm: opening.offsetFromStartMm + deltaMm,
     );
@@ -314,27 +294,21 @@ extension PlanGeometryEditorActions on EditorController {
 
   bool resizeSelectedOpeningFromStart(int newStartMm) {
     final opening = selectedOpening;
-    if (opening == null) {
-      return false;
-    }
+    if (opening == null) return false;
     final end = opening.offsetFromStartMm + opening.widthMm;
     final width = end - newStartMm;
-    if (width < 300) {
-      return false;
-    }
+    if (width < 300) return false;
     return updateSelectedOpeningGuarded(
-        offsetFromStartMm: newStartMm, widthMm: width);
+      offsetFromStartMm: newStartMm,
+      widthMm: width,
+    );
   }
 
   bool resizeSelectedOpeningFromEnd(int newEndMm) {
     final opening = selectedOpening;
-    if (opening == null) {
-      return false;
-    }
+    if (opening == null) return false;
     final width = newEndMm - opening.offsetFromStartMm;
-    if (width < 300) {
-      return false;
-    }
+    if (width < 300) return false;
     return updateSelectedOpeningGuarded(widthMm: width);
   }
 
@@ -349,9 +323,7 @@ extension PlanGeometryEditorActions on EditorController {
           .where((item) => item.id == opening.hostWall.spaceId)
           .firstOrNull;
       final wallIndex = opening.hostWall.wallIndex;
-      if (space == null || wallIndex == null) {
-        continue;
-      }
+      if (space == null || wallIndex == null) continue;
       final wall = RoomSurfaceResolver.wall(space, wallIndex);
       final a = RoomSurfaceResolver.wallLocalToPlan(
         wall,
@@ -372,15 +344,11 @@ extension PlanGeometryEditorActions on EditorController {
 
   int? planPointToActiveWallOffset(MmPoint point) {
     final wall = activeWall;
-    if (wall == null) {
-      return null;
-    }
+    if (wall == null) return null;
     final dx = (wall.end.x - wall.start.x).toDouble();
     final dy = (wall.end.y - wall.start.y).toDouble();
     final length = wall.lengthMm;
-    if (length <= 0) {
-      return null;
-    }
+    if (length <= 0) return null;
     final px = (point.x - wall.start.x).toDouble();
     final py = (point.y - wall.start.y).toDouble();
     final projected = (px * dx + py * dy) / length;
@@ -404,9 +372,7 @@ EngineeringSpace? _propagateSharedEdges({
     final oldB = sourceVertices[nextI];
     final newA = editedVertices[i];
     final newB = editedVertices[nextI];
-    if (oldA == newA && oldB == newB) {
-      continue;
-    }
+    if (oldA == newA && oldB == newB) continue;
 
     for (var j = 0; j < neighborVertices.length; j++) {
       final nextJ = (j + 1) % neighborVertices.length;
@@ -424,13 +390,9 @@ EngineeringSpace? _propagateSharedEdges({
     }
   }
 
-  if (!changed) {
-    return neighbor;
-  }
+  if (!changed) return neighbor;
   final boundary = MmPolygon(neighborVertices);
-  if (!PlanGeometryEditing.isValid(boundary)) {
-    return null;
-  }
+  if (!PlanGeometryEditing.isValid(boundary)) return null;
   return neighbor.copyWith(
     boundary: boundary,
     referenceFrame: RoomReferenceFrame(origin: boundary.bounds.center),
@@ -440,9 +402,7 @@ EngineeringSpace? _propagateSharedEdges({
 bool _collinearOverlap(MmPoint a, MmPoint b, MmPoint c, MmPoint d) {
   int cross(MmPoint p, MmPoint q, MmPoint r) =>
       (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
-  if (cross(a, b, c) != 0 || cross(a, b, d) != 0) {
-    return false;
-  }
+  if (cross(a, b, c) != 0 || cross(a, b, d) != 0) return false;
   final useX = (b.x - a.x).abs() >= (b.y - a.y).abs();
   int axis(MmPoint p) => useX ? p.x : p.y;
   final aMin = math.min(axis(a), axis(b));
@@ -455,9 +415,7 @@ bool _collinearOverlap(MmPoint a, MmPoint b, MmPoint c, MmPoint d) {
 double _distanceToSegment(MmPoint p, MmPoint a, MmPoint b) {
   final dx = (b.x - a.x).toDouble();
   final dy = (b.y - a.y).toDouble();
-  if (dx == 0 && dy == 0) {
-    return p.distanceTo(a);
-  }
+  if (dx == 0 && dy == 0) return p.distanceTo(a);
   final t = (((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy)).clamp(
     0.0,
     1.0,

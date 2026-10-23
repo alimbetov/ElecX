@@ -74,179 +74,192 @@ EditorProjectDocument _savedDocument() {
 
 void main() {
   testWidgets(
-      'F01 electrical mutation changes Saved to Modified and autosaves recovery',
-      (tester) async {
-    final projects = _MemoryProjectStore();
-    final recovery = _MemoryRecoveryStore();
-    final document = _savedDocument();
-    projects.documents[document.projectId] = document;
+    'F01 electrical mutation changes Saved to Modified and autosaves recovery',
+    (tester) async {
+      final projects = _MemoryProjectStore();
+      final recovery = _MemoryRecoveryStore();
+      final document = _savedDocument();
+      projects.documents[document.projectId] = document;
 
-    await tester.binding.setSurfaceSize(const Size(1200, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(
-      MaterialApp(
-        home: UnifiedWorkspaceEditorScreen(
-          projectStore: projects,
-          recoveryStore: recovery,
-          autosaveDelay: const Duration(milliseconds: 10),
-          initialDocument: document,
+      await tester.binding.setSurfaceSize(const Size(1200, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: UnifiedWorkspaceEditorScreen(
+            projectStore: projects,
+            recoveryStore: recovery,
+            autosaveDelay: const Duration(milliseconds: 10),
+            initialDocument: document,
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Saved'), findsOneWidget);
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Saved'), findsOneWidget);
 
-    final spatialCanvas =
-        tester.widget<SpatialCanvas>(find.byType(SpatialCanvas));
-    final controller = spatialCanvas.controller;
-    controller.p2.placeComponent(
-      type: ElectricalComponentType.socketOutlet,
-      surface: RoomSurfaceRef.floor(controller.selectedSpace!.id),
-      position: const SurfacePointMm(1000, 500),
-    );
-    await tester.pump();
+      final spatialCanvas = tester.widget<SpatialCanvas>(
+        find.byType(SpatialCanvas),
+      );
+      final controller = spatialCanvas.controller;
+      controller.p2.placeComponent(
+        type: ElectricalComponentType.socketOutlet,
+        surface: RoomSurfaceRef.floor(controller.selectedSpace!.id),
+        position: const SurfacePointMm(1000, 500),
+      );
+      await tester.pump();
 
-    expect(find.text('Modified'), findsOneWidget);
-    await tester.pump(const Duration(milliseconds: 20));
-    await tester.pumpAndSettle();
-    expect(recovery.saves, greaterThanOrEqualTo(1));
-    expect(recovery.snapshots[document.projectId], isNotNull);
-  });
+      expect(find.text('Modified'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 20));
+      await tester.pumpAndSettle();
+      expect(recovery.saves, greaterThanOrEqualTo(1));
+      expect(recovery.snapshots[document.projectId], isNotNull);
+    },
+  );
 
-  testWidgets('F01 selection-only and preview-cancel keep saved project clean',
-      (tester) async {
-    final projects = _MemoryProjectStore();
-    final recovery = _MemoryRecoveryStore();
-    final document = _savedDocument();
-    projects.documents[document.projectId] = document;
+  testWidgets(
+    'F01 selection-only and preview-cancel keep saved project clean',
+    (tester) async {
+      final projects = _MemoryProjectStore();
+      final recovery = _MemoryRecoveryStore();
+      final document = _savedDocument();
+      projects.documents[document.projectId] = document;
 
-    await tester.binding.setSurfaceSize(const Size(1200, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(
-      MaterialApp(
-        home: UnifiedWorkspaceEditorScreen(
-          projectStore: projects,
-          recoveryStore: recovery,
-          autosaveDelay: const Duration(milliseconds: 10),
-          initialDocument: document,
+      await tester.binding.setSurfaceSize(const Size(1200, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: UnifiedWorkspaceEditorScreen(
+            projectStore: projects,
+            recoveryStore: recovery,
+            autosaveDelay: const Duration(milliseconds: 10),
+            initialDocument: document,
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Saved'), findsOneWidget);
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Saved'), findsOneWidget);
 
-    final spatialCanvas =
-        tester.widget<SpatialCanvas>(find.byType(SpatialCanvas));
-    final controller = spatialCanvas.controller;
-    final component = controller.p2.placeComponent(
-      type: ElectricalComponentType.socketOutlet,
-      surface: RoomSurfaceRef.floor(controller.selectedSpace!.id),
-      position: const SurfacePointMm(1000, 500),
-    );
-    await tester.pump();
-    expect(find.text('Modified'), findsOneWidget);
+      final spatialCanvas = tester.widget<SpatialCanvas>(
+        find.byType(SpatialCanvas),
+      );
+      final controller = spatialCanvas.controller;
+      final component = controller.p2.placeComponent(
+        type: ElectricalComponentType.socketOutlet,
+        surface: RoomSurfaceRef.floor(controller.selectedSpace!.id),
+        position: const SurfacePointMm(1000, 500),
+      );
+      await tester.pump();
+      expect(find.text('Modified'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('project-save')));
-    await tester.pumpAndSettle();
-    expect(find.text('Saved'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('project-save')));
+      await tester.pumpAndSettle();
+      expect(find.text('Saved'), findsOneWidget);
 
-    controller.p2.clearSelection();
-    controller.p2.select(component.id);
-    controller.p2.updateSnap(null);
-    await tester.pump();
-    expect(find.text('Saved'), findsOneWidget);
+      controller.p2.clearSelection();
+      controller.p2.select(component.id);
+      controller.p2.updateSnap(null);
+      await tester.pump();
+      expect(find.text('Saved'), findsOneWidget);
 
-    expect(controller.componentTransform.begin(), isTrue);
-    expect(
-      controller.componentTransform.preview(
-        const SurfacePointMm(1200, 500),
-        isValid: true,
-      ),
-      isTrue,
-    );
-    controller.componentTransform.cancel();
-    await tester.pump();
-    expect(find.text('Saved'), findsOneWidget);
-
-    await tester.pump(const Duration(milliseconds: 20));
-    await tester.pumpAndSettle();
-    expect(recovery.snapshots[document.projectId], isNull);
-  });
-
-  test('F03 adding an opening across existing cable is rejected atomically',
-      () {
-    final controller = EditorController.demo();
-    addTearDown(() {
-      controller.disposeP2State();
-      controller.dispose();
-    });
-    controller.showWall(1);
-    final surface = controller.activeSurface!;
-    final board = controller.p2.placeComponent(
-      type: ElectricalComponentType.distributionBoard,
-      surface: surface,
-      position: const SurfacePointMm(200, 1000),
-    );
-    final load = controller.p2.placeComponent(
-      type: ElectricalComponentType.socketOutlet,
-      surface: surface,
-      position: const SurfacePointMm(2800, 1000),
-    );
-    controller.p2.select(board.id, mode: SelectionMode.replace);
-    controller.p2.select(load.id, mode: SelectionMode.add);
-    expect(
-      controller.p2.autoRouteSelectedPair(space: controller.selectedSpace),
-      isTrue,
-    );
-    final beforeOpenings = List<ArchitecturalOpening>.of(controller.openings);
-    final beforeRoute = controller.p2.routes.single;
-
-    expect(
-      controller.addOpeningGuarded(
-        ArchitecturalOpeningType.door,
-        canCommit: (candidate) =>
-            ElectricalHostGeometryGuard.openingCandidateAllowed(
-          controller,
-          candidate,
+      expect(controller.componentTransform.begin(), isTrue);
+      expect(
+        controller.componentTransform.preview(
+          const SurfacePointMm(1200, 500),
+          isValid: true,
         ),
-      ),
-      isFalse,
-    );
-    expect(controller.openings, orderedEquals(beforeOpenings));
-    expect(controller.p2.routes.single.segments, beforeRoute.segments);
-  });
+        isTrue,
+      );
+      controller.componentTransform.cancel();
+      await tester.pump();
+      expect(find.text('Saved'), findsOneWidget);
 
-  test('F03 shrinking room around electrical component is rejected atomically',
-      () {
-    final controller = EditorController.demo();
-    addTearDown(() {
-      controller.disposeP2State();
-      controller.dispose();
-    });
-    final originalBoundary = controller.selectedSpace!.boundary;
-    final bounds = originalBoundary.bounds;
-    final component = controller.p2.placeComponent(
-      type: ElectricalComponentType.socketOutlet,
-      surface: RoomSurfaceRef.floor(controller.selectedSpace!.id),
-      position: SurfacePointMm(bounds.width - 100, bounds.height ~/ 2),
-    );
-    final candidate = MmPolygon.rectangle(
-      MmPoint(bounds.left, bounds.bottom),
-      MmPoint(bounds.right - 1000, bounds.top),
-    );
+      await tester.pump(const Duration(milliseconds: 20));
+      await tester.pumpAndSettle();
+      expect(recovery.snapshots[document.projectId], isNull);
+    },
+  );
 
-    expect(controller.commitSelectedBoundary(candidate), isFalse);
-    expect(
-        controller.selectedSpace!.boundary.vertices, originalBoundary.vertices);
-    expect(
+  test(
+    'F03 adding an opening across existing cable is rejected atomically',
+    () {
+      final controller = EditorController.demo();
+      addTearDown(() {
+        controller.disposeP2State();
+        controller.dispose();
+      });
+      controller.showWall(1);
+      final surface = controller.activeSurface!;
+      final board = controller.p2.placeComponent(
+        type: ElectricalComponentType.distributionBoard,
+        surface: surface,
+        position: const SurfacePointMm(200, 1000),
+      );
+      final load = controller.p2.placeComponent(
+        type: ElectricalComponentType.socketOutlet,
+        surface: surface,
+        position: const SurfacePointMm(2800, 1000),
+      );
+      controller.p2.select(board.id, mode: SelectionMode.replace);
+      controller.p2.select(load.id, mode: SelectionMode.add);
+      expect(
+        controller.p2.autoRouteSelectedPair(space: controller.selectedSpace),
+        isTrue,
+      );
+      final beforeOpenings = List<ArchitecturalOpening>.of(controller.openings);
+      final beforeRoute = controller.p2.routes.single;
+
+      expect(
+        controller.addOpeningGuarded(
+          ArchitecturalOpeningType.door,
+          canCommit: (candidate) =>
+              ElectricalHostGeometryGuard.openingCandidateAllowed(
+            controller,
+            candidate,
+          ),
+        ),
+        isFalse,
+      );
+      expect(controller.openings, orderedEquals(beforeOpenings));
+      expect(controller.p2.routes.single.segments, beforeRoute.segments);
+    },
+  );
+
+  test(
+    'F03 shrinking room around electrical component is rejected atomically',
+    () {
+      final controller = EditorController.demo();
+      addTearDown(() {
+        controller.disposeP2State();
+        controller.dispose();
+      });
+      final originalBoundary = controller.selectedSpace!.boundary;
+      final bounds = originalBoundary.bounds;
+      final component = controller.p2.placeComponent(
+        type: ElectricalComponentType.socketOutlet,
+        surface: RoomSurfaceRef.floor(controller.selectedSpace!.id),
+        position: SurfacePointMm(bounds.width - 100, bounds.height ~/ 2),
+      );
+      final candidate = MmPolygon.rectangle(
+        MmPoint(bounds.left, bounds.bottom),
+        MmPoint(bounds.right - 1000, bounds.top),
+      );
+
+      expect(controller.commitSelectedBoundary(candidate), isFalse);
+      expect(
+        controller.selectedSpace!.boundary.vertices,
+        originalBoundary.vertices,
+      );
+      expect(
         controller.p2.components
             .singleWhere((item) => item.id == component.id)
             .position,
-        component.position);
-  });
+        component.position,
+      );
+    },
+  );
 
-  testWidgets('F05 second pointer cancels plan boundary drag without commit',
-      (tester) async {
+  testWidgets('F05 second pointer cancels plan boundary drag without commit', (
+    tester,
+  ) async {
     final controller = EditorController.demo();
     addTearDown(() {
       controller.disposeP2State();
@@ -260,16 +273,13 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-            body:
-                SizedBox.expand(child: SpatialCanvas(controller: controller))),
+          body: SizedBox.expand(child: SpatialCanvas(controller: controller)),
+        ),
       ),
     );
     await tester.pump();
 
-    const camera = WorldCamera(
-      centerMm: MmPoint(5000, 3500),
-      mmPerPixel: 12,
-    );
+    const camera = WorldCamera(centerMm: MmPoint(5000, 3500), mmPerPixel: 12);
     final vertex = before.vertices.first;
     final screen = camera.worldToScreen(
       viewportWidthPx: size.width,
@@ -295,8 +305,9 @@ void main() {
     expect(controller.selectedSpace!.boundary.vertices, before.vertices);
   });
 
-  testWidgets('F06 tool switch cancels active surface component preview',
-      (tester) async {
+  testWidgets('F06 tool switch cancels active surface component preview', (
+    tester,
+  ) async {
     final controller = EditorController.demo();
     addTearDown(() {
       controller.disposeP2State();
@@ -309,7 +320,9 @@ void main() {
       position: const SurfacePointMm(1600, 500),
     );
     await tester.pumpWidget(
-      MaterialApp(home: Scaffold(body: SurfaceCanvas(controller: controller))),
+      MaterialApp(
+        home: Scaffold(body: SurfaceCanvas(controller: controller)),
+      ),
     );
     await tester.pump();
 

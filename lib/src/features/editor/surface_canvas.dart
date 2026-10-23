@@ -44,6 +44,7 @@ import 'editor_viewport_commands.dart';
 import 'hosted_route_session.dart';
 import 'manual_cable_draft_persistence.dart';
 import 'route_selection_session.dart';
+import 'surface_transition_navigator.dart';
 import 'viewport_zoom_policy.dart';
 
 class SurfaceCanvas extends StatefulWidget {
@@ -93,8 +94,9 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
     );
     _lastViewportRevision = controller.viewportCommandRevision;
     controller.viewportCommandListenable.addListener(_onViewportCommand);
-    controller.editCancellationListenable
-        .addListener(_onEditCancellationRequested);
+    controller.editCancellationListenable.addListener(
+      _onEditCancellationRequested,
+    );
     controller.p2.addListener(_onP2Changed);
     controller.boundaryEditing.addListener(_onBoundaryEditChanged);
     controller.hostedRoutes.addListener(_onRouteChanged);
@@ -122,17 +124,20 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
       );
       oldWidget.controller.hostedRoutes.removeListener(_onRouteChanged);
       oldWidget.controller.routeSelection.removeListener(_onRouteChanged);
-      oldWidget.controller.componentTransform
-          .removeListener(_onInteractionChanged);
+      oldWidget.controller.componentTransform.removeListener(
+        _onInteractionChanged,
+      );
       oldWidget.controller.cableRouteEdit.removeListener(_onInteractionChanged);
-      oldWidget.controller.cableEndpointTransform
-          .removeListener(_onInteractionChanged);
+      oldWidget.controller.cableEndpointTransform.removeListener(
+        _onInteractionChanged,
+      );
       oldWidget.controller.cableUi.removeListener(_onInteractionChanged);
       _cancelActiveInteractions(oldWidget.controller);
       _lastViewportRevision = controller.viewportCommandRevision;
       controller.viewportCommandListenable.addListener(_onViewportCommand);
-      controller.editCancellationListenable
-          .addListener(_onEditCancellationRequested);
+      controller.editCancellationListenable.addListener(
+        _onEditCancellationRequested,
+      );
       controller.p2.addListener(_onP2Changed);
       controller.boundaryEditing.addListener(_onBoundaryEditChanged);
       controller.hostedRoutes.addListener(_onRouteChanged);
@@ -563,17 +568,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
   }
 
   void _navigateToSurface(RoomSurfaceRef target) {
-    if (controller.selectedSpaceId != target.spaceId) {
-      controller.selectSpace(target.spaceId);
-    }
-    switch (target.type) {
-      case SurfacePlaneType.wall:
-        controller.showWall(target.wallIndex!);
-      case SurfacePlaneType.floor:
-        controller.showFloor();
-      case SurfacePlaneType.ceiling:
-        controller.showCeiling();
-    }
+    SurfaceTransitionNavigator.navigate(controller, target);
   }
 
   void _followTransition(
@@ -689,7 +684,9 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
         }
       case final CableSegmentHit segment:
         ui.focusGeometry(
-            routeId: segment.route.id, segmentIndex: segment.segmentIndex);
+          routeId: segment.route.id,
+          segmentIndex: segment.segmentIndex,
+        );
         if (ui.mode == CableRoutingMode.auto ||
             ui.isSegmentLocked(segment.route.id, segment.segmentIndex)) {
           return false;
@@ -727,8 +724,9 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
           releaseRadiusMm: acquisition * 1.65,
           gridStepMm: controller.selectedSpace?.grid.minorStepMm ?? 100,
         );
-        controller.p2
-            .updateSnap(controller.cableEndpointTransform.previewState?.snap);
+        controller.p2.updateSnap(
+          controller.cableEndpointTransform.previewState?.snap,
+        );
       case final CableVertexHit vertex:
         final segment = vertex.route.segments[vertex.segmentIndex];
         final target = controller.cableUi.mode == CableRoutingMode.assisted
@@ -1012,10 +1010,12 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
         final bottomEditorVisible = surface.type == SurfacePlaneType.wall &&
             controller.boundaryEditing.active &&
             controller.boundaryEditing.profile != BoundaryEditProfile.wall;
-        final electricalVisible =
-            controller.p2.layers.isVisible(EditorLayerId.electrical);
-        final cableRoutesVisible =
-            controller.p2.layers.isVisible(EditorLayerId.cableRoutes);
+        final electricalVisible = controller.p2.layers.isVisible(
+          EditorLayerId.electrical,
+        );
+        final cableRoutesVisible = controller.p2.layers.isVisible(
+          EditorLayerId.cableRoutes,
+        );
 
         return Stack(
           children: [
@@ -1112,7 +1112,10 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                   }
                   final previewPosition = event.kind == PointerDeviceKind.touch
                       ? event.localPosition -
-                          Offset(0, _policy(event.kind).pointerPreviewOffsetPx)
+                          Offset(
+                            0,
+                            _policy(event.kind).pointerPreviewOffsetPx,
+                          )
                       : event.localPosition;
                   if (_cableDragHit != null && event.buttons != 0) {
                     final raw = projection.viewportToSurface(previewPosition);
@@ -1301,8 +1304,11 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                 top: compact ? 104 : 108,
                 child: Chip(
                   key: const ValueKey('component-preview-invalid'),
-                  avatar:
-                      Icon(Icons.error_outline, color: scheme.error, size: 18),
+                  avatar: Icon(
+                    Icons.error_outline,
+                    color: scheme.error,
+                    size: 18,
+                  ),
                   label: const Text('Невалидная позиция · commit запрещён'),
                 ),
               ),

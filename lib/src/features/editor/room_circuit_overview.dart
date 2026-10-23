@@ -4,13 +4,7 @@ import 'circuit_engineering_status.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 
-enum RoomCircuitOverviewKind {
-  pass,
-  fail,
-  indeterminate,
-  incomplete,
-  stale,
-}
+enum RoomCircuitOverviewKind { pass, fail, indeterminate, incomplete, stale }
 
 final class RoomCircuitOverviewEntry {
   const RoomCircuitOverviewEntry({
@@ -106,7 +100,9 @@ final class RoomCircuitOverviewModel {
     return RoomCircuitOverviewModel(List.unmodifiable(entries));
   }
 
-  static RoomCircuitOverviewKind _kind(CircuitEngineeringReadiness readiness) =>
+  static RoomCircuitOverviewKind _kind(
+    CircuitEngineeringReadiness readiness,
+  ) =>
       switch (readiness) {
         CircuitEngineeringReadiness.sizingPassed =>
           RoomCircuitOverviewKind.pass,
@@ -165,9 +161,7 @@ class RoomCircuitOverviewPanel extends StatelessWidget {
                   padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Выберите нагрузку и подключите её к щиту.',
-                    ),
+                    child: Text('Выберите нагрузку и подключите её к щиту.'),
                   ),
                 )
               else
@@ -187,8 +181,9 @@ class RoomCircuitOverviewPanel extends StatelessWidget {
                           message: _kindLabel(entry.kind),
                           child: Icon(_kindIcon(entry.kind), size: 20),
                         ),
-                        title:
-                            Text('${entry.circuitName} · ${entry.loadLabel}'),
+                        title: Text(
+                          '${entry.circuitName} · ${entry.loadLabel}',
+                        ),
                         subtitle: Text(
                           '${_kindLabel(entry.kind)} · ${entry.headline}\n'
                           '${entry.boardLabel} · ${entry.cableLabel} · '

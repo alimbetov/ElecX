@@ -89,8 +89,10 @@ void main() {
       ],
     );
     final session = EditorP2Session(
-      initialState:
-          EditorP2State(components: [source, target], routes: [route]),
+      initialState: EditorP2State(
+        components: [source, target],
+        routes: [route],
+      ),
     );
     addTearDown(session.dispose);
     final placed = session.placeComponent(

@@ -138,11 +138,7 @@ void main() {
     );
     final constraints = CableRouteConstraints(
       mandatoryWaypoints: const [
-        CableMandatoryWaypoint(
-          segmentIndex: 0,
-          pointIndex: 2,
-          point: waypoint,
-        ),
+        CableMandatoryWaypoint(segmentIndex: 0, pointIndex: 2, point: waypoint),
       ],
     );
     final session = CableEndpointTransformSession(onCommit: (_, __) => true);
@@ -172,20 +168,21 @@ void main() {
     expect(preview.validation.isValid, isTrue);
     expect(preview.route.target.componentId, 'socket-new');
     expect(preview.route.segments.single.points, contains(waypoint));
-    expect(preview.route.segments.single.points.first,
-        const SurfacePointMm(200, 200));
-    expect(preview.route.segments.single.points.last,
-        const SurfacePointMm(1800, 1400));
+    expect(
+      preview.route.segments.single.points.first,
+      const SurfacePointMm(200, 200),
+    );
+    expect(
+      preview.route.segments.single.points.last,
+      const SurfacePointMm(1800, 1400),
+    );
   });
 
   test('locked endpoint segment cannot start endpoint transform', () {
     final surface = RoomSurfaceRef.wall('room-101', 0);
     final route = _route(
       surface: surface,
-      points: const [
-        SurfacePointMm(200, 200),
-        SurfacePointMm(1400, 200),
-      ],
+      points: const [SurfacePointMm(200, 200), SurfacePointMm(1400, 200)],
     );
     final session = CableEndpointTransformSession(onCommit: (_, __) => true);
     addTearDown(session.dispose);
@@ -207,10 +204,7 @@ void main() {
     final surface = RoomSurfaceRef.wall('room-101', 0);
     final route = _route(
       surface: surface,
-      points: const [
-        SurfacePointMm(200, 200),
-        SurfacePointMm(1400, 200),
-      ],
+      points: const [SurfacePointMm(200, 200), SurfacePointMm(1400, 200)],
     );
     final session = CableEndpointTransformSession(onCommit: (_, __) => true);
     addTearDown(session.dispose);

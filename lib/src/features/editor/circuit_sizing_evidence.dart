@@ -110,25 +110,33 @@ final class CircuitSizingEvidence {
         : () {
             final value = _map(impedanceRaw, 'impedanceEvidence');
             return CableImpedanceEvidence(
-              resistanceOhmPerKm:
-                  _double(value['resistanceOhmPerKm'], 'resistanceOhmPerKm'),
-              reactanceOhmPerKm:
-                  _double(value['reactanceOhmPerKm'], 'reactanceOhmPerKm'),
+              resistanceOhmPerKm: _double(
+                value['resistanceOhmPerKm'],
+                'resistanceOhmPerKm',
+              ),
+              reactanceOhmPerKm: _double(
+                value['reactanceOhmPerKm'],
+                'reactanceOhmPerKm',
+              ),
               sourceKey: _nullableString(value['sourceKey']),
             );
           }();
     return CircuitSizingEvidence(
       routeId: _string(json['routeId'], 'routeId'),
-      routeGeometrySignature:
-          _string(json['routeGeometrySignature'], 'routeGeometrySignature'),
+      routeGeometrySignature: _string(
+        json['routeGeometrySignature'],
+        'routeGeometrySignature',
+      ),
       cable: _cableFromJson(cableJson),
       phaseSystem: CircuitPhaseSystem.values.byName(
         _string(json['phaseSystem'], 'phaseSystem'),
       ),
       designCurrentA: _double(json['designCurrentA'], 'designCurrentA'),
       nominalVoltageV: _double(json['nominalVoltageV'], 'nominalVoltageV'),
-      maxVoltageDropRatio:
-          _double(json['maxVoltageDropRatio'], 'maxVoltageDropRatio'),
+      maxVoltageDropRatio: _double(
+        json['maxVoltageDropRatio'],
+        'maxVoltageDropRatio',
+      ),
       powerFactor: _double(json['powerFactor'], 'powerFactor'),
       designCurrentSourceKey: _nullableString(json['designCurrentSourceKey']),
       impedanceEvidence: impedance,
@@ -157,16 +165,49 @@ final class CircuitSizingEvidence {
     );
   }
 
-  static String geometrySignature(ElectricalCableRoute route) => route.segments
-      .map(
-        (segment) => [
-          segment.surface.spaceId,
-          segment.surface.type.name,
-          segment.surface.wallIndex?.toString() ?? '-',
-          for (final point in segment.points) '${point.xMm},${point.yMm}',
-        ].join(':'),
-      )
-      .join('|');
+  static String geometrySignature(ElectricalCableRoute route) {
+    final segmentSignature = route.segments
+        .map(
+          (segment) => [
+            segment.surface.spaceId,
+            segment.surface.type.name,
+            segment.surface.boundaryEdgeId?.value ??
+                segment.surface.wallIndex?.toString() ??
+                '-',
+            for (final point in segment.points) '${point.xMm},${point.yMm}',
+          ].join(':'),
+        )
+        .join('|');
+    final penetrationSignature = route.penetrations
+        .map(
+          (penetration) => [
+            penetration.id,
+            penetration.hostKind.name,
+            penetration.hostThicknessMm,
+            penetration.pathLengthMm,
+            penetration.materialId ?? '-',
+            penetration.slabId?.value ?? '-',
+            penetration.verticalCoreId?.value ?? '-',
+            penetration.entryAnchor.surface.id,
+            '${penetration.entryAnchor.point.xMm},${penetration.entryAnchor.point.yMm}',
+            penetration.exitAnchor.surface.id,
+            '${penetration.exitAnchor.point.xMm},${penetration.exitAnchor.point.yMm}',
+          ].join(':'),
+        )
+        .join('|');
+    final verticalCoreLegSignature = route.verticalCoreLegs
+        .map(
+          (leg) => [
+            leg.verticalCoreId.value,
+            leg.fromSlabId.value,
+            leg.toSlabId.value,
+            leg.lengthMm,
+          ].join(':'),
+        )
+        .join('|');
+    return '$segmentSignature#penetrations=$penetrationSignature'
+        '#verticalCoreLegs=$verticalCoreLegSignature';
+  }
 
   static Map<String, Object?> _cableToJson(CableSpec value) => {
         'id': value.id,
