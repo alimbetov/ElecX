@@ -15,22 +15,158 @@ export 'project_aggregate_legacy.dart'
         ProjectAggregateValidationIssue,
         ProjectAggregateValidator,
         ProjectEntityStores,
-        ProjectIndex;
+        ProjectIndex,
+        ProjectLevelEntity,
+        ProjectStructuralZoneEntity,
+        ProjectSpaceEntity;
 
-/// Canonical normalized stores extended with P7B vertical physical topology.
+/// Canonical structural role of one building level.
 ///
-/// The pre-P7B structural stores remain source-compatible. [verticalCores]
-/// owns stable building-scoped riser/shaft identity and must be preserved by
-/// every project mutation.
+/// `unknown` is intentionally available for deterministic migration of legacy
+/// projects where no safe level role can be inferred. New authoring should
+/// always provide an explicit non-unknown value once the user has classified
+/// the level.
+enum ProjectLevelKind {
+  unknown,
+  basement,
+  ground,
+  residential,
+  technical,
+  roof,
+}
+
+/// Canonical exclusive structural-zone role.
+///
+/// Engineering overlays such as fire compartments, ACS/security and electrical
+/// distribution zones remain separate many-to-many classifications.
+enum ProjectStructuralZoneKind {
+  unknown,
+  apartment,
+  common,
+  technical,
+  parking,
+  storage,
+  utility,
+  commercial,
+  office,
+  service,
+}
+
+/// Canonical structural type of one Space, distinct from semantic SpaceUsage.
+///
+/// `unknown` is migration-safe and prevents old projects from being silently
+/// reclassified as ordinary rooms when the legacy document did not persist the
+/// structural type.
+enum ProjectSpaceType {
+  unknown,
+  room,
+  corridor,
+  hall,
+  technicalRoom,
+  stair,
+  shaft,
+  outdoorArea,
+}
+
+/// Canonical Level identity and structural attributes.
+final class ProjectLevelEntity {
+  ProjectLevelEntity({
+    required this.id,
+    required this.buildingId,
+    required this.name,
+    required this.levelNumber,
+    required this.elevationMm,
+    this.kind = ProjectLevelKind.unknown,
+    this.floorToFloorHeightMm = 3000,
+    this.displayOrder = 0,
+    Iterable<ZoneId> zoneIds = const [],
+    Iterable<SpaceId> spaceIds = const [],
+  })  : zoneIds = Set.unmodifiable(zoneIds),
+        spaceIds = Set.unmodifiable(spaceIds) {
+    if (name.trim().isEmpty) {
+      throw ArgumentError.value(name, 'name', 'Level name must be non-empty.');
+    }
+    if (levelNumber < -30 || levelNumber > 200) {
+      throw RangeError.range(levelNumber, -30, 200, 'levelNumber');
+    }
+    if (floorToFloorHeightMm <= 0) {
+      throw ArgumentError.value(
+        floorToFloorHeightMm,
+        'floorToFloorHeightMm',
+        'Floor-to-floor height must be positive.',
+      );
+    }
+  }
+
+  final LevelId id;
+  final BuildingId buildingId;
+  final String name;
+  final int levelNumber;
+  final ProjectLevelKind kind;
+  final int floorToFloorHeightMm;
+  final int displayOrder;
+  final int elevationMm;
+  final Set<ZoneId> zoneIds;
+  final Set<SpaceId> spaceIds;
+}
+
+/// Exclusive structural grouping such as an apartment or common area.
+final class ProjectStructuralZoneEntity {
+  ProjectStructuralZoneEntity({
+    required this.id,
+    required this.levelId,
+    required this.name,
+    required Iterable<SpaceId> spaceIds,
+    this.kind = ProjectStructuralZoneKind.unknown,
+  }) : spaceIds = Set.unmodifiable(spaceIds) {
+    if (name.trim().isEmpty) {
+      throw ArgumentError.value(name, 'name', 'Zone name must be non-empty.');
+    }
+  }
+
+  final ZoneId id;
+  final LevelId levelId;
+  final String name;
+  final ProjectStructuralZoneKind kind;
+  final Set<SpaceId> spaceIds;
+}
+
+/// Canonical Space identity/hierarchy plus structural type and semantic usage.
+final class ProjectSpaceEntity {
+  ProjectSpaceEntity({
+    required this.id,
+    required this.levelId,
+    required this.name,
+    this.type = ProjectSpaceType.unknown,
+    this.usage = SpaceUsage.unknown,
+  }) {
+    if (name.trim().isEmpty) {
+      throw ArgumentError.value(name, 'name', 'Space name must be non-empty.');
+    }
+  }
+
+  final SpaceId id;
+  final LevelId levelId;
+  final String name;
+  final ProjectSpaceType type;
+  final SpaceUsage usage;
+}
+
+/// Canonical normalized stores extended with P7B vertical physical topology
+/// and P4 structural semantics.
+///
+/// Pre-P7B hierarchy validation is retained through a lossless compatibility
+/// projection in [_toLegacyStores]. New semantics stay owned by these canonical
+/// entities and are never written back into the frozen legacy model.
 final class ProjectEntityStores {
   ProjectEntityStores({
     Map<SiteId, legacy.ProjectSiteEntity> sites = const {},
     Map<BuildingId, legacy.ProjectBuildingEntity> buildings = const {},
-    Map<LevelId, legacy.ProjectLevelEntity> levels = const {},
+    Map<LevelId, ProjectLevelEntity> levels = const {},
     Map<SlabId, ProjectSlab> slabs = const {},
     Map<VerticalCoreId, ProjectVerticalCore> verticalCores = const {},
-    Map<ZoneId, legacy.ProjectStructuralZoneEntity> zones = const {},
-    Map<SpaceId, legacy.ProjectSpaceEntity> spaces = const {},
+    Map<ZoneId, ProjectStructuralZoneEntity> zones = const {},
+    Map<SpaceId, ProjectSpaceEntity> spaces = const {},
     Map<OpeningId, ProjectOpeningEntity> openings = const {},
     Map<SpaceAdjacencyId, ProjectSpaceAdjacencyEntity> adjacencies = const {},
     Map<OverlayClassificationId, ProjectOverlayClassificationEntity> overlays =
@@ -50,11 +186,11 @@ final class ProjectEntityStores {
 
   final Map<SiteId, legacy.ProjectSiteEntity> sites;
   final Map<BuildingId, legacy.ProjectBuildingEntity> buildings;
-  final Map<LevelId, legacy.ProjectLevelEntity> levels;
+  final Map<LevelId, ProjectLevelEntity> levels;
   final Map<SlabId, ProjectSlab> slabs;
   final Map<VerticalCoreId, ProjectVerticalCore> verticalCores;
-  final Map<ZoneId, legacy.ProjectStructuralZoneEntity> zones;
-  final Map<SpaceId, legacy.ProjectSpaceEntity> spaces;
+  final Map<ZoneId, ProjectStructuralZoneEntity> zones;
+  final Map<SpaceId, ProjectSpaceEntity> spaces;
   final Map<OpeningId, ProjectOpeningEntity> openings;
   final Map<SpaceAdjacencyId, ProjectSpaceAdjacencyEntity> adjacencies;
   final Map<OverlayClassificationId, ProjectOverlayClassificationEntity>
@@ -239,10 +375,38 @@ legacy.ProjectEntityStores _toLegacyStores(ProjectEntityStores stores) =>
     legacy.ProjectEntityStores(
       sites: stores.sites,
       buildings: stores.buildings,
-      levels: stores.levels,
+      levels: <LevelId, legacy.ProjectLevelEntity>{
+        for (final entry in stores.levels.entries)
+          entry.key: legacy.ProjectLevelEntity(
+            id: entry.value.id,
+            buildingId: entry.value.buildingId,
+            name: entry.value.name,
+            levelNumber: entry.value.levelNumber,
+            displayOrder: entry.value.displayOrder,
+            elevationMm: entry.value.elevationMm,
+            zoneIds: entry.value.zoneIds,
+            spaceIds: entry.value.spaceIds,
+          ),
+      },
       slabs: stores.slabs,
-      zones: stores.zones,
-      spaces: stores.spaces,
+      zones: <ZoneId, legacy.ProjectStructuralZoneEntity>{
+        for (final entry in stores.zones.entries)
+          entry.key: legacy.ProjectStructuralZoneEntity(
+            id: entry.value.id,
+            levelId: entry.value.levelId,
+            name: entry.value.name,
+            spaceIds: entry.value.spaceIds,
+          ),
+      },
+      spaces: <SpaceId, legacy.ProjectSpaceEntity>{
+        for (final entry in stores.spaces.entries)
+          entry.key: legacy.ProjectSpaceEntity(
+            id: entry.value.id,
+            levelId: entry.value.levelId,
+            name: entry.value.name,
+            usage: entry.value.usage,
+          ),
+      },
       openings: stores.openings,
       adjacencies: stores.adjacencies,
       overlays: stores.overlays,
@@ -253,6 +417,9 @@ legacy.ProjectEntityStores _toLegacyStores(ProjectEntityStores stores) =>
 final class ProjectIndex {
   ProjectIndex._({
     required legacy.ProjectIndex legacyIndex,
+    required this.levels,
+    required this.zones,
+    required this.spaces,
     required this.verticalCores,
     required this.verticalCoresByBuildingId,
     required this.verticalCoresByLevelId,
@@ -272,6 +439,9 @@ final class ProjectIndex {
 
     return ProjectIndex._(
       legacyIndex: legacy.ProjectIndex.build(_toLegacyStores(stores)),
+      levels: stores.levels,
+      zones: stores.zones,
+      spaces: stores.spaces,
       verticalCores: stores.verticalCores,
       verticalCoresByBuildingId: _freezeSetMap(verticalCoresByBuildingId),
       verticalCoresByLevelId: _freezeSetMap(verticalCoresByLevelId),
@@ -279,6 +449,9 @@ final class ProjectIndex {
   }
 
   final legacy.ProjectIndex _legacy;
+  final Map<LevelId, ProjectLevelEntity> levels;
+  final Map<ZoneId, ProjectStructuralZoneEntity> zones;
+  final Map<SpaceId, ProjectSpaceEntity> spaces;
   final Map<VerticalCoreId, ProjectVerticalCore> verticalCores;
   final Map<BuildingId, Set<VerticalCoreId>> verticalCoresByBuildingId;
   final Map<LevelId, Set<VerticalCoreId>> verticalCoresByLevelId;
@@ -286,10 +459,7 @@ final class ProjectIndex {
   Map<SiteId, legacy.ProjectSiteEntity> get sites => _legacy.sites;
   Map<BuildingId, legacy.ProjectBuildingEntity> get buildings =>
       _legacy.buildings;
-  Map<LevelId, legacy.ProjectLevelEntity> get levels => _legacy.levels;
   Map<SlabId, ProjectSlab> get slabs => _legacy.slabs;
-  Map<ZoneId, legacy.ProjectStructuralZoneEntity> get zones => _legacy.zones;
-  Map<SpaceId, legacy.ProjectSpaceEntity> get spaces => _legacy.spaces;
   Map<OpeningId, ProjectOpeningEntity> get openings => _legacy.openings;
   Map<SpaceAdjacencyId, ProjectSpaceAdjacencyEntity> get adjacencies =>
       _legacy.adjacencies;
@@ -318,11 +488,11 @@ final class ProjectIndex {
 
   legacy.ProjectSiteEntity? site(SiteId id) => _legacy.site(id);
   legacy.ProjectBuildingEntity? building(BuildingId id) => _legacy.building(id);
-  legacy.ProjectLevelEntity? level(LevelId id) => _legacy.level(id);
+  ProjectLevelEntity? level(LevelId id) => levels[id];
   ProjectSlab? slab(SlabId id) => _legacy.slab(id);
   ProjectVerticalCore? verticalCore(VerticalCoreId id) => verticalCores[id];
-  legacy.ProjectStructuralZoneEntity? zone(ZoneId id) => _legacy.zone(id);
-  legacy.ProjectSpaceEntity? space(SpaceId id) => _legacy.space(id);
+  ProjectStructuralZoneEntity? zone(ZoneId id) => zones[id];
+  ProjectSpaceEntity? space(SpaceId id) => spaces[id];
   ProjectOpeningEntity? opening(OpeningId id) => _legacy.opening(id);
   ProjectSpaceAdjacencyEntity? adjacency(SpaceAdjacencyId id) =>
       _legacy.adjacency(id);
@@ -346,8 +516,20 @@ final class ProjectIndex {
 
   bool isConsistentWith(ProjectEntityStores stores) {
     if (!_legacy.isConsistentWith(_toLegacyStores(stores)) ||
+        levels.length != stores.levels.length ||
+        zones.length != stores.zones.length ||
+        spaces.length != stores.spaces.length ||
         verticalCores.length != stores.verticalCores.length) {
       return false;
+    }
+    for (final entry in stores.levels.entries) {
+      if (!identical(levels[entry.key], entry.value)) return false;
+    }
+    for (final entry in stores.zones.entries) {
+      if (!identical(zones[entry.key], entry.value)) return false;
+    }
+    for (final entry in stores.spaces.entries) {
+      if (!identical(spaces[entry.key], entry.value)) return false;
     }
     for (final core in stores.verticalCores.values) {
       if (!identical(verticalCores[core.id], core)) return false;
