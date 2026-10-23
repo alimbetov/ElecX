@@ -62,6 +62,10 @@ void main() {
         ),
       ],
     );
+    final middleKey = BoundaryHostedObjectRegistry.routeAnchorObjectKey(
+      route.id,
+      RouteAnchorId('middle-stable'),
+    );
     final canonical = BoundaryHostedObjectRegistry({
       'cable:route-1:source': BoundaryHostedReference.point(
         objectKey: 'cable:route-1:source',
@@ -69,8 +73,8 @@ void main() {
         host: BoundaryEdgeHostRef(spaceId: spaceId, edgeId: second),
         offsetMm: 1500,
       ),
-      'route:route-1:anchor:middle-stable': BoundaryHostedReference.point(
-        objectKey: 'route:route-1:anchor:middle-stable',
+      middleKey: BoundaryHostedReference.point(
+        objectKey: middleKey,
         objectKind: BoundaryHostedObjectKind.routeAnchor,
         host: BoundaryEdgeHostRef(spaceId: spaceId, edgeId: second),
         offsetMm: 500,
