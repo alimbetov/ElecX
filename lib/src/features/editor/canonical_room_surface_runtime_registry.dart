@@ -1,9 +1,12 @@
 import '../../application/project/project_boundary_topology_editing.dart';
 import '../../application/project/project_mutation.dart';
+import '../../domain/boundary_construction_registry.dart';
+import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/surfaces.dart';
 import 'cable_edit_access.dart';
 import 'canonical_editor_runtime_cutover.dart';
+import 'canonical_editor_workspace_adapter.dart';
 import 'canonical_room_surface_cutover.dart';
 import 'canonical_room_surface_resume.dart';
 import 'canonical_room_surface_selection.dart';
@@ -20,6 +23,33 @@ typedef CanonicalBoundaryTopologyOwnershipCallback = void Function(
 typedef CanonicalMutationOwnershipCallback = void Function(
   ProjectMutationResult result,
 );
+
+/// Immutable read-only view needed by physical cable routing.
+///
+/// This object deliberately exposes no mutation session. Routing can resolve
+/// canonical Space/BoundaryEdge identity and physical wall construction while
+/// topology editing keeps its separate admission gate.
+final class CanonicalPhysicalRoutingContext {
+  const CanonicalPhysicalRoutingContext({
+    required this.project,
+    required this.binding,
+  });
+
+  final ProjectAggregateRoot project;
+  final CanonicalEditorWorkspaceBinding binding;
+
+  BoundaryConstructionRegistry get constructions =>
+      project.engineeringMetadata.boundaryConstructionRegistry;
+
+  SpaceId? canonicalSpaceIdForLegacy(String legacySpaceId) =>
+      binding.canonicalSpaceIdForLegacy(legacySpaceId);
+
+  List<BoundaryEdgeId>? edgeOrderForLegacySpace(String legacySpaceId) {
+    final spaceId = canonicalSpaceIdForLegacy(legacySpaceId);
+    if (spaceId == null) return null;
+    return project.index.boundary(spaceId)?.orderedEdgeIds;
+  }
+}
 
 /// Runtime-only bridge from the legacy EditorController instance to the exact
 /// canonical cutover coordinator that owns it.
@@ -70,6 +100,20 @@ abstract final class CanonicalRoomSurfaceRuntimeRegistry {
 
   static bool hasCanonicalRuntime(EditorController controller) =>
       _coordinators[controller] != null;
+
+  /// Read-only physical routing context. Unlike [coordinatorFor], this lookup
+  /// is intentionally available during cable authoring and does not participate
+  /// in topology-mutation admission.
+  static CanonicalPhysicalRoutingContext? physicalRoutingContextFor(
+    EditorController controller,
+  ) {
+    final coordinator = _coordinators[controller];
+    if (coordinator == null) return null;
+    return CanonicalPhysicalRoutingContext(
+      project: coordinator.session.project,
+      binding: coordinator.adapter.binding,
+    );
+  }
 
   /// Canonical topology changes must never run through a second active edit
   /// transaction. This is deliberately input-modality agnostic: toolbar,
