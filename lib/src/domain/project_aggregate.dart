@@ -292,7 +292,8 @@ abstract final class ProjectAggregateValidator {
       // so two distinct pairs can collide in that representation. P6 canonical
       // entities already normalize endpoints; only retain a duplicate issue when
       // the referenced adjacency entities really own the same typed pair.
-      if (issue.code == legacy.ProjectAggregateIssueCode.duplicateAdjacencyPair &&
+      if (issue.code ==
+              legacy.ProjectAggregateIssueCode.duplicateAdjacencyPair &&
           !_isActualDuplicateAdjacencyPair(issue, stores.adjacencies)) {
         continue;
       }
