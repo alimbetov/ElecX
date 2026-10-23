@@ -1,3 +1,4 @@
+import '../../domain/boundary_construction_registry.dart';
 import '../../domain/boundary_geometry_integrity.dart';
 import '../../domain/boundary_host_migration.dart';
 import '../../domain/boundary_host_registry.dart';
@@ -12,8 +13,9 @@ import 'project_mutation.dart';
 /// P7A-5 application boundary for identity-changing topology edits.
 ///
 /// Unlike the P7A-4.5 geometry editor, this service accepts explicit lineage
-/// and atomically remaps canonical hosted-object ownership and wall-profile
-/// payloads in the same P3 mutation as the topology replacement.
+/// and atomically remaps canonical hosted-object ownership, wall-profile and
+/// physical construction payloads in the same P3 mutation as the topology
+/// replacement.
 final class ProjectBoundaryTopologyMigrationService {
   const ProjectBoundaryTopologyMigrationService(this._mutations);
 
@@ -46,6 +48,8 @@ final class ProjectBoundaryTopologyMigrationService {
       source: source,
       sourceRegistry: current.engineeringMetadata.boundaryHostedObjectRegistry,
       sourceProfiles: current.engineeringMetadata.boundaryWallProfileRegistry,
+      sourceConstructions:
+          current.engineeringMetadata.boundaryConstructionRegistry,
       sourceOpenings: current.stores.openings.values,
     );
   }
@@ -83,12 +87,14 @@ final class BoundaryTopologyMigrationPreview {
     required this.lineage,
     required this.hostedObjects,
     required this.wallProfiles,
+    required this.constructions,
   });
 
   final SpaceBoundaryTopology topology;
   final BoundaryTopologyChangeSet lineage;
   final BoundaryHostedObjectRegistry hostedObjects;
   final BoundaryWallProfileRegistry wallProfiles;
+  final BoundaryConstructionRegistry constructions;
 }
 
 final class BoundaryTopologyMigrationCommit {
@@ -109,15 +115,18 @@ final class CanonicalBoundaryTopologyMigrationSession {
     required SpaceBoundaryTopology source,
     required BoundaryHostedObjectRegistry sourceRegistry,
     required BoundaryWallProfileRegistry sourceProfiles,
+    required BoundaryConstructionRegistry sourceConstructions,
     required Iterable<ProjectOpeningEntity> sourceOpenings,
   })  : _mutations = mutations,
         _source = source,
         _sourceRegistry = sourceRegistry,
         _sourceProfiles = sourceProfiles,
+        _sourceConstructions = sourceConstructions,
         _sourceOpenings = List.unmodifiable(sourceOpenings),
         _previewTopology = source,
         _previewRegistry = sourceRegistry,
-        _previewProfiles = sourceProfiles;
+        _previewProfiles = sourceProfiles,
+        _previewConstructions = sourceConstructions;
 
   final ProjectMutationSession _mutations;
   final SpaceId spaceId;
@@ -125,17 +134,21 @@ final class CanonicalBoundaryTopologyMigrationSession {
   final SpaceBoundaryTopology _source;
   final BoundaryHostedObjectRegistry _sourceRegistry;
   final BoundaryWallProfileRegistry _sourceProfiles;
+  final BoundaryConstructionRegistry _sourceConstructions;
   final List<ProjectOpeningEntity> _sourceOpenings;
 
   SpaceBoundaryTopology _previewTopology;
   BoundaryHostedObjectRegistry _previewRegistry;
   BoundaryWallProfileRegistry _previewProfiles;
+  BoundaryConstructionRegistry _previewConstructions;
   BoundaryTopologyChangeSet? _lineage;
 
   SpaceBoundaryTopology get source => _source;
   SpaceBoundaryTopology get previewTopology => _previewTopology;
   BoundaryHostedObjectRegistry get previewHostedObjects => _previewRegistry;
   BoundaryWallProfileRegistry get previewWallProfiles => _previewProfiles;
+  BoundaryConstructionRegistry get previewConstructions =>
+      _previewConstructions;
   BoundaryTopologyChangeSet? get previewLineage => _lineage;
   bool get dirty => _lineage != null;
 
@@ -328,6 +341,11 @@ final class CanonicalBoundaryTopologyMigrationSession {
       lineage: lineage,
     );
     final profiles = wallProfiles ?? _sourceProfiles;
+    final constructions = _sourceConstructions.remapSpace(
+      before: _source,
+      after: topology,
+      lineage: lineage,
+    );
     _requireWallProfileScopePreserved(
       source: _sourceProfiles,
       candidate: profiles,
@@ -345,6 +363,7 @@ final class CanonicalBoundaryTopologyMigrationSession {
     };
     remapped.validateAgainst(boundaries);
     profiles.validateAgainst(boundaries);
+    constructions.validateAgainst(boundaries);
     BoundaryOpeningProfileValidator.validateSpace(
       spaceId: spaceId,
       openings: _sourceOpenings,
@@ -355,12 +374,14 @@ final class CanonicalBoundaryTopologyMigrationSession {
     _previewTopology = topology;
     _previewRegistry = remapped;
     _previewProfiles = profiles;
+    _previewConstructions = constructions;
     _lineage = lineage;
     return BoundaryTopologyMigrationPreview(
       topology: topology,
       lineage: lineage,
       hostedObjects: remapped,
       wallProfiles: profiles,
+      constructions: constructions,
     );
   }
 
@@ -368,6 +389,7 @@ final class CanonicalBoundaryTopologyMigrationSession {
     _previewTopology = _source;
     _previewRegistry = _sourceRegistry;
     _previewProfiles = _sourceProfiles;
+    _previewConstructions = _sourceConstructions;
     _lineage = null;
   }
 
@@ -383,6 +405,7 @@ final class CanonicalBoundaryTopologyMigrationSession {
           topology: _previewTopology,
           hostedObjects: _previewRegistry,
           wallProfiles: _previewProfiles,
+          constructions: _previewConstructions,
         ),
       ),
     );
@@ -407,12 +430,14 @@ final class _ReplaceBoundaryTopologyWithHostsCommand implements ProjectCommand {
     required this.topology,
     required this.hostedObjects,
     required this.wallProfiles,
+    required this.constructions,
   });
 
   final SpaceId spaceId;
   final SpaceBoundaryTopology topology;
   final BoundaryHostedObjectRegistry hostedObjects;
   final BoundaryWallProfileRegistry wallProfiles;
+  final BoundaryConstructionRegistry constructions;
 
   @override
   String get commandType => 'p7a.migrateBoundaryTopologyAndHosts';
@@ -441,6 +466,7 @@ final class _ReplaceBoundaryTopologyWithHostsCommand implements ProjectCommand {
     );
     hostedObjects.validateAgainst(boundaries);
     wallProfiles.validateAgainst(boundaries);
+    constructions.validateAgainst(boundaries);
     BoundaryOpeningProfileValidator.validateSpace(
       spaceId: spaceId,
       openings: stores.openings.values,
@@ -449,7 +475,8 @@ final class _ReplaceBoundaryTopologyWithHostsCommand implements ProjectCommand {
     );
     final metadata = current.engineeringMetadata
         .withBoundaryHostedObjectRegistry(hostedObjects)
-        .withBoundaryWallProfileRegistry(wallProfiles);
+        .withBoundaryWallProfileRegistry(wallProfiles)
+        .withBoundaryConstructionRegistry(constructions);
     return ProjectCommandCandidate.fromState(
       state: ProjectMutableState(
         engineeringMetadata: metadata,
