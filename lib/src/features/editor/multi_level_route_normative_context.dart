@@ -40,7 +40,8 @@ abstract final class MultiLevelRouteNormativeContext {
       if (wallIndex == null) return null;
       try {
         final wall = RoomSurfaceResolver.wall(space, wallIndex);
-        final openings = workspace.openingsByLevel[owner.levelNumber] ?? const [];
+        final openings =
+            workspace.openingsByLevel[owner.levelNumber] ?? const [];
         return RouteNormativeContext(
           surface: surface,
           widthMm: wall.lengthMm.round(),
