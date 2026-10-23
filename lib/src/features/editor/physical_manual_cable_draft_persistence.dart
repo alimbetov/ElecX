@@ -2,6 +2,7 @@ import '../../domain/boundary_penetration.dart';
 import '../../domain/cable_penetration_authoring.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/electrical_routing.dart';
+import '../../domain/surface_routing.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/editor_layers.dart';
 import '../../engine/port_snap_resolver.dart';
@@ -29,12 +30,14 @@ final class _PhysicalRouteContinuationIntent {
 }
 
 final Expando<_PhysicalRouteContinuationIntent> _continuationIntents =
-    Expando<_PhysicalRouteContinuationIntent>('ElecX physical route continuation');
+    Expando<_PhysicalRouteContinuationIntent>(
+        'ElecX physical route continuation');
 
 extension PhysicalManualCableDraftPersistence on EditorController {
   bool get hasPhysicalRouteContinuation => _continuationIntents[this] != null;
 
-  String? get physicalRouteContinuationId => _continuationIntents[this]?.route.id;
+  String? get physicalRouteContinuationId =>
+      _continuationIntents[this]?.route.id;
 
   /// Starts an edit draft at the current target of an already committed route.
   ///
