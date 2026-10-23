@@ -40,7 +40,7 @@ class WallConstructionEditor extends StatelessWidget {
               );
             }
             return _WallConstructionForm(
-              key: _formKey(baseline),
+              key: _formKey,
               controller: controller,
               baseline: baseline,
               compact: false,
@@ -49,13 +49,10 @@ class WallConstructionEditor extends StatelessWidget {
         ),
       );
 
-  static ValueKey<String> _formKey(
-    CanonicalWallConstructionEditBaseline baseline,
-  ) =>
-      ValueKey(
-        '${identityHashCode(baseline.session)}:'
-        '${baseline.spaceId.value}:${baseline.edgeId.value}',
-      );
+  /// Keep one state object while the selection/version changes so a dirty
+  /// draft can become an explicit conflict instead of being silently replaced.
+  static const ValueKey<String> _formKey =
+      ValueKey('canonical-wall-construction-form');
 }
 
 class _CompactWallConstructionEditor extends StatelessWidget {
@@ -128,11 +125,28 @@ class _CompactWallConstructionEditor extends StatelessWidget {
             ),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(12),
-              child: _WallConstructionForm(
-                key: WallConstructionEditor._formKey(baseline),
-                controller: controller,
-                baseline: baseline,
-                compact: false,
+              child: ListenableBuilder(
+                listenable: controller,
+                builder: (context, _) => ListenableBuilder(
+                  listenable: controller.documentHistory,
+                  builder: (context, _) {
+                    final liveBaseline =
+                        CanonicalWallConstructionEditContract.capture(
+                      controller,
+                    );
+                    if (liveBaseline == null) {
+                      return const _UnavailableConstructionEditor(
+                        compact: false,
+                      );
+                    }
+                    return _WallConstructionForm(
+                      key: WallConstructionEditor._formKey,
+                      controller: controller,
+                      baseline: liveBaseline,
+                      compact: false,
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -179,6 +193,10 @@ class _WallConstructionFormState extends State<_WallConstructionForm> {
     super.didUpdateWidget(oldWidget);
     final incoming = widget.baseline;
     if (!_baseline.sameTarget(incoming)) {
+      if (_dirty) {
+        _conflict = true;
+        return;
+      }
       _baseline = incoming;
       _conflict = false;
       _load(incoming.profile);
@@ -452,19 +470,26 @@ class _UnavailableConstructionEditor extends StatelessWidget {
         elevation: 8,
         color: Theme.of(context).colorScheme.surfaceContainerHigh,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-        child: Padding(
-          padding: EdgeInsets.all(compact ? 10 : 14),
-          child: const Row(
-            children: [
-              Icon(Icons.lock_outline, size: 18),
-              SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  'Конструкция стены доступна только для canonical wall с '
-                  'подтверждённым BoundaryEdgeId и persistence owner.',
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: compact ? 56 : 0),
+          child: Padding(
+            padding: EdgeInsets.all(compact ? 8 : 14),
+            child: Row(
+              children: [
+                const Icon(Icons.lock_outline, size: 18),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    compact
+                        ? 'Canonical wall editor недоступен'
+                        : 'Конструкция стены доступна только для canonical wall с подтверждённым BoundaryEdgeId и persistence owner.',
+                    maxLines: compact ? 1 : null,
+                    overflow:
+                        compact ? TextOverflow.ellipsis : TextOverflow.visible,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
