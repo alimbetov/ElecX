@@ -735,7 +735,9 @@ abstract final class CanonicalBoundaryHostProjection {
     final canonicalKey = _routeAnchorKey(routeId, anchorId);
     final canonical = registry[canonicalKey];
     final legacy = registry[_legacyRouteAnchorKey(routeId, anchorId)];
-    if (canonical != null && legacy != null && !_sameReference(canonical, legacy)) {
+    if (canonical != null &&
+        legacy != null &&
+        !_sameReference(canonical, legacy)) {
       throw StateError(
         'Route anchor $canonicalKey has conflicting canonical and legacy '
         'hosted references.',
