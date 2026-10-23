@@ -6,19 +6,23 @@ import '../../domain/vertical_core.dart';
 import 'project_document_codec.dart';
 import 'slab_aware_canonical_project_document_codec.dart';
 
-/// Schema-v9 additive persistence layer for canonical VerticalCore entities.
+/// Schema-v10 additive persistence layer for canonical VerticalCore entities.
 ///
-/// Schema v8 remains authoritative for slabs and all earlier project fields.
-/// v9 owns only the `verticalCores` payload, so existing slab migrations stay
-/// frozen and a v8 project migrates with an explicit empty core store.
+/// New slab documents use schema v9. Historical development builds also
+/// emitted VerticalCore documents as v9 on top of the legacy slab-v8 shape.
+/// Decode therefore accepts both v9 meanings and distinguishes the historical
+/// VerticalCore shape by the additive `verticalCores` field. New documents are
+/// always emitted as v10 so schema numbers are unambiguous going forward.
 final class VerticalCoreAwareCanonicalProjectDocumentCodec
     implements ProjectDocumentCodec {
   const VerticalCoreAwareCanonicalProjectDocumentCodec();
 
-  static const int schemaVersion = 9;
-  static const int _legacySchemaVersion = 8;
+  static const int schemaVersion = 10;
+  static const int _slabSchemaVersion = 9;
+  static const int _legacyVerticalCoreSchemaVersion = 9;
+  static const int _legacySlabSchemaVersion = 8;
 
-  static const SlabAwareCanonicalProjectDocumentCodec _legacy =
+  static const SlabAwareCanonicalProjectDocumentCodec _slabs =
       SlabAwareCanonicalProjectDocumentCodec();
 
   @override
@@ -26,11 +30,11 @@ final class VerticalCoreAwareCanonicalProjectDocumentCodec
 
   @override
   ProjectDocument encode(ProjectSnapshot snapshot) {
-    final legacy = _legacy.encode(snapshot);
+    final slabDocument = _slabs.encode(snapshot);
     return ProjectDocument(
       schemaVersion: schemaVersion,
       payload: <String, Object?>{
-        ...legacy.payload,
+        ...slabDocument.payload,
         'verticalCores': _encodeVerticalCores(
           snapshot.aggregate.stores.verticalCores,
         ),
@@ -47,28 +51,38 @@ final class VerticalCoreAwareCanonicalProjectDocumentCodec
       );
     }
 
-    if (document.schemaVersion <= _legacySchemaVersion) {
-      return _legacy.decode(document);
+    if (document.schemaVersion < _legacyVerticalCoreSchemaVersion) {
+      return _slabs.decode(document);
+    }
+
+    if (document.schemaVersion == _legacyVerticalCoreSchemaVersion &&
+        !document.payload.containsKey('verticalCores')) {
+      // New unambiguous slab-v9 document.
+      return _slabs.decode(document);
     }
 
     final verticalCores =
         _decodeVerticalCores(document.payload['verticalCores']);
-    final legacyPayload = Map<String, Object?>.of(document.payload)
+    final slabPayload = Map<String, Object?>.of(document.payload)
       ..remove('verticalCores');
-    final legacySnapshot = _legacy.decode(
+    final slabVersion =
+        document.schemaVersion == _legacyVerticalCoreSchemaVersion
+            ? _legacySlabSchemaVersion
+            : _slabSchemaVersion;
+    final slabSnapshot = _slabs.decode(
       ProjectDocument(
-        schemaVersion: _legacySchemaVersion,
-        payload: legacyPayload,
+        schemaVersion: slabVersion,
+        payload: slabPayload,
       ),
     );
-    final stores = legacySnapshot.aggregate.stores;
+    final stores = slabSnapshot.aggregate.stores;
 
     try {
       final aggregate = ProjectAggregateRoot(
-        id: legacySnapshot.id,
-        siteId: legacySnapshot.siteId,
-        version: legacySnapshot.localVersion,
-        engineeringMetadata: legacySnapshot.aggregate.engineeringMetadata,
+        id: slabSnapshot.id,
+        siteId: slabSnapshot.siteId,
+        version: slabSnapshot.localVersion,
+        engineeringMetadata: slabSnapshot.aggregate.engineeringMetadata,
         stores: ProjectEntityStores(
           sites: stores.sites,
           buildings: stores.buildings,
@@ -83,7 +97,7 @@ final class VerticalCoreAwareCanonicalProjectDocumentCodec
           boundaries: stores.boundaries,
         ),
       );
-      return legacySnapshot.copyWith(aggregate: aggregate);
+      return slabSnapshot.copyWith(aggregate: aggregate);
     } on ProjectAggregateValidationException catch (error) {
       throw FormatException('Invalid canonical VerticalCore graph: $error');
     } on ArgumentError catch (error) {
