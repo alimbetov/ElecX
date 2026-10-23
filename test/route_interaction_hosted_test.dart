@@ -6,6 +6,7 @@ import 'package:elecx/src/domain/route_medium.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/engine/route_interaction_engine.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
+import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:elecx/src/features/editor/hosted_route_session.dart';
 import 'package:elecx/src/features/editor/route_selection_session.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -73,6 +74,44 @@ void main() {
       controller.routeSelection.selectedHostedRoute?.medium,
       RouteMediumProfile.ethernet,
     );
+  });
+
+  test('selected P2 route exposes an implicit hosted projection', () {
+    final controller = EditorController.demo();
+    addTearDown(() {
+      controller.disposeP2State();
+      controller.dispose();
+    });
+    final route = ElectricalCableRoute(
+      id: 'route-p2-selected',
+      source: const ElectricalEndpointRef(
+        componentId: 'source',
+        portId: 'out',
+      ),
+      target: const ElectricalEndpointRef(
+        componentId: 'target',
+        portId: 'in',
+      ),
+      medium: RouteMediumProfile.acPower,
+      segments: [
+        ElectricalRouteSegment(
+          surface: RoomSurfaceRef.ceiling('room-101'),
+          points: const [SurfacePointMm(100, 100), SurfacePointMm(2000, 100)],
+        ),
+      ],
+    );
+    controller.p2.history.replaceState(
+      EditorP2State(routes: [route]),
+      clearHistory: true,
+    );
+
+    controller.routeSelection.select(route.id);
+
+    final hosted = controller.routeSelection.selectedHostedRoute;
+    expect(hosted, isNotNull);
+    expect(hosted!.routeId, route.id);
+    expect(hosted.medium, RouteMediumProfile.acPower);
+    expect(hosted.segments.single.host.surface, route.segments.single.surface);
   });
 
   test('indoor adapter preserves route medium semantics', () {
