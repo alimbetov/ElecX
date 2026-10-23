@@ -1,10 +1,12 @@
 import 'dart:math' as math;
 
 import '../../application/project/project_mutation.dart';
+import '../../application/project/project_structure_authoring.dart';
 import '../../domain/boundary_construction_registry.dart';
 import '../../domain/boundary_host_migration.dart';
 import '../../domain/boundary_penetration.dart';
 import '../../domain/electrical_routing.dart';
+import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/surfaces.dart';
 import 'canonical_editor_runtime_cutover.dart';
@@ -457,25 +459,24 @@ abstract final class CanonicalWallConstructionRuntime {
 
   static void _requireCommittedStateCurrent({
     required EditorController controller,
-    required Object session,
-    required dynamic expectedVersion,
+    required ProjectStructureAuthoringSession session,
+    required LocalProjectVersion expectedVersion,
     required String phase,
     required void Function() rematerialize,
   }) {
     final history = controller.documentHistory;
-    final canonicalSession = session as dynamic;
-    if (!history.hasCanonicalSessionAffinity(canonicalSession)) {
+    if (!history.hasCanonicalSessionAffinity(session)) {
       throw CanonicalWallConstructionEditException(
         'Wall construction lost canonical session affinity after $phase.',
       );
     }
 
-    if (canonicalSession.project.version == expectedVersion) return;
+    if (session.project.version == expectedVersion) return;
 
-    history.invalidateAfterCommittedCanonicalDivergence(canonicalSession);
+    history.invalidateAfterCommittedCanonicalDivergence(session);
     _bestEffortRematerializeIfStillAttached(
       controller: controller,
-      session: canonicalSession,
+      session: session,
       rematerialize: rematerialize,
     );
     throw CanonicalWallConstructionEditException(
@@ -485,7 +486,7 @@ abstract final class CanonicalWallConstructionRuntime {
 
   static _RematerializeRecovery _bestEffortRematerializeIfStillAttached({
     required EditorController controller,
-    required dynamic session,
+    required ProjectStructureAuthoringSession session,
     required void Function() rematerialize,
   }) {
     if (!controller.documentHistory.hasCanonicalSessionAffinity(session)) {
@@ -512,7 +513,7 @@ enum _RematerializeRecovery { succeeded, failed, notAttached }
 final class _WallProjectionRecovery {
   const _WallProjectionRecovery(this.session);
 
-  final Object session;
+  final ProjectStructureAuthoringSession session;
 }
 
 final class _ConstructionContext {
