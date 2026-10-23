@@ -16,7 +16,8 @@ void main() {
       final fixture = _Fixture();
       addTearDown(fixture.dispose);
       final original = fixture.route;
-      final revisionBeforeBegin = fixture.controller.p2.history.mutationRevision;
+      final revisionBeforeBegin =
+          fixture.controller.p2.history.mutationRevision;
 
       expect(
         fixture.controller.beginPhysicalRouteContinuation(original.id),
