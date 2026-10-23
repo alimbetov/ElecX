@@ -6,6 +6,36 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P4 space semantics editing port', () {
+    test('changes structural Space type as one undoable canonical mutation', () {
+      final mutations = ProjectMutationSession(_project());
+      final editing = ProjectSpaceSemanticsEditingSession(mutations);
+      final spaceId = SpaceId('space-1');
+
+      final result = editing.setType(
+        spaceId,
+        ProjectSpaceType.technicalRoom,
+      )!;
+
+      expect(
+        result.project.index.space(spaceId)!.type,
+        ProjectSpaceType.technicalRoom,
+      );
+      expect(result.changeSet.updatedEntityIds, <EntityId>{spaceId});
+      expect(editing.version, LocalProjectVersion(1));
+      expect(mutations.undoDepth, 1);
+
+      final undone = mutations.undo(editing.version)!;
+      expect(
+        undone.project.index.space(spaceId)!.type,
+        ProjectSpaceType.unknown,
+      );
+      final redone = mutations.redo(mutations.current.version)!;
+      expect(
+        redone.project.index.space(spaceId)!.type,
+        ProjectSpaceType.technicalRoom,
+      );
+    });
+
     test('reassigns structural zone through the shared mutation timeline', () {
       final mutations = ProjectMutationSession(_project());
       final editing = ProjectSpaceSemanticsEditingSession(mutations);
