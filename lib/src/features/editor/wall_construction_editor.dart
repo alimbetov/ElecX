@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/boundary_construction_registry.dart';
-import 'canonical_wall_construction_runtime.dart';
 import 'editor_controller.dart';
 import 'editor_document_history.dart';
+import 'wall_construction_edit_contract.dart';
 
 /// Production Inspector for physical wall construction.
 ///
 /// Values are authored against BoundaryEdgeId through the canonical project
 /// mutation timeline. The form never writes a legacy wall ordinal as durable
-/// state.
+/// state, and every save is bound to the exact session/host/version captured
+/// when the draft baseline was established.
 class WallConstructionEditor extends StatelessWidget {
   const WallConstructionEditor({
     required this.controller,
@@ -26,15 +27,18 @@ class WallConstructionEditor extends StatelessWidget {
         builder: (context, _) => ListenableBuilder(
           listenable: controller.documentHistory,
           builder: (context, _) {
-            final wall =
-                CanonicalWallConstructionRuntime.activeWall(controller);
-            if (wall == null) {
+            final baseline =
+                CanonicalWallConstructionEditContract.capture(controller);
+            if (baseline == null) {
               return _UnavailableConstructionEditor(compact: compact);
             }
             return _WallConstructionForm(
-              key: ValueKey('${wall.spaceId.value}:${wall.edgeId.value}'),
+              key: ValueKey(
+                '${identityHashCode(baseline.session)}:'
+                '${baseline.spaceId.value}:${baseline.edgeId.value}',
+              ),
               controller: controller,
-              wall: wall,
+              baseline: baseline,
               compact: compact,
             );
           },
@@ -45,13 +49,13 @@ class WallConstructionEditor extends StatelessWidget {
 class _WallConstructionForm extends StatefulWidget {
   const _WallConstructionForm({
     required this.controller,
-    required this.wall,
+    required this.baseline,
     required this.compact,
     super.key,
   });
 
   final EditorController controller;
-  final CanonicalWallConstructionView wall;
+  final CanonicalWallConstructionEditBaseline baseline;
   final bool compact;
 
   @override
@@ -62,7 +66,9 @@ class _WallConstructionFormState extends State<_WallConstructionForm> {
   late final TextEditingController _thickness;
   late final TextEditingController _material;
   late final TextEditingController _fireRating;
+  late CanonicalWallConstructionEditBaseline _baseline;
   bool _saving = false;
+  bool _conflict = false;
 
   @override
   void initState() {
@@ -70,15 +76,33 @@ class _WallConstructionFormState extends State<_WallConstructionForm> {
     _thickness = TextEditingController();
     _material = TextEditingController();
     _fireRating = TextEditingController();
-    _load(widget.wall.profile);
+    _baseline = widget.baseline;
+    _load(_baseline.profile);
   }
 
   @override
   void didUpdateWidget(covariant _WallConstructionForm oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.wall.profile != widget.wall.profile && !_dirty) {
-      _load(widget.wall.profile);
+    final incoming = widget.baseline;
+    if (!_baseline.sameTarget(incoming)) {
+      _baseline = incoming;
+      _conflict = false;
+      _load(incoming.profile);
+      return;
     }
+
+    final changedExternally =
+        incoming.expectedVersion != _baseline.expectedVersion ||
+            incoming.profile != _baseline.profile;
+    if (!changedExternally) return;
+
+    if (_dirty) {
+      _conflict = true;
+      return;
+    }
+    _baseline = incoming;
+    _conflict = false;
+    _load(incoming.profile);
   }
 
   @override
@@ -108,13 +132,18 @@ class _WallConstructionFormState extends State<_WallConstructionForm> {
     }
   }
 
-  bool get _dirty {
-    final candidate = _candidate;
-    final current = widget.wall.profile;
-    if (candidate != null) return candidate != current;
-    return _thickness.text.trim().isNotEmpty ||
-        _material.text.trim().isNotEmpty ||
-        _fireRating.text.trim().isNotEmpty;
+  bool get _dirty => !_draftMatches(_baseline.profile);
+
+  bool _draftMatches(BoundaryConstructionProfile? profile) {
+    final thickness = _thickness.text.trim();
+    final material = _material.text.trim();
+    final fireRating = _fireRating.text.trim();
+    if (profile == null) {
+      return thickness.isEmpty && material.isEmpty && fireRating.isEmpty;
+    }
+    return thickness == profile.thicknessMm.toString() &&
+        material == profile.materialId &&
+        fireRating == (profile.fireRatingId ?? '');
   }
 
   void _load(BoundaryConstructionProfile? profile) {
@@ -123,13 +152,21 @@ class _WallConstructionFormState extends State<_WallConstructionForm> {
     _fireRating.text = profile?.fireRatingId ?? '';
   }
 
+  void _discardDraftAndReload() {
+    setState(() {
+      _baseline = widget.baseline;
+      _conflict = false;
+      _load(_baseline.profile);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final candidate = _candidate;
-    final edgeLabel = widget.wall.edgeId.value.length <= 14
-        ? widget.wall.edgeId.value
-        : '…${widget.wall.edgeId.value.substring(widget.wall.edgeId.value.length - 12)}';
+    final edgeLabel = _baseline.edgeId.value.length <= 14
+        ? _baseline.edgeId.value
+        : '…${_baseline.edgeId.value.substring(_baseline.edgeId.value.length - 12)}';
 
     return Material(
       elevation: 8,
@@ -169,9 +206,21 @@ class _WallConstructionFormState extends State<_WallConstructionForm> {
                     label: Text('Не сохранено'),
                   ),
                 ],
+                if (_conflict) ...[
+                  const SizedBox(width: 8),
+                  const Chip(
+                    avatar: Icon(Icons.sync_problem, size: 16),
+                    visualDensity: VisualDensity.compact,
+                    label: Text('Конфликт'),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 8),
+            if (_conflict) ...[
+              _ConstructionConflictBanner(onReload: _discardDraftAndReload),
+              const SizedBox(height: 8),
+            ],
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -226,14 +275,18 @@ class _WallConstructionFormState extends State<_WallConstructionForm> {
                     'Толщина должна быть > 0, материал обязателен',
                   ),
                 TextButton(
-                  onPressed: _dirty && !_saving
-                      ? () => setState(() => _load(widget.wall.profile))
+                  onPressed: (_dirty || _conflict) && !_saving
+                      ? _discardDraftAndReload
                       : null,
-                  child: const Text('Отменить'),
+                  child: Text(_conflict ? 'Обновить' : 'Отменить'),
                 ),
                 FilledButton.icon(
-                  onPressed:
-                      _dirty && candidate != null && !_saving ? _save : null,
+                  onPressed: _dirty &&
+                          candidate != null &&
+                          !_saving &&
+                          !_conflict
+                      ? _save
+                      : null,
                   icon: _saving
                       ? const SizedBox.square(
                           dimension: 16,
@@ -261,32 +314,26 @@ class _WallConstructionFormState extends State<_WallConstructionForm> {
 
   Future<void> _save() async {
     final candidate = _candidate;
-    if (candidate == null) return;
+    if (candidate == null || _conflict) return;
     setState(() => _saving = true);
     try {
-      final saved = CanonicalWallConstructionRuntime.setActiveWallConstruction(
+      final refreshed = CanonicalWallConstructionEditContract.save(
         controller: widget.controller,
-        thicknessMm: candidate.thicknessMm,
-        materialId: candidate.materialId,
-        fireRatingId: candidate.fireRatingId,
+        baseline: _baseline,
+        profile: candidate,
       );
       if (!mounted) return;
-      if (!saved) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Изменение конструкции стены сейчас недоступно: canonical '
-              'ownership или активная стена не подтверждены.',
-            ),
-          ),
-        );
-        return;
-      }
-      final refreshed = CanonicalWallConstructionRuntime.activeWall(
-        widget.controller,
+      setState(() {
+        _baseline = refreshed;
+        _conflict = false;
+        _load(refreshed.profile);
+      });
+    } on CanonicalWallConstructionEditConflictException catch (error) {
+      if (!mounted) return;
+      setState(() => _conflict = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
       );
-      if (refreshed != null) _load(refreshed.profile);
-      setState(() {});
     } on CanonicalWallConstructionEditException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -324,6 +371,42 @@ class _UnavailableConstructionEditor extends StatelessWidget {
                   'Конструкция стены доступна только для canonical wall с '
                   'подтверждённым BoundaryEdgeId и persistence owner.',
                 ),
+              ),
+            ],
+          ),
+        ),
+      );
+}
+
+class _ConstructionConflictBanner extends StatelessWidget {
+  const _ConstructionConflictBanner({required this.onReload});
+
+  final VoidCallback onReload;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        liveRegion: true,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            border: Border.all(color: Theme.of(context).colorScheme.error),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.sync_problem, size: 18),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Конструкция стены или версия проекта изменилась вне этой '
+                  'формы. Черновик не будет сохранён поверх новых данных.',
+                ),
+              ),
+              const SizedBox(width: 8),
+              TextButton(
+                onPressed: onReload,
+                child: const Text('Загрузить актуальное'),
               ),
             ],
           ),
