@@ -13,7 +13,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P7 C5 production physical-route reservation', () {
-    test('penetration identity is reserved before candidate materialization', () {
+    test('penetration identity is reserved before candidate materialization',
+        () {
       final editor = _editorWithAdjacentRooms();
       final factory = _GuardedEntityIdFactory();
       addTearDown(() {
