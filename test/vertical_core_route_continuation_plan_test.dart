@@ -9,7 +9,8 @@ import 'package:elecx/src/domain/vertical_core_route_continuation_plan.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('multi-level continuation requires explicit target SpaceId per level', () {
+  test('multi-level continuation requires explicit target SpaceId per level',
+      () {
     final fixture = _Fixture();
     final routePlan = VerticalCoreRouteAuthoring.plan(
       project: fixture.project,
