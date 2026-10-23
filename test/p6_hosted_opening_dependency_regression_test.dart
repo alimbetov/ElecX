@@ -3,6 +3,7 @@ import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/project_space_semantics_commands.dart';
 import 'package:elecx/src/domain/boundary_host_migration.dart';
 import 'package:elecx/src/domain/boundary_host_registry.dart';
+import 'package:elecx/src/domain/boundary_topology.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_orientation.dart';
@@ -112,12 +113,38 @@ ProjectAggregateRoot _hostedOpeningProject() {
   final roomB = SpaceId('room-b');
   final openingId = OpeningId('door-1');
   final edgeId = BoundaryEdgeId('edge-a');
+  final edgeB = BoundaryEdgeId('edge-b');
+  final edgeC = BoundaryEdgeId('edge-c');
   final host = BoundaryEdgeHostRef(spaceId: roomA, edgeId: edgeId);
   final hostedObjects = const BoundaryHostedObjectRegistry.empty().putOpening(
     openingId: openingId,
     host: host,
     startOffsetMm: 100,
     endOffsetMm: 1000,
+  );
+  final boundary = SpaceBoundaryTopology(
+    spaceId: roomA,
+    orderedEdgeIds: <BoundaryEdgeId>[edgeId, edgeB, edgeC],
+    edges: <BoundaryEdgeId, ProjectBoundaryEdge>{
+      edgeId: ProjectBoundaryEdge(
+        id: edgeId,
+        spaceId: roomA,
+        start: const BoundaryPointMm(xMm: 0, yMm: 0),
+        end: const BoundaryPointMm(xMm: 2000, yMm: 0),
+      ),
+      edgeB: ProjectBoundaryEdge(
+        id: edgeB,
+        spaceId: roomA,
+        start: const BoundaryPointMm(xMm: 2000, yMm: 0),
+        end: const BoundaryPointMm(xMm: 0, yMm: 2000),
+      ),
+      edgeC: ProjectBoundaryEdge(
+        id: edgeC,
+        spaceId: roomA,
+        start: const BoundaryPointMm(xMm: 0, yMm: 2000),
+        end: const BoundaryPointMm(xMm: 0, yMm: 0),
+      ),
+    },
   );
 
   return ProjectAggregateRoot(
@@ -167,6 +194,7 @@ ProjectAggregateRoot _hostedOpeningProject() {
           heightMm: 2100,
         ),
       },
+      boundaries: <SpaceId, SpaceBoundaryTopology>{roomA: boundary},
     ),
   );
 }
