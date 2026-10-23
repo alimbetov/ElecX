@@ -1,4 +1,5 @@
 import '../../application/project/project_snapshot.dart';
+import '../../domain/boundary_construction_registry.dart';
 import '../../domain/boundary_edge_identity_registry.dart';
 import '../../domain/boundary_host_migration.dart';
 import '../../domain/boundary_host_registry.dart';
@@ -20,16 +21,18 @@ import 'project_document_codec.dart';
 /// - v3: P6 SpaceUsage, openings, adjacency and overlay classifications;
 /// - v4: P7A stable boundary topology and durable edge-owner tombstones;
 /// - v5: P7A-5 durable hosted-object ownership by BoundaryEdgeId;
-/// - v6: P7A-5 durable wall-profile payloads by BoundaryEdgeId.
+/// - v6: P7A-5 durable wall-profile payloads by BoundaryEdgeId;
+/// - v7: physical wall construction thickness/material by BoundaryEdgeId.
 final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
   const CanonicalProjectDocumentCodec();
 
-  static const int schemaVersion = 6;
+  static const int schemaVersion = 7;
   static const int _schemaV1 = 1;
   static const int _schemaV2 = 2;
   static const int _schemaV3 = 3;
   static const int _schemaV4 = 4;
   static const int _schemaV5 = 5;
+  static const int _schemaV6 = 6;
 
   @override
   int get currentSchemaVersion => schemaVersion;
@@ -44,8 +47,11 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
         snapshot.aggregate.engineeringMetadata.boundaryHostedObjectRegistry;
     final wallProfileRegistry =
         snapshot.aggregate.engineeringMetadata.boundaryWallProfileRegistry;
+    final constructionRegistry =
+        snapshot.aggregate.engineeringMetadata.boundaryConstructionRegistry;
     hostedRegistry.validateAgainst(stores.boundaries);
     wallProfileRegistry.validateAgainst(stores.boundaries);
+    constructionRegistry.validateAgainst(stores.boundaries);
     return ProjectDocument(
       schemaVersion: schemaVersion,
       payload: <String, Object?>{
@@ -69,6 +75,9 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
         ),
         'boundaryWallProfileRegistry': _encodeBoundaryWallProfileRegistry(
           wallProfileRegistry,
+        ),
+        'boundaryConstructionRegistry': _encodeBoundaryConstructionRegistry(
+          constructionRegistry,
         ),
         'sites': _encodeSites(stores),
         'buildings': _encodeBuildings(stores),
@@ -288,8 +297,12 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
       final wallProfileRegistry = _decodeBoundaryWallProfileRegistry(
         migrated.payload['boundaryWallProfileRegistry'],
       );
+      final constructionRegistry = _decodeBoundaryConstructionRegistry(
+        migrated.payload['boundaryConstructionRegistry'],
+      );
       hostedRegistry.validateAgainst(boundaries);
       wallProfileRegistry.validateAgainst(boundaries);
+      constructionRegistry.validateAgainst(boundaries);
 
       final aggregate = ProjectAggregateRoot(
         id: projectId,
@@ -300,6 +313,7 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
           boundaryEdgeIdentityRegistry: identityRegistry,
           boundaryHostedObjectRegistry: hostedRegistry,
           boundaryWallProfileRegistry: wallProfileRegistry,
+          boundaryConstructionRegistry: constructionRegistry,
         ),
         stores: ProjectEntityStores(
           sites: sites,
@@ -330,6 +344,8 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
       throw FormatException('Invalid opening/profile ownership: $error');
     } on BoundaryWallProfileRegistryException catch (error) {
       throw FormatException('Invalid boundary wall-profile registry: $error');
+    } on BoundaryConstructionRegistryException catch (error) {
+      throw FormatException('Invalid boundary construction registry: $error');
     } on BoundaryTopologyValidationException catch (error) {
       throw FormatException('Invalid persisted boundary topology: $error');
     } on ArgumentError catch (error) {
@@ -367,6 +383,9 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
     }
     if (migrated.schemaVersion == _schemaV5) {
       migrated = _migrateV5ToV6(migrated);
+    }
+    if (migrated.schemaVersion == _schemaV6) {
+      migrated = _migrateV6ToV7(migrated);
     }
     return migrated;
   }
@@ -423,10 +442,19 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
 
   static ProjectDocument _migrateV5ToV6(ProjectDocument document) =>
       ProjectDocument(
-        schemaVersion: schemaVersion,
+        schemaVersion: _schemaV6,
         payload: <String, Object?>{
           ...document.payload,
           'boundaryWallProfileRegistry': const <Object?>[],
+        },
+      );
+
+  static ProjectDocument _migrateV6ToV7(ProjectDocument document) =>
+      ProjectDocument(
+        schemaVersion: schemaVersion,
+        payload: <String, Object?>{
+          ...document.payload,
+          'boundaryConstructionRegistry': const <Object?>[],
         },
       );
 
@@ -660,6 +688,28 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
     ];
   }
 
+  static List<Object?> _encodeBoundaryConstructionRegistry(
+    BoundaryConstructionRegistry registry,
+  ) {
+    final entries = registry.profiles.entries.toList()
+      ..sort((a, b) {
+        final bySpace = a.key.spaceId.value.compareTo(b.key.spaceId.value);
+        if (bySpace != 0) return bySpace;
+        return a.key.edgeId.value.compareTo(b.key.edgeId.value);
+      });
+    return <Object?>[
+      for (final entry in entries)
+        <String, Object?>{
+          'spaceId': entry.key.spaceId.value,
+          'edgeId': entry.key.edgeId.value,
+          'kind': entry.value.kind.name,
+          'thicknessMm': entry.value.thicknessMm,
+          'materialId': entry.value.materialId,
+          'fireRatingId': entry.value.fireRatingId,
+        },
+    ];
+  }
+
   static Map<SpaceId, SpaceBoundaryTopology> _decodeBoundaries(Object? value) {
     final result = <SpaceId, SpaceBoundaryTopology>{};
     for (final raw in _list(value, 'boundaries')) {
@@ -849,6 +899,49 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
       profiles[host] = WallProfile(vertices: vertices);
     }
     return BoundaryWallProfileRegistry(profiles);
+  }
+
+  static BoundaryConstructionRegistry _decodeBoundaryConstructionRegistry(
+    Object? value,
+  ) {
+    final profiles = <BoundaryEdgeHostRef, BoundaryConstructionProfile>{};
+    for (final raw in _list(value, 'boundaryConstructionRegistry')) {
+      final json = _map(raw, 'boundaryConstructionRegistry.entry');
+      final host = BoundaryEdgeHostRef(
+        spaceId: SpaceId(
+          _string(json['spaceId'], 'boundaryConstructionRegistry.spaceId'),
+        ),
+        edgeId: BoundaryEdgeId(
+          _string(json['edgeId'], 'boundaryConstructionRegistry.edgeId'),
+        ),
+      );
+      if (profiles.containsKey(host)) {
+        throw FormatException(
+          'boundaryConstructionRegistry contains duplicate host '
+          '${host.spaceId}/${host.edgeId}.',
+        );
+      }
+      profiles[host] = BoundaryConstructionProfile(
+        kind: _enumByName(
+          BoundaryConstructionKind.values,
+          json['kind'],
+          'boundaryConstructionRegistry.kind',
+        ),
+        thicknessMm: _int(
+          json['thicknessMm'],
+          'boundaryConstructionRegistry.thicknessMm',
+        ),
+        materialId: _string(
+          json['materialId'],
+          'boundaryConstructionRegistry.materialId',
+        ),
+        fireRatingId: _nullableString(
+          json['fireRatingId'],
+          'boundaryConstructionRegistry.fireRatingId',
+        ),
+      );
+    }
+    return BoundaryConstructionRegistry(profiles);
   }
 
   static void _requireRegistryCoversActiveBoundaries(
