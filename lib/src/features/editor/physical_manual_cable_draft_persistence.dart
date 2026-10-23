@@ -10,6 +10,7 @@ import '../../engine/port_snap_resolver.dart';
 import 'canonical_room_surface_runtime_registry.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
+import 'multi_level_route_normative_context.dart';
 import 'physical_cable_route_committer.dart';
 import 'route_selection_session.dart';
 import 'surface_transition_navigator.dart';
@@ -393,7 +394,7 @@ extension PhysicalManualCableDraftPersistence on EditorController {
         routeId: resolvedRouteId,
         source: ElectricalEndpointRef(
           componentId: source.component.id,
-          portId: source.port.id,
+          portId: source.portId,
         ),
         target: ElectricalEndpointRef(
           componentId: target.component.id,
@@ -479,8 +480,10 @@ bool _routeGeometryIsValidForContinuation(
   for (final segment in route.segments) {
     final geometrySurface = _surfaceForLegacyGeometry(segment.surface, context);
     if (geometrySurface == null) return false;
-    final normativeContext =
-        controller.routeNormativeContextFor(geometrySurface);
+    final normativeContext = MultiLevelRouteNormativeContext.resolve(
+      controller,
+      geometrySurface,
+    );
     if (normativeContext == null ||
         !NormativeRouteEngine.validate(
           points: segment.points,
