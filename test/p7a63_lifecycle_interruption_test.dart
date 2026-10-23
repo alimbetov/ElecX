@@ -221,18 +221,20 @@ final class _RenameSiteCommand implements ProjectCommand {
         buildingIds: site.buildingIds,
       );
     final stores = current.stores;
-    return ProjectCommandCandidate(
-      engineeringMetadata: current.engineeringMetadata,
-      stores: ProjectEntityStores(
-        sites: sites,
-        buildings: stores.buildings,
-        levels: stores.levels,
-        zones: stores.zones,
-        spaces: stores.spaces,
-        openings: stores.openings,
-        adjacencies: stores.adjacencies,
-        overlays: stores.overlays,
-        boundaries: stores.boundaries,
+    return ProjectCommandCandidate.fromState(
+      state: ProjectMutableState(
+        engineeringMetadata: current.engineeringMetadata,
+        stores: ProjectEntityStores(
+          sites: sites,
+          buildings: stores.buildings,
+          levels: stores.levels,
+          zones: stores.zones,
+          spaces: stores.spaces,
+          openings: stores.openings,
+          adjacencies: stores.adjacencies,
+          overlays: stores.overlays,
+          boundaries: stores.boundaries,
+        ),
       ),
     );
   }
