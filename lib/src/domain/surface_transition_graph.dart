@@ -318,7 +318,9 @@ abstract final class SurfaceTransitionGraph {
     }
     final edgeId = ref.boundaryEdgeId;
     if (edgeId != null) {
-      if (edgeIds == null) return null;
+      if (edgeIds == null) {
+        return null;
+      }
       try {
         return RoomSurfaceResolver.wallByBoundaryEdge(
           space,
