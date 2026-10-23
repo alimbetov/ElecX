@@ -1,3 +1,4 @@
+import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/normative_route_engine.dart';
 import 'canonical_room_surface_runtime_registry.dart';
@@ -23,7 +24,7 @@ abstract final class MultiLevelRouteNormativeContext {
     if (coordinator == null) return null;
     final workspace = coordinator.adapter.workspace;
 
-    ({int levelNumber, dynamic space})? owner;
+    ({int levelNumber, EngineeringSpace space})? owner;
     for (final composed in workspace.building.levels) {
       for (final candidate in composed.level.spaces) {
         if (candidate.id != surface.spaceId) continue;
