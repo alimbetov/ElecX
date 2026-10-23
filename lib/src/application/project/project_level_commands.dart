@@ -4,6 +4,9 @@ import '../../domain/project_identity.dart';
 import 'project_authoring_error.dart';
 import 'project_mutation.dart';
 
+const int _minimumLevelNumber = -30;
+const int _maximumLevelNumber = 200;
+
 /// Creates one canonical level under an existing building.
 ///
 /// [levelId] is the persistent identity. [levelNumber], [displayOrder] and
@@ -34,6 +37,7 @@ final class CreateLevelCommand implements ProjectCommand {
 
   @override
   ProjectCommandCandidate buildCandidate(ProjectAggregateRoot current) {
+    _validateLevelNumber(levelNumber);
     final building = _requireBuilding(current, buildingId);
     if (current.stores.levels.containsKey(levelId)) {
       throw ProjectAuthoringException(
@@ -120,6 +124,7 @@ final class RenumberLevelCommand implements ProjectCommand {
 
   @override
   ProjectCommandCandidate buildCandidate(ProjectAggregateRoot current) {
+    _validateLevelNumber(levelNumber);
     final level = _requireLevel(current, levelId);
     final building = _requireBuilding(current, level.buildingId);
     _ensureLevelNumberAvailable(
@@ -181,6 +186,18 @@ ProjectLevelEntity _requireLevel(
     );
   }
   return level;
+}
+
+void _validateLevelNumber(int levelNumber) {
+  if (levelNumber < _minimumLevelNumber ||
+      levelNumber > _maximumLevelNumber) {
+    throw RangeError.range(
+      levelNumber,
+      _minimumLevelNumber,
+      _maximumLevelNumber,
+      'levelNumber',
+    );
+  }
 }
 
 void _ensureLevelNumberAvailable(
