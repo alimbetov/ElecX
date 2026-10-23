@@ -16,6 +16,8 @@ import 'package:elecx/src/features/editor/canonical_editor_workspace_adapter.dar
 import 'package:elecx/src/features/editor/canonical_wall_construction_runtime.dart';
 import 'package:elecx/src/features/editor/editor_building_workspace.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
+import 'package:elecx/src/features/editor/editor_document_history.dart';
+import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:elecx/src/features/editor/wall_construction_edit_contract.dart';
 import 'package:flutter_test/flutter_test.dart';
 
