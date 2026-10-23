@@ -53,44 +53,44 @@ void main() {
       isTrue,
     );
     expect(
-      mutations.current.engineeringMetadata.boundaryConstructionRegistry[
-          firstHost],
+      mutations
+          .current.engineeringMetadata.boundaryConstructionRegistry[firstHost],
       fixture.profile,
     );
     expect(
-      mutations.current.engineeringMetadata.boundaryConstructionRegistry[
-          secondHost],
+      mutations
+          .current.engineeringMetadata.boundaryConstructionRegistry[secondHost],
       fixture.profile,
     );
     expect(
-      mutations.current.engineeringMetadata.boundaryConstructionRegistry[
-          fixture.sourceHost],
+      mutations.current.engineeringMetadata
+          .boundaryConstructionRegistry[fixture.sourceHost],
       isNull,
     );
 
     final undone = mutations.undo(mutations.current.version);
     expect(undone, isNotNull);
     expect(
-      mutations.current.engineeringMetadata.boundaryConstructionRegistry[
-          fixture.sourceHost],
+      mutations.current.engineeringMetadata
+          .boundaryConstructionRegistry[fixture.sourceHost],
       fixture.profile,
     );
     expect(
-      mutations.current.engineeringMetadata.boundaryConstructionRegistry[
-          firstHost],
+      mutations
+          .current.engineeringMetadata.boundaryConstructionRegistry[firstHost],
       isNull,
     );
 
     final redone = mutations.redo(mutations.current.version);
     expect(redone, isNotNull);
     expect(
-      mutations.current.engineeringMetadata.boundaryConstructionRegistry[
-          firstHost],
+      mutations
+          .current.engineeringMetadata.boundaryConstructionRegistry[firstHost],
       fixture.profile,
     );
     expect(
-      mutations.current.engineeringMetadata.boundaryConstructionRegistry[
-          secondHost],
+      mutations
+          .current.engineeringMetadata.boundaryConstructionRegistry[secondHost],
       fixture.profile,
     );
   });
