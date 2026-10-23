@@ -12,7 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('boundary construction persistence', () {
-    test('canonical schema v7 round-trip preserves wall construction data', () {
+    test('canonical schema v8 round-trip preserves wall construction data', () {
       final fixture = _fixture();
       const codec = CanonicalProjectDocumentCodec();
 
@@ -21,7 +21,7 @@ void main() {
       final profile = restored.aggregate.engineeringMetadata
           .boundaryConstructionRegistry[fixture.constructionHost];
 
-      expect(encoded.schemaVersion, 7);
+      expect(encoded.schemaVersion, 8);
       expect(profile, isNotNull);
       expect(profile!.kind, BoundaryConstructionKind.wall);
       expect(profile.thicknessMm, 180);
@@ -48,7 +48,7 @@ void main() {
       );
     });
 
-    test('snapshot rejects construction profile hosted by inactive edge', () {
+    test('aggregate rejects construction profile hosted by inactive edge', () {
       final fixture = _fixture();
       final invalidRegistry = BoundaryConstructionRegistry({
         BoundaryEdgeHostRef(
@@ -60,21 +60,15 @@ void main() {
           materialId: 'partition',
         ),
       });
-      final aggregate = ProjectAggregateRoot(
-        id: fixture.projectId,
-        siteId: fixture.siteId,
-        version: LocalProjectVersion(1),
-        engineeringMetadata: fixture.snapshot.aggregate.engineeringMetadata
-            .copyWith(boundaryConstructionRegistry: invalidRegistry),
-        stores: fixture.snapshot.aggregate.stores,
-      );
 
       expect(
-        () => ProjectSnapshot(
-          aggregate: aggregate,
-          name: 'Invalid construction host',
-          createdAt: DateTime.utc(2026, 10, 23, 1),
-          updatedAt: DateTime.utc(2026, 10, 23, 2),
+        () => ProjectAggregateRoot(
+          id: fixture.projectId,
+          siteId: fixture.siteId,
+          version: LocalProjectVersion(1),
+          engineeringMetadata: fixture.snapshot.aggregate.engineeringMetadata
+              .copyWith(boundaryConstructionRegistry: invalidRegistry),
+          stores: fixture.snapshot.aggregate.stores,
         ),
         throwsA(isA<BoundaryConstructionRegistryException>()),
       );
