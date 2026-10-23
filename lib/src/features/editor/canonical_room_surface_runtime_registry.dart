@@ -44,6 +44,21 @@ final class CanonicalPhysicalRoutingContext {
   SpaceId? canonicalSpaceIdForLegacy(String legacySpaceId) =>
       binding.canonicalSpaceIdForLegacy(legacySpaceId);
 
+  /// Resolves the space identity carried by a route surface without guessing.
+  ///
+  /// Transitional persisted routes may still carry a legacy space id while
+  /// canonical routes carry [SpaceId.value] directly. Both are accepted only
+  /// when the current binding/project proves the mapping.
+  SpaceId? canonicalSpaceIdForSurfaceSpaceId(String surfaceSpaceId) {
+    final migrated = canonicalSpaceIdForLegacy(surfaceSpaceId);
+    if (migrated != null) return migrated;
+    final direct = SpaceId(surfaceSpaceId);
+    return project.index.space(direct) == null ? null : direct;
+  }
+
+  String? legacySpaceIdForCanonical(SpaceId spaceId) =>
+      binding.legacySpaceIds[spaceId];
+
   List<BoundaryEdgeId>? edgeOrderForLegacySpace(String legacySpaceId) {
     final spaceId = canonicalSpaceIdForLegacy(legacySpaceId);
     if (spaceId == null) return null;

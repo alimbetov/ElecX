@@ -92,7 +92,9 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
   Widget _catalog(BuildContext context, ComponentCatalogSession catalog) {
     final scheme = Theme.of(context).colorScheme;
     final entries = _filteredEntries(catalog.entries);
-    return Column(
+    return ListView(
+      key: const ValueKey('device-catalog-scroll'),
+      padding: EdgeInsets.zero,
       children: [
         _CatalogHeader(
           count: entries.length,
@@ -169,16 +171,21 @@ class _DeviceCatalogPanelState extends State<DeviceCatalogPanel> {
           height: 1,
           color: scheme.outlineVariant.withValues(alpha: 0.55),
         ),
-        Expanded(
-          child: catalog.loading
-              ? const Center(child: CircularProgressIndicator())
-              : entries.isEmpty
-                  ? const _EmptyCatalogState()
-                  : ListView(
-                      padding: const EdgeInsets.fromLTRB(8, 7, 8, 18),
-                      children: _buildGrouped(entries),
-                    ),
-        ),
+        if (catalog.loading)
+          const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (entries.isEmpty)
+          const _EmptyCatalogState()
+        else
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 7, 8, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: _buildGrouped(entries),
+            ),
+          ),
       ],
     );
   }

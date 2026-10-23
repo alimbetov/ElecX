@@ -138,6 +138,12 @@ final class ProjectStructureAuthoringSession {
   ProjectBoundaryHostAdoptionService get boundaryHostAdoption =>
       _boundaryHostAdoption;
 
+  /// Allocates one durable route-point identity from the same canonical ID
+  /// source used by all project authoring operations. Allocation does not mutate
+  /// the project version; the identity becomes durable only when its route
+  /// aggregate is committed by the owning editor transaction.
+  RouteAnchorId allocateRouteAnchorId() => _idFactory.newRouteAnchorId();
+
   bool get canUndoCanonicalMutation => _mutations.canUndo;
   bool get canRedoCanonicalMutation => _mutations.canRedo;
 

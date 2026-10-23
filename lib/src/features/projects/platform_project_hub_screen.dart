@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../application/project/project_repository.dart';
+import '../../infrastructure/project/canonical_project_repository_factory.dart';
 import '../editor/editor_project_document.dart';
 import '../editor/editor_project_recovery.dart';
 import '../editor/editor_project_store_factory.dart';
@@ -19,6 +21,7 @@ class _PlatformProjectHubScreenState extends State<PlatformProjectHubScreen> {
   Future<_PlatformProjectStores> _openStores() async => _PlatformProjectStores(
         projectStore: await openDefaultEditorProjectStore(),
         recoveryStore: await openDefaultEditorProjectRecoveryStore(),
+        canonicalRepository: await openDefaultCanonicalProjectRepository(),
       );
 
   @override
@@ -27,7 +30,8 @@ class _PlatformProjectHubScreenState extends State<PlatformProjectHubScreen> {
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
             return const Scaffold(
-                body: Center(child: CircularProgressIndicator()));
+              body: Center(child: CircularProgressIndicator()),
+            );
           }
           if (snapshot.hasError) {
             return Scaffold(
@@ -50,6 +54,7 @@ class _PlatformProjectHubScreenState extends State<PlatformProjectHubScreen> {
           return ProjectHubScreen(
             projectStore: stores.projectStore,
             recoveryStore: stores.recoveryStore,
+            canonicalProjectRepository: stores.canonicalRepository,
           );
         },
       );
@@ -59,8 +64,10 @@ final class _PlatformProjectStores {
   const _PlatformProjectStores({
     required this.projectStore,
     required this.recoveryStore,
+    required this.canonicalRepository,
   });
 
   final EditorProjectStore projectStore;
   final EditorProjectRecoveryStore recoveryStore;
+  final ProjectRepository canonicalRepository;
 }

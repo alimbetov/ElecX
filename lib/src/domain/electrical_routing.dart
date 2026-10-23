@@ -172,13 +172,16 @@ final class ElectricalCableRoute {
               after.surface.type == SurfacePlaneType.floor);
       if (!crossesSpaces && !floorCeilingPair) continue;
 
-      final hasPhysicalTransition = penetrations.any(
-        (penetration) =>
-            _penetrationMatchesTransition(penetration, before, after),
-      );
-      if (!hasPhysicalTransition) {
+      final physicalTransitionPenetrations = penetrations
+          .where(
+            (penetration) =>
+                _penetrationMatchesTransition(penetration, before, after),
+          )
+          .toList(growable: false);
+      if (physicalTransitionPenetrations.length != 1) {
         throw ArgumentError(
-          'Route $id crosses a physical boundary without a penetration.',
+          'Route $id physical transition ${index + 1} must have exactly one '
+          'penetration; found ${physicalTransitionPenetrations.length}.',
         );
       }
     }

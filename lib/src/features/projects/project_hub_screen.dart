@@ -1,15 +1,25 @@
 import 'package:flutter/material.dart';
 
+import '../../application/project/project_repository.dart';
+import '../editor/canonical_editor_production_bootstrap.dart';
+import '../editor/canonical_owning_editor_project_store.dart';
 import '../editor/editor_project_document.dart';
 import '../editor/editor_project_recovery.dart';
+import '../editor/initial_editor_project_document.dart';
 import '../editor/project_persistence_metadata.dart';
 import '../editor/unified_workspace_editor_screen.dart';
 
 class ProjectHubScreen extends StatefulWidget {
-  const ProjectHubScreen({super.key, this.projectStore, this.recoveryStore});
+  const ProjectHubScreen({
+    super.key,
+    this.projectStore,
+    this.recoveryStore,
+    this.canonicalProjectRepository,
+  });
 
   final EditorProjectStore? projectStore;
   final EditorProjectRecoveryStore? recoveryStore;
+  final ProjectRepository? canonicalProjectRepository;
 
   @override
   State<ProjectHubScreen> createState() => _ProjectHubScreenState();
@@ -105,9 +115,23 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
       ),
     );
     if (name == null || !mounted) return;
-    await _openEditor(
-      metadata: EditorProjectMetadata.create(projectName: name),
-    );
+
+    final metadata = EditorProjectMetadata.create(projectName: name);
+    final initialDocument = createInitialEditorProjectDocument(metadata);
+    try {
+      final store = await _storeFuture;
+      await store.save(initialDocument);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Не удалось создать проект на диске: $error'),
+        ),
+      );
+      return;
+    }
+    if (!mounted) return;
+    await _openEditor(document: initialDocument);
   }
 
   Future<void> _openEditor({
@@ -117,15 +141,44 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
   }) async {
     final store = await _storeFuture;
     final recoveryStore = await _recoveryStoreFuture;
+    final sourceDocument = recovery?.document ?? document;
+    CanonicalEditorProductionHandle? canonicalHandle;
+    final canonicalRepository = widget.canonicalProjectRepository;
+    if (sourceDocument != null && canonicalRepository != null) {
+      try {
+        canonicalHandle = await CanonicalEditorProductionHandle.loadOrBootstrap(
+          legacyDocument: sourceDocument,
+          repository: canonicalRepository,
+        );
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Canonical project state could not be opened safely: $error',
+            ),
+          ),
+        );
+        return;
+      }
+    }
     if (!mounted) return;
+
+    final editorStore = canonicalHandle == null
+        ? store
+        : CanonicalOwningEditorProjectStore(
+            legacy: store,
+            canonical: canonicalHandle,
+          );
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => UnifiedWorkspaceEditorScreen(
-          projectStore: store,
+          projectStore: editorStore,
           recoveryStore: recoveryStore,
           initialDocument: document,
           initialRecovery: recovery,
           initialMetadata: metadata,
+          canonicalRuntime: canonicalHandle?.runtimeConfig,
         ),
       ),
     );
@@ -207,7 +260,7 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
                     leading: Icon(Icons.history_toggle_off),
                     title: Text('Нет сохранённого проекта'),
                     subtitle: Text(
-                      'Создайте проект и нажмите «Сохранить» в редакторе.',
+                      'Создайте новый проект, чтобы начать работу.',
                     ),
                   ),
                 ),
@@ -223,7 +276,7 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
                     leading: Icon(Icons.folder_outlined),
                     title: Text('Пока пусто'),
                     subtitle: Text(
-                      'Сохранённые проекты появятся здесь после записи на диск.',
+                      'Созданные проекты появятся здесь после записи на диск.',
                     ),
                   ),
                 )
