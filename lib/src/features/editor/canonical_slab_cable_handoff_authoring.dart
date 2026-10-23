@@ -205,7 +205,8 @@ final class CanonicalSlabCableHandoffAuthoring {
       throw CanonicalSlabCableHandoffException(
         code: CanonicalSlabCableHandoffIssueCode.sourceBindingMismatch,
         entityId: fromSpaceId,
-        message: 'Selected legacy source room is not the bound canonical Space.',
+        message:
+            'Selected legacy source room is not the bound canonical Space.',
       );
     }
     if (toSpace == null) {
