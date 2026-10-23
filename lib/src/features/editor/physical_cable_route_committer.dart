@@ -56,12 +56,5 @@ final class _AddPhysicalCableRouteCommand
           for (final existing in state.routes)
             if (existing.id != route.id) existing,
         ]),
-        routeConstraints: Map.unmodifiable(
-          Map<String, dynamic>.from(state.routeConstraints)..remove(route.id),
-        ).cast<String, dynamic>(),
-        sizingEvidenceByRoute: Map.unmodifiable(
-          Map<String, dynamic>.from(state.sizingEvidenceByRoute)
-            ..remove(route.id),
-        ).cast<String, dynamic>(),
       );
 }
