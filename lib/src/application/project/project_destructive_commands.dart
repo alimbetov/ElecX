@@ -11,11 +11,10 @@ import 'project_mutation.dart';
 /// adjacencies and overlay classifications must be edited explicitly first so
 /// one destructive action cannot silently erase engineering meaning.
 ///
-/// P7A boundary topology is different: it is owned state of the space itself,
-/// not an independent semantic dependency. Removing a space therefore removes
-/// its boundary topology and stable edge identities atomically in the same
-/// mutation. Future wall-hosted engineering objects must block removal before
-/// this owned cascade is allowed.
+/// P7A boundary topology is owned state of the space itself, but any canonical
+/// hosted object/profile/construction attached to those edges is an explicit
+/// engineering dependency and must be removed or migrated before the owning
+/// Space can be destroyed.
 final class RemoveSpaceCommand implements ProjectCommand {
   const RemoveSpaceCommand({required this.spaceId});
 
@@ -49,6 +48,30 @@ final class RemoveSpaceCommand implements ProjectCommand {
         message: 'Space ${space.id} cannot be removed while '
             '${semanticBlockers.length} P6 semantic dependency/dependencies '
             'still reference it.',
+      );
+    }
+
+    final boundaryBlockers = <BoundaryEdgeId>{
+      for (final reference in current
+          .engineeringMetadata.boundaryHostedObjectRegistry
+          .forSpace(space.id))
+        reference.host.edgeId,
+      ...current.engineeringMetadata.boundaryWallProfileRegistry
+          .forSpace(space.id)
+          .keys,
+      for (final host
+          in current.engineeringMetadata.boundaryConstructionRegistry.profiles.keys)
+        if (host.spaceId == space.id) host.edgeId,
+    };
+    if (boundaryBlockers.isNotEmpty) {
+      throw ProjectAuthoringException(
+        code: ProjectAuthoringIssueCode.spaceHasBoundaryDependencies,
+        entityId: space.id,
+        relatedEntityId: boundaryBlockers.first,
+        blockingEntityIds: Set<EntityId>.unmodifiable(boundaryBlockers),
+        message: 'Space ${space.id} cannot be removed while '
+            '${boundaryBlockers.length} canonical boundary edge(s) still own '
+            'hosted objects, wall profiles or construction data.',
       );
     }
 
