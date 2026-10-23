@@ -19,18 +19,37 @@ final class ProjectBoundaryConstructionEditingService {
     required BoundaryEdgeId edgeId,
     required BoundaryConstructionProfile profile,
     required LocalProjectVersion expectedVersion,
+  }) =>
+      setWallConstructions(
+        profiles: {
+          BoundaryEdgeHostRef(spaceId: spaceId, edgeId: edgeId): profile,
+        },
+        expectedVersion: expectedVersion,
+      );
+
+  /// Commits one physical-construction change spanning every explicitly known
+  /// face of the same wall as one canonical transaction.
+  ///
+  /// Production routing uses this when an existing penetration proves that two
+  /// BoundaryEdgeId hosts represent opposite faces of one physical wall. The
+  /// caller decides that relationship; this service never guesses adjacency
+  /// from coincident geometry.
+  ProjectMutationResult? setWallConstructions({
+    required Map<BoundaryEdgeHostRef, BoundaryConstructionProfile> profiles,
+    required LocalProjectVersion expectedVersion,
   }) {
-    if (profile.kind != BoundaryConstructionKind.wall) {
-      throw ArgumentError('BoundaryEdgeId construction must be a wall.');
+    if (profiles.isEmpty) return null;
+    for (final entry in profiles.entries) {
+      if (entry.value.kind != BoundaryConstructionKind.wall) {
+        throw ArgumentError(
+          'BoundaryEdgeId construction ${entry.key.edgeId} must be a wall.',
+        );
+      }
     }
     return _mutations.commit(
       ProjectMutationRequest(
         expectedVersion: expectedVersion,
-        command: _SetBoundaryConstructionCommand(
-          spaceId: spaceId,
-          edgeId: edgeId,
-          profile: profile,
-        ),
+        command: _SetBoundaryConstructionsCommand(profiles),
       ),
     );
   }
@@ -51,26 +70,31 @@ final class ProjectBoundaryConstructionEditingService {
       );
 }
 
-final class _SetBoundaryConstructionCommand implements ProjectCommand {
-  const _SetBoundaryConstructionCommand({
-    required this.spaceId,
-    required this.edgeId,
-    required this.profile,
-  });
+final class _SetBoundaryConstructionsCommand implements ProjectCommand {
+  _SetBoundaryConstructionsCommand(
+    Map<BoundaryEdgeHostRef, BoundaryConstructionProfile> profiles,
+  ) : profiles = Map.unmodifiable(profiles);
 
-  final SpaceId spaceId;
-  final BoundaryEdgeId edgeId;
-  final BoundaryConstructionProfile profile;
+  final Map<BoundaryEdgeHostRef, BoundaryConstructionProfile> profiles;
 
   @override
   String get commandType => 'p7b.setBoundaryConstruction';
 
   @override
   ProjectCommandCandidate buildCandidate(ProjectAggregateRoot current) {
-    _requireActiveOwnedEdge(current, spaceId, edgeId);
-    final host = BoundaryEdgeHostRef(spaceId: spaceId, edgeId: edgeId);
-    final registry = current.engineeringMetadata.boundaryConstructionRegistry;
-    if (registry[host] == profile) {
+    var registry = current.engineeringMetadata.boundaryConstructionRegistry;
+    var changed = false;
+    final affected = <EntityId>{};
+    for (final entry in profiles.entries) {
+      _requireActiveOwnedEdge(current, entry.key.spaceId, entry.key.edgeId);
+      affected
+        ..add(entry.key.spaceId)
+        ..add(entry.key.edgeId);
+      if (registry[entry.key] == entry.value) continue;
+      registry = registry.put(entry.key, entry.value);
+      changed = true;
+    }
+    if (!changed) {
       return ProjectCommandCandidate.fromState(
         state: ProjectMutableState.fromProject(current),
       );
@@ -78,10 +102,10 @@ final class _SetBoundaryConstructionCommand implements ProjectCommand {
     return ProjectCommandCandidate.fromState(
       state: ProjectMutableState(
         engineeringMetadata: current.engineeringMetadata
-            .withBoundaryConstructionRegistry(registry.put(host, profile)),
+            .withBoundaryConstructionRegistry(registry),
         stores: current.stores,
       ),
-      affectedEntityIds: {spaceId, edgeId},
+      affectedEntityIds: affected,
     );
   }
 }
