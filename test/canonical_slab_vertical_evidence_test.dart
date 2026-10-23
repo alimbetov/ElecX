@@ -49,7 +49,8 @@ void main() {
       expect(evidence.physicalGapMm, 200);
     });
 
-    test('fails closed when a historical 3000 mm assumption is physically wrong',
+    test(
+        'fails closed when a historical 3000 mm assumption is physically wrong',
         () {
       final fixture = _Fixture(
         slabBottomElevationMm: 3100,
