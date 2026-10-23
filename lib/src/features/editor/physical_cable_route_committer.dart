@@ -33,6 +33,27 @@ extension PhysicalCableRouteCommitter on EditorP2Session {
     notifyListeners();
     return true;
   }
+
+  /// Atomically replaces one already committed physical route while preserving
+  /// its engineering identity.
+  ///
+  /// Resume/extend authoring must never create a second cable merely because
+  /// the visible path gained another segment. The replacement therefore
+  /// requires the same route id and delegates to the production route-edit
+  /// transaction, which revalidates connectivity, physical endpoint anchoring,
+  /// route constraints and circuit identity, and invalidates stale sizing
+  /// evidence in the same undoable mutation.
+  bool replacePhysicalCableRoute({
+    required ElectricalCableRoute before,
+    required ElectricalCableRoute after,
+  }) {
+    if (before.id != after.id ||
+        !layers.isVisible(EditorLayerId.cableRoutes) ||
+        layers.isLocked(EditorLayerId.cableRoutes)) {
+      return false;
+    }
+    return replaceCableRoute(before, after);
+  }
 }
 
 final class _AddPhysicalCableRouteCommand
