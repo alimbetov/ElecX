@@ -12,7 +12,7 @@ void main() {
   const codec = VerticalCoreAwareCanonicalProjectDocumentCodec();
 
   test(
-      'schema v9 round-trip preserves stable VerticalCore identity and geometry',
+      'schema v10 round-trip preserves stable VerticalCore identity and geometry',
       () {
     final fixture = _Fixture();
     final core = fixture.core();
@@ -21,7 +21,7 @@ void main() {
     final document = codec.encode(snapshot);
     final restored = codec.decode(document);
 
-    expect(document.schemaVersion, 9);
+    expect(document.schemaVersion, 10);
     final restoredCore = restored.aggregate.index.verticalCore(fixture.coreId);
     expect(restoredCore, isNotNull);
     expect(restoredCore!.id, fixture.coreId);
@@ -36,18 +36,18 @@ void main() {
     );
   });
 
-  test('schema v8 migration never invents a VerticalCore', () {
+  test('schema v9 migration never invents a VerticalCore', () {
     final fixture = _Fixture();
-    const v8 = SlabAwareCanonicalProjectDocumentCodec();
-    final legacyDocument = v8.encode(fixture.snapshot());
+    const v9 = SlabAwareCanonicalProjectDocumentCodec();
+    final legacyDocument = v9.encode(fixture.snapshot());
 
     final restored = codec.decode(legacyDocument);
 
-    expect(legacyDocument.schemaVersion, 8);
+    expect(legacyDocument.schemaVersion, 9);
     expect(restored.aggregate.stores.verticalCores, isEmpty);
   });
 
-  test('schema v9 rejects duplicate VerticalCore identity', () {
+  test('schema v10 rejects duplicate VerticalCore identity', () {
     final fixture = _Fixture();
     final core = fixture.core();
     final encoded = codec.encode(
@@ -59,7 +59,7 @@ void main() {
     payload['verticalCores'] = cores;
 
     expect(
-      () => codec.decode(ProjectDocument(schemaVersion: 9, payload: payload)),
+      () => codec.decode(ProjectDocument(schemaVersion: 10, payload: payload)),
       throwsFormatException,
     );
   });
