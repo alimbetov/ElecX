@@ -80,5 +80,29 @@ abstract final class HostedRouteAdapter {
               ],
             ),
         ],
+        transitions: [
+          for (final penetration in route.penetrations)
+            RouteHostTransition(
+              // Keep the domain penetration identity intact so presentation
+              // can correlate the marker with the physical aggregate.
+              id: penetration.id,
+              kind: RouteHostTransitionKind.roomPenetration,
+              fromHost: RouteHostRef.indoor(
+                penetration.entryAnchor.surface,
+              ),
+              fromPoint: MmPoint(
+                penetration.entryAnchor.point.xMm,
+                penetration.entryAnchor.point.yMm,
+              ),
+              toHost: RouteHostRef.indoor(
+                penetration.exitAnchor.surface,
+              ),
+              toPoint: MmPoint(
+                penetration.exitAnchor.point.xMm,
+                penetration.exitAnchor.point.yMm,
+              ),
+              requiresPenetration: true,
+            ),
+        ],
       );
 }
