@@ -56,10 +56,10 @@ final class BoundaryPenetrationAnchor {
 /// [pathLengthMm] is the actual cable length through it and therefore may be
 /// larger for an angled penetration, but never smaller.
 ///
-/// Canonical slab penetrations additionally own [slabId]. Legacy persisted slab
-/// penetrations may temporarily have a null [slabId] until migration assigns
-/// physical slab identity. New canonical vertical authoring must use
-/// [BoundaryPenetration.slab] or provide [slabId] through the requirement.
+/// Canonical slab penetrations additionally own [slabId]. When the penetration
+/// is part of a P7B riser/shaft route, [verticalCoreId] binds that concrete slab
+/// crossing to the stable multi-level routing volume. Direct slab crossings and
+/// legacy records may leave [verticalCoreId] null.
 final class BoundaryPenetration {
   BoundaryPenetration({
     required this.id,
@@ -70,6 +70,7 @@ final class BoundaryPenetration {
     required this.pathLengthMm,
     this.materialId,
     this.slabId,
+    this.verticalCoreId,
   }) {
     if (id.isEmpty) throw ArgumentError('Penetration id is required.');
     if (hostThicknessMm <= 0) {
@@ -91,6 +92,16 @@ final class BoundaryPenetration {
     }
     if (hostKind == BoundaryPenetrationHostKind.wall && slabId != null) {
       throw ArgumentError('Wall penetration cannot reference a SlabId.');
+    }
+    if (hostKind == BoundaryPenetrationHostKind.wall && verticalCoreId != null) {
+      throw ArgumentError(
+        'Wall penetration cannot reference a VerticalCoreId.',
+      );
+    }
+    if (verticalCoreId != null && slabId == null) {
+      throw ArgumentError(
+        'VerticalCore-owned penetration requires a stable SlabId.',
+      );
     }
     if (entryAnchor.penetrationId != id || exitAnchor.penetrationId != id) {
       throw ArgumentError('Both anchors must belong to penetration $id.');
@@ -124,6 +135,7 @@ final class BoundaryPenetration {
     required String routeId,
     String? materialId,
     SlabId? slabId,
+    VerticalCoreId? verticalCoreId,
   }) =>
       BoundaryPenetration(
         id: id,
@@ -148,11 +160,13 @@ final class BoundaryPenetration {
         pathLengthMm: hostThicknessMm.toDouble(),
         materialId: materialId,
         slabId: slabId,
+        verticalCoreId: verticalCoreId,
       );
 
   /// Creates a new canonical slab penetration with stable physical host
   /// identity. Legacy slab penetrations without [SlabId] must not use this
-  /// factory.
+  /// factory. [verticalCoreId] is supplied only when this crossing belongs to a
+  /// canonical riser/shaft path.
   factory BoundaryPenetration.slab({
     required String id,
     required SlabId slabId,
@@ -163,6 +177,7 @@ final class BoundaryPenetration {
     required int hostThicknessMm,
     required String routeId,
     String? materialId,
+    VerticalCoreId? verticalCoreId,
   }) =>
       BoundaryPenetration.normal(
         id: id,
@@ -175,6 +190,7 @@ final class BoundaryPenetration {
         routeId: routeId,
         materialId: materialId,
         slabId: slabId,
+        verticalCoreId: verticalCoreId,
       );
 
   final String id;
@@ -190,6 +206,11 @@ final class BoundaryPenetration {
   /// Null is permitted only for legacy slab penetration records that predate
   /// SlabId migration. New canonical slab authoring must populate this field.
   final SlabId? slabId;
+
+  /// Stable P7B routing-volume identity when this slab penetration is part of a
+  /// multi-level riser/shaft path. Direct slab crossings intentionally keep it
+  /// null.
+  final VerticalCoreId? verticalCoreId;
 
   String get routeId => entryAnchor.routeId;
 
@@ -245,12 +266,14 @@ final class BoundaryPenetrationRequirement {
     this.hostThicknessMm,
     this.materialId,
     this.slabId,
+    this.verticalCoreId,
   });
 
   final BoundaryPenetrationHostKind hostKind;
   final int? hostThicknessMm;
   final String? materialId;
   final SlabId? slabId;
+  final VerticalCoreId? verticalCoreId;
 
   BoundaryPenetration create({
     required String penetrationId,
@@ -272,6 +295,11 @@ final class BoundaryPenetrationRequirement {
         'Stable SlabId is required before committing a new slab penetration.',
       );
     }
+    if (hostKind != BoundaryPenetrationHostKind.slab && verticalCoreId != null) {
+      throw StateError(
+        'VerticalCoreId is only valid for a slab penetration requirement.',
+      );
+    }
     return BoundaryPenetration.normal(
       id: penetrationId,
       hostKind: hostKind,
@@ -283,6 +311,7 @@ final class BoundaryPenetrationRequirement {
       routeId: routeId,
       materialId: materialId,
       slabId: slabId,
+      verticalCoreId: verticalCoreId,
     );
   }
 }
