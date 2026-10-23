@@ -254,8 +254,13 @@ abstract final class CanonicalWallConstructionRuntime {
     EditorP2State state,
   ) {
     controller.documentHistory.runCanonicalProjection(() {
-      controller.p2.history.replaceState(state, clearHistory: false);
-      // Canonical projection is intentionally not a second P2 history command.
+      controller.p2.history.replaceState(
+        state,
+        clearHistory: false,
+        countAsProjection: true,
+      );
+      // The projection revision makes dirty/autosave listeners observe the new
+      // route payload without manufacturing a second P2 undo command.
       // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
       controller.p2.notifyListeners();
     });
