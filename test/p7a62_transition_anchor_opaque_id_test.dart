@@ -61,6 +61,10 @@ void main() {
         ),
       ],
     );
+    final middleKey = BoundaryHostedObjectRegistry.routeAnchorObjectKey(
+      route.id,
+      RouteAnchorId('middle:anchor:opaque'),
+    );
     final canonical = BoundaryHostedObjectRegistry({
       'cable:opaque-route:source': BoundaryHostedReference.point(
         objectKey: 'cable:opaque-route:source',
@@ -68,9 +72,8 @@ void main() {
         host: BoundaryEdgeHostRef(spaceId: spaceId, edgeId: second),
         offsetMm: 1500,
       ),
-      'route:opaque-route:anchor:middle:anchor:opaque':
-          BoundaryHostedReference.point(
-        objectKey: 'route:opaque-route:anchor:middle:anchor:opaque',
+      middleKey: BoundaryHostedReference.point(
+        objectKey: middleKey,
         objectKind: BoundaryHostedObjectKind.routeAnchor,
         host: BoundaryEdgeHostRef(spaceId: spaceId, edgeId: second),
         offsetMm: 500,
