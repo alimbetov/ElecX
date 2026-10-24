@@ -353,3 +353,210 @@ failure codes locale-independent
 no draft canonical IDs
 version fields explicit
 ```
+
+## 20. Presentation capability model
+
+Responsive presentation uses a capability value object separate from domain state.
+
+Conceptual contract:
+
+```dart
+final class ElecXPresentationCapabilities {
+  final double logicalWidth;
+  final double logicalHeight;
+  final bool hasPrecisePointer;
+  final bool hasHover;
+  final bool hasTouch;
+  final bool hasStylus;
+  final bool hasHardwareKeyboard;
+  final bool animationsDisabled;
+  final double textScaleFactor;
+}
+```
+
+This object MAY be recomputed whenever window/device capabilities change.
+
+It MUST NOT participate in:
+
+```text
+intentFingerprint
+candidateFingerprint
+candidateSetFingerprint
+generation provenance
+canonical project state
+```
+
+## 21. Responsive width class
+
+```dart
+enum ElecXResponsiveWidthClass {
+  compact,   // < 600
+  medium,    // 600..1023
+  expanded,  // 1024..1439
+  large,     // >= 1440
+}
+```
+
+Width class is derived from current logical viewport and is presentation-only.
+
+A width-class change MUST NOT recreate or invalidate the semantic Wizard session.
+
+## 22. Semantic Wizard navigation state
+
+Presentation routes/panes/tabs map onto one semantic state model.
+
+```dart
+enum ApartmentWizardSemanticStep {
+  parameters,
+  candidates,
+  candidateDetails,
+  preview,
+  completed,
+}
+```
+
+Desktop may render multiple steps/panes simultaneously; phone may render one full-screen route at a time. The underlying semantic session remains singular.
+
+## 23. Input operation abstraction
+
+Widgets/gestures SHOULD map to platform-neutral operations rather than directly mutating business state.
+
+```dart
+enum ApartmentWizardInputOperation {
+  selectCandidate,
+  nextCandidate,
+  previousCandidate,
+  openCandidateDetails,
+  generate,
+  openPreview,
+  openDiff,
+  apply,
+  cancel,
+  back,
+  zoomIn,
+  zoomOut,
+  zoomToFit,
+  panPreview,
+}
+```
+
+Exact command classes MAY differ, but semantics MUST remain modality-independent.
+
+Examples:
+
+```text
+mouse click     -> selectCandidate
+keyboard Enter  -> selectCandidate
+finger tap      -> selectCandidate
+stylus tap      -> selectCandidate
+```
+
+## 24. Preview viewport state
+
+```dart
+final class PreviewViewportState {
+  final double scale;
+  final double translationX;
+  final double translationY;
+}
+```
+
+Viewport state is transient presentation state.
+
+Rules:
+
+- finite/bounded values;
+- changing it cannot alter geometry/candidate fingerprints;
+- `zoomToFit` restores a usable view;
+- same candidate vector scene is rendered regardless of viewport state;
+- viewport state is not persisted as generation provenance.
+
+## 25. Input modality invariants
+
+No required action may be available only through:
+
+```text
+hover
+right click
+long press
+stylus
+multi-touch
+```
+
+Each required action has at least one explicit discoverable control or keyboard/focus path appropriate to the form factor.
+
+Touch targets for touch-capable surfaces use minimum `48 x 48` logical px.
+
+## 26. Responsive state equivalence
+
+The following are presentation-only transitions:
+
+```text
+portrait <-> landscape
+compact <-> medium <-> expanded <-> large
+window resize
+split-screen resize
+light <-> dark theme
+text scale change
+mouse attached/detached
+tablet keyboard attached/detached
+```
+
+They MUST preserve, when still semantically valid:
+
+```text
+request input
+candidate set
+candidate order
+selected candidate
+P8 prepared preview/reservation
+validation state
+```
+
+They MUST NOT allocate canonical IDs or rerun generation merely because layout changed.
+
+## 27. Cross-platform semantic equality
+
+For equal normalized request + semantic versions/catalog contents:
+
+```text
+Windows
+macOS
+Linux
+iPadOS
+Android
+iOS
+```
+
+must observe the same ordered candidate fingerprints where the platform participates in qualification.
+
+Pixel rendering may differ; vector-scene semantic fingerprint and candidate semantics may not.
+
+## 28. Forward reuse contract
+
+The shared presentation/input contracts above are intentionally provider-neutral foundations for P10-P14.
+
+Later phases may extend operations for:
+
+```text
+CAD select
+move
+resize
+snap
+route edit
+placement
+multi-select
+context actions
+stylus precision
+```
+
+but must preserve:
+
+```text
+one semantic command layer
+one responsive capability model
+one viewport abstraction
+one canonical project model
+```
+
+No later phase should introduce separate desktop/mobile domain models because P9 failed to establish responsive/input boundaries.
