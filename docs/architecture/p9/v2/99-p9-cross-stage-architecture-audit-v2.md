@@ -9,6 +9,7 @@ Baseline: P8 merged `main@c397302f183d023e4bdd670ac0c8b46c6fad994a`
 ```text
 P9.0 prerequisite audit                  PASS
 P9 v2 shared contracts                   PASS
+P9 cross-platform UX/input contract      PASS
 P9.1..P9.13 specification consistency    PASS
 P8 transaction reuse                     PASS
 P6/P7 semantic/topology reuse            PASS
@@ -39,6 +40,18 @@ P9.1 request
  -> P9.13 qualification
 ```
 
+And one cross-platform presentation/input architecture:
+
+```text
+presentation capabilities
+ -> responsive width class
+ -> semantic Wizard state
+ -> responsive shell
+ -> input operation mapping
+ -> vector preview viewport
+ -> P8 Preview/Diff
+```
+
 Checked for:
 
 - conflicting meanings/units;
@@ -49,17 +62,19 @@ Checked for:
 - incomplete physical topology;
 - persistence/provenance gaps;
 - unsupported claims of normative compliance;
-- missing merge gates.
+- missing merge gates;
+- desktop/mobile semantic forks;
+- responsive state reset/regeneration;
+- hover/right-click/touch-only inaccessible operations;
+- viewport/input state leaking into canonical fingerprints.
 
 ## 2. Findings and closure
 
 ### R01 — User intent and candidate selection were conflated
 
-**Problem:** P8 provider receives one parameter object, while candidate exploration creates a later selection.
-
 **Resolution:** CLOSED.
 
-P9.1 now separates:
+P9.1 separates:
 
 ```text
 ApartmentRequestInput
@@ -70,8 +85,6 @@ ApartmentWizardParameters(request, selection)
 `intentFingerprint` excludes selection. Semantic request edits invalidate selection.
 
 ### R02 — Apartment area meaning with balcony/loggia was ambiguous
-
-**Problem:** Original wording could make balcony area either consume or not consume requested apartment area.
 
 **Resolution:** CLOSED.
 
@@ -107,7 +120,7 @@ It describes candidate-local exposure pattern (`oneSide/corner/oppositeSides`) o
 
 **Resolution:** CLOSED.
 
-P9.2 now requires `TopologySpaceGeometryConstraints` including:
+P9.2 requires `TopologySpaceGeometryConstraints` including:
 
 ```text
 minShortSideMm
@@ -137,7 +150,7 @@ Appendages attach outside/on interior boundary, never consume interior requested
 
 **Resolution:** CLOSED.
 
-P9.6 creates typed `OpeningIntent`s. P9.11 now requires:
+P9.6 creates typed `OpeningIntent`s. P9.11 requires:
 
 ```text
 one stable-hosted apartment entry
@@ -220,6 +233,101 @@ P9 v1 generates exactly one apartment into an empty canonical Level.
 
 Multi-apartment floor packing, real Building facade fitting, repeated floor/apartment composition and ЖК coordination belong to P10.
 
+### R15 — Desktop/tablet/phone could diverge into separate semantic products
+
+**Problem:** A desktop-first Wizard could later lead to separate mobile candidate generation, reduced candidate count or duplicated transaction paths.
+
+**Resolution:** CLOSED.
+
+`02-p9-cross-platform-responsive-input-contract-v2.md` establishes:
+
+```text
+same request + semantic versions
+ -> same ordered candidate fingerprints
+```
+
+on supported platforms. Form factor changes only presentation/input mapping.
+
+Phone/tablet MUST NOT run a weaker generator or simplified semantic Diff.
+
+### R16 — OS detection could become the layout architecture
+
+**Problem:** `Platform.isWindows`/`isAndroid` style layout branching would fail on resizable desktop windows, iPad split-screen and Android tablets with keyboard/mouse.
+
+**Resolution:** CLOSED.
+
+Layout derives from:
+
+```text
+logical viewport
+precise pointer / hover
+touch / stylus
+hardware keyboard
+text scale
+reduced motion
+```
+
+with width classes:
+
+```text
+COMPACT < 600
+MEDIUM 600..1023
+EXPANDED 1024..1439
+LARGE >= 1440
+```
+
+OS checks are secondary/native-convention adapters only.
+
+### R17 — Responsive resize/orientation could regenerate or reset Wizard state
+
+**Resolution:** CLOSED.
+
+P9.9 explicitly separates semantic Wizard state from presentation shell. Resize/orientation/split-screen changes preserve request, candidate set/order and valid selection; they cannot trigger P9.2-P9.7 merely because layout changed.
+
+Prepared P8 Preview/reservation remains the same semantic object.
+
+### R18 — CAD input model could be locked to mouse or touch too early
+
+**Resolution:** CLOSED.
+
+P9 introduces one semantic input-operation layer and shared `PreviewViewportState`.
+
+Required actions cannot be available only through:
+
+```text
+hover
+right click
+long press
+stylus
+multi-touch
+```
+
+Mouse/keyboard/touch/stylus are adapters to common operations. This becomes the foundation for P10-P14 CAD interactions.
+
+### R19 — Small-screen Preview/Diff could hide semantic changes
+
+**Resolution:** CLOSED.
+
+COMPACT may present Preview/Diff as tabs/full-screen routes, but the underlying semantic Diff operation set is identical to desktop. All blockers and changes remain reachable before Apply.
+
+### R20 — Preview zoom/pan could leak into engineering geometry
+
+**Resolution:** CLOSED.
+
+`PreviewViewportState(scale, translation)` is transient presentation state only.
+
+It is excluded from:
+
+```text
+candidate fingerprints
+P8 reservation
+semantic Diff
+provenance
+canonical coordinates
+```
+
+Screen pixels never become authoritative apartment geometry.
+
 ## 3. Deliberate non-goals / phase boundaries
 
 These are not P9 blockers:
@@ -235,9 +343,10 @@ statutory architectural compliance certification        -> separate normative va
 electrical/ELV equipment placement                      -> P12/P13
 physical engineering auto-routing                       -> P14
 selective regeneration execution                        -> P15
+full precision phone CAD authoring parity               -> later product decision
 ```
 
-P9 output is deliberately engineered so these phases can consume canonical Spaces/boundaries/openings/provenance later.
+P9 output and interaction architecture are deliberately engineered so these phases can reuse canonical Spaces/boundaries/openings/provenance and responsive input infrastructure.
 
 ## 4. Normative posture
 
@@ -257,8 +366,11 @@ This distinction is mandatory in UX/product copy.
 | semantic validity | P9.5 report |
 | candidate geometry | P9.6 integer-mm model |
 | candidate quality | P9.7 score breakdown |
-| image/preview | P9.8 projection only |
+| vector image/preview scene | P9.8 projection only |
 | selected answer | exact `candidateFingerprint` |
+| Wizard semantic state | P9.9/P8 session state machine |
+| responsive layout | presentation capability policy |
+| preview zoom/pan | transient `PreviewViewportState` |
 | preview/apply identity | P8 reservation/coordinator |
 | committed state | canonical ProjectAggregate |
 | lineage | P9.12 persisted provenance |
@@ -285,7 +397,9 @@ At Apply:
 exact frozen candidate + exact reservation
 ```
 
-PASS. No P9 stage is permitted to allocate permanent IDs while browsing cards.
+Responsive/input transitions allocate no permanent identity.
+
+PASS.
 
 ## 7. Determinism audit
 
@@ -302,6 +416,9 @@ Potential non-determinism sources and controls:
 | random generation | forbidden in v1 |
 | clock/time | excluded from candidate identity |
 | platform pixel metrics | excluded from generation |
+| viewport/orientation | presentation only |
+| input modality | semantic operation adapter only |
+| theme/text scale | excluded from fingerprints |
 
 Design disposition: PASS.
 
@@ -319,6 +436,8 @@ version/fingerprint lineage
 ```
 
 Legacy projects migrate to valid empty generation state.
+
+Responsive presentation state and preview viewport state are NOT generation provenance.
 
 No P9-specific runtime object is required to edit committed apartments.
 
@@ -346,9 +465,48 @@ P9.7 batch <= 25 ms p99
 P9.8 six cards <= 200 ms p99 (separate render gate)
 ```
 
+Responsive relayout has a separate rule: it may rebuild/reflow presentation but MUST NOT invoke P9.1-P9.7 solely because viewport/input capabilities changed.
+
 CI evidence, not arithmetic sum, decides final pass.
 
-## 10. Implementation package direction
+## 10. Responsive/input architecture audit
+
+Required shared foundations:
+
+```text
+ElecXPresentationCapabilities
+ElecXResponsiveWidthClass
+semantic Wizard navigation state
+input-operation abstraction
+PreviewViewportState
+central shortcut mapping
+focus/a11y order
+safe-area/window-resize handling
+```
+
+Expected reuse:
+
+```text
+P10 multi-candidate building/floor compare
+P11 EngineeringGraph navigation
+P12 engineering Wizard/Preview/Diff
+P13 auto-placement pointer/touch/stylus commands
+P14 route editing / CAD viewport
+```
+
+Forbidden:
+
+```text
+desktop-only application state
+mobile-specific domain model
+separate desktop/mobile transaction engines
+gesture directly mutating canonical state without semantic command
+screen pixel coordinates persisted as engineering geometry
+```
+
+Design disposition: PASS.
+
+## 11. Implementation package direction
 
 Recommended dependency direction:
 
@@ -362,9 +520,9 @@ domain/apartment_topology
 domain/project canonical contracts
 
 presentation
-  Wizard screens/cards/vector painting
+  responsive Wizard shells/cards/vector painting/input adapters
         ↓
-application services
+application services / semantic operations
 ```
 
 Forbidden dependencies:
@@ -375,26 +533,28 @@ catalog -> UI localization
 geometry -> SVG parser
 provider -> repository direct write
 renderer -> canonical mutation
+responsive width class -> generator algorithm
+OS platform -> candidate ranking
 ```
 
-## 11. Recommended implementation order
+## 12. Recommended implementation order
 
 ```text
-Gate A  Shared contracts + P9.1
+Gate A  Shared domain + responsive/input contracts + P9.1
 Gate B  P9.2 catalog + integrity fixtures
 Gate C  P9.3 grammar + P9.4 area + P9.5 semantics
 Gate D  P9.6 geometry + opening intents
-Gate E  P9.7 scoring/diversity + P9.8 renderer
-Gate F  P9.9 provider/session
-Gate G  P9.10 apartment Diff
+Gate E  P9.7 scoring/diversity + P9.8 responsive renderer/viewport
+Gate F  P9.9 provider/session + responsive state shell
+Gate G  P9.10 apartment Diff + responsive Preview/Diff
 Gate H  P9.11 atomic materialization/openings
 Gate I  P9.12 provenance/persistence/override hooks
-Gate J  P9.13 Golden Journey/NFR/cross-platform
+Gate J  P9.13 Golden Journey/NFR/cross-platform/input qualification
 ```
 
 Do not begin presentation-heavy work before Gates A-D have stable typed contracts.
 
-## 12. Risk register
+## 13. Risk register
 
 | Risk | Severity | Containment |
 |---|---|---|
@@ -406,22 +566,33 @@ Do not begin presentation-heavy work before Gates A-D have stable typed contract
 | P8 regression | high | reserved-preview exactness + full test suite |
 | provenance schema incomplete | high | P9.12 merge blocker |
 | false compliance claim | high | explicit normative posture |
+| mobile/desktop semantic divergence | high | P9-PLAT fingerprint equality gate |
+| resize resets session | high | responsive state-preservation tests |
+| input modality inaccessible | high | keyboard/touch operation qualification |
+| future P10-P14 interaction rewrite | high | shared capability/input/viewport abstractions in P9 |
 
 No risk is accepted without a qualification/containment path.
 
-## 13. Design Definition of Done
+## 14. Design Definition of Done
 
 P9 specification is considered high-quality/implementation-ready when:
 
 ```text
 all stage v2 specs exist
 shared contracts exist
-cross-stage ambiguities R01-R14 are CLOSED
+cross-platform responsive/input contract exists
+cross-stage ambiguities R01-R20 are CLOSED
 all units/area semantics are explicit
 opening/access semantics are physically materializable
 identity/version/fingerprint rules are explicit
 P8 transaction authority remains singular
 persistence/provenance path is defined
+responsive width/input state cannot alter generator semantics
+phone/tablet/desktop expose one semantic Wizard flow
+Preview/Diff remains complete at COMPACT
+keyboard/touch input paths are specified
+preview viewport is explicitly non-canonical
+P10-P14 reuse path is defined
 negative/error behavior is typed
 hard NFRs are measurable
 Golden Journey is production-path based
