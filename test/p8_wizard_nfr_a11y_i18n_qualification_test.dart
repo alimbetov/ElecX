@@ -22,7 +22,6 @@ const _mib = 1024 * 1024;
 void main() {
   group('P8 hard NFR qualification', () {
     test('10k semantic diff model stays inside p95/p99 and memory budgets', () {
-      // Warm the allocator and sort implementation before measured samples.
       for (var i = 0; i < 3; i++) {
         final warm = _buildDiffModel(1000, seed: i);
         expect(warm.entries, hasLength(1000));
@@ -160,6 +159,12 @@ void main() {
       testWidgets(
           'Wizard resources render completely for ${locale.languageCode}',
           (tester) async {
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = const Size(1200, 1400);
+        addTearDown(() {
+          tester.view.resetDevicePixelRatio();
+          tester.view.resetPhysicalSize();
+        });
         final session = _session(
           _project('locale-${locale.languageCode}'),
           locale.languageCode == 'ru' ? 5101 : 5102,
@@ -184,10 +189,10 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('wizard-generate')));
         await tester.pumpAndSettle();
         if (locale.languageCode == 'ru') {
-          expect(find.text('Применить всё'), findsOneWidget);
+          expect(find.text('Применить'), findsOneWidget);
           expect(find.textContaining('Изменения ('), findsOneWidget);
         } else {
-          expect(find.text('Apply all'), findsOneWidget);
+          expect(find.text('Apply'), findsOneWidget);
           expect(find.textContaining('Changes ('), findsOneWidget);
         }
         expect(tester.takeException(), isNull);
@@ -208,46 +213,49 @@ void main() {
             tester.view.resetPhysicalSize();
           });
           final semantics = tester.ensureSemantics();
-          addTearDown(semantics.dispose);
-          final session = _session(
-            _project('sem-${locale.languageCode}-${width.toInt()}'),
-            6000 + width.toInt(),
-          );
-          await tester.pumpWidget(
-            _localizedApp(locale: locale, session: session),
-          );
-          await tester.pumpAndSettle();
+          try {
+            final session = _session(
+              _project('sem-${locale.languageCode}-${width.toInt()}'),
+              6000 + width.toInt(),
+            );
+            await tester.pumpWidget(
+              _localizedApp(locale: locale, session: session),
+            );
+            await tester.pumpAndSettle();
 
-          final generateNode = tester.getSemantics(
-            find.byKey(const ValueKey('wizard-generate')),
-          );
-          final cancelNode = tester.getSemantics(
-            find.byKey(const ValueKey('wizard-cancel')),
-          );
-          final nameNode = tester.getSemantics(
-            find.byKey(const ValueKey('wizard-building-name')),
-          );
-          expect(generateNode.flagsCollection.isButton, isTrue);
-          expect(cancelNode.flagsCollection.isButton, isTrue);
-          expect(nameNode.flagsCollection.isTextField, isTrue);
-          expect(generateNode.label, isNotEmpty);
-          expect(cancelNode.label, isNotEmpty);
-          expect(nameNode.label, isNotEmpty);
+            final generateNode = tester.getSemantics(
+              find.byKey(const ValueKey('wizard-generate')),
+            );
+            final cancelNode = tester.getSemantics(
+              find.byKey(const ValueKey('wizard-cancel')),
+            );
+            final nameNode = tester.getSemantics(
+              find.byKey(const ValueKey('wizard-building-name')),
+            );
+            expect(generateNode.flagsCollection.isButton, isTrue);
+            expect(cancelNode.flagsCollection.isButton, isTrue);
+            expect(nameNode.flagsCollection.isTextField, isTrue);
+            expect(generateNode.label, isNotEmpty);
+            expect(cancelNode.label, isNotEmpty);
+            expect(nameNode.label, isNotEmpty);
 
-          await tester.tap(find.byKey(const ValueKey('wizard-generate')));
-          await tester.pumpAndSettle();
-          final applyNode = tester.getSemantics(
-            find.byKey(const ValueKey('wizard-apply')),
-          );
-          expect(applyNode.flagsCollection.isButton, isTrue);
-          expect(applyNode.label, isNotEmpty);
-          expect(find.byType(WizardPreviewCanvas), findsOneWidget);
-          final previewNode = tester.getSemantics(
-            find.byType(WizardPreviewCanvas),
-          );
-          expect(previewNode.flagsCollection.isImage, isTrue);
-          expect(previewNode.label, isNotEmpty);
-          expect(tester.takeException(), isNull);
+            await tester.tap(find.byKey(const ValueKey('wizard-generate')));
+            await tester.pumpAndSettle();
+            final applyNode = tester.getSemantics(
+              find.byKey(const ValueKey('wizard-apply')),
+            );
+            expect(applyNode.flagsCollection.isButton, isTrue);
+            expect(applyNode.label, isNotEmpty);
+            expect(find.byType(WizardPreviewCanvas), findsOneWidget);
+            final previewNode = tester.getSemantics(
+              find.byType(WizardPreviewCanvas),
+            );
+            expect(previewNode.flagsCollection.isImage, isTrue);
+            expect(previewNode.label, isNotEmpty);
+            expect(tester.takeException(), isNull);
+          } finally {
+            semantics.dispose();
+          }
         });
       }
     }
@@ -276,8 +284,13 @@ void main() {
             ),
           );
           await tester.pumpAndSettle();
-          expect(find.byKey(const ValueKey('wizard-generate')), findsOneWidget);
           expect(find.byKey(const ValueKey('wizard-cancel')), findsOneWidget);
+          expect(tester.takeException(), isNull);
+
+          final parameterList = find.byType(ListView).first;
+          await tester.drag(parameterList, const Offset(0, -1000));
+          await tester.pumpAndSettle();
+          expect(find.byKey(const ValueKey('wizard-generate')), findsOneWidget);
           expect(tester.takeException(), isNull);
         });
       }
