@@ -140,7 +140,8 @@ void main() {
       final expected = normalizer.normalize(input).request!.intentFingerprint;
 
       for (var i = 0; i < 10000; i++) {
-        expect(normalizer.normalize(input).request!.intentFingerprint, expected);
+        expect(
+            normalizer.normalize(input).request!.intentFingerprint, expected);
       }
     });
 
@@ -170,9 +171,11 @@ void main() {
 
     test('P9.1-AT-012 changing semantic field changes fingerprint', () {
       final first = normalizer.normalize(_request()).request!;
-      final second = normalizer.normalize(
-        _request(approximateAreaDm2: 6100),
-      ).request!;
+      final second = normalizer
+          .normalize(
+            _request(approximateAreaDm2: 6100),
+          )
+          .request!;
 
       expect(second.intentFingerprint, isNot(first.intentFingerprint));
     });
@@ -191,10 +194,8 @@ void main() {
         request: request,
         selection: _selection('candidate-a'),
       );
-      final after = normalizer
-          .normalize(parameters.request)
-          .request!
-          .intentFingerprint;
+      final after =
+          normalizer.normalize(parameters.request).request!.intentFingerprint;
 
       expect(after, before);
     });
@@ -233,23 +234,28 @@ void main() {
     });
 
     test('canonical serialization uses stable codes and explicit units', () {
-      final normalized = normalizer.normalize(
-        _request(
-          approximateAreaDm2: 7850,
-          kitchenMode: ApartmentKitchenMode.openPlan,
-          exteriorExposurePreference:
-              ApartmentExteriorExposurePreference.corner,
-          preferredFamily: ApartmentTopologyFamily.corner,
-        ),
-      ).request!;
+      final normalized = normalizer
+          .normalize(
+            _request(
+              approximateAreaDm2: 7850,
+              kitchenMode: ApartmentKitchenMode.openPlan,
+              exteriorExposurePreference:
+                  ApartmentExteriorExposurePreference.corner,
+              preferredFamily: ApartmentTopologyFamily.corner,
+            ),
+          )
+          .request!;
 
-      expect(normalized.canonicalSerialization, contains('approximateAreaDm2=7850'));
-      expect(normalized.canonicalSerialization, contains('kitchenMode=openPlan'));
+      expect(normalized.canonicalSerialization,
+          contains('approximateAreaDm2=7850'));
+      expect(
+          normalized.canonicalSerialization, contains('kitchenMode=openPlan'));
       expect(
         normalized.canonicalSerialization,
         contains('exteriorExposurePreference=corner'),
       );
-      expect(normalized.canonicalSerialization, contains('preferredFamily=corner'));
+      expect(normalized.canonicalSerialization,
+          contains('preferredFamily=corner'));
       expect(normalized.intentFingerprint, hasLength(64));
     });
   });

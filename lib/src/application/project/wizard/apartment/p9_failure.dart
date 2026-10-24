@@ -45,7 +45,8 @@ final class P9Failure {
   })  : facts = Map.unmodifiable(facts),
         suggestions = List.unmodifiable(suggestions) {
     if (code.trim().isEmpty) {
-      throw ArgumentError.value(code, 'code', 'Failure code must be non-empty.');
+      throw ArgumentError.value(
+          code, 'code', 'Failure code must be non-empty.');
     }
   }
 

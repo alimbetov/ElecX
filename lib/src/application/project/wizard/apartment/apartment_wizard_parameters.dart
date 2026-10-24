@@ -18,8 +18,7 @@ final class ApartmentRequestInput {
     required this.kitchenMode,
     required this.corridorMode,
     required this.exteriorExposurePreference,
-    this.areaBasis =
-        ApartmentAreaBasis.interiorNetExcludingExteriorAppendages,
+    this.areaBasis = ApartmentAreaBasis.interiorNetExcludingExteriorAppendages,
     this.preferredFamily,
     this.preferDayNightSeparation = false,
   });
@@ -255,9 +254,8 @@ final class ApartmentRequestNormalizer {
       );
     }
 
-    final normalizedBalconyKind = input.balconyCount == 0
-        ? ApartmentBalconyKind.none
-        : input.balconyKind;
+    final normalizedBalconyKind =
+        input.balconyCount == 0 ? ApartmentBalconyKind.none : input.balconyKind;
     final canonicalSerialization = _serialize(
       habitableRoomCount: input.habitableRoomCount,
       interiorAreaDm2: input.approximateAreaDm2,

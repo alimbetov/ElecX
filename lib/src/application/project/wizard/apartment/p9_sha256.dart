@@ -57,15 +57,13 @@ String p9Sha256Hex(String value) {
     var h = state[7];
 
     for (var i = 0; i < 64; i++) {
-      final sum1 = _rotateRight(e, 6) ^
-          _rotateRight(e, 11) ^
-          _rotateRight(e, 25);
+      final sum1 =
+          _rotateRight(e, 6) ^ _rotateRight(e, 11) ^ _rotateRight(e, 25);
       final choose = (e & f) ^ ((~e) & g);
       final temp1 =
           (h + sum1 + choose + _roundConstants[i] + words[i]) & _mask32;
-      final sum0 = _rotateRight(a, 2) ^
-          _rotateRight(a, 13) ^
-          _rotateRight(a, 22);
+      final sum0 =
+          _rotateRight(a, 2) ^ _rotateRight(a, 13) ^ _rotateRight(a, 22);
       final majority = (a & b) ^ (a & c) ^ (b & c);
       final temp2 = (sum0 + majority) & _mask32;
 
@@ -89,9 +87,7 @@ String p9Sha256Hex(String value) {
     state[7] = (state[7] + h) & _mask32;
   }
 
-  return state
-      .map((word) => word.toRadixString(16).padLeft(8, '0'))
-      .join();
+  return state.map((word) => word.toRadixString(16).padLeft(8, '0')).join();
 }
 
 const int _mask32 = 0xffffffff;
