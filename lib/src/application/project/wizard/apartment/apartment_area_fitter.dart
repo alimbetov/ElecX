@@ -47,13 +47,6 @@ final class ApartmentAreaFitter {
               SpaceAreaParticipation.requestedInteriorArea,
         )
         .toList();
-    final appendages = spaces
-        .where(
-          (space) =>
-              space.areaParticipation ==
-              SpaceAreaParticipation.exteriorAppendage,
-        )
-        .toList();
 
     final minimumTotal = interior.fold<int>(
       0,
@@ -112,12 +105,10 @@ final class ApartmentAreaFitter {
         space.semanticKey: space.sourceSpec.minAreaDm2,
     };
     var remaining = request.interiorAreaDm2 - minimumTotal;
-    final nearFixed = interior
-        .where((space) => space.sourceSpec.nearFixedArea)
-        .toList();
-    final flexible = interior
-        .where((space) => !space.sourceSpec.nearFixedArea)
-        .toList();
+    final nearFixed =
+        interior.where((space) => space.sourceSpec.nearFixedArea).toList();
+    final flexible =
+        interior.where((space) => !space.sourceSpec.nearFixedArea).toList();
 
     // Near-fixed service spaces reach preferred targets before flexible spaces.
     remaining = _distributeToward(
@@ -187,8 +178,7 @@ final class ApartmentAreaFitter {
     final exteriorAppendage = fittedSpaces
         .where(
           (space) =>
-              space.participation ==
-              SpaceAreaParticipation.exteriorAppendage,
+              space.participation == SpaceAreaParticipation.exteriorAppendage,
         )
         .fold<int>(0, (total, space) => total + space.areaDm2);
     final residual = request.interiorAreaDm2 - allocatedInterior;
@@ -281,8 +271,7 @@ final class ApartmentAreaFitter {
             'p9.area.invalid-participation',
             facts: {
               'semanticKey': space.semanticKey,
-              'draftParticipation':
-                  _participationCode(space.areaParticipation),
+              'draftParticipation': _participationCode(space.areaParticipation),
               'specParticipation': _participationCode(spec.areaParticipation),
             },
           ),

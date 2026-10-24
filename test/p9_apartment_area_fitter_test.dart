@@ -109,7 +109,8 @@ void main() {
       expect(_areas(result.fittedDraft!), {'a:1': 752, 'b:1': 751});
     });
 
-    test('P9.4-AT-006 source-order permutation keeps allocation and fingerprint',
+    test(
+        'P9.4-AT-006 source-order permutation keeps allocation and fingerprint',
         () {
       final request = _request(3201);
       final a = _spec(
@@ -142,7 +143,8 @@ void main() {
       );
     });
 
-    test('P9.4-AT-007 near-fixed bathroom stays at preferred while rooms expand',
+    test(
+        'P9.4-AT-007 near-fixed bathroom stays at preferred while rooms expand',
         () {
       final request = _request(4000);
       final result = fitter.fit(
@@ -201,7 +203,8 @@ void main() {
       expect(_areas(result.fittedDraft!)['balcony:1'], 500);
     });
 
-    test('P9.4-AT-009 appendage target changes do not change interior allocation',
+    test(
+        'P9.4-AT-009 appendage target changes do not change interior allocation',
         () {
       final request = _request(
         2600,
@@ -249,7 +252,8 @@ void main() {
         request: request,
       );
 
-      expect(_interiorAreas(first.fittedDraft!), _interiorAreas(second.fittedDraft!));
+      expect(_interiorAreas(first.fittedDraft!),
+          _interiorAreas(second.fittedDraft!));
       expect(first.fittedDraft!.exteriorAppendageAreaDm2, 500);
       expect(second.fittedDraft!.exteriorAppendageAreaDm2, 700);
     });
@@ -292,9 +296,12 @@ void main() {
       for (var rooms = 1; rooms <= 10; rooms++) {
         final request = _request(areas[rooms]!, habitableRoomCount: rooms);
         final templates = filter.compatibleTemplates(catalog, request);
-        expect(templates, isNotEmpty, reason: 'roomCount=$rooms catalog coverage');
-        final expansion = grammar.expand(request: request, templates: templates);
-        expect(expansion.drafts, isNotEmpty, reason: 'roomCount=$rooms grammar');
+        expect(templates, isNotEmpty,
+            reason: 'roomCount=$rooms catalog coverage');
+        final expansion =
+            grammar.expand(request: request, templates: templates);
+        expect(expansion.drafts, isNotEmpty,
+            reason: 'roomCount=$rooms grammar');
 
         for (final draft in expansion.drafts) {
           final result = fitter.fit(draft: draft, request: request);
