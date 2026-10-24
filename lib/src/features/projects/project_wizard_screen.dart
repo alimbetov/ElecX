@@ -483,7 +483,7 @@ final class _ProjectWizardScreenState extends State<ProjectWizardScreen> {
       child: Material(
         elevation: 8,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           child: Row(
             children: [
               TextButton(
