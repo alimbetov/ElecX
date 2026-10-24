@@ -64,7 +64,8 @@ void main() {
       expect(retained, isNotNull);
     });
 
-    test('maximum Basic Building preview-ready stays inside 300/500ms gates', () {
+    test('maximum Basic Building preview-ready stays inside 300/500ms gates',
+        () {
       for (var i = 0; i < 3; i++) {
         _measureMaximumPreview(i + 1);
       }
@@ -142,7 +143,8 @@ void main() {
         final watch = Stopwatch()..start();
         final result = port.commitPreview(preview);
         watch.stop();
-        expect(result.after.stores.levels, hasLength(231));
+        expect(result, isNotNull);
+        expect(result!.after.stores.levels, hasLength(231));
         samples.add(watch.elapsed);
       }
       expect(
@@ -155,7 +157,8 @@ void main() {
 
   group('P8 RU/EN localization qualification', () {
     for (final locale in ProjectWizardLocalizations.supportedLocales) {
-      testWidgets('Wizard resources render completely for ${locale.languageCode}',
+      testWidgets(
+          'Wizard resources render completely for ${locale.languageCode}',
           (tester) async {
         final session = _session(
           _project('locale-${locale.languageCode}'),
@@ -224,9 +227,9 @@ void main() {
           final nameNode = tester.getSemantics(
             find.byKey(const ValueKey('wizard-building-name')),
           );
-          expect(generateNode.hasFlag(SemanticsFlag.isButton), isTrue);
-          expect(cancelNode.hasFlag(SemanticsFlag.isButton), isTrue);
-          expect(nameNode.hasFlag(SemanticsFlag.isTextField), isTrue);
+          expect(generateNode.flagsCollection.isButton, isTrue);
+          expect(cancelNode.flagsCollection.isButton, isTrue);
+          expect(nameNode.flagsCollection.isTextField, isTrue);
           expect(generateNode.label, isNotEmpty);
           expect(cancelNode.label, isNotEmpty);
           expect(nameNode.label, isNotEmpty);
@@ -236,13 +239,13 @@ void main() {
           final applyNode = tester.getSemantics(
             find.byKey(const ValueKey('wizard-apply')),
           );
-          expect(applyNode.hasFlag(SemanticsFlag.isButton), isTrue);
+          expect(applyNode.flagsCollection.isButton, isTrue);
           expect(applyNode.label, isNotEmpty);
           expect(find.byType(WizardPreviewCanvas), findsOneWidget);
           final previewNode = tester.getSemantics(
             find.byType(WizardPreviewCanvas),
           );
-          expect(previewNode.hasFlag(SemanticsFlag.isImage), isTrue);
+          expect(previewNode.flagsCollection.isImage, isTrue);
           expect(previewNode.label, isNotEmpty);
           expect(tester.takeException(), isNull);
         });
