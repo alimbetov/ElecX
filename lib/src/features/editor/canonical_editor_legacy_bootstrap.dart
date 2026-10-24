@@ -6,6 +6,7 @@ import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/project_orientation.dart';
 import 'canonical_editor_workspace_adapter.dart';
+import 'canonical_legacy_identity_codec.dart';
 import 'editor_project_document.dart';
 
 final class CanonicalEditorLegacyBootstrapResult {
@@ -61,9 +62,11 @@ abstract final class CanonicalEditorLegacyBootstrap {
           levelIndex < legacyBuilding.levels.length;
           levelIndex++) {
         final legacyLevel = legacyBuilding.levels[levelIndex];
-        final levelId = LevelId(
-          _id('level', legacyBuilding.id, legacyLevel.id),
-        );
+        final levelId =
+            CanonicalLegacyIdentityCodec.tryDecodeLevelId(legacyLevel.id) ??
+                LevelId(
+                  _id('level', legacyBuilding.id, legacyLevel.id),
+                );
         canonicalLevelIds.add(levelId);
         if (legacyBuilding.id == composedBuilding.building.id) {
           legacyLevelIds[levelId] = legacyLevel.id;

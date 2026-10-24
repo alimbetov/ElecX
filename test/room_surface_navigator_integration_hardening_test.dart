@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/project_structure_authoring.dart';
+import 'package:elecx/src/application/project/wizard/project_wizard_mutation_port.dart';
 import 'package:elecx/src/domain/boundary_edge_identity_registry.dart';
 import 'package:elecx/src/domain/boundary_topology.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
@@ -286,9 +287,11 @@ _Fixture _fixture() {
     activeLevelId: levelId,
     selectedSpaceId: roomId,
   );
+  final mutations = ProjectMutationSession(project);
+  final idFactory = SecureRandomEntityIdFactory(random: Random(219));
   final session = ProjectStructureAuthoringSession(
-    mutations: ProjectMutationSession(project),
-    idFactory: SecureRandomEntityIdFactory(random: Random(219)),
+    mutations: mutations,
+    idFactory: idFactory,
     navigation: navigation,
   );
   final binding = CanonicalEditorWorkspaceBinding(
@@ -302,6 +305,10 @@ _Fixture _fixture() {
   );
   final runtime = CanonicalEditorResolvedRuntime(
     session: session,
+    wizardMutations: SharedProjectWizardMutationPort(
+      mutations: mutations,
+      idFactory: idFactory,
+    ),
     binding: binding,
     persistenceOwnerProjectId: ProjectId(projectId),
   );

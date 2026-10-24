@@ -60,8 +60,15 @@ final class EditorProjectMetadata {
     );
   }
 
-  EditorProjectMetadata touch([DateTime? now]) =>
-      copyWith(updatedAt: (now ?? DateTime.now()).toUtc());
+  /// Advances project metadata time without ever moving the persisted timeline
+  /// backwards. Wall clocks can jump backwards because of NTP corrections,
+  /// VM resume or manual clock changes; those events must not invalidate an
+  /// otherwise valid project document.
+  EditorProjectMetadata touch([DateTime? now]) {
+    final observed = (now ?? DateTime.now()).toUtc();
+    final monotonic = observed.isAfter(updatedAt) ? observed : updatedAt;
+    return copyWith(updatedAt: monotonic);
+  }
 }
 
 enum EditorProjectSaveStatus { saved, modified, saving, saveFailed }

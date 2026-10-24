@@ -3,8 +3,10 @@ import '../../application/project/project_mutation.dart';
 import '../../application/project/project_north_editing.dart';
 import '../../application/project/project_space_semantics_editing.dart';
 import '../../application/project/project_structure_authoring.dart';
+import '../../application/project/wizard/project_wizard_mutation_port.dart';
 import '../../domain/project_identity.dart';
 import 'canonical_editor_runtime_cutover.dart';
+import 'canonical_editor_wizard_runtime_registry.dart';
 import 'canonical_editor_workspace_adapter.dart';
 import 'canonical_project_navigator.dart';
 import 'editor_building_workspace.dart';
@@ -63,12 +65,18 @@ typedef CanonicalProductionBoundaryTopologyCommittedCallback
 final class CanonicalEditorResolvedRuntime {
   const CanonicalEditorResolvedRuntime({
     required this.session,
+    required this.wizardMutations,
     required this.binding,
     this.materializer = const ExistingBindingCanonicalEditorMaterializer(),
     this.persistenceOwnerProjectId,
   });
 
   final ProjectStructureAuthoringSession session;
+
+  /// P8 Wizard façade over the exact same canonical mutation timeline as
+  /// [session]. This is runtime capability wiring, not an RBAC decision.
+  final ProjectWizardMutationPort wizardMutations;
+
   final CanonicalEditorWorkspaceBinding binding;
   final CanonicalEditorMaterializer materializer;
 
@@ -82,7 +90,7 @@ final class CanonicalEditorResolvedRuntime {
 /// P3 timeline and is required for production canonical write capabilities.
 final class CanonicalEditorProductionRuntimeConfig {
   const CanonicalEditorProductionRuntimeConfig({
-    required this.resolveRuntime,
+    required CanonicalEditorRuntimeResolver resolveRuntime,
     this.requestBuilding,
     this.requestLevel,
     this.requestRoom,
@@ -91,9 +99,9 @@ final class CanonicalEditorProductionRuntimeConfig {
     this.onProjectNorthCommitted,
     this.onSpaceSemanticsCommitted,
     this.onBoundaryTopologyCommitted,
-  });
+  }) : _resolveRuntime = resolveRuntime;
 
-  final CanonicalEditorRuntimeResolver resolveRuntime;
+  final CanonicalEditorRuntimeResolver _resolveRuntime;
   final BuildingRequestResolver? requestBuilding;
   final LevelRequestResolver? requestLevel;
   final RoomRequestResolver? requestRoom;
@@ -107,6 +115,29 @@ final class CanonicalEditorProductionRuntimeConfig {
   final CanonicalProductionBoundaryTopologyCommittedCallback?
       onBoundaryTopologyCommitted;
 
+  /// Resolves the production runtime and binds the already-composed P8 Wizard
+  /// port to that exact canonical authoring-session identity. The Navigator can
+  /// therefore launch a contextual Wizard without constructing a second
+  /// ProjectMutationSession, Undo stack or persistence owner.
+  CanonicalEditorResolvedRuntime? resolveRuntime(
+    EditorBuildingWorkspace workspace,
+    EditorProjectMetadata metadata,
+  ) {
+    final resolved = _resolveRuntime(workspace, metadata);
+    if (resolved != null) {
+      CanonicalEditorWizardRuntimeRegistry.bind(
+        session: resolved.session,
+        mutations: resolved.wizardMutations,
+      );
+    }
+    return resolved;
+  }
+
   bool get authoringEnabled =>
       onCanonicalMutationCommitted != null && onAuthoringCommitted != null;
+
+  /// Wizard Apply needs canonical ownership acknowledgement just like any
+  /// ordinary canonical mutation. Future authorization/RBAC remains an outer
+  /// composition concern.
+  bool get wizardMutationEnabled => onCanonicalMutationCommitted != null;
 }

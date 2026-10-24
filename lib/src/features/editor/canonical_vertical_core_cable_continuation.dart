@@ -90,8 +90,7 @@ final class CanonicalVerticalCoreCableContinuationSession {
       throw CanonicalVerticalCoreContinuationException(
         code: CanonicalVerticalCoreContinuationIssueCode.missingRoomHeight,
         entityId: fromHeight == null ? hop.fromLevelId : hop.toLevelId,
-        message:
-            'Both source and target room heights are required for '
+        message: 'Both source and target room heights are required for '
             'VerticalCore continuation ${hop.fromLevelId} -> ${hop.toLevelId}.',
       );
     }
@@ -110,8 +109,7 @@ final class CanonicalVerticalCoreCableContinuationSession {
         throw CanonicalVerticalCoreContinuationException(
           code:
               CanonicalVerticalCoreContinuationIssueCode.routeIdentityMismatch,
-          message:
-              'Slab handoff changed route identity from $routeId to '
+          message: 'Slab handoff changed route identity from $routeId to '
               '${result.routeId}.',
         );
       }
@@ -119,8 +117,7 @@ final class CanonicalVerticalCoreCableContinuationSession {
         throw CanonicalVerticalCoreContinuationException(
           code: CanonicalVerticalCoreContinuationIssueCode.slabIdentityMismatch,
           entityId: result.slabId,
-          message:
-              'Slab handoff returned ${result.slabId}, expected '
+          message: 'Slab handoff returned ${result.slabId}, expected '
               '${hop.slabId}.',
         );
       }
@@ -128,8 +125,7 @@ final class CanonicalVerticalCoreCableContinuationSession {
         throw CanonicalVerticalCoreContinuationException(
           code: CanonicalVerticalCoreContinuationIssueCode.coreIdentityMismatch,
           entityId: result.verticalCoreId,
-          message:
-              'Slab handoff lost VerticalCore identity '
+          message: 'Slab handoff lost VerticalCore identity '
               '${plan.verticalCoreId}.',
         );
       }
@@ -187,8 +183,8 @@ final class CanonicalVerticalCoreCableContinuationSession {
     final departure = editor.activeSurface;
     final expectedType =
         completedHop.direction == VerticalCoreCrossingDirection.up
-        ? SurfacePlaneType.ceiling
-        : SurfacePlaneType.floor;
+            ? SurfacePlaneType.ceiling
+            : SurfacePlaneType.floor;
     if (departure == null ||
         departure.spaceId != arrival.spaceId ||
         departure.type != expectedType ||
@@ -198,8 +194,7 @@ final class CanonicalVerticalCoreCableContinuationSession {
       throw const CanonicalVerticalCoreContinuationException(
         code: CanonicalVerticalCoreContinuationIssueCode
             .hiddenLegSurfaceTransitionFailed,
-        message:
-            'Editor could not materialize the hidden VerticalCore '
+        message: 'Editor could not materialize the hidden VerticalCore '
             'departure surface while preserving the live cable draft.',
       );
     }

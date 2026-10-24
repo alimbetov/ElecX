@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/project_structure_authoring.dart';
+import 'package:elecx/src/application/project/wizard/project_wizard_mutation_port.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/features/editor/canonical_editor_production_runtime.dart';
@@ -227,9 +228,11 @@ _Fixture _fixture() {
   legacyController.dispose();
 
   final project = _canonicalProject();
+  final mutations = ProjectMutationSession(project);
+  final idFactory = SecureRandomEntityIdFactory(random: Random(73));
   final session = ProjectStructureAuthoringSession(
-    mutations: ProjectMutationSession(project),
-    idFactory: SecureRandomEntityIdFactory(random: Random(73)),
+    mutations: mutations,
+    idFactory: idFactory,
   );
   final binding = CanonicalEditorWorkspaceBinding(
     buildingId: BuildingId('canonical-building'),
@@ -240,6 +243,10 @@ _Fixture _fixture() {
   );
   final runtime = CanonicalEditorResolvedRuntime(
     session: session,
+    wizardMutations: SharedProjectWizardMutationPort(
+      mutations: mutations,
+      idFactory: idFactory,
+    ),
     binding: binding,
   );
   return _Fixture(

@@ -63,7 +63,7 @@ final class _CommittedCanonicalSlabRouteHandoff {
 /// and the legacy workspace are rolled back before the source draft is restored.
 final class CanonicalSlabRouteHandoffRuntime {
   CanonicalSlabRouteHandoffRuntime({required this.coordinator})
-    : _handoff = ProjectSlabRouteHandoffSession(coordinator.session);
+      : _handoff = ProjectSlabRouteHandoffSession(coordinator.session);
 
   final CanonicalEditorRuntimeCutoverCoordinator coordinator;
   final ProjectSlabRouteHandoffSession _handoff;
@@ -113,8 +113,7 @@ final class CanonicalSlabRouteHandoffRuntime {
         code:
             CanonicalSlabRouteHandoffRuntimeIssueCode.verticalEvidenceRejected,
         entityId: intent.slabId,
-        message:
-            'Materialized vertical geometry does not prove the canonical '
+        message: 'Materialized vertical geometry does not prove the canonical '
             'slab crossing.',
       );
     }
@@ -123,19 +122,18 @@ final class CanonicalSlabRouteHandoffRuntime {
       coordinator.session.project,
       toSpaceId,
     );
-    final materialization = const ExistingBindingCanonicalEditorMaterializer()
-        .inspect(
-          project: coordinator.session.project,
-          navigation: targetNavigation,
-          binding: coordinator.adapter.binding,
-        );
+    final materialization =
+        const ExistingBindingCanonicalEditorMaterializer().inspect(
+      project: coordinator.session.project,
+      navigation: targetNavigation,
+      binding: coordinator.adapter.binding,
+    );
     if (!materialization.canOpen) {
       _handoff.cancel();
       throw CanonicalSlabRouteHandoffRuntimeException(
         code: CanonicalSlabRouteHandoffRuntimeIssueCode.targetNotMaterialized,
         entityId: materialization.entityId,
-        message:
-            materialization.message ??
+        message: materialization.message ??
             'Target cross-level editor representation is unavailable.',
       );
     }
@@ -173,8 +171,7 @@ final class CanonicalSlabRouteHandoffRuntime {
       throw const CanonicalSlabRouteHandoffRuntimeException(
         code: CanonicalSlabRouteHandoffRuntimeIssueCode
             .transientRouteDraftNotExternalized,
-        message:
-            'Cross-level navigation requires an exact externalized route '
+        message: 'Cross-level navigation requires an exact externalized route '
             'draft token before the legacy level can be switched.',
       );
     }
@@ -204,8 +201,7 @@ final class CanonicalSlabRouteHandoffRuntime {
         throw CanonicalSlabRouteHandoffRuntimeException(
           code: CanonicalSlabRouteHandoffRuntimeIssueCode.rollbackFailed,
           entityId: prepared.intent.plan.fromSpaceId,
-          message:
-              'Cross-level cutover failed and the source editor context '
+          message: 'Cross-level cutover failed and the source editor context '
               'could not be restored atomically.',
         );
       }
@@ -213,8 +209,7 @@ final class CanonicalSlabRouteHandoffRuntime {
       throw CanonicalSlabRouteHandoffRuntimeException(
         code: CanonicalSlabRouteHandoffRuntimeIssueCode.cutoverFailed,
         entityId: prepared.intent.plan.toSpaceId,
-        message:
-            'Cross-level cutover failed; canonical navigation, legacy '
+        message: 'Cross-level cutover failed; canonical navigation, legacy '
             'workspace and route draft were restored to the source context.',
       );
     }
@@ -247,8 +242,7 @@ final class CanonicalSlabRouteHandoffRuntime {
       throw CanonicalSlabRouteHandoffRuntimeException(
         code: CanonicalSlabRouteHandoffRuntimeIssueCode.rollbackFailed,
         entityId: committed.sourceNavigation.selectedSpaceId,
-        message:
-            'Cross-level continuation failed and the source editor '
+        message: 'Cross-level continuation failed and the source editor '
             'context could not be restored atomically.',
       );
     }

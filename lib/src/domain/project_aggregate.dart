@@ -83,8 +83,8 @@ final class ProjectLevelEntity {
     this.displayOrder = 0,
     Iterable<ZoneId> zoneIds = const [],
     Iterable<SpaceId> spaceIds = const [],
-  }) : zoneIds = Set.unmodifiable(zoneIds),
-       spaceIds = Set.unmodifiable(spaceIds) {
+  })  : zoneIds = Set.unmodifiable(zoneIds),
+        spaceIds = Set.unmodifiable(spaceIds) {
     if (name.trim().isEmpty) {
       throw ArgumentError.value(name, 'name', 'Level name must be non-empty.');
     }
@@ -174,17 +174,17 @@ final class ProjectEntityStores {
     Map<OverlayClassificationId, ProjectOverlayClassificationEntity> overlays =
         const {},
     Map<SpaceId, SpaceBoundaryTopology> boundaries = const {},
-  }) : sites = Map.unmodifiable(sites),
-       buildings = Map.unmodifiable(buildings),
-       levels = Map.unmodifiable(levels),
-       slabs = Map.unmodifiable(slabs),
-       verticalCores = Map.unmodifiable(verticalCores),
-       zones = Map.unmodifiable(zones),
-       spaces = Map.unmodifiable(spaces),
-       openings = Map.unmodifiable(openings),
-       adjacencies = Map.unmodifiable(adjacencies),
-       overlays = Map.unmodifiable(overlays),
-       boundaries = Map.unmodifiable(boundaries);
+  })  : sites = Map.unmodifiable(sites),
+        buildings = Map.unmodifiable(buildings),
+        levels = Map.unmodifiable(levels),
+        slabs = Map.unmodifiable(slabs),
+        verticalCores = Map.unmodifiable(verticalCores),
+        zones = Map.unmodifiable(zones),
+        spaces = Map.unmodifiable(spaces),
+        openings = Map.unmodifiable(openings),
+        adjacencies = Map.unmodifiable(adjacencies),
+        overlays = Map.unmodifiable(overlays),
+        boundaries = Map.unmodifiable(boundaries);
 
   final Map<SiteId, legacy.ProjectSiteEntity> sites;
   final Map<BuildingId, legacy.ProjectBuildingEntity> buildings;
@@ -196,7 +196,7 @@ final class ProjectEntityStores {
   final Map<OpeningId, ProjectOpeningEntity> openings;
   final Map<SpaceAdjacencyId, ProjectSpaceAdjacencyEntity> adjacencies;
   final Map<OverlayClassificationId, ProjectOverlayClassificationEntity>
-  overlays;
+      overlays;
   final Map<SpaceId, SpaceBoundaryTopology> boundaries;
 }
 
@@ -414,9 +414,10 @@ bool _isActualDuplicateAdjacencyPair(
 
 ProjectAggregateIssueCode _legacyIssueCode(
   legacy.ProjectAggregateIssueCode code,
-) => ProjectAggregateIssueCode.values.firstWhere(
-  (candidate) => candidate.name == code.name,
-);
+) =>
+    ProjectAggregateIssueCode.values.firstWhere(
+      (candidate) => candidate.name == code.name,
+    );
 
 legacy.ProjectEntityStores _toLegacyStores(ProjectEntityStores stores) =>
     legacy.ProjectEntityStores(
@@ -512,7 +513,7 @@ final class ProjectIndex {
   Map<SpaceAdjacencyId, ProjectSpaceAdjacencyEntity> get adjacencies =>
       _legacy.adjacencies;
   Map<OverlayClassificationId, ProjectOverlayClassificationEntity>
-  get overlays => _legacy.overlays;
+      get overlays => _legacy.overlays;
   Map<SpaceId, SpaceBoundaryTopology> get boundaries => _legacy.boundaries;
   Map<BoundaryEdgeId, ProjectBoundaryEdge> get boundaryEdges =>
       _legacy.boundaryEdges;
@@ -614,9 +615,9 @@ bool _setMapEquals<K, V>(Map<K, Set<V>> left, Map<K, Set<V>> right) {
 }
 
 Map<K, Set<V>> _freezeSetMap<K, V>(Map<K, Set<V>> source) => Map.unmodifiable({
-  for (final entry in source.entries)
-    entry.key: Set<V>.unmodifiable(entry.value),
-});
+      for (final entry in source.entries)
+        entry.key: Set<V>.unmodifiable(entry.value),
+    });
 
 final class ProjectAggregateRoot {
   ProjectAggregateRoot._({
