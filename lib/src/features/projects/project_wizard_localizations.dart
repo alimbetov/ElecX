@@ -20,8 +20,8 @@ final class ProjectWizardLocalizations {
   static ProjectWizardLocalizations of(BuildContext context) =>
       ProjectWizardLocalizations._(Localizations.localeOf(context));
 
-  bool get _ru => locale.languageCode.toLowerCase() == 'ru';
-  String _pick(String en, String ru) => _ru ? ru : en;
+  bool get isRussian => locale.languageCode.toLowerCase() == 'ru';
+  String _pick(String en, String ru) => isRussian ? ru : en;
 
   String get title => _pick('Create building', 'Создание здания');
   String get cancel => _pick('Cancel', 'Отмена');
@@ -74,7 +74,8 @@ final class ProjectWizardLocalizations {
         'Apply always commits the whole candidate.',
         'Применение выполняется ко всему варианту целиком.',
       );
-  String changesCount(int count) => _pick('Changes ($count)', 'Изменения ($count)');
+  String changesCount(int count) =>
+      _pick('Changes ($count)', 'Изменения ($count)');
   String get applyAll => _pick('Apply all', 'Применить всё');
   String get noCandidates =>
       _pick('No candidates available.', 'Нет доступных вариантов.');
@@ -85,6 +86,43 @@ final class ProjectWizardLocalizations {
   String selectedCandidate(int index, int count) => _pick(
         'Selected candidate $index of $count',
         'Выбран вариант $index из $count',
+      );
+
+  String get site => _pick('Site', 'Участок');
+  String get building => _pick('Building', 'Здание');
+  String get level => _pick('Level', 'Этаж');
+  String get nameField => _pick('Name', 'Название');
+  String get buildingsField => _pick('Buildings', 'Здания');
+  String get displayOrderField => _pick('Display order', 'Порядок отображения');
+  String get levelsField => _pick('Levels', 'Этажи');
+  String get numberField => _pick('Number', 'Номер');
+  String get elevationField => _pick('Elevation', 'Отметка');
+  String get kindField => _pick('Kind', 'Тип');
+  String get floorToFloorField => _pick('Floor-to-floor', 'Высота этажа');
+
+  String diffText(String raw) {
+    if (!isRussian) return raw;
+    return raw
+        .replaceFirst('Site “', '$site “')
+        .replaceFirst('Building “', '$building “')
+        .replaceFirst('Level ', '$level ');
+  }
+
+  String diffField(String raw) => switch (raw) {
+        'Name' => nameField,
+        'Buildings' => buildingsField,
+        'Display order' => displayOrderField,
+        'Levels' => levelsField,
+        'Number' => numberField,
+        'Elevation' => elevationField,
+        'Kind' => kindField,
+        'Floor-to-floor' => floorToFloorField,
+        _ => raw,
+      };
+
+  String previewSemanticLabel(String buildingName, int levelCount) => _pick(
+        '$buildingName: $levelCount levels',
+        '$buildingName: этажей $levelCount',
       );
 
   String validationMessage(String code, String fallback) => switch (code) {
