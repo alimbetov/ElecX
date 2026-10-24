@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../application/project/wizard/wizard_preview_scene.dart';
+import 'project_wizard_localizations.dart';
 
 final class WizardCandidateCard {
   const WizardCandidateCard({
@@ -59,10 +60,8 @@ final class _WizardCandidateCarouselState
     if (widget.selectedId != oldWidget.selectedId && _controller.hasClients) {
       final oldIndex = _indexFor(oldWidget.candidates, oldWidget.selectedId);
       final newIndex = _selectedIndex;
-      if ((newIndex - oldIndex).abs() > 1) {
-        // Home/End and external non-adjacent selection must not traverse
-        // intermediate pages because onPageChanged would make an intermediate
-        // candidate authoritative.
+      final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+      if (reduceMotion || (newIndex - oldIndex).abs() > 1) {
         _controller.jumpToPage(newIndex);
       } else {
         _controller.animateToPage(
@@ -86,10 +85,6 @@ final class _WizardCandidateCarouselState
   }
 
   void _onPageChanged(int index) {
-    // A controller move that only brings PageView in sync with the already
-    // authoritative selectedId must not publish selection again. Publishing
-    // here can re-enter the parent setState while it is rebuilding after a
-    // keyboard/external selection change.
     if (index == _selectedIndex) return;
     _select(index);
   }
@@ -118,8 +113,9 @@ final class _WizardCandidateCarouselState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = ProjectWizardLocalizations.of(context);
     if (widget.candidates.isEmpty) {
-      return const Center(child: Text('Нет доступных вариантов.'));
+      return Center(child: Text(l10n.noCandidates));
     }
     return Focus(
       autofocus: true,
@@ -136,8 +132,11 @@ final class _WizardCandidateCarouselState
                 final selected = candidate.id == widget.selectedId;
                 return Semantics(
                   selected: selected,
-                  label: '${candidate.title}. Вариант ${index + 1} из '
-                      '${widget.candidates.length}',
+                  label: l10n.candidatePosition(
+                    candidate.title,
+                    index + 1,
+                    widget.candidates.length,
+                  ),
                   child: Card(
                     margin: const EdgeInsets.all(8),
                     child: Padding(
@@ -163,8 +162,10 @@ final class _WizardCandidateCarouselState
           ),
           Semantics(
             liveRegion: true,
-            label: 'Выбран вариант ${_selectedIndex + 1} из '
-                '${widget.candidates.length}',
+            label: l10n.selectedCandidate(
+              _selectedIndex + 1,
+              widget.candidates.length,
+            ),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Text(
