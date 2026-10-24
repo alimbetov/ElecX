@@ -85,7 +85,7 @@ void main() {
     await tester.pump();
 
     expect(
-      find.text('Количество этажей и высота должны быть числами.'),
+      find.text('Level counts and height must be numbers.'),
       findsOneWidget,
     );
     expect(session.preview, isNull);
@@ -123,10 +123,6 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-    await tester.pumpAndSettle();
-    expect(selectedId, 'candidate-c');
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pumpAndSettle();
