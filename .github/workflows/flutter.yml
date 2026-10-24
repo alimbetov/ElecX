@@ -45,7 +45,10 @@ jobs:
           free -m
           flutter --version
       - name: P8 NFR accessibility and i18n acceptance
-        run: flutter test --concurrency=1 test/p8_wizard_nfr_a11y_i18n_qualification_test.dart
+        run: >-
+          flutter test --concurrency=1
+          test/p8_wizard_nfr_a11y_i18n_qualification_test.dart
+          test/p8_wizard_r23_extended_qualification_test.dart
       - run: flutter test
 
   verification:
