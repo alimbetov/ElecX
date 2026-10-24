@@ -505,8 +505,7 @@ final class _ProjectWizardScreenState extends State<ProjectWizardScreen> {
   Widget _actionBar() {
     final l10n = ProjectWizardLocalizations.of(context);
     final textScale = MediaQuery.textScalerOf(context).scale(1);
-    final iconOnly =
-        textScale >= 1.8 && MediaQuery.sizeOf(context).width < 600;
+    final iconOnly = textScale >= 1.8 && MediaQuery.sizeOf(context).width < 600;
     return SafeArea(
       top: false,
       child: Material(
