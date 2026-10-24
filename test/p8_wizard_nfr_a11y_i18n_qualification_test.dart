@@ -144,7 +144,7 @@ void main() {
         final result = port.commitPreview(preview);
         watch.stop();
         expect(result, isNotNull);
-        expect(result!.after.stores.levels, hasLength(231));
+        expect(result!.mutation.after.stores.levels, hasLength(231));
         samples.add(watch.elapsed);
       }
       expect(
