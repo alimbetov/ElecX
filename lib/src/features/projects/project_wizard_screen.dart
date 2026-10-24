@@ -488,14 +488,20 @@ final class _ProjectWizardScreenState extends State<ProjectWizardScreen> {
             children: [
               TextButton(
                 key: const ValueKey('wizard-cancel'),
-                style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(48, 48),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
                 onPressed: _cancel,
                 child: Text(l10n.cancel),
               ),
               const Spacer(),
               FilledButton.icon(
                 key: const ValueKey('wizard-apply'),
-                style: FilledButton.styleFrom(minimumSize: const Size(48, 48)),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(48, 48),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
                 onPressed: _session.canConfirm ? _apply : null,
                 icon: const Icon(Icons.check),
                 label: Text(l10n.applyAll),
