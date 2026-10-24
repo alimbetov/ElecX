@@ -60,7 +60,8 @@ final class _WizardCandidateCarouselState
     if (widget.selectedId != oldWidget.selectedId && _controller.hasClients) {
       final oldIndex = _indexFor(oldWidget.candidates, oldWidget.selectedId);
       final newIndex = _selectedIndex;
-      final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+      final reduceMotion =
+          MediaQuery.maybeOf(context)?.disableAnimations ?? false;
       if (reduceMotion || (newIndex - oldIndex).abs() > 1) {
         _controller.jumpToPage(newIndex);
       } else {
