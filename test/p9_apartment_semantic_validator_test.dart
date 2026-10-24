@@ -5,7 +5,6 @@ import 'package:elecx/src/application/project/wizard/apartment/apartment_topolog
 import 'package:elecx/src/application/project/wizard/apartment/apartment_wizard_parameters.dart';
 import 'package:elecx/src/domain/apartment_topology.dart';
 import 'package:elecx/src/domain/apartment_topology/apartment_area_fit.dart';
-import 'package:elecx/src/domain/apartment_topology/apartment_semantic_validation.dart';
 import 'package:elecx/src/domain/apartment_topology/apartment_topology_catalog_v1.dart';
 import 'package:elecx/src/domain/apartment_topology/apartment_topology_draft.dart';
 import 'package:elecx/src/domain/apartment_topology/apartment_topology_models.dart';

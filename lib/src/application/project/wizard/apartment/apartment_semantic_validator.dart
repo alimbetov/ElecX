@@ -271,10 +271,9 @@ final class ApartmentSemanticValidator {
       if (left == null || right == null) {
         continue;
       }
-      final bedroomBathroom =
-          (left.usage == SpaceUsage.bedroom && _isBathroomLike(right.usage)) ||
-              (right.usage == SpaceUsage.bedroom &&
-                  _isBathroomLike(left.usage));
+      final bedroomBathroom = (left.usage == SpaceUsage.bedroom &&
+              _isBathroomLike(right.usage)) ||
+          (right.usage == SpaceUsage.bedroom && _isBathroomLike(left.usage));
       if (!bedroomBathroom) {
         continue;
       }
@@ -567,12 +566,10 @@ final class ApartmentSemanticValidator {
           intent.kind != TopologyAdjacencyKind.openConnection) {
         continue;
       }
-      final pair =
-          SemanticSpacePair(intent.fromSpaceKey, intent.toSpaceKey);
+      final pair = SemanticSpacePair(intent.fromSpaceKey, intent.toSpaceKey);
       if (intent.requirement == TopologyAdjacencyRequirement.required) {
         requiredShared.add(pair);
-      } else if (intent.requirement ==
-          TopologyAdjacencyRequirement.forbidden) {
+      } else if (intent.requirement == TopologyAdjacencyRequirement.forbidden) {
         forbiddenShared.add(pair);
       }
     }
