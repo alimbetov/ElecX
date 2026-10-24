@@ -76,7 +76,7 @@ final class ProjectWizardLocalizations {
       );
   String changesCount(int count) =>
       _pick('Changes ($count)', 'Изменения ($count)');
-  String get applyAll => _pick('Apply all', 'Применить всё');
+  String get applyAll => _pick('Apply', 'Применить');
   String get noCandidates =>
       _pick('No candidates available.', 'Нет доступных вариантов.');
   String candidatePosition(String title, int index, int count) => _pick(
