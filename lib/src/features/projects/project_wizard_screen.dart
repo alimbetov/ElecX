@@ -6,6 +6,7 @@ import '../../application/project/wizard/wizard_contracts.dart';
 import '../../application/project/wizard/wizard_diff.dart';
 import '../../application/project/wizard/wizard_preview_scene.dart';
 import '../../application/project/wizard/wizard_session.dart';
+import 'project_wizard_localizations.dart';
 import 'wizard_candidate_carousel.dart';
 
 final class ProjectWizardScreen extends StatefulWidget {
@@ -118,15 +119,14 @@ final class _ProjectWizardScreenState extends State<ProjectWizardScreen> {
   }
 
   void _generate() {
+    final l10n = ProjectWizardLocalizations.of(context);
     final floors = int.tryParse(_floorsController.text.trim());
     final basements = int.tryParse(_basementsController.text.trim());
     final height = int.tryParse(_heightController.text.trim());
     if (floors == null || basements == null || height == null) {
       setState(_invalidatePreparedPreview);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Количество этажей и высота должны быть числами.'),
-        ),
+        SnackBar(content: Text(l10n.numericError)),
       );
       return;
     }
@@ -181,29 +181,32 @@ final class _ProjectWizardScreenState extends State<ProjectWizardScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          title: const Text('Создание здания'),
-          leading: IconButton(
-            tooltip: 'Отмена',
-            onPressed: _cancel,
-            icon: const Icon(Icons.close),
-          ),
+  Widget build(BuildContext context) {
+    final l10n = ProjectWizardLocalizations.of(context);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(l10n.title),
+        leading: IconButton(
+          tooltip: l10n.cancel,
+          onPressed: _cancel,
+          icon: const Icon(Icons.close),
         ),
-        body: LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth;
-            if (width >= 1400) {
-              return _wideLayout(threeColumns: true);
-            }
-            if (width >= 900) {
-              return _wideLayout(threeColumns: false);
-            }
-            return _compactLayout();
-          },
-        ),
-        bottomNavigationBar: _actionBar(),
-      );
+      ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          if (width >= 1400) {
+            return _wideLayout(threeColumns: true);
+          }
+          if (width >= 900) {
+            return _wideLayout(threeColumns: false);
+          }
+          return _compactLayout();
+        },
+      ),
+      bottomNavigationBar: _actionBar(),
+    );
+  }
 
   Widget _wideLayout({required bool threeColumns}) {
     final parameters = _parametersPanel();
@@ -239,164 +242,176 @@ final class _ProjectWizardScreenState extends State<ProjectWizardScreen> {
     );
   }
 
-  Widget _compactLayout() => Column(
-        children: [
-          NavigationBar(
-            selectedIndex: _compactPage,
-            onDestinationSelected: (index) =>
-                setState(() => _compactPage = index),
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.tune),
-                label: 'Параметры',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.preview_outlined),
-                label: 'Предпросмотр',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.difference_outlined),
-                label: 'Изменения',
-              ),
+  Widget _compactLayout() {
+    final l10n = ProjectWizardLocalizations.of(context);
+    return Column(
+      children: [
+        NavigationBar(
+          selectedIndex: _compactPage,
+          onDestinationSelected: (index) => setState(() => _compactPage = index),
+          destinations: [
+            NavigationDestination(
+              icon: const Icon(Icons.tune),
+              label: l10n.parameters,
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.preview_outlined),
+              label: l10n.preview,
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.difference_outlined),
+              label: l10n.changes,
+            ),
+          ],
+        ),
+        Expanded(
+          child: IndexedStack(
+            index: _compactPage,
+            children: [
+              _parametersPanel(),
+              _previewPanel(),
+              _changesPanel(),
             ],
           ),
-          Expanded(
-            child: IndexedStack(
-              index: _compactPage,
-              children: [
-                _parametersPanel(),
-                _previewPanel(),
-                _changesPanel(),
-              ],
-            ),
-          ),
-        ],
-      );
+        ),
+      ],
+    );
+  }
 
-  Widget _parametersPanel() => ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Text('Параметры', style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 16),
-          TextField(
-            key: const ValueKey('wizard-building-name'),
-            controller: _nameController,
-            onChanged: _onDraftTextChanged,
-            decoration: const InputDecoration(
-              labelText: 'Название здания',
-              border: OutlineInputBorder(),
+  Widget _parametersPanel() {
+    final l10n = ProjectWizardLocalizations.of(context);
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        Text(l10n.parameters, style: Theme.of(context).textTheme.headlineSmall),
+        const SizedBox(height: 16),
+        TextField(
+          key: const ValueKey('wizard-building-name'),
+          controller: _nameController,
+          onChanged: _onDraftTextChanged,
+          decoration: InputDecoration(
+            labelText: l10n.buildingName,
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          key: const ValueKey('wizard-floor-count'),
+          controller: _floorsController,
+          onChanged: _onDraftTextChanged,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: l10n.aboveGroundLevels,
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          key: const ValueKey('wizard-basement-count'),
+          controller: _basementsController,
+          onChanged: _onDraftTextChanged,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: l10n.basementLevels,
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          key: const ValueKey('wizard-floor-height'),
+          controller: _heightController,
+          onChanged: _onDraftTextChanged,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: l10n.floorHeight,
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: 4),
+        CheckboxListTile(
+          value: _createGround,
+          contentPadding: EdgeInsets.zero,
+          onChanged: (value) => setState(() {
+            _createGround = value ?? true;
+            _invalidatePreparedPreview();
+          }),
+          title: Text(l10n.createGround),
+          subtitle: Text(l10n.createGroundHint),
+        ),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          key: const ValueKey('wizard-generate'),
+          style: FilledButton.styleFrom(minimumSize: const Size(48, 48)),
+          onPressed: _generate,
+          icon: const Icon(Icons.auto_fix_high),
+          label: Text(l10n.generate),
+        ),
+        const SizedBox(height: 12),
+        ..._validationMessages(),
+        if (_session.failure != null)
+          _messageCard(
+            icon: Icons.error_outline,
+            title: l10n.generationFailed,
+            message: _session.failure.toString(),
+          ),
+        if (_session.blockReason == WizardPreviewBlockReason.staleBaseVersion)
+          _messageCard(
+            icon: Icons.sync_problem,
+            title: l10n.projectChanged,
+            message: l10n.stalePreview,
+            action: TextButton.icon(
+              style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+              onPressed: _refreshStale,
+              icon: const Icon(Icons.refresh),
+              label: Text(l10n.refreshPreview),
             ),
           ),
-          const SizedBox(height: 12),
-          TextField(
-            key: const ValueKey('wizard-floor-count'),
-            controller: _floorsController,
-            onChanged: _onDraftTextChanged,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'Надземных этажей',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            key: const ValueKey('wizard-basement-count'),
-            controller: _basementsController,
-            onChanged: _onDraftTextChanged,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'Подземных этажей',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            key: const ValueKey('wizard-floor-height'),
-            controller: _heightController,
-            onChanged: _onDraftTextChanged,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'Высота этажа, мм',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 4),
-          CheckboxListTile(
-            value: _createGround,
-            contentPadding: EdgeInsets.zero,
-            onChanged: (value) => setState(() {
-              _createGround = value ?? true;
-              _invalidatePreparedPreview();
-            }),
-            title: const Text('Создать отдельный этаж 0'),
-            subtitle: const Text(
-              'Положительные этажи сохраняют нумерацию 1..N.',
-            ),
-          ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            key: const ValueKey('wizard-generate'),
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(48, 48),
-            ),
-            onPressed: _generate,
-            icon: const Icon(Icons.auto_fix_high),
-            label: const Text('Сформировать'),
-          ),
-          const SizedBox(height: 12),
-          ..._validationMessages(),
-          if (_session.failure != null)
-            _messageCard(
-              icon: Icons.error_outline,
-              title: 'Не удалось сформировать вариант',
-              message: _session.failure.toString(),
-            ),
-          if (_session.blockReason == WizardPreviewBlockReason.staleBaseVersion)
-            _messageCard(
-              icon: Icons.sync_problem,
-              title: 'Проект изменился',
-              message: 'Предпросмотр устарел. Обновите его перед применением.',
-              action: TextButton.icon(
-                style: TextButton.styleFrom(
-                  minimumSize: const Size(48, 48),
-                ),
-                onPressed: _refreshStale,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Обновить предпросмотр'),
-              ),
-            ),
-        ],
-      );
+      ],
+    );
+  }
 
-  List<Widget> _validationMessages() => [
-        for (final issue in _session.validation.issues)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: _messageCard(
-              icon: issue.severity == WizardIssueSeverity.blocker
-                  ? Icons.error_outline
-                  : Icons.warning_amber_outlined,
-              title: issue.severity == WizardIssueSeverity.blocker
-                  ? 'Требуется исправление'
-                  : 'Предупреждение',
-              message: issue.message,
-            ),
+  List<Widget> _validationMessages() {
+    final l10n = ProjectWizardLocalizations.of(context);
+    return [
+      for (final issue in _session.validation.issues)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _messageCard(
+            icon: issue.severity == WizardIssueSeverity.blocker
+                ? Icons.error_outline
+                : Icons.warning_amber_outlined,
+            title: issue.severity == WizardIssueSeverity.blocker
+                ? l10n.fixRequired
+                : l10n.warning,
+            message: l10n.validationMessage(issue.code, issue.message),
           ),
-      ];
+        ),
+    ];
+  }
 
   Widget _previewPanel() {
+    final l10n = ProjectWizardLocalizations.of(context);
     final scene = _scene;
     if (scene == null || _selectedCandidateId == null) {
       return _emptyPanel(
         icon: Icons.preview_outlined,
-        title: 'Предпросмотр ещё не сформирован',
-        subtitle: 'Заполните параметры и нажмите «Сформировать».',
+        title: l10n.previewEmpty,
+        subtitle: l10n.previewEmptyHint,
       );
     }
+    final localizedScene = WizardPreviewScene(
+      width: scene.width,
+      height: scene.height,
+      semanticLabel: l10n.previewSemanticLabel(
+        _nameController.text.trim(),
+        scene.elements.whereType<WizardPreviewLine>().length + 1,
+      ),
+      elements: scene.elements,
+    );
     final card = WizardCandidateCard(
       id: _selectedCandidateId!,
       title: _nameController.text.trim(),
-      scene: scene,
+      scene: localizedScene,
     );
     return Padding(
       padding: const EdgeInsets.all(12),
@@ -409,12 +424,13 @@ final class _ProjectWizardScreenState extends State<ProjectWizardScreen> {
   }
 
   Widget _changesPanel() {
+    final l10n = ProjectWizardLocalizations.of(context);
     final diff = _diff;
     if (diff == null) {
       return _emptyPanel(
         icon: Icons.difference_outlined,
-        title: 'Изменения появятся после генерации',
-        subtitle: 'Apply применяется ко всему варианту целиком.',
+        title: l10n.changesEmpty,
+        subtitle: l10n.changesEmptyHint,
       );
     }
     return ListView(
@@ -422,7 +438,7 @@ final class _ProjectWizardScreenState extends State<ProjectWizardScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         Text(
-          'Изменения (${diff.entries.length})',
+          l10n.changesCount(diff.entries.length),
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 12),
@@ -435,16 +451,16 @@ final class _ProjectWizardScreenState extends State<ProjectWizardScreen> {
                 WizardDiffKind.update => Icons.edit_outlined,
                 WizardDiffKind.remove => Icons.remove_circle_outline,
               }),
-              title: Text(entry.title),
-              subtitle: entry.context == null ? null : Text(entry.context!),
+              title: Text(l10n.diffText(entry.title)),
+              subtitle:
+                  entry.context == null ? null : Text(l10n.diffText(entry.context!)),
               children: [
                 for (final field in entry.fields)
                   ListTile(
                     dense: true,
-                    title: Text(field.field),
+                    title: Text(l10n.diffField(field.field)),
                     subtitle: Text(
-                      '${field.beforeValue ?? '—'} → '
-                      '${field.afterValue ?? '—'}',
+                      '${field.beforeValue ?? '—'} → ${field.afterValue ?? '—'}',
                     ),
                   ),
               ],
@@ -454,37 +470,36 @@ final class _ProjectWizardScreenState extends State<ProjectWizardScreen> {
     );
   }
 
-  Widget _actionBar() => SafeArea(
-        top: false,
-        child: Material(
-          elevation: 8,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Row(
-              children: [
-                TextButton(
-                  key: const ValueKey('wizard-cancel'),
-                  style: TextButton.styleFrom(
-                    minimumSize: const Size(48, 48),
-                  ),
-                  onPressed: _cancel,
-                  child: const Text('Отмена'),
-                ),
-                const Spacer(),
-                FilledButton.icon(
-                  key: const ValueKey('wizard-apply'),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(48, 48),
-                  ),
-                  onPressed: _session.canConfirm ? _apply : null,
-                  icon: const Icon(Icons.check),
-                  label: const Text('Применить всё'),
-                ),
-              ],
-            ),
+  Widget _actionBar() {
+    final l10n = ProjectWizardLocalizations.of(context);
+    return SafeArea(
+      top: false,
+      child: Material(
+        elevation: 8,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              TextButton(
+                key: const ValueKey('wizard-cancel'),
+                style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+                onPressed: _cancel,
+                child: Text(l10n.cancel),
+              ),
+              const Spacer(),
+              FilledButton.icon(
+                key: const ValueKey('wizard-apply'),
+                style: FilledButton.styleFrom(minimumSize: const Size(48, 48)),
+                onPressed: _session.canConfirm ? _apply : null,
+                icon: const Icon(Icons.check),
+                label: Text(l10n.applyAll),
+              ),
+            ],
           ),
         ),
-      );
+      ),
+    );
+  }
 
   Widget _emptyPanel({
     required IconData icon,
