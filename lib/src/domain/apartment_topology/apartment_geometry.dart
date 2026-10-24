@@ -28,8 +28,7 @@ final class GeometrySegmentMm {
 
   bool get vertical => start.xMm == end.xMm;
 
-  String get stableKey =>
-      '${start.xMm},${start.yMm}>${end.xMm},${end.yMm}';
+  String get stableKey => '${start.xMm},${start.yMm}>${end.xMm},${end.yMm}';
 }
 
 /// ID-free rectilinear polygon used while browsing P9 candidates.
@@ -47,7 +46,8 @@ final class RectilinearPolygonMm {
     }
     final normalized = _normalizePoints(input.toList());
     if (normalized.length < 4) {
-      throw ArgumentError('Rectilinear polygon requires at least four vertices.');
+      throw ArgumentError(
+          'Rectilinear polygon requires at least four vertices.');
     }
     for (final point in normalized) {
       if (point.xMm % gridMm != 0 || point.yMm % gridMm != 0) {
@@ -115,9 +115,8 @@ final class RectilinearPolygonMm {
           ),
       ]);
 
-  String get stableSerialization => vertices
-      .map((point) => '${point.xMm},${point.yMm}')
-      .join(';');
+  String get stableSerialization =>
+      vertices.map((point) => '${point.xMm},${point.yMm}').join(';');
 }
 
 final class GeneratedSpaceGeometry {
@@ -169,7 +168,8 @@ final class OpeningIntent {
     this.toSpaceKey,
   }) {
     if (kind == GeometryOpeningKind.primaryEntry && fromSpaceKey == null) {
-      throw ArgumentError('Primary entry must identify the apartment entry space.');
+      throw ArgumentError(
+          'Primary entry must identify the apartment entry space.');
     }
     if (kind != GeometryOpeningKind.primaryEntry &&
         (fromSpaceKey == null || toSpaceKey == null)) {
@@ -228,8 +228,8 @@ final class GeometryValidationReport {
 
   final List<GeometryValidationIssue> issues;
 
-  bool get accepted =>
-      issues.every((issue) => issue.severity != GeometryValidationSeverity.blocker);
+  bool get accepted => issues
+      .every((issue) => issue.severity != GeometryValidationSeverity.blocker);
 }
 
 final class ApartmentGeometryCandidate {
@@ -264,8 +264,7 @@ final class ApartmentGeometryCandidate {
         exteriorBoundaries = List.unmodifiable(
           exteriorBoundaries.toList()
             ..sort((a, b) {
-              final key =
-                  a.spaceSemanticKey.compareTo(b.spaceSemanticKey);
+              final key = a.spaceSemanticKey.compareTo(b.spaceSemanticKey);
               return key != 0 ? key : a.side.name.compareTo(b.side.name);
             }),
         ),
@@ -409,8 +408,8 @@ bool _hasSelfIntersection(List<BoundaryPointMm> points) {
   ];
   for (var first = 0; first < segments.length; first++) {
     for (var second = first + 1; second < segments.length; second++) {
-      final adjacent = second == first + 1 ||
-          (first == 0 && second == segments.length - 1);
+      final adjacent =
+          second == first + 1 || (first == 0 && second == segments.length - 1);
       if (adjacent) {
         continue;
       }
@@ -443,17 +442,14 @@ bool _segmentsIntersect(GeometrySegmentMm first, GeometrySegmentMm second) {
   }
   final vertical = first.vertical ? first : second;
   final horizontal = first.vertical ? second : first;
-  return vertical.start.xMm >=
-          _min(horizontal.start.xMm, horizontal.end.xMm) &&
-      vertical.start.xMm <=
-          _max(horizontal.start.xMm, horizontal.end.xMm) &&
+  return vertical.start.xMm >= _min(horizontal.start.xMm, horizontal.end.xMm) &&
+      vertical.start.xMm <= _max(horizontal.start.xMm, horizontal.end.xMm) &&
       horizontal.start.yMm >= _min(vertical.start.yMm, vertical.end.yMm) &&
       horizontal.start.yMm <= _max(vertical.start.yMm, vertical.end.yMm);
 }
 
 bool _intervalsTouch(int a1, int a2, int b1, int b2) =>
-    _max(_min(a1, a2), _min(b1, b2)) <=
-    _min(_max(a1, a2), _max(b1, b2));
+    _max(_min(a1, a2), _min(b1, b2)) <= _min(_max(a1, a2), _max(b1, b2));
 
 int _min(int left, int right) => left < right ? left : right;
 int _max(int left, int right) => left > right ? left : right;
