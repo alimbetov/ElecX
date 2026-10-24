@@ -57,7 +57,7 @@ void main() {
       buildingId,
     );
     expect(find.byKey(const ValueKey('wizard-diff-list')), findsOneWidget);
-    expect(find.text('Применить всё'), findsOneWidget);
+    expect(find.byKey(const ValueKey('wizard-apply')), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('wizard-apply')));
     await tester.pump();
