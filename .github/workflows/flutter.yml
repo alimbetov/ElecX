@@ -38,6 +38,12 @@ jobs:
         if: steps.format.outcome == 'failure'
         run: exit 1
       - run: flutter analyze
+      - name: P8 NFR reference environment
+        run: |
+          uname -a
+          lscpu
+          free -m
+          flutter --version
       - name: P8 NFR accessibility and i18n acceptance
         run: flutter test --concurrency=1 test/p8_wizard_nfr_a11y_i18n_qualification_test.dart
       - run: flutter test
