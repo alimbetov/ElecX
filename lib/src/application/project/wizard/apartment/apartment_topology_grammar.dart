@@ -45,8 +45,7 @@ final class ApartmentTopologyGrammarEngine {
   }) {
     final failures = <P9Failure>[];
     final draftsBySemanticSignature = <String, ApartmentTopologyDraft>{};
-    final orderedTemplates = templates.toList()
-      ..sort(_compareTemplateStable);
+    final orderedTemplates = templates.toList()..sort(_compareTemplateStable);
 
     for (final template in orderedTemplates) {
       final grammar = _grammars[template.family];
@@ -116,7 +115,8 @@ final class ApartmentTopologyGrammarEngine {
   }
 }
 
-final class CompactApartmentTopologyGrammar extends _BaseApartmentTopologyGrammar {
+final class CompactApartmentTopologyGrammar
+    extends _BaseApartmentTopologyGrammar {
   const CompactApartmentTopologyGrammar()
       : super(ApartmentTopologyFamily.compact);
 
@@ -125,7 +125,8 @@ final class CompactApartmentTopologyGrammar extends _BaseApartmentTopologyGramma
       request.habitableRoomCount <= 2 ? 0 : 1;
 }
 
-final class LinearApartmentTopologyGrammar extends _BaseApartmentTopologyGrammar {
+final class LinearApartmentTopologyGrammar
+    extends _BaseApartmentTopologyGrammar {
   const LinearApartmentTopologyGrammar()
       : super(ApartmentTopologyFamily.linear);
 
@@ -134,7 +135,8 @@ final class LinearApartmentTopologyGrammar extends _BaseApartmentTopologyGrammar
       request.habitableRoomCount <= 2 ? 0 : 1;
 }
 
-final class CornerApartmentTopologyGrammar extends _BaseApartmentTopologyGrammar {
+final class CornerApartmentTopologyGrammar
+    extends _BaseApartmentTopologyGrammar {
   const CornerApartmentTopologyGrammar()
       : super(ApartmentTopologyFamily.corner);
 
@@ -172,7 +174,8 @@ final class EuroApartmentTopologyGrammar extends _BaseApartmentTopologyGrammar {
       request.habitableRoomCount <= 2 ? 0 : 1;
 }
 
-final class OpenPlanApartmentTopologyGrammar extends _BaseApartmentTopologyGrammar {
+final class OpenPlanApartmentTopologyGrammar
+    extends _BaseApartmentTopologyGrammar {
   const OpenPlanApartmentTopologyGrammar()
       : super(ApartmentTopologyFamily.openPlan);
 
@@ -191,7 +194,8 @@ final class SplitDayNightApartmentTopologyGrammar
       request.habitableRoomCount >= 6 ? 2 : 1;
 }
 
-abstract class _BaseApartmentTopologyGrammar implements ApartmentTopologyGrammar {
+abstract class _BaseApartmentTopologyGrammar
+    implements ApartmentTopologyGrammar {
   const _BaseApartmentTopologyGrammar(this.family);
 
   @override
@@ -210,7 +214,8 @@ abstract class _BaseApartmentTopologyGrammar implements ApartmentTopologyGrammar
     if (template.family != family ||
         !template.constraints.supportedHabitableRoomCounts
             .contains(request.habitableRoomCount) ||
-        !template.constraints.supportedKitchenModes.contains(request.kitchenMode)) {
+        !template.constraints.supportedKitchenModes
+            .contains(request.kitchenMode)) {
       return ApartmentTopologyGrammarExpansionResult(
         drafts: const [],
         failures: [
@@ -325,7 +330,8 @@ abstract class _BaseApartmentTopologyGrammar implements ApartmentTopologyGrammar
     final spaces = <DraftSpace>[];
     final specs = template.spaces.toList()
       ..sort(
-        (left, right) => _baseSpaceOrder(left).compareTo(_baseSpaceOrder(right)),
+        (left, right) =>
+            _baseSpaceOrder(left).compareTo(_baseSpaceOrder(right)),
       );
 
     for (final spec in specs) {
@@ -443,7 +449,8 @@ abstract class _BaseApartmentTopologyGrammar implements ApartmentTopologyGrammar
 
       if (from.length == 1) {
         for (final target in to) {
-          result.add(_intent(rule, from.single.semanticKey, target.semanticKey));
+          result
+              .add(_intent(rule, from.single.semanticKey, target.semanticKey));
         }
       } else if (to.length == 1) {
         for (final source in from) {
@@ -494,25 +501,29 @@ abstract class _BaseApartmentTopologyGrammar implements ApartmentTopologyGrammar
     }
 
     if (distribution != null && distribution.semanticKey != entry.semanticKey) {
-      adjacency.add(_requiredAccess(entry.semanticKey, distribution.semanticKey));
+      adjacency
+          .add(_requiredAccess(entry.semanticKey, distribution.semanticKey));
     }
     if (distribution != null && distribution.semanticKey != day.semanticKey) {
       adjacency.add(_requiredAccess(distribution.semanticKey, day.semanticKey));
     }
 
     for (final space in spaces) {
-      if (distribution == null || space.semanticKey == distribution.semanticKey) {
+      if (distribution == null ||
+          space.semanticKey == distribution.semanticKey) {
         continue;
       }
       if (space.usage == SpaceUsage.bedroom ||
           space.usage == SpaceUsage.bathroom ||
           space.usage == SpaceUsage.wc) {
-        adjacency.add(_requiredAccess(distribution.semanticKey, space.semanticKey));
+        adjacency
+            .add(_requiredAccess(distribution.semanticKey, space.semanticKey));
       }
     }
 
     final kitchen = _firstUsage(spaces, SpaceUsage.kitchen);
-    if (kitchen != null && request.kitchenMode == ApartmentKitchenMode.separate) {
+    if (kitchen != null &&
+        request.kitchenMode == ApartmentKitchenMode.separate) {
       adjacency.add(
         _requiredAccess((distribution ?? day).semanticKey, kitchen.semanticKey),
       );
@@ -535,7 +546,8 @@ abstract class _BaseApartmentTopologyGrammar implements ApartmentTopologyGrammar
       adjacency.add(_requiredAccess(host.semanticKey, appendage.semanticKey));
     }
 
-    if (request.kitchenMode == ApartmentKitchenMode.openPlan && kitchen != null) {
+    if (request.kitchenMode == ApartmentKitchenMode.openPlan &&
+        kitchen != null) {
       adjacency.add(
         DraftAdjacencyIntent(
           fromSpaceKey: day.semanticKey,
@@ -561,7 +573,8 @@ abstract class _BaseApartmentTopologyGrammar implements ApartmentTopologyGrammar
   ) {
     final byKey = <String, DraftAdjacencyIntent>{};
     final sorted = values.toList()
-      ..sort((left, right) => _adjacencyKey(left).compareTo(_adjacencyKey(right)));
+      ..sort(
+          (left, right) => _adjacencyKey(left).compareTo(_adjacencyKey(right)));
     for (final value in sorted) {
       byKey.putIfAbsent(_adjacencyKey(value), () => value);
     }
@@ -638,7 +651,8 @@ abstract class _BaseApartmentTopologyGrammar implements ApartmentTopologyGrammar
         .where(
           (space) =>
               space.sourceSpec.requiresExteriorExposure ||
-              space.areaParticipation == SpaceAreaParticipation.exteriorAppendage,
+              space.areaParticipation ==
+                  SpaceAreaParticipation.exteriorAppendage,
         )
         .toList();
     final sides = _exposureSides(request, seed);
@@ -822,7 +836,8 @@ int _compareTemplateStable(
   ApartmentTopologyTemplate left,
   ApartmentTopologyTemplate right,
 ) {
-  final family = _familyOrder(left.family).compareTo(_familyOrder(right.family));
+  final family =
+      _familyOrder(left.family).compareTo(_familyOrder(right.family));
   if (family != 0) {
     return family;
   }

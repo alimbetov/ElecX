@@ -41,7 +41,8 @@ void main() {
       final families = <ApartmentTopologyFamily>{};
 
       for (final entry in cases.entries) {
-        final draft = _expandSingle(catalog, entry.key, entry.value).drafts.first;
+        final draft =
+            _expandSingle(catalog, entry.key, entry.value).drafts.first;
         final keys = draft.spaces.map((space) => space.semanticKey).toList();
         families.add(draft.family);
 
@@ -87,7 +88,8 @@ void main() {
       );
     });
 
-    test('P9.3-AT-004 splitDayNight creates distinct public/private groups', () {
+    test('P9.3-AT-004 splitDayNight creates distinct public/private groups',
+        () {
       final draft = _expandSingle(
         catalog,
         'p9-split-day-night-separate',
@@ -107,11 +109,9 @@ void main() {
         isEmpty,
       );
       expect(
-        draft.spaces
-            .where((space) => space.usage == SpaceUsage.bedroom)
-            .every(
-              (space) =>
-                  draft.layoutSkeleton.nightZoneKeys.contains(space.semanticKey),
+        draft.spaces.where((space) => space.usage == SpaceUsage.bedroom).every(
+              (space) => draft.layoutSkeleton.nightZoneKeys
+                  .contains(space.semanticKey),
             ),
         isTrue,
       );
@@ -234,7 +234,8 @@ void main() {
       }
     });
 
-    test('openPlan preserves distinct spaces plus required open connection', () {
+    test('openPlan preserves distinct spaces plus required open connection',
+        () {
       final draft = _expandSingle(
         catalog,
         'p9-open-plan',
