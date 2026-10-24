@@ -120,9 +120,8 @@ final class TopologyAdjacencyRule {
   final TopologyAdjacencyKind kind;
   final int? minSharedBoundaryMm;
 
-  String get normalizedPairKey => fromKey.compareTo(toKey) <= 0
-      ? '$fromKey|$toKey'
-      : '$toKey|$fromKey';
+  String get normalizedPairKey =>
+      fromKey.compareTo(toKey) <= 0 ? '$fromKey|$toKey' : '$toKey|$fromKey';
 }
 
 final class TopologyAreaProfile {

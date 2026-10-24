@@ -22,9 +22,11 @@ void main() {
     });
 
     test('P9.2-AT-008 3-room 78m2 request returns stable compatible set', () {
-      final request = normalizer.normalize(
-        _request(roomCount: 3, areaDm2: 7800),
-      ).request!;
+      final request = normalizer
+          .normalize(
+            _request(roomCount: 3, areaDm2: 7800),
+          )
+          .request!;
       final first = filter.compatibleTemplates(catalog, request);
       final second = filter.compatibleTemplates(catalog, request);
 
@@ -40,13 +42,15 @@ void main() {
     });
 
     test('P9.2-AT-009 incompatible template exposes kitchen-mode reason', () {
-      final request = normalizer.normalize(
-        _request(
-          roomCount: 3,
-          areaDm2: 7800,
-          kitchenMode: ApartmentKitchenMode.openPlan,
-        ),
-      ).request!;
+      final request = normalizer
+          .normalize(
+            _request(
+              roomCount: 3,
+              areaDm2: 7800,
+              kitchenMode: ApartmentKitchenMode.openPlan,
+            ),
+          )
+          .request!;
       final evaluated = filter.evaluate(catalog, request);
       final separateTemplate = evaluated.firstWhere(
         (item) => item.template.templateId.value == 'p9-compact-separate',
@@ -59,34 +63,42 @@ void main() {
       );
     });
 
-    test('P9.2-AT-010 preferred family changes order only among valid paths', () {
-      final base = normalizer.normalize(
-        _request(roomCount: 4, areaDm2: 10000),
-      ).request!;
-      final preferred = normalizer.normalize(
-        _request(
-          roomCount: 4,
-          areaDm2: 10000,
-          preferredFamily: ApartmentTopologyFamily.corner,
-        ),
-      ).request!;
+    test('P9.2-AT-010 preferred family changes order only among valid paths',
+        () {
+      final base = normalizer
+          .normalize(
+            _request(roomCount: 4, areaDm2: 10000),
+          )
+          .request!;
+      final preferred = normalizer
+          .normalize(
+            _request(
+              roomCount: 4,
+              areaDm2: 10000,
+              preferredFamily: ApartmentTopologyFamily.corner,
+            ),
+          )
+          .request!;
 
       final baseIds = filter
           .compatibleTemplates(catalog, base)
           .map((template) => template.templateId.value)
           .toSet();
       final preferredTemplates = filter.compatibleTemplates(catalog, preferred);
-      final preferredIds =
-          preferredTemplates.map((template) => template.templateId.value).toSet();
+      final preferredIds = preferredTemplates
+          .map((template) => template.templateId.value)
+          .toSet();
 
       expect(preferredIds, baseIds);
       expect(preferredTemplates.first.family, ApartmentTopologyFamily.corner);
     });
 
     test('P9.2-AT-011 source order cannot change filtered order', () {
-      final request = normalizer.normalize(
-        _request(roomCount: 4, areaDm2: 10000),
-      ).request!;
+      final request = normalizer
+          .normalize(
+            _request(roomCount: 4, areaDm2: 10000),
+          )
+          .request!;
       final reversed = ApartmentTopologyCatalog(
         catalogVersion: catalog.catalogVersion,
         templates: catalog.templates.reversed,
@@ -104,11 +116,14 @@ void main() {
       expect(reversedIds, normalIds);
     });
 
-    test('P9.2-AT-013 every room count 1..10 has a qualified separate path', () {
+    test('P9.2-AT-013 every room count 1..10 has a qualified separate path',
+        () {
       for (var rooms = 1; rooms <= 10; rooms++) {
-        final request = normalizer.normalize(
-          _request(roomCount: rooms, areaDm2: _representativeArea(rooms)),
-        ).request!;
+        final request = normalizer
+            .normalize(
+              _request(roomCount: rooms, areaDm2: _representativeArea(rooms)),
+            )
+            .request!;
         final compatible = filter.compatibleTemplates(catalog, request);
 
         expect(
@@ -119,20 +134,24 @@ void main() {
       }
     });
 
-    test('minimum catalog diversity targets hold for 1..5 room separate flow', () {
+    test('minimum catalog diversity targets hold for 1..5 room separate flow',
+        () {
       final minimumSeeds = {1: 3, 2: 4, 3: 5, 4: 5, 5: 3};
       final minimumFamilies = {1: 2, 2: 3, 3: 3, 4: 3, 5: 2};
 
       for (var rooms = 1; rooms <= 5; rooms++) {
-        final request = normalizer.normalize(
-          _request(roomCount: rooms, areaDm2: _representativeArea(rooms)),
-        ).request!;
+        final request = normalizer
+            .normalize(
+              _request(roomCount: rooms, areaDm2: _representativeArea(rooms)),
+            )
+            .request!;
         final compatible = filter.compatibleTemplates(catalog, request);
         final seedCount = compatible.fold<int>(
           0,
           (sum, template) => sum + template.variantSeeds.length,
         );
-        final familyCount = compatible.map((template) => template.family).toSet().length;
+        final familyCount =
+            compatible.map((template) => template.family).toSet().length;
 
         expect(seedCount, greaterThanOrEqualTo(minimumSeeds[rooms]!));
         expect(familyCount, greaterThanOrEqualTo(minimumFamilies[rooms]!));
@@ -370,7 +389,9 @@ ApartmentTopologyTemplate _fixtureTemplate({
   List<TopologySpaceSpec>? spaces,
   List<TopologyAdjacencyRule>? adjacency,
   List<TopologyVariantSeed>? seeds,
-  Set<ApartmentKitchenMode> kitchenModes = const {ApartmentKitchenMode.separate},
+  Set<ApartmentKitchenMode> kitchenModes = const {
+    ApartmentKitchenMode.separate
+  },
 }) =>
     ApartmentTopologyTemplate(
       templateId: TemplateId('fixture-template'),

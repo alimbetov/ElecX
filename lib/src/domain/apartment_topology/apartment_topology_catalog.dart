@@ -75,7 +75,8 @@ final class ApartmentTopologyCatalogValidator {
 
     final identities = <String>{};
     for (final template in catalog.templates) {
-      final identity = '${template.templateId.value}@${template.templateVersion}';
+      final identity =
+          '${template.templateId.value}@${template.templateVersion}';
       if (!identities.add(identity)) {
         issues.add(
           _issue(
@@ -275,8 +276,8 @@ final class ApartmentTopologyCatalogValidator {
       }
     }
 
-    final supportsAppendage = template.constraints.supportedBalconyCounts
-        .any((count) => count > 0);
+    final supportsAppendage =
+        template.constraints.supportedBalconyCounts.any((count) => count > 0);
     final hasAppendageRecipe = template.spaces.any(
       (space) =>
           space.areaParticipation == SpaceAreaParticipation.exteriorAppendage,
@@ -400,7 +401,8 @@ final class ApartmentTopologyCatalogValidator {
   ) {
     final modes = template.constraints.supportedKitchenModes;
     if (modes.contains(ApartmentKitchenMode.kitchenLiving) &&
-        !template.spaces.any((space) => space.usage == SpaceUsage.kitchenLiving)) {
+        !template.spaces
+            .any((space) => space.usage == SpaceUsage.kitchenLiving)) {
       issues.add(
         _issue(
           template,
@@ -439,7 +441,8 @@ final class ApartmentTopologyCatalogValidator {
     var minimumInteriorDm2 = 0;
     var maximumInteriorDm2 = 0;
     for (final space in template.spaces) {
-      if (space.areaParticipation != SpaceAreaParticipation.requestedInteriorArea) {
+      if (space.areaParticipation !=
+          SpaceAreaParticipation.requestedInteriorArea) {
         continue;
       }
       minimumInteriorDm2 += space.minAreaDm2 * space.multiplicityMin;
