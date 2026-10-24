@@ -195,10 +195,12 @@ final class _ProjectWizardScreenState extends State<ProjectWizardScreen> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
-          if (width >= 1400) {
+          final textScale = MediaQuery.textScalerOf(context).scale(1);
+          final effectiveWidth = width / (textScale > 1 ? textScale : 1);
+          if (effectiveWidth >= 1400) {
             return _wideLayout(threeColumns: true);
           }
-          if (width >= 900) {
+          if (effectiveWidth >= 900) {
             return _wideLayout(threeColumns: false);
           }
           return _compactLayout();
@@ -333,16 +335,7 @@ final class _ProjectWizardScreenState extends State<ProjectWizardScreen> {
           ),
         ),
         const SizedBox(height: 4),
-        CheckboxListTile(
-          value: _createGround,
-          contentPadding: EdgeInsets.zero,
-          onChanged: (value) => setState(() {
-            _createGround = value ?? true;
-            _invalidatePreparedPreview();
-          }),
-          title: Text(l10n.createGround),
-          subtitle: Text(l10n.createGroundHint),
-        ),
+        _groundLevelToggle(),
         const SizedBox(height: 16),
         FilledButton.icon(
           key: const ValueKey('wizard-generate'),
@@ -371,6 +364,39 @@ final class _ProjectWizardScreenState extends State<ProjectWizardScreen> {
               label: Text(l10n.refreshPreview),
             ),
           ),
+      ],
+    );
+  }
+
+  Widget _groundLevelToggle() {
+    final l10n = ProjectWizardLocalizations.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Checkbox(
+          value: _createGround,
+          onChanged: (value) => setState(() {
+            _createGround = value ?? true;
+            _invalidatePreparedPreview();
+          }),
+        ),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.createGround),
+                const SizedBox(height: 4),
+                Text(
+                  l10n.createGroundHint,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -478,36 +504,65 @@ final class _ProjectWizardScreenState extends State<ProjectWizardScreen> {
 
   Widget _actionBar() {
     final l10n = ProjectWizardLocalizations.of(context);
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final iconOnly =
+        textScale >= 1.8 && MediaQuery.sizeOf(context).width < 600;
     return SafeArea(
       top: false,
       child: Material(
         elevation: 8,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-          child: Row(
-            children: [
-              TextButton(
-                key: const ValueKey('wizard-cancel'),
-                style: TextButton.styleFrom(
-                  minimumSize: const Size(48, 48),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: iconOnly
+              ? Row(
+                  children: [
+                    IconButton(
+                      key: const ValueKey('wizard-cancel'),
+                      tooltip: l10n.cancel,
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        minHeight: 48,
+                      ),
+                      onPressed: _cancel,
+                      icon: const Icon(Icons.close),
+                    ),
+                    const Spacer(),
+                    IconButton.filled(
+                      key: const ValueKey('wizard-apply'),
+                      tooltip: l10n.applyAll,
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        minHeight: 48,
+                      ),
+                      onPressed: _session.canConfirm ? _apply : null,
+                      icon: const Icon(Icons.check),
+                    ),
+                  ],
+                )
+              : Row(
+                  children: [
+                    TextButton(
+                      key: const ValueKey('wizard-cancel'),
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(48, 48),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                      onPressed: _cancel,
+                      child: Text(l10n.cancel),
+                    ),
+                    const Spacer(),
+                    FilledButton.icon(
+                      key: const ValueKey('wizard-apply'),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(48, 48),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                      onPressed: _session.canConfirm ? _apply : null,
+                      icon: const Icon(Icons.check),
+                      label: Text(l10n.applyAll),
+                    ),
+                  ],
                 ),
-                onPressed: _cancel,
-                child: Text(l10n.cancel),
-              ),
-              const Spacer(),
-              FilledButton.icon(
-                key: const ValueKey('wizard-apply'),
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(48, 48),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                ),
-                onPressed: _session.canConfirm ? _apply : null,
-                icon: const Icon(Icons.check),
-                label: Text(l10n.applyAll),
-              ),
-            ],
-          ),
         ),
       ),
     );
