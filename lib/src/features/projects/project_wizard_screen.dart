@@ -244,10 +244,14 @@ final class _ProjectWizardScreenState extends State<ProjectWizardScreen> {
 
   Widget _compactLayout() {
     final l10n = ProjectWizardLocalizations.of(context);
+    final hideLabels = MediaQuery.textScalerOf(context).scale(1) >= 1.8;
     return Column(
       children: [
         NavigationBar(
           selectedIndex: _compactPage,
+          labelBehavior: hideLabels
+              ? NavigationDestinationLabelBehavior.alwaysHide
+              : NavigationDestinationLabelBehavior.alwaysShow,
           onDestinationSelected: (index) =>
               setState(() => _compactPage = index),
           destinations: [
