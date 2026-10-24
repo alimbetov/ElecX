@@ -81,8 +81,7 @@ final class CanonicalSlabRouteDraftExternalization {
       throw CanonicalSlabRouteDraftExternalizationException(
         code: CanonicalSlabRouteDraftExternalizationIssueCode
             .routeIdentityMismatch,
-        message:
-            'Physical continuation route $continuationId does not match '
+        message: 'Physical continuation route $continuationId does not match '
             'handoff route ${intent.routeId}.',
       );
     }
@@ -118,8 +117,7 @@ final class CanonicalSlabRouteDraftExternalization {
         code:
             CanonicalSlabRouteDraftExternalizationIssueCode.transitionMismatch,
         entityId: requirement?.slabId,
-        message:
-            'The concrete level penetration does not match the prepared '
+        message: 'The concrete level penetration does not match the prepared '
             'SlabId handoff and live route endpoint.',
       );
     }
@@ -212,8 +210,7 @@ final class CanonicalSlabRouteDraftExternalization {
       throw const CanonicalSlabRouteDraftExternalizationException(
         code:
             CanonicalSlabRouteDraftExternalizationIssueCode.draftStateConflict,
-        message:
-            'The restored slab route draft cannot be rolled back from the '
+        message: 'The restored slab route draft cannot be rolled back from the '
             'current editor state.',
       );
     }
@@ -251,16 +248,14 @@ final class CanonicalSlabRouteDraftExternalization {
       throw const CanonicalSlabRouteDraftExternalizationException(
         code:
             CanonicalSlabRouteDraftExternalizationIssueCode.draftStateConflict,
-        message:
-            'The target editor is not in the empty state owned by this '
+        message: 'The target editor is not in the empty state owned by this '
             'externalized route draft.',
       );
     }
     if (editor.p2.history.mutationRevision != p2MutationRevision) {
       throw const CanonicalSlabRouteDraftExternalizationException(
         code: CanonicalSlabRouteDraftExternalizationIssueCode.p2RevisionChanged,
-        message:
-            'Electrical P2 state changed while the route draft was '
+        message: 'Electrical P2 state changed while the route draft was '
             'externalized.',
       );
     }
@@ -277,7 +272,7 @@ final class CanonicalSlabRouteDraftExternalization {
   RoomSurfaceRef _materializeExpectedHorizontalSurface({
     required EditorController editor,
     required SpaceId? Function(CanonicalPhysicalRoutingContext context)
-    expectedCanonicalSpaceIdResolver,
+        expectedCanonicalSpaceIdResolver,
     required SurfacePlaneType expectedType,
   }) {
     if (expectedType == SurfacePlaneType.wall) {
@@ -293,10 +288,10 @@ final class CanonicalSlabRouteDraftExternalization {
     final selectedLegacySpaceId = editor.selectedSpaceId;
     final selectedCanonicalSpaceId =
         selectedLegacySpaceId == null || routingContext == null
-        ? null
-        : routingContext.canonicalSpaceIdForSurfaceSpaceId(
-            selectedLegacySpaceId,
-          );
+            ? null
+            : routingContext.canonicalSpaceIdForSurfaceSpaceId(
+                selectedLegacySpaceId,
+              );
     final expectedCanonicalSpaceId = routingContext == null
         ? null
         : expectedCanonicalSpaceIdResolver(routingContext);
@@ -305,8 +300,7 @@ final class CanonicalSlabRouteDraftExternalization {
       throw const CanonicalSlabRouteDraftExternalizationException(
         code: CanonicalSlabRouteDraftExternalizationIssueCode
             .targetSurfaceMismatch,
-        message:
-            'The materialized editor is not on the expected canonical '
+        message: 'The materialized editor is not on the expected canonical '
             'SpaceId for this slab route draft.',
       );
     }

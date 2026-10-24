@@ -123,10 +123,11 @@ ProjectLevelEntity _level(
   LevelId id, {
   required int number,
   required int elevationMm,
-}) => ProjectLevelEntity(
-  id: id,
-  buildingId: BuildingId('building'),
-  name: 'Level $number',
-  levelNumber: number,
-  elevationMm: elevationMm,
-);
+}) =>
+    ProjectLevelEntity(
+      id: id,
+      buildingId: BuildingId('building'),
+      name: 'Level $number',
+      levelNumber: number,
+      elevationMm: elevationMm,
+    );

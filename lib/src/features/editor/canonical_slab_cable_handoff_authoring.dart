@@ -121,8 +121,7 @@ final class CanonicalSlabCableHandoffAuthoring {
     if (fromSpaceId == null || fromLevelId == null) {
       throw const CanonicalSlabCableHandoffException(
         code: CanonicalSlabCableHandoffIssueCode.sourceBindingMismatch,
-        message:
-            'Cross-level cable authoring requires a selected canonical '
+        message: 'Cross-level cable authoring requires a selected canonical '
             'source SpaceId and LevelId.',
       );
     }
@@ -143,9 +142,8 @@ final class CanonicalSlabCableHandoffAuthoring {
     }
 
     final targetSpace = project.index.space(toSpaceId);
-    final targetLevel = targetSpace == null
-        ? null
-        : project.index.level(targetSpace.levelId);
+    final targetLevel =
+        targetSpace == null ? null : project.index.level(targetSpace.levelId);
     if (targetSpace == null || targetLevel == null) {
       throw CanonicalSlabCableHandoffException(
         code: CanonicalSlabCableHandoffIssueCode.targetBindingMissing,
@@ -162,8 +160,7 @@ final class CanonicalSlabCableHandoffAuthoring {
         throw CanonicalSlabCableHandoffException(
           code: CanonicalSlabCableHandoffIssueCode.verticalCoreMismatch,
           entityId: verticalCoreId,
-          message:
-              'VerticalCore $verticalCoreId does not own both canonical '
+          message: 'VerticalCore $verticalCoreId does not own both canonical '
               'levels $fromLevelId and ${targetLevel.id}.',
         );
       }
@@ -184,8 +181,7 @@ final class CanonicalSlabCableHandoffAuthoring {
       throw CanonicalSlabCableHandoffException(
         code: CanonicalSlabCableHandoffIssueCode.targetBindingMissing,
         entityId: toSpaceId,
-        message:
-            'Canonical source/target LevelId and SpaceId must have exact '
+        message: 'Canonical source/target LevelId and SpaceId must have exact '
             'legacy editor bindings before cross-level authoring.',
       );
     }
@@ -201,8 +197,7 @@ final class CanonicalSlabCableHandoffAuthoring {
       throw CanonicalSlabCableHandoffException(
         code: CanonicalSlabCableHandoffIssueCode.sourceBindingMismatch,
         entityId: fromSpaceId,
-        message:
-            'Legacy editor source context does not match canonical '
+        message: 'Legacy editor source context does not match canonical '
             'navigation.',
       );
     }
@@ -263,8 +258,7 @@ final class CanonicalSlabCableHandoffAuthoring {
       throw CanonicalSlabCableHandoffException(
         code: CanonicalSlabCableHandoffIssueCode.physicalTransitionRejected,
         entityId: expectedSlabId,
-        message:
-            'Prepared slab ${prepared.intent.slabId} does not match '
+        message: 'Prepared slab ${prepared.intent.slabId} does not match '
             'planned VerticalCore slab $expectedSlabId.',
       );
     }
@@ -290,8 +284,7 @@ final class CanonicalSlabCableHandoffAuthoring {
       throw CanonicalSlabCableHandoffException(
         code: CanonicalSlabCableHandoffIssueCode.physicalTransitionRejected,
         entityId: prepared.intent.slabId,
-        message:
-            'Live route endpoint does not prove a physical transition '
+        message: 'Live route endpoint does not prove a physical transition '
             'through the prepared canonical SlabId.',
       );
     }
@@ -336,8 +329,7 @@ final class CanonicalSlabCableHandoffAuthoring {
       throw CanonicalSlabCableHandoffException(
         code: CanonicalSlabCableHandoffIssueCode.physicalTransitionRejected,
         entityId: verticalCoreId,
-        message:
-            'VerticalCore route ownership requires a proven canonical '
+        message: 'VerticalCore route ownership requires a proven canonical '
             'slab penetration transition.',
       );
     }
