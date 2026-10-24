@@ -248,7 +248,8 @@ final class _ProjectWizardScreenState extends State<ProjectWizardScreen> {
       children: [
         NavigationBar(
           selectedIndex: _compactPage,
-          onDestinationSelected: (index) => setState(() => _compactPage = index),
+          onDestinationSelected: (index) =>
+              setState(() => _compactPage = index),
           destinations: [
             NavigationDestination(
               icon: const Icon(Icons.tune),
@@ -452,8 +453,9 @@ final class _ProjectWizardScreenState extends State<ProjectWizardScreen> {
                 WizardDiffKind.remove => Icons.remove_circle_outline,
               }),
               title: Text(l10n.diffText(entry.title)),
-              subtitle:
-                  entry.context == null ? null : Text(l10n.diffText(entry.context!)),
+              subtitle: entry.context == null
+                  ? null
+                  : Text(l10n.diffText(entry.context!)),
               children: [
                 for (final field in entry.fields)
                   ListTile(
