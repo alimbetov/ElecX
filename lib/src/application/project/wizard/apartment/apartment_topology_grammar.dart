@@ -190,8 +190,7 @@ final class SplitDayNightApartmentTopologyGrammar
       : super(ApartmentTopologyFamily.splitDayNight);
 
   @override
-  int corridorCount(NormalizedApartmentRequest request) =>
-      request.habitableRoomCount >= 6 ? 2 : 1;
+  int corridorCount(NormalizedApartmentRequest request) => 1;
 }
 
 abstract class _BaseApartmentTopologyGrammar
