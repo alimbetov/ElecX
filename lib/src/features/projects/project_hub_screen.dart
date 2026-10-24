@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../../application/project/project_repository.dart';
+import '../../application/project/wizard/basic_building_wizard_provider.dart';
+import '../../application/project/wizard/wizard_contracts.dart';
+import '../../application/project/wizard/wizard_session.dart';
 import '../editor/canonical_editor_production_bootstrap.dart';
+import '../editor/canonical_legacy_structure_projector.dart';
 import '../editor/canonical_owning_editor_project_store.dart';
 import '../editor/editor_project_document.dart';
 import '../editor/editor_project_recovery.dart';
 import '../editor/initial_editor_project_document.dart';
 import '../editor/project_persistence_metadata.dart';
 import '../editor/unified_workspace_editor_screen.dart';
+import 'project_wizard_screen.dart';
 
 class ProjectHubScreen extends StatefulWidget {
   const ProjectHubScreen({
@@ -78,7 +83,8 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
 
   Future<void> _createProject() async {
     var draftName = 'Новый проект';
-    final name = await showDialog<String>(
+    final canonicalAvailable = widget.canonicalProjectRepository != null;
+    final request = await showDialog<_NewProjectRequest>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         key: const ValueKey('new-project-dialog'),
@@ -92,7 +98,14 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
           onFieldSubmitted: (value) {
             final normalized = value.trim();
             if (normalized.isNotEmpty) {
-              Navigator.of(dialogContext).pop(normalized);
+              Navigator.of(dialogContext).pop(
+                _NewProjectRequest(
+                  name: normalized,
+                  mode: canonicalAvailable
+                      ? _NewProjectMode.wizard
+                      : _NewProjectMode.blank,
+                ),
+              );
             }
           },
         ),
@@ -101,25 +114,50 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Отмена'),
           ),
+          if (canonicalAvailable)
+            TextButton(
+              key: const ValueKey('create-project-blank'),
+              onPressed: () {
+                final normalized = draftName.trim();
+                if (normalized.isNotEmpty) {
+                  Navigator.of(dialogContext).pop(
+                    _NewProjectRequest(
+                      name: normalized,
+                      mode: _NewProjectMode.blank,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Пустой проект'),
+            ),
           FilledButton(
             key: const ValueKey('create-project-confirm'),
             onPressed: () {
               final normalized = draftName.trim();
               if (normalized.isNotEmpty) {
-                Navigator.of(dialogContext).pop(normalized);
+                Navigator.of(dialogContext).pop(
+                  _NewProjectRequest(
+                    name: normalized,
+                    mode: canonicalAvailable
+                        ? _NewProjectMode.wizard
+                        : _NewProjectMode.blank,
+                  ),
+                );
               }
             },
-            child: const Text('Создать'),
+            child: Text(
+              canonicalAvailable ? 'Создать через Wizard' : 'Создать',
+            ),
           ),
         ],
       ),
     );
-    if (name == null || !mounted) return;
+    if (request == null || !mounted) return;
 
-    final metadata = EditorProjectMetadata.create(projectName: name);
+    final metadata = EditorProjectMetadata.create(projectName: request.name);
     final initialDocument = createInitialEditorProjectDocument(metadata);
+    final store = await _storeFuture;
     try {
-      final store = await _storeFuture;
       await store.save(initialDocument);
     } catch (error) {
       if (!mounted) return;
@@ -131,23 +169,94 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
       return;
     }
     if (!mounted) return;
+
+    if (request.mode == _NewProjectMode.wizard) {
+      try {
+        final prepared = await _configureNewProjectWithWizard(initialDocument);
+        if (!mounted) return;
+        if (prepared == null) {
+          _reloadProjects();
+          return;
+        }
+        await _openEditor(
+          document: prepared.document,
+          preparedCanonicalHandle: prepared.canonicalHandle,
+        );
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Wizard не смог применить проект: $error')),
+        );
+        _reloadProjects();
+      }
+      return;
+    }
+
     await _openEditor(document: initialDocument);
+  }
+
+  Future<_PreparedCanonicalProject?> _configureNewProjectWithWizard(
+    EditorProjectDocument initialDocument,
+  ) async {
+    final repository = widget.canonicalProjectRepository;
+    if (repository == null) return null;
+    var handle = await CanonicalEditorProductionHandle.loadOrBootstrap(
+      legacyDocument: initialDocument,
+      repository: repository,
+    );
+    if (!mounted) return null;
+    final project = handle.session.project;
+    final session = WizardSession(
+      target: NewProjectWizardTarget(
+        projectId: project.id,
+        siteId: project.siteId,
+        baseVersion: project.version,
+      ),
+      registry: WizardProviderRegistry([BasicBuildingWizardProvider()]),
+      mutations: handle.wizardMutations,
+    );
+    final result = await ProjectWizardScreen.show(
+      context: context,
+      session: session,
+      initialBuildingName: initialDocument.projectName,
+    );
+    if (result == null || !mounted) return null;
+
+    const projector = CanonicalLegacyStructureProjector();
+    final projected = projector.project(
+      legacy: initialDocument,
+      canonical: handle.session.project,
+      binding: handle.binding,
+    );
+
+    handle.acceptWizardCommit(result);
+    await handle.saveCanonical();
+    final store = await _storeFuture;
+    await store.save(projected);
+    handle = handle.rebindToLegacy(projected);
+    return _PreparedCanonicalProject(
+      document: projected,
+      canonicalHandle: handle,
+    );
   }
 
   Future<void> _openEditor({
     EditorProjectDocument? document,
     EditorProjectRecoverySnapshot? recovery,
     EditorProjectMetadata? metadata,
+    CanonicalEditorProductionHandle? preparedCanonicalHandle,
   }) async {
     final store = await _storeFuture;
     final recoveryStore = await _recoveryStoreFuture;
-    final sourceDocument = recovery?.document ?? document;
-    CanonicalEditorProductionHandle? canonicalHandle;
+    var effectiveDocument = recovery?.document ?? document;
+    var canonicalHandle = preparedCanonicalHandle;
     final canonicalRepository = widget.canonicalProjectRepository;
-    if (sourceDocument != null && canonicalRepository != null) {
+    if (effectiveDocument != null &&
+        canonicalHandle == null &&
+        canonicalRepository != null) {
       try {
         canonicalHandle = await CanonicalEditorProductionHandle.loadOrBootstrap(
-          legacyDocument: sourceDocument,
+          legacyDocument: effectiveDocument,
           repository: canonicalRepository,
         );
       } catch (error) {
@@ -157,6 +266,36 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
             content: Text(
               'Canonical project state could not be opened safely: $error',
             ),
+          ),
+        );
+        return;
+      }
+    }
+
+    if (recovery == null &&
+        effectiveDocument != null &&
+        canonicalHandle != null) {
+      const projector = CanonicalLegacyStructureProjector();
+      try {
+        if (projector.requiresProjection(
+          legacy: effectiveDocument,
+          canonical: canonicalHandle.owner.project,
+          binding: canonicalHandle.binding,
+        )) {
+          final projected = projector.project(
+            legacy: effectiveDocument,
+            canonical: canonicalHandle.owner.project,
+            binding: canonicalHandle.binding,
+          );
+          await store.save(projected);
+          canonicalHandle = canonicalHandle.rebindToLegacy(projected);
+          effectiveDocument = projected;
+        }
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Структура проекта требует восстановления: $error'),
           ),
         );
         return;
@@ -175,7 +314,7 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
         builder: (_) => UnifiedWorkspaceEditorScreen(
           projectStore: editorStore,
           recoveryStore: recoveryStore,
-          initialDocument: document,
+          initialDocument: recovery == null ? effectiveDocument : document,
           initialRecovery: recovery,
           initialMetadata: metadata,
           canonicalRuntime: canonicalHandle?.runtimeConfig,
@@ -295,6 +434,25 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
       ),
     );
   }
+}
+
+enum _NewProjectMode { wizard, blank }
+
+final class _NewProjectRequest {
+  const _NewProjectRequest({required this.name, required this.mode});
+
+  final String name;
+  final _NewProjectMode mode;
+}
+
+final class _PreparedCanonicalProject {
+  const _PreparedCanonicalProject({
+    required this.document,
+    required this.canonicalHandle,
+  });
+
+  final EditorProjectDocument document;
+  final CanonicalEditorProductionHandle canonicalHandle;
 }
 
 final class _ProjectHubData {

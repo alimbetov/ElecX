@@ -4,7 +4,12 @@ import 'package:flutter/material.dart';
 
 import '../../application/project/project_navigator_projection.dart';
 import '../../application/project/project_structure_authoring.dart';
+import '../../application/project/wizard/basic_building_wizard_provider.dart';
+import '../../application/project/wizard/wizard_contracts.dart';
+import '../../application/project/wizard/wizard_session.dart';
 import '../../domain/project_identity.dart';
+import '../projects/project_wizard_screen.dart';
+import 'canonical_editor_wizard_runtime_registry.dart';
 import 'project_structure_authoring_controls.dart';
 
 typedef BuildingRequestResolver = Future<CreateBuildingRequest?> Function(
@@ -83,6 +88,8 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
     final currentPath = projection.currentPathIds(navigation);
     final availability = session.availability;
     final currentLeafId = projection.currentLeafId(navigation);
+    final wizardMutations =
+        CanonicalEditorWizardRuntimeRegistry.resolve(session);
 
     if (_lastRenderedLeafId != currentLeafId) {
       _lastRenderedLeafId = currentLeafId;
@@ -125,6 +132,10 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
             padding: const EdgeInsets.all(10),
             child: ProjectStructureAuthoringControls(
               compact: widget.compact,
+              onStartWizard:
+                  wizardMutations != null && widget.onAuthoringCommitted != null
+                      ? _startWizard
+                      : null,
               onAddBuilding:
                   availability.canAddBuilding && widget.requestBuilding != null
                       ? _addBuilding
@@ -300,6 +311,56 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
     setState(() {});
     _notifyNavigationChanged();
     _scheduleRevealCurrent();
+  }
+
+  Future<void> _startWizard() async {
+    final mutations = CanonicalEditorWizardRuntimeRegistry.resolve(session);
+    if (mutations == null || widget.onAuthoringCommitted == null) return;
+
+    final before = session.project;
+    try {
+      final committed = await ProjectWizardScreen.show(
+        context: context,
+        session: WizardSession(
+          target: SiteWizardTarget(
+            projectId: before.id,
+            siteId: before.siteId,
+            baseVersion: before.version,
+          ),
+          registry: WizardProviderRegistry([BasicBuildingWizardProvider()]),
+          mutations: mutations,
+        ),
+      );
+      if (!mounted || committed == null) return;
+
+      final after = committed.mutation.project;
+      final createdBuildings = after.stores.buildings.keys
+          .where((id) => !before.stores.buildings.containsKey(id))
+          .toList()
+        ..sort((a, b) => a.value.compareTo(b.value));
+      final EntityId createdId =
+          createdBuildings.isNotEmpty ? createdBuildings.first : after.siteId;
+
+      session.adoptNavigation(session.navigation.reconcile(after));
+      if (createdId is BuildingId) {
+        session.activateBuilding(createdId);
+      }
+
+      await _notifyAuthoringCommitted(
+        ProjectStructureAuthoringResult<EntityId>(
+          createdId: createdId,
+          project: after,
+          navigation: session.navigation,
+          changeSet: committed.mutation.changeSet,
+        ),
+      );
+      if (!mounted) return;
+      setState(() {});
+      _notifyNavigationChanged();
+      _scheduleRevealCurrent();
+    } catch (error, stackTrace) {
+      _reportOperationError(error, stackTrace);
+    }
   }
 
   Future<void> _addBuilding() async {

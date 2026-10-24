@@ -2,8 +2,10 @@ import 'dart:math';
 
 import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/project_structure_authoring.dart';
+import 'package:elecx/src/application/project/wizard/project_wizard_mutation_port.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
+import 'package:elecx/src/features/editor/canonical_editor_wizard_runtime_registry.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -77,6 +79,83 @@ void main() {
           isNotNull,
         );
         expect(find.text('Building C'), findsWidgets);
+      },
+    );
+
+    testWidgets(
+      'contextual Wizard uses exact production mutation port and publishes one authoring result',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(1000, 1000));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        final project = _project();
+        final mutations = ProjectMutationSession(project);
+        final idFactory = SecureRandomEntityIdFactory(random: Random(41));
+        final session = ProjectStructureAuthoringSession(
+          mutations: mutations,
+          idFactory: idFactory,
+          navigation: ProjectNavigationState.restore(
+            project,
+            activeBuildingId: BuildingId('building-a'),
+            activeLevelId: LevelId('a-level-1'),
+          ),
+        );
+        final wizardMutations = SharedProjectWizardMutationPort(
+          mutations: mutations,
+          idFactory: idFactory,
+        );
+        CanonicalEditorWizardRuntimeRegistry.bind(
+          session: session,
+          mutations: wizardMutations,
+        );
+        final commits = <ProjectStructureAuthoringResult<EntityId>>[];
+
+        await tester.pumpWidget(
+          _host(
+            session,
+            onAuthoringCommitted: (_, result) => commits.add(result),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final start = find.byKey(const ValueKey('project-wizard-start'));
+        expect(start, findsOneWidget);
+        expect(tester.getSize(start).height, greaterThanOrEqualTo(48));
+
+        await tester.tap(start);
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('wizard-building-name')),
+          findsOneWidget,
+        );
+
+        await tester.enterText(
+          find.byKey(const ValueKey('wizard-building-name')),
+          'Navigator Tower',
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('wizard-floor-count')),
+          '2',
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('wizard-basement-count')),
+          '1',
+        );
+        await tester.tap(find.byKey(const ValueKey('wizard-generate')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('wizard-apply')));
+        await tester.pumpAndSettle();
+
+        expect(commits, hasLength(1));
+        expect(commits.single.createdId, isA<BuildingId>());
+        expect(commits.single.changeSet, isNotNull);
+        expect(session.project.version, LocalProjectVersion(1));
+        expect(
+          session.project.stores.buildings.values
+              .where((building) => building.name == 'Navigator Tower'),
+          hasLength(1),
+        );
+        expect(session.navigation.activeBuildingId, commits.single.createdId);
       },
     );
 

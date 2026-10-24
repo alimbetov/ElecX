@@ -19,6 +19,7 @@ class ProjectStructureAuthoringControls extends StatefulWidget {
     required this.onAddBuilding,
     required this.onAddLevel,
     required this.onAddRoom,
+    this.onStartWizard,
     this.compact = false,
     super.key,
   });
@@ -26,6 +27,7 @@ class ProjectStructureAuthoringControls extends StatefulWidget {
   final ProjectStructureAuthoringAction? onAddBuilding;
   final ProjectStructureAuthoringAction? onAddLevel;
   final ProjectStructureAuthoringAction? onAddRoom;
+  final ProjectStructureAuthoringAction? onStartWizard;
   final bool compact;
 
   @override
@@ -39,7 +41,16 @@ class _ProjectStructureAuthoringControlsState
 
   @override
   Widget build(BuildContext context) {
-    final controls = <Widget>[
+    final wizardControl = widget.onStartWizard == null
+        ? null
+        : _AuthoringButton(
+            icon: Icons.auto_awesome_outlined,
+            label: 'Wizard',
+            tooltip: 'Create project structure with Wizard',
+            key: const ValueKey('project-wizard-start'),
+            onPressed: _enabledAction(widget.onStartWizard),
+          );
+    final structuralControls = <Widget>[
       _AuthoringButton(
         icon: Icons.apartment_outlined,
         label: '+ Building',
@@ -61,19 +72,30 @@ class _ProjectStructureAuthoringControlsState
     ];
 
     if (widget.compact) {
-      return Wrap(spacing: 6, runSpacing: 6, children: controls);
+      return Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: [
+          if (wizardControl != null) wizardControl,
+          ...structuralControls,
+        ],
+      );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        controls.first,
+        if (wizardControl != null) ...[
+          wizardControl,
+          const SizedBox(height: 6),
+        ],
+        structuralControls.first,
         const SizedBox(height: 6),
         Row(
           children: [
-            Expanded(child: controls[1]),
+            Expanded(child: structuralControls[1]),
             const SizedBox(width: 6),
-            Expanded(child: controls[2]),
+            Expanded(child: structuralControls[2]),
           ],
         ),
       ],
@@ -102,6 +124,7 @@ class _AuthoringButton extends StatelessWidget {
     required this.label,
     required this.tooltip,
     required this.onPressed,
+    super.key,
   });
 
   final IconData icon;
@@ -114,6 +137,9 @@ class _AuthoringButton extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: OutlinedButton.icon(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(48, 48),
+        ),
         onPressed: onPressed,
         icon: Icon(icon, size: 16),
         label: Text(label),

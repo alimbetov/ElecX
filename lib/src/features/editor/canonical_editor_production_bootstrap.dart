@@ -1,7 +1,9 @@
 import '../../application/project/canonical_project_persistence_owner.dart';
 import '../../application/project/project_mutation.dart';
+import '../../application/project/project_mutation_reservation.dart';
 import '../../application/project/project_repository.dart';
 import '../../application/project/project_structure_authoring.dart';
+import '../../application/project/wizard/project_wizard_mutation_port.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/project_model.dart';
 import 'canonical_editor_legacy_bootstrap.dart';
@@ -13,6 +15,7 @@ final class CanonicalEditorProductionHandle {
   CanonicalEditorProductionHandle._({
     required this.owner,
     required this.session,
+    required this.wizardMutations,
     required this.binding,
   }) : runtimeConfig = CanonicalEditorProductionRuntimeConfig(
           resolveRuntime: (workspace, metadata) {
@@ -22,6 +25,7 @@ final class CanonicalEditorProductionHandle {
             }
             return CanonicalEditorResolvedRuntime(
               session: session,
+              wizardMutations: wizardMutations,
               binding: binding,
               persistenceOwnerProjectId: owner.projectId,
             );
@@ -59,10 +63,46 @@ final class CanonicalEditorProductionHandle {
 
   final CanonicalProjectPersistenceOwner owner;
   final ProjectStructureAuthoringSession session;
+  final ProjectWizardMutationPort wizardMutations;
   final CanonicalEditorWorkspaceBinding binding;
   final CanonicalEditorProductionRuntimeConfig runtimeConfig;
 
   Future<void> saveCanonical() => owner.save();
+
+  /// Publishes one successful Wizard commit into the same canonical persistence
+  /// owner used by ordinary authoring. Foreign or already-acknowledged results
+  /// fail closed through the canonical owner identity/version contract.
+  void acceptWizardCommit(ReservedProjectMutationCommitResult result) {
+    if (!identical(result.mutation.project, session.project)) {
+      throw StateError(
+        'Canonical production owner rejected a Wizard commit from a foreign '
+        'mutation timeline.',
+      );
+    }
+    owner.acceptMutation(
+      sessionProject: session.project,
+      result: result.mutation,
+    );
+  }
+
+  /// Rebuilds only the legacy/canonical binding after structural projection.
+  /// Owner, mutation session, Wizard port and Undo/Redo history stay shared.
+  CanonicalEditorProductionHandle rebindToLegacy(
+    EditorProjectDocument legacyDocument,
+  ) {
+    final bootstrap = CanonicalEditorLegacyBootstrap.create(legacyDocument);
+    _validateLoadedSidecar(
+      owner: owner,
+      bootstrap: bootstrap,
+      legacyDocument: legacyDocument,
+    );
+    return CanonicalEditorProductionHandle._(
+      owner: owner,
+      session: session,
+      wizardMutations: wizardMutations,
+      binding: bootstrap.binding,
+    );
+  }
 
   static Future<CanonicalEditorProductionHandle> loadOrBootstrap({
     required EditorProjectDocument legacyDocument,
@@ -78,9 +118,6 @@ final class CanonicalEditorProductionHandle {
         snapshot: bootstrap.snapshot,
         repository: repository,
       );
-      // First-run canonical identity becomes durable before write capability is
-      // exposed. A failed sidecar write therefore leaves the editor in legacy
-      // mode instead of enabling canonical writes with ephemeral identities.
       await owner.save();
     }
 
@@ -94,14 +131,21 @@ final class CanonicalEditorProductionHandle {
       binding: bootstrap.binding,
       legacyDocument: legacyDocument,
     );
+    final mutations = ProjectMutationSession(owner.project);
+    final idFactory = SecureRandomEntityIdFactory();
     final session = ProjectStructureAuthoringSession(
-      mutations: ProjectMutationSession(owner.project),
-      idFactory: SecureRandomEntityIdFactory(),
+      mutations: mutations,
+      idFactory: idFactory,
       navigation: navigation,
+    );
+    final wizardMutations = SharedProjectWizardMutationPort(
+      mutations: mutations,
+      idFactory: idFactory,
     );
     return CanonicalEditorProductionHandle._(
       owner: owner,
       session: session,
+      wizardMutations: wizardMutations,
       binding: bootstrap.binding,
     );
   }
