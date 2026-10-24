@@ -22,8 +22,7 @@ void main() {
             balconyKind: ApartmentBalconyKind.none,
             kitchenMode: ApartmentKitchenMode.separate,
             corridorMode: ApartmentCorridorMode.auto,
-            exteriorExposurePreference:
-                ApartmentExteriorExposurePreference.any,
+            exteriorExposurePreference: ApartmentExteriorExposurePreference.any,
             preferredFamily: ApartmentTopologyFamily.splitDayNight,
             preferDayNightSeparation: true,
           ),
