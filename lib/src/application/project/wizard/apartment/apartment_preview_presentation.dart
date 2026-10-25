@@ -110,7 +110,10 @@ final class PreviewViewportState {
     required double anchorX,
     required double anchorY,
   }) {
-    if (!factor.isFinite || factor <= 0 || !anchorX.isFinite || !anchorY.isFinite) {
+    if (!factor.isFinite ||
+        factor <= 0 ||
+        !anchorX.isFinite ||
+        !anchorY.isFinite) {
       throw ArgumentError('Zoom inputs must be finite and positive.');
     }
     final nextScale = (scale * factor).clamp(minScale, maxScale).toDouble();
@@ -152,9 +155,9 @@ final class PreviewViewportState {
   }
 }
 
-double _clampTranslation(double value) =>
-    math.max(-PreviewViewportState.maxTranslation,
-        math.min(PreviewViewportState.maxTranslation, value));
+double _clampTranslation(double value) => math.max(
+    -PreviewViewportState.maxTranslation,
+    math.min(PreviewViewportState.maxTranslation, value));
 
 final class ApartmentPreviewInteractionState {
   const ApartmentPreviewInteractionState({
@@ -240,8 +243,7 @@ final class ApartmentPreviewDescriptionFormatter {
     return <String>[
       '$room $family квартира',
       'внутренняя площадь $interior м²',
-      if (summary.exteriorAppendageAreaDm2 > 0)
-        'балконы/лоджии $appendage м²',
+      if (summary.exteriorAppendageAreaDm2 > 0) 'балконы/лоджии $appendage м²',
       _kitchenRu(summary.kitchenMode),
       'ванных: ${summary.bathroomCount}',
       'оценка $score процентов',
