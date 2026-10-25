@@ -623,8 +623,9 @@ final class ApartmentCanonicalMaterializer {
     if (id is SpaceAdjacencyId) {
       return current.stores.adjacencies.containsKey(id);
     }
-    if (id is BoundaryEdgeId)
+    if (id is BoundaryEdgeId) {
       return current.index.boundaryEdges.containsKey(id);
+    }
     return false;
   }
 
