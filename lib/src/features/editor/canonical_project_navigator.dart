@@ -138,8 +138,9 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
             padding: const EdgeInsets.all(10),
             child: ProjectStructureAuthoringControls(
               compact: widget.compact,
-              wizardLabel:
-                  activeLevelId == null ? 'Building Wizard' : 'Apartment Wizard',
+              wizardLabel: activeLevelId == null
+                  ? 'Building Wizard'
+                  : 'Apartment Wizard',
               wizardTooltip: activeLevelId == null
                   ? 'Create a building with Wizard'
                   : 'Generate an apartment on the active empty level',
@@ -169,7 +170,9 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
   bool _isEmptyApartmentTarget(LevelId levelId) {
     final current = session.project;
     final level = current.stores.levels[levelId];
-    if (level == null || level.spaceIds.isNotEmpty || level.zoneIds.isNotEmpty) {
+    if (level == null ||
+        level.spaceIds.isNotEmpty ||
+        level.zoneIds.isNotEmpty) {
       return false;
     }
     final hasSpaces =
