@@ -1,20 +1,17 @@
 import 'apartment_candidate_set_service.dart';
 import 'apartment_wizard_parameters.dart';
 
-/// P9.9 semantic exploration states layered beside the shared P8 WizardSession.
+/// P9.9 apartment-specific exploration state layered beside the shared P8
+/// [WizardSession].
 ///
-/// This controller owns no canonical project state and no preview/commit engine.
-/// It only owns apartment-specific transient request/candidate/selection state.
+/// This state stops at exact candidate selection. Preview, commit, completion,
+/// cancellation and their failures remain authoritative in P8 WizardSession so
+/// P9.9 cannot become a second transaction/lifecycle state machine.
 enum ApartmentWizardExplorationStatus {
   editingParameters,
   generating,
   candidatesReady,
   candidateSelected,
-  preparingPreview,
-  previewReady,
-  applying,
-  completed,
-  cancelled,
   failed,
 }
 
@@ -31,26 +28,29 @@ final class ApartmentGenerationTicket {
 final class ApartmentWizardExplorationController {
   ApartmentWizardExplorationController({
     ApartmentWizardParameters? initialParameters,
-  }) : parameters = initialParameters ??
+  }) : _parameters = initialParameters ??
             const ApartmentWizardParameters(
               request: ApartmentRequestInput.productionDefaults,
             );
 
-  ApartmentWizardParameters parameters;
-  ApartmentCandidateSet? candidateSet;
-  ApartmentWizardExplorationStatus status =
+  ApartmentWizardParameters _parameters;
+  ApartmentCandidateSet? _candidateSet;
+  ApartmentWizardExplorationStatus _status =
       ApartmentWizardExplorationStatus.editingParameters;
-  int requestRevision = 0;
+  int _requestRevision = 0;
   ApartmentGenerationTicket? _inFlight;
 
+  ApartmentWizardParameters get parameters => _parameters;
+  ApartmentCandidateSet? get candidateSet => _candidateSet;
+  ApartmentWizardExplorationStatus get status => _status;
+  int get requestRevision => _requestRevision;
   ApartmentGenerationTicket? get inFlight => _inFlight;
   bool get generationInProgress => _inFlight != null;
 
   void updateRequest(ApartmentRequestInput request) {
-    final previousSelection = parameters.selection;
-    final next = parameters.withRequest(request);
+    final previousSelection = _parameters.selection;
     final normalizedBefore = const ApartmentRequestNormalizer()
-        .normalize(parameters.request)
+        .normalize(_parameters.request)
         .request;
     final normalizedAfter =
         const ApartmentRequestNormalizer().normalize(request).request;
@@ -58,16 +58,16 @@ final class ApartmentWizardExplorationController {
         normalizedAfter != null &&
         normalizedBefore.intentFingerprint == normalizedAfter.intentFingerprint;
 
-    parameters = next;
+    _parameters = _parameters.withRequest(request);
     if (sameIntent) {
       return;
     }
 
-    requestRevision++;
-    candidateSet = null;
+    _requestRevision++;
+    _candidateSet = null;
     _inFlight = null;
-    status = ApartmentWizardExplorationStatus.editingParameters;
-    if (previousSelection != null && parameters.selection != null) {
+    _status = ApartmentWizardExplorationStatus.editingParameters;
+    if (previousSelection != null && _parameters.selection != null) {
       throw StateError('Semantic request change must clear selection.');
     }
   }
@@ -77,21 +77,21 @@ final class ApartmentWizardExplorationController {
   /// authoritative operation.
   ApartmentGenerationTicket beginGeneration() {
     final normalized =
-        const ApartmentRequestNormalizer().normalize(parameters.request);
+        const ApartmentRequestNormalizer().normalize(_parameters.request);
     final request = normalized.request;
     if (request == null || normalized.hasBlockers) {
       throw StateError('Cannot generate candidates from invalid P9 request.');
     }
     final active = _inFlight;
-    if (active != null && active.requestRevision == requestRevision) {
+    if (active != null && active.requestRevision == _requestRevision) {
       return active;
     }
     final ticket = ApartmentGenerationTicket(
-      requestRevision: requestRevision,
+      requestRevision: _requestRevision,
       intentFingerprint: request.intentFingerprint,
     );
     _inFlight = ticket;
-    status = ApartmentWizardExplorationStatus.generating;
+    _status = ApartmentWizardExplorationStatus.generating;
     return ticket;
   }
 
@@ -103,39 +103,42 @@ final class ApartmentWizardExplorationController {
   ) {
     final active = _inFlight;
     if (active == null ||
-        !identicalTicket(active, ticket) ||
-        ticket.requestRevision != requestRevision) {
+        !_sameTicket(active, ticket) ||
+        ticket.requestRevision != _requestRevision) {
       return false;
     }
+
     final normalized = const ApartmentRequestNormalizer()
-        .normalize(parameters.request)
+        .normalize(_parameters.request)
         .request;
     if (normalized == null ||
         normalized.intentFingerprint != ticket.intentFingerprint) {
+      _failAuthoritativeGeneration();
+      return false;
+    }
+
+    final nextSet = result.candidateSet;
+    if (!result.accepted || nextSet == null) {
       _inFlight = null;
+      _candidateSet = null;
+      _parameters = _parameters.withSelection(null);
+      _status = ApartmentWizardExplorationStatus.failed;
+      return true;
+    }
+    if (nextSet.request.intentFingerprint != ticket.intentFingerprint) {
+      _failAuthoritativeGeneration();
       return false;
     }
 
     _inFlight = null;
-    final nextSet = result.candidateSet;
-    if (!result.accepted || nextSet == null) {
-      candidateSet = null;
-      parameters = parameters.withSelection(null);
-      status = ApartmentWizardExplorationStatus.failed;
-      return true;
-    }
-    if (nextSet.request.intentFingerprint != ticket.intentFingerprint) {
-      return false;
-    }
-
-    candidateSet = nextSet;
-    parameters = parameters.withSelection(null);
-    status = ApartmentWizardExplorationStatus.candidatesReady;
+    _candidateSet = nextSet;
+    _parameters = _parameters.withSelection(null);
+    _status = ApartmentWizardExplorationStatus.candidatesReady;
     return true;
   }
 
   void selectCandidate(String candidateFingerprint) {
-    final set = candidateSet;
+    final set = _candidateSet;
     if (set == null) {
       throw StateError('No current apartment candidate set.');
     }
@@ -149,15 +152,18 @@ final class ApartmentWizardExplorationController {
     if (selected == null) {
       throw StateError('p9.provider.selection-not-found');
     }
-    parameters = parameters.withSelection(selected.identity.toSelection());
-    status = ApartmentWizardExplorationStatus.candidateSelected;
+    _parameters = _parameters.withSelection(set.selectionFor(selected));
+    _status = ApartmentWizardExplorationStatus.candidateSelected;
   }
 
   ApartmentCandidateCard selectedCandidate() {
-    final set = candidateSet;
-    final selection = parameters.selection;
+    final set = _candidateSet;
+    final selection = _parameters.selection;
     if (set == null || selection == null) {
       throw StateError('p9.provider.selection-required');
+    }
+    if (selection.candidateSetFingerprint != set.candidateSetFingerprint) {
+      throw StateError('p9.provider.candidate-set-stale');
     }
     final selected = set.resolveSelection(selection);
     if (selected == null) {
@@ -166,61 +172,44 @@ final class ApartmentWizardExplorationController {
     return selected;
   }
 
-  void markPreparingPreview() {
-    selectedCandidate();
-    status = ApartmentWizardExplorationStatus.preparingPreview;
-  }
-
-  void markPreviewReady() {
-    selectedCandidate();
-    status = ApartmentWizardExplorationStatus.previewReady;
-  }
-
-  void markApplying() {
-    selectedCandidate();
-    status = ApartmentWizardExplorationStatus.applying;
-  }
-
-  void markCompleted() {
-    status = ApartmentWizardExplorationStatus.completed;
-  }
-
-  void cancel() {
+  /// Clears apartment-specific transient state when the outer P8 Wizard exits.
+  /// P8 remains the sole owner of the cancelled/completed lifecycle status.
+  void discardTransientState() {
     _inFlight = null;
-    status = ApartmentWizardExplorationStatus.cancelled;
+    _candidateSet = null;
+    _parameters = _parameters.withSelection(null);
+    _status = ApartmentWizardExplorationStatus.editingParameters;
   }
 
-  /// Semantic Back never mutates request/candidate identity. It only changes the
-  /// current navigation state to the nearest recoverable step.
+  /// Apartment exploration Back never mutates request/candidate identity. Once
+  /// P8 Preview starts, Back is handled by the shared WizardSession instead.
   void back() {
-    switch (status) {
-      case ApartmentWizardExplorationStatus.previewReady:
-      case ApartmentWizardExplorationStatus.preparingPreview:
-      case ApartmentWizardExplorationStatus.applying:
-        status = parameters.selection == null
-            ? ApartmentWizardExplorationStatus.candidatesReady
-            : ApartmentWizardExplorationStatus.candidateSelected;
-        break;
+    switch (_status) {
       case ApartmentWizardExplorationStatus.candidateSelected:
-        status = ApartmentWizardExplorationStatus.candidatesReady;
+        _status = ApartmentWizardExplorationStatus.candidatesReady;
         break;
       case ApartmentWizardExplorationStatus.candidatesReady:
       case ApartmentWizardExplorationStatus.failed:
-        status = ApartmentWizardExplorationStatus.editingParameters;
+        _status = ApartmentWizardExplorationStatus.editingParameters;
         break;
       case ApartmentWizardExplorationStatus.generating:
         _inFlight = null;
-        status = ApartmentWizardExplorationStatus.editingParameters;
+        _status = ApartmentWizardExplorationStatus.editingParameters;
         break;
       case ApartmentWizardExplorationStatus.editingParameters:
-      case ApartmentWizardExplorationStatus.completed:
-      case ApartmentWizardExplorationStatus.cancelled:
         break;
     }
   }
+
+  void _failAuthoritativeGeneration() {
+    _inFlight = null;
+    _candidateSet = null;
+    _parameters = _parameters.withSelection(null);
+    _status = ApartmentWizardExplorationStatus.failed;
+  }
 }
 
-bool identicalTicket(
+bool _sameTicket(
   ApartmentGenerationTicket left,
   ApartmentGenerationTicket right,
 ) =>
