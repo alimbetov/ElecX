@@ -1,3 +1,4 @@
+import '../../../../domain/apartment_topology.dart';
 import '../../../../domain/apartment_topology/apartment_area_fit.dart';
 import '../../../../domain/apartment_topology/apartment_geometry.dart';
 import '../../../../domain/apartment_topology/apartment_semantic_validation.dart';
