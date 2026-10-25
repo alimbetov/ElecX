@@ -11,6 +11,12 @@ import 'apartment_topology_models.dart';
 /// P9.4 can stay geometry-agnostic while still handing P9.6 a physically
 /// realizable access spine for the qualified 1..10-room corpus.
 ///
+/// V4 also makes the catalog-level entrance -> day access a preference. P9.3
+/// emits the hard access edge against the actual distribution space: directly
+/// to the entrance hall when there is no corridor, or through the corridor
+/// when one is present. This avoids manufacturing a physically unnecessary
+/// access triangle in corridor-backed layouts.
+///
 /// These are product-generation heuristics, not normative compliance claims.
 abstract final class P9ApartmentTopologyCatalogV4 {
   static ApartmentTopologyCatalog create() {
@@ -37,12 +43,31 @@ ApartmentTopologyTemplate _upgradeTemplate(ApartmentTopologyTemplate source) =>
       stableOrder: source.stableOrder,
       constraints: source.constraints,
       spaces: [for (final space in source.spaces) _upgradeSpace(space)],
-      adjacencyRules: source.adjacencyRules,
+      adjacencyRules: [
+        for (final rule in source.adjacencyRules) _upgradeAdjacencyRule(rule),
+      ],
       areaProfile: source.areaProfile,
       circulationPolicy: source.circulationPolicy,
       wetCorePolicy: source.wetCorePolicy,
       variantSeeds: source.variantSeeds,
     );
+
+TopologyAdjacencyRule _upgradeAdjacencyRule(TopologyAdjacencyRule source) {
+  final catalogEntryToDayAccess =
+      source.fromKey == 'entranceHall' &&
+          source.kind == TopologyAdjacencyKind.access &&
+          source.requirement == TopologyAdjacencyRequirement.required;
+  if (!catalogEntryToDayAccess) {
+    return source;
+  }
+  return TopologyAdjacencyRule(
+    fromKey: source.fromKey,
+    toKey: source.toKey,
+    requirement: TopologyAdjacencyRequirement.preferred,
+    kind: source.kind,
+    minSharedBoundaryMm: source.minSharedBoundaryMm,
+  );
+}
 
 TopologySpaceSpec _upgradeSpace(TopologySpaceSpec source) {
   final corridor = source.usage == SpaceUsage.corridor;
