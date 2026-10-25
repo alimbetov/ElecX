@@ -54,7 +54,8 @@ final class GenerationManifest {
         ),
         generatedEntityIds = Set.unmodifiable(generatedEntityIds),
         removedGenerationKeys = Set.unmodifiable(
-          removedGenerationKeys.map((value) => _nonEmpty(value, 'generationKey')),
+          removedGenerationKeys
+              .map((value) => _nonEmpty(value, 'generationKey')),
         ) {
     if (provenanceSchemaVersion <= 0) {
       throw ArgumentError.value(
@@ -67,9 +68,6 @@ final class GenerationManifest {
         catalogVersion <= 0 ||
         apartmentTemplateVersion <= 0) {
       throw ArgumentError('Generation manifest versions must be positive.');
-    }
-    if (this.generatedEntityIds.isEmpty) {
-      throw ArgumentError('generatedEntityIds must be non-empty.');
     }
   }
 
@@ -96,7 +94,10 @@ final class GenerationManifest {
   final Set<EntityId> generatedEntityIds;
   final Set<String> removedGenerationKeys;
 
-  GenerationManifest copyWith({Set<String>? removedGenerationKeys}) =>
+  GenerationManifest copyWith({
+    Set<EntityId>? generatedEntityIds,
+    Set<String>? removedGenerationKeys,
+  }) =>
       GenerationManifest(
         provenanceSchemaVersion: provenanceSchemaVersion,
         generationId: generationId,
@@ -118,7 +119,7 @@ final class GenerationManifest {
         buildingId: buildingId,
         levelId: levelId,
         apartmentZoneId: apartmentZoneId,
-        generatedEntityIds: generatedEntityIds,
+        generatedEntityIds: generatedEntityIds ?? this.generatedEntityIds,
         removedGenerationKeys:
             removedGenerationKeys ?? this.removedGenerationKeys,
       );
@@ -167,8 +168,7 @@ final class EntityGenerationProvenance {
         generationId: generationId,
         generationKey: generationKey,
         generatedProperties: generatedProperties,
-        overriddenProperties:
-            overriddenProperties ?? this.overriddenProperties,
+        overriddenProperties: overriddenProperties ?? this.overriddenProperties,
         lockedFromRegeneration:
             lockedFromRegeneration ?? this.lockedFromRegeneration,
         generatedBaselineFingerprint: generatedBaselineFingerprint,
@@ -199,13 +199,15 @@ final class GenerationProvenanceIssue {
 }
 
 final class GenerationProvenanceValidationException implements Exception {
-  GenerationProvenanceValidationException(Iterable<GenerationProvenanceIssue> issues)
-      : issues = List.unmodifiable(issues);
+  GenerationProvenanceValidationException(
+    Iterable<GenerationProvenanceIssue> issues,
+  ) : issues = List.unmodifiable(issues);
 
   final List<GenerationProvenanceIssue> issues;
 
   @override
-  String toString() => 'Invalid generation provenance:\n${issues.map((e) => e.message).join('\n')}';
+  String toString() =>
+      'Invalid generation provenance:\n${issues.map((e) => e.message).join('\n')}';
 }
 
 final class GenerationProvenanceRegistry {
@@ -222,32 +224,51 @@ final class GenerationProvenanceRegistry {
   final Map<GenerationId, GenerationManifest> manifests;
   final Map<EntityId, EntityGenerationProvenance> entities;
 
+  EntityGenerationProvenance? provenanceFor(EntityId entityId) =>
+      entities[entityId];
+
+  GenerationManifest? manifestFor(GenerationId generationId) =>
+      manifests[generationId];
+
   GenerationProvenanceRegistry addGeneration({
     required GenerationManifest manifest,
     required Iterable<EntityGenerationProvenance> provenances,
   }) {
     if (manifests.containsKey(manifest.generationId)) {
-      throw ArgumentError('Generation ${manifest.generationId} already exists.');
+      throw ArgumentError(
+        'Generation ${manifest.generationId} already exists.',
+      );
     }
-    final nextEntities = Map<EntityId, EntityGenerationProvenance>.from(entities);
+    final nextEntities =
+        Map<EntityId, EntityGenerationProvenance>.from(entities);
     final keys = <String>{};
     for (final provenance in provenances) {
       if (provenance.generationId != manifest.generationId) {
-        throw ArgumentError('Entity provenance generationId does not match manifest.');
+        throw ArgumentError(
+          'Entity provenance generationId does not match manifest.',
+        );
       }
       if (!manifest.generatedEntityIds.contains(provenance.entityId)) {
-        throw ArgumentError('Manifest does not contain generated entity ${provenance.entityId}.');
+        throw ArgumentError(
+          'Manifest does not contain generated entity ${provenance.entityId}.',
+        );
       }
       if (!keys.add(provenance.generationKey)) {
-        throw ArgumentError('Duplicate generationKey ${provenance.generationKey}.');
+        throw ArgumentError(
+          'Duplicate generationKey ${provenance.generationKey}.',
+        );
       }
       if (nextEntities.containsKey(provenance.entityId)) {
-        throw ArgumentError('Entity ${provenance.entityId} already has generation provenance.');
+        throw ArgumentError(
+          'Entity ${provenance.entityId} already has generation provenance.',
+        );
       }
       nextEntities[provenance.entityId] = provenance;
     }
     if (keys.length != manifest.generatedEntityIds.length) {
-      throw ArgumentError('Every manifest generated entity requires provenance.');
+      throw ArgumentError(
+        'Every manifest generated entity requires provenance.',
+      );
     }
     return GenerationProvenanceRegistry(
       manifests: {...manifests, manifest.generationId: manifest},
@@ -262,8 +283,11 @@ final class GenerationProvenanceRegistry {
     final current = entities[entityId];
     if (current == null) return this;
     final requested = properties.toSet();
+    if (requested.isEmpty) return this;
     if (!current.generatedProperties.containsAll(requested)) {
-      throw ArgumentError('Cannot override a property not owned by generation.');
+      throw ArgumentError(
+        'Cannot override a property not owned by generation.',
+      );
     }
     final next = {...current.overriddenProperties, ...requested};
     if (next.length == current.overriddenProperties.length &&
@@ -284,13 +308,41 @@ final class GenerationProvenanceRegistry {
     required bool locked,
   }) {
     final current = entities[entityId];
-    if (current == null || current.lockedFromRegeneration == locked) return this;
+    if (current == null || current.lockedFromRegeneration == locked) {
+      return this;
+    }
     return GenerationProvenanceRegistry(
       manifests: manifests,
       entities: {
         ...entities,
         entityId: current.copyWith(lockedFromRegeneration: locked),
       },
+    );
+  }
+
+  GenerationProvenanceRegistry removeGeneratedEntity(EntityId entityId) {
+    final current = entities[entityId];
+    if (current == null) return this;
+    final manifest = manifests[current.generationId];
+    if (manifest == null) {
+      throw StateError(
+        'Generated entity $entityId references missing ${current.generationId}.',
+      );
+    }
+    final remainingIds = {...manifest.generatedEntityIds}..remove(entityId);
+    final removedKeys = {...manifest.removedGenerationKeys, current.generationKey};
+    final nextEntities =
+        Map<EntityId, EntityGenerationProvenance>.from(entities)
+          ..remove(entityId);
+    return GenerationProvenanceRegistry(
+      manifests: {
+        ...manifests,
+        current.generationId: manifest.copyWith(
+          generatedEntityIds: remainingIds,
+          removedGenerationKeys: removedKeys,
+        ),
+      },
+      entities: nextEntities,
     );
   }
 
@@ -331,7 +383,8 @@ final class GenerationProvenanceRegistry {
             code: GenerationProvenanceIssueCode.manifestMissing,
             entityId: provenance.entityId,
             generationId: provenance.generationId,
-            message: 'Entity provenance references a missing generation manifest.',
+            message:
+                'Entity provenance references a missing generation manifest.',
           ),
         );
         continue;
@@ -393,7 +446,8 @@ final class GenerationProvenanceRegistry {
           GenerationProvenanceIssue(
             code: GenerationProvenanceIssueCode.entityManifestMismatch,
             generationId: manifest.generationId,
-            message: 'Manifest generatedEntityIds do not match active provenance.',
+            message:
+                'Manifest generatedEntityIds do not match active provenance.',
           ),
         );
       }
