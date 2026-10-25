@@ -25,8 +25,7 @@ final class RequiredSharedBoundaryIntent {
   final TopologyAdjacencyKind kind;
   final int minSharedBoundaryMm;
 
-  String get stableKey =>
-      '${pair.stableKey}|${kind.name}|$minSharedBoundaryMm';
+  String get stableKey => '${pair.stableKey}|${kind.name}|$minSharedBoundaryMm';
 }
 
 final class P9SemanticViolation {
