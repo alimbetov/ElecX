@@ -91,8 +91,7 @@ final class GraphAwareApartmentGeometryStrategyV2
       forbiddenSharedBoundaryPairs: sourceHandoff.forbiddenSharedBoundaryPairs,
       requiredExteriorSpaceKeys: sourceHandoff.requiredExteriorSpaceKeys,
       requiredExteriorAssignments: sourceHandoff.requiredExteriorAssignments,
-      wetCoreGroups:
-          coLocateWetCore ? sourceHandoff.wetCoreGroups : const [],
+      wetCoreGroups: coLocateWetCore ? sourceHandoff.wetCoreGroups : const [],
       accessIntents: sourceHandoff.accessIntents,
       circulationAnchorKeys: sourceHandoff.circulationAnchorKeys,
       entrySpaceKey: sourceHandoff.entrySpaceKey,
