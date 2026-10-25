@@ -207,14 +207,6 @@ final class ApartmentCanonicalMaterializer {
       final openingId = reservation.entityId<OpeningId>(_openingSlot(index));
       openingIds[index] = openingId;
       final profile = _openingProfile(intent);
-      final topology = nextBoundaries[fromSpaceId]!;
-      final hostEdge = _hostEdge(topology, intent.hostSegment);
-      if (hostEdge == null) {
-        throw ApartmentMaterializationException(
-          'p9.materialize.opening-host-invalid',
-          {'openingIndex': index, 'spaceKey': fromKey},
-        );
-      }
       if (profile.widthMm > intent.hostSegment.lengthMm) {
         throw ApartmentMaterializationException(
           'p9.materialize.opening-does-not-fit',
@@ -226,17 +218,29 @@ final class ApartmentCanonicalMaterializer {
         );
       }
 
-      final local = _openingOffsetsOnEdge(
-        edge: hostEdge,
+      hostedRegistry = _putOpeningHost(
+        registry: hostedRegistry,
+        openingId: openingId,
+        spaceId: fromSpaceId,
+        topology: nextBoundaries[fromSpaceId]!,
         intentSegment: intent.hostSegment,
         openingWidthMm: profile.widthMm,
+        openingIndex: index,
+        spaceKey: fromKey,
       );
-      hostedRegistry = hostedRegistry.putOpening(
-        openingId: openingId,
-        host: BoundaryEdgeHostRef(spaceId: fromSpaceId, edgeId: hostEdge.id),
-        startOffsetMm: local.startMm,
-        endOffsetMm: local.endMm,
-      );
+      if (toSpaceId != null) {
+        hostedRegistry = _putOpeningHost(
+          registry: hostedRegistry,
+          openingId: openingId,
+          spaceId: toSpaceId,
+          topology: nextBoundaries[toSpaceId]!,
+          intentSegment: intent.hostSegment,
+          openingWidthMm: profile.widthMm,
+          openingIndex: index,
+          spaceKey: intent.toSpaceKey!,
+        );
+      }
+
       nextOpenings[openingId] = ProjectOpeningEntity(
         id: openingId,
         levelId: target.levelId,
@@ -530,6 +534,36 @@ final class ApartmentCanonicalMaterializer {
           GeometryOpeningKind.openPassage => openPassageWidthMm,
         },
       );
+
+  BoundaryHostedObjectRegistry _putOpeningHost({
+    required BoundaryHostedObjectRegistry registry,
+    required OpeningId openingId,
+    required SpaceId spaceId,
+    required SpaceBoundaryTopology topology,
+    required GeometrySegmentMm intentSegment,
+    required int openingWidthMm,
+    required int openingIndex,
+    required String spaceKey,
+  }) {
+    final hostEdge = _hostEdge(topology, intentSegment);
+    if (hostEdge == null) {
+      throw ApartmentMaterializationException(
+        'p9.materialize.opening-host-invalid',
+        {'openingIndex': openingIndex, 'spaceKey': spaceKey},
+      );
+    }
+    final local = _openingOffsetsOnEdge(
+      edge: hostEdge,
+      intentSegment: intentSegment,
+      openingWidthMm: openingWidthMm,
+    );
+    return registry.putOpening(
+      openingId: openingId,
+      host: BoundaryEdgeHostRef(spaceId: spaceId, edgeId: hostEdge.id),
+      startOffsetMm: local.startMm,
+      endOffsetMm: local.endMm,
+    );
+  }
 
   ProjectBoundaryEdge? _hostEdge(
     SpaceBoundaryTopology topology,
