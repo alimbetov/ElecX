@@ -1,3 +1,4 @@
+import 'package:elecx/src/domain/apartment_topology.dart';
 import 'package:elecx/src/domain/apartment_topology/apartment_topology_catalog_v4.dart';
 import 'package:elecx/src/domain/apartment_topology/apartment_topology_models.dart';
 import 'package:elecx/src/domain/project_space_semantics.dart';
