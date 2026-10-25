@@ -204,8 +204,7 @@ final class ApartmentCandidateIdentityService {
       if (candidate.intentFingerprint != request.intentFingerprint ||
           candidate.catalogVersion != catalogVersion ||
           candidate.generatorVersion != normalizedGeneratorVersion ||
-          candidate.scoringProfileVersion !=
-              normalizedScoringProfileVersion) {
+          candidate.scoringProfileVersion != normalizedScoringProfileVersion) {
         throw ArgumentError(
           'Candidate set contains identity from a different request/version envelope.',
         );
