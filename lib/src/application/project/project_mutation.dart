@@ -1,5 +1,6 @@
 import '../../domain/boundary_edge_identity_registry.dart';
 import '../../domain/boundary_topology.dart';
+import '../../domain/generation_provenance.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_entity_stores_copy.dart';
 import '../../domain/project_identity.dart';
@@ -194,6 +195,7 @@ final class ProjectEngineeringMetadataDiff {
     this.boundaryHostedObjectRegistryChanged = false,
     this.boundaryWallProfileRegistryChanged = false,
     this.boundaryConstructionRegistryChanged = false,
+    this.generationProvenanceRegistryChanged = false,
   });
 
   const ProjectEngineeringMetadataDiff.empty()
@@ -202,7 +204,8 @@ final class ProjectEngineeringMetadataDiff {
         boundaryEdgeIdentityRegistryChanged = false,
         boundaryHostedObjectRegistryChanged = false,
         boundaryWallProfileRegistryChanged = false,
-        boundaryConstructionRegistryChanged = false;
+        boundaryConstructionRegistryChanged = false,
+        generationProvenanceRegistryChanged = false;
 
   factory ProjectEngineeringMetadataDiff.between(
     ProjectEngineeringMetadata before,
@@ -222,6 +225,9 @@ final class ProjectEngineeringMetadataDiff {
         boundaryConstructionRegistryChanged: !before
             .boundaryConstructionRegistry
             .sameAs(after.boundaryConstructionRegistry),
+        generationProvenanceRegistryChanged: !before
+            .generationProvenanceRegistry
+            .sameAs(after.generationProvenanceRegistry),
       );
 
   final ProjectEngineeringNorth? beforeProjectNorth;
@@ -230,6 +236,7 @@ final class ProjectEngineeringMetadataDiff {
   final bool boundaryHostedObjectRegistryChanged;
   final bool boundaryWallProfileRegistryChanged;
   final bool boundaryConstructionRegistryChanged;
+  final bool generationProvenanceRegistryChanged;
 
   bool get projectNorthChanged => beforeProjectNorth != afterProjectNorth;
   bool get isEmpty =>
@@ -237,7 +244,8 @@ final class ProjectEngineeringMetadataDiff {
       !boundaryEdgeIdentityRegistryChanged &&
       !boundaryHostedObjectRegistryChanged &&
       !boundaryWallProfileRegistryChanged &&
-      !boundaryConstructionRegistryChanged;
+      !boundaryConstructionRegistryChanged &&
+      !generationProvenanceRegistryChanged;
   bool get isNotEmpty => !isEmpty;
 }
 
@@ -389,6 +397,10 @@ abstract final class CandidateGraphValidator {
     state.engineeringMetadata.boundaryConstructionRegistry.validateAgainst(
       state.stores.boundaries,
     );
+    state.engineeringMetadata.generationProvenanceRegistry.validateOrThrow(
+      projectId: current.id,
+      entityExists: (id) => _entityExists(state.stores, id),
+    );
     final index = ProjectIndex.build(state.stores);
     if (!index.isConsistentWith(state.stores)) {
       throw StateError('Candidate ProjectIndex is inconsistent with stores.');
@@ -469,9 +481,13 @@ final class ProjectMutationSession {
     final before = _current;
     final candidate = request.command.buildCandidate(before);
     CandidateGraphValidator.validate(current: before, candidate: candidate);
-    final candidateState = _withDurableBoundaryRegistry(
-      candidate.resolveState(before),
+    var candidateState = candidate.resolveState(before);
+    candidateState = _withTrackedGenerationProvenance(
+      before: before,
+      candidateState: candidateState,
     );
+    candidateState = _withDurableBoundaryRegistry(candidateState);
+    _validateProvenance(before.id, candidateState);
     final stateDiff = _ProjectMutableStateDiff.between(
       ProjectMutableState.fromProject(before),
       candidateState,
@@ -500,9 +516,13 @@ final class ProjectMutationSession {
     final beforeState = ProjectMutableState.fromProject(before);
     final candidate = request.command.buildCandidate(before);
     CandidateGraphValidator.validate(current: before, candidate: candidate);
-    final candidateState = _withDurableBoundaryRegistry(
-      candidate.resolveState(before),
+    var candidateState = candidate.resolveState(before);
+    candidateState = _withTrackedGenerationProvenance(
+      before: before,
+      candidateState: candidateState,
     );
+    candidateState = _withDurableBoundaryRegistry(candidateState);
+    _validateProvenance(before.id, candidateState);
     final stateDiff = _ProjectMutableStateDiff.between(
       beforeState,
       candidateState,
@@ -546,6 +566,7 @@ final class ProjectMutationSession {
     final beforeState = ProjectMutableState.fromProject(before);
     final record = _undoStack.last;
     final targetState = _withDurableBoundaryRegistry(record.beforeState);
+    _validateProvenance(before.id, targetState);
     final stateDiff = _ProjectMutableStateDiff.between(
       beforeState,
       targetState,
@@ -579,6 +600,7 @@ final class ProjectMutationSession {
     final beforeState = ProjectMutableState.fromProject(before);
     final record = _redoStack.last;
     final targetState = _withDurableBoundaryRegistry(record.afterState);
+    _validateProvenance(before.id, targetState);
     final stateDiff = _ProjectMutableStateDiff.between(
       beforeState,
       targetState,
@@ -623,12 +645,50 @@ final class ProjectMutationSession {
         .validateAgainst(durableState.stores.boundaries);
     durableState.engineeringMetadata.boundaryConstructionRegistry
         .validateAgainst(durableState.stores.boundaries);
+    _validateProvenance(before.id, durableState);
     return ProjectAggregateRoot(
       id: before.id,
       siteId: before.siteId,
       version: before.version.next(),
       engineeringMetadata: durableState.engineeringMetadata,
       stores: durableState.stores,
+    );
+  }
+
+  ProjectMutableState _withTrackedGenerationProvenance({
+    required ProjectAggregateRoot before,
+    required ProjectMutableState candidateState,
+  }) {
+    final beforeRegistry =
+        before.engineeringMetadata.generationProvenanceRegistry;
+    if (beforeRegistry.entities.isEmpty) return candidateState;
+
+    var registry = candidateState.engineeringMetadata.generationProvenanceRegistry;
+    for (final entry in beforeRegistry.entities.entries) {
+      final entityId = entry.key;
+      final provenance = entry.value;
+      if (!_entityExists(candidateState.stores, entityId)) {
+        registry = registry.removeGeneratedEntity(entityId);
+        continue;
+      }
+      final changed = _changedGeneratedProperties(
+        entityId: entityId,
+        before: before,
+        afterStores: candidateState.stores,
+      ).intersection(provenance.generatedProperties);
+      if (changed.isNotEmpty) {
+        registry = registry.markOverridden(entityId, changed);
+      }
+    }
+    if (registry.sameAs(
+      candidateState.engineeringMetadata.generationProvenanceRegistry,
+    )) {
+      return candidateState;
+    }
+    return ProjectMutableState(
+      engineeringMetadata: candidateState.engineeringMetadata
+          .withGenerationProvenanceRegistry(registry),
+      stores: candidateState.stores,
     );
   }
 
@@ -651,6 +711,13 @@ final class ProjectMutationSession {
     }
   }
 
+  void _validateProvenance(ProjectId projectId, ProjectMutableState state) {
+    state.engineeringMetadata.generationProvenanceRegistry.validateOrThrow(
+      projectId: projectId,
+      entityExists: (id) => _entityExists(state.stores, id),
+    );
+  }
+
   String _requireCommandType(ProjectCommand command) {
     final commandType = command.commandType;
     if (commandType.trim().isEmpty) {
@@ -671,6 +738,164 @@ final class ProjectMutationSession {
       );
     }
   }
+}
+
+Set<GenerationPropertyKey> _changedGeneratedProperties({
+  required EntityId entityId,
+  required ProjectAggregateRoot before,
+  required ProjectEntityStores afterStores,
+}) {
+  final changed = <GenerationPropertyKey>{};
+  final beforeStores = before.stores;
+
+  if (entityId is ZoneId) {
+    final left = beforeStores.zones[entityId];
+    final right = afterStores.zones[entityId];
+    if (left == null || right == null) return changed;
+    if (left.name != right.name) changed.add(GenerationPropertyKey.name);
+    if (!_sameSet(left.spaceIds, right.spaceIds)) {
+      changed.add(GenerationPropertyKey.zoneMembership);
+    }
+    return changed;
+  }
+
+  if (entityId is SpaceId) {
+    final left = beforeStores.spaces[entityId];
+    final right = afterStores.spaces[entityId];
+    if (left == null || right == null) return changed;
+    if (left.name != right.name) changed.add(GenerationPropertyKey.name);
+    if (left.type != right.type) {
+      changed.add(GenerationPropertyKey.spaceType);
+    }
+    if (left.usage != right.usage) {
+      changed.add(GenerationPropertyKey.spaceUsage);
+    }
+    if (!_sameNullableBoundary(
+      beforeStores.boundaries[entityId],
+      afterStores.boundaries[entityId],
+    )) {
+      changed.add(GenerationPropertyKey.geometry);
+    }
+    if (_zoneForSpace(beforeStores, entityId) !=
+        _zoneForSpace(afterStores, entityId)) {
+      changed.add(GenerationPropertyKey.zoneMembership);
+    }
+    if (!_sameSpaceOpeningRelations(beforeStores, afterStores, entityId)) {
+      changed.add(GenerationPropertyKey.openingRelations);
+    }
+    if (!_sameSpaceAdjacencyRelations(beforeStores, afterStores, entityId)) {
+      changed.add(GenerationPropertyKey.adjacencyRelations);
+    }
+    return changed;
+  }
+
+  if (entityId is BoundaryEdgeId) {
+    final left = _boundaryEdge(beforeStores, entityId);
+    final right = _boundaryEdge(afterStores, entityId);
+    if (left != null && right != null && !_sameBoundaryEdge(left, right)) {
+      changed.add(GenerationPropertyKey.geometry);
+    }
+    return changed;
+  }
+
+  if (entityId is OpeningId) {
+    final left = beforeStores.openings[entityId];
+    final right = afterStores.openings[entityId];
+    if (left != null && right != null && !_sameOpening(left, right)) {
+      changed.add(GenerationPropertyKey.openingRelations);
+    }
+    return changed;
+  }
+
+  if (entityId is SpaceAdjacencyId) {
+    final left = beforeStores.adjacencies[entityId];
+    final right = afterStores.adjacencies[entityId];
+    if (left != null && right != null && !_sameAdjacency(left, right)) {
+      changed.add(GenerationPropertyKey.adjacencyRelations);
+    }
+  }
+  return changed;
+}
+
+ZoneId? _zoneForSpace(ProjectEntityStores stores, SpaceId spaceId) {
+  for (final zone in stores.zones.values) {
+    if (zone.spaceIds.contains(spaceId)) return zone.id;
+  }
+  return null;
+}
+
+ProjectBoundaryEdge? _boundaryEdge(
+  ProjectEntityStores stores,
+  BoundaryEdgeId edgeId,
+) {
+  for (final topology in stores.boundaries.values) {
+    final edge = topology.edges[edgeId];
+    if (edge != null) return edge;
+  }
+  return null;
+}
+
+bool _sameNullableBoundary(
+  SpaceBoundaryTopology? left,
+  SpaceBoundaryTopology? right,
+) {
+  if (left == null || right == null) return left == right;
+  return _sameBoundaryTopology(left, right);
+}
+
+bool _sameSpaceOpeningRelations(
+  ProjectEntityStores before,
+  ProjectEntityStores after,
+  SpaceId spaceId,
+) {
+  final left = before.openings.values
+      .where((opening) => opening.connectedSpaceIds.contains(spaceId))
+      .toList()
+    ..sort((a, b) => a.id.value.compareTo(b.id.value));
+  final right = after.openings.values
+      .where((opening) => opening.connectedSpaceIds.contains(spaceId))
+      .toList()
+    ..sort((a, b) => a.id.value.compareTo(b.id.value));
+  if (left.length != right.length) return false;
+  for (var index = 0; index < left.length; index++) {
+    if (!_sameOpening(left[index], right[index])) return false;
+  }
+  return true;
+}
+
+bool _sameSpaceAdjacencyRelations(
+  ProjectEntityStores before,
+  ProjectEntityStores after,
+  SpaceId spaceId,
+) {
+  final left = before.adjacencies.values
+      .where(
+        (adjacency) =>
+            adjacency.spaceAId == spaceId || adjacency.spaceBId == spaceId,
+      )
+      .toList()
+    ..sort((a, b) => a.id.value.compareTo(b.id.value));
+  final right = after.adjacencies.values
+      .where(
+        (adjacency) =>
+            adjacency.spaceAId == spaceId || adjacency.spaceBId == spaceId,
+      )
+      .toList()
+    ..sort((a, b) => a.id.value.compareTo(b.id.value));
+  if (left.length != right.length) return false;
+  for (var index = 0; index < left.length; index++) {
+    if (!_sameAdjacency(left[index], right[index])) return false;
+  }
+  return true;
+}
+
+bool _entityExists(ProjectEntityStores stores, EntityId id) {
+  if (id is ZoneId) return stores.zones.containsKey(id);
+  if (id is SpaceId) return stores.spaces.containsKey(id);
+  if (id is OpeningId) return stores.openings.containsKey(id);
+  if (id is SpaceAdjacencyId) return stores.adjacencies.containsKey(id);
+  if (id is BoundaryEdgeId) return _boundaryEdge(stores, id) != null;
+  return false;
 }
 
 void _diffMap<K extends EntityId, V>(
