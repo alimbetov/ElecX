@@ -63,7 +63,8 @@ final class ApartmentAccessSpineGeometryGenerator {
     final appendageDraft = draft.spaces
         .where(
           (space) =>
-              space.areaParticipation == SpaceAreaParticipation.exteriorAppendage,
+              space.areaParticipation ==
+              SpaceAreaParticipation.exteriorAppendage,
         )
         .toList()
       ..sort(_compareDraftSpace);
@@ -91,7 +92,9 @@ final class ApartmentAccessSpineGeometryGenerator {
     if (missingHubEdges.isNotEmpty) {
       return _rejected(
         'p9.geometry.unsupported-access-shape',
-        facts: {'missingHubEdges': (missingHubEdges.toList()..sort()).join(',')},
+        facts: {
+          'missingHubEdges': (missingHubEdges.toList()..sort()).join(',')
+        },
       );
     }
 
@@ -488,7 +491,8 @@ final class ApartmentAccessSpineGeometryGenerator {
     final shortSide = _min(widthMm, heightMm);
     final longSide = _max(widthMm, heightMm);
     if (shortSide < geometry.minShortSideMm ||
-        (geometry.minLongSideMm != null && longSide < geometry.minLongSideMm!)) {
+        (geometry.minLongSideMm != null &&
+            longSide < geometry.minLongSideMm!)) {
       return false;
     }
     final aspectBp = widthMm * 10000 ~/ heightMm;
@@ -517,9 +521,7 @@ final class ApartmentAccessSpineGeometryGenerator {
           semanticKey: item.space.semanticKey,
           participation: item.space.areaParticipation,
           polygon: RectilinearPolygonMm.rectangle(
-            xMm: leftSide
-                ? spineX - item.depthMm
-                : spineX + spineWidthMm,
+            xMm: leftSide ? spineX - item.depthMm : spineX + spineWidthMm,
             yMm: yMm,
             widthMm: item.depthMm,
             heightMm: item.spanMm,
@@ -547,7 +549,8 @@ final class ApartmentAccessSpineGeometryGenerator {
     final usedByHost = <String, int>{};
     for (final appendage in appendageDraft) {
       final access = handoff.accessIntents.where(
-        (intent) => intent.pair.leftKey == appendage.semanticKey ||
+        (intent) =>
+            intent.pair.leftKey == appendage.semanticKey ||
             intent.pair.rightKey == appendage.semanticKey,
       );
       String? hostKey;
@@ -861,10 +864,12 @@ final class ApartmentAccessSpineGeometryGenerator {
       final longSide = _max(width, height);
       final target = generated.fittedAreaDm2 * 10000;
       if ((generated.realizedAreaMm2 - target).abs() > _areaTolerance(target)) {
-        issues.add(_issue('p9.geometry.unsatisfiable-area', generated.semanticKey));
+        issues.add(
+            _issue('p9.geometry.unsatisfiable-area', generated.semanticKey));
       }
       if (shortSide < geometry.minShortSideMm ||
-          (geometry.minLongSideMm != null && longSide < geometry.minLongSideMm!)) {
+          (geometry.minLongSideMm != null &&
+              longSide < geometry.minLongSideMm!)) {
         issues.add(_issue('p9.geometry.min-dimension', generated.semanticKey));
       }
       final aspect = width * 10000 ~/ height;
@@ -919,15 +924,18 @@ final class ApartmentAccessSpineGeometryGenerator {
     final exposure = <String, int>{};
     for (final boundary in exterior) {
       exposure[boundary.spaceSemanticKey] =
-          (exposure[boundary.spaceSemanticKey] ?? 0) + boundary.lengthMm;
+          (exposure[boundary.spaceSemanticKey] ?? 0) +
+              boundary.segment.lengthMm;
     }
     for (final key in handoff.requiredExteriorSpaceKeys) {
       final draftSpace = draftByKey[key];
       if (draftSpace == null ||
-          draftSpace.areaParticipation == SpaceAreaParticipation.exteriorAppendage) {
+          draftSpace.areaParticipation ==
+              SpaceAreaParticipation.exteriorAppendage) {
         continue;
       }
-      final required = draftSpace.sourceSpec.geometry.minExteriorExposureMm ?? 1;
+      final required =
+          draftSpace.sourceSpec.geometry.minExteriorExposureMm ?? 1;
       if ((exposure[key] ?? 0) < required) {
         issues.add(
           GeometryValidationIssue(
@@ -938,7 +946,8 @@ final class ApartmentAccessSpineGeometryGenerator {
         );
       }
     }
-    final wet = _wetSeparation(handoff.wetCoreGroups, [...interiorSpaces, ...appendages]);
+    final wet = _wetSeparation(
+        handoff.wetCoreGroups, [...interiorSpaces, ...appendages]);
     if (wet > template.wetCorePolicy.maxGroupSeparationMm) {
       issues.add(
         GeometryValidationIssue(
@@ -982,7 +991,7 @@ final class ApartmentAccessSpineGeometryGenerator {
       ),
       exteriorExposureLengthMm: exterior
           .where((boundary) => exteriorKeys.contains(boundary.spaceSemanticKey))
-          .fold(0, (sum, boundary) => sum + boundary.lengthMm),
+          .fold(0, (sum, boundary) => sum + boundary.segment.lengthMm),
       wetCoreMaxSeparationMm: _wetSeparation(
         handoff.wetCoreGroups,
         [...interiorSpaces, ...appendages],
@@ -1015,12 +1024,12 @@ final class ApartmentAccessSpineGeometryGenerator {
     final boundaries = shared.toList()
       ..sort((a, b) => a.pair.stableKey.compareTo(b.pair.stableKey));
     for (final boundary in boundaries) {
-      lines.add('shared=${boundary.pair.stableKey}|${boundary.segment.stableKey}');
+      lines.add(
+          'shared=${boundary.pair.stableKey}|${boundary.segment.stableKey}');
     }
     final outer = exterior.toList()
-      ..sort((a, b) =>
-          '${a.spaceSemanticKey}|${a.segment.stableKey}'.compareTo(
-              '${b.spaceSemanticKey}|${b.segment.stableKey}'));
+      ..sort((a, b) => '${a.spaceSemanticKey}|${a.segment.stableKey}'
+          .compareTo('${b.spaceSemanticKey}|${b.segment.stableKey}'));
     for (final boundary in outer) {
       lines.add(
         'exterior=${boundary.spaceSemanticKey}|${boundary.side.name}|${boundary.segment.stableKey}',
@@ -1137,8 +1146,10 @@ int _wetSeparation(
         if (a == null || b == null) {
           continue;
         }
-        final dx = _axisGap(a.polygon.minX, a.polygon.maxX, b.polygon.minX, b.polygon.maxX);
-        final dy = _axisGap(a.polygon.minY, a.polygon.maxY, b.polygon.minY, b.polygon.maxY);
+        final dx = _axisGap(
+            a.polygon.minX, a.polygon.maxX, b.polygon.minX, b.polygon.maxX);
+        final dy = _axisGap(
+            a.polygon.minY, a.polygon.maxY, b.polygon.minY, b.polygon.maxY);
         maximum = _max(maximum, dx + dy);
       }
     }
