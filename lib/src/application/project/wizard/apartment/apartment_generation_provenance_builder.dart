@@ -36,8 +36,7 @@ final class ApartmentGenerationProvenanceBuilder {
     required MutationIdentityReservation reservation,
     required ApartmentGenerationProvenanceInput input,
   }) {
-    final generationId =
-        reservation.entityId<GenerationId>(generationSlot);
+    final generationId = reservation.entityId<GenerationId>(generationSlot);
     final zoneId = reservation.entityId<ZoneId>('zone:apartment');
     final generated = <EntityGenerationProvenance>[];
     final generatedIds = <EntityId>{};
