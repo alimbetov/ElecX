@@ -83,7 +83,7 @@ void main() {
     );
 
     testWidgets(
-      'contextual Wizard uses exact production mutation port and publishes one authoring result',
+      'contextual Level Wizard uses exact production mutation port and publishes one apartment authoring result',
       (tester) async {
         await tester.binding.setSurfaceSize(const Size(1000, 1000));
         addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -96,8 +96,8 @@ void main() {
           idFactory: idFactory,
           navigation: ProjectNavigationState.restore(
             project,
-            activeBuildingId: BuildingId('building-a'),
-            activeLevelId: LevelId('a-level-1'),
+            activeBuildingId: BuildingId('building-b'),
+            activeLevelId: LevelId('b-level-1'),
           ),
         );
         final wizardMutations = SharedProjectWizardMutationPort(
@@ -120,42 +120,50 @@ void main() {
 
         final start = find.byKey(const ValueKey('project-wizard-start'));
         expect(start, findsOneWidget);
+        expect(find.text('Apartment Wizard'), findsOneWidget);
         expect(tester.getSize(start).height, greaterThanOrEqualTo(48));
 
         await tester.tap(start);
         await tester.pumpAndSettle();
         expect(
-          find.byKey(const ValueKey('wizard-building-name')),
+          find.byKey(const ValueKey('apartment-rooms')),
           findsOneWidget,
         );
 
-        await tester.enterText(
-          find.byKey(const ValueKey('wizard-building-name')),
-          'Navigator Tower',
+        final generate =
+            find.byKey(const ValueKey('apartment-generate-candidates'));
+        await tester.dragUntilVisible(
+          generate,
+          find.byType(ListView).first,
+          const Offset(0, -300),
         );
-        await tester.enterText(
-          find.byKey(const ValueKey('wizard-floor-count')),
-          '2',
-        );
-        await tester.enterText(
-          find.byKey(const ValueKey('wizard-basement-count')),
-          '1',
-        );
-        await tester.tap(find.byKey(const ValueKey('wizard-generate')));
         await tester.pumpAndSettle();
-        await tester.tap(find.byKey(const ValueKey('wizard-apply')));
+        await tester.tap(generate);
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('apartment-prepare-preview')),
+          findsOneWidget,
+        );
+
+        await tester.tap(
+          find.byKey(const ValueKey('apartment-prepare-preview')),
+        );
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('apartment-apply')), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('apartment-apply')));
         await tester.pumpAndSettle();
 
         expect(commits, hasLength(1));
-        expect(commits.single.createdId, isA<BuildingId>());
+        expect(commits.single.createdId, isA<ZoneId>());
         expect(commits.single.changeSet, isNotNull);
         expect(session.project.version, LocalProjectVersion(1));
-        expect(
-          session.project.stores.buildings.values
-              .where((building) => building.name == 'Navigator Tower'),
-          hasLength(1),
-        );
-        expect(session.navigation.activeBuildingId, commits.single.createdId);
+        final createdZoneId = commits.single.createdId as ZoneId;
+        final createdZone = session.project.stores.zones[createdZoneId];
+        expect(createdZone, isNotNull);
+        expect(createdZone!.levelId, LevelId('b-level-1'));
+        expect(createdZone.spaceIds, isNotEmpty);
+        expect(session.navigation.activeBuildingId, BuildingId('building-b'));
+        expect(session.navigation.activeLevelId, LevelId('b-level-1'));
       },
     );
 
