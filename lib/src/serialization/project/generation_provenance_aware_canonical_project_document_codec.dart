@@ -79,8 +79,8 @@ final class GenerationProvenanceAwareCanonicalProjectDocumentCodec
     final manifests = registry.manifests.values.toList()
       ..sort((a, b) => a.generationId.value.compareTo(b.generationId.value));
     final entities = registry.entities.values.toList()
-      ..sort((a, b) => _entitySortKey(a.entityId)
-          .compareTo(_entitySortKey(b.entityId)));
+      ..sort((a, b) =>
+          _entitySortKey(a.entityId).compareTo(_entitySortKey(b.entityId)));
     return <String, Object?>{
       'schemaVersion': provenanceSchemaVersion,
       'manifests': [
@@ -99,8 +99,7 @@ final class GenerationProvenanceAwareCanonicalProjectDocumentCodec
             'scoringProfileVersion': manifest.scoringProfileVersion,
             'allocatorVersion': manifest.allocatorVersion,
             'geometryAlgorithmVersion': manifest.geometryAlgorithmVersion,
-            'normalizedIntentFingerprint':
-                manifest.normalizedIntentFingerprint,
+            'normalizedIntentFingerprint': manifest.normalizedIntentFingerprint,
             'selectedCandidateFingerprint':
                 manifest.selectedCandidateFingerprint,
             'projectId': manifest.projectId.value,
@@ -109,8 +108,8 @@ final class GenerationProvenanceAwareCanonicalProjectDocumentCodec
             'apartmentZoneId': manifest.apartmentZoneId.value,
             'generatedEntityIds': [
               for (final id in manifest.generatedEntityIds.toList()
-                ..sort((a, b) =>
-                    _entitySortKey(a).compareTo(_entitySortKey(b))))
+                ..sort(
+                    (a, b) => _entitySortKey(a).compareTo(_entitySortKey(b))))
                 _encodeEntityId(id),
             ],
             'removedGenerationKeys': manifest.removedGenerationKeys.toList()
@@ -123,14 +122,12 @@ final class GenerationProvenanceAwareCanonicalProjectDocumentCodec
             'entityId': _encodeEntityId(provenance.entityId),
             'generationId': provenance.generationId.value,
             'generationKey': provenance.generationKey,
-            'generatedProperties': provenance.generatedProperties
-                .map((key) => key.name)
-                .toList()
-              ..sort(),
-            'overriddenProperties': provenance.overriddenProperties
-                .map((key) => key.name)
-                .toList()
-              ..sort(),
+            'generatedProperties':
+                provenance.generatedProperties.map((key) => key.name).toList()
+                  ..sort(),
+            'overriddenProperties':
+                provenance.overriddenProperties.map((key) => key.name).toList()
+                  ..sort(),
             'lockedFromRegeneration': provenance.lockedFromRegeneration,
             'generatedBaselineFingerprint':
                 provenance.generatedBaselineFingerprint,
@@ -141,7 +138,8 @@ final class GenerationProvenanceAwareCanonicalProjectDocumentCodec
 
   static GenerationProvenanceRegistry _decodeRegistry(Object? raw) {
     final json = _map(raw, 'generationProvenance');
-    final version = _int(json['schemaVersion'], 'generationProvenance.schemaVersion');
+    final version =
+        _int(json['schemaVersion'], 'generationProvenance.schemaVersion');
     if (version != provenanceSchemaVersion) {
       throw FormatException(
         'Unsupported generation provenance schema $version; expected '
@@ -149,7 +147,8 @@ final class GenerationProvenanceAwareCanonicalProjectDocumentCodec
       );
     }
     final manifests = <GenerationId, GenerationManifest>{};
-    for (final rawManifest in _list(json['manifests'], 'generationProvenance.manifests')) {
+    for (final rawManifest
+        in _list(json['manifests'], 'generationProvenance.manifests')) {
       final value = _map(rawManifest, 'generationManifest');
       final generationId = GenerationId(
         _string(value['generationId'], 'generationManifest.generationId'),
@@ -166,15 +165,22 @@ final class GenerationProvenanceAwareCanonicalProjectDocumentCodec
           'generationManifest.originType',
         ),
         providerTemplateId: TemplateId(
-          _string(value['providerTemplateId'], 'generationManifest.providerTemplateId'),
+          _string(
+            value['providerTemplateId'],
+            'generationManifest.providerTemplateId',
+          ),
         ),
         providerTemplateVersion: _int(
           value['providerTemplateVersion'],
           'generationManifest.providerTemplateVersion',
         ),
-        catalogVersion: _int(value['catalogVersion'], 'generationManifest.catalogVersion'),
+        catalogVersion:
+            _int(value['catalogVersion'], 'generationManifest.catalogVersion'),
         apartmentTemplateId: TemplateId(
-          _string(value['apartmentTemplateId'], 'generationManifest.apartmentTemplateId'),
+          _string(
+            value['apartmentTemplateId'],
+            'generationManifest.apartmentTemplateId',
+          ),
         ),
         apartmentTemplateVersion: _int(
           value['apartmentTemplateVersion'],
@@ -183,14 +189,18 @@ final class GenerationProvenanceAwareCanonicalProjectDocumentCodec
         familyId: _string(value['familyId'], 'generationManifest.familyId'),
         variantSeedId:
             _string(value['variantSeedId'], 'generationManifest.variantSeedId'),
-        generatorVersion:
-            _string(value['generatorVersion'], 'generationManifest.generatorVersion'),
+        generatorVersion: _string(
+          value['generatorVersion'],
+          'generationManifest.generatorVersion',
+        ),
         scoringProfileVersion: _string(
           value['scoringProfileVersion'],
           'generationManifest.scoringProfileVersion',
         ),
-        allocatorVersion:
-            _string(value['allocatorVersion'], 'generationManifest.allocatorVersion'),
+        allocatorVersion: _string(
+          value['allocatorVersion'],
+          'generationManifest.allocatorVersion',
+        ),
         geometryAlgorithmVersion: _string(
           value['geometryAlgorithmVersion'],
           'generationManifest.geometryAlgorithmVersion',
@@ -203,14 +213,19 @@ final class GenerationProvenanceAwareCanonicalProjectDocumentCodec
           value['selectedCandidateFingerprint'],
           'generationManifest.selectedCandidateFingerprint',
         ),
-        projectId:
-            ProjectId(_string(value['projectId'], 'generationManifest.projectId')),
+        projectId: ProjectId(
+          _string(value['projectId'], 'generationManifest.projectId'),
+        ),
         buildingId: BuildingId(
           _string(value['buildingId'], 'generationManifest.buildingId'),
         ),
-        levelId: LevelId(_string(value['levelId'], 'generationManifest.levelId')),
+        levelId:
+            LevelId(_string(value['levelId'], 'generationManifest.levelId')),
         apartmentZoneId: ZoneId(
-          _string(value['apartmentZoneId'], 'generationManifest.apartmentZoneId'),
+          _string(
+            value['apartmentZoneId'],
+            'generationManifest.apartmentZoneId',
+          ),
         ),
         generatedEntityIds: _list(
           value['generatedEntityIds'],
@@ -224,7 +239,8 @@ final class GenerationProvenanceAwareCanonicalProjectDocumentCodec
     }
 
     final entities = <EntityId, EntityGenerationProvenance>{};
-    for (final rawEntity in _list(json['entities'], 'generationProvenance.entities')) {
+    for (final rawEntity
+        in _list(json['entities'], 'generationProvenance.entities')) {
       final value = _map(rawEntity, 'entityGenerationProvenance');
       final entityId = _decodeEntityId(value['entityId']);
       if (entities.containsKey(entityId)) {
@@ -233,10 +249,15 @@ final class GenerationProvenanceAwareCanonicalProjectDocumentCodec
       entities[entityId] = EntityGenerationProvenance(
         entityId: entityId,
         generationId: GenerationId(
-          _string(value['generationId'], 'entityGenerationProvenance.generationId'),
+          _string(
+            value['generationId'],
+            'entityGenerationProvenance.generationId',
+          ),
         ),
-        generationKey:
-            _string(value['generationKey'], 'entityGenerationProvenance.generationKey'),
+        generationKey: _string(
+          value['generationKey'],
+          'entityGenerationProvenance.generationKey',
+        ),
         generatedProperties: _enumList(
           GenerationPropertyKey.values,
           value['generatedProperties'],
@@ -299,7 +320,8 @@ final class GenerationProvenanceAwareCanonicalProjectDocumentCodec
     if (id is OpeningId) return stores.openings.containsKey(id);
     if (id is SpaceAdjacencyId) return stores.adjacencies.containsKey(id);
     if (id is BoundaryEdgeId) {
-      return stores.boundaries.values.any((topology) => topology.edges.containsKey(id));
+      return stores.boundaries.values
+          .any((topology) => topology.edges.containsKey(id));
     }
     return false;
   }
