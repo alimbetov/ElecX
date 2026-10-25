@@ -79,7 +79,8 @@ final class GraphAwareApartmentGeometryStrategyV2
       metrics: semanticValidation.metrics,
       geometryHandoff: TopologyGeometryHandoff(
         requiredSharedBoundaries: sourceHandoff.requiredSharedBoundaries,
-        forbiddenSharedBoundaryPairs: sourceHandoff.forbiddenSharedBoundaryPairs,
+        forbiddenSharedBoundaryPairs:
+            sourceHandoff.forbiddenSharedBoundaryPairs,
         requiredExteriorSpaceKeys: sourceHandoff.requiredExteriorSpaceKeys,
         requiredExteriorAssignments: sourceHandoff.requiredExteriorAssignments,
         wetCoreGroups: const [],
@@ -105,16 +106,17 @@ final class GraphAwareApartmentGeometryStrategyV2
       sourceHandoff.wetCoreGroups,
       [...candidate.interiorSpaces, ...candidate.exteriorAppendages],
     );
-    final wetIssue = wetSeparationMm > template.wetCorePolicy.maxGroupSeparationMm
-        ? GeometryValidationIssue(
-            code: 'p9.geometry.wet-core-too-dispersed',
-            severity: GeometryValidationSeverity.blocker,
-            facts: {
-              'actualMm': wetSeparationMm,
-              'maxMm': template.wetCorePolicy.maxGroupSeparationMm,
-            },
-          )
-        : null;
+    final wetIssue =
+        wetSeparationMm > template.wetCorePolicy.maxGroupSeparationMm
+            ? GeometryValidationIssue(
+                code: 'p9.geometry.wet-core-too-dispersed',
+                severity: GeometryValidationSeverity.blocker,
+                facts: {
+                  'actualMm': wetSeparationMm,
+                  'maxMm': template.wetCorePolicy.maxGroupSeparationMm,
+                },
+              )
+            : null;
     final validation = GeometryValidationReport([
       ...candidate.validation.issues,
       if (wetIssue != null) wetIssue,
