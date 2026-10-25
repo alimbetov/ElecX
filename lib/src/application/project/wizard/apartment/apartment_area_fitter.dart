@@ -2,6 +2,7 @@ import '../../../../domain/apartment_topology.dart';
 import '../../../../domain/apartment_topology/apartment_area_fit.dart';
 import '../../../../domain/apartment_topology/apartment_topology_draft.dart';
 import '../../../../domain/project_space_semantics.dart';
+import 'apartment_circulation_geometry_reserve.dart';
 import 'apartment_wizard_parameters.dart';
 import 'p9_failure.dart';
 import 'p9_sha256.dart';
@@ -25,15 +26,15 @@ final class ApartmentAreaFitResult {
 /// are allocated independently from their template preferred targets and never
 /// consume the requested interior total.
 ///
-/// Policy v2 also reserves enough fitted area for the semantic circulation hub
-/// to be realizable as a bounded P9.6 access spine. The reserve is derived only
-/// from typed access edges and catalog dimensional minima; no geometry solver or
-/// presentation state participates in P9.4.
+/// Policy v3 keeps the early semantic circulation reserve from v2 and adds a
+/// post-allocation feasibility pass. The second pass derives actual P9.6 contact
+/// spans from the final room areas and deterministically transfers surplus area
+/// into the circulation hub when the spine would otherwise be too narrow.
 final class ApartmentAreaFitter {
   const ApartmentAreaFitter();
 
-  static const String areaPolicyVersion = '2';
-  static const String allocatorVersion = '2';
+  static const String areaPolicyVersion = '3';
+  static const String allocatorVersion = '3';
   static const int maxSafeAreaDm2 = 1000000000;
   static const int squareMillimetresPerSquareDecimetre = 10000;
 
@@ -200,6 +201,28 @@ final class ApartmentAreaFitter {
         ],
       );
     }
+
+    final geometryReserve =
+        const ApartmentCirculationGeometryReserve().rebalance(
+      draft: draft,
+      request: request,
+      interiorSpaces: interior,
+      allocations: allocations,
+    );
+    if (!geometryReserve.accepted) {
+      return ApartmentAreaFitResult(
+        fittedDraft: null,
+        failures: [
+          _failure(
+            geometryReserve.failureCode!,
+            facts: geometryReserve.facts,
+          ),
+        ],
+      );
+    }
+    allocations
+      ..clear()
+      ..addAll(geometryReserve.allocations);
 
     final fittedSpaces = <FittedSpaceArea>[
       for (final space in spaces)
