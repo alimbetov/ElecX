@@ -52,6 +52,7 @@ final class ApartmentTopologyCatalogValidator {
   const ApartmentTopologyCatalogValidator();
 
   static const int maxSeedsPerTemplate = 12;
+  static const int squareMillimetresPerSquareDecimetre = 10000;
 
   List<CatalogValidationIssue> validate(ApartmentTopologyCatalog catalog) {
     final issues = <CatalogValidationIssue>[];
@@ -86,15 +87,20 @@ final class ApartmentTopologyCatalogValidator {
           ),
         );
       }
-      _validateTemplate(template, issues);
+      _validateTemplate(
+        template,
+        issues,
+        enforceGeometryAreaFeasibility: catalog.catalogVersion >= 2,
+      );
     }
     return List.unmodifiable(issues);
   }
 
   void _validateTemplate(
     ApartmentTopologyTemplate template,
-    List<CatalogValidationIssue> issues,
-  ) {
+    List<CatalogValidationIssue> issues, {
+    required bool enforceGeometryAreaFeasibility,
+  }) {
     if (template.templateVersion <= 0) {
       issues.add(
         _issue(
@@ -119,6 +125,9 @@ final class ApartmentTopologyCatalogValidator {
     _validateSeeds(template, issues);
     _validateKitchenContracts(template, issues);
     _validateAreaFeasibility(template, issues);
+    if (enforceGeometryAreaFeasibility) {
+      _validateGeometryAreaFeasibility(template, issues);
+    }
   }
 
   void _validateConstraints(
@@ -459,6 +468,37 @@ final class ApartmentTopologyCatalogValidator {
           facts: {
             'minimumRecipeAreaDm2': minimumInteriorDm2,
             'maximumRecipeAreaDm2': maximumInteriorDm2,
+          },
+        ),
+      );
+    }
+  }
+
+  void _validateGeometryAreaFeasibility(
+    ApartmentTopologyTemplate template,
+    List<CatalogValidationIssue> issues,
+  ) {
+    for (final space in template.spaces) {
+      final geometry = space.geometry;
+      final minLongSideMm = geometry.minLongSideMm ?? geometry.minShortSideMm;
+      final minimumRectangularAreaMm2 =
+          geometry.minShortSideMm * minLongSideMm;
+      final declaredMinimumAreaMm2 =
+          space.minAreaDm2 * squareMillimetresPerSquareDecimetre;
+      if (declaredMinimumAreaMm2 >= minimumRectangularAreaMm2) {
+        continue;
+      }
+      issues.add(
+        _issue(
+          template,
+          'p9.catalog.infeasible-space-geometry-area',
+          'Space minimum area cannot realize its minimum rectangular dimensions.',
+          facts: {
+            'semanticKey': space.semanticKey,
+            'minAreaDm2': space.minAreaDm2,
+            'minShortSideMm': geometry.minShortSideMm,
+            'minLongSideMm': minLongSideMm,
+            'minimumRectangularAreaMm2': minimumRectangularAreaMm2,
           },
         ),
       );
