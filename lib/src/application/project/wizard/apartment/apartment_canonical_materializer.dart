@@ -106,7 +106,8 @@ final class ApartmentCanonicalMaterializer {
             reservation.entityId<SpaceId>(_spaceSlot(space.semanticKey)),
     };
 
-    final nextSpaces = Map<SpaceId, ProjectSpaceEntity>.from(current.stores.spaces);
+    final nextSpaces =
+        Map<SpaceId, ProjectSpaceEntity>.from(current.stores.spaces);
     final nextBoundaries =
         Map<SpaceId, SpaceBoundaryTopology>.from(current.stores.boundaries);
     final affected = <EntityId>{target.levelId};
@@ -175,8 +176,9 @@ final class ApartmentCanonicalMaterializer {
       zoneIds: {...level.zoneIds, zoneId},
       spaceIds: {...level.spaceIds, ...spaceIds.values},
     );
-    final nextLevels = Map<LevelId, ProjectLevelEntity>.from(current.stores.levels)
-      ..[target.levelId] = nextLevel;
+    final nextLevels =
+        Map<LevelId, ProjectLevelEntity>.from(current.stores.levels)
+          ..[target.levelId] = nextLevel;
 
     final nextOpenings =
         Map<OpeningId, ProjectOpeningEntity>.from(current.stores.openings);
@@ -193,9 +195,8 @@ final class ApartmentCanonicalMaterializer {
         );
       }
       final fromSpaceId = spaceIds[fromKey]!;
-      final toSpaceId = intent.toSpaceKey == null
-          ? null
-          : spaceIds[intent.toSpaceKey!];
+      final toSpaceId =
+          intent.toSpaceKey == null ? null : spaceIds[intent.toSpaceKey!];
       if (intent.toSpaceKey != null && toSpaceId == null) {
         throw ApartmentMaterializationException(
           'p9.materialize.opening-intent-missing',
@@ -240,7 +241,8 @@ final class ApartmentCanonicalMaterializer {
         id: openingId,
         levelId: target.levelId,
         kind: switch (intent.kind) {
-          GeometryOpeningKind.primaryEntry || GeometryOpeningKind.door =>
+          GeometryOpeningKind.primaryEntry ||
+          GeometryOpeningKind.door =>
             OpeningKind.door,
           GeometryOpeningKind.openPassage => OpeningKind.openPassage,
         },
@@ -266,7 +268,8 @@ final class ApartmentCanonicalMaterializer {
       openingByPair[_pairKey(intent.fromSpaceKey!, intent.toSpaceKey!)] = index;
     }
 
-    final nextAdjacencies = Map<SpaceAdjacencyId, ProjectSpaceAdjacencyEntity>.from(
+    final nextAdjacencies =
+        Map<SpaceAdjacencyId, ProjectSpaceAdjacencyEntity>.from(
       current.stores.adjacencies,
     );
     final pairs = <String, ({String left, String right})>{};
@@ -283,9 +286,8 @@ final class ApartmentCanonicalMaterializer {
         _adjacencySlot(pairKey),
       );
       final openingIndex = openingByPair[pairKey];
-      final openingIntent = openingIndex == null
-          ? null
-          : candidate.openingIntents[openingIndex];
+      final openingIntent =
+          openingIndex == null ? null : candidate.openingIntents[openingIndex];
       final openingId = openingIndex == null ? null : openingIds[openingIndex];
       final kind = switch (openingIntent?.kind) {
         GeometryOpeningKind.door => SpaceAdjacencyKind.opening,
@@ -333,7 +335,8 @@ final class ApartmentCanonicalMaterializer {
     yield CreateEntityOperation(entityId: zoneId, ownerId: target.levelId);
 
     for (final space in _generatedSpaces(candidate)) {
-      final spaceId = reservation.entityId<SpaceId>(_spaceSlot(space.semanticKey));
+      final spaceId =
+          reservation.entityId<SpaceId>(_spaceSlot(space.semanticKey));
       yield CreateEntityOperation(entityId: spaceId, ownerId: zoneId);
       for (var index = 0; index < space.polygon.segments.length; index++) {
         yield CreateEntityOperation(
@@ -417,9 +420,11 @@ final class ApartmentCanonicalMaterializer {
       );
     }
     final hasSpaces = level.spaceIds.isNotEmpty ||
-        current.stores.spaces.values.any((space) => space.levelId == target.levelId);
+        current.stores.spaces.values
+            .any((space) => space.levelId == target.levelId);
     final hasZones = level.zoneIds.isNotEmpty ||
-        current.stores.zones.values.any((zone) => zone.levelId == target.levelId);
+        current.stores.zones.values
+            .any((zone) => zone.levelId == target.levelId);
     if (hasSpaces || hasZones) {
       throw const ApartmentMaterializationException(
         'p9.materialize.target-not-empty',
@@ -467,7 +472,8 @@ final class ApartmentCanonicalMaterializer {
               semanticKey.startsWith('${spec.semanticKey}:'),
         )
         .toList()
-      ..sort((left, right) => right.semanticKey.length.compareTo(left.semanticKey.length));
+      ..sort((left, right) =>
+          right.semanticKey.length.compareTo(left.semanticKey.length));
     if (matches.isEmpty) {
       throw ApartmentMaterializationException(
         'p9.materialize.candidate-invalid',
@@ -536,7 +542,8 @@ final class ApartmentCanonicalMaterializer {
     return matches.single;
   }
 
-  bool _edgeContainsSegment(ProjectBoundaryEdge edge, GeometrySegmentMm segment) {
+  bool _edgeContainsSegment(
+      ProjectBoundaryEdge edge, GeometrySegmentMm segment) {
     final edgeVertical = edge.start.xMm == edge.end.xMm;
     if (edgeVertical != segment.vertical) return false;
     if (edgeVertical) {
@@ -616,7 +623,8 @@ final class ApartmentCanonicalMaterializer {
     if (id is SpaceAdjacencyId) {
       return current.stores.adjacencies.containsKey(id);
     }
-    if (id is BoundaryEdgeId) return current.index.boundaryEdges.containsKey(id);
+    if (id is BoundaryEdgeId)
+      return current.index.boundaryEdges.containsKey(id);
     return false;
   }
 
