@@ -1,5 +1,4 @@
 import '../../../../domain/apartment_topology/apartment_candidate_ranking.dart';
-import '../../../../domain/apartment_topology/apartment_topology_catalog.dart';
 import '../../../../domain/apartment_topology/apartment_topology_catalog_v4.dart';
 import '../../../../domain/apartment_topology/apartment_topology_models.dart';
 import '../../../../domain/apartment_topology/apartment_vector_scene.dart';
@@ -145,8 +144,8 @@ final class ApartmentCandidateSetService {
       if (!fit.isValid) {
         continue;
       }
-      final template = _templateForDraft(templates, draft.templateId.value,
-          draft.templateVersion);
+      final template = _templateForDraft(
+          templates, draft.templateId.value, draft.templateVersion);
       if (template == null) {
         failures.add(
           _providerFailure(
@@ -215,7 +214,8 @@ final class ApartmentCandidateSetService {
     );
     failures.addAll(ranking.failures);
     if (ranking.hasBlockers || ranking.selectedCandidates.isEmpty) {
-      if (!failures.any((failure) => failure.code == 'p9.provider.no-candidates')) {
+      if (!failures
+          .any((failure) => failure.code == 'p9.provider.no-candidates')) {
         failures.add(_providerFailure('p9.provider.no-candidates'));
       }
       return ApartmentCandidateSetGenerationResult(
@@ -338,7 +338,8 @@ final class ApartmentCandidateSetService {
         project.stores.spaces.values
             .any((space) => space.levelId == target.levelId);
     final hasZones = level.zoneIds.isNotEmpty ||
-        project.stores.zones.values.any((zone) => zone.levelId == target.levelId);
+        project.stores.zones.values
+            .any((zone) => zone.levelId == target.levelId);
     if (hasSpaces || hasZones) {
       failures.add(
         _providerFailure(
