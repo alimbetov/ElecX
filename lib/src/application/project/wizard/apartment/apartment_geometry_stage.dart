@@ -45,7 +45,8 @@ final class ApartmentGeometryStage {
     ]);
     final candidate = _copyWithValidation(rawCandidate, combinedReport);
     final failures = <P9Failure>[...generated.failures];
-    final existingFailureCodes = failures.map((failure) => failure.code).toSet();
+    final existingFailureCodes =
+        failures.map((failure) => failure.code).toSet();
     for (final issue in accessReport.issues) {
       if (issue.severity != GeometryValidationSeverity.blocker ||
           !existingFailureCodes.add(issue.code)) {
