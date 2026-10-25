@@ -330,7 +330,10 @@ final class GenerationProvenanceRegistry {
       );
     }
     final remainingIds = {...manifest.generatedEntityIds}..remove(entityId);
-    final removedKeys = {...manifest.removedGenerationKeys, current.generationKey};
+    final removedKeys = {
+      ...manifest.removedGenerationKeys,
+      current.generationKey
+    };
     final nextEntities =
         Map<EntityId, EntityGenerationProvenance>.from(entities)
           ..remove(entityId);
@@ -354,7 +357,8 @@ final class GenerationProvenanceRegistry {
     final keysByGeneration = <GenerationId, Set<String>>{};
     for (final entry in manifests.entries) {
       final manifest = entry.value;
-      if (entry.key != manifest.generationId || manifest.projectId != projectId) {
+      if (entry.key != manifest.generationId ||
+          manifest.projectId != projectId) {
         issues.add(
           GenerationProvenanceIssue(
             code: GenerationProvenanceIssueCode.entityManifestMismatch,
