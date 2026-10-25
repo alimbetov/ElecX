@@ -27,8 +27,12 @@ final class ApartmentGeometryStage {
     required ApartmentTopologyTemplate template,
     required NormalizedApartmentRequest request,
   }) {
-    final geometryHandoff = const ApartmentGeometryHandoffBuilder().build(
+    final sourceGeometryHandoff = const ApartmentGeometryHandoffBuilder().build(
       fittedDraft.draft,
+    );
+    final geometryHandoff = _effectiveGeometryHandoff(
+      sourceGeometryHandoff,
+      request,
     );
     final effectiveSemanticValidation = TopologySemanticValidation(
       blockers: semanticValidation.blockers,
@@ -47,6 +51,24 @@ final class ApartmentGeometryStage {
       return ApartmentGeometryStageResult(
         candidate: null,
         failures: generated.failures,
+      );
+    }
+    if (rawCandidate.geometryAlgorithmVersion != strategy.strategyId) {
+      return ApartmentGeometryStageResult(
+        candidate: null,
+        failures: [
+          ...generated.failures,
+          P9Failure(
+            code: 'p9.geometry.strategy-version-mismatch',
+            stage: P9FailureStage.geometry,
+            severity: P9FailureSeverity.blocker,
+            facts: {
+              'strategyId': strategy.strategyId,
+              'candidateAlgorithmVersion':
+                  rawCandidate.geometryAlgorithmVersion,
+            },
+          ),
+        ],
       );
     }
 
@@ -93,6 +115,26 @@ final class ApartmentGeometryStage {
     return ApartmentGeometryStageResult(
       candidate: candidate,
       failures: failures,
+    );
+  }
+
+  TopologyGeometryHandoff _effectiveGeometryHandoff(
+    TopologyGeometryHandoff source,
+    NormalizedApartmentRequest request,
+  ) {
+    if (request.exteriorExposurePreference !=
+        ApartmentExteriorExposurePreference.any) {
+      return source;
+    }
+    return TopologyGeometryHandoff(
+      requiredSharedBoundaries: source.requiredSharedBoundaries,
+      forbiddenSharedBoundaryPairs: source.forbiddenSharedBoundaryPairs,
+      requiredExteriorSpaceKeys: source.requiredExteriorSpaceKeys,
+      requiredExteriorAssignments: const {},
+      wetCoreGroups: source.wetCoreGroups,
+      accessIntents: source.accessIntents,
+      circulationAnchorKeys: source.circulationAnchorKeys,
+      entrySpaceKey: source.entrySpaceKey,
     );
   }
 
