@@ -33,8 +33,7 @@ final class InstallationGuideSource {
   final String? sourceUri;
   final InstallationGuideAuthority authority;
 
-  bool get isRevisionPinned =>
-      revision != null && revision!.trim().isNotEmpty;
+  bool get isRevisionPinned => revision != null && revision!.trim().isNotEmpty;
 }
 
 /// A visual/semantic installation guide bound to one physical room surface.
