@@ -61,9 +61,10 @@ final class AccessSpineApartmentGeometryStrategyV1
 /// as a second backend. A backend is never selected merely because it produced
 /// geometry.
 ///
-/// Wet-core membership is a proximity constraint, not a forced connected
-/// packing component. It is removed from backend grouping heuristics and used
-/// as a hard qualification criterion when the strategy selects a backend.
+/// Wet-core membership remains a proximity constraint. The access-spine
+/// backend uses each wet group only as a deterministic co-location heuristic;
+/// the authoritative maximum separation is still validated independently after
+/// packing and therefore cannot be bypassed by the heuristic.
 final class GraphAwareApartmentGeometryStrategyV2
     implements ApartmentGeometryStrategy {
   const GraphAwareApartmentGeometryStrategyV2();
@@ -85,7 +86,7 @@ final class GraphAwareApartmentGeometryStrategyV2
       forbiddenSharedBoundaryPairs: sourceHandoff.forbiddenSharedBoundaryPairs,
       requiredExteriorSpaceKeys: sourceHandoff.requiredExteriorSpaceKeys,
       requiredExteriorAssignments: sourceHandoff.requiredExteriorAssignments,
-      wetCoreGroups: const [],
+      wetCoreGroups: sourceHandoff.wetCoreGroups,
       accessIntents: sourceHandoff.accessIntents,
       circulationAnchorKeys: sourceHandoff.circulationAnchorKeys,
       entrySpaceKey: sourceHandoff.entrySpaceKey,
