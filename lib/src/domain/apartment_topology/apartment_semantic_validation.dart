@@ -1,4 +1,5 @@
 import 'apartment_topology_draft.dart';
+import 'apartment_topology_models.dart';
 
 final class SemanticSpacePair {
   SemanticSpacePair(String leftKey, String rightKey)
@@ -9,6 +10,23 @@ final class SemanticSpacePair {
   final String rightKey;
 
   String get stableKey => '$leftKey|$rightKey';
+}
+
+final class RequiredSharedBoundaryIntent {
+  RequiredSharedBoundaryIntent({
+    required String fromSpaceKey,
+    required String toSpaceKey,
+    required this.kind,
+    required this.minSharedBoundaryMm,
+  })  : assert(minSharedBoundaryMm > 0),
+        pair = SemanticSpacePair(fromSpaceKey, toSpaceKey);
+
+  final SemanticSpacePair pair;
+  final TopologyAdjacencyKind kind;
+  final int minSharedBoundaryMm;
+
+  String get stableKey =>
+      '${pair.stableKey}|${kind.name}|$minSharedBoundaryMm';
 }
 
 final class P9SemanticViolation {
@@ -77,22 +95,37 @@ final class SemanticAccessIntent {
 /// contract instead of inferring topology from labels or presentation state.
 final class TopologyGeometryHandoff {
   TopologyGeometryHandoff({
+    Iterable<RequiredSharedBoundaryIntent> requiredSharedBoundaries = const [],
     Iterable<SemanticSpacePair> requiredSharedBoundaryPairs = const [],
     Iterable<SemanticSpacePair> forbiddenSharedBoundaryPairs = const [],
     Iterable<String> requiredExteriorSpaceKeys = const [],
+    Map<String, DraftExteriorSide> requiredExteriorAssignments = const {},
     Iterable<Iterable<String>> wetCoreGroups = const [],
     Iterable<SemanticAccessIntent> accessIntents = const [],
     Iterable<String> circulationAnchorKeys = const [],
-  })  : requiredSharedBoundaryPairs = List.unmodifiable(
-          requiredSharedBoundaryPairs.toList()
-            ..sort((a, b) => a.stableKey.compareTo(b.stableKey)),
+    this.entrySpaceKey,
+  })  : requiredSharedBoundaries = List.unmodifiable(
+          _normalizeRequiredSharedBoundaries(
+            requiredSharedBoundaries,
+            requiredSharedBoundaryPairs,
+          ),
         ),
         forbiddenSharedBoundaryPairs = List.unmodifiable(
           forbiddenSharedBoundaryPairs.toList()
             ..sort((a, b) => a.stableKey.compareTo(b.stableKey)),
         ),
+        requiredExteriorAssignments = Map.unmodifiable(
+          Map.fromEntries(
+            requiredExteriorAssignments.entries.toList()
+              ..sort((a, b) => a.key.compareTo(b.key)),
+          ),
+        ),
         requiredExteriorSpaceKeys = List.unmodifiable(
-          requiredExteriorSpaceKeys.toSet().toList()..sort(),
+          {
+            ...requiredExteriorSpaceKeys,
+            ...requiredExteriorAssignments.keys,
+          }.toList()
+            ..sort(),
         ),
         wetCoreGroups = List.unmodifiable(
           wetCoreGroups
@@ -111,12 +144,18 @@ final class TopologyGeometryHandoff {
           circulationAnchorKeys.toSet().toList()..sort(),
         );
 
-  final List<SemanticSpacePair> requiredSharedBoundaryPairs;
+  final List<RequiredSharedBoundaryIntent> requiredSharedBoundaries;
   final List<SemanticSpacePair> forbiddenSharedBoundaryPairs;
   final List<String> requiredExteriorSpaceKeys;
+  final Map<String, DraftExteriorSide> requiredExteriorAssignments;
   final List<List<String>> wetCoreGroups;
   final List<SemanticAccessIntent> accessIntents;
   final List<String> circulationAnchorKeys;
+  final String? entrySpaceKey;
+
+  List<SemanticSpacePair> get requiredSharedBoundaryPairs => List.unmodifiable(
+        requiredSharedBoundaries.map((intent) => intent.pair),
+      );
 }
 
 final class TopologySemanticValidation {
@@ -139,4 +178,25 @@ final class TopologySemanticValidation {
   final TopologyGeometryHandoff geometryHandoff;
 
   bool get accepted => blockers.isEmpty;
+}
+
+List<RequiredSharedBoundaryIntent> _normalizeRequiredSharedBoundaries(
+  Iterable<RequiredSharedBoundaryIntent> intents,
+  Iterable<SemanticSpacePair> legacyPairs,
+) {
+  final normalized = intents.toList();
+  if (normalized.isEmpty) {
+    normalized.addAll(
+      legacyPairs.map(
+        (pair) => RequiredSharedBoundaryIntent(
+          fromSpaceKey: pair.leftKey,
+          toSpaceKey: pair.rightKey,
+          kind: TopologyAdjacencyKind.directBoundary,
+          minSharedBoundaryMm: 1,
+        ),
+      ),
+    );
+  }
+  normalized.sort((a, b) => a.stableKey.compareTo(b.stableKey));
+  return normalized;
 }
