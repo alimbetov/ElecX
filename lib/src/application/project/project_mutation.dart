@@ -480,11 +480,18 @@ final class ProjectMutationSession {
     final commandType = _requireCommandType(request.command);
     final before = _current;
     final candidate = request.command.buildCandidate(before);
-    CandidateGraphValidator.validate(current: before, candidate: candidate);
     var candidateState = candidate.resolveState(before);
     candidateState = _withTrackedGenerationProvenance(
       before: before,
       candidateState: candidateState,
+    );
+    final trackedCandidate = ProjectCommandCandidate.fromState(
+      state: candidateState,
+      affectedEntityIds: candidate.affectedEntityIds,
+    );
+    CandidateGraphValidator.validate(
+      current: before,
+      candidate: trackedCandidate,
     );
     candidateState = _withDurableBoundaryRegistry(candidateState);
     _validateProvenance(before.id, candidateState);
@@ -515,11 +522,18 @@ final class ProjectMutationSession {
     final before = _current;
     final beforeState = ProjectMutableState.fromProject(before);
     final candidate = request.command.buildCandidate(before);
-    CandidateGraphValidator.validate(current: before, candidate: candidate);
     var candidateState = candidate.resolveState(before);
     candidateState = _withTrackedGenerationProvenance(
       before: before,
       candidateState: candidateState,
+    );
+    final trackedCandidate = ProjectCommandCandidate.fromState(
+      state: candidateState,
+      affectedEntityIds: candidate.affectedEntityIds,
+    );
+    CandidateGraphValidator.validate(
+      current: before,
+      candidate: trackedCandidate,
     );
     candidateState = _withDurableBoundaryRegistry(candidateState);
     _validateProvenance(before.id, candidateState);
@@ -663,7 +677,8 @@ final class ProjectMutationSession {
         before.engineeringMetadata.generationProvenanceRegistry;
     if (beforeRegistry.entities.isEmpty) return candidateState;
 
-    var registry = candidateState.engineeringMetadata.generationProvenanceRegistry;
+    var registry =
+        candidateState.engineeringMetadata.generationProvenanceRegistry;
     for (final entry in beforeRegistry.entities.entries) {
       final entityId = entry.key;
       final provenance = entry.value;
