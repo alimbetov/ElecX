@@ -9,6 +9,7 @@ import '../../project_mutation_reservation.dart';
 import '../wizard_contracts.dart';
 import 'apartment_candidate_identity.dart';
 import 'apartment_candidate_set_service.dart';
+import 'apartment_canonical_materializer.dart';
 import 'apartment_wizard_parameters.dart';
 import 'p9_failure.dart';
 
@@ -22,21 +23,24 @@ final class ApartmentWizardProviderException implements Exception {
   String toString() => code;
 }
 
-/// Production P9.9 adapter into the shared P8 Wizard provider registry.
+/// Production P9 adapter into the shared P8 Wizard provider registry.
 ///
 /// The provider is stateless and reentrant. Candidate exploration remains in
 /// [ApartmentCandidateSetService] / session-owned exploration state. During P8
-/// generate it deterministically regenerates the current candidate set and
-/// resolves the exact transient selection; it never substitutes a new top card.
+/// generation it deterministically resolves the exact transient selection and
+/// hands it to one reserved P8 mutation command. Preview materialization is pure
+/// and Apply commits the frozen preview candidate without rerunning P9.
 final class ApartmentWizardProvider
     extends TypedWizardProvider<ApartmentWizardParameters> {
   const ApartmentWizardProvider({
     this.candidateSetService = const ApartmentCandidateSetService(),
+    this.materializer = const ApartmentCanonicalMaterializer(),
   });
 
   static final WizardFamilyId familyId = WizardFamilyId('apartment');
 
   final ApartmentCandidateSetService candidateSetService;
+  final ApartmentCanonicalMaterializer materializer;
 
   @override
   WizardProviderDescriptor get descriptor => WizardProviderDescriptor(
@@ -175,6 +179,7 @@ final class ApartmentWizardProvider
       candidateIdentity: selected.identity,
       selectedCandidate: selected.rankedCandidate.candidate,
       template: selected.template,
+      materializer: materializer,
     );
   }
 }
@@ -185,13 +190,10 @@ WizardValidationIssue _issue(String code) => WizardValidationIssue(
       severity: WizardIssueSeverity.blocker,
     );
 
-/// P9.9 exact-selection handoff into the reserved P8 command boundary.
-///
-/// This command deliberately carries only semantic candidate state. P9.10 adds
-/// apartment-aware preview/diff projection and P9.11 replaces the neutral
-/// candidate builder with canonical Zone/Space/Boundary materialization. Until
-/// then this handoff is a safe no-op at the mutation layer: it allocates no IDs
-/// and cannot mutate canonical state accidentally.
+/// Exact selected-candidate handoff into the shared P8 reserved mutation
+/// lifecycle. Identity reservation and canonical candidate construction are
+/// deterministic and pure; P8 owns version checks, frozen Preview, commit and
+/// Undo/Redo.
 final class ApartmentReservedProjectCommand implements ReservedProjectCommand {
   const ApartmentReservedProjectCommand({
     required this.target,
@@ -200,6 +202,7 @@ final class ApartmentReservedProjectCommand implements ReservedProjectCommand {
     required this.candidateIdentity,
     required this.selectedCandidate,
     required this.template,
+    this.materializer = const ApartmentCanonicalMaterializer(),
   });
 
   final LevelWizardTarget target;
@@ -208,13 +211,15 @@ final class ApartmentReservedProjectCommand implements ReservedProjectCommand {
   final ApartmentCandidateIdentity candidateIdentity;
   final ApartmentGeometryCandidate selectedCandidate;
   final ApartmentTopologyTemplate template;
+  final ApartmentCanonicalMaterializer materializer;
 
   @override
-  String get commandType => 'p9.apartment.prepare';
+  String get commandType => 'p9.apartment.materialize';
 
   @override
   String get normalizedIntentKey => jsonEncode({
         'command': commandType,
+        'materializerVersion': ApartmentCanonicalMaterializer.materializerVersion,
         'providerTemplateId': descriptor.templateId.value,
         'providerTemplateVersion': descriptor.templateVersion,
         'generatorVersion': descriptor.generatorVersion,
@@ -235,33 +240,36 @@ final class ApartmentReservedProjectCommand implements ReservedProjectCommand {
 
   @override
   MutationIdentityReservation reserveIdentities(EntityIdFactory factory) =>
-      MutationIdentityReservation.allocate(factory: factory);
+      materializer.reserveIdentities(
+        factory: factory,
+        candidate: selectedCandidate,
+      );
 
   @override
   void validateReservation({
     required ProjectAggregateRoot current,
     required MutationIdentityReservation reservation,
   }) {
-    _validateCurrentTarget(current);
-    if (reservation.slots.isNotEmpty) {
-      throw const ApartmentWizardProviderException(
-        'p9.provider.candidate-set-stale',
-        {'reason': 'unexpected-p9.9-reservation'},
-      );
-    }
+    materializer.validateReservation(
+      current: current,
+      target: target,
+      candidate: selectedCandidate,
+      reservation: reservation,
+    );
   }
 
   @override
   ProjectCommandCandidate buildCandidate({
     required ProjectAggregateRoot current,
     required MutationIdentityReservation reservation,
-  }) {
-    validateReservation(current: current, reservation: reservation);
-    return ProjectCommandCandidate.fromState(
-      state: ProjectMutableState.fromProject(current),
-      affectedEntityIds: const <EntityId>[],
-    );
-  }
+  }) =>
+      materializer.buildCandidate(
+        current: current,
+        target: target,
+        candidate: selectedCandidate,
+        template: template,
+        reservation: reservation,
+      );
 
   @override
   Iterable<ProjectSemanticOperation> semanticOperations({
@@ -269,36 +277,16 @@ final class ApartmentReservedProjectCommand implements ReservedProjectCommand {
     required ProjectAggregateRoot candidate,
     required MutationIdentityReservation reservation,
   }) sync* {
-    _validateCurrentTarget(before);
-  }
-
-  void _validateCurrentTarget(ProjectAggregateRoot current) {
-    if (current.id != target.projectId || current.siteId != target.siteId) {
-      throw const ApartmentWizardProviderException(
-        'p9.provider.target-missing',
-      );
-    }
-    final level = current.stores.levels[target.levelId];
-    if (level == null) {
-      throw const ApartmentWizardProviderException(
-        'p9.provider.target-missing',
-      );
-    }
-    if (level.buildingId != target.buildingId) {
-      throw const ApartmentWizardProviderException(
-        'p9.provider.target-building-mismatch',
-      );
-    }
-    final hasSpaces = level.spaceIds.isNotEmpty ||
-        current.stores.spaces.values
-            .any((space) => space.levelId == target.levelId);
-    final hasZones = level.zoneIds.isNotEmpty ||
-        current.stores.zones.values
-            .any((zone) => zone.levelId == target.levelId);
-    if (hasSpaces || hasZones) {
-      throw const ApartmentWizardProviderException(
-        'p9.provider.target-not-empty',
-      );
-    }
+    materializer.validateReservation(
+      current: before,
+      target: target,
+      candidate: selectedCandidate,
+      reservation: reservation,
+    );
+    yield* materializer.semanticOperations(
+      target: target,
+      candidate: selectedCandidate,
+      reservation: reservation,
+    );
   }
 }
