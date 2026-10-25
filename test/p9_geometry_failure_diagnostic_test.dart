@@ -41,6 +41,22 @@ void main() {
     );
   });
 
+  test('P9.6 diagnostic: 4-room separate rejection codes are visible', () {
+    _expectGeometryPath(
+      const ApartmentRequestInput(
+        habitableRoomCount: 4,
+        approximateAreaDm2: 10000,
+        bathroomCount: 1,
+        separateWcCount: 0,
+        balconyCount: 0,
+        balconyKind: ApartmentBalconyKind.none,
+        kitchenMode: ApartmentKitchenMode.separate,
+        corridorMode: ApartmentCorridorMode.auto,
+        exteriorExposurePreference: ApartmentExteriorExposurePreference.any,
+      ),
+    );
+  });
+
   test('P9.6 diagnostic: 2-room open-plan rejection codes are visible', () {
     _expectGeometryPath(
       const ApartmentRequestInput(
@@ -59,7 +75,8 @@ void main() {
 }
 
 void _expectGeometryPath(ApartmentRequestInput input) {
-  final normalized = const ApartmentRequestNormalizer().normalize(input).request!;
+  final normalized =
+      const ApartmentRequestNormalizer().normalize(input).request!;
   final catalog = P9ApartmentTopologyCatalogV4.create();
   final templates = const ApartmentTopologyCatalogFilter()
       .compatibleTemplates(catalog, normalized);
