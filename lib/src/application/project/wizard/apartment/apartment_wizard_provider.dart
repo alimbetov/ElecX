@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../../../../domain/apartment_topology.dart';
 import '../../../../domain/apartment_topology/apartment_geometry.dart';
 import '../../../../domain/apartment_topology/apartment_topology_models.dart';
 import '../../../../domain/project_aggregate.dart';
