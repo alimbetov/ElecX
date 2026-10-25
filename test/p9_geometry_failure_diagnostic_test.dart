@@ -57,6 +57,22 @@ void main() {
     );
   });
 
+  test('P9.6 diagnostic: 6-room separate rejection codes are visible', () {
+    _expectGeometryPath(
+      const ApartmentRequestInput(
+        habitableRoomCount: 6,
+        approximateAreaDm2: 16000,
+        bathroomCount: 1,
+        separateWcCount: 0,
+        balconyCount: 0,
+        balconyKind: ApartmentBalconyKind.none,
+        kitchenMode: ApartmentKitchenMode.separate,
+        corridorMode: ApartmentCorridorMode.auto,
+        exteriorExposurePreference: ApartmentExteriorExposurePreference.any,
+      ),
+    );
+  });
+
   test('P9.6 diagnostic: 2-room open-plan rejection codes are visible', () {
     _expectGeometryPath(
       const ApartmentRequestInput(
