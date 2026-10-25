@@ -143,8 +143,10 @@ void main() {
           before: harness.fixture.project,
           preview: harness.session.preview!,
         );
-        expect(repeated.entries.map((entry) => entry.semanticKey).toList(),
-            baseline);
+        expect(
+          repeated.entries.map((entry) => entry.semanticKey).toList(),
+          baseline,
+        );
       }
     });
 
@@ -190,7 +192,8 @@ void main() {
       expect(svg, isNot(contains('href=')));
     });
 
-    test('Apply commits the frozen preview exactly once and Undo restores before',
+    test(
+        'Apply commits frozen preview once; Undo restores active state and retains edge ownership',
         () {
       final harness = _Harness.create(seed: 9104);
       final versionBefore = harness.mutations.current.version;
@@ -198,7 +201,13 @@ void main() {
       _prepare(harness.session, harness.parameters);
       expect(harness.session.generatePreview(), isTrue,
           reason: '${harness.session.failure}');
-      final previewSignature = _canonicalSignature(harness.session.preview!.candidate);
+      final previewCandidate = harness.session.preview!.candidate;
+      final previewSignature = _canonicalSignature(previewCandidate);
+      final issuedBoundaryOwners = Map<BoundaryEdgeId, SpaceId>.from(
+        previewCandidate
+            .engineeringMetadata.boundaryEdgeIdentityRegistry.owners,
+      );
+      expect(issuedBoundaryOwners, isNotEmpty);
 
       expect(harness.session.confirm(), isTrue,
           reason: '${harness.session.failure}');
@@ -212,6 +221,11 @@ void main() {
       final undo = harness.mutations.undo(harness.mutations.current.version);
       expect(undo, isNotNull);
       expect(_canonicalSignature(harness.mutations.current), beforeSignature);
+      final durableRegistry = harness
+          .mutations.current.engineeringMetadata.boundaryEdgeIdentityRegistry;
+      for (final entry in issuedBoundaryOwners.entries) {
+        expect(durableRegistry.ownerOf(entry.key), entry.value);
+      }
     });
 
     test('Cancel after Preview leaves version, stores and Undo unchanged', () {
@@ -435,13 +449,6 @@ String _canonicalSignature(ProjectAggregateRoot project) {
       '${adjacency.spaceBId.value}|${adjacency.kind.name}|'
       '${adjacency.openingId?.value ?? ''}',
     );
-  }
-  final owners = project.engineeringMetadata.boundaryEdgeIdentityRegistry.owners
-      .entries
-      .toList()
-    ..sort((a, b) => a.key.value.compareTo(b.key.value));
-  for (final entry in owners) {
-    lines.add('edge-owner|${entry.key.value}|${entry.value.value}');
   }
   final hosts = project.engineeringMetadata.boundaryHostedObjectRegistry.references
       .entries
