@@ -1,3 +1,4 @@
+import '../apartment_topology.dart';
 import '../project_space_semantics.dart';
 import 'apartment_topology_catalog.dart';
 import 'apartment_topology_catalog_v3.dart';
