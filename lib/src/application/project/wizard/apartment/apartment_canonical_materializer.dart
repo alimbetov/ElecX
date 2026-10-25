@@ -379,6 +379,7 @@ final class ApartmentCanonicalMaterializer {
   ) {
     _validateCandidate(candidate);
     final slots = <String, ReservedEntityIdKind>{
+      _generationSlot: ReservedEntityIdKind.generation,
       _zoneSlot: ReservedEntityIdKind.zone,
     };
     for (final space in _generatedSpaces(candidate)) {
@@ -626,6 +627,10 @@ final class ApartmentCanonicalMaterializer {
     if (id is BoundaryEdgeId) {
       return current.index.boundaryEdges.containsKey(id);
     }
+    if (id is GenerationId) {
+      return current.engineeringMetadata.generationProvenanceRegistry.manifests
+          .containsKey(id);
+    }
     return false;
   }
 
@@ -635,10 +640,12 @@ final class ApartmentCanonicalMaterializer {
         ReservedEntityIdKind.opening => id is OpeningId,
         ReservedEntityIdKind.spaceAdjacency => id is SpaceAdjacencyId,
         ReservedEntityIdKind.boundaryEdge => id is BoundaryEdgeId,
+        ReservedEntityIdKind.generation => id is GenerationId,
         _ => false,
       };
 }
 
+const String _generationSlot = 'generation:apartment';
 const String _zoneSlot = 'zone:apartment';
 String _spaceSlot(String semanticKey) => 'space:$semanticKey';
 String _edgeSlot(String semanticKey, int index) => 'edge:$semanticKey:$index';
