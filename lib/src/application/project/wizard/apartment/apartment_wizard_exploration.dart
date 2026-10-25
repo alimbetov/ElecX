@@ -200,14 +200,18 @@ final class ApartmentWizardExplorationController {
         status = parameters.selection == null
             ? ApartmentWizardExplorationStatus.candidatesReady
             : ApartmentWizardExplorationStatus.candidateSelected;
+        break;
       case ApartmentWizardExplorationStatus.candidateSelected:
         status = ApartmentWizardExplorationStatus.candidatesReady;
+        break;
       case ApartmentWizardExplorationStatus.candidatesReady:
       case ApartmentWizardExplorationStatus.failed:
         status = ApartmentWizardExplorationStatus.editingParameters;
+        break;
       case ApartmentWizardExplorationStatus.generating:
         _inFlight = null;
         status = ApartmentWizardExplorationStatus.editingParameters;
+        break;
       case ApartmentWizardExplorationStatus.editingParameters:
       case ApartmentWizardExplorationStatus.completed:
       case ApartmentWizardExplorationStatus.cancelled:
