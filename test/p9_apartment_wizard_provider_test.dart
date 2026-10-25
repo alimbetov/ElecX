@@ -336,8 +336,10 @@ void main() {
         controller.parameters,
         WizardGenerationContext(target: empty.target, project: empty.project),
       );
-      expect(controller.status,
-          ApartmentWizardExplorationStatus.candidateSelected);
+      expect(
+        controller.status,
+        ApartmentWizardExplorationStatus.candidateSelected,
+      );
       expect(command, isA<ApartmentReservedProjectCommand>());
     });
 
@@ -355,8 +357,10 @@ void main() {
         controller.parameters,
         WizardGenerationContext(target: empty.target, project: empty.project),
       );
-      expect(controller.status,
-          ApartmentWizardExplorationStatus.candidateSelected);
+      expect(
+        controller.status,
+        ApartmentWizardExplorationStatus.candidateSelected,
+      );
       expect(command, isA<ApartmentReservedProjectCommand>());
     });
 
@@ -489,7 +493,8 @@ void main() {
       expect(controller.status, ApartmentWizardExplorationStatus.failed);
     });
 
-    test('P9.9 command handoff allocates no canonical IDs before P9.11', () {
+    test('reserved handoff builds canonical candidate without mutating current',
+        () {
       const provider = ApartmentWizardProvider();
       final set = generatedA.candidateSet!;
       final card = set.candidates.first;
@@ -500,6 +505,8 @@ void main() {
         ),
         WizardGenerationContext(target: empty.target, project: empty.project),
       ) as ApartmentReservedProjectCommand;
+      final originalVersion = empty.project.version;
+      final originalStores = empty.project.stores;
       final reservation =
           command.reserveIdentities(SecureRandomEntityIdFactory());
       final candidate = command.buildCandidate(
@@ -507,9 +514,20 @@ void main() {
         reservation: reservation,
       );
 
-      expect(reservation.slots, isEmpty);
-      expect(candidate.stores, same(empty.project.stores));
-      expect(candidate.affectedEntityIds, isEmpty);
+      expect(reservation.slots, isNotEmpty);
+      expect(candidate.stores.zones, hasLength(1));
+      expect(
+        candidate.stores.spaces,
+        hasLength(
+          card.rankedCandidate.candidate.interiorSpaces.length +
+              card.rankedCandidate.candidate.exteriorAppendages.length,
+        ),
+      );
+      expect(candidate.affectedEntityIds, isNotEmpty);
+      expect(empty.project.version, same(originalVersion));
+      expect(empty.project.stores, same(originalStores));
+      expect(empty.project.stores.zones, isEmpty);
+      expect(empty.project.stores.spaces, isEmpty);
     });
   });
 }
