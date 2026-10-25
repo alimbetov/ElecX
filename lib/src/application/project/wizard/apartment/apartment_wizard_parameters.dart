@@ -50,18 +50,29 @@ final class ApartmentRequestInput {
 }
 
 /// Transient exact card identity. It contains no canonical project entity IDs.
+///
+/// [candidateSetFingerprint] binds a production Wizard selection to the exact
+/// ordered recommendation set from which it was chosen. Lower-level identity
+/// tests may omit it, but the P9.9 provider requires it before preview handoff.
 final class ApartmentCandidateSelection {
   ApartmentCandidateSelection({
     required String candidateFingerprint,
     required String templateIdValue,
     required this.templateVersion,
     required String variantSeedId,
+    String? candidateSetFingerprint,
   })  : candidateFingerprint = _requireNonEmpty(
           candidateFingerprint,
           'candidateFingerprint',
         ),
         templateIdValue = _requireNonEmpty(templateIdValue, 'templateIdValue'),
-        variantSeedId = _requireNonEmpty(variantSeedId, 'variantSeedId') {
+        variantSeedId = _requireNonEmpty(variantSeedId, 'variantSeedId'),
+        candidateSetFingerprint = candidateSetFingerprint == null
+            ? null
+            : _requireNonEmpty(
+                candidateSetFingerprint,
+                'candidateSetFingerprint',
+              ) {
     if (templateVersion <= 0) {
       throw ArgumentError.value(
         templateVersion,
@@ -75,6 +86,7 @@ final class ApartmentCandidateSelection {
   final String templateIdValue;
   final int templateVersion;
   final String variantSeedId;
+  final String? candidateSetFingerprint;
 }
 
 /// P8 provider wrapper. User intent and card selection remain separate values.
