@@ -441,7 +441,8 @@ void main() {
       );
     });
 
-    test('provider rejects legacy selection without candidate-set identity', () {
+    test('provider rejects legacy selection without candidate-set identity',
+        () {
       const provider = ApartmentWizardProvider();
       final card = generatedA.candidateSet!.candidates.first;
       final unbound = card.identity.toSelection();
@@ -456,7 +457,8 @@ void main() {
       );
     });
 
-    test('provider descriptor uses candidate-set service generator version', () {
+    test('provider descriptor uses candidate-set service generator version',
+        () {
       const version = 'p9.generator.contract-test';
       const provider = ApartmentWizardProvider(
         candidateSetService: ApartmentCandidateSetService(
