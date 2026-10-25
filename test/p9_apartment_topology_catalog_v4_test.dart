@@ -1,4 +1,5 @@
 import 'package:elecx/src/domain/apartment_topology/apartment_topology_catalog_v4.dart';
+import 'package:elecx/src/domain/apartment_topology/apartment_topology_models.dart';
 import 'package:elecx/src/domain/project_space_semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -48,6 +49,27 @@ void main() {
                 (corridor.geometry.minLongSideMm ??
                     corridor.geometry.minShortSideMm),
           ),
+          reason: template.templateId.value,
+        );
+      }
+    });
+
+    test('hard day access is delegated to the actual distribution space', () {
+      final catalog = P9ApartmentTopologyCatalogV4.create();
+
+      for (final template in catalog.templates) {
+        final catalogEntryAccess = template.adjacencyRules.where(
+          (rule) =>
+              rule.fromKey == 'entranceHall' &&
+              rule.kind == TopologyAdjacencyKind.access,
+        );
+        expect(catalogEntryAccess, isNotEmpty);
+        expect(
+          catalogEntryAccess.every(
+            (rule) =>
+                rule.requirement != TopologyAdjacencyRequirement.required,
+          ),
+          isTrue,
           reason: template.templateId.value,
         );
       }
