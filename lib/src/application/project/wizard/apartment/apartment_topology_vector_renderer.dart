@@ -451,10 +451,8 @@ final class _Projection {
   final int offsetY;
 
   ApartmentVectorPoint point(int xMm, int yMm) {
-    final x = offsetX +
-        _roundDiv((xMm - bounds.minX) * numerator, denominator);
-    final y = offsetY +
-        _roundDiv((yMm - bounds.minY) * numerator, denominator);
+    final x = offsetX + _roundDiv((xMm - bounds.minX) * numerator, denominator);
+    final y = offsetY + _roundDiv((yMm - bounds.minY) * numerator, denominator);
     return ApartmentVectorPoint(xUnits: x, yUnits: y);
   }
 }
