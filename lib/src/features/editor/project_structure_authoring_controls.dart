@@ -20,6 +20,8 @@ class ProjectStructureAuthoringControls extends StatefulWidget {
     required this.onAddLevel,
     required this.onAddRoom,
     this.onStartWizard,
+    this.wizardLabel = 'Wizard',
+    this.wizardTooltip = 'Create project structure with Wizard',
     this.compact = false,
     super.key,
   });
@@ -28,6 +30,8 @@ class ProjectStructureAuthoringControls extends StatefulWidget {
   final ProjectStructureAuthoringAction? onAddLevel;
   final ProjectStructureAuthoringAction? onAddRoom;
   final ProjectStructureAuthoringAction? onStartWizard;
+  final String wizardLabel;
+  final String wizardTooltip;
   final bool compact;
 
   @override
@@ -45,8 +49,8 @@ class _ProjectStructureAuthoringControlsState
         ? null
         : _AuthoringButton(
             icon: Icons.auto_awesome_outlined,
-            label: 'Wizard',
-            tooltip: 'Create project structure with Wizard',
+            label: widget.wizardLabel,
+            tooltip: widget.wizardTooltip,
             key: const ValueKey('project-wizard-start'),
             onPressed: _enabledAction(widget.onStartWizard),
           );
