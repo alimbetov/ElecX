@@ -1,4 +1,3 @@
-import '../../../../domain/apartment_topology.dart';
 import '../../../../domain/apartment_topology/apartment_candidate_ranking.dart';
 import '../../../../domain/apartment_topology/apartment_geometry.dart';
 import '../../../../domain/apartment_topology/apartment_topology_models.dart';
@@ -135,7 +134,9 @@ final class ApartmentTopologyVectorRenderer {
     final partitions = candidate.sharedBoundaries.toList()
       ..sort((a, b) {
         final segment = a.segment.stableKey.compareTo(b.segment.stableKey);
-        return segment != 0 ? segment : a.pair.stableKey.compareTo(b.pair.stableKey);
+        return segment != 0
+            ? segment
+            : a.pair.stableKey.compareTo(b.pair.stableKey);
       });
     for (final boundary in partitions) {
       elements.add(
@@ -143,8 +144,8 @@ final class ApartmentTopologyVectorRenderer {
           role: ApartmentVectorRole.internalPartition,
           generationKey:
               'partition:${boundary.pair.stableKey}:${boundary.segment.stableKey}',
-          start: projection.point(boundary.segment.start.xMm,
-              boundary.segment.start.yMm),
+          start: projection.point(
+              boundary.segment.start.xMm, boundary.segment.start.yMm),
           end: projection.point(
               boundary.segment.end.xMm, boundary.segment.end.yMm),
         ),
@@ -304,7 +305,8 @@ final class ApartmentTopologyVectorRenderer {
   P9Failure? _validateElementLimits(List<ApartmentVectorElement> elements) {
     final polygons = elements.whereType<ApartmentVectorPolygonElement>().length;
     final lines = elements.whereType<ApartmentVectorLineElement>().length;
-    final labels = elements.whereType<ApartmentVectorLabelAnchorElement>().length;
+    final labels =
+        elements.whereType<ApartmentVectorLabelAnchorElement>().length;
     if (polygons <= maxPolygonCount &&
         lines <= maxLineCount &&
         labels <= maxLabelCount &&
@@ -419,10 +421,10 @@ final class _Projection {
   });
 
   factory _Projection.forBounds(_BoundsMm bounds) {
-    const availableWidth =
-        p9ApartmentCardViewBoxWidth - ApartmentTopologyVectorRenderer.logicalPaddingUnits * 2;
-    const availableHeight =
-        p9ApartmentCardViewBoxHeight - ApartmentTopologyVectorRenderer.logicalPaddingUnits * 2;
+    const availableWidth = p9ApartmentCardViewBoxWidth -
+        ApartmentTopologyVectorRenderer.logicalPaddingUnits * 2;
+    const availableHeight = p9ApartmentCardViewBoxHeight -
+        ApartmentTopologyVectorRenderer.logicalPaddingUnits * 2;
     final widthLimited =
         availableWidth * bounds.heightMm <= availableHeight * bounds.widthMm;
     final numerator = widthLimited ? availableWidth : availableHeight;
@@ -449,8 +451,10 @@ final class _Projection {
   final int offsetY;
 
   ApartmentVectorPoint point(int xMm, int yMm) {
-    final x = offsetX + _roundDiv((xMm - bounds.minX) * numerator, denominator);
-    final y = offsetY + _roundDiv((yMm - bounds.minY) * numerator, denominator);
+    final x = offsetX +
+        _roundDiv((xMm - bounds.minX) * numerator, denominator);
+    final y = offsetY +
+        _roundDiv((yMm - bounds.minY) * numerator, denominator);
     return ApartmentVectorPoint(xUnits: x, yUnits: y);
   }
 }
