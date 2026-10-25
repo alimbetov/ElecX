@@ -34,11 +34,13 @@ final class ApartmentCandidateIdentity {
   final String geometryFingerprint;
   final String scoringProfileVersion;
 
-  ApartmentCandidateSelection toSelection() => ApartmentCandidateSelection(
+  ApartmentCandidateSelection toSelection({String? candidateSetFingerprint}) =>
+      ApartmentCandidateSelection(
         candidateFingerprint: candidateFingerprint,
         templateIdValue: templateIdValue,
         templateVersion: templateVersion,
         variantSeedId: variantSeedId,
+        candidateSetFingerprint: candidateSetFingerprint,
       );
 
   bool matchesSelection(ApartmentCandidateSelection selection) =>
