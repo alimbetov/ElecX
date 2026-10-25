@@ -66,8 +66,7 @@ void main() {
         expect(catalogEntryAccess, isNotEmpty);
         expect(
           catalogEntryAccess.every(
-            (rule) =>
-                rule.requirement != TopologyAdjacencyRequirement.required,
+            (rule) => rule.requirement != TopologyAdjacencyRequirement.required,
           ),
           isTrue,
           reason: template.templateId.value,
