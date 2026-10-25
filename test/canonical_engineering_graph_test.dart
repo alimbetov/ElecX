@@ -24,7 +24,8 @@ EngineeringGraphComponent component({
     );
 
 void main() {
-  test('canonical graph uses typed ids and validates directed connectivity', () {
+  test('canonical graph uses typed ids and validates directed connectivity',
+      () {
     final source = component(
       id: 'switch-1',
       portId: 'poe-out',
