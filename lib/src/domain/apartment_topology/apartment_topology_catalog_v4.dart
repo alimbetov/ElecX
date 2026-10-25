@@ -6,10 +6,10 @@ import 'apartment_topology_models.dart';
 
 /// Production catalog for access-preserving P9.6 geometry.
 ///
-/// V4 versions only the circulation dimensional profile. Corridors are allowed
-/// to be long, narrow distribution spines; habitable/service-room constraints
-/// remain unchanged. These are product-generation heuristics, not normative
-/// compliance claims.
+/// V4 versions only the circulation dimensional/area profile. Corridors are
+/// allowed to be long, narrow distribution spines; habitable/service-room
+/// constraints remain unchanged. These are product-generation heuristics, not
+/// normative compliance claims.
 abstract final class P9ApartmentTopologyCatalogV4 {
   static ApartmentTopologyCatalog create() {
     final previous = P9ApartmentTopologyCatalogV3.create();
@@ -40,6 +40,7 @@ ApartmentTopologyTemplate _upgradeTemplate(ApartmentTopologyTemplate source) =>
     );
 
 TopologySpaceSpec _upgradeSpace(TopologySpaceSpec source) {
+  final corridor = source.usage == SpaceUsage.corridor;
   final geometry = switch (source.usage) {
     SpaceUsage.corridor => TopologySpaceGeometryConstraints(
         minShortSideMm: 900,
@@ -69,7 +70,7 @@ TopologySpaceSpec _upgradeSpace(TopologySpaceSpec source) {
     areaParticipation: source.areaParticipation,
     minAreaDm2: source.minAreaDm2,
     preferredAreaDm2: source.preferredAreaDm2,
-    maxAreaDm2: source.maxAreaDm2,
+    maxAreaDm2: corridor ? 2200 : source.maxAreaDm2,
     areaWeightBp: source.areaWeightBp,
     nearFixedArea: source.nearFixedArea,
     requiresExteriorExposure: source.requiresExteriorExposure,
