@@ -6,7 +6,8 @@ import 'package:elecx/src/domain/project_identity.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('P9 production defaults always yield selectable candidates on empty Level',
+  test(
+      'P9 production defaults always yield selectable candidates on empty Level',
       () {
     final projectId = ProjectId('p9-default-project');
     final siteId = SiteId('p9-default-site');
