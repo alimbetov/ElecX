@@ -4,6 +4,7 @@ import 'package:elecx/src/application/project/wizard/apartment/apartment_generat
 import 'package:elecx/src/application/project/wizard/apartment/apartment_semantic_validator.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_topology_grammar.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_wizard_parameters.dart';
+import 'package:elecx/src/domain/apartment_topology.dart';
 import 'package:elecx/src/domain/apartment_topology/apartment_topology_catalog_production.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -84,7 +85,9 @@ void main() {
         expect(first.entries, isNotEmpty, reason: 'roomCount=$roomCount');
         expect(second.stableSummary, first.stableSummary);
         expect(
-          first.entries.every((entry) => entry.codes.every((code) => code.isNotEmpty)),
+          first.entries.every(
+            (entry) => entry.codes.every((code) => code.isNotEmpty),
+          ),
           isTrue,
           reason: 'roomCount=$roomCount diagnostic codes must be stable',
         );
