@@ -1,4 +1,3 @@
-import 'package:elecx/src/application/project/project_mutation_reservation.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_candidate_set_service.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_preview_presentation.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_wizard_exploration.dart';
@@ -42,7 +41,8 @@ void main() {
 
   group('P9.9 ApartmentWizardProvider', () {
     test('P9.9-AT-001 Apartment appears only for Level scope', () {
-      final registry = WizardProviderRegistry(const [ApartmentWizardProvider()]);
+      final registry =
+          WizardProviderRegistry(const [ApartmentWizardProvider()]);
       final level = registry.availableFor(empty.target);
       final building = registry.availableFor(
         BuildingWizardTarget(
@@ -72,7 +72,8 @@ void main() {
       );
     });
 
-    test('P9.9-AT-003 semantic parameter edit invalidates selection and set', () {
+    test('P9.9-AT-003 semantic parameter edit invalidates selection and set',
+        () {
       final controller = ApartmentWizardExplorationController(
         initialParameters: ApartmentWizardParameters(request: requestA),
       );
@@ -273,7 +274,8 @@ void main() {
       }
     });
 
-    test('P9.9-AT-012 orientation-equivalent relayout preserves set fingerprint',
+    test(
+        'P9.9-AT-012 orientation-equivalent relayout preserves set fingerprint',
         () {
       final controller = _selectedController(requestA, generatedA);
       final fingerprint = controller.candidateSet!.candidateSetFingerprint;
@@ -283,7 +285,8 @@ void main() {
       }
     });
 
-    test('P9.9-AT-013 responsive transition does not replace candidate set', () {
+    test('P9.9-AT-013 responsive transition does not replace candidate set',
+        () {
       final controller = _selectedController(requestA, generatedA);
       final set = controller.candidateSet;
       for (final width in <double>[390, 900, 1440]) {
@@ -339,7 +342,8 @@ void main() {
       expect(controller.parameters.selection, isNotNull);
     });
 
-    test('P9.9-AT-017 obsolete late result cannot overwrite newer revision', () {
+    test('P9.9-AT-017 obsolete late result cannot overwrite newer revision',
+        () {
       final controller = ApartmentWizardExplorationController(
         initialParameters: ApartmentWizardParameters(request: requestA),
       );
@@ -440,7 +444,8 @@ final class _ProjectFixture {
 }
 
 _ProjectFixture _projectFixture({bool withSpace = false}) {
-  final projectId = ProjectId(withSpace ? 'project-non-empty' : 'project-empty');
+  final projectId =
+      ProjectId(withSpace ? 'project-non-empty' : 'project-empty');
   final siteId = SiteId(withSpace ? 'site-non-empty' : 'site-empty');
   final buildingId =
       BuildingId(withSpace ? 'building-non-empty' : 'building-empty');
