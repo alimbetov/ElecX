@@ -126,10 +126,19 @@ void _expectGeometryPath(ApartmentRequestInput input) {
       accepted = true;
       break;
     }
+    final failureDetail = geometry.failures
+        .map((failure) => '${failure.code}${failure.facts}')
+        .join(',');
+    final issueDetail = geometry.candidate?.validation.issues
+            .map(
+              (issue) =>
+                  '${issue.code}[${issue.affectedKeys.join(',')}]${issue.facts}',
+            )
+            .join(',') ??
+        'no-candidate';
     diagnostics.add(
       '${draft.templateId.value}/${draft.variantSeedId}:geometry:'
-      '${geometry.failures.map((failure) => failure.code).join(',')}|issues:'
-      '${geometry.candidate?.validation.issues.map((issue) => issue.code).join(',') ?? 'no-candidate'}',
+      '$failureDetail|issues:$issueDetail',
     );
   }
 
