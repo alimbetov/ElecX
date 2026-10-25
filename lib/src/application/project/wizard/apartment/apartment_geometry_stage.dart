@@ -2,9 +2,9 @@ import '../../../../domain/apartment_topology/apartment_area_fit.dart';
 import '../../../../domain/apartment_topology/apartment_geometry.dart';
 import '../../../../domain/apartment_topology/apartment_semantic_validation.dart';
 import '../../../../domain/apartment_topology/apartment_topology_models.dart';
-import 'apartment_access_spine_geometry_generator.dart';
 import 'apartment_geometry_access_validator.dart';
 import 'apartment_geometry_handoff_builder.dart';
+import 'apartment_geometry_strategy.dart';
 import 'apartment_geometry_structural_validator.dart';
 import 'apartment_wizard_parameters.dart';
 import 'p9_failure.dart';
@@ -15,7 +15,11 @@ import 'p9_failure.dart';
 /// report plus strategy-independent structural and semantic/access validation
 /// have all passed.
 final class ApartmentGeometryStage {
-  const ApartmentGeometryStage();
+  const ApartmentGeometryStage({
+    this.strategy = const AccessSpineApartmentGeometryStrategyV1(),
+  });
+
+  final ApartmentGeometryStrategy strategy;
 
   ApartmentGeometryStageResult generate({
     required AreaFittedTopologyDraft fittedDraft,
@@ -32,7 +36,7 @@ final class ApartmentGeometryStage {
       metrics: semanticValidation.metrics,
       geometryHandoff: geometryHandoff,
     );
-    final generated = const ApartmentAccessSpineGeometryGenerator().generate(
+    final generated = strategy.generate(
       fittedDraft: fittedDraft,
       semanticValidation: effectiveSemanticValidation,
       template: template,
