@@ -99,8 +99,7 @@ final class ProjectWizardLocalizations {
         '$semanticCount semantic changes · $boundaryCount boundary edges',
         'Семантических изменений: $semanticCount · границ: $boundaryCount',
       );
-  String get boundaryTopology =>
-      _pick('Boundary topology', 'Топология границ');
+  String get boundaryTopology => _pick('Boundary topology', 'Топология границ');
   String boundaryEdgeCount(int count) =>
       _pick('$count boundary edges', 'Границ: $count');
   String boundaryTopologySummary(int count) => _pick(
