@@ -1,3 +1,4 @@
+import '../../../../domain/apartment_topology.dart';
 import '../../../../domain/apartment_topology/apartment_candidate_ranking.dart';
 import 'apartment_wizard_parameters.dart';
 import 'p9_sha256.dart';
