@@ -9,6 +9,7 @@ import 'package:elecx/src/domain/apartment_topology/apartment_area_fit.dart';
 import 'package:elecx/src/domain/apartment_topology/apartment_geometry.dart';
 import 'package:elecx/src/domain/apartment_topology/apartment_semantic_validation.dart';
 import 'package:elecx/src/domain/apartment_topology/apartment_topology_catalog_v2.dart';
+import 'package:elecx/src/domain/apartment_topology/apartment_topology_draft.dart';
 import 'package:elecx/src/domain/apartment_topology/apartment_topology_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
