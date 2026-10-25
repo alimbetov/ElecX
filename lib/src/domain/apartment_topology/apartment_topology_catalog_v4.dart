@@ -11,6 +11,10 @@ import 'apartment_topology_models.dart';
 /// P9.4 can stay geometry-agnostic while still handing P9.6 a physically
 /// realizable access spine for the qualified 1..10-room corpus.
 ///
+/// Open-plan templates reserve a slightly larger entrance hall because P9.6
+/// must host the hard access edges from the entry distribution space while the
+/// living/kitchen pair also preserves its required open connection.
+///
 /// V4 also makes the catalog-level entrance -> day access a preference. P9.3
 /// emits the hard access edge against the actual distribution space: directly
 /// to the entrance hall when there is no corridor, or through the corridor
@@ -33,24 +37,32 @@ abstract final class P9ApartmentTopologyCatalogV4 {
 }
 
 const int _entranceHallPreferredAreaDm2 = 500;
+const int _openPlanEntranceHallPreferredAreaDm2 = 650;
 const int _corridorPreferredAreaDm2 = 2200;
 
-ApartmentTopologyTemplate _upgradeTemplate(ApartmentTopologyTemplate source) =>
-    ApartmentTopologyTemplate(
-      templateId: source.templateId,
-      templateVersion: source.templateVersion + 1,
-      family: source.family,
-      stableOrder: source.stableOrder,
-      constraints: source.constraints,
-      spaces: [for (final space in source.spaces) _upgradeSpace(space)],
-      adjacencyRules: [
-        for (final rule in source.adjacencyRules) _upgradeAdjacencyRule(rule),
-      ],
-      areaProfile: source.areaProfile,
-      circulationPolicy: source.circulationPolicy,
-      wetCorePolicy: source.wetCorePolicy,
-      variantSeeds: source.variantSeeds,
-    );
+ApartmentTopologyTemplate _upgradeTemplate(ApartmentTopologyTemplate source) {
+  final openPlan = source.constraints.supportedKitchenModes.contains(
+    ApartmentKitchenMode.openPlan,
+  );
+  return ApartmentTopologyTemplate(
+    templateId: source.templateId,
+    templateVersion: source.templateVersion + 1,
+    family: source.family,
+    stableOrder: source.stableOrder,
+    constraints: source.constraints,
+    spaces: [
+      for (final space in source.spaces)
+        _upgradeSpace(space, openPlan: openPlan),
+    ],
+    adjacencyRules: [
+      for (final rule in source.adjacencyRules) _upgradeAdjacencyRule(rule),
+    ],
+    areaProfile: source.areaProfile,
+    circulationPolicy: source.circulationPolicy,
+    wetCorePolicy: source.wetCorePolicy,
+    variantSeeds: source.variantSeeds,
+  );
+}
 
 TopologyAdjacencyRule _upgradeAdjacencyRule(TopologyAdjacencyRule source) {
   final catalogEntryToDayAccess = source.fromKey == 'entranceHall' &&
@@ -68,7 +80,10 @@ TopologyAdjacencyRule _upgradeAdjacencyRule(TopologyAdjacencyRule source) {
   );
 }
 
-TopologySpaceSpec _upgradeSpace(TopologySpaceSpec source) {
+TopologySpaceSpec _upgradeSpace(
+  TopologySpaceSpec source, {
+  required bool openPlan,
+}) {
   final corridor = source.usage == SpaceUsage.corridor;
   final entranceHall = source.usage == SpaceUsage.entranceHall;
   final geometry = switch (source.usage) {
@@ -102,7 +117,9 @@ TopologySpaceSpec _upgradeSpace(TopologySpaceSpec source) {
     preferredAreaDm2: corridor
         ? _corridorPreferredAreaDm2
         : entranceHall
-            ? _entranceHallPreferredAreaDm2
+            ? openPlan
+                ? _openPlanEntranceHallPreferredAreaDm2
+                : _entranceHallPreferredAreaDm2
             : source.preferredAreaDm2,
     maxAreaDm2: corridor ? _corridorPreferredAreaDm2 : source.maxAreaDm2,
     areaWeightBp: source.areaWeightBp,
