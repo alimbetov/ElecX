@@ -53,10 +53,9 @@ ApartmentTopologyTemplate _upgradeTemplate(ApartmentTopologyTemplate source) =>
     );
 
 TopologyAdjacencyRule _upgradeAdjacencyRule(TopologyAdjacencyRule source) {
-  final catalogEntryToDayAccess =
-      source.fromKey == 'entranceHall' &&
-          source.kind == TopologyAdjacencyKind.access &&
-          source.requirement == TopologyAdjacencyRequirement.required;
+  final catalogEntryToDayAccess = source.fromKey == 'entranceHall' &&
+      source.kind == TopologyAdjacencyKind.access &&
+      source.requirement == TopologyAdjacencyRequirement.required;
   if (!catalogEntryToDayAccess) {
     return source;
   }
