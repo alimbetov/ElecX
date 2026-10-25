@@ -481,8 +481,7 @@ final class ApartmentTopologyCatalogValidator {
     for (final space in template.spaces) {
       final geometry = space.geometry;
       final minLongSideMm = geometry.minLongSideMm ?? geometry.minShortSideMm;
-      final minimumRectangularAreaMm2 =
-          geometry.minShortSideMm * minLongSideMm;
+      final minimumRectangularAreaMm2 = geometry.minShortSideMm * minLongSideMm;
       final declaredMinimumAreaMm2 =
           space.minAreaDm2 * squareMillimetresPerSquareDecimetre;
       if (declaredMinimumAreaMm2 >= minimumRectangularAreaMm2) {
