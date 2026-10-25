@@ -2,6 +2,7 @@ import 'boundary_construction_registry.dart';
 import 'boundary_edge_identity_registry.dart';
 import 'boundary_host_registry.dart';
 import 'boundary_wall_profile_registry.dart';
+import 'generation_provenance.dart';
 
 /// Canonical engineering orientation for ElecX project-space coordinates.
 ///
@@ -96,6 +97,10 @@ final class ProjectEngineeringNorth {
 /// [boundaryConstructionRegistry] owns physical wall thickness/material data.
 /// It is intentionally separate from wall elevation geometry and is the only
 /// canonical source a penetration authoring flow may use for wall thickness.
+///
+/// [generationProvenanceRegistry] is the P9.12 canonical lineage store. It is
+/// versioned/persisted project state and therefore participates in the same
+/// preview, commit and Undo/Redo lifecycle as every other root metadata field.
 final class ProjectEngineeringMetadata {
   const ProjectEngineeringMetadata({
     this.projectNorth,
@@ -107,6 +112,8 @@ final class ProjectEngineeringMetadata {
         const BoundaryWallProfileRegistry.empty(),
     this.boundaryConstructionRegistry =
         const BoundaryConstructionRegistry.empty(),
+    this.generationProvenanceRegistry =
+        const GenerationProvenanceRegistry.empty(),
   });
 
   final ProjectEngineeringNorth? projectNorth;
@@ -114,6 +121,7 @@ final class ProjectEngineeringMetadata {
   final BoundaryHostedObjectRegistry boundaryHostedObjectRegistry;
   final BoundaryWallProfileRegistry boundaryWallProfileRegistry;
   final BoundaryConstructionRegistry boundaryConstructionRegistry;
+  final GenerationProvenanceRegistry generationProvenanceRegistry;
 
   ProjectEngineeringMetadata copyWith({
     ProjectEngineeringNorth? projectNorth,
@@ -122,6 +130,7 @@ final class ProjectEngineeringMetadata {
     BoundaryHostedObjectRegistry? boundaryHostedObjectRegistry,
     BoundaryWallProfileRegistry? boundaryWallProfileRegistry,
     BoundaryConstructionRegistry? boundaryConstructionRegistry,
+    GenerationProvenanceRegistry? generationProvenanceRegistry,
   }) {
     if (clearProjectNorth && projectNorth != null) {
       throw ArgumentError(
@@ -139,6 +148,8 @@ final class ProjectEngineeringMetadata {
           boundaryWallProfileRegistry ?? this.boundaryWallProfileRegistry,
       boundaryConstructionRegistry:
           boundaryConstructionRegistry ?? this.boundaryConstructionRegistry,
+      generationProvenanceRegistry:
+          generationProvenanceRegistry ?? this.generationProvenanceRegistry,
     );
   }
 
@@ -168,6 +179,11 @@ final class ProjectEngineeringMetadata {
   ) =>
       copyWith(boundaryConstructionRegistry: registry);
 
+  ProjectEngineeringMetadata withGenerationProvenanceRegistry(
+    GenerationProvenanceRegistry registry,
+  ) =>
+      copyWith(generationProvenanceRegistry: registry);
+
   @override
   bool operator ==(Object other) =>
       other is ProjectEngineeringMetadata &&
@@ -175,7 +191,8 @@ final class ProjectEngineeringMetadata {
       other.boundaryEdgeIdentityRegistry.sameAs(boundaryEdgeIdentityRegistry) &&
       other.boundaryHostedObjectRegistry.sameAs(boundaryHostedObjectRegistry) &&
       other.boundaryWallProfileRegistry.sameAs(boundaryWallProfileRegistry) &&
-      other.boundaryConstructionRegistry.sameAs(boundaryConstructionRegistry);
+      other.boundaryConstructionRegistry.sameAs(boundaryConstructionRegistry) &&
+      other.generationProvenanceRegistry.sameAs(generationProvenanceRegistry);
 
   @override
   int get hashCode {
@@ -228,6 +245,35 @@ final class ProjectEngineeringMetadata {
         entry.value.materialId,
         entry.value.fireRatingId,
       );
+    }
+    final manifests = generationProvenanceRegistry.manifests.entries.toList()
+      ..sort((a, b) => a.key.value.compareTo(b.key.value));
+    for (final entry in manifests) {
+      final manifest = entry.value;
+      result = Object.hash(
+        result,
+        entry.key,
+        manifest.selectedCandidateFingerprint,
+        manifest.normalizedIntentFingerprint,
+      );
+    }
+    final provenances = generationProvenanceRegistry.entities.entries.toList()
+      ..sort((a, b) => a.key.value.compareTo(b.key.value));
+    for (final entry in provenances) {
+      final provenance = entry.value;
+      result = Object.hash(
+        result,
+        entry.key,
+        provenance.generationId,
+        provenance.generationKey,
+        provenance.generatedBaselineFingerprint,
+        provenance.lockedFromRegeneration,
+      );
+      final overridden = provenance.overriddenProperties.toList()
+        ..sort((a, b) => a.name.compareTo(b.name));
+      for (final key in overridden) {
+        result = Object.hash(result, key);
+      }
     }
     return result;
   }
