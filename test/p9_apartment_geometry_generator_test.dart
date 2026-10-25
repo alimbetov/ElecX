@@ -85,7 +85,8 @@ void main() {
         expect(result, isNotNull, reason: 'rooms=$rooms must yield geometry');
         final fixture = result!;
         final internalOpenings = fixture.candidate.openingIntents
-            .where((opening) => opening.kind != GeometryOpeningKind.primaryEntry)
+            .where(
+                (opening) => opening.kind != GeometryOpeningKind.primaryEntry)
             .toList();
         final realizedPairs = <String, GeometryOpeningKind>{};
         for (final opening in internalOpenings) {
@@ -118,10 +119,12 @@ void main() {
         expect(result, isNotNull, reason: 'rooms=$rooms must yield geometry');
         final fixture = result!;
         final internalOpenings = fixture.candidate.openingIntents
-            .where((opening) => opening.kind != GeometryOpeningKind.primaryEntry)
+            .where(
+                (opening) => opening.kind != GeometryOpeningKind.primaryEntry)
             .toList();
         final primaryEntries = fixture.candidate.openingIntents
-            .where((opening) => opening.kind == GeometryOpeningKind.primaryEntry)
+            .where(
+                (opening) => opening.kind == GeometryOpeningKind.primaryEntry)
             .toList();
         expect(primaryEntries, hasLength(1), reason: 'rooms=$rooms entry');
         final entryKey = primaryEntries.single.fromSpaceKey!;
