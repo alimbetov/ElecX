@@ -4,6 +4,12 @@ Status: **AUTHORITATIVE PRODUCT / ROADMAP PRINCIPLE**
 
 This document does not replace the authoritative `P0..P17` implementation order in `project-composition-foundation-decisions-v1.md`. It defines the product outcome that each phase must serve.
 
+The detailed executable decomposition for P9..P17 is defined by:
+
+`docs/architecture/elecx-p9-p17-execution-roadmap-v1.md`
+
+That execution roadmap is subordinate to this product principle and to the authoritative P0..P17 ordering.
+
 ## 1. Core product invariant
 
 ```text
@@ -215,26 +221,28 @@ A design that produces a faster first generation but makes later manual refineme
 
 ## 10. Current implementation priority
 
-For the current P9 branch the next work remains:
+For the current P9 branch:
 
 ```text
-Wave A
-  restore P9.4 pure deterministic area allocator
-  establish one production catalog entry point for qualification
-  provide deterministic per-draft rejection diagnostics
+Wave A — architecture cleanup                 DONE
+  P9.4 pure deterministic area allocator
+  one production catalog qualification entry point
+  deterministic per-draft rejection diagnostics
+  versioned P9.6 strategy boundary
 
-Wave B
-  make P9.6 graph-aware and preserve all semantic geometry constraints
+Wave B — graph-aware geometry                ACTIVE
+  implement GraphAware Geometry V2
+  preserve access/shared-boundary/exposure semantics
   close 1..10 corpus/access/exposure/appendage blockers
 
-Wave C
+Wave C — semantic topology diversity         NEXT
   make topology-family/corridor-mode diversity semantically real
 
-Wave D
-  harden geometric invariants required by P9.11 and later CAD editing
+Wave D — geometry/CAD hardening              NEXT
+  harden invariants required by P9.11 and later associative editing
 ```
 
-P9.7 ranking is not the main production focus until Wave A/B are green.
+P9.7 ranking is not the main production focus until Wave B is green.
 
 ## 11. Acceptance statement
 
@@ -251,3 +259,21 @@ see propagated consequences
 recalculate only impacted state
 continue working without rebuilding the project from scratch
 ```
+
+## 12. Execution-roadmap rule
+
+The P9..P17 execution roadmap expands this principle into concrete stage contracts, parallel tracks, work packages and gates.
+
+Important consequences are:
+
+```text
+P10 + Equipment Catalog foundation may advance in parallel after P9 contracts stabilize.
+P11 owns generalized engineering/dependency semantics before discipline generators expand.
+P12 consumes P11 + Equipment Catalog + explicit normative/constraint evidence.
+P13/P14 materialize physical placement/routing without replacing logical engineering topology.
+P15 consumes identities/provenance/dependencies preserved by P9-P14 rather than retrofitting them later.
+P16 persists the complete production semantics transactionally.
+P17 proves semantic equivalence across native platform classes.
+```
+
+A downstream phase may prototype early, but cannot claim production acceptance before its upstream contract gates pass.
