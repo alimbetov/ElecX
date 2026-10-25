@@ -10,6 +10,7 @@ import '../wizard_contracts.dart';
 import 'apartment_candidate_identity.dart';
 import 'apartment_candidate_set_service.dart';
 import 'apartment_canonical_materializer.dart';
+import 'apartment_generation_provenance_builder.dart';
 import 'apartment_wizard_parameters.dart';
 import 'p9_failure.dart';
 
@@ -35,12 +36,14 @@ final class ApartmentWizardProvider
   const ApartmentWizardProvider({
     this.candidateSetService = const ApartmentCandidateSetService(),
     this.materializer = const ApartmentCanonicalMaterializer(),
+    this.provenanceBuilder = const ApartmentGenerationProvenanceBuilder(),
   });
 
   static final WizardFamilyId familyId = WizardFamilyId('apartment');
 
   final ApartmentCandidateSetService candidateSetService;
   final ApartmentCanonicalMaterializer materializer;
+  final ApartmentGenerationProvenanceBuilder provenanceBuilder;
 
   @override
   WizardProviderDescriptor get descriptor => WizardProviderDescriptor(
@@ -180,6 +183,7 @@ final class ApartmentWizardProvider
       selectedCandidate: selected.rankedCandidate.candidate,
       template: selected.template,
       materializer: materializer,
+      provenanceBuilder: provenanceBuilder,
     );
   }
 }
@@ -203,6 +207,7 @@ final class ApartmentReservedProjectCommand implements ReservedProjectCommand {
     required this.selectedCandidate,
     required this.template,
     this.materializer = const ApartmentCanonicalMaterializer(),
+    this.provenanceBuilder = const ApartmentGenerationProvenanceBuilder(),
   });
 
   final LevelWizardTarget target;
@@ -212,6 +217,7 @@ final class ApartmentReservedProjectCommand implements ReservedProjectCommand {
   final ApartmentGeometryCandidate selectedCandidate;
   final ApartmentTopologyTemplate template;
   final ApartmentCanonicalMaterializer materializer;
+  final ApartmentGenerationProvenanceBuilder provenanceBuilder;
 
   @override
   String get commandType => 'p9.apartment.materialize';
@@ -263,14 +269,44 @@ final class ApartmentReservedProjectCommand implements ReservedProjectCommand {
   ProjectCommandCandidate buildCandidate({
     required ProjectAggregateRoot current,
     required MutationIdentityReservation reservation,
-  }) =>
-      materializer.buildCandidate(
-        current: current,
-        target: target,
-        candidate: selectedCandidate,
-        template: template,
-        reservation: reservation,
-      );
+  }) {
+    final base = materializer.buildCandidate(
+      current: current,
+      target: target,
+      candidate: selectedCandidate,
+      template: template,
+      reservation: reservation,
+    );
+    final baseState = base.resolveState(current);
+    final materializedProject = ProjectAggregateRoot(
+      id: current.id,
+      siteId: current.siteId,
+      version: current.version,
+      engineeringMetadata: baseState.engineeringMetadata,
+      stores: baseState.stores,
+    );
+    final provenance = provenanceBuilder.build(
+      current: current.engineeringMetadata.generationProvenanceRegistry,
+      materializedProject: materializedProject,
+      target: target,
+      candidate: selectedCandidate,
+      reservation: reservation,
+      input: ApartmentGenerationProvenanceInput(
+        providerTemplateId: descriptor.templateId,
+        providerTemplateVersion: descriptor.templateVersion,
+        candidateIdentity: candidateIdentity,
+        familyId: selectedCandidate.family.code,
+      ),
+    );
+    return ProjectCommandCandidate.fromState(
+      state: ProjectMutableState(
+        engineeringMetadata: baseState.engineeringMetadata
+            .withGenerationProvenanceRegistry(provenance),
+        stores: baseState.stores,
+      ),
+      affectedEntityIds: base.affectedEntityIds,
+    );
+  }
 
   @override
   Iterable<ProjectSemanticOperation> semanticOperations({
