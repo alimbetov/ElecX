@@ -37,7 +37,8 @@ void main() {
           isNotEmpty,
           reason: 'roomCount=$roomCount production catalog coverage',
         );
-        final expansion = grammar.expand(request: request, templates: templates);
+        final expansion =
+            grammar.expand(request: request, templates: templates);
         expect(
           expansion.drafts,
           isNotEmpty,
