@@ -16,7 +16,7 @@ import 'p9_failure.dart';
 /// have all passed.
 final class ApartmentGeometryStage {
   const ApartmentGeometryStage({
-    this.strategy = const AccessSpineApartmentGeometryStrategyV1(),
+    this.strategy = const GraphAwareApartmentGeometryStrategyV2(),
   });
 
   final ApartmentGeometryStrategy strategy;

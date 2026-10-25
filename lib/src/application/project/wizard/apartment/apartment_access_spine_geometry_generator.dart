@@ -11,19 +11,42 @@ import 'apartment_wizard_parameters.dart';
 import 'p9_failure.dart';
 import 'p9_sha256.dart';
 
+/// Access topology accepted by the bounded access-spine packing engine.
+enum ApartmentAccessTopologyPolicy {
+  /// Historical V1 contract: every interior non-hub space must have a direct
+  /// semantic access edge to the distribution hub.
+  directHub,
+
+  /// V2 contract: every interior space must be reachable from the distribution
+  /// hub through the semantic access graph. Packing may still place a reachable
+  /// descendant against the physical spine, but it must not invent an opening.
+  graphReachable,
+}
+
 /// Access-preserving P9.6 layout.
 ///
-/// The circulation hub is a vertical spine. Every interior access neighbour is
-/// placed directly against one of its sides. Spoke rooms may have independent
+/// The circulation hub is a vertical spine. Interior spaces are packed against
+/// one of its sides while the selected [ApartmentAccessTopologyPolicy] controls
+/// which semantic access graphs are eligible. Spoke rooms may have independent
 /// depths, so the apartment outline is a deterministic stepped polygon instead
 /// of forcing unrelated rooms into one rectangular strip.
 final class ApartmentAccessSpineGeometryGenerator {
-  const ApartmentAccessSpineGeometryGenerator();
+  const ApartmentAccessSpineGeometryGenerator({
+    this.accessTopologyPolicy = ApartmentAccessTopologyPolicy.directHub,
+  });
 
-  static const String geometryAlgorithmVersion = 'p9.access-spine.v1';
+  static const String accessSpineV1AlgorithmVersion = 'p9.access-spine.v1';
+  static const String graphAwareV2AlgorithmVersion = 'p9.graph-aware.v2';
   static const int maxSpineLengthMm = 24000;
   static const int maxRoomSpanMm = 9000;
   static const int minimumAreaToleranceMm2 = 200000;
+
+  final ApartmentAccessTopologyPolicy accessTopologyPolicy;
+
+  String get geometryAlgorithmVersion =>
+      accessTopologyPolicy == ApartmentAccessTopologyPolicy.graphReachable
+          ? graphAwareV2AlgorithmVersion
+          : accessSpineV1AlgorithmVersion;
 
   ApartmentGeometryGenerationResult generate({
     required AreaFittedTopologyDraft fittedDraft,
@@ -80,20 +103,32 @@ final class ApartmentAccessSpineGeometryGenerator {
         .where((space) => space.semanticKey != distribution.semanticKey)
         .toList();
     final spokeKeys = spokes.map((space) => space.semanticKey).toSet();
+    final accessIntents = semanticValidation.geometryHandoff.accessIntents;
+    final reachableAccessKeys = _reachableAccessKeys(
+      startKey: distribution.semanticKey,
+      accessIntents: accessIntents,
+      allowedKeys: interiorDraft.map((space) => space.semanticKey).toSet(),
+    );
     final distributionNeighbors = <String>{};
-    for (final access in semanticValidation.geometryHandoff.accessIntents) {
+    for (final access in accessIntents) {
       if (access.pair.leftKey == distribution.semanticKey) {
         distributionNeighbors.add(access.pair.rightKey);
       } else if (access.pair.rightKey == distribution.semanticKey) {
         distributionNeighbors.add(access.pair.leftKey);
       }
     }
-    final missingHubEdges = spokeKeys.difference(distributionNeighbors);
-    if (missingHubEdges.isNotEmpty) {
+    final supportedAccessKeys =
+        accessTopologyPolicy == ApartmentAccessTopologyPolicy.graphReachable
+            ? reachableAccessKeys
+            : distributionNeighbors;
+    final missingAccessKeys = spokeKeys.difference(supportedAccessKeys);
+    if (missingAccessKeys.isNotEmpty) {
       return _rejected(
         'p9.geometry.unsupported-access-shape',
         facts: {
-          'missingHubEdges': (missingHubEdges.toList()..sort()).join(',')
+          'accessTopologyPolicy': accessTopologyPolicy.name,
+          'missingAccessKeys':
+              (missingAccessKeys.toList()..sort()).join(','),
         },
       );
     }
@@ -266,6 +301,36 @@ final class ApartmentAccessSpineGeometryGenerator {
       }
     }
     return null;
+  }
+
+  Set<String> _reachableAccessKeys({
+    required String startKey,
+    required List<SemanticAccessIntent> accessIntents,
+    required Set<String> allowedKeys,
+  }) {
+    final neighbors = <String, Set<String>>{};
+    for (final access in accessIntents) {
+      final left = access.pair.leftKey;
+      final right = access.pair.rightKey;
+      if (!allowedKeys.contains(left) || !allowedKeys.contains(right)) {
+        continue;
+      }
+      neighbors.putIfAbsent(left, () => <String>{}).add(right);
+      neighbors.putIfAbsent(right, () => <String>{}).add(left);
+    }
+    final visited = <String>{startKey};
+    final queue = <String>[startKey];
+    var index = 0;
+    while (index < queue.length) {
+      final current = queue[index++];
+      final next = (neighbors[current] ?? const <String>{}).toList()..sort();
+      for (final key in next) {
+        if (visited.add(key)) {
+          queue.add(key);
+        }
+      }
+    }
+    return visited;
   }
 
   List<_LayoutUnit> _buildUnits({
