@@ -2,16 +2,16 @@ import '../../../../domain/apartment_topology/apartment_area_fit.dart';
 import '../../../../domain/apartment_topology/apartment_geometry.dart';
 import '../../../../domain/apartment_topology/apartment_semantic_validation.dart';
 import '../../../../domain/apartment_topology/apartment_topology_models.dart';
+import 'apartment_access_spine_geometry_generator.dart';
 import 'apartment_geometry_access_validator.dart';
-import 'apartment_geometry_generator.dart';
 import 'apartment_wizard_parameters.dart';
 import 'p9_failure.dart';
 
 /// Canonical P9.6 application boundary.
 ///
-/// The packing generator is only one sub-step. A candidate is selectable by
-/// P9.7+ only after both structural geometry validation and post-packing access
-/// preservation validation have passed.
+/// Production geometry is created by the access-preserving spine layout and is
+/// selectable by P9.7+ only after structural validation and post-packing access
+/// preservation have both passed.
 final class ApartmentGeometryStage {
   const ApartmentGeometryStage();
 
@@ -21,7 +21,7 @@ final class ApartmentGeometryStage {
     required ApartmentTopologyTemplate template,
     required NormalizedApartmentRequest request,
   }) {
-    final generated = const ApartmentGeometryGenerator().generate(
+    final generated = const ApartmentAccessSpineGeometryGenerator().generate(
       fittedDraft: fittedDraft,
       semanticValidation: semanticValidation,
       template: template,
