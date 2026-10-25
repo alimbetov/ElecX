@@ -9,12 +9,10 @@ import 'package:elecx/src/domain/apartment_topology.dart';
 import 'package:elecx/src/domain/apartment_topology/apartment_candidate_ranking.dart';
 import 'package:elecx/src/domain/apartment_topology/apartment_geometry.dart';
 import 'package:elecx/src/domain/apartment_topology/apartment_topology_catalog_v4.dart';
-import 'package:elecx/src/domain/apartment_topology/apartment_topology_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('P9.7-NFR-001 score + rank + diversify 64 candidates p99 <= 25 ms',
-      () {
+  test('P9.7-NFR-001 score + rank + diversify 64 candidates p99 <= 25 ms', () {
     final fixture = _rankingFixture();
     final candidates = <ApartmentCandidateRankingInput>[
       for (var index = 0; index < 64; index++)
