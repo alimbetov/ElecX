@@ -4,6 +4,7 @@ import '../../../../domain/apartment_topology/apartment_semantic_validation.dart
 import '../../../../domain/apartment_topology/apartment_topology_models.dart';
 import 'apartment_access_spine_geometry_generator.dart';
 import 'apartment_geometry_access_validator.dart';
+import 'apartment_geometry_handoff_builder.dart';
 import 'apartment_wizard_parameters.dart';
 import 'p9_failure.dart';
 
@@ -21,9 +22,18 @@ final class ApartmentGeometryStage {
     required ApartmentTopologyTemplate template,
     required NormalizedApartmentRequest request,
   }) {
+    final geometryHandoff = const ApartmentGeometryHandoffBuilder().build(
+      fittedDraft.draft,
+    );
+    final effectiveSemanticValidation = TopologySemanticValidation(
+      blockers: semanticValidation.blockers,
+      preferenceMisses: semanticValidation.preferenceMisses,
+      metrics: semanticValidation.metrics,
+      geometryHandoff: geometryHandoff,
+    );
     final generated = const ApartmentAccessSpineGeometryGenerator().generate(
       fittedDraft: fittedDraft,
-      semanticValidation: semanticValidation,
+      semanticValidation: effectiveSemanticValidation,
       template: template,
       request: request,
     );
@@ -37,7 +47,7 @@ final class ApartmentGeometryStage {
 
     final accessReport = const ApartmentGeometryAccessValidator().validate(
       candidate: rawCandidate,
-      handoff: semanticValidation.geometryHandoff,
+      handoff: geometryHandoff,
     );
     final combinedReport = GeometryValidationReport([
       ...rawCandidate.validation.issues,
