@@ -5,14 +5,15 @@ import '../../../../domain/apartment_topology/apartment_topology_models.dart';
 import 'apartment_access_spine_geometry_generator.dart';
 import 'apartment_geometry_access_validator.dart';
 import 'apartment_geometry_handoff_builder.dart';
+import 'apartment_geometry_structural_validator.dart';
 import 'apartment_wizard_parameters.dart';
 import 'p9_failure.dart';
 
 /// Canonical P9.6 application boundary.
 ///
-/// Production geometry is created by the access-preserving spine layout and is
-/// selectable by P9.7+ only after structural validation and post-packing access
-/// preservation have both passed.
+/// Production geometry is selectable by P9.7+ only after the strategy-specific
+/// report plus strategy-independent structural and semantic/access validation
+/// have all passed.
 final class ApartmentGeometryStage {
   const ApartmentGeometryStage();
 
@@ -49,15 +50,24 @@ final class ApartmentGeometryStage {
       candidate: rawCandidate,
       handoff: geometryHandoff,
     );
+    final structuralReport =
+        const ApartmentGeometryStructuralValidator().validate(
+      candidate: rawCandidate,
+      fittedDraft: fittedDraft,
+    );
+    final postPackingIssues = [
+      ...accessReport.issues,
+      ...structuralReport.issues,
+    ];
     final combinedReport = GeometryValidationReport([
       ...rawCandidate.validation.issues,
-      ...accessReport.issues,
+      ...postPackingIssues,
     ]);
     final candidate = _copyWithValidation(rawCandidate, combinedReport);
     final failures = <P9Failure>[...generated.failures];
     final existingFailureCodes =
         failures.map((failure) => failure.code).toSet();
-    for (final issue in accessReport.issues) {
+    for (final issue in postPackingIssues) {
       if (issue.severity != GeometryValidationSeverity.blocker ||
           !existingFailureCodes.add(issue.code)) {
         continue;
