@@ -1,3 +1,4 @@
+import '../../../../domain/apartment_topology.dart';
 import '../../../../domain/apartment_topology/apartment_topology_catalog.dart';
 import '../../../../domain/apartment_topology/apartment_topology_catalog_production.dart';
 import '../../../../domain/apartment_topology/apartment_topology_draft.dart';
@@ -41,7 +42,7 @@ final class ApartmentGenerationDiagnosticEntry {
   bool get accepted => stage == ApartmentGenerationDiagnosticStage.accepted;
 
   String get stableLine => <String>[
-        '${templateId}@${templateVersion}',
+        '$templateId@$templateVersion',
         family.code,
         variantSeedId,
         draftFingerprint,
