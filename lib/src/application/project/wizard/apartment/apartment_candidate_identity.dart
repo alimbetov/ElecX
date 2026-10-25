@@ -94,7 +94,7 @@ final class ApartmentCandidateSetIdentity {
 /// - catalog/provider/generator versions;
 /// - topology identity;
 /// - P9.4/P9.6 fingerprints;
-/// - versioned P9.7 score breakdown.
+/// - versioned P9.7 score profile and score breakdown.
 ///
 /// Explicitly excluded:
 /// ranking position, vector scene/SVG, locale, theme, responsive width,
@@ -110,12 +110,17 @@ final class ApartmentCandidateIdentityService {
   ApartmentCandidateIdentity identifyCandidate({
     required NormalizedApartmentRequest request,
     required RankedApartmentCandidate rankedCandidate,
+    required ApartmentScoringProfile scoringProfile,
     required int catalogVersion,
     required String generatorVersion,
   }) {
     _requirePositive(catalogVersion, 'catalogVersion');
     final normalizedGeneratorVersion =
         _requireNonEmpty(generatorVersion, 'generatorVersion');
+    final normalizedScoringProfileVersion = _requireNonEmpty(
+      scoringProfile.scoringProfileVersion,
+      'scoringProfile.scoringProfileVersion',
+    );
     final candidate = rankedCandidate.candidate;
     if (!candidate.validation.accepted) {
       throw ArgumentError(
@@ -131,6 +136,12 @@ final class ApartmentCandidateIdentityService {
     }
 
     final breakdown = rankedCandidate.breakdown;
+    if (breakdown.scoringProfileVersion != normalizedScoringProfileVersion) {
+      throw ArgumentError(
+        'Ranked candidate scoring profile does not match identity profile.',
+      );
+    }
+
     final canonical = <String>[
       candidateIdentitySchemaVersion,
       'requestSchemaVersion=${request.schemaVersion}',
@@ -144,8 +155,9 @@ final class ApartmentCandidateIdentityService {
       'areaFitFingerprint=${candidate.areaFitFingerprint}',
       'geometryAlgorithmVersion=${candidate.geometryAlgorithmVersion}',
       'geometryFingerprint=${candidate.geometryFingerprint}',
-      'scoringProfileVersion=${breakdown.scoringProfileVersion}',
+      'scoringProfileVersion=$normalizedScoringProfileVersion',
       for (final metric in ApartmentScoreMetric.values) ...[
+        'metric.${metric.name}.weightBp=${_metricValue(scoringProfile.weightBp, metric, 'weightBp')}',
         'metric.${metric.name}.scoreBp=${_metricValue(breakdown.metricScoreBp, metric, 'metricScoreBp')}',
         'metric.${metric.name}.weightedContributionBp=${_metricValue(breakdown.weightedContributionBp, metric, 'weightedContributionBp')}',
       ],
@@ -162,7 +174,7 @@ final class ApartmentCandidateIdentityService {
       variantSeedId: candidate.variantSeedId,
       geometryAlgorithmVersion: candidate.geometryAlgorithmVersion,
       geometryFingerprint: candidate.geometryFingerprint,
-      scoringProfileVersion: breakdown.scoringProfileVersion,
+      scoringProfileVersion: normalizedScoringProfileVersion,
     );
   }
 
@@ -170,15 +182,17 @@ final class ApartmentCandidateIdentityService {
     required NormalizedApartmentRequest request,
     required int catalogVersion,
     required String generatorVersion,
-    required String scoringProfileVersion,
+    required ApartmentScoringProfile scoringProfile,
     required String diversityPolicyVersion,
     required Iterable<ApartmentCandidateIdentity> orderedCandidates,
   }) {
     _requirePositive(catalogVersion, 'catalogVersion');
     final normalizedGeneratorVersion =
         _requireNonEmpty(generatorVersion, 'generatorVersion');
-    final normalizedScoringProfileVersion =
-        _requireNonEmpty(scoringProfileVersion, 'scoringProfileVersion');
+    final normalizedScoringProfileVersion = _requireNonEmpty(
+      scoringProfile.scoringProfileVersion,
+      'scoringProfile.scoringProfileVersion',
+    );
     final normalizedDiversityPolicyVersion =
         _requireNonEmpty(diversityPolicyVersion, 'diversityPolicyVersion');
     final candidates = List<ApartmentCandidateIdentity>.unmodifiable(
@@ -211,6 +225,12 @@ final class ApartmentCandidateIdentityService {
       'generatorVersion=$normalizedGeneratorVersion',
       'scoringProfileVersion=$normalizedScoringProfileVersion',
       'diversityPolicyVersion=$normalizedDiversityPolicyVersion',
+      'selectableFloorBp=${scoringProfile.selectableFloorBp}',
+      'minimumUsefulCandidateCount=${scoringProfile.minimumUsefulCandidateCount}',
+      'preferredCandidateCount=${scoringProfile.preferredCandidateCount}',
+      'maximumCandidateCount=${scoringProfile.maximumCandidateCount}',
+      for (final metric in ApartmentScoreMetric.values)
+        'weight.${metric.name}=${_metricValue(scoringProfile.weightBp, metric, 'weightBp')}',
       'candidateCount=${candidates.length}',
       for (var index = 0; index < candidates.length; index++)
         'candidate[$index]=${candidates[index].candidateFingerprint}',
