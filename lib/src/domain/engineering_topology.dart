@@ -1,7 +1,13 @@
+import 'canonical_engineering_graph.dart';
 import 'component_catalog_v2.dart';
 import 'electrical_placement.dart';
 import 'engineering_graph.dart';
+import 'project_identity.dart';
 
+/// Transitional mutable topology used by existing editor/runtime flows.
+///
+/// New cross-discipline analysis should consume [toCanonicalGraph], which
+/// removes physical placement from the logical WHAT + CONNECTIVITY graph.
 final class EngineeringTopology {
   EngineeringTopology({
     required Iterable<EngineeringNode> nodes,
@@ -140,6 +146,17 @@ final class EngineeringTopology {
     visited.remove(startNodeId);
     return List.unmodifiable(visited);
   }
+
+  /// Reconciles the legacy placed-node topology into the canonical logical
+  /// graph without changing durable ids. Geometry remains in placement models.
+  CanonicalEngineeringGraph toCanonicalGraph() => CanonicalEngineeringGraph(
+        components: _nodes.values.map(
+          (node) => node.toCanonicalEngineeringComponent(),
+        ),
+        connections: _edges.map(
+          (edge) => edge.toCanonicalEngineeringConnection(),
+        ),
+      );
 }
 
 abstract final class EngineeringNodeFactory {
@@ -160,6 +177,28 @@ abstract final class EngineeringNodeFactory {
       systemClass: entry.systemClass,
       surface: placement.surface,
       position: placement.position,
+      ports: entry.ports,
+      ratedPowerW: entry.loadDefaults.ratedPowerW,
+      voltageV: entry.loadDefaults.nominalVoltageV,
+    );
+  }
+
+  /// New logical factory for consumers that no longer need placement geometry.
+  static EngineeringGraphComponent canonicalFromPlacement({
+    required ElectricalComponentPlacement placement,
+    required ComponentCatalogEntryV2 entry,
+  }) {
+    if (placement.componentTypeId != entry.id) {
+      throw ArgumentError(
+        'Placement componentTypeId ${placement.componentTypeId} '
+        'does not match catalog entry ${entry.id}.',
+      );
+    }
+    return EngineeringGraphComponent(
+      id: ComponentId(placement.id),
+      componentTypeId: entry.id,
+      discipline: entry.discipline,
+      systemClass: entry.systemClass,
       ports: entry.ports,
       ratedPowerW: entry.loadDefaults.ratedPowerW,
       voltageV: entry.loadDefaults.nominalVoltageV,
