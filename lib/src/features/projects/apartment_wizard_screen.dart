@@ -122,7 +122,8 @@ final class _ApartmentWizardScreenState extends State<ApartmentWizardScreen> {
 
   ApartmentRequestInput? _draftRequest() {
     final rooms = int.tryParse(_roomsController.text.trim());
-    final areaM2 = double.tryParse(_areaController.text.trim().replaceAll(',', '.'));
+    final areaM2 =
+        double.tryParse(_areaController.text.trim().replaceAll(',', '.'));
     final bathrooms = int.tryParse(_bathroomsController.text.trim());
     final wc = int.tryParse(_wcController.text.trim());
     final balconies = int.tryParse(_balconiesController.text.trim());
@@ -354,8 +355,8 @@ final class _ApartmentWizardScreenState extends State<ApartmentWizardScreen> {
         body: LayoutBuilder(
           builder: (context, constraints) {
             final textScale = MediaQuery.textScalerOf(context).scale(1);
-            final effectiveWidth = constraints.maxWidth /
-                (textScale > 1 ? textScale : 1);
+            final effectiveWidth =
+                constraints.maxWidth / (textScale > 1 ? textScale : 1);
             if (effectiveWidth >= 1100) return _expandedLayout();
             if (effectiveWidth >= 760) return _mediumLayout();
             return _compactLayout();
@@ -437,9 +438,8 @@ final class _ApartmentWizardScreenState extends State<ApartmentWizardScreen> {
     );
   }
 
-  Widget _primaryPanel() => _canonicalScene == null
-      ? _candidatesPanel()
-      : _previewPanel();
+  Widget _primaryPanel() =>
+      _canonicalScene == null ? _candidatesPanel() : _previewPanel();
 
   Widget _parametersPanel() {
     final l10n = ProjectWizardLocalizations.of(context);
@@ -484,7 +484,7 @@ final class _ApartmentWizardScreenState extends State<ApartmentWizardScreen> {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<ApartmentBalconyKind>(
-          value: _balconyKind,
+          initialValue: _balconyKind,
           decoration: InputDecoration(
             labelText: l10n.apartmentBalconyKind,
             border: const OutlineInputBorder(),
@@ -501,7 +501,7 @@ final class _ApartmentWizardScreenState extends State<ApartmentWizardScreen> {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<ApartmentKitchenMode>(
-          value: _kitchenMode,
+          initialValue: _kitchenMode,
           decoration: InputDecoration(
             labelText: l10n.apartmentKitchenMode,
             border: const OutlineInputBorder(),
@@ -518,7 +518,7 @@ final class _ApartmentWizardScreenState extends State<ApartmentWizardScreen> {
         ),
         const SizedBox(height: 12),
         DropdownButtonFormField<ApartmentCorridorMode>(
-          value: _corridorMode,
+          initialValue: _corridorMode,
           decoration: InputDecoration(
             labelText: l10n.apartmentCorridorMode,
             border: const OutlineInputBorder(),
@@ -689,9 +689,8 @@ final class _ApartmentWizardScreenState extends State<ApartmentWizardScreen> {
               if (hasPreview)
                 FilledButton.icon(
                   key: const ValueKey('apartment-apply'),
-                  onPressed: _session.canConfirm && !_applyInProgress
-                      ? _apply
-                      : null,
+                  onPressed:
+                      _session.canConfirm && !_applyInProgress ? _apply : null,
                   icon: const Icon(Icons.check),
                   label: Text(l10n.applyAll),
                 ),
