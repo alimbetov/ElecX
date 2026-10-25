@@ -5,10 +5,13 @@ import 'apartment_topology_models.dart';
 
 /// Production catalog for access-preserving P9.6 geometry.
 ///
-/// V4 versions only the circulation dimensional/area profile. Corridors are
+/// V4 versions the circulation dimensional/area profile. Corridors are
 /// allowed to be long, narrow distribution spines; habitable/service-room
-/// constraints remain unchanged. These are product-generation heuristics, not
-/// normative compliance claims.
+/// constraints remain unchanged. The preferred circulation areas are sized so
+/// P9.4 can stay geometry-agnostic while still handing P9.6 a physically
+/// realizable access spine for the qualified 1..10-room corpus.
+///
+/// These are product-generation heuristics, not normative compliance claims.
 abstract final class P9ApartmentTopologyCatalogV4 {
   static ApartmentTopologyCatalog create() {
     final previous = P9ApartmentTopologyCatalogV3.create();
@@ -22,6 +25,9 @@ abstract final class P9ApartmentTopologyCatalogV4 {
     return catalog;
   }
 }
+
+const int _entranceHallPreferredAreaDm2 = 500;
+const int _corridorPreferredAreaDm2 = 2200;
 
 ApartmentTopologyTemplate _upgradeTemplate(ApartmentTopologyTemplate source) =>
     ApartmentTopologyTemplate(
@@ -40,6 +46,7 @@ ApartmentTopologyTemplate _upgradeTemplate(ApartmentTopologyTemplate source) =>
 
 TopologySpaceSpec _upgradeSpace(TopologySpaceSpec source) {
   final corridor = source.usage == SpaceUsage.corridor;
+  final entranceHall = source.usage == SpaceUsage.entranceHall;
   final geometry = switch (source.usage) {
     SpaceUsage.corridor => TopologySpaceGeometryConstraints(
         minShortSideMm: 900,
@@ -68,8 +75,12 @@ TopologySpaceSpec _upgradeSpace(TopologySpaceSpec source) {
     multiplicityMax: source.multiplicityMax,
     areaParticipation: source.areaParticipation,
     minAreaDm2: source.minAreaDm2,
-    preferredAreaDm2: source.preferredAreaDm2,
-    maxAreaDm2: corridor ? 2200 : source.maxAreaDm2,
+    preferredAreaDm2: corridor
+        ? _corridorPreferredAreaDm2
+        : entranceHall
+            ? _entranceHallPreferredAreaDm2
+            : source.preferredAreaDm2,
+    maxAreaDm2: corridor ? _corridorPreferredAreaDm2 : source.maxAreaDm2,
     areaWeightBp: source.areaWeightBp,
     nearFixedArea: source.nearFixedArea,
     requiresExteriorExposure: source.requiresExteriorExposure,
