@@ -1,3 +1,4 @@
+import '../apartment_topology.dart';
 import '../project_space_semantics.dart';
 import 'apartment_topology_catalog.dart';
 import 'apartment_topology_catalog_v1.dart';
@@ -8,7 +9,8 @@ import 'apartment_topology_models.dart';
 /// Catalog v1 remains immutable for reproducibility. V2 preserves template IDs
 /// and semantic recipes while versioning the dimensional contract that P9.6
 /// must realize. Wet service spaces use a compact service-room geometry profile
-/// instead of the habitable-room profile inherited by v1.
+/// instead of the habitable-room profile inherited by v1. Corridor
+/// multiplicity is also normalized to the P9.3 family grammar contract.
 abstract final class P9ApartmentTopologyCatalogV2 {
   static ApartmentTopologyCatalog create() {
     final previous = P9ApartmentTopologyCatalogV1.create();
@@ -30,7 +32,13 @@ ApartmentTopologyTemplate _upgradeTemplate(ApartmentTopologyTemplate source) =>
       family: source.family,
       stableOrder: source.stableOrder,
       constraints: source.constraints,
-      spaces: [for (final space in source.spaces) _upgradeSpace(space)],
+      spaces: [
+        for (final space in source.spaces)
+          _upgradeSpace(
+            space,
+            corridorRequired: _familyRequiresCorridor(source.family),
+          ),
+      ],
       adjacencyRules: source.adjacencyRules,
       areaProfile: source.areaProfile,
       circulationPolicy: source.circulationPolicy,
@@ -38,7 +46,10 @@ ApartmentTopologyTemplate _upgradeTemplate(ApartmentTopologyTemplate source) =>
       variantSeeds: source.variantSeeds,
     );
 
-TopologySpaceSpec _upgradeSpace(TopologySpaceSpec source) {
+TopologySpaceSpec _upgradeSpace(
+  TopologySpaceSpec source, {
+  required bool corridorRequired,
+}) {
   final geometry = source.wetSpace
       ? TopologySpaceGeometryConstraints(
           minShortSideMm: 900,
@@ -49,12 +60,15 @@ TopologySpaceSpec _upgradeSpace(TopologySpaceSpec source) {
           maxVertices: source.geometry.maxVertices,
         )
       : source.geometry;
+  final multiplicityMin = source.usage == SpaceUsage.corridor
+      ? (corridorRequired ? 1 : 0)
+      : source.multiplicityMin;
 
   return TopologySpaceSpec(
     semanticKey: source.semanticKey,
     usage: source.usage,
     type: source.type,
-    multiplicityMin: source.multiplicityMin,
+    multiplicityMin: multiplicityMin,
     multiplicityMax: source.multiplicityMax,
     areaParticipation: source.areaParticipation,
     minAreaDm2: source.minAreaDm2,
@@ -68,6 +82,19 @@ TopologySpaceSpec _upgradeSpace(TopologySpaceSpec source) {
     geometry: geometry,
   );
 }
+
+bool _familyRequiresCorridor(ApartmentTopologyFamily family) => switch (family) {
+      ApartmentTopologyFamily.centralCorridor ||
+      ApartmentTopologyFamily.corridorSpine ||
+      ApartmentTopologyFamily.splitDayNight =>
+        true,
+      ApartmentTopologyFamily.compact ||
+      ApartmentTopologyFamily.linear ||
+      ApartmentTopologyFamily.corner ||
+      ApartmentTopologyFamily.euro ||
+      ApartmentTopologyFamily.openPlan =>
+        false,
+    };
 
 bool isP9WetServiceUsage(SpaceUsage usage) =>
     usage == SpaceUsage.bathroom ||
