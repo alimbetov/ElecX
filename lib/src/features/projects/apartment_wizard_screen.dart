@@ -485,6 +485,7 @@ final class _ApartmentWizardScreenState extends State<ApartmentWizardScreen> {
         const SizedBox(height: 12),
         DropdownButtonFormField<ApartmentBalconyKind>(
           initialValue: _balconyKind,
+          isExpanded: true,
           decoration: InputDecoration(
             labelText: l10n.apartmentBalconyKind,
             border: const OutlineInputBorder(),
@@ -502,6 +503,7 @@ final class _ApartmentWizardScreenState extends State<ApartmentWizardScreen> {
         const SizedBox(height: 12),
         DropdownButtonFormField<ApartmentKitchenMode>(
           initialValue: _kitchenMode,
+          isExpanded: true,
           decoration: InputDecoration(
             labelText: l10n.apartmentKitchenMode,
             border: const OutlineInputBorder(),
@@ -519,6 +521,7 @@ final class _ApartmentWizardScreenState extends State<ApartmentWizardScreen> {
         const SizedBox(height: 12),
         DropdownButtonFormField<ApartmentCorridorMode>(
           initialValue: _corridorMode,
+          isExpanded: true,
           decoration: InputDecoration(
             labelText: l10n.apartmentCorridorMode,
             border: const OutlineInputBorder(),
@@ -664,38 +667,73 @@ final class _ApartmentWizardScreenState extends State<ApartmentWizardScreen> {
     final hasCandidates =
         _candidateCards.isNotEmpty && _selectedCandidateId != null;
     final hasPreview = _canonicalScene != null && _diff != null;
+    final backButton = TextButton.icon(
+      key: const ValueKey('apartment-wizard-back'),
+      onPressed: _back,
+      icon: const Icon(Icons.arrow_back),
+      label: Text(l10n.back),
+    );
+    final Widget? primaryButton;
+    if (!hasPreview && hasCandidates) {
+      primaryButton = FilledButton.icon(
+        key: const ValueKey('apartment-prepare-preview'),
+        onPressed: _preparePreview,
+        icon: const Icon(Icons.preview_outlined),
+        label: Text(l10n.preparePreview),
+      );
+    } else if (hasPreview) {
+      primaryButton = FilledButton.icon(
+        key: const ValueKey('apartment-apply'),
+        onPressed: _session.canConfirm && !_applyInProgress ? _apply : null,
+        icon: const Icon(Icons.check),
+        label: Text(l10n.applyAll),
+      );
+    } else {
+      primaryButton = null;
+    }
+
     return SafeArea(
       top: false,
       child: Material(
         elevation: 8,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-          child: Row(
-            children: [
-              TextButton.icon(
-                key: const ValueKey('apartment-wizard-back'),
-                onPressed: _back,
-                icon: const Icon(Icons.arrow_back),
-                label: Text(l10n.back),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final textScale = MediaQuery.textScalerOf(context).scale(1);
+            final stacked = constraints.maxWidth < 520 || textScale > 1.3;
+            final padding = const EdgeInsets.symmetric(
+              horizontal: 8,
+              vertical: 10,
+            );
+            if (stacked) {
+              return Padding(
+                padding: padding,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Align(alignment: Alignment.centerLeft, child: backButton),
+                    if (primaryButton != null) ...[
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: primaryButton,
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }
+            return Padding(
+              padding: padding,
+              child: Row(
+                children: [
+                  backButton,
+                  const Spacer(),
+                  if (primaryButton != null) primaryButton,
+                ],
               ),
-              const Spacer(),
-              if (!hasPreview && hasCandidates)
-                FilledButton.icon(
-                  key: const ValueKey('apartment-prepare-preview'),
-                  onPressed: _preparePreview,
-                  icon: const Icon(Icons.preview_outlined),
-                  label: Text(l10n.preparePreview),
-                ),
-              if (hasPreview)
-                FilledButton.icon(
-                  key: const ValueKey('apartment-apply'),
-                  onPressed:
-                      _session.canConfirm && !_applyInProgress ? _apply : null,
-                  icon: const Icon(Icons.check),
-                  label: Text(l10n.applyAll),
-                ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
