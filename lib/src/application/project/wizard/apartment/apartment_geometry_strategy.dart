@@ -56,14 +56,14 @@ final class AccessSpineApartmentGeometryStrategyV1
 /// Graph-aware P9.6 strategy.
 ///
 /// V2 owns a bounded deterministic solver portfolio. Access-spine packing is
-/// attempted first. If it cannot produce a candidate satisfying the same
-/// independent access and structural contracts used by the stage, the bounded
-/// facade-strip solver is tried as a second backend. A backend is never
-/// accepted merely because it produced geometry.
+/// attempted first. If it cannot satisfy geometry, access, structural, or
+/// wet-core proximity contracts, the bounded facade-strip solver is evaluated
+/// as a second backend. A backend is never selected merely because it produced
+/// geometry.
 ///
 /// Wet-core membership is a proximity constraint, not a forced connected
-/// packing component. It is removed from backend grouping heuristics and the
-/// authoritative maximum separation is validated after a backend is selected.
+/// packing component. It is removed from backend grouping heuristics and used
+/// as a hard qualification criterion when the strategy selects a backend.
 final class GraphAwareApartmentGeometryStrategyV2
     implements ApartmentGeometryStrategy {
   const GraphAwareApartmentGeometryStrategyV2();
@@ -105,24 +105,48 @@ final class GraphAwareApartmentGeometryStrategyV2
       template: template,
       request: request,
     );
-
-    ApartmentGeometryGenerationResult selected = primary;
-    if (!_backendAccepted(
+    final primaryBaseAccepted = _backendAccepted(
       primary.candidate,
       fittedDraft: fittedDraft,
       handoff: packingHandoff,
-    )) {
+    );
+    final primaryWetSeparation = _candidateWetSeparation(
+      primary.candidate,
+      sourceHandoff.wetCoreGroups,
+    );
+    final maxWetSeparation = template.wetCorePolicy.maxGroupSeparationMm;
+    final primaryQualified = primaryBaseAccepted &&
+        primaryWetSeparation != null &&
+        primaryWetSeparation <= maxWetSeparation;
+
+    ApartmentGeometryGenerationResult selected = primary;
+    if (!primaryQualified) {
       final fallback = const ApartmentGeometryGenerator().generate(
         fittedDraft: fittedDraft,
         semanticValidation: packingValidation,
         template: template,
         request: request,
       );
-      if (_backendAccepted(
+      final fallbackBaseAccepted = _backendAccepted(
         fallback.candidate,
         fittedDraft: fittedDraft,
         handoff: packingHandoff,
-      )) {
+      );
+      final fallbackWetSeparation = _candidateWetSeparation(
+        fallback.candidate,
+        sourceHandoff.wetCoreGroups,
+      );
+      final fallbackQualified = fallbackBaseAccepted &&
+          fallbackWetSeparation != null &&
+          fallbackWetSeparation <= maxWetSeparation;
+
+      if (fallbackQualified) {
+        selected = fallback;
+      } else if (primaryBaseAccepted && fallbackBaseAccepted) {
+        final primaryWet = primaryWetSeparation ?? 1 << 30;
+        final fallbackWet = fallbackWetSeparation ?? 1 << 30;
+        selected = fallbackWet < primaryWet ? fallback : primary;
+      } else if (!primaryBaseAccepted && fallbackBaseAccepted) {
         selected = fallback;
       } else if (primary.candidate == null && fallback.candidate != null) {
         selected = fallback;
@@ -139,17 +163,16 @@ final class GraphAwareApartmentGeometryStrategyV2
       sourceHandoff.wetCoreGroups,
       [...candidate.interiorSpaces, ...candidate.exteriorAppendages],
     );
-    final wetIssue =
-        wetSeparationMm > template.wetCorePolicy.maxGroupSeparationMm
-            ? GeometryValidationIssue(
-                code: 'p9.geometry.wet-core-too-dispersed',
-                severity: GeometryValidationSeverity.blocker,
-                facts: {
-                  'actualMm': wetSeparationMm,
-                  'maxMm': template.wetCorePolicy.maxGroupSeparationMm,
-                },
-              )
-            : null;
+    final wetIssue = wetSeparationMm > maxWetSeparation
+        ? GeometryValidationIssue(
+            code: 'p9.geometry.wet-core-too-dispersed',
+            severity: GeometryValidationSeverity.blocker,
+            facts: {
+              'actualMm': wetSeparationMm,
+              'maxMm': maxWetSeparation,
+            },
+          )
+        : null;
     final validation = GeometryValidationReport([
       ...candidate.validation.issues,
       if (wetIssue != null) wetIssue,
@@ -219,6 +242,19 @@ final class GraphAwareApartmentGeometryStrategyV2
       fittedDraft: fittedDraft,
     );
     return structural.accepted;
+  }
+
+  int? _candidateWetSeparation(
+    ApartmentGeometryCandidate? candidate,
+    List<List<String>> wetCoreGroups,
+  ) {
+    if (candidate == null) {
+      return null;
+    }
+    return _wetSeparation(
+      wetCoreGroups,
+      [...candidate.interiorSpaces, ...candidate.exteriorAppendages],
+    );
   }
 
   ApartmentGeometryCandidate _adoptBackendCandidate(
