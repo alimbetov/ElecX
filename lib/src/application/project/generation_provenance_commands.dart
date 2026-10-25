@@ -1,4 +1,3 @@
-import '../../domain/generation_provenance.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import 'project_mutation.dart';
@@ -18,7 +17,8 @@ final class GenerationProvenanceCommandException implements Exception {
 /// Lock state participates in the same LocalProjectVersion, Undo/Redo and
 /// persistence lifecycle as the generated entity. It never changes generationId
 /// or generationKey.
-final class SetGeneratedEntityRegenerationLockCommand implements ProjectCommand {
+final class SetGeneratedEntityRegenerationLockCommand
+    implements ProjectCommand {
   const SetGeneratedEntityRegenerationLockCommand({
     required this.entityId,
     required this.locked,
