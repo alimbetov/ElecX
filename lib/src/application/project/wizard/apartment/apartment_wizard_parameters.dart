@@ -25,11 +25,11 @@ final class ApartmentRequestInput {
 
   static const productionDefaults = ApartmentRequestInput(
     habitableRoomCount: 2,
-    approximateAreaDm2: 6000,
+    approximateAreaDm2: 5500,
     bathroomCount: 1,
     separateWcCount: 0,
     balconyCount: 0,
-    balconyKind: ApartmentBalconyKind.either,
+    balconyKind: ApartmentBalconyKind.none,
     kitchenMode: ApartmentKitchenMode.separate,
     corridorMode: ApartmentCorridorMode.auto,
     exteriorExposurePreference: ApartmentExteriorExposurePreference.any,
