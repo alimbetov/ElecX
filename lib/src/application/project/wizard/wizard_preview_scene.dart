@@ -1,7 +1,7 @@
+import '../../../domain/boundary_host_migration.dart';
 import '../../../domain/boundary_topology.dart';
 import '../../../domain/project_aggregate.dart';
 import '../../../domain/project_identity.dart';
-import '../../../domain/project_space_semantics.dart';
 import '../project_mutation_reservation.dart';
 
 enum WizardPreviewRole {
@@ -390,17 +390,18 @@ final class ApartmentWizardPreviewProjector {
     }
 
     final openings = candidate.stores.openings.values
-        .where((opening) =>
-            opening.connectedSpaceIds.any(zone.spaceIds.contains))
+        .where(
+          (opening) => opening.connectedSpaceIds.any(zone.spaceIds.contains),
+        )
         .toList()
       ..sort((left, right) => left.id.value.compareTo(right.id.value));
     final registry = candidate.engineeringMetadata.boundaryHostedObjectRegistry;
     for (final opening in openings) {
-      final host = opening.connectedSpaceIds
-          .map((spaceId) => registry.openingHost(opening.id, spaceId))
-          .whereType<dynamic>()
-          .cast()
-          .firstWhere((reference) => reference != null, orElse: () => null);
+      BoundaryHostedReference? host;
+      for (final spaceId in opening.connectedSpaceIds) {
+        host = registry.openingHost(opening.id, spaceId);
+        if (host != null) break;
+      }
       if (host == null || host.startOffsetMm == null || host.endOffsetMm == null) {
         throw StateError('Opening ${opening.id} has no canonical boundary host.');
       }
