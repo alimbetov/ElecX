@@ -24,8 +24,12 @@ final class ProjectWizardLocalizations {
   String _pick(String en, String ru) => isRussian ? ru : en;
 
   String get title => _pick('Create building', 'Создание здания');
+  String get apartmentTitle =>
+      _pick('Apartment topology Wizard', 'Мастер планировки квартиры');
   String get cancel => _pick('Cancel', 'Отмена');
+  String get back => _pick('Back', 'Назад');
   String get parameters => _pick('Parameters', 'Параметры');
+  String get candidates => _pick('Variants', 'Варианты');
   String get preview => _pick('Preview', 'Предпросмотр');
   String get changes => _pick('Changes', 'Изменения');
   String get buildingName => _pick('Building name', 'Название здания');
@@ -40,9 +44,15 @@ final class ProjectWizardLocalizations {
         'Положительные этажи сохраняют нумерацию 1..N.',
       );
   String get generate => _pick('Generate', 'Сформировать');
+  String get generateVariants => _pick('Generate variants', 'Сформировать варианты');
+  String get preparePreview => _pick('Prepare preview', 'Подготовить предпросмотр');
   String get numericError => _pick(
         'Level counts and height must be numbers.',
         'Количество этажей и высота должны быть числами.',
+      );
+  String get apartmentNumericError => _pick(
+        'Room counts and area must be valid numbers.',
+        'Количество помещений и площадь должны быть корректными числами.',
       );
   String get generationFailed => _pick(
         'Could not generate a candidate',
@@ -66,6 +76,10 @@ final class ProjectWizardLocalizations {
         'Fill in the parameters and press “Generate”.',
         'Заполните параметры и нажмите «Сформировать».',
       );
+  String get apartmentPreviewEmptyHint => _pick(
+        'Generate variants, select one, then prepare the canonical preview.',
+        'Сформируйте варианты, выберите один и подготовьте канонический предпросмотр.',
+      );
   String get changesEmpty => _pick(
         'Changes will appear after generation',
         'Изменения появятся после генерации',
@@ -87,10 +101,33 @@ final class ProjectWizardLocalizations {
         'Selected candidate $index of $count',
         'Выбран вариант $index из $count',
       );
+  String get zoomIn => _pick('Zoom in', 'Увеличить');
+  String get zoomOut => _pick('Zoom out', 'Уменьшить');
+  String get resetView => _pick('Reset view', 'Сбросить вид');
+
+  String get apartmentRooms =>
+      _pick('Habitable rooms', 'Жилых комнат');
+  String get apartmentArea => _pick('Interior area, m²', 'Площадь, м²');
+  String get apartmentBathrooms => _pick('Bathrooms', 'Ванных');
+  String get apartmentSeparateWc => _pick('Separate WC', 'Отдельных WC');
+  String get apartmentBalconies => _pick('Balconies/loggias', 'Балконов/лоджий');
+  String get apartmentKitchenMode => _pick('Kitchen', 'Кухня');
+  String get apartmentCorridorMode => _pick('Corridor', 'Коридор');
+  String get apartmentDayNight =>
+      _pick('Prefer day/night separation', 'Предпочитать разделение день/ночь');
+  String get apartmentSelectedVariant =>
+      _pick('Selected apartment variant', 'Выбранный вариант квартиры');
+  String get apartmentCanonicalPreview =>
+      _pick('Canonical preview', 'Канонический предпросмотр');
 
   String get site => _pick('Site', 'Участок');
   String get building => _pick('Building', 'Здание');
   String get level => _pick('Level', 'Этаж');
+  String get apartment => _pick('Apartment', 'Квартира');
+  String get space => _pick('Space', 'Помещение');
+  String get boundary => _pick('Boundary', 'Граница');
+  String get door => _pick('Door', 'Дверь');
+  String get openPassage => _pick('Open passage', 'Открытый проход');
   String get nameField => _pick('Name', 'Название');
   String get buildingsField => _pick('Buildings', 'Здания');
   String get displayOrderField => _pick('Display order', 'Порядок отображения');
@@ -99,13 +136,24 @@ final class ProjectWizardLocalizations {
   String get elevationField => _pick('Elevation', 'Отметка');
   String get kindField => _pick('Kind', 'Тип');
   String get floorToFloorField => _pick('Floor-to-floor', 'Высота этажа');
+  String get usageField => _pick('Usage', 'Назначение');
+  String get spacesField => _pick('Spaces', 'Помещения');
+  String get widthField => _pick('Width', 'Ширина');
+  String get heightField => _pick('Height', 'Высота');
+  String get connectedSpacesField =>
+      _pick('Connected spaces', 'Связанные помещения');
 
   String diffText(String raw) {
     if (!isRussian) return raw;
     return raw
         .replaceFirst('Site “', '$site “')
         .replaceFirst('Building “', '$building “')
-        .replaceFirst('Level ', '$level ');
+        .replaceFirst('Level ', '$level ')
+        .replaceFirst('Apartment “', '$apartment “')
+        .replaceFirst('Space “', '$space “')
+        .replaceFirst('Boundary — ', '$boundary — ')
+        .replaceFirst('Door: ', '$door: ')
+        .replaceFirst('Open passage: ', '$openPassage: ');
   }
 
   String diffField(String raw) => switch (raw) {
@@ -117,6 +165,11 @@ final class ProjectWizardLocalizations {
         'Elevation' => elevationField,
         'Kind' => kindField,
         'Floor-to-floor' => floorToFloorField,
+        'Usage' => usageField,
+        'Spaces' => spacesField,
+        'Width' => widthField,
+        'Height' => heightField,
+        'Connected spaces' => connectedSpacesField,
         _ => raw,
       };
 
@@ -143,6 +196,34 @@ final class ProjectWizardLocalizations {
         'basic-building.height.non-positive' => _pick(
             'Floor-to-floor height must be a positive millimetre value.',
             'Высота этажа должна быть положительным значением в миллиметрах.',
+          ),
+        'p9.parameters.room-count-out-of-range' => _pick(
+            'Habitable room count must be between 1 and 10.',
+            'Количество жилых комнат должно быть от 1 до 10.',
+          ),
+        'p9.parameters.area-out-of-range' => _pick(
+            'Interior area must be between 15 and 500 m².',
+            'Площадь должна быть от 15 до 500 м².',
+          ),
+        'p9.parameters.bathroom-count-out-of-range' => _pick(
+            'Bathroom count must be between 1 and 6.',
+            'Количество ванных должно быть от 1 до 6.',
+          ),
+        'p9.parameters.wc-count-out-of-range' => _pick(
+            'Separate WC count must be between 0 and 4.',
+            'Количество отдельных WC должно быть от 0 до 4.',
+          ),
+        'p9.parameters.balcony-count-out-of-range' => _pick(
+            'Balcony/loggia count must be between 0 and 6.',
+            'Количество балконов/лоджий должно быть от 0 до 6.',
+          ),
+        'p9.materialize.target-not-empty' => _pick(
+            'Apartment generation requires an empty Level.',
+            'Генерация квартиры требует пустого этажа.',
+          ),
+        'p9.provider.no-candidates' => _pick(
+            'No qualified apartment variants match these parameters.',
+            'Нет квалифицированных вариантов для заданных параметров.',
           ),
         _ => fallback,
       };
