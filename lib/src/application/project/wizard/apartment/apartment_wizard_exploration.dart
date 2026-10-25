@@ -52,9 +52,8 @@ final class ApartmentWizardExplorationController {
     final normalizedBefore = const ApartmentRequestNormalizer()
         .normalize(parameters.request)
         .request;
-    final normalizedAfter = const ApartmentRequestNormalizer()
-        .normalize(request)
-        .request;
+    final normalizedAfter =
+        const ApartmentRequestNormalizer().normalize(request).request;
     final sameIntent = normalizedBefore != null &&
         normalizedAfter != null &&
         normalizedBefore.intentFingerprint == normalizedAfter.intentFingerprint;
@@ -108,8 +107,9 @@ final class ApartmentWizardExplorationController {
         ticket.requestRevision != requestRevision) {
       return false;
     }
-    final normalized =
-        const ApartmentRequestNormalizer().normalize(parameters.request).request;
+    final normalized = const ApartmentRequestNormalizer()
+        .normalize(parameters.request)
+        .request;
     if (normalized == null ||
         normalized.intentFingerprint != ticket.intentFingerprint) {
       _inFlight = null;
