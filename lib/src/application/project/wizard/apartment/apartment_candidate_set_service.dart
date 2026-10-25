@@ -16,6 +16,8 @@ import 'apartment_topology_vector_renderer.dart';
 import 'apartment_wizard_parameters.dart';
 import 'p9_failure.dart';
 
+const String apartmentGeneratorVersion = 'p9.generator.v2';
+
 final class ApartmentCandidateCard {
   const ApartmentCandidateCard({
     required this.identity,
@@ -32,6 +34,13 @@ final class ApartmentCandidateCard {
   final String svg;
 
   String get candidateFingerprint => identity.candidateFingerprint;
+
+  ApartmentCandidateSelection toSelection({
+    required String candidateSetFingerprint,
+  }) =>
+      identity.toSelection(
+        candidateSetFingerprint: candidateSetFingerprint,
+      );
 }
 
 final class ApartmentCandidateSet {
@@ -59,12 +68,33 @@ final class ApartmentCandidateSet {
   ApartmentCandidateCard? resolveSelection(
     ApartmentCandidateSelection selection,
   ) {
+    final selectedSetFingerprint = selection.candidateSetFingerprint;
+    if (selectedSetFingerprint != null &&
+        selectedSetFingerprint != candidateSetFingerprint) {
+      return null;
+    }
     for (final candidate in candidates) {
       if (candidate.identity.matchesSelection(selection)) {
         return candidate;
       }
     }
     return null;
+  }
+
+  ApartmentCandidateSelection selectionFor(ApartmentCandidateCard candidate) {
+    for (final current in candidates) {
+      if (current.candidateFingerprint == candidate.candidateFingerprint &&
+          current.identity.matchesSelection(candidate.identity.toSelection())) {
+        return current.toSelection(
+          candidateSetFingerprint: candidateSetFingerprint,
+        );
+      }
+    }
+    throw ArgumentError.value(
+      candidate.candidateFingerprint,
+      'candidate',
+      'Candidate does not belong to this candidate set.',
+    );
   }
 }
 
@@ -87,8 +117,8 @@ final class ApartmentCandidateSetGenerationResult {
 /// project identity and never mutates [ProjectAggregateRoot].
 final class ApartmentCandidateSetService {
   const ApartmentCandidateSetService({
-    this.generatorVersion = 'p9.generator.v2',
-  });
+    this.generatorVersion = apartmentGeneratorVersion,
+  }) : assert(generatorVersion != '');
 
   final String generatorVersion;
 
@@ -145,7 +175,10 @@ final class ApartmentCandidateSetService {
         continue;
       }
       final template = _templateForDraft(
-          templates, draft.templateId.value, draft.templateVersion);
+        templates,
+        draft.templateId.value,
+        draft.templateVersion,
+      );
       if (template == null) {
         failures.add(
           _providerFailure(
