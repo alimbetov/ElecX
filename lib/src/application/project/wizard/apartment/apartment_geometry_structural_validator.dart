@@ -1,7 +1,6 @@
 import '../../../../domain/apartment_topology/apartment_area_fit.dart';
 import '../../../../domain/apartment_topology/apartment_geometry.dart';
 import '../../../../domain/apartment_topology/apartment_topology_draft.dart';
-import '../../../../domain/boundary_topology.dart';
 
 /// Independent P9.6 structural validation over the packed candidate.
 ///
