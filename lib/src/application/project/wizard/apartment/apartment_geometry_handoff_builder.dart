@@ -1,6 +1,7 @@
 import '../../../../domain/apartment_topology/apartment_semantic_validation.dart';
 import '../../../../domain/apartment_topology/apartment_topology_draft.dart';
 import '../../../../domain/apartment_topology/apartment_topology_models.dart';
+import '../../../../domain/project_space_semantics.dart';
 
 /// Lossless P9.5 -> P9.6 handoff builder.
 ///
