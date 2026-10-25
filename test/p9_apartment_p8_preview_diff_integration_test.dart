@@ -60,12 +60,10 @@ void main() {
         ..sort();
       final actualPolygons = zone.spaceIds.map((spaceId) {
         final topology = candidate.stores.boundaries[spaceId]!;
-        return topology.orderedEdgeIds
-            .map((edgeId) {
-              final point = topology.edges[edgeId]!.start;
-              return '${point.xMm},${point.yMm}';
-            })
-            .join(';');
+        return topology.orderedEdgeIds.map((edgeId) {
+          final point = topology.edges[edgeId]!.start;
+          return '${point.xMm},${point.yMm}';
+        }).join(';');
       }).toList()
         ..sort();
       expect(actualPolygons, expectedPolygons);
@@ -92,8 +90,8 @@ void main() {
       for (final opening in candidate.stores.openings.values) {
         final hosts = opening.connectedSpaceIds
             .map(
-              (spaceId) => candidate.engineeringMetadata
-                  .boundaryHostedObjectRegistry
+              (spaceId) => candidate
+                  .engineeringMetadata.boundaryHostedObjectRegistry
                   .openingHost(opening.id, spaceId),
             )
             .where((host) => host != null)
@@ -450,8 +448,8 @@ String _canonicalSignature(ProjectAggregateRoot project) {
       '${adjacency.openingId?.value ?? ''}',
     );
   }
-  final hosts = project.engineeringMetadata.boundaryHostedObjectRegistry.references
-      .entries
+  final hosts = project
+      .engineeringMetadata.boundaryHostedObjectRegistry.references.entries
       .toList()
     ..sort((a, b) => a.key.compareTo(b.key));
   for (final entry in hosts) {
