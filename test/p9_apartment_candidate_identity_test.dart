@@ -46,7 +46,7 @@ void main() {
       );
     });
 
-    test('scoring profile change changes candidate identity, not geometry', () {
+    test('scoring profile version changes identity, not geometry', () {
       final firstProfile = _profile('p9.score.identity.v1');
       final secondProfile = _profile('p9.score.identity.v2');
       final firstRanking = _rank(prepared, firstProfile);
@@ -61,12 +61,69 @@ void main() {
       final firstIdentity = service.identifyCandidate(
         request: prepared.request,
         rankedCandidate: firstCandidate,
+        scoringProfile: firstProfile,
         catalogVersion: prepared.catalogVersion,
         generatorVersion: _generatorVersion,
       );
       final secondIdentity = service.identifyCandidate(
         request: prepared.request,
         rankedCandidate: sameGeometry,
+        scoringProfile: secondProfile,
+        catalogVersion: prepared.catalogVersion,
+        generatorVersion: _generatorVersion,
+      );
+
+      expect(
+        secondIdentity.geometryFingerprint,
+        firstIdentity.geometryFingerprint,
+      );
+      expect(
+        secondIdentity.candidateFingerprint,
+        isNot(firstIdentity.candidateFingerprint),
+      );
+    });
+
+    test('silent scoring weight change still changes exact identity', () {
+      final firstProfile = _profile('p9.score.identity.v1');
+      final changedWeights = Map<ApartmentScoreMetric, int>.of(
+        firstProfile.weightBp,
+      )
+        ..update(
+          ApartmentScoreMetric.interiorAreaMatch,
+          (value) => value + 1,
+        )
+        ..update(
+          ApartmentScoreMetric.circulationEfficiency,
+          (value) => value - 1,
+        );
+      final secondProfile = ApartmentScoringProfile(
+        scoringProfileVersion: firstProfile.scoringProfileVersion,
+        weightBp: changedWeights,
+        selectableFloorBp: 0,
+        preferredCandidateCount: firstProfile.preferredCandidateCount,
+        minimumUsefulCandidateCount: firstProfile.minimumUsefulCandidateCount,
+        maximumCandidateCount: firstProfile.maximumCandidateCount,
+      );
+      final firstRanking = _rank(prepared, firstProfile);
+      final secondRanking = _rank(prepared, secondProfile);
+      final firstCandidate = firstRanking.rankedCandidates.first;
+      final sameGeometry = secondRanking.rankedCandidates.firstWhere(
+        (candidate) =>
+            candidate.candidate.geometryFingerprint ==
+            firstCandidate.candidate.geometryFingerprint,
+      );
+      const service = ApartmentCandidateIdentityService();
+      final firstIdentity = service.identifyCandidate(
+        request: prepared.request,
+        rankedCandidate: firstCandidate,
+        scoringProfile: firstProfile,
+        catalogVersion: prepared.catalogVersion,
+        generatorVersion: _generatorVersion,
+      );
+      final secondIdentity = service.identifyCandidate(
+        request: prepared.request,
+        rankedCandidate: sameGeometry,
+        scoringProfile: secondProfile,
         catalogVersion: prepared.catalogVersion,
         generatorVersion: _generatorVersion,
       );
@@ -122,6 +179,7 @@ void main() {
           service.identifyCandidate(
             request: changedRequest,
             rankedCandidate: candidate,
+            scoringProfile: profile,
             catalogVersion: prepared.catalogVersion,
             generatorVersion: _generatorVersion,
           ),
@@ -130,7 +188,7 @@ void main() {
         request: changedRequest,
         catalogVersion: prepared.catalogVersion,
         generatorVersion: _generatorVersion,
-        scoringProfileVersion: profile.scoringProfileVersion,
+        scoringProfile: profile,
         diversityPolicyVersion: ApartmentCandidateRanker.diversityPolicyVersion,
         orderedCandidates: changedIdentities,
       );
@@ -152,7 +210,7 @@ void main() {
         request: prepared.request,
         catalogVersion: prepared.catalogVersion,
         generatorVersion: _generatorVersion,
-        scoringProfileVersion: profile.scoringProfileVersion,
+        scoringProfile: profile,
         diversityPolicyVersion: ApartmentCandidateRanker.diversityPolicyVersion,
         orderedCandidates: identitySet.orderedCandidates.reversed,
       );
@@ -199,7 +257,7 @@ void main() {
           request: prepared.request,
           catalogVersion: prepared.catalogVersion,
           generatorVersion: _generatorVersion,
-          scoringProfileVersion: profile.scoringProfileVersion,
+          scoringProfile: profile,
           diversityPolicyVersion:
               ApartmentCandidateRanker.diversityPolicyVersion,
           orderedCandidates: [duplicate, duplicate],
@@ -299,6 +357,7 @@ ApartmentCandidateSetIdentity _identifySet(
       service.identifyCandidate(
         request: prepared.request,
         rankedCandidate: candidate,
+        scoringProfile: profile,
         catalogVersion: prepared.catalogVersion,
         generatorVersion: _generatorVersion,
       ),
@@ -307,7 +366,7 @@ ApartmentCandidateSetIdentity _identifySet(
     request: prepared.request,
     catalogVersion: prepared.catalogVersion,
     generatorVersion: _generatorVersion,
-    scoringProfileVersion: profile.scoringProfileVersion,
+    scoringProfile: profile,
     diversityPolicyVersion: ApartmentCandidateRanker.diversityPolicyVersion,
     orderedCandidates: identities,
   );
