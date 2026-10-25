@@ -303,7 +303,8 @@ final class _WizardPreviewCanvasState extends State<WizardPreviewCanvas> {
             top: 4,
             right: 4,
             child: Material(
-              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
+              color:
+                  Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
               borderRadius: BorderRadius.circular(10),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
