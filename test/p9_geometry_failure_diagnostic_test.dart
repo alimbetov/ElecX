@@ -9,82 +9,116 @@ import 'package:elecx/src/domain/apartment_topology/apartment_topology_catalog_v
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('P9.6 diagnostic: 2-room rejection codes are visible', () {
-    final normalized = const ApartmentRequestNormalizer()
-        .normalize(
-          const ApartmentRequestInput(
-            habitableRoomCount: 2,
-            approximateAreaDm2: 5500,
-            bathroomCount: 1,
-            separateWcCount: 0,
-            balconyCount: 0,
-            balconyKind: ApartmentBalconyKind.none,
-            kitchenMode: ApartmentKitchenMode.separate,
-            corridorMode: ApartmentCorridorMode.auto,
-            exteriorExposurePreference: ApartmentExteriorExposurePreference.any,
-          ),
-        )
-        .request!;
-    final catalog = P9ApartmentTopologyCatalogV4.create();
-    final templates = const ApartmentTopologyCatalogFilter()
-        .compatibleTemplates(catalog, normalized);
-    final expansion = ApartmentTopologyGrammarEngine().expand(
-      request: normalized,
-      templates: templates,
-    );
-
-    final diagnostics = <String>[];
-    var accepted = false;
-    for (final draft in expansion.drafts) {
-      final fitted = const ApartmentAreaFitter().fit(
-        draft: draft,
-        request: normalized,
-      );
-      if (!fitted.isValid) {
-        diagnostics.add(
-          '${draft.templateId.value}/${draft.variantSeedId}:area:'
-          '${fitted.failures.map((failure) => failure.code).join(',')}',
-        );
-        continue;
-      }
-      final template = templates.firstWhere(
-        (candidate) =>
-            candidate.templateId == draft.templateId &&
-            candidate.templateVersion == draft.templateVersion,
-      );
-      final semantic = const ApartmentSemanticValidator().validate(
-        fittedDraft: fitted.fittedDraft!,
-        request: normalized,
-        template: template,
-      );
-      if (!semantic.accepted) {
-        diagnostics.add(
-          '${draft.templateId.value}/${draft.variantSeedId}:semantic:'
-          '${semantic.blockers.map((issue) => issue.code).join(',')}',
-        );
-        continue;
-      }
-      final geometry = const ApartmentGeometryStage().generate(
-        fittedDraft: fitted.fittedDraft!,
-        semanticValidation: semantic,
-        template: template,
-        request: normalized,
-      );
-      if (geometry.accepted) {
-        accepted = true;
-        break;
-      }
-      diagnostics.add(
-        '${draft.templateId.value}/${draft.variantSeedId}:geometry:'
-        '${geometry.failures.map((failure) => failure.code).join(',')}|issues:'
-        '${geometry.candidate?.validation.issues.map((issue) => issue.code).join(',') ?? 'no-candidate'}',
-      );
-    }
-
-    expect(
-      accepted,
-      isTrue,
-      reason: diagnostics.join('\n'),
+  test('P9.6 diagnostic: 2-room separate rejection codes are visible', () {
+    _expectGeometryPath(
+      const ApartmentRequestInput(
+        habitableRoomCount: 2,
+        approximateAreaDm2: 5500,
+        bathroomCount: 1,
+        separateWcCount: 0,
+        balconyCount: 0,
+        balconyKind: ApartmentBalconyKind.none,
+        kitchenMode: ApartmentKitchenMode.separate,
+        corridorMode: ApartmentCorridorMode.auto,
+        exteriorExposurePreference: ApartmentExteriorExposurePreference.any,
+      ),
     );
   });
+
+  test('P9.6 diagnostic: 3-room separate rejection codes are visible', () {
+    _expectGeometryPath(
+      const ApartmentRequestInput(
+        habitableRoomCount: 3,
+        approximateAreaDm2: 7800,
+        bathroomCount: 1,
+        separateWcCount: 0,
+        balconyCount: 0,
+        balconyKind: ApartmentBalconyKind.none,
+        kitchenMode: ApartmentKitchenMode.separate,
+        corridorMode: ApartmentCorridorMode.auto,
+        exteriorExposurePreference: ApartmentExteriorExposurePreference.any,
+      ),
+    );
+  });
+
+  test('P9.6 diagnostic: 2-room open-plan rejection codes are visible', () {
+    _expectGeometryPath(
+      const ApartmentRequestInput(
+        habitableRoomCount: 2,
+        approximateAreaDm2: 6000,
+        bathroomCount: 1,
+        separateWcCount: 0,
+        balconyCount: 0,
+        balconyKind: ApartmentBalconyKind.none,
+        kitchenMode: ApartmentKitchenMode.openPlan,
+        corridorMode: ApartmentCorridorMode.auto,
+        exteriorExposurePreference: ApartmentExteriorExposurePreference.any,
+      ),
+    );
+  });
+}
+
+void _expectGeometryPath(ApartmentRequestInput input) {
+  final normalized = const ApartmentRequestNormalizer().normalize(input).request!;
+  final catalog = P9ApartmentTopologyCatalogV4.create();
+  final templates = const ApartmentTopologyCatalogFilter()
+      .compatibleTemplates(catalog, normalized);
+  final expansion = ApartmentTopologyGrammarEngine().expand(
+    request: normalized,
+    templates: templates,
+  );
+
+  final diagnostics = <String>[];
+  var accepted = false;
+  for (final draft in expansion.drafts) {
+    final fitted = const ApartmentAreaFitter().fit(
+      draft: draft,
+      request: normalized,
+    );
+    if (!fitted.isValid) {
+      diagnostics.add(
+        '${draft.templateId.value}/${draft.variantSeedId}:area:'
+        '${fitted.failures.map((failure) => failure.code).join(',')}',
+      );
+      continue;
+    }
+    final template = templates.firstWhere(
+      (candidate) =>
+          candidate.templateId == draft.templateId &&
+          candidate.templateVersion == draft.templateVersion,
+    );
+    final semantic = const ApartmentSemanticValidator().validate(
+      fittedDraft: fitted.fittedDraft!,
+      request: normalized,
+      template: template,
+    );
+    if (!semantic.accepted) {
+      diagnostics.add(
+        '${draft.templateId.value}/${draft.variantSeedId}:semantic:'
+        '${semantic.blockers.map((issue) => issue.code).join(',')}',
+      );
+      continue;
+    }
+    final geometry = const ApartmentGeometryStage().generate(
+      fittedDraft: fitted.fittedDraft!,
+      semanticValidation: semantic,
+      template: template,
+      request: normalized,
+    );
+    if (geometry.accepted) {
+      accepted = true;
+      break;
+    }
+    diagnostics.add(
+      '${draft.templateId.value}/${draft.variantSeedId}:geometry:'
+      '${geometry.failures.map((failure) => failure.code).join(',')}|issues:'
+      '${geometry.candidate?.validation.issues.map((issue) => issue.code).join(',') ?? 'no-candidate'}',
+    );
+  }
+
+  expect(
+    accepted,
+    isTrue,
+    reason: diagnostics.join('\n'),
+  );
 }
