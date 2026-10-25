@@ -12,7 +12,8 @@ abstract final class EngineeringImpactProjection {
     final dependencies = <ImpactDependency>[];
 
     for (final connection in graph.connections) {
-      final connectionRef = ImpactEntityRef.engineeringConnection(connection.id);
+      final connectionRef =
+          ImpactEntityRef.engineeringConnection(connection.id);
 
       dependencies.add(
         ImpactDependency(
