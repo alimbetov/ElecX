@@ -1,6 +1,7 @@
 import '../../../../domain/apartment_topology.dart';
 import '../../../../domain/apartment_topology/apartment_area_fit.dart';
 import '../../../../domain/apartment_topology/apartment_topology_draft.dart';
+import '../../../../domain/project_space_semantics.dart';
 import 'apartment_wizard_parameters.dart';
 import 'p9_failure.dart';
 import 'p9_sha256.dart';
@@ -23,12 +24,18 @@ final class ApartmentAreaFitResult {
 /// Interior area is allocated exactly in square-decimetres. Exterior appendages
 /// are allocated independently from their template preferred targets and never
 /// consume the requested interior total.
+///
+/// Policy v2 also reserves enough fitted area for the semantic circulation hub
+/// to be realizable as a bounded P9.6 access spine. The reserve is derived only
+/// from typed access edges and catalog dimensional minima; no geometry solver or
+/// presentation state participates in P9.4.
 final class ApartmentAreaFitter {
   const ApartmentAreaFitter();
 
-  static const String areaPolicyVersion = '1';
-  static const String allocatorVersion = '1';
+  static const String areaPolicyVersion = '2';
+  static const String allocatorVersion = '2';
   static const int maxSafeAreaDm2 = 1000000000;
+  static const int squareMillimetresPerSquareDecimetre = 10000;
 
   ApartmentAreaFitResult fit({
     required ApartmentTopologyDraft draft,
@@ -105,6 +112,47 @@ final class ApartmentAreaFitter {
         space.semanticKey: space.sourceSpec.minAreaDm2,
     };
     var remaining = request.interiorAreaDm2 - minimumTotal;
+
+    final reserve = _circulationReserve(draft, interior);
+    if (reserve != null) {
+      final current = allocations[reserve.space.semanticKey]!;
+      if (reserve.targetAreaDm2 > reserve.space.sourceSpec.maxAreaDm2) {
+        return ApartmentAreaFitResult(
+          fittedDraft: null,
+          failures: [
+            _failure(
+              'p9.area.circulation-geometry-reserve',
+              facts: {
+                'semanticKey': reserve.space.semanticKey,
+                'requiredAreaDm2': reserve.targetAreaDm2,
+                'maximumAreaDm2': reserve.space.sourceSpec.maxAreaDm2,
+              },
+            ),
+          ],
+        );
+      }
+      final needed = reserve.targetAreaDm2 > current
+          ? reserve.targetAreaDm2 - current
+          : 0;
+      if (needed > remaining) {
+        return ApartmentAreaFitResult(
+          fittedDraft: null,
+          failures: [
+            _failure(
+              'p9.area.circulation-geometry-reserve',
+              facts: {
+                'semanticKey': reserve.space.semanticKey,
+                'requiredAdditionalDm2': needed,
+                'availableDm2': remaining,
+              },
+            ),
+          ],
+        );
+      }
+      allocations[reserve.space.semanticKey] = current + needed;
+      remaining -= needed;
+    }
+
     final nearFixed =
         interior.where((space) => space.sourceSpec.nearFixedArea).toList();
     final flexible =
@@ -219,6 +267,86 @@ final class ApartmentAreaFitter {
         areaFitFingerprint: fingerprint,
       ),
       failures: const [],
+    );
+  }
+
+  _CirculationReserve? _circulationReserve(
+    ApartmentTopologyDraft draft,
+    List<DraftSpace> interior,
+  ) {
+    DraftSpace? distribution;
+    for (final space in interior) {
+      if (space.usage == SpaceUsage.corridor) {
+        distribution = space;
+        break;
+      }
+    }
+    if (distribution == null) {
+      for (final space in interior) {
+        if (space.usage == SpaceUsage.entranceHall) {
+          distribution = space;
+          break;
+        }
+      }
+    }
+    if (distribution == null) {
+      return null;
+    }
+
+    final byKey = {for (final space in interior) space.semanticKey: space};
+    final neighbors = <DraftSpace>[];
+    for (final edge in draft.circulation.accessEdges) {
+      String? neighborKey;
+      if (edge.fromSpaceKey == distribution.semanticKey) {
+        neighborKey = edge.toSpaceKey;
+      } else if (edge.toSpaceKey == distribution.semanticKey) {
+        neighborKey = edge.fromSpaceKey;
+      }
+      if (neighborKey == null) {
+        continue;
+      }
+      final neighbor = byKey[neighborKey];
+      if (neighbor != null && !neighbors.contains(neighbor)) {
+        neighbors.add(neighbor);
+      }
+    }
+    if (neighbors.isEmpty) {
+      return null;
+    }
+    neighbors.sort(_compareSpace);
+
+    var leftSpanMm = 0;
+    var rightSpanMm = 0;
+    for (final neighbor in neighbors) {
+      final geometry = neighbor.sourceSpec.geometry;
+      final exposure = geometry.minExteriorExposureMm ?? 0;
+      final spanMm = geometry.minShortSideMm > exposure
+          ? geometry.minShortSideMm
+          : exposure;
+      if (leftSpanMm <= rightSpanMm) {
+        leftSpanMm += spanMm;
+      } else {
+        rightSpanMm += spanMm;
+      }
+    }
+
+    final distributionGeometry = distribution.sourceSpec.geometry;
+    var requiredLengthMm = leftSpanMm > rightSpanMm ? leftSpanMm : rightSpanMm;
+    final minLong = distributionGeometry.minLongSideMm ?? 0;
+    if (requiredLengthMm < minLong) {
+      requiredLengthMm = minLong;
+    }
+    final requiredAreaMm2 =
+        requiredLengthMm * distributionGeometry.minShortSideMm;
+    var targetAreaDm2 =
+        (requiredAreaMm2 + squareMillimetresPerSquareDecimetre - 1) ~/
+            squareMillimetresPerSquareDecimetre;
+    if (targetAreaDm2 < distribution.sourceSpec.preferredAreaDm2) {
+      targetAreaDm2 = distribution.sourceSpec.preferredAreaDm2;
+    }
+    return _CirculationReserve(
+      space: distribution,
+      targetAreaDm2: targetAreaDm2,
     );
   }
 
@@ -409,6 +537,16 @@ final class ApartmentAreaFitter {
     }
     return residual;
   }
+}
+
+final class _CirculationReserve {
+  const _CirculationReserve({
+    required this.space,
+    required this.targetAreaDm2,
+  });
+
+  final DraftSpace space;
+  final int targetAreaDm2;
 }
 
 int _compareSpace(DraftSpace left, DraftSpace right) =>
