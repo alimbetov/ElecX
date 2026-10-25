@@ -1,5 +1,6 @@
 import '../../../../domain/apartment_topology/apartment_topology_catalog.dart';
 import '../../../../domain/apartment_topology/apartment_topology_catalog_production.dart';
+import '../../../../domain/apartment_topology/apartment_topology_draft.dart';
 import '../../../../domain/apartment_topology/apartment_topology_models.dart';
 import 'apartment_area_fitter.dart';
 import 'apartment_catalog_filter.dart';
@@ -190,7 +191,7 @@ final class ApartmentGenerationDiagnostics {
   }
 
   ApartmentGenerationDiagnosticEntry _entry({
-    required dynamic draft,
+    required ApartmentTopologyDraft draft,
     required ApartmentTopologyTemplate template,
     required ApartmentGenerationDiagnosticStage stage,
     required Iterable<String> codes,
@@ -200,8 +201,8 @@ final class ApartmentGenerationDiagnostics {
         templateId: template.templateId.value,
         templateVersion: template.templateVersion,
         family: template.family,
-        variantSeedId: draft.variantSeedId as String,
-        draftFingerprint: draft.draftFingerprint as String,
+        variantSeedId: draft.variantSeedId,
+        draftFingerprint: draft.draftFingerprint,
         stage: stage,
         codes: codes,
         geometryFingerprint: geometryFingerprint,
