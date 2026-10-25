@@ -87,18 +87,23 @@ void main() {
         ),
       );
 
+      final hostedRegistry =
+          candidate.engineeringMetadata.boundaryHostedObjectRegistry;
       for (final opening in candidate.stores.openings.values) {
-        final hosts = opening.connectedSpaceIds
-            .map(
-              (spaceId) => candidate
-                  .engineeringMetadata.boundaryHostedObjectRegistry
-                  .openingHost(opening.id, spaceId),
-            )
-            .where((host) => host != null)
-            .toList();
-        expect(hosts, hasLength(1));
-        expect(hosts.single!.startOffsetMm, isNotNull);
-        expect(hosts.single!.endOffsetMm, isNotNull);
+        final hosts = opening.connectedSpaceIds.map((spaceId) {
+          final host = hostedRegistry.openingHost(opening.id, spaceId);
+          expect(host, isNotNull,
+              reason: '${opening.id} must be hosted in $spaceId');
+          expect(host!.host.spaceId, spaceId);
+          expect(host.startOffsetMm, isNotNull);
+          expect(host.endOffsetMm, isNotNull);
+          expect(
+            host.endOffsetMm! - host.startOffsetMm!,
+            opening.widthMm,
+          );
+          return host;
+        }).toList();
+        expect(hosts, hasLength(opening.connectedSpaceIds.length));
       }
     });
 
