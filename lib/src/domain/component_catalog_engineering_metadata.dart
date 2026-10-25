@@ -52,7 +52,8 @@ final class ComponentCompatibilityProfile {
         connections = Set.unmodifiable(connections),
         hostKinds = Set.unmodifiable(hostKinds) {
     if (this.systems.isEmpty) {
-      throw ArgumentError('At least one compatible engineering system required.');
+      throw ArgumentError(
+          'At least one compatible engineering system required.');
     }
     if (this.hostKinds.isEmpty) {
       throw ArgumentError('At least one compatible host kind required.');
@@ -120,8 +121,7 @@ final class ComponentCatalogEngineeringRecord {
     ComponentHostKind? hostKind,
     bool requireAutoConfigurationReady = true,
   }) {
-    if (requireAutoConfigurationReady &&
-        !metadata.isAutoConfigurationReady) {
+    if (requireAutoConfigurationReady && !metadata.isAutoConfigurationReady) {
       return false;
     }
     if (!metadata.compatibility.systems.contains(systemClass)) return false;
@@ -150,7 +150,8 @@ final class ComponentCatalogEngineeringRegistry {
     final result = <String, ComponentCatalogEngineeringRecord>{};
     for (final record in records) {
       if (result.containsKey(record.entry.id)) {
-        throw ArgumentError('Duplicate engineering metadata ${record.entry.id}.');
+        throw ArgumentError(
+            'Duplicate engineering metadata ${record.entry.id}.');
       }
       result[record.entry.id] = record;
     }
