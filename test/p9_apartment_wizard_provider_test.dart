@@ -53,8 +53,10 @@ void main() {
         ),
       );
 
-      expect(level.map((descriptor) => descriptor.familyId),
-          contains(ApartmentWizardProvider.familyId));
+      expect(
+        level.map((descriptor) => descriptor.familyId),
+        contains(ApartmentWizardProvider.familyId),
+      );
       expect(building, isEmpty);
     });
 
@@ -79,9 +81,14 @@ void main() {
       );
       final ticket = controller.beginGeneration();
       expect(controller.publishGeneration(ticket, generatedA), isTrue);
-      final selected = generatedA.candidateSet!.candidates.first;
+      final set = generatedA.candidateSet!;
+      final selected = set.candidates.first;
       controller.selectCandidate(selected.candidateFingerprint);
       expect(controller.parameters.selection, isNotNull);
+      expect(
+        controller.parameters.selection!.candidateSetFingerprint,
+        set.candidateSetFingerprint,
+      );
       expect(controller.candidateSet, isNotNull);
 
       controller.updateRequest(requestB);
@@ -123,18 +130,21 @@ void main() {
 
     test('P9.9-AT-006 stale and unknown fingerprints fail closed', () {
       const provider = ApartmentWizardProvider();
-      final card = generatedA.candidateSet!.candidates.first;
+      final set = generatedA.candidateSet!;
+      final card = set.candidates.first;
       final unknown = ApartmentCandidateSelection(
         candidateFingerprint: '${card.candidateFingerprint}-unknown',
         templateIdValue: card.identity.templateIdValue,
         templateVersion: card.identity.templateVersion,
         variantSeedId: card.identity.variantSeedId,
+        candidateSetFingerprint: set.candidateSetFingerprint,
       );
       final stale = ApartmentCandidateSelection(
         candidateFingerprint: card.candidateFingerprint,
         templateIdValue: card.identity.templateIdValue,
         templateVersion: card.identity.templateVersion + 1,
         variantSeedId: card.identity.variantSeedId,
+        candidateSetFingerprint: set.candidateSetFingerprint,
       );
 
       expect(
@@ -167,11 +177,12 @@ void main() {
 
     test('P9.9-AT-007 exact selected candidate reaches reserved command', () {
       const provider = ApartmentWizardProvider();
-      final card = generatedA.candidateSet!.candidates.first;
+      final set = generatedA.candidateSet!;
+      final card = set.candidates.first;
       final command = provider.generateTyped(
         ApartmentWizardParameters(
           request: requestA,
-          selection: card.identity.toSelection(),
+          selection: set.selectionFor(card),
         ),
         WizardGenerationContext(target: empty.target, project: empty.project),
       );
@@ -188,36 +199,41 @@ void main() {
       );
       expect(
         apartment.candidateSetFingerprint,
-        generatedA.candidateSet!.candidateSetFingerprint,
+        set.candidateSetFingerprint,
       );
     });
 
     test('P9.9-AT-008 provider has no cross-session selection leak', () {
       const provider = ApartmentWizardProvider();
-      final first = generatedA.candidateSet!.candidates.first;
-      final second = generatedA.candidateSet!.candidates.last;
+      final set = generatedA.candidateSet!;
+      final first = set.candidates.first;
+      final second = set.candidates.last;
       final context =
           WizardGenerationContext(target: empty.target, project: empty.project);
 
       final firstCommand = provider.generateTyped(
         ApartmentWizardParameters(
           request: requestA,
-          selection: first.identity.toSelection(),
+          selection: set.selectionFor(first),
         ),
         context,
       ) as ApartmentReservedProjectCommand;
       final secondCommand = provider.generateTyped(
         ApartmentWizardParameters(
           request: requestA,
-          selection: second.identity.toSelection(),
+          selection: set.selectionFor(second),
         ),
         context,
       ) as ApartmentReservedProjectCommand;
 
-      expect(firstCommand.candidateIdentity.candidateFingerprint,
-          first.candidateFingerprint);
-      expect(secondCommand.candidateIdentity.candidateFingerprint,
-          second.candidateFingerprint);
+      expect(
+        firstCommand.candidateIdentity.candidateFingerprint,
+        first.candidateFingerprint,
+      );
+      expect(
+        secondCommand.candidateIdentity.candidateFingerprint,
+        second.candidateFingerprint,
+      );
       if (first.candidateFingerprint != second.candidateFingerprint) {
         expect(
           secondCommand.candidateIdentity.candidateFingerprint,
@@ -226,7 +242,8 @@ void main() {
       }
     });
 
-    test('P9.9-AT-009 cancel preserves canonical version and stores', () {
+    test('P9.9-AT-009 wizard-exit cleanup preserves canonical version/stores',
+        () {
       final controller = ApartmentWizardExplorationController(
         initialParameters: ApartmentWizardParameters(request: requestA),
       );
@@ -237,9 +254,15 @@ void main() {
       controller.selectCandidate(
         generatedA.candidateSet!.candidates.first.candidateFingerprint,
       );
-      controller.cancel();
 
-      expect(controller.status, ApartmentWizardExplorationStatus.cancelled);
+      controller.discardTransientState();
+
+      expect(
+        controller.status,
+        ApartmentWizardExplorationStatus.editingParameters,
+      );
+      expect(controller.candidateSet, isNull);
+      expect(controller.parameters.selection, isNull);
       expect(empty.project.version, same(version));
       expect(empty.project.stores, same(stores));
     });
@@ -271,6 +294,10 @@ void main() {
           controller.parameters.selection!.candidateFingerprint,
           selected.candidateFingerprint,
         );
+        expect(
+          controller.parameters.selection!.candidateSetFingerprint,
+          selected.candidateSetFingerprint,
+        );
       }
     });
 
@@ -295,7 +322,7 @@ void main() {
       expect(controller.candidateSet, same(set));
     });
 
-    test('P9.9-AT-014 keyboard selection reaches candidateSelected', () {
+    test('P9.9-AT-014 keyboard flow reaches exact reserved handoff', () {
       final controller = _generatedController(requestA, generatedA);
       expect(
         semanticOperationFor(ApartmentPreviewInputSignal.keyboardActivate),
@@ -304,13 +331,17 @@ void main() {
       controller.selectCandidate(
         generatedA.candidateSet!.candidates.first.candidateFingerprint,
       );
-      expect(
-        controller.status,
-        ApartmentWizardExplorationStatus.candidateSelected,
+
+      final command = const ApartmentWizardProvider().generateTyped(
+        controller.parameters,
+        WizardGenerationContext(target: empty.target, project: empty.project),
       );
+      expect(controller.status,
+          ApartmentWizardExplorationStatus.candidateSelected);
+      expect(command, isA<ApartmentReservedProjectCommand>());
     });
 
-    test('P9.9-AT-015 touch selection reaches candidateSelected', () {
+    test('P9.9-AT-015 touch flow reaches exact reserved handoff', () {
       final controller = _generatedController(requestA, generatedA);
       expect(
         semanticOperationFor(ApartmentPreviewInputSignal.touchTap),
@@ -319,27 +350,31 @@ void main() {
       controller.selectCandidate(
         generatedA.candidateSet!.candidates.first.candidateFingerprint,
       );
-      expect(
-        controller.status,
-        ApartmentWizardExplorationStatus.candidateSelected,
+
+      final command = const ApartmentWizardProvider().generateTyped(
+        controller.parameters,
+        WizardGenerationContext(target: empty.target, project: empty.project),
       );
+      expect(controller.status,
+          ApartmentWizardExplorationStatus.candidateSelected);
+      expect(command, isA<ApartmentReservedProjectCommand>());
     });
 
-    test('P9.9-AT-016 Back preserves request and candidate set', () {
+    test('P9.9-AT-016 exploration Back preserves request/set/selection', () {
       final controller = _selectedController(requestA, generatedA);
       final set = controller.candidateSet;
       final intent = set!.request.intentFingerprint;
-      controller.markPreviewReady();
+      final selection = controller.parameters.selection;
 
       controller.back();
 
       expect(
         controller.status,
-        ApartmentWizardExplorationStatus.candidateSelected,
+        ApartmentWizardExplorationStatus.candidatesReady,
       );
       expect(controller.candidateSet, same(set));
       expect(controller.candidateSet!.request.intentFingerprint, intent);
-      expect(controller.parameters.selection, isNotNull);
+      expect(controller.parameters.selection, same(selection));
     });
 
     test('P9.9-AT-017 obsolete late result cannot overwrite newer revision',
@@ -372,13 +407,96 @@ void main() {
       expect(controller.requestRevision, 0);
     });
 
-    test('P9.9 command handoff allocates no canonical IDs before P9.11', () {
+    test('selection from another candidate set fails candidate-set stale', () {
+      const provider = ApartmentWizardProvider();
+      final set = generatedA.candidateSet!;
+      final card = set.candidates.first;
+      final staleSetSelection = ApartmentCandidateSelection(
+        candidateFingerprint: card.candidateFingerprint,
+        templateIdValue: card.identity.templateIdValue,
+        templateVersion: card.identity.templateVersion,
+        variantSeedId: card.identity.variantSeedId,
+        candidateSetFingerprint: '${set.candidateSetFingerprint}-stale',
+      );
+
+      expect(
+        () => provider.generateTyped(
+          ApartmentWizardParameters(
+            request: requestA,
+            selection: staleSetSelection,
+          ),
+          WizardGenerationContext(target: empty.target, project: empty.project),
+        ),
+        throwsA(
+          isA<ApartmentWizardProviderException>().having(
+            (error) => error.code,
+            'code',
+            'p9.provider.candidate-set-stale',
+          ),
+        ),
+      );
+    });
+
+    test('provider rejects legacy selection without candidate-set identity', () {
       const provider = ApartmentWizardProvider();
       final card = generatedA.candidateSet!.candidates.first;
+      final unbound = card.identity.toSelection();
+
+      final validation = provider.validateTypedParameters(
+        ApartmentWizardParameters(request: requestA, selection: unbound),
+        empty.target,
+      );
+      expect(
+        validation.issues.map((issue) => issue.code),
+        contains('p9.provider.candidate-set-stale'),
+      );
+    });
+
+    test('provider descriptor uses candidate-set service generator version', () {
+      const version = 'p9.generator.contract-test';
+      const provider = ApartmentWizardProvider(
+        candidateSetService: ApartmentCandidateSetService(
+          generatorVersion: version,
+        ),
+      );
+
+      expect(provider.descriptor.generatorVersion, version);
+    });
+
+    test('exploration status cannot duplicate P8 preview/apply lifecycle', () {
+      expect(
+        ApartmentWizardExplorationStatus.values.map((value) => value.name),
+        [
+          'editingParameters',
+          'generating',
+          'candidatesReady',
+          'candidateSelected',
+          'failed',
+        ],
+      );
+    });
+
+    test('authoritative mismatched result exits generating fail closed', () {
+      final controller = ApartmentWizardExplorationController(
+        initialParameters: ApartmentWizardParameters(request: requestA),
+      );
+      final ticket = controller.beginGeneration();
+
+      expect(controller.publishGeneration(ticket, generatedB), isFalse);
+      expect(controller.generationInProgress, isFalse);
+      expect(controller.candidateSet, isNull);
+      expect(controller.parameters.selection, isNull);
+      expect(controller.status, ApartmentWizardExplorationStatus.failed);
+    });
+
+    test('P9.9 command handoff allocates no canonical IDs before P9.11', () {
+      const provider = ApartmentWizardProvider();
+      final set = generatedA.candidateSet!;
+      final card = set.candidates.first;
       final command = provider.generateTyped(
         ApartmentWizardParameters(
           request: requestA,
-          selection: card.identity.toSelection(),
+          selection: set.selectionFor(card),
         ),
         WizardGenerationContext(target: empty.target, project: empty.project),
       ) as ApartmentReservedProjectCommand;
