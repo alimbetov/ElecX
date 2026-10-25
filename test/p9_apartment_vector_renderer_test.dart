@@ -48,14 +48,18 @@ void main() {
 
   group('P9.8 SVG/vector candidate rendering', () {
     test('P9.8-AT-001 same geometry yields byte-identical SVG', () {
-      final firstScene = const ApartmentTopologyVectorRenderer().render(
-        rankedCandidate: selected,
-        template: selectedTemplate,
-      ).scene!;
-      final secondScene = const ApartmentTopologyVectorRenderer().render(
-        rankedCandidate: selected,
-        template: selectedTemplate,
-      ).scene!;
+      final firstScene = const ApartmentTopologyVectorRenderer()
+          .render(
+            rankedCandidate: selected,
+            template: selectedTemplate,
+          )
+          .scene!;
+      final secondScene = const ApartmentTopologyVectorRenderer()
+          .render(
+            rankedCandidate: selected,
+            template: selectedTemplate,
+          )
+          .scene!;
       final firstSvg = const ApartmentSvgProjector().project(firstScene).svg!;
       final secondSvg = const ApartmentSvgProjector().project(secondScene).svg!;
 
@@ -71,7 +75,8 @@ void main() {
       expect(lower, isNot(contains('@import')));
       expect(lower, isNot(contains(' href=')));
       expect(lower, isNot(contains(' xlink:href=')));
-      expect(RegExp(r'\son[a-z]+\s*=', caseSensitive: false).hasMatch(svg), isFalse);
+      expect(RegExp(r'\son[a-z]+\s*=', caseSensitive: false).hasMatch(svg),
+          isFalse);
     });
 
     test('P9.8-AT-003 special characters are escaped', () {
@@ -100,7 +105,8 @@ void main() {
         sourceGeometryFingerprint: 'geometry',
         sceneFingerprint: 'scene',
       );
-      final specialSvg = const ApartmentSvgProjector().project(specialScene).svg!;
+      final specialSvg =
+          const ApartmentSvgProjector().project(specialScene).svg!;
 
       expect(specialSvg, contains('&lt;'));
       expect(specialSvg, contains('&amp;'));
@@ -113,7 +119,8 @@ void main() {
     test('P9.8-AT-004 viewBox preserves aspect ratio including appendages', () {
       final candidate = selected.candidate;
       final sourceBounds = _sourceBounds(candidate);
-      final polygons = scene.elements.whereType<ApartmentVectorPolygonElement>();
+      final polygons =
+          scene.elements.whereType<ApartmentVectorPolygonElement>();
       final points = polygons.expand((polygon) => polygon.points).toList();
       final minX = points.map((point) => point.xUnits).reduce(_min);
       final maxX = points.map((point) => point.xUnits).reduce(_max);
@@ -153,10 +160,13 @@ void main() {
 
       expect(scene.summary.interiorAreaDm2, expectedInterior);
       expect(scene.summary.exteriorAppendageAreaDm2, expectedAppendage);
-      expect(scene.summary.interiorAreaDm2, isNot(expectedInterior + expectedAppendage));
+      expect(scene.summary.interiorAreaDm2,
+          isNot(expectedInterior + expectedAppendage));
     });
 
-    test('P9.8-AT-007 element ordering is independent of source collection order', () {
+    test(
+        'P9.8-AT-007 element ordering is independent of source collection order',
+        () {
       final reversedCandidate = _copyCandidate(
         selected.candidate,
         interiorSpaces: selected.candidate.interiorSpaces.reversed,
@@ -166,11 +176,14 @@ void main() {
         openingIntents: selected.candidate.openingIntents.reversed,
       );
       final reversedRanked = _copyRanked(selected, reversedCandidate);
-      final reversedScene = const ApartmentTopologyVectorRenderer().render(
-        rankedCandidate: reversedRanked,
-        template: selectedTemplate,
-      ).scene!;
-      final reversedSvg = const ApartmentSvgProjector().project(reversedScene).svg!;
+      final reversedScene = const ApartmentTopologyVectorRenderer()
+          .render(
+            rankedCandidate: reversedRanked,
+            template: selectedTemplate,
+          )
+          .scene!;
+      final reversedSvg =
+          const ApartmentSvgProjector().project(reversedScene).svg!;
 
       expect(reversedScene.sceneFingerprint, scene.sceneFingerprint);
       expect(reversedSvg, svg);
@@ -213,11 +226,13 @@ void main() {
       expect(animated.animationsEnabled, isTrue);
       expect(reduced.animationsEnabled, isFalse);
       expect(scene.sceneFingerprint, isNotEmpty);
-      expect(scene.sourceGeometryFingerprint, selected.candidate.geometryFingerprint);
+      expect(scene.sourceGeometryFingerprint,
+          selected.candidate.geometryFingerprint);
     });
 
     test('P9.8-AT-011 SVG is never needed to reconstruct geometry', () {
-      expect(scene.sourceGeometryFingerprint, selected.candidate.geometryFingerprint);
+      expect(scene.sourceGeometryFingerprint,
+          selected.candidate.geometryFingerprint);
       expect(svg, isNot(contains(selected.candidate.geometryFingerprint)));
       expect(selected.candidate.interiorSpaces, isNotEmpty);
       expect(selected.candidate.interiorEnvelope.areaMm2, greaterThan(0));
@@ -273,7 +288,8 @@ void main() {
       }
 
       expect(classes.toSet(), ElecXResponsiveWidthClass.values.toSet());
-      expect(scene.sourceGeometryFingerprint, selected.candidate.geometryFingerprint);
+      expect(scene.sourceGeometryFingerprint,
+          selected.candidate.geometryFingerprint);
     });
 
     test('P9.8-AT-014 pinch zoom changes viewport only', () {
@@ -286,13 +302,15 @@ void main() {
 
       expect(zoomed.scale, greaterThan(initial.scale));
       expect(scene.sceneFingerprint, isNotEmpty);
-      expect(selected.candidate.geometryFingerprint, scene.sourceGeometryFingerprint);
+      expect(selected.candidate.geometryFingerprint,
+          scene.sourceGeometryFingerprint);
     });
 
     test('P9.8-AT-015 mouse/keyboard/touch/stylus select same identity', () {
       final identity = selected.candidate.geometryFingerprint;
       for (final signal in ApartmentPreviewInputSignal.values) {
-        final state = ApartmentPreviewInteractionState.initial().selectCandidate(
+        final state =
+            ApartmentPreviewInteractionState.initial().selectCandidate(
           identity,
           inputSignal: signal,
         );
@@ -300,7 +318,9 @@ void main() {
       }
     });
 
-    test('P9.8-AT-016 carousel swipe does not conflict with captured preview pan', () {
+    test(
+        'P9.8-AT-016 carousel swipe does not conflict with captured preview pan',
+        () {
       final initial = ApartmentPreviewInteractionState.initial();
       final captured = initial.beginPreviewPan();
       final released = captured.endPreviewPan();
@@ -322,7 +342,8 @@ void main() {
       expect(policy.actionsVisible, isTrue);
     });
 
-    test('P9.8-AT-018 responsive relayout does not rerun renderer pipeline', () {
+    test('P9.8-AT-018 responsive relayout does not rerun renderer pipeline',
+        () {
       var sceneBuildCalls = 0;
       ApartmentTopologyVectorScene buildOnce() {
         sceneBuildCalls++;
