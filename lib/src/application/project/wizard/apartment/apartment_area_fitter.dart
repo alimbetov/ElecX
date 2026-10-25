@@ -131,9 +131,8 @@ final class ApartmentAreaFitter {
           ],
         );
       }
-      final needed = reserve.targetAreaDm2 > current
-          ? reserve.targetAreaDm2 - current
-          : 0;
+      final needed =
+          reserve.targetAreaDm2 > current ? reserve.targetAreaDm2 - current : 0;
       if (needed > remaining) {
         return ApartmentAreaFitResult(
           fittedDraft: null,
