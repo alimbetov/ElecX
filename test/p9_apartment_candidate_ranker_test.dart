@@ -26,7 +26,46 @@ void main() {
         profile.weightBp.values.fold<int>(0, (sum, value) => sum + value),
         10000,
       );
-      expect(profile.weightBp.keys.toSet(), ApartmentScoreMetric.values.toSet());
+      expect(
+          profile.weightBp.keys.toSet(), ApartmentScoreMetric.values.toSet());
+    });
+
+    test('P9.7 profile defects fail closed with typed errors', () {
+      final baseProfile = ApartmentScoringProfile.recommendedV1();
+      final missing = Map<ApartmentScoreMetric, int>.of(baseProfile.weightBp)
+        ..remove(ApartmentScoreMetric.privacySeparation);
+      final missingResult = const ApartmentCandidateRanker().rank(
+        candidates: base.inputs.take(1),
+        request: base.request,
+        profile: ApartmentScoringProfile(
+          scoringProfileVersion: 'p9.score.invalid.missing',
+          weightBp: missing,
+        ),
+      );
+      expect(
+        missingResult.failures.map((failure) => failure.code),
+        contains('p9.score.missing-metric'),
+      );
+      expect(missingResult.hasBlockers, isTrue);
+
+      final wrongSum = Map<ApartmentScoreMetric, int>.of(baseProfile.weightBp)
+        ..update(
+          ApartmentScoreMetric.interiorAreaMatch,
+          (value) => value - 1,
+        );
+      final wrongSumResult = const ApartmentCandidateRanker().rank(
+        candidates: base.inputs.take(1),
+        request: base.request,
+        profile: ApartmentScoringProfile(
+          scoringProfileVersion: 'p9.score.invalid.sum',
+          weightBp: wrongSum,
+        ),
+      );
+      expect(
+        wrongSumResult.failures.map((failure) => failure.code),
+        contains('p9.score.weight-sum'),
+      );
+      expect(wrongSumResult.hasBlockers, isTrue);
     });
 
     test('P9.7-AT-002 invalid candidate cannot be scored selectable', () {
@@ -40,7 +79,8 @@ void main() {
               severity: GeometryValidationSeverity.blocker,
             ),
           ]),
-          geometryFingerprint: '${source.candidate.geometryFingerprint}-invalid',
+          geometryFingerprint:
+              '${source.candidate.geometryFingerprint}-invalid',
         ),
         template: source.template,
       );
@@ -96,7 +136,8 @@ void main() {
     });
 
     test('P9.7-AT-005 preferred family influences valid candidates only', () {
-      final families = base.inputs.map((input) => input.candidate.family).toSet();
+      final families =
+          base.inputs.map((input) => input.candidate.family).toSet();
       expect(families.length, greaterThan(1));
       final preferred = families.first;
       final prepared = _prepare(
@@ -137,12 +178,16 @@ void main() {
 
       expect(result.selectedCandidates, isNotEmpty);
       expect(
-        result.selectedCandidates.map((candidate) => candidate.candidate.family).toSet().length,
+        result.selectedCandidates
+            .map((candidate) => candidate.candidate.family)
+            .toSet()
+            .length,
         greaterThan(1),
       );
     });
 
-    test('P9.7-AT-007 near-identical mirrors do not crowd out alternatives', () {
+    test('P9.7-AT-007 near-identical mirrors do not crowd out alternatives',
+        () {
       final baseline = const ApartmentCandidateRanker().rank(
         candidates: base.inputs,
         request: base.request,
@@ -209,7 +254,8 @@ void main() {
       }
     });
 
-    test('P9.7-AT-009 repeated ranking yields identical selection fingerprint', () {
+    test('P9.7-AT-009 repeated ranking yields identical selection fingerprint',
+        () {
       final first = const ApartmentCandidateRanker().rank(
         candidates: base.inputs,
         request: base.request,
@@ -279,24 +325,32 @@ void main() {
             wetCoreMaxSeparationMm:
                 source.candidate.metrics.wetCoreMaxSeparationMm,
           ),
-          geometryFingerprint: '${source.candidate.geometryFingerprint}-appendage-metric',
+          geometryFingerprint:
+              '${source.candidate.geometryFingerprint}-appendage-metric',
         ),
         template: source.template,
       );
-      final original = const ApartmentCandidateRanker().rank(
-        candidates: [source],
-        request: prepared.request,
-        profile: _profileWithFloor(0),
-      ).rankedCandidates.single;
-      final changed = const ApartmentCandidateRanker().rank(
-        candidates: [mutated],
-        request: prepared.request,
-        profile: _profileWithFloor(0),
-      ).rankedCandidates.single;
+      final original = const ApartmentCandidateRanker()
+          .rank(
+            candidates: [source],
+            request: prepared.request,
+            profile: _profileWithFloor(0),
+          )
+          .rankedCandidates
+          .single;
+      final changed = const ApartmentCandidateRanker()
+          .rank(
+            candidates: [mutated],
+            request: prepared.request,
+            profile: _profileWithFloor(0),
+          )
+          .rankedCandidates
+          .single;
 
       expect(
         changed.breakdown.metricScoreBp[ApartmentScoreMetric.interiorAreaMatch],
-        original.breakdown.metricScoreBp[ApartmentScoreMetric.interiorAreaMatch],
+        original
+            .breakdown.metricScoreBp[ApartmentScoreMetric.interiorAreaMatch],
       );
     });
 
@@ -314,7 +368,8 @@ void main() {
               segment: firstBoundary.segment,
             ),
           ],
-          geometryFingerprint: '${source.candidate.geometryFingerprint}-one-side',
+          geometryFingerprint:
+              '${source.candidate.geometryFingerprint}-one-side',
         ),
         template: source.template,
       );
@@ -333,7 +388,8 @@ void main() {
               segment: firstBoundary.segment,
             ),
           ],
-          geometryFingerprint: '${source.candidate.geometryFingerprint}-two-sides',
+          geometryFingerprint:
+              '${source.candidate.geometryFingerprint}-two-sides',
         ),
         template: source.template,
       );
@@ -358,14 +414,16 @@ void main() {
 
       expect(
         byFingerprint[oneSide.candidate.geometryFingerprint]!
-            .breakdown
-            .metricScoreBp[ApartmentScoreMetric.exteriorExposurePreferenceMatch],
+                .breakdown
+                .metricScoreBp[
+            ApartmentScoreMetric.exteriorExposurePreferenceMatch],
         10000,
       );
       expect(
         byFingerprint[twoSides.candidate.geometryFingerprint]!
-            .breakdown
-            .metricScoreBp[ApartmentScoreMetric.exteriorExposurePreferenceMatch],
+                .breakdown
+                .metricScoreBp[
+            ApartmentScoreMetric.exteriorExposurePreferenceMatch],
         5000,
       );
     });
