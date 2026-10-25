@@ -169,7 +169,8 @@ void main() {
       final profile = _profile('p9.score.identity.v1');
       final ranking = _rank(prepared, profile);
       final previousSet = _identifySet(prepared, ranking, profile);
-      final previousSelection = previousSet.orderedCandidates.first.toSelection();
+      final previousSelection =
+          previousSet.orderedCandidates.first.toSelection();
       final changedRequest = const ApartmentRequestNormalizer()
           .normalize(_request(roomCount: 3, areaDm2: 7900))
           .request!;
@@ -200,7 +201,8 @@ void main() {
       expect(changedSet.resolveSelection(previousSelection), isNull);
     });
 
-    test('candidate set fingerprint is ordered but candidate identity is not', () {
+    test('candidate set fingerprint is ordered but candidate identity is not',
+        () {
       final profile = _profile('p9.score.identity.v1');
       final ranking = _rank(prepared, profile);
       final identitySet = _identifySet(prepared, ranking, profile);
@@ -229,7 +231,8 @@ void main() {
       final profile = _profile('p9.score.identity.v1');
       final ranking = _rank(prepared, profile);
       final identitySet = _identifySet(prepared, ranking, profile);
-      final fingerprint = identitySet.orderedCandidates.first.candidateFingerprint;
+      final fingerprint =
+          identitySet.orderedCandidates.first.candidateFingerprint;
 
       for (final width in <double>[390, 800, 1200, 1600]) {
         final policy = ApartmentPreviewLayoutPolicy.resolve(
