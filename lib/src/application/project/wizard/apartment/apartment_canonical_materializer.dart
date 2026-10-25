@@ -180,7 +180,8 @@ final class ApartmentCanonicalMaterializer {
 
     final nextOpenings =
         Map<OpeningId, ProjectOpeningEntity>.from(current.stores.openings);
-    var hostedRegistry = current.engineeringMetadata.boundaryHostedObjectRegistry;
+    BoundaryHostedObjectRegistry hostedRegistry =
+        current.engineeringMetadata.boundaryHostedObjectRegistry;
     final openingIds = <int, OpeningId>{};
     for (var index = 0; index < candidate.openingIntents.length; index++) {
       final intent = candidate.openingIntents[index];
