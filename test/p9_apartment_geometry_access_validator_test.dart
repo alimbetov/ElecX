@@ -12,7 +12,8 @@ void main() {
   const validator = ApartmentGeometryAccessValidator();
 
   group('P9.6 post-packing semantic geometry contract', () {
-    test('qualified baseline satisfies access/boundary/entry/exposure handoff', () {
+    test('qualified baseline satisfies access/boundary/entry/exposure handoff',
+        () {
       final report = validator.validate(
         candidate: _candidate(),
         handoff: _handoff(),
@@ -22,7 +23,8 @@ void main() {
       expect(report.issues, isEmpty);
     });
 
-    test('required shared boundary shorter than semantic minimum is rejected', () {
+    test('required shared boundary shorter than semantic minimum is rejected',
+        () {
       final shortShared = _segment(2000, 0, 2000, 1100);
       final report = validator.validate(
         candidate: _candidate(
@@ -56,7 +58,8 @@ void main() {
       );
     });
 
-    test('primary entry must be hosted by exterior edge of its entry space', () {
+    test('primary entry must be hosted by exterior edge of its entry space',
+        () {
       final livingEast = _segment(4000, 0, 4000, 2000);
       final report = validator.validate(
         candidate: _candidate(entryHost: livingEast),
@@ -206,8 +209,7 @@ TopologyGeometryHandoff _handoff({
       entrySpaceKey: 'entranceHall:1',
     );
 
-GeometrySegmentMm _segment(int x1, int y1, int x2, int y2) =>
-    GeometrySegmentMm(
+GeometrySegmentMm _segment(int x1, int y1, int x2, int y2) => GeometrySegmentMm(
       start: BoundaryPointMm(xMm: x1, yMm: y1),
       end: BoundaryPointMm(xMm: x2, yMm: y2),
     );
