@@ -127,8 +127,7 @@ final class ApartmentAccessSpineGeometryGenerator {
         'p9.geometry.unsupported-access-shape',
         facts: {
           'accessTopologyPolicy': accessTopologyPolicy.name,
-          'missingAccessKeys':
-              (missingAccessKeys.toList()..sort()).join(','),
+          'missingAccessKeys': (missingAccessKeys.toList()..sort()).join(','),
         },
       );
     }
