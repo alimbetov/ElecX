@@ -49,9 +49,7 @@ final class ApartmentCirculationGeometryReserve {
       return CirculationGeometryReserveResult(allocations: adjusted);
     }
 
-    for (var iteration = 0;
-        iteration < maxRebalanceIterations;
-        iteration++) {
+    for (var iteration = 0; iteration < maxRebalanceIterations; iteration++) {
       final plan = _plan(
         draft: draft,
         request: request,
@@ -359,8 +357,7 @@ final class ApartmentCirculationGeometryReserve {
     final geometry = space.sourceSpec.geometry;
     var minimumSpan = geometry.minShortSideMm;
     final exposure = geometry.minExteriorExposureMm ?? 0;
-    if (space.sourceSpec.requiresExteriorExposure &&
-        exposure > minimumSpan) {
+    if (space.sourceSpec.requiresExteriorExposure && exposure > minimumSpan) {
       minimumSpan = exposure;
     }
     for (var spanMm = _ceilGrid(minimumSpan);
@@ -395,8 +392,7 @@ final class ApartmentCirculationGeometryReserve {
         lengthMm <= maxSpineLengthMm;
         lengthMm += p9GeometryGridMm) {
       var widthMm = geometry.minShortSideMm;
-      final aspectWidthMm =
-          _ceilDiv(lengthMm * geometry.minAspectBp, 10000);
+      final aspectWidthMm = _ceilDiv(lengthMm * geometry.minAspectBp, 10000);
       if (aspectWidthMm > widthMm) {
         widthMm = aspectWidthMm;
       }
@@ -448,16 +444,14 @@ final class ApartmentCirculationGeometryReserve {
       return false;
     }
     final aspectBp = widthMm * 10000 ~/ heightMm;
-    if (aspectBp < geometry.minAspectBp ||
-        aspectBp > geometry.maxAspectBp) {
+    if (aspectBp < geometry.minAspectBp || aspectBp > geometry.maxAspectBp) {
       return false;
     }
     if (space.sourceSpec.requiresExteriorExposure &&
         exteriorLengthMm < (geometry.minExteriorExposureMm ?? 1)) {
       return false;
     }
-    final targetAreaMm2 =
-        areaDm2 * squareMillimetresPerSquareDecimetre;
+    final targetAreaMm2 = areaDm2 * squareMillimetresPerSquareDecimetre;
     return (widthMm * heightMm - targetAreaMm2).abs() <=
         _areaToleranceMm2(targetAreaMm2);
   }
@@ -486,11 +480,10 @@ final class _ReservePlan {
 
   const _ReservePlan.failure(
     String code, {
-    Map<String, Object?> facts = const {},
+    this.facts = const {},
   })  : requiredSpineLengthMm = null,
         requiredDistributionAreaDm2 = null,
-        failureCode = code,
-        facts = facts;
+        failureCode = code;
 
   final int? requiredSpineLengthMm;
   final int? requiredDistributionAreaDm2;
