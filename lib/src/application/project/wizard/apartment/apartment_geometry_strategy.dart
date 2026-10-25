@@ -1,3 +1,4 @@
+import '../../../../domain/apartment_topology.dart';
 import '../../../../domain/apartment_topology/apartment_area_fit.dart';
 import '../../../../domain/apartment_topology/apartment_geometry.dart';
 import '../../../../domain/apartment_topology/apartment_semantic_validation.dart';
@@ -61,10 +62,12 @@ final class AccessSpineApartmentGeometryStrategyV1
 /// as a second backend. A backend is never selected merely because it produced
 /// geometry.
 ///
-/// Wet-core membership remains a proximity constraint. The access-spine
-/// backend uses each wet group only as a deterministic co-location heuristic;
-/// the authoritative maximum separation is still validated independently after
-/// packing and therefore cannot be bypassed by the heuristic.
+/// Wet-core membership remains a proximity constraint. Separate-kitchen
+/// layouts use each wet group as a deterministic co-location heuristic. In
+/// open-plan layouts kitchen/day already form a required physical component, so
+/// adding the bathroom to that component would inflate the entry spine and is
+/// intentionally avoided. The authoritative maximum separation is validated
+/// independently after packing in every case.
 final class GraphAwareApartmentGeometryStrategyV2
     implements ApartmentGeometryStrategy {
   const GraphAwareApartmentGeometryStrategyV2();
@@ -81,12 +84,15 @@ final class GraphAwareApartmentGeometryStrategyV2
     required NormalizedApartmentRequest request,
   }) {
     final sourceHandoff = semanticValidation.geometryHandoff;
+    final coLocateWetCore =
+        request.kitchenMode != ApartmentKitchenMode.openPlan;
     final packingHandoff = TopologyGeometryHandoff(
       requiredSharedBoundaries: sourceHandoff.requiredSharedBoundaries,
       forbiddenSharedBoundaryPairs: sourceHandoff.forbiddenSharedBoundaryPairs,
       requiredExteriorSpaceKeys: sourceHandoff.requiredExteriorSpaceKeys,
       requiredExteriorAssignments: sourceHandoff.requiredExteriorAssignments,
-      wetCoreGroups: sourceHandoff.wetCoreGroups,
+      wetCoreGroups:
+          coLocateWetCore ? sourceHandoff.wetCoreGroups : const [],
       accessIntents: sourceHandoff.accessIntents,
       circulationAnchorKeys: sourceHandoff.circulationAnchorKeys,
       entrySpaceKey: sourceHandoff.entrySpaceKey,
