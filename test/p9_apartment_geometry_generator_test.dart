@@ -1,3 +1,4 @@
+import 'package:elecx/src/application/project/wizard/apartment/apartment_access_spine_geometry_generator.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_area_fitter.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_catalog_filter.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_geometry_stage.dart';
@@ -23,6 +24,11 @@ void main() {
 
         expect(result, isNotNull, reason: 'rooms=$rooms must yield geometry');
         expect(result!.candidate.validation.accepted, isTrue);
+        expect(
+          result.candidate.geometryAlgorithmVersion,
+          ApartmentAccessSpineGeometryGenerator.graphAwareV2AlgorithmVersion,
+          reason: 'rooms=$rooms must preserve V2 strategy provenance',
+        );
         expect(
           result.candidate.metrics.interiorAreaMm2,
           closeTo(_representativeArea(rooms) * 10000, 200000),
