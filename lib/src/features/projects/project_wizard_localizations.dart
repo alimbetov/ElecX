@@ -44,8 +44,10 @@ final class ProjectWizardLocalizations {
         'Положительные этажи сохраняют нумерацию 1..N.',
       );
   String get generate => _pick('Generate', 'Сформировать');
-  String get generateVariants => _pick('Generate variants', 'Сформировать варианты');
-  String get preparePreview => _pick('Prepare preview', 'Подготовить предпросмотр');
+  String get generateVariants =>
+      _pick('Generate variants', 'Сформировать варианты');
+  String get preparePreview =>
+      _pick('Prepare preview', 'Подготовить предпросмотр');
   String get numericError => _pick(
         'Level counts and height must be numbers.',
         'Количество этажей и высота должны быть числами.',
@@ -90,6 +92,21 @@ final class ProjectWizardLocalizations {
       );
   String changesCount(int count) =>
       _pick('Changes ($count)', 'Изменения ($count)');
+  String get searchChanges => _pick('Search changes', 'Поиск изменений');
+  String get noMatchingChanges =>
+      _pick('No matching changes.', 'Изменения не найдены.');
+  String groupedChangesCount(int semanticCount, int boundaryCount) => _pick(
+        '$semanticCount semantic changes · $boundaryCount boundary edges',
+        'Семантических изменений: $semanticCount · границ: $boundaryCount',
+      );
+  String get boundaryTopology =>
+      _pick('Boundary topology', 'Топология границ');
+  String boundaryEdgeCount(int count) =>
+      _pick('$count boundary edges', 'Границ: $count');
+  String boundaryTopologySummary(int count) => _pick(
+        'Boundary topology with $count edges',
+        'Топология границ, сегментов: $count',
+      );
   String get applyAll => _pick('Apply', 'Применить');
   String get noCandidates =>
       _pick('No candidates available.', 'Нет доступных вариантов.');
@@ -105,16 +122,20 @@ final class ProjectWizardLocalizations {
   String get zoomOut => _pick('Zoom out', 'Уменьшить');
   String get resetView => _pick('Reset view', 'Сбросить вид');
 
-  String get apartmentRooms =>
-      _pick('Habitable rooms', 'Жилых комнат');
+  String get apartmentRooms => _pick('Habitable rooms', 'Жилых комнат');
   String get apartmentArea => _pick('Interior area, m²', 'Площадь, м²');
   String get apartmentBathrooms => _pick('Bathrooms', 'Ванных');
   String get apartmentSeparateWc => _pick('Separate WC', 'Отдельных WC');
-  String get apartmentBalconies => _pick('Balconies/loggias', 'Балконов/лоджий');
+  String get apartmentBalconies =>
+      _pick('Balconies/loggias', 'Балконов/лоджий');
+  String get apartmentBalconyKind =>
+      _pick('Balcony type', 'Тип балкона/лоджии');
   String get apartmentKitchenMode => _pick('Kitchen', 'Кухня');
   String get apartmentCorridorMode => _pick('Corridor', 'Коридор');
-  String get apartmentDayNight =>
-      _pick('Prefer day/night separation', 'Предпочитать разделение день/ночь');
+  String get apartmentDayNight => _pick(
+        'Prefer day/night separation',
+        'Предпочитать разделение день/ночь',
+      );
   String get apartmentSelectedVariant =>
       _pick('Selected apartment variant', 'Выбранный вариант квартиры');
   String get apartmentCanonicalPreview =>
@@ -153,7 +174,8 @@ final class ProjectWizardLocalizations {
         .replaceFirst('Space “', '$space “')
         .replaceFirst('Boundary — ', '$boundary — ')
         .replaceFirst('Door: ', '$door: ')
-        .replaceFirst('Open passage: ', '$openPassage: ');
+        .replaceFirst('Open passage: ', '$openPassage: ')
+        .replaceFirst('Relationships', 'Связи');
   }
 
   String diffField(String raw) => switch (raw) {
