@@ -16,6 +16,50 @@ final class WizardCandidateCard {
   final WizardPreviewScene scene;
 }
 
+/// Presentation-only viewport state for Wizard preview scenes.
+///
+/// The matrix is deliberately outside all Wizard/domain contracts. Pan/zoom,
+/// responsive relayout and reset therefore cannot affect candidate identity,
+/// semantic Diff, reserved mutation identity or Apply payload.
+final class PreviewViewportState extends ChangeNotifier {
+  PreviewViewportState() {
+    transformationController.addListener(_onMatrixChanged);
+  }
+
+  static const double minScale = 1.0;
+  static const double maxScale = 8.0;
+  static const double zoomStep = 1.25;
+
+  final TransformationController transformationController =
+      TransformationController();
+
+  double get scale => transformationController.value.getMaxScaleOnAxis();
+
+  void zoomIn() => _setScale(scale * zoomStep);
+
+  void zoomOut() => _setScale(scale / zoomStep);
+
+  void resetView() {
+    transformationController.value = Matrix4.identity();
+  }
+
+  void _setScale(double requestedScale) {
+    final next = requestedScale.clamp(minScale, maxScale).toDouble();
+    transformationController.value = Matrix4.diagonal3Values(next, next, 1);
+  }
+
+  void _onMatrixChanged() {
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    transformationController.removeListener(_onMatrixChanged);
+    transformationController.dispose();
+    super.dispose();
+  }
+}
+
 /// Provider-neutral P8 candidate carousel. Candidate selection is presentation
 /// state only: browsing never reserves canonical identities or mutates project
 /// state. Providers with a single prepared candidate use the same surface.
@@ -24,12 +68,14 @@ final class WizardCandidateCarousel extends StatefulWidget {
     required this.candidates,
     required this.selectedId,
     required this.onSelected,
+    this.viewportState,
     super.key,
   });
 
   final List<WizardCandidateCard> candidates;
   final String selectedId;
   final ValueChanged<String> onSelected;
+  final PreviewViewportState? viewportState;
 
   @override
   State<WizardCandidateCarousel> createState() =>
@@ -151,7 +197,10 @@ final class _WizardCandidateCarouselState
                           ),
                           const SizedBox(height: 8),
                           Expanded(
-                            child: WizardPreviewCanvas(scene: candidate.scene),
+                            child: WizardPreviewCanvas(
+                              scene: candidate.scene,
+                              viewportState: widget.viewportState,
+                            ),
                           ),
                         ],
                       ),
@@ -181,23 +230,110 @@ final class _WizardCandidateCarouselState
   }
 }
 
-final class WizardPreviewCanvas extends StatelessWidget {
-  const WizardPreviewCanvas({required this.scene, super.key});
+final class WizardPreviewCanvas extends StatefulWidget {
+  const WizardPreviewCanvas({
+    required this.scene,
+    this.viewportState,
+    super.key,
+  });
 
   final WizardPreviewScene scene;
+  final PreviewViewportState? viewportState;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-        image: true,
-        label: scene.semanticLabel,
-        child: CustomPaint(
-          painter: _WizardPreviewPainter(
-            scene: scene,
-            color: Theme.of(context).colorScheme.onSurface,
+  State<WizardPreviewCanvas> createState() => _WizardPreviewCanvasState();
+}
+
+final class _WizardPreviewCanvasState extends State<WizardPreviewCanvas> {
+  PreviewViewportState? _ownedViewportState;
+
+  PreviewViewportState get _viewportState =>
+      widget.viewportState ?? (_ownedViewportState ??= PreviewViewportState());
+
+  @override
+  void didUpdateWidget(covariant WizardPreviewCanvas oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.viewportState == null && widget.viewportState != null) {
+      _ownedViewportState?.dispose();
+      _ownedViewportState = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _ownedViewportState?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final viewport = _viewportState;
+    final l10n = ProjectWizardLocalizations.of(context);
+    return Semantics(
+      image: true,
+      label: widget.scene.semanticLabel,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: InteractiveViewer(
+              transformationController: viewport.transformationController,
+              minScale: PreviewViewportState.minScale,
+              maxScale: PreviewViewportState.maxScale,
+              panEnabled: true,
+              scaleEnabled: true,
+              clipBehavior: Clip.hardEdge,
+              child: SizedBox.expand(
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: SizedBox(
+                    width: widget.scene.width,
+                    height: widget.scene.height,
+                    child: CustomPaint(
+                      painter: _WizardPreviewPainter(
+                        scene: widget.scene,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
-          child: const SizedBox.expand(),
-        ),
-      );
+          Positioned(
+            top: 4,
+            right: 4,
+            child: Material(
+              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(10),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    key: const ValueKey('wizard-preview-zoom-out'),
+                    tooltip: l10n.zoomOut,
+                    onPressed: viewport.zoomOut,
+                    icon: const Icon(Icons.remove),
+                  ),
+                  IconButton(
+                    key: const ValueKey('wizard-preview-reset-view'),
+                    tooltip: l10n.resetView,
+                    onPressed: viewport.resetView,
+                    icon: const Icon(Icons.center_focus_strong),
+                  ),
+                  IconButton(
+                    key: const ValueKey('wizard-preview-zoom-in'),
+                    tooltip: l10n.zoomIn,
+                    onPressed: viewport.zoomIn,
+                    icon: const Icon(Icons.add),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 final class _WizardPreviewPainter extends CustomPainter {
@@ -209,15 +345,6 @@ final class _WizardPreviewPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (size.isEmpty) return;
-    final horizontalScale = (size.width / scene.width).clamp(0.05, 100.0);
-    final verticalScale = (size.height / scene.height).clamp(0.05, 100.0);
-    final fitted =
-        horizontalScale < verticalScale ? horizontalScale : verticalScale;
-    final dx = (size.width - scene.width * fitted) / 2;
-    final dy = (size.height - scene.height * fitted) / 2;
-    canvas.save();
-    canvas.translate(dx, dy);
-    canvas.scale(fitted);
     final stroke = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
@@ -239,6 +366,15 @@ final class _WizardPreviewPainter extends CustomPainter {
           Offset(element.x2, element.y2),
           stroke,
         );
+      } else if (element is WizardPreviewPolygon) {
+        final path = Path();
+        final first = element.points.first;
+        path.moveTo(first.x, first.y);
+        for (final point in element.points.skip(1)) {
+          path.lineTo(point.x, point.y);
+        }
+        path.close();
+        canvas.drawPath(path, stroke);
       } else if (element is WizardPreviewText) {
         final painter = TextPainter(
           text: TextSpan(
@@ -250,7 +386,6 @@ final class _WizardPreviewPainter extends CustomPainter {
         painter.paint(canvas, Offset(element.x, element.y - painter.height));
       }
     }
-    canvas.restore();
   }
 
   @override
