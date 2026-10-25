@@ -209,8 +209,7 @@ final class ApartmentReservedProjectCommand implements ReservedProjectCommand {
         'templateId': candidateIdentity.templateIdValue,
         'templateVersion': candidateIdentity.templateVersion,
         'variantSeedId': candidateIdentity.variantSeedId,
-        'geometryAlgorithmVersion':
-            candidateIdentity.geometryAlgorithmVersion,
+        'geometryAlgorithmVersion': candidateIdentity.geometryAlgorithmVersion,
         'geometryFingerprint': candidateIdentity.geometryFingerprint,
         'scoringProfileVersion': candidateIdentity.scoringProfileVersion,
       });
@@ -275,7 +274,8 @@ final class ApartmentReservedProjectCommand implements ReservedProjectCommand {
         current.stores.spaces.values
             .any((space) => space.levelId == target.levelId);
     final hasZones = level.zoneIds.isNotEmpty ||
-        current.stores.zones.values.any((zone) => zone.levelId == target.levelId);
+        current.stores.zones.values
+            .any((zone) => zone.levelId == target.levelId);
     if (hasSpaces || hasZones) {
       throw const ApartmentWizardProviderException(
         'p9.provider.target-not-empty',
