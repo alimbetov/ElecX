@@ -1,6 +1,7 @@
 import '../../../../domain/apartment_topology.dart';
 import '../../../../domain/apartment_topology/apartment_geometry.dart';
 import '../../../../domain/apartment_topology/apartment_topology_draft.dart';
+import '../../../../domain/apartment_topology/apartment_topology_models.dart';
 import '../../../../domain/project_space_semantics.dart';
 import 'apartment_wizard_parameters.dart';
 
@@ -93,10 +94,10 @@ final class ApartmentCirculationGeometryReserve {
           )
           .toList()
         ..sort((left, right) {
-          final leftSurplus = adjusted[left.semanticKey]! -
-              left.sourceSpec.minAreaDm2;
-          final rightSurplus = adjusted[right.semanticKey]! -
-              right.sourceSpec.minAreaDm2;
+          final leftSurplus =
+              adjusted[left.semanticKey]! - left.sourceSpec.minAreaDm2;
+          final rightSurplus =
+              adjusted[right.semanticKey]! - right.sourceSpec.minAreaDm2;
           final surplus = rightSurplus.compareTo(leftSurplus);
           return surplus != 0
               ? surplus
@@ -480,19 +481,16 @@ final class _ReservePlan {
   const _ReservePlan({
     required this.requiredSpineLengthMm,
     required this.requiredDistributionAreaDm2,
-    this.failureCode,
-    this.facts = const {},
-  });
+  })  : failureCode = null,
+        facts = const {};
 
   const _ReservePlan.failure(
     String code, {
     Map<String, Object?> facts = const {},
-  }) : this(
-          requiredSpineLengthMm: null,
-          requiredDistributionAreaDm2: null,
-          failureCode: code,
-          facts: facts,
-        );
+  })  : requiredSpineLengthMm = null,
+        requiredDistributionAreaDm2 = null,
+        failureCode = code,
+        facts = facts;
 
   final int? requiredSpineLengthMm;
   final int? requiredDistributionAreaDm2;
@@ -508,8 +506,10 @@ final class _ReserveUnit {
   final Map<String, int> spanByKey = <String, int>{};
 
   String get stableKey => members.map((space) => space.semanticKey).join('|');
-  int get totalSpanMm =>
-      members.fold(0, (sum, member) => sum + spanByKey[member.semanticKey]!);
+  int get totalSpanMm => members.fold(
+        0,
+        (sum, member) => sum + spanByKey[member.semanticKey]!,
+      );
 }
 
 final class _ReserveSides {
@@ -519,9 +519,10 @@ final class _ReserveSides {
   final List<_ReserveUnit> right;
 }
 
-int _areaToleranceMm2(int targetAreaMm2) =>
-    _max(ApartmentCirculationGeometryReserve.minimumAreaToleranceMm2,
-        targetAreaMm2 ~/ 200);
+int _areaToleranceMm2(int targetAreaMm2) => _max(
+      ApartmentCirculationGeometryReserve.minimumAreaToleranceMm2,
+      targetAreaMm2 ~/ 200,
+    );
 
 int _nearestGrid(int valueMm) {
   if (valueMm <= 0) {
