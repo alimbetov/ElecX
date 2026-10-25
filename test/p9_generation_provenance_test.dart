@@ -34,17 +34,21 @@ void main() {
       expect(manifest.projectId, harness.fixture.project.id);
       expect(manifest.buildingId, harness.fixture.buildingId);
       expect(manifest.levelId, harness.fixture.levelId);
-      expect(manifest.selectedCandidateFingerprint, harness.card.candidateFingerprint);
-      expect(manifest.normalizedIntentFingerprint, harness.card.identity.intentFingerprint);
+      expect(manifest.selectedCandidateFingerprint,
+          harness.card.candidateFingerprint);
+      expect(manifest.normalizedIntentFingerprint,
+          harness.card.identity.intentFingerprint);
       expect(manifest.generatedEntityIds, registry.entities.keys.toSet());
     });
 
-    test('P9.12-AT-002 every generated Space has generationId and generationKey',
+    test(
+        'P9.12-AT-002 every generated Space has generationId and generationKey',
         () {
       final harness = _Harness.generate(seed: 12002);
       final registry = harness.registry;
       final manifest = registry.manifests.values.single;
-      final zone = harness.mutations.current.stores.zones[manifest.apartmentZoneId]!;
+      final zone =
+          harness.mutations.current.stores.zones[manifest.apartmentZoneId]!;
 
       expect(zone.spaceIds, isNotEmpty);
       for (final spaceId in zone.spaceIds) {
@@ -86,7 +90,8 @@ void main() {
       );
     });
 
-    test('P9.12-AT-004 rename marks name overridden and Undo/Redo is exact', () {
+    test('P9.12-AT-004 rename marks name overridden and Undo/Redo is exact',
+        () {
       final harness = _Harness.generate(seed: 12004);
       final spaceId = harness.firstSpaceId;
       final before = harness.registry.provenanceFor(spaceId)!;
@@ -188,7 +193,8 @@ void main() {
 
       expect(after.generationId, before.generationId);
       expect(after.generationKey, before.generationKey);
-      expect(after.generatedBaselineFingerprint, before.generatedBaselineFingerprint);
+      expect(after.generatedBaselineFingerprint,
+          before.generatedBaselineFingerprint);
     });
 
     test('P9.12-AT-007 regeneration lock survives save/reopen', () {
@@ -217,9 +223,11 @@ void main() {
       expect(afterLock.generationKey, before.generationKey);
 
       const codec = GenerationProvenanceAwareCanonicalProjectDocumentCodec();
-      final reopened = codec.decode(codec.encode(_snapshot(harness.mutations.current)));
-      final restored = reopened.aggregate.engineeringMetadata
-          .generationProvenanceRegistry.provenanceFor(spaceId)!;
+      final reopened =
+          codec.decode(codec.encode(_snapshot(harness.mutations.current)));
+      final restored = reopened
+          .aggregate.engineeringMetadata.generationProvenanceRegistry
+          .provenanceFor(spaceId)!;
       expect(restored.lockedFromRegeneration, isTrue);
       expect(restored.generationId, before.generationId);
       expect(restored.generationKey, before.generationKey);
@@ -329,8 +337,10 @@ void main() {
       expect(en.registry.sameAs(ru.registry), isTrue);
       final enManifest = en.registry.manifests.values.single;
       final ruManifest = ru.registry.manifests.values.single;
-      expect(enManifest.normalizedIntentFingerprint, ruManifest.normalizedIntentFingerprint);
-      expect(enManifest.selectedCandidateFingerprint, ruManifest.selectedCandidateFingerprint);
+      expect(enManifest.normalizedIntentFingerprint,
+          ruManifest.normalizedIntentFingerprint);
+      expect(enManifest.selectedCandidateFingerprint,
+          ruManifest.selectedCandidateFingerprint);
       expect(enManifest.familyId, ruManifest.familyId);
       expect(enManifest.generatorVersion, ruManifest.generatorVersion);
     });
