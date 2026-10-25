@@ -219,7 +219,8 @@ final class ApartmentReservedProjectCommand implements ReservedProjectCommand {
   @override
   String get normalizedIntentKey => jsonEncode({
         'command': commandType,
-        'materializerVersion': ApartmentCanonicalMaterializer.materializerVersion,
+        'materializerVersion':
+            ApartmentCanonicalMaterializer.materializerVersion,
         'providerTemplateId': descriptor.templateId.value,
         'providerTemplateVersion': descriptor.templateVersion,
         'generatorVersion': descriptor.generatorVersion,
