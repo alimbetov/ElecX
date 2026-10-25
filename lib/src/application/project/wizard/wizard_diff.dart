@@ -75,7 +75,8 @@ final class WizardDiffEntry {
 }
 
 final class WizardDiffGroup {
-  WizardDiffGroup({required this.key, required Iterable<WizardDiffEntry> entries})
+  WizardDiffGroup(
+      {required this.key, required Iterable<WizardDiffEntry> entries})
       : entries = List.unmodifiable(entries);
 
   final String key;
@@ -461,7 +462,8 @@ final class WizardDiffProjector {
     ProjectAggregateRoot before,
     LevelId levelId,
   ) {
-    final level = candidate.stores.levels[levelId] ?? before.stores.levels[levelId];
+    final level =
+        candidate.stores.levels[levelId] ?? before.stores.levels[levelId];
     return level == null
         ? 'Level'
         : 'Level ${level.levelNumber} — ${level.name}';
