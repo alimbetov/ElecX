@@ -8,13 +8,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P9.2/P9.3 catalog grammar consistency', () {
-    test('every advertised template room count expands without contract failure',
+    test(
+        'every advertised template room count expands without contract failure',
         () {
       final catalog = P9ApartmentTopologyCatalogV3.create();
       for (final template in catalog.templates) {
-        final roomCounts = template.constraints.supportedHabitableRoomCounts
-            .toList()
-          ..sort();
+        final roomCounts =
+            template.constraints.supportedHabitableRoomCounts.toList()..sort();
         for (final roomCount in roomCounts) {
           final normalized = const ApartmentRequestNormalizer()
               .normalize(_requestForTemplate(template, roomCount))
