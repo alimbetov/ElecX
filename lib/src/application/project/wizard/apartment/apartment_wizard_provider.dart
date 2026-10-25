@@ -35,7 +35,6 @@ final class ApartmentWizardProvider
   });
 
   static final WizardFamilyId familyId = WizardFamilyId('apartment');
-  static const String generatorVersion = 'p9.generator.v2';
 
   final ApartmentCandidateSetService candidateSetService;
 
@@ -43,7 +42,7 @@ final class ApartmentWizardProvider
   WizardProviderDescriptor get descriptor => WizardProviderDescriptor(
         templateId: TemplateId('p9-apartment-provider'),
         templateVersion: 1,
-        generatorVersion: generatorVersion,
+        generatorVersion: candidateSetService.generatorVersion,
         familyId: familyId,
         displayName: 'wizard.family.apartment',
         supportedScopes: const {WizardTargetScope.level},
@@ -71,8 +70,11 @@ final class ApartmentWizardProvider
     for (final failure in normalization.failures) {
       issues.add(_issue(failure.code));
     }
-    if (parameters.selection == null) {
+    final selection = parameters.selection;
+    if (selection == null) {
       issues.add(_issue('p9.provider.selection-required'));
+    } else if (selection.candidateSetFingerprint == null) {
+      issues.add(_issue('p9.provider.candidate-set-stale'));
     }
     return WizardParameterValidation(issues);
   }
@@ -108,6 +110,13 @@ final class ApartmentWizardProvider
         'p9.provider.selection-required',
       );
     }
+    final selectedSetFingerprint = selection.candidateSetFingerprint;
+    if (selectedSetFingerprint == null) {
+      throw const ApartmentWizardProviderException(
+        'p9.provider.candidate-set-stale',
+        {'reason': 'candidate-set-fingerprint-missing'},
+      );
+    }
 
     final result = candidateSetService.generate(
       input: parameters.request,
@@ -123,6 +132,16 @@ final class ApartmentWizardProvider
       }
       throw const ApartmentWizardProviderException(
         'p9.provider.no-candidates',
+      );
+    }
+
+    if (selectedSetFingerprint != set.candidateSetFingerprint) {
+      throw ApartmentWizardProviderException(
+        'p9.provider.candidate-set-stale',
+        {
+          'selectedCandidateSetFingerprint': selectedSetFingerprint,
+          'currentCandidateSetFingerprint': set.candidateSetFingerprint,
+        },
       );
     }
 
