@@ -26,10 +26,13 @@ void main() {
         final corridor = template.spaces.firstWhere(
           (space) => space.usage == SpaceUsage.corridor,
         );
+        final openPlan = template.constraints.supportedKitchenModes.contains(
+          ApartmentKitchenMode.openPlan,
+        );
 
         expect(
           entranceHall.preferredAreaDm2,
-          500,
+          openPlan ? 650 : 500,
           reason: template.templateId.value,
         );
         expect(
