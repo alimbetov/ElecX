@@ -63,7 +63,8 @@ void main() {
       );
 
       expect(result, isNotNull);
-      final required = result!.semantic.geometryHandoff.requiredSharedBoundaryPairs;
+      final required =
+          result!.semantic.geometryHandoff.requiredSharedBoundaryPairs;
       expect(required, isNotEmpty);
       final realized = {
         for (final boundary in result.candidate.sharedBoundaries)
@@ -72,6 +73,55 @@ void main() {
       for (final pair in required) {
         expect(realized[pair.stableKey], isNotNull, reason: pair.stableKey);
         expect(realized[pair.stableKey]!, greaterThan(0));
+      }
+    });
+
+    test('P9.6 access intents survive geometry and all rooms stay reachable', () {
+      for (var rooms = 1; rooms <= 10; rooms++) {
+        final result = _firstAccepted(
+          _request(roomCount: rooms, areaDm2: _representativeArea(rooms)),
+        );
+        expect(result, isNotNull, reason: 'rooms=$rooms must yield geometry');
+        final fixture = result!;
+        final internalOpenings = fixture.candidate.openingIntents
+            .where((opening) => opening.kind != GeometryOpeningKind.primaryEntry)
+            .toList();
+        final realizedPairs = <String, GeometryOpeningKind>{};
+        for (final opening in internalOpenings) {
+          final from = opening.fromSpaceKey;
+          final to = opening.toSpaceKey;
+          expect(from, isNotNull, reason: 'rooms=$rooms opening missing from');
+          expect(to, isNotNull, reason: 'rooms=$rooms opening missing to');
+          realizedPairs[_pairKey(from!, to!)] = opening.kind;
+        }
+
+        for (final intent in fixture.semantic.geometryHandoff.accessIntents) {
+          final expectedKind = intent.kind == DraftAccessKind.openPassage
+              ? GeometryOpeningKind.openPassage
+              : GeometryOpeningKind.door;
+          expect(
+            realizedPairs[intent.pair.stableKey],
+            expectedKind,
+            reason:
+                'rooms=$rooms lost required access ${intent.pair.stableKey}',
+          );
+        }
+
+        final primaryEntries = fixture.candidate.openingIntents
+            .where((opening) => opening.kind == GeometryOpeningKind.primaryEntry)
+            .toList();
+        expect(primaryEntries, hasLength(1), reason: 'rooms=$rooms entry');
+        final entryKey = primaryEntries.single.fromSpaceKey!;
+        final reachable = _reachableFrom(entryKey, internalOpenings);
+        final interiorKeys = fixture.candidate.interiorSpaces
+            .map((space) => space.semanticKey)
+            .toSet();
+        expect(
+          reachable.containsAll(interiorKeys),
+          isTrue,
+          reason:
+              'rooms=$rooms unreachable=${interiorKeys.difference(reachable).toList()..sort()}',
+        );
       }
     });
 
@@ -104,7 +154,8 @@ void main() {
       );
     });
 
-    test('corner exposure fails closed until multi-side layout is implemented', () {
+    test('corner exposure fails closed until multi-side layout is implemented',
+        () {
       final normalized = const ApartmentRequestNormalizer()
           .normalize(
             _request(
@@ -156,7 +207,8 @@ final class _PreparedFixture {
 }
 
 _GeneratedFixture? _firstAccepted(ApartmentRequestInput input) {
-  final normalized = const ApartmentRequestNormalizer().normalize(input).request!;
+  final normalized =
+      const ApartmentRequestNormalizer().normalize(input).request!;
   final catalog = P9ApartmentTopologyCatalogV2.create();
   final templates = const ApartmentTopologyCatalogFilter()
       .compatibleTemplates(catalog, normalized);
@@ -238,6 +290,38 @@ _PreparedFixture? _firstPrepared(NormalizedApartmentRequest normalized) {
   }
   return null;
 }
+
+Set<String> _reachableFrom(
+  String entryKey,
+  List<OpeningIntent> openings,
+) {
+  final neighbors = <String, Set<String>>{};
+  for (final opening in openings) {
+    final from = opening.fromSpaceKey;
+    final to = opening.toSpaceKey;
+    if (from == null || to == null) {
+      continue;
+    }
+    neighbors.putIfAbsent(from, () => <String>{}).add(to);
+    neighbors.putIfAbsent(to, () => <String>{}).add(from);
+  }
+  final visited = <String>{entryKey};
+  final queue = <String>[entryKey];
+  var index = 0;
+  while (index < queue.length) {
+    final current = queue[index++];
+    final next = (neighbors[current] ?? const <String>{}).toList()..sort();
+    for (final key in next) {
+      if (visited.add(key)) {
+        queue.add(key);
+      }
+    }
+  }
+  return visited;
+}
+
+String _pairKey(String left, String right) =>
+    left.compareTo(right) <= 0 ? '$left|$right' : '$right|$left';
 
 ApartmentRequestInput _request({
   required int roomCount,
