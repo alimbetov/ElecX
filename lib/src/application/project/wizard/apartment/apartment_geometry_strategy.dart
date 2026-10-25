@@ -3,9 +3,12 @@ import '../../../../domain/apartment_topology/apartment_geometry.dart';
 import '../../../../domain/apartment_topology/apartment_semantic_validation.dart';
 import '../../../../domain/apartment_topology/apartment_topology_models.dart';
 import 'apartment_access_spine_geometry_generator.dart';
+import 'apartment_geometry_access_validator.dart';
 import 'apartment_geometry_generator.dart';
+import 'apartment_geometry_structural_validator.dart';
 import 'apartment_wizard_parameters.dart';
 import 'p9_failure.dart';
+import 'p9_sha256.dart';
 
 /// Versioned P9.6 packing strategy boundary.
 ///
@@ -52,11 +55,15 @@ final class AccessSpineApartmentGeometryStrategyV1
 
 /// Graph-aware P9.6 strategy.
 ///
-/// V2 accepts bounded semantic access trees/graphs as long as every interior
-/// space is reachable from the circulation hub. Wet-core membership is a
-/// proximity constraint, not a forced connected packing component: V2 removes
-/// it from the spine-side grouping heuristic and validates the authoritative
-/// maximum separation after packing instead.
+/// V2 owns a bounded deterministic solver portfolio. Access-spine packing is
+/// attempted first. If it cannot produce a candidate satisfying the same
+/// independent access and structural contracts used by the stage, the bounded
+/// facade-strip solver is tried as a second backend. A backend is never
+/// accepted merely because it produced geometry.
+///
+/// Wet-core membership is a proximity constraint, not a forced connected
+/// packing component. It is removed from backend grouping heuristics and the
+/// authoritative maximum separation is validated after a backend is selected.
 final class GraphAwareApartmentGeometryStrategyV2
     implements ApartmentGeometryStrategy {
   const GraphAwareApartmentGeometryStrategyV2();
@@ -73,23 +80,24 @@ final class GraphAwareApartmentGeometryStrategyV2
     required NormalizedApartmentRequest request,
   }) {
     final sourceHandoff = semanticValidation.geometryHandoff;
+    final packingHandoff = TopologyGeometryHandoff(
+      requiredSharedBoundaries: sourceHandoff.requiredSharedBoundaries,
+      forbiddenSharedBoundaryPairs: sourceHandoff.forbiddenSharedBoundaryPairs,
+      requiredExteriorSpaceKeys: sourceHandoff.requiredExteriorSpaceKeys,
+      requiredExteriorAssignments: sourceHandoff.requiredExteriorAssignments,
+      wetCoreGroups: const [],
+      accessIntents: sourceHandoff.accessIntents,
+      circulationAnchorKeys: sourceHandoff.circulationAnchorKeys,
+      entrySpaceKey: sourceHandoff.entrySpaceKey,
+    );
     final packingValidation = TopologySemanticValidation(
       blockers: semanticValidation.blockers,
       preferenceMisses: semanticValidation.preferenceMisses,
       metrics: semanticValidation.metrics,
-      geometryHandoff: TopologyGeometryHandoff(
-        requiredSharedBoundaries: sourceHandoff.requiredSharedBoundaries,
-        forbiddenSharedBoundaryPairs:
-            sourceHandoff.forbiddenSharedBoundaryPairs,
-        requiredExteriorSpaceKeys: sourceHandoff.requiredExteriorSpaceKeys,
-        requiredExteriorAssignments: sourceHandoff.requiredExteriorAssignments,
-        wetCoreGroups: const [],
-        accessIntents: sourceHandoff.accessIntents,
-        circulationAnchorKeys: sourceHandoff.circulationAnchorKeys,
-        entrySpaceKey: sourceHandoff.entrySpaceKey,
-      ),
+      geometryHandoff: packingHandoff,
     );
-    final generated = const ApartmentAccessSpineGeometryGenerator(
+
+    final primary = const ApartmentAccessSpineGeometryGenerator(
       accessTopologyPolicy: ApartmentAccessTopologyPolicy.graphReachable,
     ).generate(
       fittedDraft: fittedDraft,
@@ -97,10 +105,35 @@ final class GraphAwareApartmentGeometryStrategyV2
       template: template,
       request: request,
     );
-    final candidate = generated.candidate;
-    if (candidate == null) {
-      return generated;
+
+    ApartmentGeometryGenerationResult selected = primary;
+    if (!_backendAccepted(
+      primary.candidate,
+      fittedDraft: fittedDraft,
+      handoff: packingHandoff,
+    )) {
+      final fallback = const ApartmentGeometryGenerator().generate(
+        fittedDraft: fittedDraft,
+        semanticValidation: packingValidation,
+        template: template,
+        request: request,
+      );
+      if (_backendAccepted(
+        fallback.candidate,
+        fittedDraft: fittedDraft,
+        handoff: packingHandoff,
+      )) {
+        selected = fallback;
+      } else if (primary.candidate == null && fallback.candidate != null) {
+        selected = fallback;
+      }
     }
+
+    final selectedCandidate = selected.candidate;
+    if (selectedCandidate == null) {
+      return selected;
+    }
+    final candidate = _adoptBackendCandidate(selectedCandidate);
 
     final wetSeparationMm = _wetSeparation(
       sourceHandoff.wetCoreGroups,
@@ -149,13 +182,13 @@ final class GraphAwareApartmentGeometryStrategyV2
     if (wetIssue == null) {
       return ApartmentGeometryGenerationResult(
         candidate: checkedCandidate,
-        failures: generated.failures,
+        failures: selected.failures,
       );
     }
     return ApartmentGeometryGenerationResult(
       candidate: checkedCandidate,
       failures: [
-        ...generated.failures,
+        ...selected.failures,
         P9Failure(
           code: wetIssue.code,
           stage: P9FailureStage.geometry,
@@ -163,6 +196,59 @@ final class GraphAwareApartmentGeometryStrategyV2
           facts: wetIssue.facts,
         ),
       ],
+    );
+  }
+
+  bool _backendAccepted(
+    ApartmentGeometryCandidate? candidate, {
+    required AreaFittedTopologyDraft fittedDraft,
+    required TopologyGeometryHandoff handoff,
+  }) {
+    if (candidate == null || !candidate.validation.accepted) {
+      return false;
+    }
+    final access = const ApartmentGeometryAccessValidator().validate(
+      candidate: candidate,
+      handoff: handoff,
+    );
+    if (!access.accepted) {
+      return false;
+    }
+    final structural = const ApartmentGeometryStructuralValidator().validate(
+      candidate: candidate,
+      fittedDraft: fittedDraft,
+    );
+    return structural.accepted;
+  }
+
+  ApartmentGeometryCandidate _adoptBackendCandidate(
+    ApartmentGeometryCandidate candidate,
+  ) {
+    if (candidate.geometryAlgorithmVersion == strategyId) {
+      return candidate;
+    }
+    final fingerprint = p9Sha256Hex(
+      'p9.apartment.geometry.strategy\n'
+      'strategy=$strategyId\n'
+      'backend=${candidate.geometryAlgorithmVersion}\n'
+      'backendFingerprint=${candidate.geometryFingerprint}',
+    );
+    return ApartmentGeometryCandidate(
+      templateId: candidate.templateId,
+      templateVersion: candidate.templateVersion,
+      family: candidate.family,
+      variantSeedId: candidate.variantSeedId,
+      areaFitFingerprint: candidate.areaFitFingerprint,
+      interiorEnvelope: candidate.interiorEnvelope,
+      interiorSpaces: candidate.interiorSpaces,
+      exteriorAppendages: candidate.exteriorAppendages,
+      sharedBoundaries: candidate.sharedBoundaries,
+      exteriorBoundaries: candidate.exteriorBoundaries,
+      openingIntents: candidate.openingIntents,
+      metrics: candidate.metrics,
+      validation: candidate.validation,
+      geometryAlgorithmVersion: strategyId,
+      geometryFingerprint: fingerprint,
     );
   }
 }
