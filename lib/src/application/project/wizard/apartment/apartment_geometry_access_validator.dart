@@ -2,10 +2,11 @@ import '../../../../domain/apartment_topology/apartment_geometry.dart';
 import '../../../../domain/apartment_topology/apartment_semantic_validation.dart';
 import '../../../../domain/apartment_topology/apartment_topology_draft.dart';
 
-/// Post-packing P9.6 validation for the semantic-access contract.
+/// Post-packing P9.6 validation for the semantic geometry/access contract.
 ///
 /// The semantic graph is authoritative. Geometry may not silently drop an
-/// access edge merely because the selected polygons failed to share a wall.
+/// access edge, shorten a required shared boundary, move an assigned exterior
+/// exposure to another side, or relocate the primary entry to another space.
 final class ApartmentGeometryAccessValidator {
   const ApartmentGeometryAccessValidator();
 
@@ -18,6 +19,18 @@ final class ApartmentGeometryAccessValidator {
       for (final boundary in candidate.sharedBoundaries)
         boundary.pair.stableKey: boundary,
     };
+
+    _validateRequiredSharedBoundaries(
+      issues: issues,
+      handoff: handoff,
+      sharedByPair: sharedByPair,
+    );
+    _validateExteriorAssignments(
+      issues: issues,
+      handoff: handoff,
+      candidate: candidate,
+    );
+
     final internalOpenings = candidate.openingIntents
         .where((opening) => opening.kind != GeometryOpeningKind.primaryEntry)
         .toList();
@@ -82,7 +95,39 @@ final class ApartmentGeometryAccessValidator {
       return GeometryValidationReport(issues);
     }
 
-    final entryKey = primaryEntries.single.fromSpaceKey!;
+    final primaryEntry = primaryEntries.single;
+    final entryKey = primaryEntry.fromSpaceKey!;
+    final expectedEntryKey = handoff.entrySpaceKey;
+    if (expectedEntryKey != null && entryKey != expectedEntryKey) {
+      issues.add(
+        GeometryValidationIssue(
+          code: 'p9.geometry.entry-space-mismatch',
+          severity: GeometryValidationSeverity.blocker,
+          affectedKeys: [entryKey, expectedEntryKey],
+          facts: {
+            'actualEntrySpaceKey': entryKey,
+            'expectedEntrySpaceKey': expectedEntryKey,
+          },
+        ),
+      );
+    }
+
+    final entryHostMatches = candidate.exteriorBoundaries.any(
+      (boundary) =>
+          boundary.spaceSemanticKey == entryKey &&
+          boundary.segment.stableKey == primaryEntry.hostSegment.stableKey,
+    );
+    if (!entryHostMatches) {
+      issues.add(
+        GeometryValidationIssue(
+          code: 'p9.geometry.entry-host-mismatch',
+          severity: GeometryValidationSeverity.blocker,
+          affectedKeys: [entryKey],
+          facts: {'hostSegment': primaryEntry.hostSegment.stableKey},
+        ),
+      );
+    }
+
     final reachable = _reachableFrom(entryKey, internalOpenings);
     for (final space in candidate.interiorSpaces) {
       if (reachable.contains(space.semanticKey)) {
@@ -99,6 +144,74 @@ final class ApartmentGeometryAccessValidator {
     }
 
     return GeometryValidationReport(issues);
+  }
+
+  void _validateRequiredSharedBoundaries({
+    required List<GeometryValidationIssue> issues,
+    required TopologyGeometryHandoff handoff,
+    required Map<String, GeneratedSharedBoundary> sharedByPair,
+  }) {
+    for (final intent in handoff.requiredSharedBoundaries) {
+      final realized = sharedByPair[intent.pair.stableKey];
+      if (realized == null) {
+        issues.add(
+          GeometryValidationIssue(
+            code: 'p9.geometry.required-boundary-missing',
+            severity: GeometryValidationSeverity.blocker,
+            affectedKeys: [intent.pair.leftKey, intent.pair.rightKey],
+            facts: {
+              'relationKind': intent.kind.name,
+              'minSharedBoundaryMm': intent.minSharedBoundaryMm,
+            },
+          ),
+        );
+        continue;
+      }
+      if (realized.lengthMm >= intent.minSharedBoundaryMm) {
+        continue;
+      }
+      issues.add(
+        GeometryValidationIssue(
+          code: 'p9.geometry.shared-boundary-too-short',
+          severity: GeometryValidationSeverity.blocker,
+          affectedKeys: [intent.pair.leftKey, intent.pair.rightKey],
+          facts: {
+            'relationKind': intent.kind.name,
+            'actualSharedBoundaryMm': realized.lengthMm,
+            'minSharedBoundaryMm': intent.minSharedBoundaryMm,
+          },
+        ),
+      );
+    }
+  }
+
+  void _validateExteriorAssignments({
+    required List<GeometryValidationIssue> issues,
+    required TopologyGeometryHandoff handoff,
+    required ApartmentGeometryCandidate candidate,
+  }) {
+    for (final assignment in handoff.requiredExteriorAssignments.entries) {
+      final expectedSide = _geometrySide(assignment.value);
+      final matches = candidate.exteriorBoundaries.any(
+        (boundary) =>
+            boundary.spaceSemanticKey == assignment.key &&
+            boundary.side == expectedSide,
+      );
+      if (matches) {
+        continue;
+      }
+      issues.add(
+        GeometryValidationIssue(
+          code: 'p9.geometry.exterior-side-mismatch',
+          severity: GeometryValidationSeverity.blocker,
+          affectedKeys: [assignment.key],
+          facts: {
+            'expectedSide': expectedSide.name,
+            'semanticSide': assignment.value.name,
+          },
+        ),
+      );
+    }
   }
 
   Set<String> _reachableFrom(
@@ -129,6 +242,13 @@ final class ApartmentGeometryAccessValidator {
     }
     return visited;
   }
+
+  GeometryEnvelopeSide _geometrySide(DraftExteriorSide side) => switch (side) {
+        DraftExteriorSide.north => GeometryEnvelopeSide.north,
+        DraftExteriorSide.east => GeometryEnvelopeSide.east,
+        DraftExteriorSide.south => GeometryEnvelopeSide.south,
+        DraftExteriorSide.west => GeometryEnvelopeSide.west,
+      };
 }
 
 extension<T> on List<T> {
