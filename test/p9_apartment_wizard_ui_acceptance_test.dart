@@ -66,13 +66,17 @@ void main() {
                 entry.category == WizardDiffEntityCategory.boundaryTopology,
           )
           .toList();
-      final boundaryGroups = model.grouped().where(
+      final boundaryGroups = model
+          .grouped()
+          .where(
             (group) => group.entries.any(
               (entry) =>
                   entry.category == WizardDiffEntityCategory.boundaryTopology,
             ),
-          );
+          )
+          .toList();
       expect(boundaryEntries, isNotEmpty);
+      expect(boundaryGroups, isNotEmpty);
 
       await tester.pumpWidget(
         _localizedApp(
@@ -82,10 +86,10 @@ void main() {
       await tester.pumpAndSettle();
 
       for (final group in boundaryGroups) {
-        expect(
-          find.byKey(ValueKey('wizard-boundary-group-${group.key}')),
-          findsOneWidget,
-        );
+        final groupedBoundary =
+            find.byKey(ValueKey('wizard-boundary-group-${group.key}'));
+        await _dragUntilVisible(tester, groupedBoundary);
+        expect(groupedBoundary, findsOneWidget);
       }
       for (final entry in boundaryEntries) {
         expect(
@@ -117,8 +121,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
 
-      await tester
-          .tap(find.byKey(const ValueKey('apartment-generate-candidates')));
+      final generate =
+          find.byKey(const ValueKey('apartment-generate-candidates'));
+      await _dragUntilVisible(tester, generate);
+      await tester.tap(generate);
       await tester.pumpAndSettle();
       expect(
         find.byKey(const ValueKey('apartment-prepare-preview')),
@@ -180,8 +186,10 @@ void main() {
       );
       await tester.tap(find.byKey(const ValueKey('launch-apartment-wizard')));
       await tester.pumpAndSettle();
-      await tester
-          .tap(find.byKey(const ValueKey('apartment-generate-candidates')));
+      final generate =
+          find.byKey(const ValueKey('apartment-generate-candidates'));
+      await _dragUntilVisible(tester, generate);
+      await tester.tap(generate);
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('apartment-prepare-preview')));
       await tester.pumpAndSettle();
@@ -213,6 +221,15 @@ void main() {
       }
     });
   });
+}
+
+Future<void> _dragUntilVisible(WidgetTester tester, Finder target) async {
+  await tester.dragUntilVisible(
+    target,
+    find.byType(ListView).first,
+    const Offset(0, -300),
+  );
+  await tester.pumpAndSettle();
 }
 
 Widget _localizedApp({
