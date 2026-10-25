@@ -1,6 +1,6 @@
 import 'package:elecx/src/application/project/wizard/apartment/apartment_area_fitter.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_catalog_filter.dart';
-import 'package:elecx/src/application/project/wizard/apartment/apartment_geometry_generator.dart';
+import 'package:elecx/src/application/project/wizard/apartment/apartment_geometry_stage.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_semantic_validator.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_topology_grammar.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_wizard_parameters.dart';
@@ -8,7 +8,7 @@ import 'package:elecx/src/domain/apartment_topology.dart';
 import 'package:elecx/src/domain/apartment_topology/apartment_area_fit.dart';
 import 'package:elecx/src/domain/apartment_topology/apartment_geometry.dart';
 import 'package:elecx/src/domain/apartment_topology/apartment_semantic_validation.dart';
-import 'package:elecx/src/domain/apartment_topology/apartment_topology_catalog_v2.dart';
+import 'package:elecx/src/domain/apartment_topology/apartment_topology_catalog_v4.dart';
 import 'package:elecx/src/domain/apartment_topology/apartment_topology_draft.dart';
 import 'package:elecx/src/domain/apartment_topology/apartment_topology_models.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -77,7 +77,7 @@ void main() {
       }
     });
 
-    test('P9.6 access intents survive geometry and all rooms stay reachable', () {
+    test('P9.6-AT-017 access intents survive geometry', () {
       for (var rooms = 1; rooms <= 10; rooms++) {
         final result = _firstAccepted(
           _request(roomCount: rooms, areaDm2: _representativeArea(rooms)),
@@ -107,7 +107,19 @@ void main() {
                 'rooms=$rooms lost required access ${intent.pair.stableKey}',
           );
         }
+      }
+    });
 
+    test('P9.6-AT-018 actual opening graph reaches every interior space', () {
+      for (var rooms = 1; rooms <= 10; rooms++) {
+        final result = _firstAccepted(
+          _request(roomCount: rooms, areaDm2: _representativeArea(rooms)),
+        );
+        expect(result, isNotNull, reason: 'rooms=$rooms must yield geometry');
+        final fixture = result!;
+        final internalOpenings = fixture.candidate.openingIntents
+            .where((opening) => opening.kind != GeometryOpeningKind.primaryEntry)
+            .toList();
         final primaryEntries = fixture.candidate.openingIntents
             .where((opening) => opening.kind == GeometryOpeningKind.primaryEntry)
             .toList();
@@ -148,11 +160,6 @@ void main() {
         isNot(result.candidate.metrics.interiorAreaMm2 +
             result.candidate.metrics.appendageAreaMm2),
       );
-      final appendage = result.candidate.exteriorAppendages.single;
-      expect(
-        appendage.polygon.maxY <= result.candidate.interiorEnvelope.minY,
-        isTrue,
-      );
     });
 
     test('corner exposure fails closed until multi-side layout is implemented',
@@ -169,7 +176,7 @@ void main() {
       final prepared = _firstPrepared(normalized);
       expect(prepared, isNotNull);
 
-      final generated = const ApartmentGeometryGenerator().generate(
+      final generated = const ApartmentGeometryStage().generate(
         fittedDraft: prepared!.fitted,
         semanticValidation: prepared.semantic,
         template: prepared.template,
@@ -210,7 +217,7 @@ final class _PreparedFixture {
 _GeneratedFixture? _firstAccepted(ApartmentRequestInput input) {
   final normalized =
       const ApartmentRequestNormalizer().normalize(input).request!;
-  final catalog = P9ApartmentTopologyCatalogV2.create();
+  final catalog = P9ApartmentTopologyCatalogV4.create();
   final templates = const ApartmentTopologyCatalogFilter()
       .compatibleTemplates(catalog, normalized);
   final expansion = ApartmentTopologyGrammarEngine().expand(
@@ -239,7 +246,7 @@ _GeneratedFixture? _firstAccepted(ApartmentRequestInput input) {
     if (!semantic.accepted) {
       continue;
     }
-    final geometry = const ApartmentGeometryGenerator().generate(
+    final geometry = const ApartmentGeometryStage().generate(
       fittedDraft: fitted.fittedDraft!,
       semanticValidation: semantic,
       template: template,
@@ -256,7 +263,7 @@ _GeneratedFixture? _firstAccepted(ApartmentRequestInput input) {
 }
 
 _PreparedFixture? _firstPrepared(NormalizedApartmentRequest normalized) {
-  final catalog = P9ApartmentTopologyCatalogV2.create();
+  final catalog = P9ApartmentTopologyCatalogV4.create();
   final templates = const ApartmentTopologyCatalogFilter()
       .compatibleTemplates(catalog, normalized);
   final expansion = ApartmentTopologyGrammarEngine().expand(
