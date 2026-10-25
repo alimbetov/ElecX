@@ -64,6 +64,8 @@ final class ApartmentCandidateRankingResult {
 final class ApartmentCandidateRanker {
   const ApartmentCandidateRanker();
 
+  static const String diversityPolicyVersion = 'p9.diversity.v1';
+
   ApartmentCandidateRankingResult rank({
     required Iterable<ApartmentCandidateRankingInput> candidates,
     required NormalizedApartmentRequest request,
@@ -89,9 +91,8 @@ final class ApartmentCandidateRanker {
       );
     }
 
-    final valid = source
-        .where((input) => input.candidate.validation.accepted)
-        .toList();
+    final valid =
+        source.where((input) => input.candidate.validation.accepted).toList();
     if (valid.isEmpty) {
       return ApartmentCandidateRankingResult(
         rankedCandidates: const [],
@@ -327,13 +328,16 @@ final class ApartmentCandidateRanker {
         : circulationArea * 10000 ~/ candidate.metrics.interiorAreaMm2;
     final graph = _openingGraph(candidate);
     final entry = _entryKey(candidate);
-    final depths = entry == null ? const <String, int>{} : _graphDepths(entry, graph);
+    final depths =
+        entry == null ? const <String, int>{} : _graphDepths(entry, graph);
     final maxDepth = depths.values.isEmpty
         ? 0
         : depths.values.reduce((left, right) => _maxInt(left, right));
     final internalEdgeCount = _internalOpenings(candidate).length;
-    final minimumConnectedEdges = _maxInt(candidate.interiorSpaces.length - 1, 0);
-    final redundantEdges = _maxInt(internalEdgeCount - minimumConnectedEdges, 0);
+    final minimumConnectedEdges =
+        _maxInt(candidate.interiorSpaces.length - 1, 0);
+    final redundantEdges =
+        _maxInt(internalEdgeCount - minimumConnectedEdges, 0);
     var branchExcess = 0;
     for (final neighbors in graph.values) {
       branchExcess += _maxInt(neighbors.length - 3, 0);
@@ -372,8 +376,9 @@ final class ApartmentCandidateRanker {
     final ratioBp = candidate.metrics.interiorAreaMm2 <= 0
         ? 10000
         : corridorArea * 10000 ~/ candidate.metrics.interiorAreaMm2;
-    final spineFamily = candidate.family == ApartmentTopologyFamily.corridorSpine ||
-        candidate.family == ApartmentTopologyFamily.centralCorridor;
+    final spineFamily =
+        candidate.family == ApartmentTopologyFamily.corridorSpine ||
+            candidate.family == ApartmentTopologyFamily.centralCorridor;
     final areaScore = _descendingLinear(
       ratioBp,
       best: spineFamily ? 1800 : 1200,
@@ -469,19 +474,27 @@ final class ApartmentCandidateRanker {
     if (bedrooms.isEmpty) {
       return 10000;
     }
-    final dayKeys = candidate.interiorSpaces.where((space) {
-      final usage = specs[_baseKey(space.semanticKey)]?.usage;
-      return usage == SpaceUsage.livingRoom ||
-          usage == SpaceUsage.kitchenLiving ||
-          usage == SpaceUsage.kitchen;
-    }).map((space) => space.semanticKey).toSet();
+    final dayKeys = candidate.interiorSpaces
+        .where((space) {
+          final usage = specs[_baseKey(space.semanticKey)]?.usage;
+          return usage == SpaceUsage.livingRoom ||
+              usage == SpaceUsage.kitchenLiving ||
+              usage == SpaceUsage.kitchen;
+        })
+        .map((space) => space.semanticKey)
+        .toSet();
     final graph = _openingGraph(candidate);
     final entry = _entryKey(candidate);
-    final depths = entry == null ? const <String, int>{} : _graphDepths(entry, graph);
+    final depths =
+        entry == null ? const <String, int>{} : _graphDepths(entry, graph);
     var total = 0;
     for (final bedroom in bedrooms) {
       final depth = depths[bedroom.semanticKey] ?? 0;
-      final depthScore = depth >= 2 ? 10000 : depth == 1 ? 4000 : 0;
+      final depthScore = depth >= 2
+          ? 10000
+          : depth == 1
+              ? 4000
+              : 0;
       final directToDay = (graph[bedroom.semanticKey] ?? const <String>{})
           .any(dayKeys.contains);
       final dayExposureScore = directToDay ? 4000 : 10000;
@@ -508,20 +521,26 @@ final class ApartmentCandidateRanker {
     switch (request.kitchenMode) {
       case ApartmentKitchenMode.kitchenLiving:
         final combined = kitchens.any((space) =>
-            specs[_baseKey(space.semanticKey)]?.usage == SpaceUsage.kitchenLiving);
+            specs[_baseKey(space.semanticKey)]?.usage ==
+            SpaceUsage.kitchenLiving);
         return combined ? 10000 : 0;
       case ApartmentKitchenMode.openPlan:
         final kitchenKeys = kitchens.map((space) => space.semanticKey).toSet();
-        final dayKeys = candidate.interiorSpaces.where((space) {
-          return specs[_baseKey(space.semanticKey)]?.usage == SpaceUsage.livingRoom;
-        }).map((space) => space.semanticKey).toSet();
+        final dayKeys = candidate.interiorSpaces
+            .where((space) {
+              return specs[_baseKey(space.semanticKey)]?.usage ==
+                  SpaceUsage.livingRoom;
+            })
+            .map((space) => space.semanticKey)
+            .toSet();
         var bestBoundary = 0;
         var hasOpenPassage = false;
         for (final opening in _internalOpenings(candidate)) {
           final from = opening.fromSpaceKey!;
           final to = opening.toSpaceKey!;
-          final matches = (kitchenKeys.contains(from) && dayKeys.contains(to)) ||
-              (kitchenKeys.contains(to) && dayKeys.contains(from));
+          final matches =
+              (kitchenKeys.contains(from) && dayKeys.contains(to)) ||
+                  (kitchenKeys.contains(to) && dayKeys.contains(from));
           if (matches && opening.kind == GeometryOpeningKind.openPassage) {
             hasOpenPassage = true;
           }
@@ -538,7 +557,8 @@ final class ApartmentCandidateRanker {
         if (!hasOpenPassage) {
           return 0;
         }
-        final boundaryScore = _ascendingLinear(bestBoundary, worst: 1200, best: 2400);
+        final boundaryScore =
+            _ascendingLinear(bestBoundary, worst: 1200, best: 2400);
         return 7000 + boundaryScore * 3000 ~/ 10000;
       case ApartmentKitchenMode.separate:
         final separateKitchen = kitchens.any((space) =>
@@ -597,9 +617,8 @@ final class ApartmentCandidateRanker {
       final errorBp =
           (appendage.realizedAreaMm2 - targetMm2).abs() * 10000 ~/ targetMm2;
       final areaScore = _descendingLinear(errorBp, best: 10, worst: 500);
-      final hostUsage = hostKey == null
-          ? null
-          : specs[_baseKey(hostKey)]?.usage;
+      final hostUsage =
+          hostKey == null ? null : specs[_baseKey(hostKey)]?.usage;
       final hostScore = switch (seed?.balconyStrategy) {
         BalconyAttachmentStrategy.bedroom =>
           hostUsage == SpaceUsage.bedroom ? 10000 : 5000,
@@ -701,6 +720,7 @@ final class ApartmentCandidateRanker {
         <String>[
           'p9.apartment.ranking',
           'scoringProfileVersion=${profile.scoringProfileVersion}',
+          'diversityPolicyVersion=$diversityPolicyVersion',
           for (final candidate in ranked)
             'ranked=${candidate.candidate.geometryFingerprint}|${candidate.finalScoreBp}',
           for (final candidate in selected)
@@ -726,12 +746,16 @@ final class ApartmentCandidateRanker {
       edges.add('$pair:${opening.kind.name}');
     }
     edges.sort();
-    final wet = candidate.interiorSpaces.where((space) {
-      final spec = specs[_baseKey(space.semanticKey)];
-      return spec?.wetSpace == true ||
-          spec?.usage == SpaceUsage.kitchen ||
-          spec?.usage == SpaceUsage.kitchenLiving;
-    }).map((space) => specs[_baseKey(space.semanticKey)]?.usage.name ?? 'unknown').toList()
+    final wet = candidate.interiorSpaces
+        .where((space) {
+          final spec = specs[_baseKey(space.semanticKey)];
+          return spec?.wetSpace == true ||
+              spec?.usage == SpaceUsage.kitchen ||
+              spec?.usage == SpaceUsage.kitchenLiving;
+        })
+        .map((space) =>
+            specs[_baseKey(space.semanticKey)]?.usage.name ?? 'unknown')
+        .toList()
       ..sort();
     final exposure = candidate.exteriorBoundaries
         .map((edge) => edge.side.name)
@@ -762,11 +786,13 @@ int _compareRanked(
   if (family != 0) {
     return family;
   }
-  final template = left.templateStableOrder.compareTo(right.templateStableOrder);
+  final template =
+      left.templateStableOrder.compareTo(right.templateStableOrder);
   if (template != 0) {
     return template;
   }
-  final seed = left.variantSeedStableOrder.compareTo(right.variantSeedStableOrder);
+  final seed =
+      left.variantSeedStableOrder.compareTo(right.variantSeedStableOrder);
   if (seed != 0) {
     return seed;
   }
@@ -848,9 +874,12 @@ Map<String, int> _graphDepths(
 }
 
 bool _opposite(GeometryEnvelopeSide first, GeometryEnvelopeSide second) =>
-    (first == GeometryEnvelopeSide.north && second == GeometryEnvelopeSide.south) ||
-    (first == GeometryEnvelopeSide.south && second == GeometryEnvelopeSide.north) ||
-    (first == GeometryEnvelopeSide.east && second == GeometryEnvelopeSide.west) ||
+    (first == GeometryEnvelopeSide.north &&
+        second == GeometryEnvelopeSide.south) ||
+    (first == GeometryEnvelopeSide.south &&
+        second == GeometryEnvelopeSide.north) ||
+    (first == GeometryEnvelopeSide.east &&
+        second == GeometryEnvelopeSide.west) ||
     (first == GeometryEnvelopeSide.west && second == GeometryEnvelopeSide.east);
 
 int _rangeQuality(
