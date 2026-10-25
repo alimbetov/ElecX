@@ -151,7 +151,8 @@ final class BasicBuildingWizardPreviewProjector {
         return right.levelNumber.compareTo(left.levelNumber);
       });
     if (levels.isEmpty) {
-      throw StateError('Basic Building preview must contain at least one Level.');
+      throw StateError(
+          'Basic Building preview must contain at least one Level.');
     }
 
     const width = 640.0;
@@ -402,8 +403,11 @@ final class ApartmentWizardPreviewProjector {
         host = registry.openingHost(opening.id, spaceId);
         if (host != null) break;
       }
-      if (host == null || host.startOffsetMm == null || host.endOffsetMm == null) {
-        throw StateError('Opening ${opening.id} has no canonical boundary host.');
+      if (host == null ||
+          host.startOffsetMm == null ||
+          host.endOffsetMm == null) {
+        throw StateError(
+            'Opening ${opening.id} has no canonical boundary host.');
       }
       final topology = topologies[host.host.spaceId];
       final edge = topology?.edges[host.host.edgeId];
