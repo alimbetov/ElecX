@@ -28,7 +28,8 @@ final class ApartmentEngineeringProjection {
     required this.placementFingerprint,
     required this.projectionFingerprint,
   }) : placements = List.unmodifiable(placements) {
-    final componentIds = graph.components.map((component) => component.id).toSet();
+    final componentIds =
+        graph.components.map((component) => component.id).toSet();
     final placedIds = <ComponentId>{};
     for (final placement in this.placements) {
       if (!componentIds.contains(placement.componentId)) {
@@ -70,7 +71,8 @@ final class ApartmentCanonicalProjectionResult {
   final ApartmentEngineeringProjection? projection;
   final List<P9Failure> failures;
 
-  bool get accepted => projection != null && failures.every((failure) => !failure.isBlocker);
+  bool get accepted =>
+      projection != null && failures.every((failure) => !failure.isBlocker);
 }
 
 /// P9.3 exact-lineage projector.
@@ -102,12 +104,14 @@ final class ApartmentCanonicalProjectionService {
     }
 
     try {
-      final spaces = [...draft.spaces]..sort(
+      final spaces = [...draft.spaces]
+        ..sort(
           (left, right) => left.semanticKey.compareTo(right.semanticKey),
         );
       final geometryBySpace = <String, GeneratedSpaceGeometry>{
         for (final space in geometry.interiorSpaces) space.semanticKey: space,
-        for (final space in geometry.exteriorAppendages) space.semanticKey: space,
+        for (final space in geometry.exteriorAppendages)
+          space.semanticKey: space,
       };
       final expectedKeys = spaces.map((space) => space.semanticKey).toSet();
       if (geometryBySpace.length != expectedKeys.length ||
@@ -123,7 +127,8 @@ final class ApartmentCanonicalProjectionService {
 
       final accessEdges = [...draft.circulation.accessEdges]
         ..sort((left, right) {
-          final pair = left.normalizedPairKey.compareTo(right.normalizedPairKey);
+          final pair =
+              left.normalizedPairKey.compareTo(right.normalizedPairKey);
           return pair != 0 ? pair : left.kind.name.compareTo(right.kind.name);
         });
       final componentIds = <String, ComponentId>{
@@ -146,7 +151,7 @@ final class ApartmentCanonicalProjectionService {
               id: _portId(draft, edge, space.semanticKey).value,
               direction: EngineeringPortDirection.bidirectional,
               allowedConnections: const {
-                EngineeringConnectionType.spatialAccess,
+                EngineeringConnectionType.custom,
               },
             ),
         ]..sort((left, right) => left.id.compareTo(right.id));
@@ -155,7 +160,7 @@ final class ApartmentCanonicalProjectionService {
             id: componentIds[space.semanticKey]!,
             componentTypeId: 'apartment.space.${space.usage.name}',
             discipline: EngineeringDiscipline.architecture,
-            systemClass: EngineeringSystemClass.spatialTopology,
+            systemClass: EngineeringSystemClass.custom,
             ports: ports,
           ),
         );
@@ -173,9 +178,8 @@ final class ApartmentCanonicalProjectionService {
         final firstKey = edge.fromSpaceKey.compareTo(edge.toSpaceKey) <= 0
             ? edge.fromSpaceKey
             : edge.toSpaceKey;
-        final secondKey = firstKey == edge.fromSpaceKey
-            ? edge.toSpaceKey
-            : edge.fromSpaceKey;
+        final secondKey =
+            firstKey == edge.fromSpaceKey ? edge.toSpaceKey : edge.fromSpaceKey;
         connections.add(
           EngineeringGraphConnection(
             id: _connectionId(draft, edge),
@@ -183,8 +187,9 @@ final class ApartmentCanonicalProjectionService {
             fromPortId: _portId(draft, edge, firstKey),
             toComponentId: componentIds[secondKey]!,
             toPortId: _portId(draft, edge, secondKey),
-            connectionType: EngineeringConnectionType.spatialAccess,
-            systemClass: EngineeringSystemClass.spatialTopology,
+            connectionType: EngineeringConnectionType.custom,
+            systemClass: EngineeringSystemClass.custom,
+            semanticTypeId: 'apartment.access.${edge.kind.name}',
           ),
         );
       }
@@ -206,8 +211,9 @@ final class ApartmentCanonicalProjectionService {
         );
 
       final graphSerialization = _stableGraphSerialization(graph);
-      final placementSerialization =
-          placements.map((placement) => placement.stableSerialization).join('\n');
+      final placementSerialization = placements
+          .map((placement) => placement.stableSerialization)
+          .join('\n');
       final graphFingerprint = p9Sha256Hex(graphSerialization);
       final placementFingerprint = p9Sha256Hex(placementSerialization);
       final projectionFingerprint = p9Sha256Hex(<String>[
@@ -344,6 +350,7 @@ String _stableGraphSerialization(CanonicalEngineeringGraph graph) {
         'to=${connection.toComponentId.value}:${connection.toPortId.value}',
         'type=${connection.connectionType.name}',
         'system=${connection.systemClass.name}',
+        'semanticType=${connection.semanticTypeId ?? '-'}',
         'route=${connection.routeId?.value ?? '-'}',
         'circuit=${connection.circuitId?.value ?? '-'}',
       ].join('|'),
@@ -351,7 +358,8 @@ String _stableGraphSerialization(CanonicalEngineeringGraph graph) {
 }
 
 String _stableComponentSerialization(EngineeringGraphComponent component) {
-  final ports = [...component.ports]..sort((left, right) => left.id.compareTo(right.id));
+  final ports = [...component.ports]
+    ..sort((left, right) => left.id.compareTo(right.id));
   return <String>[
     'component=${component.id.value}',
     'type=${component.componentTypeId}',
