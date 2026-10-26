@@ -4,7 +4,6 @@ import 'package:elecx/src/application/project/wizard/wizard_contracts.dart';
 import 'package:elecx/src/domain/apartment_topology.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
-import 'package:elecx/src/domain/project_space_semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -50,8 +49,8 @@ void main() {
         1,
       );
       expect(
-        firstSet.recommendedCandidate.rankedCandidate.candidate.validation
-            .accepted,
+        firstSet
+            .recommendedCandidate.rankedCandidate.candidate.validation.accepted,
         isTrue,
       );
 
@@ -59,7 +58,8 @@ void main() {
         secondSet.recommendedCandidate.candidateFingerprint,
         firstSet.recommendedCandidate.candidateFingerprint,
       );
-      expect(secondSet.candidateSetFingerprint, firstSet.candidateSetFingerprint);
+      expect(
+          secondSet.candidateSetFingerprint, firstSet.candidateSetFingerprint);
       expect(fixture.project.version, same(originalVersion));
       expect(fixture.project.stores, same(originalStores));
     });
