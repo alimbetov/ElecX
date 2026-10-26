@@ -12,6 +12,7 @@ import 'apartment_candidate_identity.dart';
 import 'apartment_candidate_set_service.dart';
 import 'apartment_canonical_materializer.dart';
 import 'apartment_generation_provenance_builder.dart';
+import 'apartment_normative_evidence.dart';
 import 'apartment_wizard_parameters.dart';
 import 'p9_failure.dart';
 
@@ -29,15 +30,18 @@ final class ApartmentWizardProviderException implements Exception {
 ///
 /// The provider is stateless and reentrant. Candidate exploration remains in
 /// [ApartmentCandidateSetService] / session-owned exploration state. During P8
-/// generation it deterministically resolves the exact transient selection and
-/// hands it to one reserved P8 mutation command. Preview materialization is pure
-/// and Apply commits the frozen preview candidate without rerunning P9.
+/// generation it deterministically resolves the exact transient selection,
+/// enforces the P9.4 normative gate for the exact P9.3 projection and hands the
+/// accepted candidate to one reserved P8 mutation command. Preview
+/// materialization is pure and Apply commits the frozen preview candidate
+/// without rerunning P9.
 final class ApartmentWizardProvider
     extends TypedWizardProvider<ApartmentWizardParameters> {
   const ApartmentWizardProvider({
     this.candidateSetService = const ApartmentCandidateSetService(),
     this.materializer = const ApartmentCanonicalMaterializer(),
     this.provenanceBuilder = const ApartmentGenerationProvenanceBuilder(),
+    this.normativeEvaluator = const ApartmentNormativeEvidenceEvaluator(),
   });
 
   static final WizardFamilyId familyId = WizardFamilyId('apartment');
@@ -45,6 +49,7 @@ final class ApartmentWizardProvider
   final ApartmentCandidateSetService candidateSetService;
   final ApartmentCanonicalMaterializer materializer;
   final ApartmentGenerationProvenanceBuilder provenanceBuilder;
+  final ApartmentNormativeEvidenceEvaluator normativeEvaluator;
 
   @override
   WizardProviderDescriptor get descriptor => WizardProviderDescriptor(
@@ -140,6 +145,28 @@ final class ApartmentWizardProvider
       }
       throw const ApartmentWizardProviderException(
         'p9.provider.no-candidates',
+      );
+    }
+
+    final normative = normativeEvaluator.evaluate(
+      projection: set.engineeringProjection,
+    );
+    if (!normative.accepted) {
+      final blocker = normative.failures.where((failure) => failure.isBlocker);
+      if (blocker.isNotEmpty) {
+        final first = blocker.first;
+        throw ApartmentWizardProviderException(first.code, first.facts);
+      }
+      final evidence = normative.evidence;
+      throw ApartmentWizardProviderException(
+        'NORMATIVE_BLOCKED',
+        {
+          'projectionFingerprint': set.engineeringProjection.projectionFingerprint,
+          if (evidence != null)
+            'normativeEvidenceFingerprint': evidence.evidenceFingerprint,
+          if (evidence != null)
+            'normativeState': evidence.overallState.name,
+        },
       );
     }
 
