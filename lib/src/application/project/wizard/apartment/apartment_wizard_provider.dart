@@ -203,8 +203,7 @@ final class ApartmentWizardProvider
         {
           'candidateFingerprint': selected.candidateFingerprint,
           'projectionFingerprint': projection.projectionFingerprint,
-          'normativeEvidenceFingerprint':
-              normativeEvidence.evidenceFingerprint,
+          'normativeEvidenceFingerprint': normativeEvidence.evidenceFingerprint,
           'normativeState': normativeEvidence.overallState.name,
         },
       );
