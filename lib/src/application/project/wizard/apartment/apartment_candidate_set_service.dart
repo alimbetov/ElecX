@@ -299,8 +299,8 @@ final class ApartmentCandidateSetService {
 
     late final ApartmentTopologyGenerationSelection generationSelection;
     try {
-      generationSelection = const ApartmentTopologyGenerationRuntime()
-          .selectRankedCandidates(
+      generationSelection =
+          const ApartmentTopologyGenerationRuntime().selectRankedCandidates(
         ranking.rankedCandidates,
         selectableFloorBp: profile.selectableFloorBp,
       );
