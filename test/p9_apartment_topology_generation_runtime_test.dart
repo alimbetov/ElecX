@@ -229,8 +229,7 @@ void main() {
               .having(
                 (failure) => failure.code,
                 'code',
-                ApartmentTopologyGenerationFailureCode
-                    .noValidTopologyCandidate,
+                ApartmentTopologyGenerationFailureCode.noValidTopologyCandidate,
               )
               .having(
                 (failure) => failure.evaluations.single.blockerCodes,
