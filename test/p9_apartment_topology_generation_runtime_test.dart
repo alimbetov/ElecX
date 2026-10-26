@@ -73,7 +73,8 @@ void main() {
         result.rejected.single.rankedCandidate.candidate.templateId.value,
         'tpl-invalid',
       );
-      expect(result.rejected.single.blockerCodes, contains('p9.geometry.blocked'));
+      expect(
+          result.rejected.single.blockerCodes, contains('p9.geometry.blocked'));
     });
 
     test('Q04 invalid higher-score candidate never wins', () {
