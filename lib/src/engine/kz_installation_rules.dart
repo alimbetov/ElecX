@@ -42,6 +42,14 @@ final class InstallationRuleResult {
 }
 
 abstract final class KzInstallationRules {
+  static const residentialSocketHeightRuleId =
+      'KZ-SP404106-15.33-SOCKET-HEIGHT';
+  static const generalLightingSwitchHeightRuleId =
+      'KZ-SP404106-15.33-SWITCH-HEIGHT';
+  static const gasPipeDistanceRuleId = 'KZ-SP404106-15.34-GAS-DISTANCE';
+  static const childOccupancyHeightRuleId =
+      'KZ-SP404106-15.39-CHILD-HEIGHT';
+
   static const sp404106 = InstallationGuideSource(
     code: 'СП РК 4.04-106-2013',
     title:
@@ -52,11 +60,10 @@ abstract final class KzInstallationRules {
   /// Residential apartments and dormitory living rooms: sockets should be
   /// convenient for use and furniture layout, but not higher than 1.0 m.
   static InstallationRuleResult validateResidentialSocketHeight(int? heightMm) {
-    const ruleId = 'KZ-SP404106-15.33-SOCKET-HEIGHT';
     final source = _source('15.33');
     if (heightMm == null || heightMm < 0) {
       return _indeterminate(
-        ruleId: ruleId,
+        ruleId: residentialSocketHeightRuleId,
         source: source,
         message: 'Недостаточно корректных данных о высоте розетки.',
         facts: ['heightMm=${heightMm ?? 'unknown'}'],
@@ -64,7 +71,7 @@ abstract final class KzInstallationRules {
     }
     final pass = heightMm <= 1000;
     return _evaluated(
-      ruleId: ruleId,
+      ruleId: residentialSocketHeightRuleId,
       source: source,
       pass: pass,
       facts: ['heightMm=$heightMm', 'maximumMm=1000'],
@@ -73,15 +80,25 @@ abstract final class KzInstallationRules {
     );
   }
 
+  static InstallationRuleResult residentialSocketHeightNotApplicable({
+    required String rationale,
+    Iterable<String> facts = const [],
+  }) =>
+      _notApplicable(
+        ruleId: residentialSocketHeightRuleId,
+        source: _source('15.33'),
+        rationale: rationale,
+        facts: facts,
+      );
+
   /// General-lighting switches: 0.8…1.7 m above finished floor.
   static InstallationRuleResult validateGeneralLightingSwitchHeight(
     int? heightMm,
   ) {
-    const ruleId = 'KZ-SP404106-15.33-SWITCH-HEIGHT';
     final source = _source('15.33');
     if (heightMm == null || heightMm < 0) {
       return _indeterminate(
-        ruleId: ruleId,
+        ruleId: generalLightingSwitchHeightRuleId,
         source: source,
         message: 'Недостаточно корректных данных о высоте выключателя.',
         facts: ['heightMm=${heightMm ?? 'unknown'}'],
@@ -89,7 +106,7 @@ abstract final class KzInstallationRules {
     }
     final pass = heightMm >= 800 && heightMm <= 1700;
     return _evaluated(
-      ruleId: ruleId,
+      ruleId: generalLightingSwitchHeightRuleId,
       source: source,
       pass: pass,
       facts: ['heightMm=$heightMm', 'minimumMm=800', 'maximumMm=1700'],
@@ -99,13 +116,23 @@ abstract final class KzInstallationRules {
     );
   }
 
+  static InstallationRuleResult generalLightingSwitchHeightNotApplicable({
+    required String rationale,
+    Iterable<String> facts = const [],
+  }) =>
+      _notApplicable(
+        ruleId: generalLightingSwitchHeightRuleId,
+        source: _source('15.33'),
+        rationale: rationale,
+        facts: facts,
+      );
+
   /// Sockets/switches must be at least 0.5 m from gas pipelines.
   static InstallationRuleResult validateDistanceToGasPipe(int? distanceMm) {
-    const ruleId = 'KZ-SP404106-15.34-GAS-DISTANCE';
     final source = _source('15.34');
     if (distanceMm == null || distanceMm < 0) {
       return _indeterminate(
-        ruleId: ruleId,
+        ruleId: gasPipeDistanceRuleId,
         source: source,
         message: 'Недостаточно корректных данных о расстоянии до газопровода.',
         facts: ['distanceMm=${distanceMm ?? 'unknown'}'],
@@ -113,7 +140,7 @@ abstract final class KzInstallationRules {
     }
     final pass = distanceMm >= 500;
     return _evaluated(
-      ruleId: ruleId,
+      ruleId: gasPipeDistanceRuleId,
       source: source,
       pass: pass,
       facts: ['distanceMm=$distanceMm', 'minimumMm=500'],
@@ -122,6 +149,17 @@ abstract final class KzInstallationRules {
     );
   }
 
+  static InstallationRuleResult gasPipeDistanceNotApplicable({
+    required String rationale,
+    Iterable<String> facts = const [],
+  }) =>
+      _notApplicable(
+        ruleId: gasPipeDistanceRuleId,
+        source: _source('15.34'),
+        rationale: rationale,
+        facts: facts,
+      );
+
   /// Schools and preschool institutions use the special 1.8 m rule for rooms
   /// occupied by children. Applicability must be explicit; unknown applicability
   /// is not treated as PASS and therefore fails closed as INDETERMINATE.
@@ -129,33 +167,26 @@ abstract final class KzInstallationRules {
     int? heightMm, {
     bool? childOccupancyConfirmed = true,
   }) {
-    const ruleId = 'KZ-SP404106-15.39-CHILD-HEIGHT';
     final source = _source('15.39');
     if (childOccupancyConfirmed == null) {
       return _indeterminate(
-        ruleId: ruleId,
+        ruleId: childOccupancyHeightRuleId,
         source: source,
         message: 'Не определена применимость требования для помещений детей.',
         facts: const ['childOccupancyConfirmed=unknown'],
       );
     }
     if (!childOccupancyConfirmed) {
-      return InstallationRuleResult(
-        ruleId: ruleId,
-        kind: InstallationRuleResultKind.notApplicable,
-        message: 'Специальное требование 1800 mm к помещению не применяется.',
+      return _notApplicable(
+        ruleId: childOccupancyHeightRuleId,
         source: source,
-        evidence: NormativeEvidence(
-          source: source,
-          applicability: NormativeApplicability.notApplicable,
-          facts: const ['childOccupancyConfirmed=false'],
-          rationale: 'Профиль помещения не подтверждает пребывание детей.',
-        ),
+        rationale: 'Профиль помещения не подтверждает пребывание детей.',
+        facts: const ['childOccupancyConfirmed=false'],
       );
     }
     if (heightMm == null || heightMm < 0) {
       return _indeterminate(
-        ruleId: ruleId,
+        ruleId: childOccupancyHeightRuleId,
         source: source,
         message: 'Недостаточно корректных данных о высоте установки.',
         facts: ['heightMm=${heightMm ?? 'unknown'}'],
@@ -163,7 +194,7 @@ abstract final class KzInstallationRules {
     }
     final pass = heightMm == 1800;
     return _evaluated(
-      ruleId: ruleId,
+      ruleId: childOccupancyHeightRuleId,
       source: source,
       pass: pass,
       facts: ['heightMm=$heightMm', 'requiredMm=1800'],
@@ -201,6 +232,25 @@ abstract final class KzInstallationRules {
           applicability: NormativeApplicability.applicable,
           facts: facts,
           rationale: pass ? passMessage : failMessage,
+        ),
+      );
+
+  static InstallationRuleResult _notApplicable({
+    required String ruleId,
+    required InstallationGuideSource source,
+    required String rationale,
+    required Iterable<String> facts,
+  }) =>
+      InstallationRuleResult(
+        ruleId: ruleId,
+        kind: InstallationRuleResultKind.notApplicable,
+        message: rationale,
+        source: source,
+        evidence: NormativeEvidence(
+          source: source,
+          applicability: NormativeApplicability.notApplicable,
+          facts: facts,
+          rationale: rationale,
         ),
       );
 
