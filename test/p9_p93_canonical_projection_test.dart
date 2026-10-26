@@ -35,7 +35,10 @@ void main() {
         set.recommendedCandidate.rankedCandidate.candidate.geometryFingerprint,
       );
       expect(projection.graph.components, isNotEmpty);
-      expect(projection.placements, hasLength(projection.graph.components.length));
+      expect(
+        projection.placements,
+        hasLength(projection.graph.components.length),
+      );
       expect(fixture.project.version, same(originalVersion));
       expect(fixture.project.stores, same(originalStores));
     });
@@ -67,33 +70,45 @@ void main() {
         left.graph.components.map((component) => component.id.value).toList(),
       );
       expect(
-        right.graph.connections.map((connection) => connection.id.value).toList(),
-        left.graph.connections.map((connection) => connection.id.value).toList(),
+        right.graph.connections
+            .map((connection) => connection.id.value)
+            .toList(),
+        left.graph.connections
+            .map((connection) => connection.id.value)
+            .toList(),
       );
     });
 
     test('P9.3-Q03 graph contains only proven spatial semantics', () {
       final projection = _projection();
 
+      expect(
+        EngineeringSystemPolicy.calculationFor(EngineeringSystemClass.custom),
+        EngineeringCalculationKind.connectivityOnly,
+      );
       for (final component in projection.graph.components) {
         expect(component.discipline, EngineeringDiscipline.architecture);
-        expect(component.systemClass, EngineeringSystemClass.spatialTopology);
+        expect(component.systemClass, EngineeringSystemClass.custom);
         expect(component.ratedPowerW, isNull);
         expect(component.voltageV, isNull);
         for (final port in component.ports) {
           expect(port.direction, EngineeringPortDirection.bidirectional);
           expect(
             port.allowedConnections,
-            {EngineeringConnectionType.spatialAccess},
+            {EngineeringConnectionType.custom},
           );
         }
       }
       for (final connection in projection.graph.connections) {
+        expect(connection.connectionType, EngineeringConnectionType.custom);
+        expect(connection.systemClass, EngineeringSystemClass.custom);
         expect(
-          connection.connectionType,
-          EngineeringConnectionType.spatialAccess,
+          connection.semanticTypeId,
+          isIn(const [
+            'apartment.access.door',
+            'apartment.access.openPassage',
+          ]),
         );
-        expect(connection.systemClass, EngineeringSystemClass.spatialTopology);
         expect(connection.circuitId, isNull);
         expect(connection.routeId, isNull);
       }
