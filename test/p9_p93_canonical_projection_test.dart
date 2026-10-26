@@ -107,6 +107,7 @@ void main() {
           isIn(const [
             'apartment.access.door',
             'apartment.access.openPassage',
+            'apartment.adjacency.sharedBoundary',
           ]),
         );
         expect(connection.circuitId, isNull);
@@ -171,6 +172,20 @@ void main() {
         set.engineeringProjection.geometryFingerprint,
         selected.geometryFingerprint,
       );
+    });
+
+    test('P9.3-Q07 realized shared boundaries are canonical connectivity', () {
+      final projection = _projection();
+      final adjacencyConnections = projection.graph.connections.where(
+        (connection) =>
+            connection.semanticTypeId == 'apartment.adjacency.sharedBoundary',
+      );
+      final accessConnections = projection.graph.connections.where(
+        (connection) => connection.semanticTypeId!.startsWith('apartment.access.'),
+      );
+
+      expect(adjacencyConnections, isNotEmpty);
+      expect(accessConnections, isNotEmpty);
     });
   });
 }
