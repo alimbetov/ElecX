@@ -1,5 +1,8 @@
+import '../../../../domain/apartment_topology/apartment_area_fit.dart';
 import '../../../../domain/apartment_topology/apartment_candidate_ranking.dart';
+import '../../../../domain/apartment_topology/apartment_geometry.dart';
 import '../../../../domain/apartment_topology/apartment_topology_catalog_v4.dart';
+import '../../../../domain/apartment_topology/apartment_topology_draft.dart';
 import '../../../../domain/apartment_topology/apartment_topology_generation_runtime.dart';
 import '../../../../domain/apartment_topology/apartment_topology_models.dart';
 import '../../../../domain/apartment_topology/apartment_vector_scene.dart';
@@ -8,6 +11,7 @@ import '../wizard_contracts.dart';
 import 'apartment_area_fitter.dart';
 import 'apartment_candidate_identity.dart';
 import 'apartment_candidate_ranker.dart';
+import 'apartment_canonical_projection.dart';
 import 'apartment_catalog_filter.dart';
 import 'apartment_generation_diagnostics.dart';
 import 'apartment_geometry_stage.dart';
@@ -53,6 +57,7 @@ final class ApartmentCandidateSet {
     required this.scoringProfile,
     required this.identity,
     required this.recommendedCandidate,
+    required this.engineeringProjection,
     required Iterable<ApartmentCandidateCard> candidates,
     required Iterable<P9Failure> rejectedSummary,
     this.diagnostics,
@@ -70,6 +75,12 @@ final class ApartmentCandidateSet {
         'Recommended candidate must belong to the candidate set.',
       );
     }
+    if (engineeringProjection.selectedCandidateFingerprint !=
+        recommendedCandidate.candidateFingerprint) {
+      throw ArgumentError(
+        'Engineering projection must belong to the recommended candidate.',
+      );
+    }
   }
 
   final NormalizedApartmentRequest request;
@@ -78,6 +89,7 @@ final class ApartmentCandidateSet {
   final ApartmentScoringProfile scoringProfile;
   final ApartmentCandidateSetIdentity identity;
   final ApartmentCandidateCard recommendedCandidate;
+  final ApartmentEngineeringProjection engineeringProjection;
   final List<ApartmentCandidateCard> candidates;
   final List<P9Failure> rejectedSummary;
   final ApartmentGenerationDiagnosticReport? diagnostics;
@@ -137,7 +149,8 @@ final class ApartmentCandidateSetGenerationResult {
 /// It composes already-qualified P9.1..P9.8 stages. It allocates no canonical
 /// project identity and never mutates [ProjectAggregateRoot]. P9.2 diagnostics
 /// are captured from this authoritative execution; no second generation pass is
-/// used to explain the result.
+/// used to explain the result. P9.3 projection consumes the exact selected
+/// draft/area-fit/geometry lineage from this same execution.
 final class ApartmentCandidateSetService {
   const ApartmentCandidateSetService({
     this.generatorVersion = apartmentGeneratorVersion,
@@ -200,6 +213,7 @@ final class ApartmentCandidateSetService {
     failures.addAll(expansion.failures);
 
     final rankingInputs = <ApartmentCandidateRankingInput>[];
+    final productionLineages = <_ProductionCandidateLineage>[];
     final terminalDiagnostics = <ApartmentGenerationDiagnosticEntry>[];
     final diagnosticSeeds = <ApartmentGenerationDiagnosticSeed>[];
 
@@ -251,8 +265,9 @@ final class ApartmentCandidateSetService {
         continue;
       }
 
+      final fittedDraft = fit.fittedDraft!;
       final semantic = const ApartmentSemanticValidator().validate(
-        fittedDraft: fit.fittedDraft!,
+        fittedDraft: fittedDraft,
         request: request,
         template: template,
       );
@@ -294,7 +309,7 @@ final class ApartmentCandidateSetService {
       }
 
       final geometry = const ApartmentGeometryStage().generate(
-        fittedDraft: fit.fittedDraft!,
+        fittedDraft: fittedDraft,
         semanticValidation: semantic,
         template: template,
         request: request,
@@ -340,6 +355,13 @@ final class ApartmentCandidateSetService {
       }
 
       final candidate = geometry.candidate!;
+      productionLineages.add(
+        _ProductionCandidateLineage(
+          draft: draft,
+          fittedDraft: fittedDraft,
+          geometry: candidate,
+        ),
+      );
       diagnosticSeeds.add(
         ApartmentGenerationDiagnosticSeed(
           templateId: template.templateId.value,
@@ -489,6 +511,38 @@ final class ApartmentCandidateSetService {
     }
 
     final winner = generationSelection.selectedCandidate;
+    final winnerLineage = _lineageForWinner(productionLineages, winner);
+    if (winnerLineage == null) {
+      failures.add(
+        P9Failure(
+          code: 'INTERNAL_GENERATION_ERROR',
+          stage: P9FailureStage.materialization,
+          severity: P9FailureSeverity.blocker,
+          facts: {
+            'reason': 'selected-winner-lineage-missing',
+            'geometryFingerprint': winner.candidate.geometryFingerprint,
+          },
+        ),
+      );
+      final diagnostics =
+          const ApartmentGenerationDiagnostics().fromProductionSelection(
+        catalogVersion: catalog.catalogVersion,
+        generatorVersion: generatorVersion,
+        intentFingerprint: request.intentFingerprint,
+        grammarFailures: expansion.failures,
+        globalFailures: failures,
+        terminalEntries: terminalDiagnostics,
+        seeds: diagnosticSeeds,
+        evaluations: generationSelection.evaluations,
+        selectedGeometryFingerprint: winner.candidate.geometryFingerprint,
+      );
+      return ApartmentCandidateSetGenerationResult(
+        candidateSet: null,
+        failures: failures,
+        diagnostics: diagnostics,
+      );
+    }
+
     final rankedForRendering = <RankedApartmentCandidate>[winner];
     for (final ranked in ranking.selectedCandidates) {
       if (ranked.candidate.geometryFingerprint ==
@@ -601,6 +655,36 @@ final class ApartmentCandidateSetService {
       );
     }
 
+    final projectionResult = const ApartmentCanonicalProjectionService().project(
+      selectedCandidateFingerprint: recommendedCard.candidateFingerprint,
+      draft: winnerLineage.draft,
+      fittedDraft: winnerLineage.fittedDraft,
+      geometry: winnerLineage.geometry,
+      targetLevelId: target.levelId,
+    );
+    failures.addAll(projectionResult.failures);
+    final engineeringProjection = projectionResult.projection;
+    if (engineeringProjection == null || projectionResult.accepted == false) {
+      final failedDiagnostics =
+          const ApartmentGenerationDiagnostics().fromProductionSelection(
+        catalogVersion: catalog.catalogVersion,
+        generatorVersion: generatorVersion,
+        intentFingerprint: request.intentFingerprint,
+        grammarFailures: expansion.failures,
+        globalFailures: failures,
+        terminalEntries: terminalDiagnostics,
+        seeds: diagnosticSeeds,
+        evaluations: generationSelection.evaluations,
+        selectedGeometryFingerprint: winner.candidate.geometryFingerprint,
+        candidateFingerprintsByGeometry: candidateFingerprintsByGeometry,
+      );
+      return ApartmentCandidateSetGenerationResult(
+        candidateSet: null,
+        failures: failures,
+        diagnostics: failedDiagnostics,
+      );
+    }
+
     final setIdentity = identityService.identifySet(
       request: request,
       catalogVersion: catalog.catalogVersion,
@@ -617,6 +701,7 @@ final class ApartmentCandidateSetService {
       scoringProfile: profile,
       identity: setIdentity,
       recommendedCandidate: recommendedCard,
+      engineeringProjection: engineeringProjection,
       candidates: cards,
       rejectedSummary: failures,
       diagnostics: diagnostics,
@@ -677,6 +762,30 @@ final class ApartmentCandidateSetService {
     }
     return failures;
   }
+}
+
+final class _ProductionCandidateLineage {
+  const _ProductionCandidateLineage({
+    required this.draft,
+    required this.fittedDraft,
+    required this.geometry,
+  });
+
+  final ApartmentTopologyDraft draft;
+  final AreaFittedTopologyDraft fittedDraft;
+  final ApartmentGeometryCandidate geometry;
+}
+
+_ProductionCandidateLineage? _lineageForWinner(
+  Iterable<_ProductionCandidateLineage> lineages,
+  RankedApartmentCandidate winner,
+) {
+  for (final lineage in lineages) {
+    if (identical(lineage.geometry, winner.candidate)) {
+      return lineage;
+    }
+  }
+  return null;
 }
 
 ApartmentTopologyTemplate? _templateForDraft(
