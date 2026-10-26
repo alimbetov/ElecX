@@ -28,7 +28,8 @@ void main() {
       final evidence = set.normativeEvidence;
       expect(evidence.evaluationVersion, apartmentNormativeEvaluationVersion);
       expect(evidence.normativeProfileId, apartmentNormativeProfileId);
-      expect(evidence.normativeProfileVersion, apartmentNormativeProfileVersion);
+      expect(
+          evidence.normativeProfileVersion, apartmentNormativeProfileVersion);
       expect(evidence.projectionFingerprint, projection.projectionFingerprint);
       expect(
         evidence.selectedCandidateFingerprint,
@@ -150,7 +151,8 @@ void main() {
         diagnostics.selectedEntries.single.normativeState.name,
         'notApplicable',
       );
-      for (final entry in diagnostics.entries.where((entry) => !entry.selected)) {
+      for (final entry
+          in diagnostics.entries.where((entry) => !entry.selected)) {
         expect(entry.normativeState.name, 'notEvaluated');
       }
     });
