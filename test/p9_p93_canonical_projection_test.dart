@@ -122,9 +122,8 @@ void main() {
         project: fixture.project,
       );
       final projection = result.candidateSet!.engineeringProjection;
-      final componentIds = projection.graph.components
-          .map((component) => component.id)
-          .toSet();
+      final componentIds =
+          projection.graph.components.map((component) => component.id).toSet();
       final placedIds = projection.placements
           .map((placement) => placement.componentId)
           .toList();
@@ -152,7 +151,8 @@ void main() {
       }
     });
 
-    test('P9.3-Q06 diagnostics and projection bind the same selected winner', () {
+    test('P9.3-Q06 diagnostics and projection bind the same selected winner',
+        () {
       final fixture = _projectFixture();
       final result = const ApartmentCandidateSetService().generate(
         input: _request(),
