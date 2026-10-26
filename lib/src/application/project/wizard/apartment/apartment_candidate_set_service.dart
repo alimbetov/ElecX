@@ -470,8 +470,8 @@ final class ApartmentCandidateSetService {
         ),
       );
       failures.add(_providerFailure('p9.provider.no-candidates'));
-      final diagnostics = const ApartmentGenerationDiagnostics()
-          .fromProductionSelection(
+      final diagnostics =
+          const ApartmentGenerationDiagnostics().fromProductionSelection(
         catalogVersion: catalog.catalogVersion,
         generatorVersion: generatorVersion,
         intentFingerprint: request.intentFingerprint,
@@ -555,8 +555,8 @@ final class ApartmentCandidateSetService {
       }
     }
 
-    final diagnostics = const ApartmentGenerationDiagnostics()
-        .fromProductionSelection(
+    final diagnostics =
+        const ApartmentGenerationDiagnostics().fromProductionSelection(
       catalogVersion: catalog.catalogVersion,
       generatorVersion: generatorVersion,
       intentFingerprint: request.intentFingerprint,
@@ -581,8 +581,8 @@ final class ApartmentCandidateSetService {
           },
         ),
       );
-      final failedDiagnostics = const ApartmentGenerationDiagnostics()
-          .fromProductionSelection(
+      final failedDiagnostics =
+          const ApartmentGenerationDiagnostics().fromProductionSelection(
         catalogVersion: catalog.catalogVersion,
         generatorVersion: generatorVersion,
         intentFingerprint: request.intentFingerprint,
