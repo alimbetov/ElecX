@@ -55,7 +55,7 @@ void main() {
       );
       expect(
         selected.normativeState,
-        ApartmentDiagnosticEvidenceState.notEvaluated,
+        ApartmentDiagnosticEvidenceState.notApplicable,
       );
       expect(
         selected.equipmentState,
