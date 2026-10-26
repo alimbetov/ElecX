@@ -181,7 +181,8 @@ void main() {
             connection.semanticTypeId == 'apartment.adjacency.sharedBoundary',
       );
       final accessConnections = projection.graph.connections.where(
-        (connection) => connection.semanticTypeId!.startsWith('apartment.access.'),
+        (connection) =>
+            connection.semanticTypeId!.startsWith('apartment.access.'),
       );
 
       expect(adjacencyConnections, isNotEmpty);
