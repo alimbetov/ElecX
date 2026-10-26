@@ -78,8 +78,8 @@ final class ApartmentCanonicalProjectionResult {
 /// P9.3 exact-lineage projector.
 ///
 /// It never reruns grammar, area fitting or geometry and never allocates random
-/// identities. Logical IDs are derived only from the selected draft semantics;
-/// geometry can therefore change placement fingerprints without changing WHAT.
+/// identities. Logical IDs are derived only from selected semantic lineage;
+/// geometry coordinates can therefore change WHERE without leaking into WHAT.
 final class ApartmentCanonicalProjectionService {
   const ApartmentCanonicalProjectionService();
 
@@ -124,12 +124,21 @@ final class ApartmentCanonicalProjectionService {
         );
       }
 
-      final accessEdges = [...draft.circulation.accessEdges]
-        ..sort((left, right) {
-          final pair =
-              left.normalizedPairKey.compareTo(right.normalizedPairKey);
-          return pair != 0 ? pair : left.kind.name.compareTo(right.kind.name);
-        });
+      final relations = _spatialRelations(draft: draft, geometry: geometry);
+      for (final relation in relations) {
+        if (!expectedKeys.contains(relation.leftKey) ||
+            !expectedKeys.contains(relation.rightKey)) {
+          return _failed(
+            reason: 'selected-winner-connectivity-lineage-mismatch',
+            facts: {
+              'relation': relation.stableKey,
+              'leftKey': relation.leftKey,
+              'rightKey': relation.rightKey,
+            },
+          );
+        }
+      }
+
       final componentIds = <String, ComponentId>{
         for (final space in spaces)
           space.semanticKey: _componentId(draft, space.semanticKey),
@@ -137,17 +146,17 @@ final class ApartmentCanonicalProjectionService {
 
       final components = <EngineeringGraphComponent>[];
       for (final space in spaces) {
-        final incidentEdges = accessEdges
+        final incidentRelations = relations
             .where(
-              (edge) =>
-                  edge.fromSpaceKey == space.semanticKey ||
-                  edge.toSpaceKey == space.semanticKey,
+              (relation) =>
+                  relation.leftKey == space.semanticKey ||
+                  relation.rightKey == space.semanticKey,
             )
             .toList();
         final ports = <EngineeringPortSpec>[
-          for (final edge in incidentEdges)
+          for (final relation in incidentRelations)
             EngineeringPortSpec(
-              id: _portId(draft, edge, space.semanticKey).value,
+              id: _portId(draft, relation, space.semanticKey).value,
               direction: EngineeringPortDirection.bidirectional,
               allowedConnections: const {
                 EngineeringConnectionType.custom,
@@ -165,33 +174,19 @@ final class ApartmentCanonicalProjectionService {
         );
       }
 
-      final connections = <EngineeringGraphConnection>[];
-      for (final edge in accessEdges) {
-        if (!componentIds.containsKey(edge.fromSpaceKey) ||
-            !componentIds.containsKey(edge.toSpaceKey)) {
-          return _failed(
-            reason: 'selected-winner-access-lineage-mismatch',
-            facts: {'pair': edge.normalizedPairKey},
-          );
-        }
-        final firstKey = edge.fromSpaceKey.compareTo(edge.toSpaceKey) <= 0
-            ? edge.fromSpaceKey
-            : edge.toSpaceKey;
-        final secondKey =
-            firstKey == edge.fromSpaceKey ? edge.toSpaceKey : edge.fromSpaceKey;
-        connections.add(
+      final connections = <EngineeringGraphConnection>[
+        for (final relation in relations)
           EngineeringGraphConnection(
-            id: _connectionId(draft, edge),
-            fromComponentId: componentIds[firstKey]!,
-            fromPortId: _portId(draft, edge, firstKey),
-            toComponentId: componentIds[secondKey]!,
-            toPortId: _portId(draft, edge, secondKey),
+            id: _connectionId(draft, relation),
+            fromComponentId: componentIds[relation.leftKey]!,
+            fromPortId: _portId(draft, relation, relation.leftKey),
+            toComponentId: componentIds[relation.rightKey]!,
+            toPortId: _portId(draft, relation, relation.rightKey),
             connectionType: EngineeringConnectionType.custom,
             systemClass: EngineeringSystemClass.custom,
-            semanticTypeId: 'apartment.access.${edge.kind.name}',
+            semanticTypeId: relation.semanticTypeId,
           ),
-        );
-      }
+      ];
 
       final graph = CanonicalEngineeringGraph(
         components: components,
@@ -248,6 +243,53 @@ final class ApartmentCanonicalProjectionService {
   }
 }
 
+final class _SpatialRelation {
+  const _SpatialRelation({
+    required this.leftKey,
+    required this.rightKey,
+    required this.semanticTypeId,
+  });
+
+  final String leftKey;
+  final String rightKey;
+  final String semanticTypeId;
+
+  String get stableKey => '$leftKey|$rightKey|$semanticTypeId';
+}
+
+List<_SpatialRelation> _spatialRelations({
+  required ApartmentTopologyDraft draft,
+  required ApartmentGeometryCandidate geometry,
+}) {
+  final relations = <String, _SpatialRelation>{};
+  for (final edge in draft.circulation.accessEdges) {
+    final leftKey = edge.fromSpaceKey.compareTo(edge.toSpaceKey) <= 0
+        ? edge.fromSpaceKey
+        : edge.toSpaceKey;
+    final rightKey = leftKey == edge.fromSpaceKey
+        ? edge.toSpaceKey
+        : edge.fromSpaceKey;
+    final relation = _SpatialRelation(
+      leftKey: leftKey,
+      rightKey: rightKey,
+      semanticTypeId: 'apartment.access.${edge.kind.name}',
+    );
+    relations[relation.stableKey] = relation;
+  }
+  for (final boundary in geometry.sharedBoundaries) {
+    final relation = _SpatialRelation(
+      leftKey: boundary.pair.leftKey,
+      rightKey: boundary.pair.rightKey,
+      semanticTypeId: 'apartment.adjacency.sharedBoundary',
+    );
+    relations[relation.stableKey] = relation;
+  }
+  return List.unmodifiable(
+    relations.values.toList()
+      ..sort((left, right) => left.stableKey.compareTo(right.stableKey)),
+  );
+}
+
 P9Failure? _lineageMismatch({
   required String selectedCandidateFingerprint,
   required ApartmentTopologyDraft draft,
@@ -302,19 +344,19 @@ ComponentId _componentId(ApartmentTopologyDraft draft, String semanticKey) =>
 
 PortId _portId(
   ApartmentTopologyDraft draft,
-  DraftAccessEdge edge,
+  _SpatialRelation relation,
   String semanticKey,
 ) =>
     PortId(
-      'p9p-${p9Sha256Hex('p9.port.v1|${draft.draftFingerprint}|${edge.normalizedPairKey}|${edge.kind.name}|$semanticKey')}',
+      'p9p-${p9Sha256Hex('p9.port.v1|${draft.draftFingerprint}|${relation.stableKey}|$semanticKey')}',
     );
 
 EngineeringConnectionId _connectionId(
   ApartmentTopologyDraft draft,
-  DraftAccessEdge edge,
+  _SpatialRelation relation,
 ) =>
     EngineeringConnectionId(
-      'p9e-${p9Sha256Hex('p9.connection.v1|${draft.draftFingerprint}|${edge.normalizedPairKey}|${edge.kind.name}')}',
+      'p9e-${p9Sha256Hex('p9.connection.v1|${draft.draftFingerprint}|${relation.stableKey}')}',
     );
 
 ComponentPlacement _placement({
