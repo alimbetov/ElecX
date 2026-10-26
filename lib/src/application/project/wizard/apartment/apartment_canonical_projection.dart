@@ -266,9 +266,8 @@ List<_SpatialRelation> _spatialRelations({
     final leftKey = edge.fromSpaceKey.compareTo(edge.toSpaceKey) <= 0
         ? edge.fromSpaceKey
         : edge.toSpaceKey;
-    final rightKey = leftKey == edge.fromSpaceKey
-        ? edge.toSpaceKey
-        : edge.fromSpaceKey;
+    final rightKey =
+        leftKey == edge.fromSpaceKey ? edge.toSpaceKey : edge.fromSpaceKey;
     final relation = _SpatialRelation(
       leftKey: leftKey,
       rightKey: rightKey,
