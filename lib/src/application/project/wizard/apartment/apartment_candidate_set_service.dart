@@ -791,8 +791,8 @@ final class ApartmentCandidateSetService {
       );
     }
 
-    final diagnostics =
-        selectionDiagnostics.withNormativeEvidence(recommendedCard.normativeEvidence);
+    final diagnostics = selectionDiagnostics
+        .withNormativeEvidence(recommendedCard.normativeEvidence);
     final engineeringProjection = recommendedCard.engineeringProjection;
 
     final setIdentity = identityService.identifySet(
