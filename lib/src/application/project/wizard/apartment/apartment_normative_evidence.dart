@@ -166,6 +166,14 @@ final class ApartmentNormativeEvidenceEvaluationResult {
       failures.every((failure) => !failure.isBlocker);
 }
 
+/// Application port used by the P9/P8 handoff. Implementations must remain pure
+/// relative to the project and the supplied P9.3 projection.
+abstract interface class ApartmentNormativeEvidencePort {
+  ApartmentNormativeEvidenceEvaluationResult evaluate({
+    required ApartmentEngineeringProjection projection,
+  });
+}
+
 /// P9.4 Kazakhstan residential normative overlay.
 ///
 /// P9.3 currently produces spatial architecture only. Device-specific rules are
@@ -173,9 +181,11 @@ final class ApartmentNormativeEvidenceEvaluationResult {
 /// missing-data INDETERMINATE. Once a later stage provides actual electrical
 /// targets and facts, this evaluator must be versioned and those targets must be
 /// evaluated through [KzInstallationRules] rather than inferred from absence.
-final class ApartmentNormativeEvidenceEvaluator {
+final class ApartmentNormativeEvidenceEvaluator
+    implements ApartmentNormativeEvidencePort {
   const ApartmentNormativeEvidenceEvaluator();
 
+  @override
   ApartmentNormativeEvidenceEvaluationResult evaluate({
     required ApartmentEngineeringProjection projection,
   }) {
