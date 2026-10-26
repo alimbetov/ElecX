@@ -1,5 +1,6 @@
 import '../../../../domain/apartment_topology/apartment_candidate_ranking.dart';
 import '../../../../domain/apartment_topology/apartment_topology_catalog_v4.dart';
+import '../../../../domain/apartment_topology/apartment_topology_generation_runtime.dart';
 import '../../../../domain/apartment_topology/apartment_topology_models.dart';
 import '../../../../domain/apartment_topology/apartment_vector_scene.dart';
 import '../../../../domain/project_aggregate.dart';
@@ -16,7 +17,7 @@ import 'apartment_topology_vector_renderer.dart';
 import 'apartment_wizard_parameters.dart';
 import 'p9_failure.dart';
 
-const String apartmentGeneratorVersion = 'p9.generator.v2';
+const String apartmentGeneratorVersion = 'p9.generator.v3';
 
 final class ApartmentCandidateCard {
   const ApartmentCandidateCard({
@@ -50,16 +51,31 @@ final class ApartmentCandidateSet {
     required this.generatorVersion,
     required this.scoringProfile,
     required this.identity,
+    required this.recommendedCandidate,
     required Iterable<ApartmentCandidateCard> candidates,
     required Iterable<P9Failure> rejectedSummary,
   })  : candidates = List.unmodifiable(candidates),
-        rejectedSummary = List.unmodifiable(rejectedSummary);
+        rejectedSummary = List.unmodifiable(rejectedSummary) {
+    final containsRecommended = this.candidates.any(
+          (candidate) =>
+              candidate.candidateFingerprint ==
+              recommendedCandidate.candidateFingerprint,
+        );
+    if (!containsRecommended) {
+      throw ArgumentError.value(
+        recommendedCandidate.candidateFingerprint,
+        'recommendedCandidate',
+        'Recommended candidate must belong to the candidate set.',
+      );
+    }
+  }
 
   final NormalizedApartmentRequest request;
   final int catalogVersion;
   final String generatorVersion;
   final ApartmentScoringProfile scoringProfile;
   final ApartmentCandidateSetIdentity identity;
+  final ApartmentCandidateCard recommendedCandidate;
   final List<ApartmentCandidateCard> candidates;
   final List<P9Failure> rejectedSummary;
 
@@ -151,6 +167,9 @@ final class ApartmentCandidateSetService {
     final templates = const ApartmentTopologyCatalogFilter()
         .compatibleTemplates(catalog, request);
     if (templates.isEmpty) {
+      failures.add(
+        _topologyFailure(ApartmentTopologyGenerationFailureCode.noCandidates),
+      );
       failures.add(_providerFailure('p9.provider.no-candidates'));
       return ApartmentCandidateSetGenerationResult(
         candidateSet: null,
@@ -232,6 +251,18 @@ final class ApartmentCandidateSetService {
     }
 
     if (rankingInputs.isEmpty) {
+      final code = expansion.drafts.isEmpty
+          ? ApartmentTopologyGenerationFailureCode.noCandidates
+          : ApartmentTopologyGenerationFailureCode.noValidTopologyCandidate;
+      failures.add(
+        _topologyFailure(
+          code,
+          facts: {
+            'discoveredCandidateCount': expansion.drafts.length,
+            'eligibleCandidateCount': 0,
+          },
+        ),
+      );
       failures.add(_providerFailure('p9.provider.no-candidates'));
       return ApartmentCandidateSetGenerationResult(
         candidateSet: null,
@@ -246,10 +277,19 @@ final class ApartmentCandidateSetService {
       profile: profile,
     );
     failures.addAll(ranking.failures);
-    if (ranking.hasBlockers || ranking.selectedCandidates.isEmpty) {
-      if (!failures
-          .any((failure) => failure.code == 'p9.provider.no-candidates')) {
-        failures.add(_providerFailure('p9.provider.no-candidates'));
+    if (ranking.hasBlockers) {
+      if (ranking.failures.any(
+        (failure) => failure.code == 'p9.score.no-valid-candidates',
+      )) {
+        failures.add(
+          _topologyFailure(
+            ApartmentTopologyGenerationFailureCode.noValidTopologyCandidate,
+            facts: {
+              'discoveredCandidateCount': rankingInputs.length,
+              'eligibleCandidateCount': 0,
+            },
+          ),
+        );
       }
       return ApartmentCandidateSetGenerationResult(
         candidateSet: null,
@@ -257,12 +297,52 @@ final class ApartmentCandidateSetService {
       );
     }
 
+    late final ApartmentTopologyGenerationSelection generationSelection;
+    try {
+      generationSelection = const ApartmentTopologyGenerationRuntime()
+          .selectRankedCandidates(
+        ranking.rankedCandidates,
+        selectableFloorBp: profile.selectableFloorBp,
+      );
+    } on ApartmentTopologyGenerationFailure catch (error) {
+      failures.add(
+        _topologyFailure(
+          error.code,
+          facts: {
+            'rankedCandidateCount': ranking.rankedCandidates.length,
+            'eligibleCandidateCount': error.evaluations
+                .where((evaluation) => evaluation.isEligible)
+                .length,
+          },
+        ),
+      );
+      failures.add(_providerFailure('p9.provider.no-candidates'));
+      return ApartmentCandidateSetGenerationResult(
+        candidateSet: null,
+        failures: failures,
+      );
+    }
+
+    final winner = generationSelection.selectedCandidate;
+    final rankedForRendering = <RankedApartmentCandidate>[winner];
+    for (final ranked in ranking.selectedCandidates) {
+      if (ranked.candidate.geometryFingerprint ==
+          winner.candidate.geometryFingerprint) {
+        continue;
+      }
+      if (rankedForRendering.length >= profile.maximumCandidateCount) {
+        break;
+      }
+      rankedForRendering.add(ranked);
+    }
+
     const identityService = ApartmentCandidateIdentityService();
     const renderer = ApartmentTopologyVectorRenderer();
     const svgProjector = ApartmentSvgProjector();
     final cards = <ApartmentCandidateCard>[];
+    ApartmentCandidateCard? recommendedCard;
 
-    for (final ranked in ranking.selectedCandidates) {
+    for (final ranked in rankedForRendering) {
       final template = _templateForRanked(templates, ranked);
       if (template == null) {
         failures.add(
@@ -293,19 +373,32 @@ final class ApartmentCandidateSetService {
         catalogVersion: catalog.catalogVersion,
         generatorVersion: generatorVersion,
       );
-      cards.add(
-        ApartmentCandidateCard(
-          identity: identity,
-          rankedCandidate: ranked,
-          template: template,
-          scene: rendered.scene!,
-          svg: svg.svg!,
-        ),
+      final card = ApartmentCandidateCard(
+        identity: identity,
+        rankedCandidate: ranked,
+        template: template,
+        scene: rendered.scene!,
+        svg: svg.svg!,
       );
+      cards.add(card);
+      if (ranked.candidate.geometryFingerprint ==
+          winner.candidate.geometryFingerprint) {
+        recommendedCard = card;
+      }
     }
 
-    if (cards.isEmpty) {
-      failures.add(_providerFailure('p9.provider.no-candidates'));
+    if (recommendedCard == null) {
+      failures.add(
+        P9Failure(
+          code: 'INTERNAL_GENERATION_ERROR',
+          stage: P9FailureStage.rendering,
+          severity: P9FailureSeverity.blocker,
+          facts: {
+            'reason': 'selected-winner-render-failed',
+            'geometryFingerprint': winner.candidate.geometryFingerprint,
+          },
+        ),
+      );
       return ApartmentCandidateSetGenerationResult(
         candidateSet: null,
         failures: failures,
@@ -328,6 +421,7 @@ final class ApartmentCandidateSetService {
         generatorVersion: generatorVersion,
         scoringProfile: profile,
         identity: setIdentity,
+        recommendedCandidate: recommendedCard,
         candidates: cards,
         rejectedSummary: failures,
       ),
@@ -411,6 +505,17 @@ ApartmentTopologyTemplate? _templateForRanked(
 
 bool _hasBlockers(Iterable<P9Failure> failures) =>
     failures.any((failure) => failure.isBlocker);
+
+P9Failure _topologyFailure(
+  ApartmentTopologyGenerationFailureCode code, {
+  Map<String, Object?> facts = const {},
+}) =>
+    P9Failure(
+      code: code.code,
+      stage: P9FailureStage.scoring,
+      severity: P9FailureSeverity.blocker,
+      facts: facts,
+    );
 
 P9Failure _providerFailure(
   String code, {
