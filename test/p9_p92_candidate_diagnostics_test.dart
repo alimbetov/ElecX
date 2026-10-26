@@ -3,6 +3,7 @@ import 'package:elecx/src/application/project/wizard/apartment/apartment_generat
 import 'package:elecx/src/application/project/wizard/apartment/apartment_wizard_parameters.dart';
 import 'package:elecx/src/application/project/wizard/wizard_contracts.dart';
 import 'package:elecx/src/domain/apartment_topology.dart';
+import 'package:elecx/src/domain/apartment_topology/apartment_candidate_ranking.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -36,7 +37,10 @@ void main() {
         'p9.diagnostics.selected.frozen-comparator',
       );
       expect(selected.blockerCodes, isEmpty);
-      expect(selected.candidateFingerprint, set.recommendedCandidate.candidateFingerprint);
+      expect(
+        selected.candidateFingerprint,
+        set.recommendedCandidate.candidateFingerprint,
+      );
       expect(
         selected.geometryFingerprint,
         set.recommendedCandidate.rankedCandidate.candidate.geometryFingerprint,
@@ -62,7 +66,8 @@ void main() {
       expect(fixture.project.stores, same(originalStores));
     });
 
-    test('P9.2-Q02 repeated generation has identical diagnostics fingerprint', () {
+    test('P9.2-Q02 repeated generation has identical diagnostics fingerprint',
+        () {
       final fixture = _projectFixture();
       const service = ApartmentCandidateSetService();
 
@@ -83,7 +88,10 @@ void main() {
         second.diagnostics!.diagnosticsFingerprint,
         first.diagnostics!.diagnosticsFingerprint,
       );
-      expect(second.diagnostics!.stableSummary, first.diagnostics!.stableSummary);
+      expect(
+        second.diagnostics!.stableSummary,
+        first.diagnostics!.stableSummary,
+      );
       expect(
         second.diagnostics!.selectedEntries.single.candidateFingerprint,
         first.diagnostics!.selectedEntries.single.candidateFingerprint,
@@ -121,7 +129,10 @@ void main() {
       final selected = result.diagnostics!.selectedEntries.single;
       final score = selected.scoreBreakdown!;
 
-      expect(score.metricScoreBp.keys.toSet(), ApartmentScoreMetric.values.toSet());
+      expect(
+        score.metricScoreBp.keys.toSet(),
+        ApartmentScoreMetric.values.toSet(),
+      );
       expect(
         score.weightedContributionBp.keys.toSet(),
         ApartmentScoreMetric.values.toSet(),
