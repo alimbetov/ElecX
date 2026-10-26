@@ -47,8 +47,7 @@ abstract final class KzInstallationRules {
   static const generalLightingSwitchHeightRuleId =
       'KZ-SP404106-15.33-SWITCH-HEIGHT';
   static const gasPipeDistanceRuleId = 'KZ-SP404106-15.34-GAS-DISTANCE';
-  static const childOccupancyHeightRuleId =
-      'KZ-SP404106-15.39-CHILD-HEIGHT';
+  static const childOccupancyHeightRuleId = 'KZ-SP404106-15.39-CHILD-HEIGHT';
 
   static const sp404106 = InstallationGuideSource(
     code: 'СП РК 4.04-106-2013',
