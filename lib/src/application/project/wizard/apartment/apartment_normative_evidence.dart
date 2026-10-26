@@ -1,5 +1,4 @@
 import '../../../../domain/engineering_graph.dart';
-import '../../../../domain/installation_guides.dart';
 import '../../../../engine/kz_installation_rules.dart';
 import 'apartment_canonical_projection.dart';
 import 'apartment_generation_diagnostics.dart';
