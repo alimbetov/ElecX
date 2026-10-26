@@ -104,8 +104,7 @@ final class ApartmentCanonicalProjectionService {
     }
 
     try {
-      final spaces = [...draft.spaces]
-        ..sort(
+      final spaces = [...draft.spaces]..sort(
           (left, right) => left.semanticKey.compareTo(right.semanticKey),
         );
       final geometryBySpace = <String, GeneratedSpaceGeometry>{
