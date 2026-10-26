@@ -2,6 +2,7 @@ import 'package:elecx/src/application/project/wizard/apartment/apartment_candida
 import 'package:elecx/src/application/project/wizard/apartment/apartment_canonical_projection.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_normative_evidence.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_wizard_parameters.dart';
+import 'package:elecx/src/application/project/wizard/apartment/apartment_wizard_provider.dart';
 import 'package:elecx/src/application/project/wizard/wizard_contracts.dart';
 import 'package:elecx/src/domain/apartment_topology.dart';
 import 'package:elecx/src/domain/installation_guides.dart';
@@ -14,13 +15,17 @@ void main() {
   group('P9.4 normative evidence overlay', () {
     test('P9.4-Q01 spatial production projection is explicitly not applicable',
         () {
-      final projection = _projection();
-      final evaluation = const ApartmentNormativeEvidenceEvaluator().evaluate(
-        projection: projection,
+      final fixture = _projectFixture();
+      final result = const ApartmentCandidateSetService().generate(
+        input: _request(),
+        target: fixture.target,
+        project: fixture.project,
       );
 
-      expect(evaluation.accepted, isTrue);
-      final evidence = evaluation.evidence!;
+      expect(result.accepted, isTrue);
+      final set = result.candidateSet!;
+      final projection = set.engineeringProjection;
+      final evidence = set.normativeEvidence;
       expect(evidence.evaluationVersion, apartmentNormativeEvaluationVersion);
       expect(evidence.normativeProfileId, apartmentNormativeProfileId);
       expect(evidence.normativeProfileVersion, apartmentNormativeProfileVersion);
@@ -132,29 +137,20 @@ void main() {
       }
     });
 
-    test('P9.4-Q08 diagnostics overlay updates only selected candidate', () {
+    test('P9.4-Q08 production diagnostics update only selected candidate', () {
       final fixture = _projectFixture();
       final result = const ApartmentCandidateSetService().generate(
         input: _request(),
         target: fixture.target,
         project: fixture.project,
       );
-      final evidence = const ApartmentNormativeEvidenceEvaluator()
-          .evaluate(projection: result.candidateSet!.engineeringProjection)
-          .evidence!;
-
-      final before = result.diagnostics!;
-      final after = before.withNormativeEvidence(evidence);
+      final diagnostics = result.diagnostics!;
 
       expect(
-        before.selectedEntries.single.normativeState.name,
-        'notEvaluated',
-      );
-      expect(
-        after.selectedEntries.single.normativeState.name,
+        diagnostics.selectedEntries.single.normativeState.name,
         'notApplicable',
       );
-      for (final entry in after.entries.where((entry) => !entry.selected)) {
+      for (final entry in diagnostics.entries.where((entry) => !entry.selected)) {
         expect(entry.normativeState.name, 'notEvaluated');
       }
     });
@@ -196,7 +192,118 @@ void main() {
         throwsUnsupportedError,
       );
     });
+
+    test('P9.4-Q11 every previewable card owns exact projection and evidence',
+        () {
+      final fixture = _projectFixture();
+      final result = const ApartmentCandidateSetService().generate(
+        input: _request(),
+        target: fixture.target,
+        project: fixture.project,
+      );
+      final set = result.candidateSet!;
+
+      expect(set.candidates, isNotEmpty);
+      for (final card in set.candidates) {
+        expect(
+          card.engineeringProjection.selectedCandidateFingerprint,
+          card.candidateFingerprint,
+        );
+        expect(
+          card.normativeEvidence.selectedCandidateFingerprint,
+          card.candidateFingerprint,
+        );
+        expect(
+          card.normativeEvidence.projectionFingerprint,
+          card.engineeringProjection.projectionFingerprint,
+        );
+        expect(card.normativeEvidence.blocksEligibility, isFalse);
+      }
+    });
+
+    test('P9.4-Q12 safety-critical indeterminate blocks candidate generation',
+        () {
+      final fixture = _projectFixture();
+      final service = ApartmentCandidateSetService(
+        normativeEvaluator: const _BlockingNormativeEvaluator(),
+      );
+
+      final result = service.generate(
+        input: _request(),
+        target: fixture.target,
+        project: fixture.project,
+      );
+
+      expect(result.accepted, isFalse);
+      expect(result.candidateSet, isNull);
+      expect(
+        result.failures.map((failure) => failure.code),
+        contains('NORMATIVE_BLOCKED'),
+      );
+    });
+
+    test('P9.4-Q13 normative blocker cannot reach P8 reserved Preview handoff',
+        () {
+      final fixture = _projectFixture();
+      final normal = const ApartmentCandidateSetService().generate(
+        input: _request(),
+        target: fixture.target,
+        project: fixture.project,
+      );
+      final set = normal.candidateSet!;
+      final selection = set.selectionFor(set.recommendedCandidate);
+      final provider = ApartmentWizardProvider(
+        candidateSetService: ApartmentCandidateSetService(
+          normativeEvaluator: const _BlockingNormativeEvaluator(),
+        ),
+      );
+
+      expect(
+        () => provider.generateTyped(
+          ApartmentWizardParameters(
+            request: _request(),
+            selection: selection,
+          ),
+          WizardGenerationContext(
+            target: fixture.target,
+            project: fixture.project,
+          ),
+        ),
+        throwsA(
+          isA<ApartmentWizardProviderException>().having(
+            (error) => error.code,
+            'code',
+            'NORMATIVE_BLOCKED',
+          ),
+        ),
+      );
+    });
   });
+}
+
+final class _BlockingNormativeEvaluator
+    implements ApartmentNormativeEvidencePort {
+  const _BlockingNormativeEvaluator();
+
+  @override
+  ApartmentNormativeEvidenceEvaluationResult evaluate({
+    required ApartmentEngineeringProjection projection,
+  }) {
+    final evidence = ApartmentNormativeEvidenceBundle(
+      evaluationVersion: 'p9.normative.blocking-test',
+      normativeProfileId: apartmentNormativeProfileId,
+      normativeProfileVersion: apartmentNormativeProfileVersion,
+      selectedCandidateFingerprint: projection.selectedCandidateFingerprint,
+      projectionFingerprint: projection.projectionFingerprint,
+      assertions: [
+        ApartmentNormativeAssertion(
+          result: KzInstallationRules.validateDistanceToGasPipe(null),
+          safetyCritical: true,
+        ),
+      ],
+    );
+    return ApartmentNormativeEvidenceEvaluationResult(evidence: evidence);
+  }
 }
 
 ApartmentNormativeEvidenceBundle _bundle(
