@@ -88,14 +88,36 @@ final class ApartmentTopologyGenerationSelection {
 /// Contract:
 /// - invalid candidates never participate in winner selection;
 /// - score is descending;
-/// - template stable order is ascending;
-/// - canonical template identity is ascending;
-/// - template version is ascending;
+/// - the existing stable hierarchy is family, template, variant seed;
+/// - canonical template identity and template version are deterministic
+///   tie-breakers after the stable hierarchy;
 /// - remaining stable fields make the comparator total without relying on
 ///   iterable insertion order;
 /// - no eligible candidate fails explicitly instead of falling back to first.
 final class ApartmentTopologyGenerationRuntime {
   const ApartmentTopologyGenerationRuntime();
+
+  /// Production adapter for already-ranked candidates.
+  ///
+  /// The selectable score floor is eligibility, not a scoring bonus: a score
+  /// below the floor becomes a stable blocker and therefore cannot be rescued
+  /// by ordering. Geometry blockers are imported by [failClosed].
+  ApartmentTopologyGenerationSelection selectRankedCandidates(
+    Iterable<RankedApartmentCandidate> candidates, {
+    int? selectableFloorBp,
+  }) {
+    final evaluations = <ApartmentTopologyCandidateEvaluation>[
+      for (final candidate in candidates)
+        ApartmentTopologyCandidateEvaluation.failClosed(
+          rankedCandidate: candidate,
+          blockerCodes: selectableFloorBp != null &&
+                  candidate.finalScoreBp < selectableFloorBp
+              ? const ['p9.score.below-selectable-floor']
+              : const [],
+        ),
+    ];
+    return select(evaluations);
+  }
 
   ApartmentTopologyGenerationSelection select(
     Iterable<ApartmentTopologyCandidateEvaluation> input,
@@ -131,13 +153,19 @@ final class ApartmentTopologyGenerationRuntime {
     if (left.isEligible != right.isEligible) {
       return left.isEligible ? -1 : 1;
     }
-    return _compareRankedCandidates(
+    return compareRankedCandidates(
       left.rankedCandidate,
       right.rankedCandidate,
     );
   }
 
-  static int _compareRankedCandidates(
+  /// Frozen P9.1 total order.
+  ///
+  /// The first four fields preserve the stable hierarchy already used by the
+  /// production P9 ranker. Canonical identity/version then make equal stable
+  /// positions deterministic even if future catalogs introduce additional
+  /// templates at the same stable position.
+  static int compareRankedCandidates(
     RankedApartmentCandidate left,
     RankedApartmentCandidate right,
   ) {
@@ -146,7 +174,19 @@ final class ApartmentTopologyGenerationRuntime {
       return result;
     }
 
+    result = left.familyStableOrder.compareTo(right.familyStableOrder);
+    if (result != 0) {
+      return result;
+    }
+
     result = left.templateStableOrder.compareTo(right.templateStableOrder);
+    if (result != 0) {
+      return result;
+    }
+
+    result = left.variantSeedStableOrder.compareTo(
+      right.variantSeedStableOrder,
+    );
     if (result != 0) {
       return result;
     }
@@ -159,18 +199,6 @@ final class ApartmentTopologyGenerationRuntime {
 
     result = left.candidate.templateVersion
         .compareTo(right.candidate.templateVersion);
-    if (result != 0) {
-      return result;
-    }
-
-    result = left.familyStableOrder.compareTo(right.familyStableOrder);
-    if (result != 0) {
-      return result;
-    }
-
-    result = left.variantSeedStableOrder.compareTo(
-      right.variantSeedStableOrder,
-    );
     if (result != 0) {
       return result;
     }
