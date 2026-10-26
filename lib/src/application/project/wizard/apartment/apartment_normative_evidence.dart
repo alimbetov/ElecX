@@ -2,6 +2,7 @@ import '../../../../domain/engineering_graph.dart';
 import '../../../../domain/installation_guides.dart';
 import '../../../../engine/kz_installation_rules.dart';
 import 'apartment_canonical_projection.dart';
+import 'apartment_generation_diagnostics.dart';
 import 'p9_failure.dart';
 import 'p9_sha256.dart';
 
@@ -181,7 +182,8 @@ final class ApartmentNormativeEvidenceEvaluator {
   }) {
     final nonSpatialComponents = projection.graph.components
         .where(
-          (component) => component.discipline != EngineeringDiscipline.architecture,
+          (component) =>
+              component.discipline != EngineeringDiscipline.architecture,
         )
         .toList();
     if (nonSpatialComponents.isNotEmpty) {
@@ -252,3 +254,51 @@ final class ApartmentNormativeEvidenceEvaluator {
     return ApartmentNormativeEvidenceEvaluationResult(evidence: evidence);
   }
 }
+
+extension ApartmentNormativeDiagnosticsOverlay
+    on ApartmentGenerationDiagnosticReport {
+  ApartmentGenerationDiagnosticReport withNormativeEvidence(
+    ApartmentNormativeEvidenceBundle evidence,
+  ) {
+    var matchedSelected = 0;
+    final normativeState = _diagnosticState(evidence.overallState);
+    final updatedEntries = <ApartmentGenerationDiagnosticEntry>[
+      for (final entry in entries)
+        if (entry.selected &&
+            entry.candidateFingerprint == evidence.selectedCandidateFingerprint)
+          (() {
+            matchedSelected++;
+            return entry.copyWith(normativeState: normativeState);
+          })()
+        else
+          entry,
+    ];
+    if (matchedSelected != 1) {
+      throw StateError(
+        'P9.4 evidence must bind exactly one selected diagnostic entry; '
+        'matched=$matchedSelected.',
+      );
+    }
+    return ApartmentGenerationDiagnosticReport(
+      catalogVersion: catalogVersion,
+      intentFingerprint: intentFingerprint,
+      generatorVersion: generatorVersion,
+      diagnosticsVersion: diagnosticsVersion,
+      grammarFailures: grammarFailures,
+      globalFailures: globalFailures,
+      entries: updatedEntries,
+    );
+  }
+}
+
+ApartmentDiagnosticEvidenceState _diagnosticState(
+  InstallationRuleResultKind kind,
+) =>
+    switch (kind) {
+      InstallationRuleResultKind.pass => ApartmentDiagnosticEvidenceState.pass,
+      InstallationRuleResultKind.fail => ApartmentDiagnosticEvidenceState.fail,
+      InstallationRuleResultKind.notApplicable =>
+        ApartmentDiagnosticEvidenceState.notApplicable,
+      InstallationRuleResultKind.indeterminate =>
+        ApartmentDiagnosticEvidenceState.indeterminate,
+    };
