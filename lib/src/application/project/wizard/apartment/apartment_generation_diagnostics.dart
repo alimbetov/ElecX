@@ -123,13 +123,13 @@ final class ApartmentGenerationDiagnosticEntry {
   final ApartmentDiagnosticEvidenceState normativeState;
   final ApartmentDiagnosticEvidenceState equipmentState;
 
-  bool get accepted => stage == ApartmentGenerationDiagnosticStage.accepted;
   bool get selected => status == ApartmentCandidateDiagnosticStatus.selected;
   bool get rejected => status == ApartmentCandidateDiagnosticStatus.rejected;
   bool get eligible =>
       status == ApartmentCandidateDiagnosticStatus.eligible ||
       status == ApartmentCandidateDiagnosticStatus.selected ||
       status == ApartmentCandidateDiagnosticStatus.notSelected;
+  bool get accepted => eligible;
 
   String get stableIdentity => <String>[
         '$templateId@$templateVersion',
@@ -263,7 +263,8 @@ final class ApartmentGenerationDiagnosticReport {
         globalFailures = List.unmodifiable(globalFailures),
         entries = List.unmodifiable(
           entries.toList()
-            ..sort((left, right) => left.stableLine.compareTo(right.stableLine)),
+            ..sort(
+                (left, right) => left.stableLine.compareTo(right.stableLine)),
         );
 
   final int catalogVersion;
@@ -333,7 +334,8 @@ final class ApartmentGenerationDiagnostics {
       ...terminalEntries,
     ];
     final remainingSeeds = seeds.toList()
-      ..sort((left, right) => left.draftFingerprint.compareTo(right.draftFingerprint));
+      ..sort((left, right) =>
+          left.draftFingerprint.compareTo(right.draftFingerprint));
     final orderedEvaluations = evaluations.toList()
       ..sort((left, right) =>
           ApartmentTopologyGenerationRuntime.compareRankedCandidates(
@@ -383,8 +385,7 @@ final class ApartmentGenerationDiagnostics {
           rank: rank,
           rationaleCode: rationale,
           candidateFingerprint: candidateFingerprintsByGeometry[
-            ranked.candidate.geometryFingerprint
-          ],
+              ranked.candidate.geometryFingerprint],
         ),
       );
     }
