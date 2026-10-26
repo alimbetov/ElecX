@@ -15,6 +15,7 @@ import 'apartment_canonical_projection.dart';
 import 'apartment_catalog_filter.dart';
 import 'apartment_generation_diagnostics.dart';
 import 'apartment_geometry_stage.dart';
+import 'apartment_normative_evidence.dart';
 import 'apartment_semantic_validator.dart';
 import 'apartment_svg_projector.dart';
 import 'apartment_topology_grammar.dart';
@@ -31,6 +32,8 @@ final class ApartmentCandidateCard {
     required this.template,
     required this.scene,
     required this.svg,
+    required this.engineeringProjection,
+    required this.normativeEvidence,
   });
 
   final ApartmentCandidateIdentity identity;
@@ -38,6 +41,8 @@ final class ApartmentCandidateCard {
   final ApartmentTopologyTemplate template;
   final ApartmentTopologyVectorScene scene;
   final String svg;
+  final ApartmentEngineeringProjection engineeringProjection;
+  final ApartmentNormativeEvidenceBundle normativeEvidence;
 
   String get candidateFingerprint => identity.candidateFingerprint;
 
@@ -76,10 +81,28 @@ final class ApartmentCandidateSet {
       );
     }
     if (engineeringProjection.selectedCandidateFingerprint !=
-        recommendedCandidate.candidateFingerprint) {
+            recommendedCandidate.candidateFingerprint ||
+        engineeringProjection.projectionFingerprint !=
+            recommendedCandidate.engineeringProjection.projectionFingerprint) {
       throw ArgumentError(
         'Engineering projection must belong to the recommended candidate.',
       );
+    }
+    for (final candidate in this.candidates) {
+      if (candidate.engineeringProjection.selectedCandidateFingerprint !=
+          candidate.candidateFingerprint) {
+        throw ArgumentError(
+          'Every preview candidate must own its exact P9.3 projection.',
+        );
+      }
+      if (candidate.normativeEvidence.selectedCandidateFingerprint !=
+              candidate.candidateFingerprint ||
+          candidate.normativeEvidence.projectionFingerprint !=
+              candidate.engineeringProjection.projectionFingerprint) {
+        throw ArgumentError(
+          'Every preview candidate must own normative evidence for its exact projection.',
+        );
+      }
     }
   }
 
@@ -89,10 +112,15 @@ final class ApartmentCandidateSet {
   final ApartmentScoringProfile scoringProfile;
   final ApartmentCandidateSetIdentity identity;
   final ApartmentCandidateCard recommendedCandidate;
+
+  /// Backward-compatible P9.3 projection of [recommendedCandidate].
   final ApartmentEngineeringProjection engineeringProjection;
   final List<ApartmentCandidateCard> candidates;
   final List<P9Failure> rejectedSummary;
   final ApartmentGenerationDiagnosticReport? diagnostics;
+
+  ApartmentNormativeEvidenceBundle get normativeEvidence =>
+      recommendedCandidate.normativeEvidence;
 
   String get candidateSetFingerprint => identity.candidateSetFingerprint;
 
@@ -149,14 +177,18 @@ final class ApartmentCandidateSetGenerationResult {
 /// It composes already-qualified P9.1..P9.8 stages. It allocates no canonical
 /// project identity and never mutates [ProjectAggregateRoot]. P9.2 diagnostics
 /// are captured from this authoritative execution; no second generation pass is
-/// used to explain the result. P9.3 projection consumes the exact selected
-/// draft/area-fit/geometry lineage from this same execution.
+/// used to explain the result. P9.3 projection consumes the exact
+/// draft/area-fit/geometry lineage from this same execution for every candidate
+/// that may reach Preview. P9.4 then overlays immutable normative evidence onto
+/// each exact P9.3 projection.
 final class ApartmentCandidateSetService {
   const ApartmentCandidateSetService({
     this.generatorVersion = apartmentGeneratorVersion,
+    this.normativeEvaluator = const ApartmentNormativeEvidenceEvaluator(),
   }) : assert(generatorVersion != '');
 
   final String generatorVersion;
+  final ApartmentNormativeEvidencePort normativeEvaluator;
 
   ApartmentCandidateSetGenerationResult generate({
     required ApartmentRequestInput input,
@@ -511,7 +543,7 @@ final class ApartmentCandidateSetService {
     }
 
     final winner = generationSelection.selectedCandidate;
-    final winnerLineage = _lineageForWinner(productionLineages, winner);
+    final winnerLineage = _lineageForRanked(productionLineages, winner);
     if (winnerLineage == null) {
       failures.add(
         P9Failure(
@@ -558,6 +590,7 @@ final class ApartmentCandidateSetService {
     const identityService = ApartmentCandidateIdentityService();
     const renderer = ApartmentTopologyVectorRenderer();
     const svgProjector = ApartmentSvgProjector();
+    const projectionService = ApartmentCanonicalProjectionService();
     final cards = <ApartmentCandidateCard>[];
     final candidateFingerprintsByGeometry = <String, String>{};
     ApartmentCandidateCard? recommendedCard;
@@ -593,12 +626,113 @@ final class ApartmentCandidateSetService {
         catalogVersion: catalog.catalogVersion,
         generatorVersion: generatorVersion,
       );
+      final lineage = _lineageForRanked(productionLineages, ranked);
+      if (lineage == null) {
+        final isWinner = ranked.candidate.geometryFingerprint ==
+            winner.candidate.geometryFingerprint;
+        failures.add(
+          P9Failure(
+            code: 'INTERNAL_GENERATION_ERROR',
+            stage: P9FailureStage.materialization,
+            severity: isWinner
+                ? P9FailureSeverity.blocker
+                : P9FailureSeverity.warning,
+            facts: {
+              'reason': isWinner
+                  ? 'selected-winner-lineage-missing'
+                  : 'alternative-candidate-lineage-missing',
+              'geometryFingerprint': ranked.candidate.geometryFingerprint,
+            },
+          ),
+        );
+        continue;
+      }
+      final projectionResult = projectionService.project(
+        selectedCandidateFingerprint: identity.candidateFingerprint,
+        draft: lineage.draft,
+        fittedDraft: lineage.fittedDraft,
+        geometry: lineage.geometry,
+        targetLevelId: target.levelId,
+      );
+      final engineeringProjection = projectionResult.projection;
+      if (engineeringProjection == null || !projectionResult.accepted) {
+        final isWinner = ranked.candidate.geometryFingerprint ==
+            winner.candidate.geometryFingerprint;
+        if (isWinner) {
+          failures.addAll(projectionResult.failures);
+        } else {
+          failures.add(
+            P9Failure(
+              code: 'INTERNAL_GENERATION_ERROR',
+              stage: P9FailureStage.materialization,
+              severity: P9FailureSeverity.warning,
+              facts: {
+                'reason': 'alternative-candidate-projection-failed',
+                'geometryFingerprint': ranked.candidate.geometryFingerprint,
+              },
+            ),
+          );
+        }
+        continue;
+      }
+      final normativeResult = normativeEvaluator.evaluate(
+        projection: engineeringProjection,
+      );
+      final normativeEvidence = normativeResult.evidence;
+      if (normativeEvidence == null || !normativeResult.accepted) {
+        final isWinner = ranked.candidate.geometryFingerprint ==
+            winner.candidate.geometryFingerprint;
+        if (isWinner) {
+          failures.addAll(normativeResult.failures);
+          if (!normativeResult.failures.any((failure) => failure.isBlocker)) {
+            failures.add(
+              P9Failure(
+                code: 'NORMATIVE_BLOCKED',
+                stage: P9FailureStage.normative,
+                severity: P9FailureSeverity.blocker,
+                facts: {
+                  'candidateFingerprint': identity.candidateFingerprint,
+                  'projectionFingerprint':
+                      engineeringProjection.projectionFingerprint,
+                  if (normativeEvidence != null)
+                    'normativeEvidenceFingerprint':
+                        normativeEvidence.evidenceFingerprint,
+                  if (normativeEvidence != null)
+                    'normativeState': normativeEvidence.overallState.name,
+                },
+              ),
+            );
+          }
+        } else {
+          failures.add(
+            P9Failure(
+              code: 'NORMATIVE_BLOCKED',
+              stage: P9FailureStage.normative,
+              severity: P9FailureSeverity.warning,
+              facts: {
+                'candidateFingerprint': identity.candidateFingerprint,
+                'projectionFingerprint':
+                    engineeringProjection.projectionFingerprint,
+                'reason': 'alternative-candidate-not-eligible',
+                if (normativeEvidence != null)
+                  'normativeEvidenceFingerprint':
+                      normativeEvidence.evidenceFingerprint,
+                if (normativeEvidence != null)
+                  'normativeState': normativeEvidence.overallState.name,
+              },
+            ),
+          );
+        }
+        continue;
+      }
       final card = ApartmentCandidateCard(
         identity: identity,
         rankedCandidate: ranked,
         template: template,
         scene: rendered.scene!,
         svg: svg.svg!,
+        engineeringProjection: engineeringProjection,
+        normativeEvidence: normativeEvidence,
       );
       cards.add(card);
       candidateFingerprintsByGeometry[ranked.candidate.geometryFingerprint] =
@@ -609,7 +743,7 @@ final class ApartmentCandidateSetService {
       }
     }
 
-    final diagnostics =
+    final selectionDiagnostics =
         const ApartmentGenerationDiagnostics().fromProductionSelection(
       catalogVersion: catalog.catalogVersion,
       generatorVersion: generatorVersion,
@@ -624,17 +758,19 @@ final class ApartmentCandidateSetService {
     );
 
     if (recommendedCard == null) {
-      failures.add(
-        P9Failure(
-          code: 'INTERNAL_GENERATION_ERROR',
-          stage: P9FailureStage.rendering,
-          severity: P9FailureSeverity.blocker,
-          facts: {
-            'reason': 'selected-winner-render-failed',
-            'geometryFingerprint': winner.candidate.geometryFingerprint,
-          },
-        ),
-      );
+      if (!failures.any((failure) => failure.isBlocker)) {
+        failures.add(
+          P9Failure(
+            code: 'INTERNAL_GENERATION_ERROR',
+            stage: P9FailureStage.rendering,
+            severity: P9FailureSeverity.blocker,
+            facts: {
+              'reason': 'selected-winner-render-projection-or-normative-failed',
+              'geometryFingerprint': winner.candidate.geometryFingerprint,
+            },
+          ),
+        );
+      }
       final failedDiagnostics =
           const ApartmentGenerationDiagnostics().fromProductionSelection(
         catalogVersion: catalog.catalogVersion,
@@ -655,36 +791,9 @@ final class ApartmentCandidateSetService {
       );
     }
 
-    final projectionResult =
-        const ApartmentCanonicalProjectionService().project(
-      selectedCandidateFingerprint: recommendedCard.candidateFingerprint,
-      draft: winnerLineage.draft,
-      fittedDraft: winnerLineage.fittedDraft,
-      geometry: winnerLineage.geometry,
-      targetLevelId: target.levelId,
-    );
-    failures.addAll(projectionResult.failures);
-    final engineeringProjection = projectionResult.projection;
-    if (engineeringProjection == null || projectionResult.accepted == false) {
-      final failedDiagnostics =
-          const ApartmentGenerationDiagnostics().fromProductionSelection(
-        catalogVersion: catalog.catalogVersion,
-        generatorVersion: generatorVersion,
-        intentFingerprint: request.intentFingerprint,
-        grammarFailures: expansion.failures,
-        globalFailures: failures,
-        terminalEntries: terminalDiagnostics,
-        seeds: diagnosticSeeds,
-        evaluations: generationSelection.evaluations,
-        selectedGeometryFingerprint: winner.candidate.geometryFingerprint,
-        candidateFingerprintsByGeometry: candidateFingerprintsByGeometry,
-      );
-      return ApartmentCandidateSetGenerationResult(
-        candidateSet: null,
-        failures: failures,
-        diagnostics: failedDiagnostics,
-      );
-    }
+    final diagnostics =
+        selectionDiagnostics.withNormativeEvidence(recommendedCard.normativeEvidence);
+    final engineeringProjection = recommendedCard.engineeringProjection;
 
     final setIdentity = identityService.identifySet(
       request: request,
@@ -777,12 +886,12 @@ final class _ProductionCandidateLineage {
   final ApartmentGeometryCandidate geometry;
 }
 
-_ProductionCandidateLineage? _lineageForWinner(
+_ProductionCandidateLineage? _lineageForRanked(
   Iterable<_ProductionCandidateLineage> lineages,
-  RankedApartmentCandidate winner,
+  RankedApartmentCandidate ranked,
 ) {
   for (final lineage in lineages) {
-    if (identical(lineage.geometry, winner.candidate)) {
+    if (identical(lineage.geometry, ranked.candidate)) {
       return lineage;
     }
   }
