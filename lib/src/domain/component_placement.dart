@@ -3,6 +3,7 @@ import 'project_identity.dart';
 import 'surfaces.dart';
 
 enum ComponentHostKind {
+  level,
   roomSurface,
   slab,
   verticalCore,
@@ -16,6 +17,20 @@ sealed class ComponentHostRef {
 
   ComponentHostKind get kind;
   String get stableKey;
+}
+
+/// Level-local host used by generated spatial topology before persistent
+/// room/boundary identities are allocated at Apply time.
+final class LevelComponentHost extends ComponentHostRef {
+  const LevelComponentHost(this.levelId);
+
+  final LevelId levelId;
+
+  @override
+  ComponentHostKind get kind => ComponentHostKind.level;
+
+  @override
+  String get stableKey => 'level:${levelId.value}';
 }
 
 final class RoomSurfaceComponentHost extends ComponentHostRef {
@@ -99,6 +114,8 @@ final class HostLocalPointMm {
   final int uMm;
   final int vMm;
   final int normalOffsetMm;
+
+  String get stableKey => '$uMm,$vMm,$normalOffsetMm';
 }
 
 final class ComponentOrientation {
@@ -138,6 +155,10 @@ final class ComponentClearanceMm {
 enum ComponentCollisionPolicy { enforce, advisory, ignore }
 
 /// Canonical WHERE contract for a logical engineering component.
+///
+/// [footprint] is optional because most equipment is point-hosted. Spatial
+/// topology components may provide a deterministic host-local polygon. Logical
+/// type and connectivity remain owned by CanonicalEngineeringGraph.
 final class ComponentPlacement {
   ComponentPlacement({
     required this.componentId,
@@ -146,7 +167,24 @@ final class ComponentPlacement {
     this.orientation = const ComponentOrientation(),
     ComponentClearanceMm? clearance,
     this.collisionPolicy = ComponentCollisionPolicy.enforce,
-  }) : clearance = clearance ?? ComponentClearanceMm();
+    Iterable<HostLocalPointMm> footprint = const [],
+  })  : clearance = clearance ?? ComponentClearanceMm(),
+        footprint = List.unmodifiable(footprint) {
+    if (this.footprint.isNotEmpty && this.footprint.length < 3) {
+      throw ArgumentError.value(
+        this.footprint.length,
+        'footprint',
+        'A component footprint requires at least three points.',
+      );
+    }
+    if (this.footprint.isNotEmpty && _twiceSignedArea(this.footprint) == 0) {
+      throw ArgumentError.value(
+        this.footprint,
+        'footprint',
+        'A component footprint must enclose a non-zero area.',
+      );
+    }
+  }
 
   final ComponentId componentId;
   final ComponentHostRef host;
@@ -154,6 +192,17 @@ final class ComponentPlacement {
   final ComponentOrientation orientation;
   final ComponentClearanceMm clearance;
   final ComponentCollisionPolicy collisionPolicy;
+  final List<HostLocalPointMm> footprint;
+
+  String get stableSerialization => <String>[
+        'component=${componentId.value}',
+        'host=${host.stableKey}',
+        'position=${position.stableKey}',
+        'orientation=${orientation.yawDegrees},${orientation.pitchDegrees},${orientation.rollDegrees}',
+        'clearance=${clearance.front},${clearance.back},${clearance.left},${clearance.right},${clearance.top},${clearance.bottom}',
+        'collision=${collisionPolicy.name}',
+        'footprint=${footprint.map((point) => point.stableKey).join(';')}',
+      ].join('|');
 }
 
 /// Transitional projection from the electrical editor placement to the
@@ -168,6 +217,16 @@ extension ElectricalPlacementCanonicalAdapter on ElectricalComponentPlacement {
         ),
         orientation: ComponentOrientation(yawDegrees: rotationDegrees),
       );
+}
+
+int _twiceSignedArea(List<HostLocalPointMm> points) {
+  var area = 0;
+  for (var index = 0; index < points.length; index++) {
+    final current = points[index];
+    final next = points[(index + 1) % points.length];
+    area += current.uMm * next.vMm - next.uMm * current.vMm;
+  }
+  return area;
 }
 
 String _nonEmpty(String value, String name) {
