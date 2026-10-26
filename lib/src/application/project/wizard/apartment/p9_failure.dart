@@ -7,6 +7,7 @@ enum P9FailureStage {
   area,
   semantics,
   geometry,
+  normative,
   scoring,
   rendering,
   provider,
