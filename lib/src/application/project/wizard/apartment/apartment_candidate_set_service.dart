@@ -9,6 +9,7 @@ import 'apartment_area_fitter.dart';
 import 'apartment_candidate_identity.dart';
 import 'apartment_candidate_ranker.dart';
 import 'apartment_catalog_filter.dart';
+import 'apartment_generation_diagnostics.dart';
 import 'apartment_geometry_stage.dart';
 import 'apartment_semantic_validator.dart';
 import 'apartment_svg_projector.dart';
@@ -54,6 +55,7 @@ final class ApartmentCandidateSet {
     required this.recommendedCandidate,
     required Iterable<ApartmentCandidateCard> candidates,
     required Iterable<P9Failure> rejectedSummary,
+    this.diagnostics,
   })  : candidates = List.unmodifiable(candidates),
         rejectedSummary = List.unmodifiable(rejectedSummary) {
     final containsRecommended = this.candidates.any(
@@ -78,6 +80,7 @@ final class ApartmentCandidateSet {
   final ApartmentCandidateCard recommendedCandidate;
   final List<ApartmentCandidateCard> candidates;
   final List<P9Failure> rejectedSummary;
+  final ApartmentGenerationDiagnosticReport? diagnostics;
 
   String get candidateSetFingerprint => identity.candidateSetFingerprint;
 
@@ -118,10 +121,12 @@ final class ApartmentCandidateSetGenerationResult {
   ApartmentCandidateSetGenerationResult({
     required this.candidateSet,
     required Iterable<P9Failure> failures,
+    this.diagnostics,
   }) : failures = List.unmodifiable(failures);
 
   final ApartmentCandidateSet? candidateSet;
   final List<P9Failure> failures;
+  final ApartmentGenerationDiagnosticReport? diagnostics;
 
   bool get hasBlockers => failures.any((failure) => failure.isBlocker);
   bool get accepted => candidateSet != null && !hasBlockers;
@@ -130,7 +135,9 @@ final class ApartmentCandidateSetGenerationResult {
 /// Stateless P9.9 exploration orchestrator.
 ///
 /// It composes already-qualified P9.1..P9.8 stages. It allocates no canonical
-/// project identity and never mutates [ProjectAggregateRoot].
+/// project identity and never mutates [ProjectAggregateRoot]. P9.2 diagnostics
+/// are captured from this authoritative execution; no second generation pass is
+/// used to explain the result.
 final class ApartmentCandidateSetService {
   const ApartmentCandidateSetService({
     this.generatorVersion = apartmentGeneratorVersion,
@@ -171,9 +178,18 @@ final class ApartmentCandidateSetService {
         _topologyFailure(ApartmentTopologyGenerationFailureCode.noCandidates),
       );
       failures.add(_providerFailure('p9.provider.no-candidates'));
+      final diagnostics = ApartmentGenerationDiagnosticReport(
+        catalogVersion: catalog.catalogVersion,
+        intentFingerprint: request.intentFingerprint,
+        generatorVersion: generatorVersion,
+        grammarFailures: const [],
+        globalFailures: failures,
+        entries: const [],
+      );
       return ApartmentCandidateSetGenerationResult(
         candidateSet: null,
         failures: failures,
+        diagnostics: diagnostics,
       );
     }
 
@@ -184,15 +200,10 @@ final class ApartmentCandidateSetService {
     failures.addAll(expansion.failures);
 
     final rankingInputs = <ApartmentCandidateRankingInput>[];
+    final terminalDiagnostics = <ApartmentGenerationDiagnosticEntry>[];
+    final diagnosticSeeds = <ApartmentGenerationDiagnosticSeed>[];
+
     for (final draft in expansion.drafts) {
-      final fit = const ApartmentAreaFitter().fit(
-        draft: draft,
-        request: request,
-      );
-      failures.addAll(fit.failures);
-      if (!fit.isValid) {
-        continue;
-      }
       final template = _templateForDraft(
         templates,
         draft.templateId.value,
@@ -208,12 +219,62 @@ final class ApartmentCandidateSetService {
         continue;
       }
 
+      final fit = const ApartmentAreaFitter().fit(
+        draft: draft,
+        request: request,
+      );
+      failures.addAll(fit.failures);
+      if (!fit.isValid) {
+        final blockerCodes = fit.failures
+            .where((failure) => failure.isBlocker)
+            .map((failure) => failure.code);
+        final warningCodes = fit.failures
+            .where(
+              (failure) => failure.severity == P9FailureSeverity.warning,
+            )
+            .map((failure) => failure.code);
+        terminalDiagnostics.add(
+          ApartmentGenerationDiagnosticEntry(
+            templateId: template.templateId.value,
+            templateVersion: template.templateVersion,
+            family: template.family,
+            variantSeedId: draft.variantSeedId,
+            draftFingerprint: draft.draftFingerprint,
+            stage: ApartmentGenerationDiagnosticStage.area,
+            codes: fit.failures.map((failure) => failure.code),
+            status: ApartmentCandidateDiagnosticStatus.rejected,
+            blockerCodes: blockerCodes,
+            warningCodes: warningCodes,
+            rationaleCode: 'p9.diagnostics.rejected.area',
+          ),
+        );
+        continue;
+      }
+
       final semantic = const ApartmentSemanticValidator().validate(
         fittedDraft: fit.fittedDraft!,
         request: request,
         template: template,
       );
+      final semanticWarnings = semantic.preferenceMisses
+          .map((miss) => 'p9.semantic.preference-miss:${miss.ruleId}');
       if (!semantic.accepted) {
+        final blockerCodes = semantic.blockers.map((blocker) => blocker.code);
+        terminalDiagnostics.add(
+          ApartmentGenerationDiagnosticEntry(
+            templateId: template.templateId.value,
+            templateVersion: template.templateVersion,
+            family: template.family,
+            variantSeedId: draft.variantSeedId,
+            draftFingerprint: draft.draftFingerprint,
+            stage: ApartmentGenerationDiagnosticStage.semantic,
+            codes: blockerCodes,
+            status: ApartmentCandidateDiagnosticStatus.rejected,
+            blockerCodes: blockerCodes,
+            warningCodes: semanticWarnings,
+            rationaleCode: 'p9.diagnostics.rejected.semantic',
+          ),
+        );
         for (final blocker in semantic.blockers) {
           failures.add(
             P9Failure(
@@ -240,11 +301,72 @@ final class ApartmentCandidateSetService {
       );
       failures.addAll(geometry.failures);
       if (!geometry.accepted) {
+        final blockerCodes = <String>[
+          ...geometry.failures
+              .where((failure) => failure.isBlocker)
+              .map((failure) => failure.code),
+          ...?geometry.candidate?.validation.issues
+              .where((issue) => issue.severity.name == 'blocker')
+              .map((issue) => issue.code),
+        ];
+        final warningCodes = <String>[
+          ...semanticWarnings,
+          ...geometry.failures
+              .where(
+                (failure) => failure.severity == P9FailureSeverity.warning,
+              )
+              .map((failure) => failure.code),
+        ];
+        terminalDiagnostics.add(
+          ApartmentGenerationDiagnosticEntry(
+            templateId: template.templateId.value,
+            templateVersion: template.templateVersion,
+            family: template.family,
+            variantSeedId: draft.variantSeedId,
+            draftFingerprint: draft.draftFingerprint,
+            stage: ApartmentGenerationDiagnosticStage.geometry,
+            codes: [
+              ...blockerCodes,
+              ...warningCodes,
+            ],
+            status: ApartmentCandidateDiagnosticStatus.rejected,
+            blockerCodes: blockerCodes,
+            warningCodes: warningCodes,
+            geometryFingerprint: geometry.candidate?.geometryFingerprint,
+            rationaleCode: 'p9.diagnostics.rejected.geometry',
+          ),
+        );
         continue;
       }
+
+      final candidate = geometry.candidate!;
+      diagnosticSeeds.add(
+        ApartmentGenerationDiagnosticSeed(
+          templateId: template.templateId.value,
+          templateVersion: template.templateVersion,
+          family: template.family,
+          variantSeedId: draft.variantSeedId,
+          draftFingerprint: draft.draftFingerprint,
+          geometryFingerprint: candidate.geometryFingerprint,
+          areaFitFingerprint: candidate.areaFitFingerprint,
+          warningCodes: [
+            ...fit.failures
+                .where(
+                  (failure) => failure.severity == P9FailureSeverity.warning,
+                )
+                .map((failure) => failure.code),
+            ...semanticWarnings,
+            ...geometry.failures
+                .where(
+                  (failure) => failure.severity == P9FailureSeverity.warning,
+                )
+                .map((failure) => failure.code),
+          ],
+        ),
+      );
       rankingInputs.add(
         ApartmentCandidateRankingInput(
-          candidate: geometry.candidate!,
+          candidate: candidate,
           template: template,
         ),
       );
@@ -264,9 +386,18 @@ final class ApartmentCandidateSetService {
         ),
       );
       failures.add(_providerFailure('p9.provider.no-candidates'));
+      final diagnostics = ApartmentGenerationDiagnosticReport(
+        catalogVersion: catalog.catalogVersion,
+        intentFingerprint: request.intentFingerprint,
+        generatorVersion: generatorVersion,
+        grammarFailures: expansion.failures,
+        globalFailures: failures,
+        entries: terminalDiagnostics,
+      );
       return ApartmentCandidateSetGenerationResult(
         candidateSet: null,
         failures: failures,
+        diagnostics: diagnostics,
       );
     }
 
@@ -291,9 +422,31 @@ final class ApartmentCandidateSetService {
           ),
         );
       }
+      final rankingBlockers = ranking.failures
+          .where((failure) => failure.isBlocker)
+          .map((failure) => failure.code)
+          .toList();
+      final diagnostics = ApartmentGenerationDiagnosticReport(
+        catalogVersion: catalog.catalogVersion,
+        intentFingerprint: request.intentFingerprint,
+        generatorVersion: generatorVersion,
+        grammarFailures: expansion.failures,
+        globalFailures: failures,
+        entries: [
+          ...terminalDiagnostics,
+          for (final seed in diagnosticSeeds)
+            seed.toEntry(
+              stage: ApartmentGenerationDiagnosticStage.scoring,
+              status: ApartmentCandidateDiagnosticStatus.rejected,
+              blockerCodes: rankingBlockers,
+              rationaleCode: 'p9.diagnostics.rejected.scoring',
+            ),
+        ],
+      );
       return ApartmentCandidateSetGenerationResult(
         candidateSet: null,
         failures: failures,
+        diagnostics: diagnostics,
       );
     }
 
@@ -317,9 +470,21 @@ final class ApartmentCandidateSetService {
         ),
       );
       failures.add(_providerFailure('p9.provider.no-candidates'));
+      final diagnostics = const ApartmentGenerationDiagnostics()
+          .fromProductionSelection(
+        catalogVersion: catalog.catalogVersion,
+        generatorVersion: generatorVersion,
+        intentFingerprint: request.intentFingerprint,
+        grammarFailures: expansion.failures,
+        globalFailures: failures,
+        terminalEntries: terminalDiagnostics,
+        seeds: diagnosticSeeds,
+        evaluations: error.evaluations,
+      );
       return ApartmentCandidateSetGenerationResult(
         candidateSet: null,
         failures: failures,
+        diagnostics: diagnostics,
       );
     }
 
@@ -340,6 +505,7 @@ final class ApartmentCandidateSetService {
     const renderer = ApartmentTopologyVectorRenderer();
     const svgProjector = ApartmentSvgProjector();
     final cards = <ApartmentCandidateCard>[];
+    final candidateFingerprintsByGeometry = <String, String>{};
     ApartmentCandidateCard? recommendedCard;
 
     for (final ranked in rankedForRendering) {
@@ -381,11 +547,27 @@ final class ApartmentCandidateSetService {
         svg: svg.svg!,
       );
       cards.add(card);
+      candidateFingerprintsByGeometry[ranked.candidate.geometryFingerprint] =
+          identity.candidateFingerprint;
       if (ranked.candidate.geometryFingerprint ==
           winner.candidate.geometryFingerprint) {
         recommendedCard = card;
       }
     }
+
+    final diagnostics = const ApartmentGenerationDiagnostics()
+        .fromProductionSelection(
+      catalogVersion: catalog.catalogVersion,
+      generatorVersion: generatorVersion,
+      intentFingerprint: request.intentFingerprint,
+      grammarFailures: expansion.failures,
+      globalFailures: failures,
+      terminalEntries: terminalDiagnostics,
+      seeds: diagnosticSeeds,
+      evaluations: generationSelection.evaluations,
+      selectedGeometryFingerprint: winner.candidate.geometryFingerprint,
+      candidateFingerprintsByGeometry: candidateFingerprintsByGeometry,
+    );
 
     if (recommendedCard == null) {
       failures.add(
@@ -399,9 +581,23 @@ final class ApartmentCandidateSetService {
           },
         ),
       );
+      final failedDiagnostics = const ApartmentGenerationDiagnostics()
+          .fromProductionSelection(
+        catalogVersion: catalog.catalogVersion,
+        generatorVersion: generatorVersion,
+        intentFingerprint: request.intentFingerprint,
+        grammarFailures: expansion.failures,
+        globalFailures: failures,
+        terminalEntries: terminalDiagnostics,
+        seeds: diagnosticSeeds,
+        evaluations: generationSelection.evaluations,
+        selectedGeometryFingerprint: winner.candidate.geometryFingerprint,
+        candidateFingerprintsByGeometry: candidateFingerprintsByGeometry,
+      );
       return ApartmentCandidateSetGenerationResult(
         candidateSet: null,
         failures: failures,
+        diagnostics: failedDiagnostics,
       );
     }
 
@@ -414,18 +610,22 @@ final class ApartmentCandidateSetService {
       orderedCandidates: cards.map((card) => card.identity),
     );
 
+    final candidateSet = ApartmentCandidateSet(
+      request: request,
+      catalogVersion: catalog.catalogVersion,
+      generatorVersion: generatorVersion,
+      scoringProfile: profile,
+      identity: setIdentity,
+      recommendedCandidate: recommendedCard,
+      candidates: cards,
+      rejectedSummary: failures,
+      diagnostics: diagnostics,
+    );
+
     return ApartmentCandidateSetGenerationResult(
-      candidateSet: ApartmentCandidateSet(
-        request: request,
-        catalogVersion: catalog.catalogVersion,
-        generatorVersion: generatorVersion,
-        scoringProfile: profile,
-        identity: setIdentity,
-        recommendedCandidate: recommendedCard,
-        candidates: cards,
-        rejectedSummary: failures,
-      ),
+      candidateSet: candidateSet,
       failures: failures.where((failure) => !failure.isBlocker),
+      diagnostics: diagnostics,
     );
   }
 
