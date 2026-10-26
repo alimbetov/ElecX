@@ -655,7 +655,8 @@ final class ApartmentCandidateSetService {
       );
     }
 
-    final projectionResult = const ApartmentCanonicalProjectionService().project(
+    final projectionResult =
+        const ApartmentCanonicalProjectionService().project(
       selectedCandidateFingerprint: recommendedCard.candidateFingerprint,
       draft: winnerLineage.draft,
       fittedDraft: winnerLineage.fittedDraft,
