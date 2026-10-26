@@ -1,4 +1,5 @@
 import 'package:elecx/src/application/project/wizard/apartment/apartment_candidate_set_service.dart';
+import 'package:elecx/src/application/project/wizard/apartment/apartment_canonical_projection.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_normative_evidence.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_wizard_parameters.dart';
 import 'package:elecx/src/application/project/wizard/wizard_contracts.dart';
