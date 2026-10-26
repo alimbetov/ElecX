@@ -1,6 +1,7 @@
 import 'surfaces.dart';
 
 enum EngineeringDiscipline {
+  architecture,
   power,
   lighting,
   lowVoltage,
@@ -12,6 +13,7 @@ enum EngineeringDiscipline {
 }
 
 enum EngineeringSystemClass {
+  spatialTopology,
   powerAc,
   powerDc,
   lighting,
@@ -40,6 +42,7 @@ enum EngineeringCalculationKind {
 enum EngineeringPortDirection { input, output, bidirectional }
 
 enum EngineeringConnectionType {
+  spatialAccess,
   acSinglePhase,
   acThreePhase,
   dcPower,
@@ -191,6 +194,8 @@ abstract final class EngineeringSystemPolicy {
     EngineeringSystemClass systemClass,
   ) =>
       switch (systemClass) {
+        EngineeringSystemClass.spatialTopology =>
+          EngineeringCalculationKind.connectivityOnly,
         EngineeringSystemClass.powerAc ||
         EngineeringSystemClass.lighting =>
           EngineeringCalculationKind.powerCableSizing,
@@ -217,6 +222,9 @@ abstract final class EngineeringSystemPolicy {
     EngineeringSystemClass systemClass,
   ) =>
       switch (systemClass) {
+        EngineeringSystemClass.spatialTopology => <EngineeringConnectionType>{
+            EngineeringConnectionType.spatialAccess,
+          },
         EngineeringSystemClass.powerAc ||
         EngineeringSystemClass.lighting =>
           <EngineeringConnectionType>{
