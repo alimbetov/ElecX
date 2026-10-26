@@ -74,7 +74,9 @@ void main() {
         'tpl-invalid',
       );
       expect(
-          result.rejected.single.blockerCodes, contains('p9.geometry.blocked'));
+        result.rejected.single.blockerCodes,
+        contains('p9.geometry.blocked'),
+      );
     });
 
     test('Q04 invalid higher-score candidate never wins', () {
@@ -99,7 +101,29 @@ void main() {
       expect(result.rejected.single.blockerCodes, ['p9.normative.blocked']);
     });
 
-    test('Q05 equal score uses stable deterministic tie-breaks', () {
+    test('Q05 equal score uses frozen stable hierarchy and tie-breaks', () {
+      final higherFamilyOrder = _evaluation(
+        templateId: 'tpl-template-first',
+        scoreBp: 8000,
+        stableOrder: 1,
+        familyStableOrder: 2,
+      );
+      final lowerFamilyOrder = _evaluation(
+        templateId: 'tpl-family-first',
+        scoreBp: 8000,
+        stableOrder: 99,
+        familyStableOrder: 1,
+      );
+      expect(
+        runtime
+            .select([higherFamilyOrder, lowerFamilyOrder])
+            .selectedCandidate
+            .candidate
+            .templateId
+            .value,
+        'tpl-family-first',
+      );
+
       final highStableOrder = _evaluation(
         templateId: 'tpl-a',
         scoreBp: 8000,
@@ -184,6 +208,35 @@ void main() {
             'code',
             ApartmentTopologyGenerationFailureCode.noValidTopologyCandidate,
           ),
+        ),
+      );
+    });
+
+    test('Q06 production score floor is fail-closed eligibility', () {
+      final belowFloor = _evaluation(
+        templateId: 'tpl-below-floor',
+        scoreBp: 4999,
+        stableOrder: 10,
+      ).rankedCandidate;
+
+      expect(
+        () => runtime.selectRankedCandidates(
+          [belowFloor],
+          selectableFloorBp: 5000,
+        ),
+        throwsA(
+          isA<ApartmentTopologyGenerationFailure>()
+              .having(
+                (failure) => failure.code,
+                'code',
+                ApartmentTopologyGenerationFailureCode
+                    .noValidTopologyCandidate,
+              )
+              .having(
+                (failure) => failure.evaluations.single.blockerCodes,
+                'blockers',
+                contains('p9.score.below-selectable-floor'),
+              ),
         ),
       );
     });
