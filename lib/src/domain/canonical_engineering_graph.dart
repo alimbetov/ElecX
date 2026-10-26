@@ -61,7 +61,7 @@ final class EngineeringGraphComponent {
 
 /// Typed logical connection between two engineering component ports.
 final class EngineeringGraphConnection {
-  const EngineeringGraphConnection({
+  EngineeringGraphConnection({
     required this.id,
     required this.fromComponentId,
     required this.fromPortId,
@@ -69,9 +69,18 @@ final class EngineeringGraphConnection {
     required this.toPortId,
     required this.connectionType,
     required this.systemClass,
+    this.semanticTypeId,
     this.routeId,
     this.circuitId,
-  });
+  }) {
+    if (semanticTypeId != null && semanticTypeId!.trim().isEmpty) {
+      throw ArgumentError.value(
+        semanticTypeId,
+        'semanticTypeId',
+        'Must be null or non-empty.',
+      );
+    }
+  }
 
   final EngineeringConnectionId id;
   final ComponentId fromComponentId;
@@ -80,6 +89,10 @@ final class EngineeringGraphConnection {
   final PortId toPortId;
   final EngineeringConnectionType connectionType;
   final EngineeringSystemClass systemClass;
+
+  /// Optional domain-semantic subtype when the generic engineering transport
+  /// enum is intentionally broader than the canonical relationship semantics.
+  final String? semanticTypeId;
   final RouteId? routeId;
   final CircuitId? circuitId;
 }
