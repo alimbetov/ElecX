@@ -1,10 +1,12 @@
 enum ElectricalLoadPhaseSystem { singlePhaseAc, threePhaseAc }
 
+enum ElectricalReactivePowerKind { lagging, leading }
+
 /// One authoritative load input participating in a circuit/group calculation.
 ///
-/// The model deliberately keeps utilization and power factor explicit. Unknown
-/// values must be resolved upstream instead of being replaced by hidden
-/// defaults inside the calculation engine.
+/// The model deliberately keeps utilization, power factor and reactive-power
+/// direction explicit. Unknown values must be resolved upstream instead of
+/// being replaced by hidden defaults inside the calculation engine.
 final class ElectricalLoadInput {
   const ElectricalLoadInput({
     required this.id,
@@ -12,6 +14,7 @@ final class ElectricalLoadInput {
     required this.quantity,
     required this.utilizationFactor,
     required this.powerFactor,
+    required this.reactivePowerKind,
     required this.sourceId,
     required this.sourceRevision,
   })  : assert(ratedPowerW >= 0),
@@ -27,12 +30,12 @@ final class ElectricalLoadInput {
   final int quantity;
   final double utilizationFactor;
   final double powerFactor;
+  final ElectricalReactivePowerKind reactivePowerKind;
   final String sourceId;
   final String sourceRevision;
 
   int get connectedPowerW => ratedPowerW * quantity;
   double get utilizedPowerW => connectedPowerW * utilizationFactor;
-  double get utilizedApparentPowerVa => utilizedPowerW / powerFactor;
 }
 
 /// Explicit diversity/simultaneity policy. A value below one reduces the
@@ -116,20 +119,22 @@ final class ElectricalLoadContribution {
     required this.loadId,
     required this.connectedPowerW,
     required this.utilizedPowerW,
-    required this.utilizedApparentPowerVa,
+    required this.utilizedReactivePowerVar,
   });
 
   final String loadId;
   final int connectedPowerW;
   final double utilizedPowerW;
-  final double utilizedApparentPowerVa;
+  final double utilizedReactivePowerVar;
 }
 
 final class ElectricalLoadCalculationResult {
   const ElectricalLoadCalculationResult({
     required this.connectedPowerW,
     required this.utilizedPowerW,
+    required this.utilizedReactivePowerVar,
     required this.designPowerW,
+    required this.designReactivePowerVar,
     required this.designApparentPowerVa,
     required this.designCurrentA,
     required this.equivalentPowerFactor,
@@ -144,7 +149,9 @@ final class ElectricalLoadCalculationResult {
 
   final int connectedPowerW;
   final double utilizedPowerW;
+  final double utilizedReactivePowerVar;
   final double designPowerW;
+  final double designReactivePowerVar;
   final double designApparentPowerVa;
   final double designCurrentA;
   final double equivalentPowerFactor;
