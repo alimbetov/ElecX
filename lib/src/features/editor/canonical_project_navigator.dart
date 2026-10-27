@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../application/project/project_mutation_reservation.dart';
 import '../../application/project/project_navigator_projection.dart';
 import '../../application/project/project_structure_authoring.dart';
+import '../../application/project/wizard/apartment/apartment_engineering_pipeline_runtime_registry.dart';
 import '../../application/project/wizard/apartment/apartment_wizard_provider.dart';
 import '../../application/project/wizard/basic_building_wizard_provider.dart';
 import '../../application/project/wizard/wizard_contracts.dart';
@@ -94,8 +95,11 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
     final wizardMutations =
         CanonicalEditorWizardRuntimeRegistry.resolve(session);
     final activeLevelId = navigation.activeLevelId;
-    final canStartApartment =
-        activeLevelId == null || _isEmptyApartmentTarget(activeLevelId);
+    final apartmentEngineeringPipeline =
+        ApartmentEngineeringPipelineRuntimeRegistry.resolve(session.project);
+    final canStartApartment = activeLevelId == null ||
+        (_isEmptyApartmentTarget(activeLevelId) &&
+            apartmentEngineeringPipeline != null);
 
     if (_lastRenderedLeafId != currentLeafId) {
       _lastRenderedLeafId = currentLeafId;
@@ -143,7 +147,9 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
                   : 'Apartment Wizard',
               wizardTooltip: activeLevelId == null
                   ? 'Create a building with Wizard'
-                  : 'Generate an apartment on the active empty level',
+                  : apartmentEngineeringPipeline == null
+                      ? 'Apartment engineering source is not configured'
+                      : 'Generate an apartment on the active empty level',
               onStartWizard: wizardMutations != null &&
                       widget.onAuthoringCommitted != null &&
                       canStartApartment
@@ -353,6 +359,14 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
       if (activeLevelId != null) {
         final level = before.stores.levels[activeLevelId];
         if (level == null || !_isEmptyApartmentTarget(activeLevelId)) return;
+        final engineeringPipeline =
+            ApartmentEngineeringPipelineRuntimeRegistry.resolve(before);
+        if (engineeringPipeline == null) {
+          throw StateError(
+            'Production Apartment Wizard requires an authoritative '
+            'engineering pipeline capability.',
+          );
+        }
         committed = await ApartmentWizardScreen.show(
           context: context,
           session: WizardSession(
@@ -363,7 +377,11 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
               buildingId: level.buildingId,
               levelId: level.id,
             ),
-            registry: WizardProviderRegistry([const ApartmentWizardProvider()]),
+            registry: WizardProviderRegistry([
+              ApartmentWizardProvider.production(
+                engineeringPipeline: engineeringPipeline,
+              ),
+            ]),
             mutations: mutations,
           ),
         );
