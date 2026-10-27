@@ -390,7 +390,8 @@ abstract final class ProtectiveDeviceCoordinationEngine {
     return _ResidualCurrentClosure(
       evaluations: evaluations,
       selectedEvidence: compliant.first.evidence,
-      status: ResidualCurrentCoordinationClosureStatus.closedRequiredWithEvidence,
+      status:
+          ResidualCurrentCoordinationClosureStatus.closedRequiredWithEvidence,
     );
   }
 
@@ -486,8 +487,10 @@ bool _isOvercurrentClosed(ProtectiveDeviceCoordinationClosureStatus status) =>
         ProtectiveDeviceCoordinationClosureStatus.closedRequiredWithEvidence ||
     status == ProtectiveDeviceCoordinationClosureStatus.closedNotRequired;
 
-bool _isResidualCurrentClosed(ResidualCurrentCoordinationClosureStatus status) =>
-    status == ResidualCurrentCoordinationClosureStatus.closedRequiredWithEvidence ||
+bool _isResidualCurrentClosed(
+        ResidualCurrentCoordinationClosureStatus status) =>
+    status ==
+        ResidualCurrentCoordinationClosureStatus.closedRequiredWithEvidence ||
     status == ResidualCurrentCoordinationClosureStatus.closedNotRequired;
 
 final class _OvercurrentClosure {
