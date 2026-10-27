@@ -217,11 +217,23 @@ final class ApartmentWizardProvider
     if (pipeline != null) {
       try {
         engineeringProposal = pipeline.generate(
+          candidateSetFingerprint: set.candidateSetFingerprint,
           selected: selected,
           context: context,
         );
-        engineeringProposal.validateAgainst(selected);
-      } catch (error) {
+        engineeringProposal.validateAgainst(
+          candidateSetFingerprint: set.candidateSetFingerprint,
+          selected: selected,
+        );
+      } on ArgumentError catch (error) {
+        throw ApartmentWizardProviderException(
+          'p9.provider.engineering-pipeline-invalid',
+          {
+            'candidateFingerprint': selected.candidateFingerprint,
+            'reason': error.toString(),
+          },
+        );
+      } on StateError catch (error) {
         throw ApartmentWizardProviderException(
           'p9.provider.engineering-pipeline-invalid',
           {
