@@ -11,6 +11,7 @@ import '../wizard_contracts.dart';
 import 'apartment_candidate_identity.dart';
 import 'apartment_candidate_set_service.dart';
 import 'apartment_canonical_materializer.dart';
+import 'apartment_engineering_pipeline.dart';
 import 'apartment_generation_provenance_builder.dart';
 import 'apartment_wizard_parameters.dart';
 import 'p9_failure.dart';
@@ -31,15 +32,16 @@ final class ApartmentWizardProviderException implements Exception {
 /// [ApartmentCandidateSetService] / session-owned exploration state. During P8
 /// generation it deterministically resolves the exact transient selection,
 /// verifies the P9.4 evidence bound to that candidate's exact P9.3 projection
-/// and hands the accepted candidate to one reserved P8 mutation command.
-/// Preview materialization is pure and Apply commits the frozen preview
-/// candidate without rerunning P9.
+/// and, when an engineering pipeline is configured, runs D1-D8 exactly once.
+/// The accepted geometry and optional engineering proposal are frozen together
+/// in one reserved P8 mutation command. Preview and Apply never rerun P9.
 final class ApartmentWizardProvider
     extends TypedWizardProvider<ApartmentWizardParameters> {
   const ApartmentWizardProvider({
     this.candidateSetService = const ApartmentCandidateSetService(),
     this.materializer = const ApartmentCanonicalMaterializer(),
     this.provenanceBuilder = const ApartmentGenerationProvenanceBuilder(),
+    this.engineeringPipeline,
   });
 
   static final WizardFamilyId familyId = WizardFamilyId('apartment');
@@ -47,6 +49,7 @@ final class ApartmentWizardProvider
   final ApartmentCandidateSetService candidateSetService;
   final ApartmentCanonicalMaterializer materializer;
   final ApartmentGenerationProvenanceBuilder provenanceBuilder;
+  final ApartmentEngineeringPipeline? engineeringPipeline;
 
   @override
   WizardProviderDescriptor get descriptor => WizardProviderDescriptor(
@@ -209,6 +212,26 @@ final class ApartmentWizardProvider
       );
     }
 
+    ApartmentEngineeringProposal? engineeringProposal;
+    final pipeline = engineeringPipeline;
+    if (pipeline != null) {
+      try {
+        engineeringProposal = pipeline.generate(
+          selected: selected,
+          context: context,
+        );
+        engineeringProposal.validateAgainst(selected);
+      } catch (error) {
+        throw ApartmentWizardProviderException(
+          'p9.provider.engineering-pipeline-invalid',
+          {
+            'candidateFingerprint': selected.candidateFingerprint,
+            'reason': error.toString(),
+          },
+        );
+      }
+    }
+
     return ApartmentReservedProjectCommand(
       target: target,
       descriptor: descriptor,
@@ -216,6 +239,7 @@ final class ApartmentWizardProvider
       candidateIdentity: selected.identity,
       selectedCandidate: selected.rankedCandidate.candidate,
       template: selected.template,
+      engineeringProposal: engineeringProposal,
       materializer: materializer,
       provenanceBuilder: provenanceBuilder,
     );
@@ -240,6 +264,7 @@ final class ApartmentReservedProjectCommand implements ReservedProjectCommand {
     required this.candidateIdentity,
     required this.selectedCandidate,
     required this.template,
+    this.engineeringProposal,
     this.materializer = const ApartmentCanonicalMaterializer(),
     this.provenanceBuilder = const ApartmentGenerationProvenanceBuilder(),
   });
@@ -250,8 +275,11 @@ final class ApartmentReservedProjectCommand implements ReservedProjectCommand {
   final ApartmentCandidateIdentity candidateIdentity;
   final ApartmentGeometryCandidate selectedCandidate;
   final ApartmentTopologyTemplate template;
+  final ApartmentEngineeringProposal? engineeringProposal;
   final ApartmentCanonicalMaterializer materializer;
   final ApartmentGenerationProvenanceBuilder provenanceBuilder;
+
+  bool get hasEngineeringProposal => engineeringProposal != null;
 
   @override
   String get commandType => 'p9.apartment.materialize';
@@ -277,6 +305,10 @@ final class ApartmentReservedProjectCommand implements ReservedProjectCommand {
         'geometryAlgorithmVersion': candidateIdentity.geometryAlgorithmVersion,
         'geometryFingerprint': candidateIdentity.geometryFingerprint,
         'scoringProfileVersion': candidateIdentity.scoringProfileVersion,
+        'engineeringProposalFingerprint':
+            engineeringProposal?.proposalFingerprint,
+        'engineeringOutputFingerprint':
+            engineeringProposal?.output.outputFingerprint,
       });
 
   @override
