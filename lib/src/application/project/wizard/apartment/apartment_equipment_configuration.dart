@@ -71,8 +71,8 @@ final class ApartmentEngineeringEquipmentConfiguration {
   final String normativeProfileId;
   final String normativeProfileVersion;
   final String currencyCode;
-  final Map<ApartmentEquipmentConfigurationSlot, ApartmentVerifiedProductVariant>
-      selectedVariants;
+  final Map<ApartmentEquipmentConfigurationSlot,
+      ApartmentVerifiedProductVariant> selectedVariants;
   final List<ApartmentEquipmentCandidateDecision> decisions;
 
   ApartmentVerifiedProductVariant selectedFor(
