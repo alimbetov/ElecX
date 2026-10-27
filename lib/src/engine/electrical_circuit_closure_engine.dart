@@ -59,7 +59,8 @@ final class ElectricalCircuitClosurePolicy {
     if (circuitId.trim().isEmpty ||
         sourceId.trim().isEmpty ||
         sourceRevision.trim().isEmpty) {
-      throw ArgumentError('Circuit closure policy identity/source is required.');
+      throw ArgumentError(
+          'Circuit closure policy identity/source is required.');
     }
     if (minimumConductorCount <= 0) {
       throw ArgumentError.value(minimumConductorCount, 'minimumConductorCount');
@@ -81,7 +82,8 @@ final class ElectricalCircuitClosurePolicy {
       );
     }
     if (this.allowedProtectionKinds.isEmpty) {
-      throw ArgumentError('At least one protection device kind must be allowed.');
+      throw ArgumentError(
+          'At least one protection device kind must be allowed.');
     }
     if (minimumProtectionPoleCount <= 0) {
       throw ArgumentError.value(
@@ -117,7 +119,8 @@ final class ElectricalCircuitClosureRequest {
     required this.calculation,
     required Iterable<ElectricalCircuitClosurePolicy> policies,
   }) : policies = List.unmodifiable(policies) {
-    final expectedIds = calculation.circuits.map((circuit) => circuit.id).toSet();
+    final expectedIds =
+        calculation.circuits.map((circuit) => circuit.id).toSet();
     final actualIds = <String>{};
     for (final policy in this.policies) {
       if (!actualIds.add(policy.circuitId)) {
@@ -180,7 +183,8 @@ final class ElectricalCircuitClosureOutcome {
         (selectedCable == null ||
             selectedCableSizing == null ||
             protectionSelection?.isSelected != true)) {
-      throw ArgumentError('Closed circuit must carry cable/protection evidence.');
+      throw ArgumentError(
+          'Closed circuit must carry cable/protection evidence.');
     }
   }
 
@@ -281,8 +285,7 @@ abstract final class ElectricalCircuitClosureEngine {
       OvercurrentProtectionRequest(
         designCurrentA: circuit.calculation.designCurrentA,
         cableAmpacityA: cableAmpacityA,
-        prospectiveShortCircuitCurrentA:
-            policy.prospectiveShortCircuitCurrentA,
+        prospectiveShortCircuitCurrentA: policy.prospectiveShortCircuitCurrentA,
         candidates: protectionCandidates,
         allowedKinds: policy.allowedProtectionKinds,
       ),
