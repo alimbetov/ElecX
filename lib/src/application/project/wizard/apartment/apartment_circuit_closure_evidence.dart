@@ -1,4 +1,3 @@
-import '../../../../domain/cable_spec.dart';
 import '../../../../engine/electrical_circuit_closure_engine.dart';
 import 'apartment_engineering_requirements.dart';
 import 'p9_canonical_serialization.dart';
@@ -59,7 +58,8 @@ abstract final class ApartmentCircuitClosureEvidenceService {
     );
     final updatedProtection = _replaceFact(
       protectionRequirement,
-      rationaleCode: 'p9.requirements.protection-overload-closure-proven-partial',
+      rationaleCode:
+          'p9.requirements.protection-overload-closure-proven-partial',
       fact: ApartmentEngineeringFactEvidence(
         factKey: 'protection.overload',
         valueKind: ApartmentEngineeringFactValueKind.text,
@@ -177,7 +177,8 @@ abstract final class ApartmentCircuitClosureEvidenceService {
       MapEntry('voltageDropV', sizing.voltageDropV!.toString()),
       MapEntry('voltageDropRatio', sizing.voltageDropRatio!.toString()),
       MapEntry('ampacitySourceKey', sizing.ampacitySourceKey ?? 'unspecified'),
-      MapEntry('impedanceSourceKey', sizing.impedanceSourceKey ?? 'unspecified'),
+      MapEntry(
+          'impedanceSourceKey', sizing.impedanceSourceKey ?? 'unspecified'),
       MapEntry('candidateSourceId', candidate.sourceId),
       MapEntry('candidateSourceRevision', candidate.sourceRevision),
       MapEntry('policySourceId', outcome.policy.sourceId),
@@ -298,7 +299,8 @@ abstract final class ApartmentCircuitClosureEvidenceService {
         'selectedDevicePoles',
         selectedProtection?.poleCount.toString() ?? 'none',
       ),
-      MapEntry('selectedDeviceSourceId', selectedProtection?.sourceId ?? 'none'),
+      MapEntry(
+          'selectedDeviceSourceId', selectedProtection?.sourceId ?? 'none'),
       MapEntry(
         'selectedDeviceSourceRevision',
         selectedProtection?.sourceRevision ?? 'none',
