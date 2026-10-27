@@ -157,7 +157,8 @@ final class ElectricalPhaseAssignmentResult {
         maxPhaseCurrentA < 0 ||
         !phaseCurrentImbalanceRatio.isFinite ||
         phaseCurrentImbalanceRatio < 0) {
-      throw ArgumentError('Phase-assignment metrics must be finite/non-negative.');
+      throw ArgumentError(
+          'Phase-assignment metrics must be finite/non-negative.');
     }
   }
 
