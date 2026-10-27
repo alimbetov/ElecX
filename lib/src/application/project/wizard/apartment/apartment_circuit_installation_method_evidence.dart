@@ -185,8 +185,8 @@ abstract final class ApartmentCircuitInstallationMethodEvidenceService {
     }
     final expectedValue = ApartmentProtectionCoordinationEvidenceService
         .coordinationEvidenceValue(d6Closure);
-    final expectedRevision = ApartmentProtectionCoordinationEvidenceService
-        .sourceRevisionValue(
+    final expectedRevision =
+        ApartmentProtectionCoordinationEvidenceService.sourceRevisionValue(
       d6Closure,
     );
     if (coordinationFact.valueKind != ApartmentEngineeringFactValueKind.text ||
