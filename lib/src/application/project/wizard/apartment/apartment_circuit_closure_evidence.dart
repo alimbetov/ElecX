@@ -1,4 +1,7 @@
 import '../../../../engine/electrical_circuit_closure_engine.dart';
+export '../../../../engine/electrical_circuit_closure_engine.dart'
+    show electricalCircuitClosureVersion;
+
 import 'apartment_engineering_requirements.dart';
 import 'p9_canonical_serialization.dart';
 
