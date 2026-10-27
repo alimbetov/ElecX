@@ -30,7 +30,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P9.5-D8 engineering output projection', () {
-    test('Q82 projects deterministic load circuit panel SLD and explanation', () {
+    test('Q82 projects deterministic load circuit panel SLD and explanation',
+        () {
       final fixture = _fixture();
       final first = fixture.project();
       final second = fixture.project();
@@ -42,8 +43,10 @@ void main() {
       );
       expect(first.outputFingerprint, second.outputFingerprint);
       expect(first.outputFingerprint, hasLength(64));
-      expect(first.requirementsFingerprint,
-          fixture.requirements.requirementsFingerprint);
+      expect(
+        first.requirementsFingerprint,
+        fixture.requirements.requirementsFingerprint,
+      );
 
       expect(first.loadSchedule, hasLength(1));
       final load = first.loadSchedule.single;
@@ -64,21 +67,26 @@ void main() {
       expect(circuit.overcurrentDeviceId, _mcb16.id);
       expect(circuit.overcurrentRatedCurrentA, 16);
       expect(circuit.prospectiveShortCircuitCurrentA, 3500);
-      expect(circuit.residualApplicability,
-          ResidualCurrentApplicability.notRequired.name);
+      expect(
+        circuit.residualApplicability,
+        ResidualCurrentApplicability.notRequired.name,
+      );
       expect(circuit.residualDeviceId, isNull);
       expect(circuit.overcurrentCoordinationEvidenceId, 'sel-total');
-      expect(circuit.installationSections.single.installationMethodId,
-          'reference-method-B2');
+      expect(
+        circuit.installationSections.single.installationMethodId,
+        'reference-method-B2',
+      );
 
       expect(first.panelSummary.branchCircuitCount, 1);
-      expect(first.panelSummary.boardPhaseSystem,
-          DistributionBoardPhaseSystem.singlePhase.name);
+      expect(
+        first.panelSummary.boardPhaseSystem,
+        DistributionBoardPhaseSystem.singlePhase.name,
+      );
       expect(first.panelSummary.phaseLoads.single.phase, 'l1');
 
-      final explanationCodes = first.explanations
-          .map((item) => item.code)
-          .toSet();
+      final explanationCodes =
+          first.explanations.map((item) => item.code).toSet();
       expect(
         explanationCodes,
         containsAll({
@@ -97,8 +105,7 @@ void main() {
     });
 
     test('Q83 panel summary uses calculated phase current not breaker sum', () {
-      final fixture = _fixture();
-      final projection = fixture.project();
+      final projection = _fixture().project();
       final row = projection.circuitSchedule.single;
 
       expect(row.overcurrentRatedCurrentA, 16);
@@ -110,9 +117,9 @@ void main() {
       expect(projection.panelSummary.maxPhaseCurrentA, lessThan(16));
     });
 
-    test('Q84 SLD does not invent residual device when D5 says not required', () {
-      final fixture = _fixture();
-      final projection = fixture.project();
+    test('Q84 SLD does not invent residual device when D5 says not required',
+        () {
+      final projection = _fixture().project();
       final kinds = projection.sldNodes.map((item) => item.kind).toList();
 
       expect(projection.sldNodes, hasLength(4));
@@ -139,12 +146,13 @@ void main() {
     });
 
     test('Q85 standalone RCD is projected as a distinct SLD device', () {
-      final fixture = _fixture(requireResidual: true);
-      final projection = fixture.project();
+      final projection = _fixture(requireResidual: true).project();
       final row = projection.circuitSchedule.single;
 
-      expect(row.residualApplicability,
-          ResidualCurrentApplicability.required.name);
+      expect(
+        row.residualApplicability,
+        ResidualCurrentApplicability.required.name,
+      );
       expect(row.residualDeviceId, _rcd25TypeA30.id);
       expect(row.residualDeviceKind, ResidualCurrentDeviceKind.rcd.name);
       expect(row.residualType, ResidualCurrentType.a.name);
@@ -243,8 +251,7 @@ void main() {
         throwsUnsupportedError,
       );
       expect(
-        () => projection.circuitSchedule
-            .add(projection.circuitSchedule.single),
+        () => projection.circuitSchedule.add(projection.circuitSchedule.single),
         throwsUnsupportedError,
       );
       expect(
@@ -261,20 +268,25 @@ void main() {
       );
     });
 
-    test('Q90 output fingerprint changes when source-pinned D7 provenance changes',
+    test(
+        'Q90 output fingerprint changes when source-pinned D7 provenance changes',
         () {
       final first = _fixture(installationSourceRevision: '2026.1').project();
       final second = _fixture(installationSourceRevision: '2026.2').project();
 
       expect(first.outputFingerprint, isNot(second.outputFingerprint));
-      expect(first.requirementsFingerprint,
-          isNot(second.requirementsFingerprint));
+      expect(
+        first.requirementsFingerprint,
+        isNot(second.requirementsFingerprint),
+      );
     });
   });
 }
 
+const _mcb16Id = 'mcb-c16-6ka';
+
 const _mcb16 = OvercurrentProtectiveDeviceSpec(
-  id: 'mcb-c16-6ka',
+  id: _mcb16Id,
   kind: OvercurrentDeviceKind.mcb,
   ratedCurrentA: 16,
   breakingCapacityKa: 6,
@@ -304,7 +316,7 @@ final _rcd25TypeA30 = ResidualCurrentProtectiveDeviceSpec(
   poleCount: 2,
   overcurrentDeviceId: null,
   conditionalShortCircuitCurrentA: 6000,
-  compatibleBackupOvercurrentDeviceIds: const [_mcb16.id],
+  compatibleBackupOvercurrentDeviceIds: const [_mcb16Id],
   sourceId: 'residual-device-catalog',
   sourceRevision: 'r1',
 );
@@ -344,7 +356,7 @@ _D8Fixture _fixture({
 
   final d5Request = ElectricalResidualCurrentClosureRequest(
     d4Closure: d4Closure,
-    policies: [_residualPolicy(required: requireResidual)],
+    policies: [_residualPolicy(isRequired: requireResidual)],
   );
   final d5Closure = ResidualCurrentProtectionEngine.close(d5Request);
   final afterD5 = ApartmentResidualCurrentClosureEvidenceService.apply(
@@ -385,8 +397,7 @@ _D8Fixture _fixture({
         rationaleCode: requireResidual
             ? 'qualification.no-upstream-residual-coordination-required'
             : 'qualification.no-local-residual-device',
-        evaluatedDownstreamDeviceId:
-            requireResidual ? _rcd25TypeA30.id : null,
+        evaluatedDownstreamDeviceId: requireResidual ? _rcd25TypeA30.id : null,
         applicabilityEvidenceIds: const [
           'residual-coordination-not-applicable',
         ],
@@ -438,8 +449,8 @@ _D8Fixture _fixture({
   );
 }
 
-ResidualCurrentProtectionPolicy _residualPolicy({required bool required}) {
-  if (!required) {
+ResidualCurrentProtectionPolicy _residualPolicy({required bool isRequired}) {
+  if (!isRequired) {
     return ResidualCurrentProtectionPolicy(
       circuitId: 'circuit-001',
       applicability: ResidualCurrentApplicability.notRequired,
@@ -575,7 +586,7 @@ FaultLoopCaseEvidence _faultCase(String id, double sourceResistanceOhm) =>
       sourceRevision: '2026.1',
     );
 
-CableSpec _cable() => const CableSpec(
+CableSpec _cable() => CableSpec(
       id: 'cable-2.5',
       name: 'Cu 3x2.5',
       medium: RouteMediumProfile.acPower,
@@ -648,8 +659,7 @@ _PhaseBundle _phaseAssignmentFor({
   required String circuitId,
   _CalculationBundle? calculationBundle,
 }) {
-  final bundle =
-      calculationBundle ?? _calculationBundle(circuitId: circuitId);
+  final bundle = calculationBundle ?? _calculationBundle(circuitId: circuitId);
   final request = ElectricalPhaseAssignmentRequest(
     calculation: bundle.calculation,
     boardPhaseSystem: DistributionBoardPhaseSystem.singlePhase,
