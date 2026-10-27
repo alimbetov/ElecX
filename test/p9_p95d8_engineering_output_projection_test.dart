@@ -259,7 +259,7 @@ void main() {
         throwsUnsupportedError,
       );
       expect(
-        () => projection.explanations.add(projection.explanations.single),
+        () => projection.explanations.add(projection.explanations.first),
         throwsUnsupportedError,
       );
       expect(
