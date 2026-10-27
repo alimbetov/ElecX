@@ -111,9 +111,8 @@ final class ApartmentEngineeringFactEvidence {
         ApartmentEngineeringFactValueKind.text => value as String,
       };
 
-  String get displayValue => unit.symbol.isEmpty
-      ? canonicalValue
-      : '$canonicalValue ${unit.symbol}';
+  String get displayValue =>
+      unit.symbol.isEmpty ? canonicalValue : '$canonicalValue ${unit.symbol}';
 
   String get stableSerialization => p9CanonicalSerializeFields([
         MapEntry('factKey', factKey),
