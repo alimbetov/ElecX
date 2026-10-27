@@ -158,7 +158,8 @@ abstract final class ApartmentCircuitInstallationMethodEvidenceService {
       ],
     );
     final expectedValue =
-        ApartmentCircuitClosureEvidenceService.conductorEvidenceValue(d3Closure);
+        ApartmentCircuitClosureEvidenceService.conductorEvidenceValue(
+            d3Closure);
     final expectedRevision =
         ApartmentCircuitClosureEvidenceService.sourceRevisionValue(d3Closure);
     if (conductorFact.valueKind != ApartmentEngineeringFactValueKind.text ||
@@ -184,8 +185,8 @@ abstract final class ApartmentCircuitInstallationMethodEvidenceService {
     }
     final expectedValue = ApartmentProtectionCoordinationEvidenceService
         .coordinationEvidenceValue(d6Closure);
-    final expectedRevision =
-        ApartmentProtectionCoordinationEvidenceService.sourceRevisionValue(
+    final expectedRevision = ApartmentProtectionCoordinationEvidenceService
+        .sourceRevisionValue(
       d6Closure,
     );
     if (coordinationFact.valueKind != ApartmentEngineeringFactValueKind.text ||
@@ -246,7 +247,8 @@ abstract final class ApartmentCircuitInstallationMethodEvidenceService {
           p9CanonicalSerializeFields([
             MapEntry(
               'd6SourceRevision',
-              ApartmentProtectionCoordinationEvidenceService.sourceRevisionValue(
+              ApartmentProtectionCoordinationEvidenceService
+                  .sourceRevisionValue(
                 ElectricalProtectionCoordinationClosureResult(
                   outcomes: [outcome.d6Outcome],
                 ),
