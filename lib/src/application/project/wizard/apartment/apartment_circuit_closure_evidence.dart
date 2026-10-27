@@ -43,7 +43,7 @@ abstract final class ApartmentCircuitClosureEvidenceService {
       );
     }
 
-    final sourceRevision = _policyRevision(closure);
+    final sourceRevision = sourceRevisionValue(closure);
     final updatedCircuit = _replaceFact(
       circuitRequirement,
       rationaleCode: 'p9.requirements.circuit-conductor-closure-proven-partial',
@@ -114,6 +114,22 @@ abstract final class ApartmentCircuitClosureEvidenceService {
     ]);
   }
 
+  /// Canonical D3 provenance bound into every downstream fact.
+  static String sourceRevisionValue(ElectricalCircuitClosureResult closure) {
+    final outcomes = closure.outcomes.toList()
+      ..sort((left, right) => left.circuitId.compareTo(right.circuitId));
+    return p9CanonicalSerializeFields([
+      for (final outcome in outcomes)
+        MapEntry(
+          outcome.circuitId,
+          p9CanonicalSerializeFields([
+            MapEntry('sourceId', outcome.policy.sourceId),
+            MapEntry('sourceRevision', outcome.policy.sourceRevision),
+          ]),
+        ),
+    ]);
+  }
+
   static ApartmentEngineeringRequirement _singleRequirement(
     ApartmentEngineeringDesignRequirements requirements,
     ApartmentEngineeringRequirementDomain domain,
@@ -150,21 +166,6 @@ abstract final class ApartmentCircuitClosureEvidenceService {
         fact,
       ],
     );
-  }
-
-  static String _policyRevision(ElectricalCircuitClosureResult closure) {
-    final outcomes = closure.outcomes.toList()
-      ..sort((left, right) => left.circuitId.compareTo(right.circuitId));
-    return p9CanonicalSerializeFields([
-      for (final outcome in outcomes)
-        MapEntry(
-          outcome.circuitId,
-          p9CanonicalSerializeFields([
-            MapEntry('sourceId', outcome.policy.sourceId),
-            MapEntry('sourceRevision', outcome.policy.sourceRevision),
-          ]),
-        ),
-    ]);
   }
 
   static String _conductorOutcome(ElectricalCircuitClosureOutcome outcome) {
