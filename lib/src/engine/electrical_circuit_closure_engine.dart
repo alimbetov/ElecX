@@ -17,6 +17,9 @@ final class ElectricalCircuitCableCandidate {
     required this.sourceId,
     required this.sourceRevision,
   }) : ampacitySections = List.unmodifiable(ampacitySections) {
+    if (cable.id.trim().isEmpty) {
+      throw ArgumentError('Cable candidate id must be non-empty.');
+    }
     if (!routeLengthMm.isFinite || routeLengthMm < 0) {
       throw ArgumentError.value(routeLengthMm, 'routeLengthMm');
     }
@@ -333,6 +336,23 @@ abstract final class ElectricalCircuitClosureEngine {
     if (cable.ratedVoltageV == null ||
         cable.ratedVoltageV! < calculation.nominalVoltageV) {
       structuralRejections.add('cable-rated-voltage-below-circuit-voltage');
+    }
+    final impedanceSourceKey = candidate.impedanceEvidence?.sourceKey;
+    if (candidate.impedanceEvidence != null &&
+        (impedanceSourceKey == null || impedanceSourceKey.trim().isEmpty)) {
+      structuralRejections.add('missing-impedance-source-key');
+    }
+    for (final section in candidate.ampacitySections) {
+      if (section.sectionId.trim().isEmpty) {
+        structuralRejections.add('missing-ampacity-section-id');
+      }
+      final sourceKey = section.sourceKey;
+      if (sourceKey == null || sourceKey.trim().isEmpty) {
+        structuralRejections.add('missing-ampacity-source-key');
+      }
+      if (section.factors.any((factor) => factor.id.trim().isEmpty)) {
+        structuralRejections.add('missing-correction-factor-id');
+      }
     }
 
     final reactivePowerKind = calculation.designReactivePowerVar < 0
