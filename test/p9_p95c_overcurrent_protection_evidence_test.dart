@@ -12,7 +12,8 @@ import 'package:elecx/src/engine/overcurrent_protection_selection_engine.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('overcurrent proof stays partial until short-circuit/RCD/disconnection', () {
+  test('overcurrent proof stays partial until short-circuit/RCD/disconnection',
+      () {
     final fixture = _projectFixture();
     final generated = const ApartmentCandidateSetService().generate(
       input: _request(),
@@ -46,8 +47,7 @@ void main() {
     );
 
     final protection = updated.requirements.singleWhere(
-      (item) =>
-          item.domain == ApartmentEngineeringRequirementDomain.protection,
+      (item) => item.domain == ApartmentEngineeringRequirementDomain.protection,
     );
     expect(
       protection.evidenceState,
