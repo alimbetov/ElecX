@@ -1,3 +1,4 @@
+import '../../../../engine/electrical_circuit_closure_engine.dart';
 import '../../../../engine/electrical_short_circuit_closure_engine.dart';
 import '../../../../engine/residual_current_protection_engine.dart';
 import 'apartment_circuit_closure_evidence.dart';
@@ -22,7 +23,7 @@ abstract final class ApartmentResidualCurrentClosureEvidenceService {
     if (requirements.requirementsVersion !=
         apartmentEngineeringRequirementsVersion) {
       throw ArgumentError(
-        'D5 migration requires ${apartmentEngineeringRequirementsVersion} input.',
+        'D5 migration requires $apartmentEngineeringRequirementsVersion input.',
       );
     }
 
@@ -224,6 +225,7 @@ abstract final class ApartmentResidualCurrentClosureEvidenceService {
     return p9CanonicalSerializeFields([
       MapEntry('applicability', policy.applicability.name),
       MapEntry('rationaleCode', policy.rationaleCode),
+      MapEntry('evaluatedLoadIds', policy.evaluatedLoadIds.join(',')),
       MapEntry(
         'applicabilityEvidenceIds',
         policy.applicabilityEvidenceIds.join(','),
@@ -305,6 +307,7 @@ abstract final class ApartmentResidualCurrentClosureEvidenceService {
       ),
       MapEntry('applicability', policy.applicability.name),
       MapEntry('rationaleCode', policy.rationaleCode),
+      MapEntry('evaluatedLoadIds', policy.evaluatedLoadIds.join(',')),
       MapEntry(
         'applicabilityEvidenceIds',
         policy.applicabilityEvidenceIds.join(','),
