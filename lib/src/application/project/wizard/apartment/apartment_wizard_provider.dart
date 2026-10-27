@@ -27,15 +27,15 @@ final class ApartmentWizardProviderException implements Exception {
   String toString() => code;
 }
 
-/// Production P9 adapter into the shared P8 Wizard provider registry.
+/// P9 adapter into the shared P8 Wizard provider registry.
 ///
-/// The provider is stateless and reentrant. Candidate exploration remains in
-/// [ApartmentCandidateSetService] / session-owned exploration state. During P8
-/// generation it deterministically resolves the exact transient selection,
-/// verifies the P9.4 evidence bound to that candidate's exact P9.3 projection
-/// and, when an engineering pipeline is configured, runs D1-D8 exactly once.
-/// The accepted geometry and optional engineering proposal are frozen together
-/// in one reserved P8 mutation command. Preview and Apply never rerun P9.
+/// [ApartmentWizardProvider.production] is the production composition contract:
+/// an engineering pipeline is mandatory and Generate freezes its D1-D8 result
+/// into the reserved P8 command. The unnamed and [geometryOnly] constructors are
+/// retained only for explicit legacy/qualification geometry flows.
+///
+/// Candidate exploration remains in [ApartmentCandidateSetService] /
+/// session-owned exploration state. Preview and Apply never rerun P9.
 final class ApartmentWizardProvider
     extends TypedWizardProvider<ApartmentWizardParameters> {
   const ApartmentWizardProvider({
@@ -44,6 +44,19 @@ final class ApartmentWizardProvider
     this.provenanceBuilder = const ApartmentGenerationProvenanceBuilder(),
     this.engineeringPipeline,
   });
+
+  const ApartmentWizardProvider.production({
+    this.candidateSetService = const ApartmentCandidateSetService(),
+    this.materializer = const ApartmentCanonicalMaterializer(),
+    this.provenanceBuilder = const ApartmentGenerationProvenanceBuilder(),
+    required ApartmentEngineeringPipeline engineeringPipeline,
+  }) : engineeringPipeline = engineeringPipeline;
+
+  const ApartmentWizardProvider.geometryOnly({
+    this.candidateSetService = const ApartmentCandidateSetService(),
+    this.materializer = const ApartmentCanonicalMaterializer(),
+    this.provenanceBuilder = const ApartmentGenerationProvenanceBuilder(),
+  }) : engineeringPipeline = null;
 
   static final WizardFamilyId familyId = WizardFamilyId('apartment');
 
@@ -389,8 +402,7 @@ final class ApartmentReservedProjectCommand implements ReservedProjectCommand {
       );
       engineeringMetadata =
           engineeringMetadata.withAppliedEngineeringProposalRegistry(
-        engineeringMetadata.appliedEngineeringProposalRegistry
-            .replace(snapshot),
+        engineeringMetadata.appliedEngineeringProposalRegistry.replace(snapshot),
       );
     }
     return ProjectCommandCandidate.fromState(
