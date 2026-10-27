@@ -191,8 +191,7 @@ final class ApartmentEngineeringDesignRequirements {
         'placement=$placementFingerprint',
         'normative=$normativeEvidenceFingerprint',
         'normativeProfile=$normativeProfileId@$normativeProfileVersion',
-        for (final requirement in requirements)
-          requirement.stableSerialization,
+        for (final requirement in requirements) requirement.stableSerialization,
       ].join('\n');
 
   String get requirementsFingerprint => p9Sha256Hex(stableSerialization);
@@ -366,13 +365,13 @@ ApartmentEngineeringRequirement _unresolvedRequirement({
   required List<String> requiredFactKeys,
 }) {
   final requirementId = 'req-${p9Sha256Hex(<String>[
-        apartmentEngineeringRequirementsVersion,
-        'projection=$projectionFingerprint',
-        'normative=$normativeEvidenceFingerprint',
-        'domain=${domain.name}',
-        'subject=$subjectStableId',
-        'rationale=$rationaleCode',
-      ].join('|')).substring(0, 24)}';
+    apartmentEngineeringRequirementsVersion,
+    'projection=$projectionFingerprint',
+    'normative=$normativeEvidenceFingerprint',
+    'domain=${domain.name}',
+    'subject=$subjectStableId',
+    'rationale=$rationaleCode',
+  ].join('|')).substring(0, 24)}';
   return ApartmentEngineeringRequirement(
     requirementId: requirementId,
     domain: domain,
