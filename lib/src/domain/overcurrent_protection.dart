@@ -36,13 +36,14 @@ final class OvercurrentProtectionRequest {
     required this.cableAmpacityA,
     required this.prospectiveShortCircuitCurrentA,
     required Iterable<OvercurrentProtectiveDeviceSpec> candidates,
-    this.allowedKinds = const {
+    Set<OvercurrentDeviceKind> allowedKinds = const {
       OvercurrentDeviceKind.mcb,
       OvercurrentDeviceKind.mccb,
       OvercurrentDeviceKind.fuse,
       OvercurrentDeviceKind.rcbo,
     },
-  }) : candidates = List.unmodifiable(candidates) {
+  })  : candidates = List.unmodifiable(candidates),
+        allowedKinds = Set.unmodifiable(allowedKinds) {
     if (designCurrentA <= 0) {
       throw ArgumentError.value(designCurrentA, 'designCurrentA');
     }
@@ -55,7 +56,7 @@ final class OvercurrentProtectionRequest {
         'prospectiveShortCircuitCurrentA',
       );
     }
-    if (allowedKinds.isEmpty) {
+    if (this.allowedKinds.isEmpty) {
       throw ArgumentError('At least one overcurrent device kind is required.');
     }
   }
