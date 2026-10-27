@@ -136,6 +136,20 @@ void main() {
         throwsArgumentError,
       );
     });
+
+    test('Q49 stale D3 source revision cannot be rebound to D4', () {
+      final fixture = _fixture();
+      final requirements = _requirementsAfterD3(staleSourceRevision: true);
+
+      expect(
+        () => ApartmentShortCircuitClosureEvidenceService.apply(
+          requirements: requirements,
+          request: fixture.request,
+          closure: fixture.closure,
+        ),
+        throwsArgumentError,
+      );
+    });
   });
 }
 
@@ -318,12 +332,16 @@ ApartmentEngineeringDesignRequirements _requirementsAfterD3({
   bool includeOverload = true,
   bool includeConductor = true,
   bool staleLineage = false,
+  bool staleSourceRevision = false,
 }) {
   final d3 = _d3Closure();
   final conductorValue =
       ApartmentCircuitClosureEvidenceService.conductorEvidenceValue(d3);
   final overloadValue =
       ApartmentCircuitClosureEvidenceService.overloadEvidenceValue(d3);
+  final d3SourceRevision =
+      ApartmentCircuitClosureEvidenceService.sourceRevisionValue(d3);
+  final sourceRevision = staleSourceRevision ? 'stale-revision' : d3SourceRevision;
   return ApartmentEngineeringDesignRequirements(
     requirementsVersion: apartmentEngineeringRequirementsVersion,
     selectedCandidateFingerprint: 'candidate-fp',
@@ -385,6 +403,8 @@ ApartmentEngineeringDesignRequirements _requirementsAfterD3({
             _fact(
               'circuit.conductorConstraints',
               staleLineage ? 'stale-conductor-evidence' : conductorValue,
+              sourceId: electricalCircuitClosureVersion,
+              sourceRevision: sourceRevision,
             ),
         ],
       ),
@@ -408,6 +428,8 @@ ApartmentEngineeringDesignRequirements _requirementsAfterD3({
             _fact(
               'protection.overload',
               staleLineage ? 'stale-overload-evidence' : overloadValue,
+              sourceId: electricalCircuitClosureVersion,
+              sourceRevision: sourceRevision,
             ),
         ],
       ),
@@ -415,14 +437,19 @@ ApartmentEngineeringDesignRequirements _requirementsAfterD3({
   );
 }
 
-ApartmentEngineeringFactEvidence _fact(String key, String value) =>
+ApartmentEngineeringFactEvidence _fact(
+  String key,
+  String value, {
+  String sourceId = 'qualification',
+  String sourceRevision = 'r1',
+}) =>
     ApartmentEngineeringFactEvidence(
       factKey: key,
       valueKind: ApartmentEngineeringFactValueKind.text,
       value: value,
       unit: ApartmentEngineeringFactUnit.code,
-      sourceId: 'qualification',
-      sourceRevision: 'r1',
+      sourceId: sourceId,
+      sourceRevision: sourceRevision,
     );
 
 ApartmentEngineeringRequirement _unresolved({
