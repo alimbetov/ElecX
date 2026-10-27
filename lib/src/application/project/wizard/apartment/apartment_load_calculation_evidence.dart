@@ -95,24 +95,45 @@ abstract final class ApartmentLoadCalculationEvidenceService {
     required ElectricalLoadCalculationRequest request,
     required ElectricalLoadCalculationResult calculation,
   }) {
-    if (calculation.phaseSystem != request.phaseSystem ||
-        calculation.nominalVoltageV != request.nominalVoltageV ||
-        calculation.diversityPolicyId != request.diversityPolicy.id ||
-        calculation.diversityFactor != request.diversityPolicy.factor ||
-        calculation.reservePolicyId != request.reservePolicy.id ||
-        calculation.reserveRatio != request.reservePolicy.reserveRatio) {
+    final expected = LoadCalculationEngine.calculate(request);
+    if (!_sameCalculation(expected, calculation)) {
       throw ArgumentError(
         'Load calculation result does not match the supplied calculation request.',
       );
     }
-    final requestIds = request.loads.map((item) => item.id).toSet();
-    final resultIds =
-        calculation.contributions.map((item) => item.loadId).toSet();
-    if (requestIds.length != resultIds.length ||
-        !requestIds.containsAll(resultIds)) {
-      throw ArgumentError(
-        'Load calculation contributions do not match the supplied loads.',
-      );
+  }
+
+  static bool _sameCalculation(
+    ElectricalLoadCalculationResult expected,
+    ElectricalLoadCalculationResult actual,
+  ) {
+    if (expected.connectedPowerW != actual.connectedPowerW ||
+        expected.utilizedPowerW != actual.utilizedPowerW ||
+        expected.utilizedReactivePowerVar != actual.utilizedReactivePowerVar ||
+        expected.designPowerW != actual.designPowerW ||
+        expected.designReactivePowerVar != actual.designReactivePowerVar ||
+        expected.designApparentPowerVa != actual.designApparentPowerVa ||
+        expected.designCurrentA != actual.designCurrentA ||
+        expected.equivalentPowerFactor != actual.equivalentPowerFactor ||
+        expected.diversityPolicyId != actual.diversityPolicyId ||
+        expected.diversityFactor != actual.diversityFactor ||
+        expected.reservePolicyId != actual.reservePolicyId ||
+        expected.reserveRatio != actual.reserveRatio ||
+        expected.phaseSystem != actual.phaseSystem ||
+        expected.nominalVoltageV != actual.nominalVoltageV ||
+        expected.contributions.length != actual.contributions.length) {
+      return false;
     }
+    for (var index = 0; index < expected.contributions.length; index++) {
+      final left = expected.contributions[index];
+      final right = actual.contributions[index];
+      if (left.loadId != right.loadId ||
+          left.connectedPowerW != right.connectedPowerW ||
+          left.utilizedPowerW != right.utilizedPowerW ||
+          left.utilizedReactivePowerVar != right.utilizedReactivePowerVar) {
+        return false;
+      }
+    }
+    return true;
   }
 }
