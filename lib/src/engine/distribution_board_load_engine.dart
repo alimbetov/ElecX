@@ -9,9 +9,10 @@ abstract final class DistributionBoardLoadEngine {
   static DistributionBoardLoadResult calculate(
     DistributionBoardLoadRequest request,
   ) {
-    final phases = request.phaseSystem == DistributionBoardPhaseSystem.singlePhase
-        ? const [DistributionBoardPhase.l1]
-        : DistributionBoardPhase.values;
+    final phases =
+        request.phaseSystem == DistributionBoardPhaseSystem.singlePhase
+            ? const [DistributionBoardPhase.l1]
+            : DistributionBoardPhase.values;
     final state = <DistributionBoardPhase, _PhaseAccumulator>{
       for (final phase in phases) phase: _PhaseAccumulator(),
     };
@@ -54,14 +55,14 @@ abstract final class DistributionBoardLoadEngine {
     }
 
     final phaseLoads = <BoardPhaseLoadResult>[
-      for (final phase in phases)
-        state[phase]!.toResult(phase: phase),
+      for (final phase in phases) state[phase]!.toResult(phase: phase),
     ];
     final currents = phaseLoads.map((item) => item.designCurrentA).toList();
-    final maxCurrent = currents.reduce(math.max);
-    final imbalance = request.phaseSystem == DistributionBoardPhaseSystem.singlePhase
-        ? 0.0
-        : _imbalanceRatio(currents);
+    final maxCurrent = _maximum(currents);
+    final imbalance =
+        request.phaseSystem == DistributionBoardPhaseSystem.singlePhase
+            ? 0.0
+            : _imbalanceRatio(currents);
     final apparentPowerVa = math.sqrt(
       designPowerW * designPowerW +
           designReactivePowerVar * designReactivePowerVar,
@@ -95,12 +96,26 @@ abstract final class DistributionBoardLoadEngine {
   }
 
   static double _imbalanceRatio(List<double> currents) {
-    final average = currents.reduce((left, right) => left + right) /
-        currents.length;
+    final average =
+        currents.reduce((left, right) => left + right) / currents.length;
     if (average == 0) return 0;
-    final maximum = currents.reduce(math.max);
-    final minimum = currents.reduce(math.min);
-    return (maximum - minimum) / average;
+    return (_maximum(currents) - _minimum(currents)) / average;
+  }
+
+  static double _maximum(List<double> values) {
+    var result = values.first;
+    for (final value in values.skip(1)) {
+      if (value > result) result = value;
+    }
+    return result;
+  }
+
+  static double _minimum(List<double> values) {
+    var result = values.first;
+    for (final value in values.skip(1)) {
+      if (value < result) result = value;
+    }
+    return result;
   }
 }
 
