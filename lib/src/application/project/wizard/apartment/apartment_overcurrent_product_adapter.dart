@@ -35,8 +35,7 @@ final class ApartmentOvercurrentProtectionProductEvaluator {
       OvercurrentProtectionRequest(
         designCurrentA: intent.designCurrentA,
         cableAmpacityA: cableAmpacityA,
-        prospectiveShortCircuitCurrentA:
-            intent.prospectiveShortCircuitCurrentA,
+        prospectiveShortCircuitCurrentA: intent.prospectiveShortCircuitCurrentA,
         candidates: [spec],
         allowedKinds: {kind},
       ),
