@@ -101,6 +101,9 @@ abstract final class PhaseAssignmentEngine {
     return ElectricalPhaseAssignmentResult(
       circuits: assignments,
       phaseLoads: phaseLoads,
+      boardPhaseSystem: request.boardPhaseSystem,
+      lineNeutralVoltageV: request.lineNeutralVoltageV,
+      lineLineVoltageV: request.lineLineVoltageV,
       maxPhaseCurrentA: _maximum(currents),
       phaseCurrentImbalanceRatio:
           request.boardPhaseSystem == DistributionBoardPhaseSystem.singlePhase
