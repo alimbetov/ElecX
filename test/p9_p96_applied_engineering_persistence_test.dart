@@ -60,7 +60,8 @@ void main() {
       applied.requirementsFingerprint,
       proposal.output.requirementsFingerprint,
     );
-    expect(applied.panelSummary, proposal.output.panelSummary.stableSerialization);
+    expect(
+        applied.panelSummary, proposal.output.panelSummary.stableSerialization);
     expect(pipeline.callCount, 1);
   });
 
@@ -100,7 +101,8 @@ void main() {
     expect(session.generatePreview(), isTrue);
     expect(session.confirm(), isTrue);
     final aggregate = session.commitResult!.mutation.project;
-    final before = aggregate.engineeringMetadata.appliedEngineeringProposalRegistry
+    final before = aggregate
+        .engineeringMetadata.appliedEngineeringProposalRegistry
         .forLevel(fixture.target.levelId)!;
     final now = DateTime.utc(2026, 10, 27);
     final projectSnapshot = ProjectSnapshot(
@@ -110,11 +112,12 @@ void main() {
       updatedAt: now,
     );
 
-    const codec = AppliedEngineeringProposalAwareCanonicalProjectDocumentCodec();
+    const codec =
+        AppliedEngineeringProposalAwareCanonicalProjectDocumentCodec();
     final document = codec.encode(projectSnapshot);
     final decoded = codec.decode(document);
-    final after = decoded.aggregate.engineeringMetadata
-        .appliedEngineeringProposalRegistry
+    final after = decoded
+        .aggregate.engineeringMetadata.appliedEngineeringProposalRegistry
         .forLevel(fixture.target.levelId);
 
     expect(document.schemaVersion, 13);
@@ -122,7 +125,8 @@ void main() {
     expect(after!.sameAs(before), isTrue);
   });
 
-  test('Q100 v12 documents migrate with an explicit empty proposal registry', () {
+  test('Q100 v12 documents migrate with an explicit empty proposal registry',
+      () {
     final now = DateTime.utc(2026, 10, 27);
     final snapshot = ProjectSnapshot(
       aggregate: fixture.project,
@@ -133,7 +137,8 @@ void main() {
     const oldCodec = GenerationProvenanceAwareCanonicalProjectDocumentCodec();
     final oldDocument = oldCodec.encode(snapshot);
 
-    const newCodec = AppliedEngineeringProposalAwareCanonicalProjectDocumentCodec();
+    const newCodec =
+        AppliedEngineeringProposalAwareCanonicalProjectDocumentCodec();
     final decoded = newCodec.decode(oldDocument);
 
     expect(oldDocument.schemaVersion, 12);
