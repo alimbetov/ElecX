@@ -13,8 +13,22 @@ abstract final class ApartmentShortCircuitClosureEvidenceService {
     required ElectricalShortCircuitClosureRequest request,
     required ElectricalShortCircuitClosureResult closure,
   }) {
-    final protectionRequirement = _singleProtectionRequirement(requirements);
-    if (!protectionRequirement.factEvidence.containsKey('protection.overload')) {
+    final circuitRequirement = _singleRequirement(
+      requirements,
+      ApartmentEngineeringRequirementDomain.circuit,
+    );
+    final protectionRequirement = _singleRequirement(
+      requirements,
+      ApartmentEngineeringRequirementDomain.protection,
+    );
+    if (!circuitRequirement.factEvidence
+        .containsKey('circuit.conductorConstraints')) {
+      throw ArgumentError(
+        'D4 evidence requires prior D3 conductor-constraint evidence.',
+      );
+    }
+    if (!protectionRequirement.factEvidence
+        .containsKey('protection.overload')) {
       throw ArgumentError('D4 evidence requires prior D3 overload evidence.');
     }
     if (!closure.isFullyClosed) {
@@ -84,18 +98,16 @@ abstract final class ApartmentShortCircuitClosureEvidenceService {
     );
   }
 
-  static ApartmentEngineeringRequirement _singleProtectionRequirement(
+  static ApartmentEngineeringRequirement _singleRequirement(
     ApartmentEngineeringDesignRequirements requirements,
+    ApartmentEngineeringRequirementDomain domain,
   ) {
     final matches = requirements.requirements
-        .where(
-          (item) =>
-              item.domain == ApartmentEngineeringRequirementDomain.protection,
-        )
+        .where((item) => item.domain == domain)
         .toList(growable: false);
     if (matches.length != 1) {
       throw StateError(
-        'P9.5-A must contain exactly one protection requirement; found '
+        'P9.5-A must contain exactly one ${domain.name} requirement; found '
         '${matches.length}.',
       );
     }
@@ -117,7 +129,20 @@ abstract final class ApartmentShortCircuitClosureEvidenceService {
     final policy = outcome.policy;
     final timeCurrent = policy.timeCurrentEvidence!;
     final thermal = policy.thermalEvidence!;
+    final device = outcome.d3Outcome.selectedProtection!;
+    final cableCandidate = outcome.d3Outcome.selectedCable!;
     return p9CanonicalSerializeFields([
+      MapEntry('d3CableId', cableCandidate.cable.id),
+      MapEntry('d3CableSourceId', cableCandidate.sourceId),
+      MapEntry('d3CableSourceRevision', cableCandidate.sourceRevision),
+      MapEntry('d3DeviceId', device.id),
+      MapEntry('d3DeviceSourceId', device.sourceId),
+      MapEntry('d3DeviceSourceRevision', device.sourceRevision),
+      MapEntry('d3PolicySourceId', outcome.d3Outcome.policy.sourceId),
+      MapEntry(
+        'd3PolicySourceRevision',
+        outcome.d3Outcome.policy.sourceRevision,
+      ),
       MapEntry('policySourceId', policy.sourceId),
       MapEntry('policySourceRevision', policy.sourceRevision),
       MapEntry(
@@ -199,6 +224,11 @@ abstract final class ApartmentShortCircuitClosureEvidenceService {
           outcome.circuitId,
           p9CanonicalSerializeFields([
             MapEntry('deviceId', outcome.d3Outcome.selectedProtection!.id),
+            MapEntry(
+              'breakingCapacityKa',
+              outcome.d3Outcome.selectedProtection!.breakingCapacityKa
+                  .toString(),
+            ),
             MapEntry('cableId', outcome.d3Outcome.selectedCable!.cable.id),
             MapEntry(
               'd3ProspectiveShortCircuitCurrentA',
@@ -301,6 +331,10 @@ abstract final class ApartmentShortCircuitClosureEvidenceService {
       p9CanonicalSerializeFields([
         MapEntry('policy', _nullablePolicySerialization(outcome)),
         MapEntry('d3DeviceId', outcome.d3Outcome.selectedProtection!.id),
+        MapEntry(
+          'd3DeviceIcnKa',
+          outcome.d3Outcome.selectedProtection!.breakingCapacityKa.toString(),
+        ),
         MapEntry('d3CableId', outcome.d3Outcome.selectedCable!.cable.id),
         MapEntry(
           'd3ProspectiveShortCircuitCurrentA',
@@ -310,7 +344,10 @@ abstract final class ApartmentShortCircuitClosureEvidenceService {
           'disconnectionFault',
           _faultResultSerialization(outcome.disconnectionFault),
         ),
-        MapEntry('thermalFault', _faultResultSerialization(outcome.thermalFault)),
+        MapEntry(
+          'thermalFault',
+          _faultResultSerialization(outcome.thermalFault),
+        ),
         MapEntry(
           'disconnectionOperatingTimeS',
           outcome.disconnectionOperatingTimeS?.toString() ?? 'none',
@@ -319,7 +356,10 @@ abstract final class ApartmentShortCircuitClosureEvidenceService {
           'thermalOperatingTimeS',
           outcome.thermalOperatingTimeS?.toString() ?? 'none',
         ),
-        MapEntry('faultEnergyA2s', outcome.faultEnergyA2s?.toString() ?? 'none'),
+        MapEntry(
+          'faultEnergyA2s',
+          outcome.faultEnergyA2s?.toString() ?? 'none',
+        ),
         MapEntry(
           'thermalCapacityA2s',
           outcome.thermalCapacityA2s?.toString() ?? 'none',
