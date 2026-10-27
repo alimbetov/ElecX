@@ -12,7 +12,8 @@ final class ApartmentEngineeringPipelineRuntimeRegistry {
   ApartmentEngineeringPipelineRuntimeRegistry._();
 
   static final Expando<ApartmentEngineeringPipeline> _pipelines =
-      Expando<ApartmentEngineeringPipeline>('p9-apartment-engineering-pipeline');
+      Expando<ApartmentEngineeringPipeline>(
+          'p9-apartment-engineering-pipeline');
 
   static void bind({
     required ProjectAggregateRoot project,
