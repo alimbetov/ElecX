@@ -4,7 +4,7 @@ import 'p9_canonical_serialization.dart';
 import 'p9_failure.dart';
 import 'p9_sha256.dart';
 
-const String apartmentEngineeringRequirementsVersion = 'p9.requirements.v2';
+const String apartmentEngineeringRequirementsVersion = 'p9.requirements.v3';
 
 enum ApartmentEngineeringRequirementDomain {
   supply,
@@ -432,6 +432,7 @@ final class ApartmentEngineeringRequirementsService {
             'load.designCurrentA',
             'load.designPowerW',
             'load.diversityPolicy',
+            'load.reservePolicy',
           ],
         ),
         _unresolvedRequirement(
