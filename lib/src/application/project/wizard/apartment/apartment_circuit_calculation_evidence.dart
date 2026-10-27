@@ -87,6 +87,9 @@ abstract final class ApartmentCircuitCalculationEvidenceService {
 
   static String _definitionEvidence(ElectricalPhaseAssignmentResult result) =>
       p9CanonicalSerializeFields([
+        MapEntry('boardPhaseSystem', result.boardPhaseSystem.name),
+        MapEntry('lineNeutralVoltageV', result.lineNeutralVoltageV.toString()),
+        MapEntry('lineLineVoltageV', result.lineLineVoltageV?.toString() ?? 'n/a'),
         for (final assigned in result.circuits)
           MapEntry(
             assigned.id,
@@ -126,7 +129,8 @@ abstract final class ApartmentCircuitCalculationEvidenceService {
       ]);
 
   static String _assignmentEvidence(
-          ElectricalCircuitCalculationResult result) =>
+    ElectricalCircuitCalculationResult result,
+  ) =>
       p9CanonicalSerializeFields([
         for (final calculated in result.circuits)
           MapEntry(calculated.id, calculated.circuit.loadIds.join(',')),
@@ -155,7 +159,10 @@ abstract final class ApartmentCircuitCalculationEvidenceService {
       );
     }
     final expected = PhaseAssignmentEngine.assign(assignmentRequest);
-    if (expected.circuits.length != assignment.circuits.length ||
+    if (expected.boardPhaseSystem != assignment.boardPhaseSystem ||
+        expected.lineNeutralVoltageV != assignment.lineNeutralVoltageV ||
+        expected.lineLineVoltageV != assignment.lineLineVoltageV ||
+        expected.circuits.length != assignment.circuits.length ||
         expected.phaseLoads.length != assignment.phaseLoads.length ||
         expected.maxPhaseCurrentA != assignment.maxPhaseCurrentA ||
         expected.phaseCurrentImbalanceRatio !=
