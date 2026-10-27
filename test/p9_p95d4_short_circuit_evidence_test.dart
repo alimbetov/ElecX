@@ -1,3 +1,4 @@
+import 'package:elecx/src/application/project/wizard/apartment/apartment_circuit_closure_evidence.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_requirements.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_short_circuit_closure_evidence.dart';
 import 'package:elecx/src/domain/cable_spec.dart';
@@ -111,6 +112,20 @@ void main() {
     test('Q40 D4 cannot bypass missing D3 conductor evidence', () {
       final fixture = _fixture();
       final requirements = _requirementsAfterD3(includeConductor: false);
+
+      expect(
+        () => ApartmentShortCircuitClosureEvidenceService.apply(
+          requirements: requirements,
+          request: fixture.request,
+          closure: fixture.closure,
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('Q45 stale D3 evidence cannot be rebound to another D4 request', () {
+      final fixture = _fixture();
+      final requirements = _requirementsAfterD3(staleLineage: true);
 
       expect(
         () => ApartmentShortCircuitClosureEvidenceService.apply(
@@ -301,93 +316,111 @@ ElectricalCircuitCalculationResult _calculation() {
 ApartmentEngineeringDesignRequirements _requirementsAfterD3({
   bool includeOverload = true,
   bool includeConductor = true,
-}) =>
-    ApartmentEngineeringDesignRequirements(
-      requirementsVersion: apartmentEngineeringRequirementsVersion,
-      selectedCandidateFingerprint: 'candidate-fp',
-      projectionFingerprint: 'projection-fp',
-      graphFingerprint: 'graph-fp',
-      placementFingerprint: 'placement-fp',
-      normativeEvidenceFingerprint: 'normative-fp',
-      normativeProfileId: 'kz.residential.lv',
-      normativeProfileVersion: '2026.1',
-      requirements: [
-        _unresolved(
-          id: 'supply',
-          domain: ApartmentEngineeringRequirementDomain.supply,
-          criticality:
-              ApartmentEngineeringRequirementCriticality.safetyCritical,
-          facts: const [
-            'supply.availablePowerW',
-            'supply.frequencyHz',
-            'supply.phaseCount',
-            'supply.prospectiveShortCircuitCurrentA',
-            'supply.voltageV',
-          ],
-        ),
-        _unresolved(
-          id: 'load',
-          domain: ApartmentEngineeringRequirementDomain.load,
-          criticality:
-              ApartmentEngineeringRequirementCriticality.engineeringCritical,
-          facts: const [
-            'load.connectedPowerW',
-            'load.designCurrentA',
-            'load.designPowerW',
-            'load.diversityPolicy',
-            'load.reservePolicy',
-          ],
-        ),
-        ApartmentEngineeringRequirement(
-          requirementId: 'req-circuit',
-          domain: ApartmentEngineeringRequirementDomain.circuit,
-          subjectKind: ApartmentEngineeringRequirementSubjectKind.projection,
-          subjectStableId: 'projection-fp',
-          evidenceState:
-              ApartmentEngineeringRequirementEvidenceState.indeterminate,
-          criticality:
-              ApartmentEngineeringRequirementCriticality.engineeringCritical,
-          rationaleCode: 'qualification.circuit-d3',
-          requiredFactKeys: const [
-            'circuit.conductorConstraints',
-            'circuit.definition',
-            'circuit.installationMethod',
+  bool staleLineage = false,
+}) {
+  final d3 = _d3Closure();
+  final conductorValue =
+      ApartmentCircuitClosureEvidenceService.conductorEvidenceValue(d3);
+  final overloadValue =
+      ApartmentCircuitClosureEvidenceService.overloadEvidenceValue(d3);
+  return ApartmentEngineeringDesignRequirements(
+    requirementsVersion: apartmentEngineeringRequirementsVersion,
+    selectedCandidateFingerprint: 'candidate-fp',
+    projectionFingerprint: 'projection-fp',
+    graphFingerprint: 'graph-fp',
+    placementFingerprint: 'placement-fp',
+    normativeEvidenceFingerprint: 'normative-fp',
+    normativeProfileId: 'kz.residential.lv',
+    normativeProfileVersion: '2026.1',
+    requirements: [
+      _unresolved(
+        id: 'supply',
+        domain: ApartmentEngineeringRequirementDomain.supply,
+        criticality:
+            ApartmentEngineeringRequirementCriticality.safetyCritical,
+        facts: const [
+          'supply.availablePowerW',
+          'supply.frequencyHz',
+          'supply.phaseCount',
+          'supply.prospectiveShortCircuitCurrentA',
+          'supply.voltageV',
+        ],
+      ),
+      _unresolved(
+        id: 'load',
+        domain: ApartmentEngineeringRequirementDomain.load,
+        criticality:
+            ApartmentEngineeringRequirementCriticality.engineeringCritical,
+        facts: const [
+          'load.connectedPowerW',
+          'load.designCurrentA',
+          'load.designPowerW',
+          'load.diversityPolicy',
+          'load.reservePolicy',
+        ],
+      ),
+      ApartmentEngineeringRequirement(
+        requirementId: 'req-circuit',
+        domain: ApartmentEngineeringRequirementDomain.circuit,
+        subjectKind: ApartmentEngineeringRequirementSubjectKind.projection,
+        subjectStableId: 'projection-fp',
+        evidenceState:
+            ApartmentEngineeringRequirementEvidenceState.indeterminate,
+        criticality:
+            ApartmentEngineeringRequirementCriticality.engineeringCritical,
+        rationaleCode: 'qualification.circuit-d3',
+        requiredFactKeys: const [
+          'circuit.conductorConstraints',
+          'circuit.definition',
+          'circuit.installationMethod',
+          'circuit.loadAssignments',
+        ],
+        factEvidence: [
+          _fact('circuit.definition', 'qualification-circuit.definition'),
+          _fact(
             'circuit.loadAssignments',
-          ],
-          factEvidence: [
-            _fact('circuit.definition'),
-            _fact('circuit.loadAssignments'),
-            if (includeConductor) _fact('circuit.conductorConstraints'),
-          ],
-        ),
-        ApartmentEngineeringRequirement(
-          requirementId: 'req-protection',
-          domain: ApartmentEngineeringRequirementDomain.protection,
-          subjectKind: ApartmentEngineeringRequirementSubjectKind.projection,
-          subjectStableId: 'projection-fp',
-          evidenceState:
-              ApartmentEngineeringRequirementEvidenceState.indeterminate,
-          criticality:
-              ApartmentEngineeringRequirementCriticality.safetyCritical,
-          rationaleCode: 'qualification.protection-d3',
-          requiredFactKeys: const [
-            'protection.disconnection',
-            'protection.overload',
-            'protection.residualCurrent',
-            'protection.shortCircuit',
-          ],
-          factEvidence: [
-            if (includeOverload) _fact('protection.overload'),
-          ],
-        ),
-      ],
-    );
+            'qualification-circuit.loadAssignments',
+          ),
+          if (includeConductor)
+            _fact(
+              'circuit.conductorConstraints',
+              staleLineage ? 'stale-conductor-evidence' : conductorValue,
+            ),
+        ],
+      ),
+      ApartmentEngineeringRequirement(
+        requirementId: 'req-protection',
+        domain: ApartmentEngineeringRequirementDomain.protection,
+        subjectKind: ApartmentEngineeringRequirementSubjectKind.projection,
+        subjectStableId: 'projection-fp',
+        evidenceState:
+            ApartmentEngineeringRequirementEvidenceState.indeterminate,
+        criticality:
+            ApartmentEngineeringRequirementCriticality.safetyCritical,
+        rationaleCode: 'qualification.protection-d3',
+        requiredFactKeys: const [
+          'protection.disconnection',
+          'protection.overload',
+          'protection.residualCurrent',
+          'protection.shortCircuit',
+        ],
+        factEvidence: [
+          if (includeOverload)
+            _fact(
+              'protection.overload',
+              staleLineage ? 'stale-overload-evidence' : overloadValue,
+            ),
+        ],
+      ),
+    ],
+  );
+}
 
-ApartmentEngineeringFactEvidence _fact(String key) =>
+ApartmentEngineeringFactEvidence _fact(String key, String value) =>
     ApartmentEngineeringFactEvidence(
       factKey: key,
       valueKind: ApartmentEngineeringFactValueKind.text,
-      value: 'qualification-$key',
+      value: value,
       unit: ApartmentEngineeringFactUnit.code,
       sourceId: 'qualification',
       sourceRevision: 'r1',
