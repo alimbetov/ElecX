@@ -1,4 +1,5 @@
 import '../domain/electrical_circuit_synthesis.dart';
+import '../domain/electrical_load_calculation.dart';
 
 /// Deterministic policy-driven circuit synthesis.
 ///
@@ -186,7 +187,7 @@ final class _CircuitDraft {
     this.dedicatedRuleId,
   });
 
-  final dynamic phaseSystem;
+  final ElectricalLoadPhaseSystem phaseSystem;
   final List<CircuitSynthesisLoad> loads;
   final String? dedicatedRuleId;
 }
