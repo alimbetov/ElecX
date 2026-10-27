@@ -151,7 +151,10 @@ void main() {
         ),
       );
 
-      expect(() => CircuitGroupingEngine.synthesize(request), throwsArgumentError);
+      expect(
+        () => CircuitGroupingEngine.synthesize(request),
+        throwsArgumentError,
+      );
     });
 
     test('Q47 ambiguous dedicated rules fail closed without hidden priority', () {
@@ -252,6 +255,7 @@ CableSpec _cable() => CableSpec(
 FaultLoopCaseEvidence _faultCase(String id, double sourceResistanceOhm) =>
     FaultLoopCaseEvidence(
       id: id,
+      cableId: 'cable-2.5',
       faultVoltageV: 230,
       sourceResistanceOhm: sourceResistanceOhm,
       sourceReactanceOhm: 0,
