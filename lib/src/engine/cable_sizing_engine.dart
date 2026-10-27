@@ -133,6 +133,8 @@ final class CableSizingResult {
 
 abstract final class CableSizingEngine {
   static CableSizingResult evaluate(CableSizingRequest request) {
+    _validateRequest(request);
+
     final impedance = request.impedanceEvidence;
     final ampacitySections = request.ampacitySections;
 
@@ -183,6 +185,79 @@ abstract final class CableSizingEngine {
       ampacitySourceKey: governing?.sourceKey,
       impedanceSourceKey: impedance?.sourceKey,
     );
+  }
+
+  static void _validateRequest(CableSizingRequest request) {
+    final requirement = request.requirement;
+    if (!requirement.designCurrentA.isFinite || requirement.designCurrentA <= 0) {
+      throw ArgumentError.value(requirement.designCurrentA, 'designCurrentA');
+    }
+    if (!requirement.nominalVoltageV.isFinite ||
+        requirement.nominalVoltageV <= 0) {
+      throw ArgumentError.value(requirement.nominalVoltageV, 'nominalVoltageV');
+    }
+    if (!requirement.routeLengthMm.isFinite || requirement.routeLengthMm < 0) {
+      throw ArgumentError.value(requirement.routeLengthMm, 'routeLengthMm');
+    }
+    if (!requirement.maxVoltageDropRatio.isFinite ||
+        requirement.maxVoltageDropRatio <= 0 ||
+        requirement.maxVoltageDropRatio >= 1) {
+      throw ArgumentError.value(
+        requirement.maxVoltageDropRatio,
+        'maxVoltageDropRatio',
+      );
+    }
+    if (!requirement.powerFactor.isFinite ||
+        requirement.powerFactor <= 0 ||
+        requirement.powerFactor > 1) {
+      throw ArgumentError.value(requirement.powerFactor, 'powerFactor');
+    }
+
+    final impedance = request.impedanceEvidence;
+    if (impedance != null &&
+        (!impedance.resistanceOhmPerKm.isFinite ||
+            impedance.resistanceOhmPerKm < 0 ||
+            !impedance.reactanceOhmPerKm.isFinite ||
+            impedance.reactanceOhmPerKm < 0)) {
+      throw ArgumentError(
+        'Cable impedance evidence must be finite and non-negative.',
+      );
+    }
+
+    final sectionIds = <String>{};
+    for (final section in request.ampacitySections) {
+      if (section.sectionId.trim().isEmpty) {
+        throw ArgumentError('Ampacity section id must be non-empty.');
+      }
+      if (!sectionIds.add(section.sectionId)) {
+        throw ArgumentError('Duplicate ampacity section ${section.sectionId}.');
+      }
+      if (!section.baseAmpacityA.isFinite || section.baseAmpacityA <= 0) {
+        throw ArgumentError.value(section.baseAmpacityA, 'baseAmpacityA');
+      }
+      final factorIds = <String>{};
+      for (final factor in section.factors) {
+        if (factor.id.trim().isEmpty) {
+          throw ArgumentError('Thermal correction factor id must be non-empty.');
+        }
+        if (!factorIds.add(factor.id)) {
+          throw ArgumentError(
+            'Duplicate thermal correction factor ${factor.id} on '
+            '${section.sectionId}.',
+          );
+        }
+        if (!factor.factor.isFinite || factor.factor <= 0) {
+          throw ArgumentError.value(factor.factor, 'thermalCorrectionFactor');
+        }
+      }
+      final adjusted = section.adjustedAmpacityA;
+      if (!adjusted.isFinite || adjusted <= 0) {
+        throw ArgumentError(
+          'Adjusted ampacity must be finite and positive for '
+          '${section.sectionId}.',
+        );
+      }
+    }
   }
 
   static EngineeringCheckStatus _currentStatus(
