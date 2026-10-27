@@ -37,17 +37,20 @@ void main() {
           'circuit.conductorConstraints',
         ]),
       );
-      expect(circuit.factEvidence, isNot(contains('circuit.installationMethod')));
+      expect(
+          circuit.factEvidence, isNot(contains('circuit.installationMethod')));
       expect(
         protection.factEvidence.keys,
         contains('protection.overload'),
       );
-      expect(protection.factEvidence, isNot(contains('protection.shortCircuit')));
+      expect(
+          protection.factEvidence, isNot(contains('protection.shortCircuit')));
       expect(
         protection.factEvidence,
         isNot(contains('protection.residualCurrent')),
       );
-      expect(protection.factEvidence, isNot(contains('protection.disconnection')));
+      expect(
+          protection.factEvidence, isNot(contains('protection.disconnection')));
       expect(circuit.blocksEquipmentConfiguration, isTrue);
       expect(protection.blocksEquipmentConfiguration, isTrue);
       expect(updated.readyForEquipmentConfiguration, isFalse);
@@ -85,7 +88,8 @@ void main() {
       );
     });
 
-    test('Q24 incomplete circuit closure cannot publish projection evidence', () {
+    test('Q24 incomplete circuit closure cannot publish projection evidence',
+        () {
       final calculation = _calculation();
       final request = ElectricalCircuitClosureRequest(
         calculation: calculation,
