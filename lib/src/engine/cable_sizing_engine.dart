@@ -228,10 +228,7 @@ abstract final class CableSizingEngine {
 
     // A leading load may turn the approximation into voltage rise. The sizing
     // constraint is the magnitude of voltage deviation, so compare |ΔU|.
-    return (multiplier *
-            requirement.designCurrentA *
-            lengthKm *
-            impedanceTerm)
+    return (multiplier * requirement.designCurrentA * lengthKm * impedanceTerm)
         .abs();
   }
 }
