@@ -31,7 +31,8 @@ abstract final class OvercurrentProtectionSelectionEngine {
       }
       if (candidate.breakingCapacityKa * 1000 <
           request.prospectiveShortCircuitCurrentA) {
-        reasons.add('breaking-capacity-below-prospective-short-circuit-current');
+        reasons
+            .add('breaking-capacity-below-prospective-short-circuit-current');
       }
 
       if (reasons.isEmpty) {
