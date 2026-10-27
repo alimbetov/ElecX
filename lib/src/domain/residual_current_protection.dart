@@ -115,12 +115,15 @@ final class ResidualCurrentProtectiveDeviceSpec {
 /// Source-pinned normative applicability and selection policy for one circuit.
 ///
 /// D5 intentionally has no residential defaults. 30 mA, Type A and even RCD
-/// applicability are never inferred by this model.
+/// applicability are never inferred by this model. [evaluatedLoadIds] binds the
+/// normative decision to the exact load set that exists in the D3/D4 circuit,
+/// so a stale policy cannot be replayed after circuit composition changes.
 final class ResidualCurrentProtectionPolicy {
   ResidualCurrentProtectionPolicy({
     required this.circuitId,
     required this.applicability,
     required this.rationaleCode,
+    required Iterable<String> evaluatedLoadIds,
     required Iterable<String> applicabilityEvidenceIds,
     required Iterable<String> loadCharacteristicEvidenceIds,
     required this.maximumResidualOperatingCurrentMa,
@@ -133,7 +136,10 @@ final class ResidualCurrentProtectionPolicy {
     required Iterable<ResidualCurrentProtectiveDeviceSpec> candidates,
     required this.sourceId,
     required this.sourceRevision,
-  })  : applicabilityEvidenceIds = List.unmodifiable(
+  })  : evaluatedLoadIds = List.unmodifiable(
+          evaluatedLoadIds.toSet().toList()..sort(),
+        ),
+        applicabilityEvidenceIds = List.unmodifiable(
           applicabilityEvidenceIds.toSet().toList()..sort(),
         ),
         loadCharacteristicEvidenceIds = List.unmodifiable(
@@ -150,6 +156,12 @@ final class ResidualCurrentProtectionPolicy {
         sourceRevision.trim().isEmpty) {
       throw ArgumentError(
         'Residual-current policy identity/rationale/source must be non-empty.',
+      );
+    }
+    if (this.evaluatedLoadIds.isEmpty ||
+        this.evaluatedLoadIds.any((value) => value.trim().isEmpty)) {
+      throw ArgumentError(
+        'Residual-current policy requires the exact non-empty circuit load set.',
       );
     }
     if (this.applicabilityEvidenceIds.isEmpty ||
@@ -232,6 +244,7 @@ final class ResidualCurrentProtectionPolicy {
   final String circuitId;
   final ResidualCurrentApplicability applicability;
   final String rationaleCode;
+  final List<String> evaluatedLoadIds;
   final List<String> applicabilityEvidenceIds;
   final List<String> loadCharacteristicEvidenceIds;
   final double? maximumResidualOperatingCurrentMa;
