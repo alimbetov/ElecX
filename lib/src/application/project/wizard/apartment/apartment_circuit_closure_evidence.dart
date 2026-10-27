@@ -50,7 +50,7 @@ abstract final class ApartmentCircuitClosureEvidenceService {
       fact: ApartmentEngineeringFactEvidence(
         factKey: 'circuit.conductorConstraints',
         valueKind: ApartmentEngineeringFactValueKind.text,
-        value: _conductorEvidence(closure),
+        value: conductorEvidenceValue(closure),
         unit: ApartmentEngineeringFactUnit.code,
         sourceId: electricalCircuitClosureVersion,
         sourceRevision: sourceRevision,
@@ -63,7 +63,7 @@ abstract final class ApartmentCircuitClosureEvidenceService {
       fact: ApartmentEngineeringFactEvidence(
         factKey: 'protection.overload',
         valueKind: ApartmentEngineeringFactValueKind.text,
-        value: _overloadEvidence(closure),
+        value: overloadEvidenceValue(closure),
         unit: ApartmentEngineeringFactUnit.code,
         sourceId: electricalCircuitClosureVersion,
         sourceRevision: sourceRevision,
@@ -90,6 +90,28 @@ abstract final class ApartmentCircuitClosureEvidenceService {
             item,
       ],
     );
+  }
+
+  /// Canonical D3 conductor evidence used by downstream stages to prove exact
+  /// lineage instead of checking only that a D3 fact happens to be present.
+  static String conductorEvidenceValue(ElectricalCircuitClosureResult closure) {
+    final outcomes = closure.outcomes.toList()
+      ..sort((left, right) => left.circuitId.compareTo(right.circuitId));
+    return p9CanonicalSerializeFields([
+      for (final outcome in outcomes)
+        MapEntry(outcome.circuitId, _conductorOutcome(outcome)),
+    ]);
+  }
+
+  /// Canonical D3 overload evidence used by downstream stages to prove exact
+  /// lineage against the selected cable and protective device.
+  static String overloadEvidenceValue(ElectricalCircuitClosureResult closure) {
+    final outcomes = closure.outcomes.toList()
+      ..sort((left, right) => left.circuitId.compareTo(right.circuitId));
+    return p9CanonicalSerializeFields([
+      for (final outcome in outcomes)
+        MapEntry(outcome.circuitId, _overloadOutcome(outcome)),
+    ]);
   }
 
   static ApartmentEngineeringRequirement _singleRequirement(
@@ -145,15 +167,6 @@ abstract final class ApartmentCircuitClosureEvidenceService {
     ]);
   }
 
-  static String _conductorEvidence(ElectricalCircuitClosureResult closure) {
-    final outcomes = closure.outcomes.toList()
-      ..sort((left, right) => left.circuitId.compareTo(right.circuitId));
-    return p9CanonicalSerializeFields([
-      for (final outcome in outcomes)
-        MapEntry(outcome.circuitId, _conductorOutcome(outcome)),
-    ]);
-  }
-
   static String _conductorOutcome(ElectricalCircuitClosureOutcome outcome) {
     final candidate = outcome.selectedCable!;
     final cable = candidate.cable;
@@ -178,20 +191,13 @@ abstract final class ApartmentCircuitClosureEvidenceService {
       MapEntry('voltageDropRatio', sizing.voltageDropRatio!.toString()),
       MapEntry('ampacitySourceKey', sizing.ampacitySourceKey ?? 'unspecified'),
       MapEntry(
-          'impedanceSourceKey', sizing.impedanceSourceKey ?? 'unspecified'),
+        'impedanceSourceKey',
+        sizing.impedanceSourceKey ?? 'unspecified',
+      ),
       MapEntry('candidateSourceId', candidate.sourceId),
       MapEntry('candidateSourceRevision', candidate.sourceRevision),
       MapEntry('policySourceId', outcome.policy.sourceId),
       MapEntry('policySourceRevision', outcome.policy.sourceRevision),
-    ]);
-  }
-
-  static String _overloadEvidence(ElectricalCircuitClosureResult closure) {
-    final outcomes = closure.outcomes.toList()
-      ..sort((left, right) => left.circuitId.compareTo(right.circuitId));
-    return p9CanonicalSerializeFields([
-      for (final outcome in outcomes)
-        MapEntry(outcome.circuitId, _overloadOutcome(outcome)),
     ]);
   }
 
@@ -300,7 +306,9 @@ abstract final class ApartmentCircuitClosureEvidenceService {
         selectedProtection?.poleCount.toString() ?? 'none',
       ),
       MapEntry(
-          'selectedDeviceSourceId', selectedProtection?.sourceId ?? 'none'),
+        'selectedDeviceSourceId',
+        selectedProtection?.sourceId ?? 'none',
+      ),
       MapEntry(
         'selectedDeviceSourceRevision',
         selectedProtection?.sourceRevision ?? 'none',
