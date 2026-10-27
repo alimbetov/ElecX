@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'distribution_board_load.dart';
 import 'electrical_circuit_calculation.dart';
+import 'electrical_load_calculation.dart';
 
 final class ElectricalPhaseAssignmentRequest {
   ElectricalPhaseAssignmentRequest({
