@@ -4,14 +4,12 @@ import '../domain/electrical_phase_assignment.dart';
 
 /// Converts calculated/assigned circuits into the existing board-load contract.
 ///
-/// This is intentionally a projection only. Board capacity and imbalance remain
-/// owned by [DistributionBoardLoadEngine].
+/// Board phase system and voltages are taken from the assignment result itself,
+/// preventing downstream callers from silently projecting the same assignments
+/// against a different supply system.
 abstract final class PhaseAssignmentBoardProjection {
   static DistributionBoardLoadRequest toBoardRequest({
     required ElectricalPhaseAssignmentResult assignment,
-    required DistributionBoardPhaseSystem boardPhaseSystem,
-    required double lineNeutralVoltageV,
-    double? lineLineVoltageV,
     double? availablePowerW,
     double? supplyMaxCurrentA,
   }) {
@@ -37,9 +35,9 @@ abstract final class PhaseAssignmentBoardProjection {
     }
 
     return DistributionBoardLoadRequest(
-      phaseSystem: boardPhaseSystem,
-      lineNeutralVoltageV: lineNeutralVoltageV,
-      lineLineVoltageV: lineLineVoltageV,
+      phaseSystem: assignment.boardPhaseSystem,
+      lineNeutralVoltageV: assignment.lineNeutralVoltageV,
+      lineLineVoltageV: assignment.lineLineVoltageV,
       circuits: circuits,
       availablePowerW: availablePowerW,
       supplyMaxCurrentA: supplyMaxCurrentA,
