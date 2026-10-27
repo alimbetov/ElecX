@@ -28,9 +28,13 @@ void main() {
         ],
       );
 
-      final outcome = ResidualCurrentProtectionEngine.close(request).outcomes.single;
+      final outcome =
+          ResidualCurrentProtectionEngine.close(request).outcomes.single;
 
-      expect(outcome.status, ResidualCurrentClosureStatus.closedRequiredWithDevice);
+      expect(
+        outcome.status,
+        ResidualCurrentClosureStatus.closedRequiredWithDevice,
+      );
       expect(outcome.selectedDevice!.id, 'rcd-a-30');
       expect(outcome.selectedDevice!.residualType, ResidualCurrentType.a);
       expect(outcome.selectedDevice!.residualOperatingCurrentMa, 30);
@@ -65,7 +69,8 @@ void main() {
         ],
       );
 
-      final outcome = ResidualCurrentProtectionEngine.close(request).outcomes.single;
+      final outcome =
+          ResidualCurrentProtectionEngine.close(request).outcomes.single;
 
       expect(outcome.selectedDevice!.id, 'rcd-ac-100');
       expect(outcome.selectedDevice!.residualType, ResidualCurrentType.ac);
@@ -94,7 +99,8 @@ void main() {
         ],
       );
 
-      final outcome = ResidualCurrentProtectionEngine.close(request).outcomes.single;
+      final outcome =
+          ResidualCurrentProtectionEngine.close(request).outcomes.single;
 
       expect(outcome.selectedDevice!.id, 'rcd-b');
       expect(
@@ -112,7 +118,8 @@ void main() {
         policies: [_notRequiredPolicy()],
       );
 
-      final outcome = ResidualCurrentProtectionEngine.close(request).outcomes.single;
+      final outcome =
+          ResidualCurrentProtectionEngine.close(request).outcomes.single;
 
       expect(outcome.status, ResidualCurrentClosureStatus.closedNotRequired);
       expect(outcome.selectedDevice, isNull);
@@ -146,7 +153,8 @@ void main() {
         ],
       );
 
-      final outcome = ResidualCurrentProtectionEngine.close(request).outcomes.single;
+      final outcome =
+          ResidualCurrentProtectionEngine.close(request).outcomes.single;
 
       expect(outcome.status, ResidualCurrentClosureStatus.noCompliantDevice);
       expect(
@@ -171,7 +179,8 @@ void main() {
         ],
       );
 
-      final outcome = ResidualCurrentProtectionEngine.close(request).outcomes.single;
+      final outcome =
+          ResidualCurrentProtectionEngine.close(request).outcomes.single;
 
       expect(outcome.status, ResidualCurrentClosureStatus.noCompliantDevice);
       expect(
@@ -198,7 +207,8 @@ void main() {
         ],
       );
 
-      final outcome = ResidualCurrentProtectionEngine.close(request).outcomes.single;
+      final outcome =
+          ResidualCurrentProtectionEngine.close(request).outcomes.single;
       final reasons = outcome.evaluations.single.rejections;
 
       expect(
@@ -229,7 +239,8 @@ void main() {
         ],
       );
 
-      final outcome = ResidualCurrentProtectionEngine.close(request).outcomes.single;
+      final outcome =
+          ResidualCurrentProtectionEngine.close(request).outcomes.single;
 
       expect(outcome.status, ResidualCurrentClosureStatus.noCompliantDevice);
       expect(
@@ -255,7 +266,8 @@ void main() {
         ],
       );
 
-      final outcome = ResidualCurrentProtectionEngine.close(request).outcomes.single;
+      final outcome =
+          ResidualCurrentProtectionEngine.close(request).outcomes.single;
 
       expect(outcome.isClosed, isTrue);
       expect(outcome.selectedDevice!.kind, ResidualCurrentDeviceKind.rcbo);
@@ -304,6 +316,7 @@ void main() {
           circuitId: 'circuit-001',
           applicability: ResidualCurrentApplicability.required,
           rationaleCode: 'qualification.required',
+          evaluatedLoadIds: const ['load-a'],
           applicabilityEvidenceIds: const ['norm-rule'],
           loadCharacteristicEvidenceIds: const [],
           maximumResidualOperatingCurrentMa: 30,
@@ -317,6 +330,21 @@ void main() {
           candidates: const [],
           sourceId: 'norm-profile',
           sourceRevision: 'r1',
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('Q61B stale D5 normative policy load set fails closed', () {
+      final d4 = _d4Closure();
+      expect(
+        () => ElectricalResidualCurrentClosureRequest(
+          d4Closure: d4,
+          policies: [
+            _requiredPolicy(
+              evaluatedLoadIds: const ['different-load'],
+            ),
+          ],
         ),
         throwsArgumentError,
       );
@@ -389,6 +417,7 @@ ResidualCurrentProtectiveDeviceSpec _rcbo({
     );
 
 ResidualCurrentProtectionPolicy _requiredPolicy({
+  List<String> evaluatedLoadIds = const ['load-a'],
   double maximumResidualOperatingCurrentMa = 30,
   Set<ResidualCurrentType> allowedTypes = const {ResidualCurrentType.a},
   List<ResidualCurrentType> preferredTypes = const [ResidualCurrentType.a],
@@ -406,6 +435,7 @@ ResidualCurrentProtectionPolicy _requiredPolicy({
       circuitId: 'circuit-001',
       applicability: ResidualCurrentApplicability.required,
       rationaleCode: 'qualification.rcd-required',
+      evaluatedLoadIds: evaluatedLoadIds,
       applicabilityEvidenceIds: const ['norm-applicability-rule'],
       loadCharacteristicEvidenceIds: const ['load-characteristic-evidence'],
       maximumResidualOperatingCurrentMa: maximumResidualOperatingCurrentMa,
@@ -425,6 +455,7 @@ ResidualCurrentProtectionPolicy _notRequiredPolicy() =>
       circuitId: 'circuit-001',
       applicability: ResidualCurrentApplicability.notRequired,
       rationaleCode: 'qualification.rcd-not-required',
+      evaluatedLoadIds: const ['load-a'],
       applicabilityEvidenceIds: const ['norm-not-applicable-rule'],
       loadCharacteristicEvidenceIds: const [],
       maximumResidualOperatingCurrentMa: null,
