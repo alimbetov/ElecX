@@ -1,5 +1,6 @@
 import '../../../../domain/overcurrent_protection.dart';
 import '../../../../domain/protective_device_coordination.dart';
+import '../../../../domain/residual_current_protection.dart';
 import '../../../../engine/protective_device_coordination_engine.dart';
 import '../../../../engine/residual_current_protection_engine.dart';
 import 'apartment_engineering_requirements.dart';
@@ -10,11 +11,12 @@ const String apartmentEngineeringRequirementsVersionV5 = 'p9.requirements.v5';
 
 /// Publishes exact manufacturer/source-pinned protection coordination evidence.
 ///
-/// D6 never infers selectivity from breaker curve letters or nominal-current
-/// ordering. A required circuit closes only when the exact D3 downstream device
-/// and explicit upstream device are covered by source evidence that is either
-/// total-selectivity evidence or has a current limit >= the D3 prospective
-/// short-circuit current.
+/// D6 closes two independent coordination planes:
+/// - overcurrent selectivity for the exact D3 downstream/upstream pair;
+/// - residual-current discrimination for the exact D5 downstream/upstream pair.
+///
+/// Neither plane is inferred from curve letters, nominal-current ordering,
+/// residual-current ratios, device type, or a selective/time-delay label.
 abstract final class ApartmentProtectionCoordinationEvidenceService {
   static ApartmentEngineeringDesignRequirements apply({
     required ApartmentEngineeringDesignRequirements requirements,
@@ -45,7 +47,8 @@ abstract final class ApartmentProtectionCoordinationEvidenceService {
     }
     if (!closure.isFullyClosed) {
       throw ArgumentError(
-        'D6 projection evidence requires every circuit to be explicitly closed.',
+        'D6 projection evidence requires both overcurrent and residual-current '
+        'coordination to be explicitly closed for every circuit.',
       );
     }
 
@@ -139,7 +142,8 @@ abstract final class ApartmentProtectionCoordinationEvidenceService {
         protectionRequirement.factEvidence['protection.residualCurrent'];
     if (residualFact == null) {
       throw ArgumentError(
-          'D6 evidence requires prior D5 residual-current evidence.');
+        'D6 evidence requires prior D5 residual-current evidence.',
+      );
     }
 
     final expectedValue = ApartmentResidualCurrentClosureEvidenceService
@@ -179,27 +183,72 @@ abstract final class ApartmentProtectionCoordinationEvidenceService {
   ) {
     final policy = outcome.policy;
     final selected = outcome.selectedEvidence;
+    final residualPolicy = outcome.residualCurrentPolicy;
+    final selectedResidual = outcome.selectedResidualCurrentEvidence;
     return p9CanonicalSerializeFields([
-      MapEntry('applicability', policy.applicability.name),
-      MapEntry('rationaleCode', policy.rationaleCode),
-      MapEntry('downstreamDeviceId', policy.evaluatedDownstreamDeviceId),
+      MapEntry('overcurrentApplicability', policy.applicability.name),
+      MapEntry('overcurrentRationaleCode', policy.rationaleCode),
       MapEntry(
-        'applicabilityEvidenceIds',
+        'overcurrentDownstreamDeviceId',
+        policy.evaluatedDownstreamDeviceId,
+      ),
+      MapEntry(
+        'overcurrentApplicabilityEvidenceIds',
         policy.applicabilityEvidenceIds.join(','),
       ),
       MapEntry(
-          'upstreamDeviceId', policy.upstreamDevice?.id ?? 'not-applicable'),
-      MapEntry('status', outcome.status.name),
-      MapEntry('selectedEvidenceId', selected?.id ?? 'none'),
-      MapEntry('selectedKind', selected?.kind.name ?? 'none'),
+        'overcurrentUpstreamDeviceId',
+        policy.upstreamDevice?.id ?? 'not-applicable',
+      ),
+      MapEntry('overcurrentStatus', outcome.status.name),
+      MapEntry('overcurrentSelectedEvidenceId', selected?.id ?? 'none'),
+      MapEntry('overcurrentSelectedKind', selected?.kind.name ?? 'none'),
       MapEntry(
-        'selectedLimitA',
+        'overcurrentSelectedLimitA',
         selected?.selectivityLimitA?.toString() ?? 'none',
       ),
-      MapEntry('selectedSourceId', selected?.sourceId ?? 'none'),
-      MapEntry('selectedSourceRevision', selected?.sourceRevision ?? 'none'),
-      MapEntry('policySourceId', policy.sourceId),
-      MapEntry('policySourceRevision', policy.sourceRevision),
+      MapEntry('overcurrentSelectedSourceId', selected?.sourceId ?? 'none'),
+      MapEntry(
+        'overcurrentSelectedSourceRevision',
+        selected?.sourceRevision ?? 'none',
+      ),
+      MapEntry('overcurrentPolicySourceId', policy.sourceId),
+      MapEntry('overcurrentPolicySourceRevision', policy.sourceRevision),
+      MapEntry(
+        'residualApplicability',
+        residualPolicy.applicability.name,
+      ),
+      MapEntry('residualRationaleCode', residualPolicy.rationaleCode),
+      MapEntry(
+        'residualDownstreamDeviceId',
+        residualPolicy.evaluatedDownstreamDeviceId ?? 'none',
+      ),
+      MapEntry(
+        'residualApplicabilityEvidenceIds',
+        residualPolicy.applicabilityEvidenceIds.join(','),
+      ),
+      MapEntry(
+        'residualUpstreamDeviceId',
+        residualPolicy.upstreamDevice?.id ?? 'not-applicable',
+      ),
+      MapEntry('residualStatus', outcome.residualCurrentStatus.name),
+      MapEntry(
+        'residualSelectedEvidenceId',
+        selectedResidual?.id ?? 'none',
+      ),
+      MapEntry(
+        'residualSelectedSourceId',
+        selectedResidual?.sourceId ?? 'none',
+      ),
+      MapEntry(
+        'residualSelectedSourceRevision',
+        selectedResidual?.sourceRevision ?? 'none',
+      ),
+      MapEntry('residualPolicySourceId', residualPolicy.sourceId),
+      MapEntry(
+        'residualPolicySourceRevision',
+        residualPolicy.sourceRevision,
+      ),
     ]);
   }
 
@@ -209,6 +258,9 @@ abstract final class ApartmentProtectionCoordinationEvidenceService {
     final policy = outcome.policy;
     final evidences = policy.selectivityEvidence.toList()
       ..sort((left, right) => left.id.compareTo(right.id));
+    final residualPolicy = outcome.residualCurrentPolicy;
+    final residualEvidences = residualPolicy.selectivityEvidence.toList()
+      ..sort((left, right) => left.id.compareTo(right.id));
     return p9CanonicalSerializeFields([
       MapEntry(
         'd5SourceRevision',
@@ -216,23 +268,55 @@ abstract final class ApartmentProtectionCoordinationEvidenceService {
           ElectricalResidualCurrentClosureResult(outcomes: [outcome.d5Outcome]),
         ),
       ),
-      MapEntry('applicability', policy.applicability.name),
-      MapEntry('rationaleCode', policy.rationaleCode),
-      MapEntry('downstreamDeviceId', policy.evaluatedDownstreamDeviceId),
+      MapEntry('overcurrentApplicability', policy.applicability.name),
+      MapEntry('overcurrentRationaleCode', policy.rationaleCode),
       MapEntry(
-        'applicabilityEvidenceIds',
+        'overcurrentDownstreamDeviceId',
+        policy.evaluatedDownstreamDeviceId,
+      ),
+      MapEntry(
+        'overcurrentApplicabilityEvidenceIds',
         policy.applicabilityEvidenceIds.join(','),
       ),
       MapEntry(
-        'upstreamDevice',
+        'overcurrentUpstreamDevice',
         policy.upstreamDevice == null
             ? 'none'
             : _overcurrentSerialization(policy.upstreamDevice!),
       ),
       for (final evidence in evidences)
-        MapEntry('selectivityEvidence', _selectivitySerialization(evidence)),
-      MapEntry('policySourceId', policy.sourceId),
-      MapEntry('policySourceRevision', policy.sourceRevision),
+        MapEntry(
+          'overcurrentSelectivityEvidence',
+          _selectivitySerialization(evidence),
+        ),
+      MapEntry('overcurrentPolicySourceId', policy.sourceId),
+      MapEntry('overcurrentPolicySourceRevision', policy.sourceRevision),
+      MapEntry('residualApplicability', residualPolicy.applicability.name),
+      MapEntry('residualRationaleCode', residualPolicy.rationaleCode),
+      MapEntry(
+        'residualDownstreamDeviceId',
+        residualPolicy.evaluatedDownstreamDeviceId ?? 'none',
+      ),
+      MapEntry(
+        'residualApplicabilityEvidenceIds',
+        residualPolicy.applicabilityEvidenceIds.join(','),
+      ),
+      MapEntry(
+        'residualUpstreamDevice',
+        residualPolicy.upstreamDevice == null
+            ? 'none'
+            : _residualDeviceSerialization(residualPolicy.upstreamDevice!),
+      ),
+      for (final evidence in residualEvidences)
+        MapEntry(
+          'residualSelectivityEvidence',
+          _residualSelectivitySerialization(evidence),
+        ),
+      MapEntry('residualPolicySourceId', residualPolicy.sourceId),
+      MapEntry(
+        'residualPolicySourceRevision',
+        residualPolicy.sourceRevision,
+      ),
     ]);
   }
 
@@ -252,6 +336,17 @@ abstract final class ApartmentProtectionCoordinationEvidenceService {
         MapEntry('sourceRevision', evidence.sourceRevision),
       ]);
 
+  static String _residualSelectivitySerialization(
+    ResidualCurrentSelectivityEvidence evidence,
+  ) =>
+      p9CanonicalSerializeFields([
+        MapEntry('id', evidence.id),
+        MapEntry('downstreamDeviceId', evidence.downstreamDeviceId),
+        MapEntry('upstreamDeviceId', evidence.upstreamDeviceId),
+        MapEntry('sourceId', evidence.sourceId),
+        MapEntry('sourceRevision', evidence.sourceRevision),
+      ]);
+
   static String _overcurrentSerialization(
     OvercurrentProtectiveDeviceSpec device,
   ) =>
@@ -262,6 +357,35 @@ abstract final class ApartmentProtectionCoordinationEvidenceService {
         MapEntry('breakingCapacityKa', device.breakingCapacityKa.toString()),
         MapEntry('poleCount', device.poleCount.toString()),
         MapEntry('tripCurve', device.tripCurve?.name ?? 'unspecified'),
+        MapEntry('sourceId', device.sourceId),
+        MapEntry('sourceRevision', device.sourceRevision),
+      ]);
+
+  static String _residualDeviceSerialization(
+    ResidualCurrentProtectiveDeviceSpec device,
+  ) =>
+      p9CanonicalSerializeFields([
+        MapEntry('id', device.id),
+        MapEntry('kind', device.kind.name),
+        MapEntry('ratedCurrentA', device.ratedCurrentA.toString()),
+        MapEntry(
+          'residualOperatingCurrentMa',
+          device.residualOperatingCurrentMa.toString(),
+        ),
+        MapEntry('residualType', device.residualType.name),
+        MapEntry('poleCount', device.poleCount.toString()),
+        MapEntry(
+          'overcurrentDeviceId',
+          device.overcurrentDeviceId ?? 'none',
+        ),
+        MapEntry(
+          'conditionalShortCircuitCurrentA',
+          device.conditionalShortCircuitCurrentA?.toString() ?? 'none',
+        ),
+        MapEntry(
+          'compatibleBackupOvercurrentDeviceIds',
+          device.compatibleBackupOvercurrentDeviceIds.join(','),
+        ),
         MapEntry('sourceId', device.sourceId),
         MapEntry('sourceRevision', device.sourceRevision),
       ]);
@@ -282,17 +406,38 @@ abstract final class ApartmentProtectionCoordinationEvidenceService {
   ) {
     final evaluations = outcome.evaluations.toList()
       ..sort((left, right) => left.evidence.id.compareTo(right.evidence.id));
+    final residualEvaluations = outcome.residualCurrentEvaluations.toList()
+      ..sort((left, right) => left.evidence.id.compareTo(right.evidence.id));
     return p9CanonicalSerializeFields([
       MapEntry('policy', _policySerialization(outcome)),
-      MapEntry('status', outcome.status.name),
-      MapEntry('selectedEvidenceId', outcome.selectedEvidence?.id ?? 'none'),
+      MapEntry('overcurrentStatus', outcome.status.name),
+      MapEntry(
+        'overcurrentSelectedEvidenceId',
+        outcome.selectedEvidence?.id ?? 'none',
+      ),
       for (final evaluation in evaluations)
         MapEntry(
-          evaluation.evidence.id,
+          'overcurrent:${evaluation.evidence.id}',
           p9CanonicalSerializeFields([
             MapEntry(
               'evidence',
               _selectivitySerialization(evaluation.evidence),
+            ),
+            MapEntry('rejections', evaluation.rejections.join(',')),
+          ]),
+        ),
+      MapEntry('residualStatus', outcome.residualCurrentStatus.name),
+      MapEntry(
+        'residualSelectedEvidenceId',
+        outcome.selectedResidualCurrentEvidence?.id ?? 'none',
+      ),
+      for (final evaluation in residualEvaluations)
+        MapEntry(
+          'residual:${evaluation.evidence.id}',
+          p9CanonicalSerializeFields([
+            MapEntry(
+              'evidence',
+              _residualSelectivitySerialization(evaluation.evidence),
             ),
             MapEntry('rejections', evaluation.rejections.join(',')),
           ]),
