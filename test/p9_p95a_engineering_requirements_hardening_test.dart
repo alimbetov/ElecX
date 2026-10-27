@@ -171,7 +171,7 @@ void main() {
         differentRevision.evidenceFingerprint,
         isNot(first.evidenceFingerprint),
       );
-      expect(apartmentEngineeringRequirementsVersion, 'p9.requirements.v2');
+      expect(apartmentEngineeringRequirementsVersion, 'p9.requirements.v3');
     });
   });
 }
