@@ -26,9 +26,8 @@ void main() {
         ],
       );
 
-      final outcome = ProtectiveDeviceCoordinationEngine.close(request)
-          .outcomes
-          .single;
+      final outcome =
+          ProtectiveDeviceCoordinationEngine.close(request).outcomes.single;
 
       expect(
         outcome.status,
@@ -51,15 +50,15 @@ void main() {
         ],
       );
 
-      final outcome = ProtectiveDeviceCoordinationEngine.close(request)
-          .outcomes
-          .single;
+      final outcome =
+          ProtectiveDeviceCoordinationEngine.close(request).outcomes.single;
 
       expect(outcome.isClosed, isTrue);
       expect(outcome.selectedEvidence!.selectivityLimitA, 4000);
     });
 
-    test('Q70 selectivity limit below prospective fault current fails closed', () {
+    test('Q70 selectivity limit below prospective fault current fails closed',
+        () {
       final request = ElectricalProtectionCoordinationClosureRequest(
         d5Closure: _d5Closure(),
         policies: [
@@ -69,9 +68,8 @@ void main() {
         ],
       );
 
-      final outcome = ProtectiveDeviceCoordinationEngine.close(request)
-          .outcomes
-          .single;
+      final outcome =
+          ProtectiveDeviceCoordinationEngine.close(request).outcomes.single;
 
       expect(
         outcome.status,
@@ -126,9 +124,8 @@ void main() {
         ],
       );
 
-      final outcome = ProtectiveDeviceCoordinationEngine.close(request)
-          .outcomes
-          .single;
+      final outcome =
+          ProtectiveDeviceCoordinationEngine.close(request).outcomes.single;
 
       expect(outcome.isClosed, isFalse);
       expect(
@@ -137,13 +134,15 @@ void main() {
       );
     });
 
-    test('Q73 explicit not-required coordination closes without pair evidence', () {
+    test('Q73 explicit not-required coordination closes without pair evidence',
+        () {
       final request = ElectricalProtectionCoordinationClosureRequest(
         d5Closure: _d5Closure(),
         policies: [
           ProtectiveDeviceCoordinationPolicy(
             circuitId: 'circuit-001',
-            applicability: ProtectiveDeviceCoordinationApplicability.notRequired,
+            applicability:
+                ProtectiveDeviceCoordinationApplicability.notRequired,
             rationaleCode: 'qualification.coordination-not-required',
             evaluatedDownstreamDeviceId: _mcb16.id,
             applicabilityEvidenceIds: const ['coordination-not-required-rule'],
@@ -155,9 +154,8 @@ void main() {
         ],
       );
 
-      final outcome = ProtectiveDeviceCoordinationEngine.close(request)
-          .outcomes
-          .single;
+      final outcome =
+          ProtectiveDeviceCoordinationEngine.close(request).outcomes.single;
 
       expect(
         outcome.status,
