@@ -8,6 +8,7 @@ import '../../../../domain/project_identity.dart';
 import '../../project_mutation.dart';
 import '../../project_mutation_reservation.dart';
 import '../wizard_contracts.dart';
+import 'apartment_applied_engineering_proposal_adapter.dart';
 import 'apartment_candidate_identity.dart';
 import 'apartment_candidate_set_service.dart';
 import 'apartment_canonical_materializer.dart';
@@ -341,6 +342,7 @@ final class ApartmentReservedProjectCommand implements ReservedProjectCommand {
       candidate: selectedCandidate,
       reservation: reservation,
     );
+    _validateFrozenEngineeringProposal();
   }
 
   @override
@@ -348,6 +350,7 @@ final class ApartmentReservedProjectCommand implements ReservedProjectCommand {
     required ProjectAggregateRoot current,
     required MutationIdentityReservation reservation,
   }) {
+    _validateFrozenEngineeringProposal();
     final base = materializer.buildCandidate(
       current: current,
       target: target,
@@ -376,14 +379,39 @@ final class ApartmentReservedProjectCommand implements ReservedProjectCommand {
         familyId: selectedCandidate.family.code,
       ),
     );
+    var engineeringMetadata = baseState.engineeringMetadata
+        .withGenerationProvenanceRegistry(provenance);
+    final proposal = engineeringProposal;
+    if (proposal != null) {
+      final snapshot = ApartmentAppliedEngineeringProposalAdapter.snapshot(
+        levelId: target.levelId,
+        proposal: proposal,
+      );
+      engineeringMetadata = engineeringMetadata
+          .withAppliedEngineeringProposalRegistry(
+        engineeringMetadata.appliedEngineeringProposalRegistry.replace(snapshot),
+      );
+    }
     return ProjectCommandCandidate.fromState(
       state: ProjectMutableState(
-        engineeringMetadata: baseState.engineeringMetadata
-            .withGenerationProvenanceRegistry(provenance),
+        engineeringMetadata: engineeringMetadata,
         stores: baseState.stores,
       ),
       affectedEntityIds: base.affectedEntityIds,
     );
+  }
+
+  void _validateFrozenEngineeringProposal() {
+    final proposal = engineeringProposal;
+    if (proposal == null) return;
+    if (proposal.candidateSetFingerprint != candidateSetFingerprint ||
+        proposal.candidateFingerprint != candidateIdentity.candidateFingerprint ||
+        proposal.intentFingerprint != candidateIdentity.intentFingerprint) {
+      throw StateError(
+        'Frozen P9.6 engineering proposal no longer matches the reserved '
+        'candidate identity.',
+      );
+    }
   }
 
   @override
