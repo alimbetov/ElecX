@@ -1,9 +1,10 @@
 import 'apartment_canonical_projection.dart';
 import 'apartment_normative_evidence.dart';
+import 'p9_canonical_serialization.dart';
 import 'p9_failure.dart';
 import 'p9_sha256.dart';
 
-const String apartmentEngineeringRequirementsVersion = 'p9.requirements.v1';
+const String apartmentEngineeringRequirementsVersion = 'p9.requirements.v2';
 
 enum ApartmentEngineeringRequirementDomain {
   supply,
@@ -32,6 +33,100 @@ enum ApartmentEngineeringRequirementSubjectKind {
   placement,
 }
 
+enum ApartmentEngineeringFactValueKind {
+  integer,
+  decimal,
+  booleanValue,
+  text,
+}
+
+enum ApartmentEngineeringFactUnit {
+  none,
+  volt,
+  ampere,
+  watt,
+  hertz,
+  squareMillimeter,
+  milliampere,
+  kiloampere,
+  count,
+  percent,
+  ratio,
+  code,
+}
+
+extension ApartmentEngineeringFactUnitSymbol on ApartmentEngineeringFactUnit {
+  String get symbol => switch (this) {
+        ApartmentEngineeringFactUnit.none => '',
+        ApartmentEngineeringFactUnit.volt => 'V',
+        ApartmentEngineeringFactUnit.ampere => 'A',
+        ApartmentEngineeringFactUnit.watt => 'W',
+        ApartmentEngineeringFactUnit.hertz => 'Hz',
+        ApartmentEngineeringFactUnit.squareMillimeter => 'mm2',
+        ApartmentEngineeringFactUnit.milliampere => 'mA',
+        ApartmentEngineeringFactUnit.kiloampere => 'kA',
+        ApartmentEngineeringFactUnit.count => 'count',
+        ApartmentEngineeringFactUnit.percent => '%',
+        ApartmentEngineeringFactUnit.ratio => 'ratio',
+        ApartmentEngineeringFactUnit.code => 'code',
+      };
+}
+
+/// One typed, source-pinned engineering fact.
+///
+/// A fact exists only when its value is backed by an authoritative source and
+/// revision. Unknown facts are represented by absence, never by zero/defaults.
+final class ApartmentEngineeringFactEvidence {
+  ApartmentEngineeringFactEvidence({
+    required this.factKey,
+    required this.valueKind,
+    required this.value,
+    required this.unit,
+    required this.sourceId,
+    required this.sourceRevision,
+  }) {
+    if (factKey.trim().isEmpty ||
+        sourceId.trim().isEmpty ||
+        sourceRevision.trim().isEmpty) {
+      throw ArgumentError(
+        'P9.5-A fact identity/source fields must be non-empty.',
+      );
+    }
+    _validateTypedValue(valueKind: valueKind, value: value);
+  }
+
+  final String factKey;
+  final ApartmentEngineeringFactValueKind valueKind;
+  final Object value;
+  final ApartmentEngineeringFactUnit unit;
+  final String sourceId;
+  final String sourceRevision;
+
+  String get canonicalValue => switch (valueKind) {
+        ApartmentEngineeringFactValueKind.integer => (value as int).toString(),
+        ApartmentEngineeringFactValueKind.decimal =>
+          (value as double).toString(),
+        ApartmentEngineeringFactValueKind.booleanValue =>
+          (value as bool).toString(),
+        ApartmentEngineeringFactValueKind.text => value as String,
+      };
+
+  String get displayValue => unit.symbol.isEmpty
+      ? canonicalValue
+      : '$canonicalValue ${unit.symbol}';
+
+  String get stableSerialization => p9CanonicalSerializeFields([
+        MapEntry('factKey', factKey),
+        MapEntry('valueKind', valueKind.name),
+        MapEntry('value', canonicalValue),
+        MapEntry('unit', unit.name),
+        MapEntry('sourceId', sourceId),
+        MapEntry('sourceRevision', sourceRevision),
+      ]);
+
+  String get evidenceFingerprint => p9Sha256Hex(stableSerialization);
+}
+
 /// One immutable engineering requirement that must be established before
 /// equipment can be configured automatically.
 ///
@@ -49,16 +144,12 @@ final class ApartmentEngineeringRequirement {
     required this.criticality,
     required this.rationaleCode,
     required Iterable<String> requiredFactKeys,
+    Iterable<ApartmentEngineeringFactEvidence> factEvidence = const [],
     Map<String, String> establishedFacts = const {},
   })  : requiredFactKeys = List.unmodifiable(
           requiredFactKeys.toSet().toList()..sort(),
         ),
-        establishedFacts = Map.unmodifiable(
-          Map.fromEntries(
-            establishedFacts.entries.toList()
-              ..sort((left, right) => left.key.compareTo(right.key)),
-          ),
-        ) {
+        factEvidence = _indexFactEvidence(factEvidence) {
     if (requirementId.trim().isEmpty ||
         subjectStableId.trim().isEmpty ||
         rationaleCode.trim().isEmpty) {
@@ -72,9 +163,44 @@ final class ApartmentEngineeringRequirement {
         'P9.5-A requirement must declare non-empty required fact keys.',
       );
     }
-    if (this.establishedFacts.keys.any((key) => key.trim().isEmpty)) {
+    if (establishedFacts.isNotEmpty) {
       throw ArgumentError(
-        'P9.5-A established fact keys must be non-empty.',
+        'Legacy string establishedFacts are not accepted. Use typed factEvidence.',
+      );
+    }
+
+    final unknownFactKeys = this
+        .factEvidence
+        .keys
+        .where((key) => !this.requiredFactKeys.contains(key))
+        .toList(growable: false);
+    if (unknownFactKeys.isNotEmpty) {
+      throw ArgumentError(
+        'P9.5-A evidence contains facts not declared by the requirement: '
+        '$unknownFactKeys.',
+      );
+    }
+
+    if (evidenceState == ApartmentEngineeringRequirementEvidenceState.proven) {
+      final missingFactKeys = this
+          .requiredFactKeys
+          .where((key) => !this.factEvidence.containsKey(key))
+          .toList(growable: false);
+      if (missingFactKeys.isNotEmpty) {
+        throw ArgumentError(
+          'Proven P9.5-A requirement is missing typed evidence for: '
+          '$missingFactKeys.',
+        );
+      }
+    }
+
+    if ((evidenceState ==
+                ApartmentEngineeringRequirementEvidenceState.notEvaluated ||
+            evidenceState ==
+                ApartmentEngineeringRequirementEvidenceState.notApplicable) &&
+        this.factEvidence.isNotEmpty) {
+      throw ArgumentError(
+        'P9.5-A ${evidenceState.name} requirement cannot carry proven facts.',
       );
     }
   }
@@ -87,7 +213,14 @@ final class ApartmentEngineeringRequirement {
   final ApartmentEngineeringRequirementCriticality criticality;
   final String rationaleCode;
   final List<String> requiredFactKeys;
-  final Map<String, String> establishedFacts;
+  final Map<String, ApartmentEngineeringFactEvidence> factEvidence;
+
+  /// Compatibility view for older diagnostics/tests. It is derived from the
+  /// authoritative typed evidence and cannot be used to construct requirements.
+  Map<String, String> get establishedFacts => Map.unmodifiable({
+        for (final entry in factEvidence.entries)
+          entry.key: entry.value.displayValue,
+      });
 
   bool get isResolved =>
       evidenceState == ApartmentEngineeringRequirementEvidenceState.proven ||
@@ -98,17 +231,28 @@ final class ApartmentEngineeringRequirement {
       !isResolved &&
       criticality != ApartmentEngineeringRequirementCriticality.advisory;
 
-  String get stableSerialization => <String>[
-        'id=$requirementId',
-        'domain=${domain.name}',
-        'subjectKind=${subjectKind.name}',
-        'subject=$subjectStableId',
-        'state=${evidenceState.name}',
-        'criticality=${criticality.name}',
-        'rationale=$rationaleCode',
-        'requiredFacts=${requiredFactKeys.join(',')}',
-        'establishedFacts=${establishedFacts.entries.map((entry) => '${entry.key}=${entry.value}').join(',')}',
-      ].join('|');
+  String get stableSerialization => p9CanonicalSerializeFields([
+        MapEntry('id', requirementId),
+        MapEntry('domain', domain.name),
+        MapEntry('subjectKind', subjectKind.name),
+        MapEntry('subject', subjectStableId),
+        MapEntry('state', evidenceState.name),
+        MapEntry('criticality', criticality.name),
+        MapEntry('rationale', rationaleCode),
+        MapEntry(
+          'requiredFacts',
+          p9CanonicalSerializeFields([
+            for (final key in requiredFactKeys) MapEntry('fact', key),
+          ]),
+        ),
+        MapEntry(
+          'factEvidence',
+          p9CanonicalSerializeFields([
+            for (final entry in factEvidence.entries)
+              MapEntry(entry.key, entry.value.stableSerialization),
+          ]),
+        ),
+      ]);
 }
 
 /// Immutable P9.5-A contract between the accepted P9.3/P9.4 proposal and later
@@ -183,16 +327,18 @@ final class ApartmentEngineeringDesignRequirements {
   bool get readyForEquipmentConfiguration =>
       blockingUnresolvedRequirements.isEmpty;
 
-  String get stableSerialization => <String>[
-        'requirementsVersion=$requirementsVersion',
-        'candidate=$selectedCandidateFingerprint',
-        'projection=$projectionFingerprint',
-        'graph=$graphFingerprint',
-        'placement=$placementFingerprint',
-        'normative=$normativeEvidenceFingerprint',
-        'normativeProfile=$normativeProfileId@$normativeProfileVersion',
-        for (final requirement in requirements) requirement.stableSerialization,
-      ].join('\n');
+  String get stableSerialization => p9CanonicalSerializeFields([
+        MapEntry('requirementsVersion', requirementsVersion),
+        MapEntry('candidate', selectedCandidateFingerprint),
+        MapEntry('projection', projectionFingerprint),
+        MapEntry('graph', graphFingerprint),
+        MapEntry('placement', placementFingerprint),
+        MapEntry('normative', normativeEvidenceFingerprint),
+        MapEntry('normativeProfileId', normativeProfileId),
+        MapEntry('normativeProfileVersion', normativeProfileVersion),
+        for (final requirement in requirements)
+          MapEntry('requirement', requirement.stableSerialization),
+      ]);
 
   String get requirementsFingerprint => p9Sha256Hex(stableSerialization);
 }
@@ -364,14 +510,16 @@ ApartmentEngineeringRequirement _unresolvedRequirement({
   required String rationaleCode,
   required List<String> requiredFactKeys,
 }) {
-  final requirementId = 'req-${p9Sha256Hex(<String>[
-    apartmentEngineeringRequirementsVersion,
-    'projection=$projectionFingerprint',
-    'normative=$normativeEvidenceFingerprint',
-    'domain=${domain.name}',
-    'subject=$subjectStableId',
-    'rationale=$rationaleCode',
-  ].join('|')).substring(0, 24)}';
+  final identitySerialization = p9CanonicalSerializeFields([
+    MapEntry('version', apartmentEngineeringRequirementsVersion),
+    MapEntry('projection', projectionFingerprint),
+    MapEntry('normative', normativeEvidenceFingerprint),
+    MapEntry('domain', domain.name),
+    MapEntry('subject', subjectStableId),
+    MapEntry('rationale', rationaleCode),
+  ]);
+  final requirementId =
+      'req-${p9Sha256Hex(identitySerialization).substring(0, 24)}';
   return ApartmentEngineeringRequirement(
     requirementId: requirementId,
     domain: domain,
@@ -432,4 +580,38 @@ P9Failure? _lineageFailure({
       'normativeEvidenceFingerprint': normativeEvidence.evidenceFingerprint,
     },
   );
+}
+
+Map<String, ApartmentEngineeringFactEvidence> _indexFactEvidence(
+  Iterable<ApartmentEngineeringFactEvidence> evidence,
+) {
+  final result = <String, ApartmentEngineeringFactEvidence>{};
+  for (final fact in evidence) {
+    if (result.containsKey(fact.factKey)) {
+      throw ArgumentError('Duplicate P9.5-A fact evidence ${fact.factKey}.');
+    }
+    result[fact.factKey] = fact;
+  }
+  final entries = result.entries.toList()
+    ..sort((left, right) => left.key.compareTo(right.key));
+  return Map.unmodifiable(Map.fromEntries(entries));
+}
+
+void _validateTypedValue({
+  required ApartmentEngineeringFactValueKind valueKind,
+  required Object value,
+}) {
+  final valid = switch (valueKind) {
+    ApartmentEngineeringFactValueKind.integer => value is int,
+    ApartmentEngineeringFactValueKind.decimal =>
+      value is double && value.isFinite,
+    ApartmentEngineeringFactValueKind.booleanValue => value is bool,
+    ApartmentEngineeringFactValueKind.text =>
+      value is String && value.trim().isNotEmpty,
+  };
+  if (!valid) {
+    throw ArgumentError(
+      'P9.5-A fact value does not match declared kind ${valueKind.name}.',
+    );
+  }
 }
