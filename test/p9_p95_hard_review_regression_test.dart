@@ -1,3 +1,4 @@
+import 'package:elecx/src/application/project/wizard/apartment/apartment_circuit_closure_evidence.dart';
 import 'package:elecx/src/domain/cable_spec.dart';
 import 'package:elecx/src/domain/electrical_circuit_calculation.dart';
 import 'package:elecx/src/domain/electrical_circuit_synthesis.dart';
@@ -192,6 +193,36 @@ void main() {
 
       expect(() => CircuitGroupingEngine.synthesize(request), throwsStateError);
     });
+
+    test('Q48 D3 evidence binds non-governing ampacity section source', () {
+      final original = _d3Closure(
+        auxiliaryAmpacitySourceKey: 'aux-table-r1',
+      );
+      final changed = _d3Closure(
+        auxiliaryAmpacitySourceKey: 'aux-table-r2',
+      );
+
+      expect(
+        original.outcomes.single.selectedCableSizing!.governingSectionId,
+        'wall',
+      );
+      expect(
+        changed.outcomes.single.selectedCableSizing!.governingSectionId,
+        'wall',
+      );
+      expect(
+        original.outcomes.single.selectedCableSizing!.governingAmpacityA,
+        changed.outcomes.single.selectedCableSizing!.governingAmpacityA,
+      );
+      expect(
+        ApartmentCircuitClosureEvidenceService.conductorEvidenceValue(original),
+        isNot(
+          ApartmentCircuitClosureEvidenceService.conductorEvidenceValue(
+            changed,
+          ),
+        ),
+      );
+    });
   });
 }
 
@@ -268,7 +299,9 @@ FaultLoopCaseEvidence _faultCase(String id, double sourceResistanceOhm) =>
       sourceRevision: '2026.1',
     );
 
-ElectricalCircuitClosureResult _d3Closure() {
+ElectricalCircuitClosureResult _d3Closure({
+  String auxiliaryAmpacitySourceKey = 'aux-table-r1',
+}) {
   final circuit = SynthesizedElectricalCircuit(
     id: 'circuit-001',
     requiredPhaseSystem: ElectricalLoadPhaseSystem.singlePhaseAc,
@@ -322,6 +355,12 @@ ElectricalCircuitClosureResult _d3Closure() {
                   baseAmpacityA: 21,
                   factors: const [],
                   sourceKey: 'ampacity-table',
+                ),
+                SectionAmpacityEvidence(
+                  sectionId: 'tray',
+                  baseAmpacityA: 30,
+                  factors: const [],
+                  sourceKey: auxiliaryAmpacitySourceKey,
                 ),
               ],
               sourceId: 'cable-evidence',
