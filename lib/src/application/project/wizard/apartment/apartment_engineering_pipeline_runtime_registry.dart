@@ -1,13 +1,13 @@
-import '../../../../domain/project_aggregate.dart';
+import '../../project_structure_authoring.dart';
 import 'apartment_engineering_pipeline.dart';
 
 /// Runtime capability bridge for the production Apartment Wizard.
 ///
-/// The registry is deliberately keyed by the exact canonical project aggregate
-/// instance rather than a project id. A pipeline therefore cannot leak across
-/// independently loaded mutation timelines for the same durable project.
-/// Production composition binds a source-backed pipeline when the canonical
-/// runtime is resolved; provider generation only consumes that bound capability.
+/// The registry is deliberately keyed by the exact canonical authoring-session
+/// identity. Project aggregates are immutable and are replaced on every commit,
+/// Undo and Redo, while the session owns that entire mutation timeline. Binding
+/// the pipeline to the session therefore prevents both cross-project leakage and
+/// accidental capability loss after the first canonical mutation.
 final class ApartmentEngineeringPipelineRuntimeRegistry {
   ApartmentEngineeringPipelineRuntimeRegistry._();
 
@@ -16,12 +16,14 @@ final class ApartmentEngineeringPipelineRuntimeRegistry {
           'p9-apartment-engineering-pipeline');
 
   static void bind({
-    required ProjectAggregateRoot project,
+    required ProjectStructureAuthoringSession session,
     required ApartmentEngineeringPipeline pipeline,
   }) {
-    _pipelines[project] = pipeline;
+    _pipelines[session] = pipeline;
   }
 
-  static ApartmentEngineeringPipeline? resolve(ProjectAggregateRoot project) =>
-      _pipelines[project];
+  static ApartmentEngineeringPipeline? resolve(
+    ProjectStructureAuthoringSession session,
+  ) =>
+      _pipelines[session];
 }
