@@ -35,6 +35,10 @@ abstract final class ApartmentShortCircuitClosureEvidenceService {
       throw ArgumentError('D4 evidence requires prior D3 overload evidence.');
     }
 
+    final expectedD3SourceRevision =
+        ApartmentCircuitClosureEvidenceService.sourceRevisionValue(
+      request.d3Closure,
+    );
     final expectedConductorEvidence =
         ApartmentCircuitClosureEvidenceService.conductorEvidenceValue(
       request.d3Closure,
@@ -44,13 +48,17 @@ abstract final class ApartmentShortCircuitClosureEvidenceService {
       request.d3Closure,
     );
     if (conductorFact.valueKind != ApartmentEngineeringFactValueKind.text ||
-        conductorFact.value != expectedConductorEvidence) {
+        conductorFact.value != expectedConductorEvidence ||
+        conductorFact.sourceId != electricalCircuitClosureVersion ||
+        conductorFact.sourceRevision != expectedD3SourceRevision) {
       throw ArgumentError(
         'D4 conductor evidence does not match the supplied D3 closure.',
       );
     }
     if (overloadFact.valueKind != ApartmentEngineeringFactValueKind.text ||
-        overloadFact.value != expectedOverloadEvidence) {
+        overloadFact.value != expectedOverloadEvidence ||
+        overloadFact.sourceId != electricalCircuitClosureVersion ||
+        overloadFact.sourceRevision != expectedD3SourceRevision) {
       throw ArgumentError(
         'D4 overload evidence does not match the supplied D3 closure.',
       );
@@ -68,7 +76,7 @@ abstract final class ApartmentShortCircuitClosureEvidenceService {
       );
     }
 
-    final sourceRevision = _sourceRevision(closure);
+    final sourceRevision = sourceRevisionValue(closure);
     final updatedProtection = ApartmentEngineeringRequirement(
       requirementId: protectionRequirement.requirementId,
       domain: protectionRequirement.domain,
@@ -225,6 +233,18 @@ abstract final class ApartmentShortCircuitClosureEvidenceService {
     ]);
   }
 
+  /// Canonical D4 provenance bound into short-circuit/disconnection facts.
+  static String sourceRevisionValue(
+    ElectricalShortCircuitClosureResult closure,
+  ) {
+    final outcomes = closure.outcomes.toList()
+      ..sort((left, right) => left.circuitId.compareTo(right.circuitId));
+    return p9CanonicalSerializeFields([
+      for (final outcome in outcomes)
+        MapEntry(outcome.circuitId, _policySerialization(outcome)),
+    ]);
+  }
+
   static ApartmentEngineeringRequirement _singleRequirement(
     ApartmentEngineeringDesignRequirements requirements,
     ApartmentEngineeringRequirementDomain domain,
@@ -239,15 +259,6 @@ abstract final class ApartmentShortCircuitClosureEvidenceService {
       );
     }
     return matches.single;
-  }
-
-  static String _sourceRevision(ElectricalShortCircuitClosureResult closure) {
-    final outcomes = closure.outcomes.toList()
-      ..sort((left, right) => left.circuitId.compareTo(right.circuitId));
-    return p9CanonicalSerializeFields([
-      for (final outcome in outcomes)
-        MapEntry(outcome.circuitId, _policySerialization(outcome)),
-    ]);
   }
 
   static String _policySerialization(
@@ -315,6 +326,7 @@ abstract final class ApartmentShortCircuitClosureEvidenceService {
   static String _faultCaseSerialization(FaultLoopCaseEvidence evidence) =>
       p9CanonicalSerializeFields([
         MapEntry('id', evidence.id),
+        MapEntry('cableId', evidence.cableId),
         MapEntry('faultVoltageV', evidence.faultVoltageV.toString()),
         MapEntry(
           'sourceResistanceOhm',
