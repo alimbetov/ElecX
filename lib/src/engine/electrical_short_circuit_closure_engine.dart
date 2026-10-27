@@ -4,16 +4,18 @@ import 'cable_sizing_engine.dart';
 import 'electrical_circuit_closure_engine.dart';
 
 const String electricalShortCircuitClosureVersion =
-    'electrical.short-circuit-closure.v2';
+    'electrical.short-circuit-closure.v3';
 
 /// One source-pinned fault-loop case.
 ///
 /// The case carries the voltage and complex impedance evidence needed for a
 /// phase-to-PE/PEN fault. D4 deliberately does not infer PE/PEN impedance from
 /// the phase conductor or derive phase-to-earth voltage from a line voltage.
+/// [cableId] binds the impedance evidence to the exact D3-selected cable.
 final class FaultLoopCaseEvidence {
   FaultLoopCaseEvidence({
     required this.id,
+    required this.cableId,
     required this.faultVoltageV,
     required this.sourceResistanceOhm,
     required this.sourceReactanceOhm,
@@ -25,9 +27,12 @@ final class FaultLoopCaseEvidence {
     required this.sourceRevision,
   }) {
     if (id.trim().isEmpty ||
+        cableId.trim().isEmpty ||
         sourceId.trim().isEmpty ||
         sourceRevision.trim().isEmpty) {
-      throw ArgumentError('Fault-loop identity/source must be non-empty.');
+      throw ArgumentError(
+        'Fault-loop identity/cable/source must be non-empty.',
+      );
     }
     if (!faultVoltageV.isFinite || faultVoltageV <= 0) {
       throw ArgumentError.value(faultVoltageV, 'faultVoltageV');
@@ -51,6 +56,7 @@ final class FaultLoopCaseEvidence {
   }
 
   final String id;
+  final String cableId;
   final double faultVoltageV;
   final double sourceResistanceOhm;
   final double sourceReactanceOhm;
@@ -354,6 +360,7 @@ abstract final class ElectricalShortCircuitClosureEngine {
     final reasons = <String>[];
     final selectedCable = d3Outcome.selectedCable!;
     final selectedDevice = d3Outcome.selectedProtection!;
+    final selectedCableId = selectedCable.cable.id;
     final routeLengthMm = selectedCable.routeLengthMm;
 
     final disconnectionFaultCase = policy.disconnectionFaultCase;
@@ -365,11 +372,22 @@ abstract final class ElectricalShortCircuitClosureEngine {
         ? null
         : _calculateFaultLoop(thermalFaultCase, routeLengthMm);
 
+    final disconnectionFaultMatchesCable = disconnectionFaultCase != null &&
+        disconnectionFaultCase.cableId == selectedCableId;
+    final thermalFaultMatchesCable =
+        thermalFaultCase != null && thermalFaultCase.cableId == selectedCableId;
+
     if (disconnectionFault == null) {
       reasons.add('missing-disconnection-fault-loop-evidence');
+    } else if (!disconnectionFaultMatchesCable) {
+      reasons.add(
+        'disconnection-fault-loop-cable-does-not-match-selected-cable',
+      );
     }
     if (thermalFault == null) {
       reasons.add('missing-thermal-fault-loop-evidence');
+    } else if (!thermalFaultMatchesCable) {
+      reasons.add('thermal-fault-loop-cable-does-not-match-selected-cable');
     }
 
     final timeCurrent = policy.timeCurrentEvidence;
@@ -385,7 +403,7 @@ abstract final class ElectricalShortCircuitClosureEngine {
     var thermalEvidenceMatchesCable = false;
     if (thermalEvidence == null) {
       reasons.add('missing-protective-conductor-thermal-evidence');
-    } else if (thermalEvidence.cableId != selectedCable.cable.id) {
+    } else if (thermalEvidence.cableId != selectedCableId) {
       reasons.add('thermal-evidence-cable-does-not-match-selected-cable');
     } else if (selectedConductorCrossSectionMm2 == null) {
       reasons.add('selected-cable-conductor-cross-section-is-unknown');
@@ -400,13 +418,15 @@ abstract final class ElectricalShortCircuitClosureEngine {
 
     final d3ProspectiveCurrentA =
         d3Outcome.policy.prospectiveShortCircuitCurrentA;
-    final upstreamConsistencyStatus =
-        disconnectionFault == null || thermalFault == null
-            ? EngineeringCheckStatus.indeterminate
-            : disconnectionFault.faultCurrentA > d3ProspectiveCurrentA + 1e-9 ||
-                    thermalFault.faultCurrentA > d3ProspectiveCurrentA + 1e-9
-                ? EngineeringCheckStatus.fail
-                : EngineeringCheckStatus.pass;
+    final upstreamConsistencyStatus = disconnectionFault == null ||
+            thermalFault == null ||
+            !disconnectionFaultMatchesCable ||
+            !thermalFaultMatchesCable
+        ? EngineeringCheckStatus.indeterminate
+        : disconnectionFault.faultCurrentA > d3ProspectiveCurrentA + 1e-9 ||
+                thermalFault.faultCurrentA > d3ProspectiveCurrentA + 1e-9
+            ? EngineeringCheckStatus.fail
+            : EngineeringCheckStatus.pass;
     if (upstreamConsistencyStatus == EngineeringCheckStatus.fail) {
       reasons.add('d4-fault-current-exceeds-d3-upstream-prospective-current');
     }
@@ -414,6 +434,7 @@ abstract final class ElectricalShortCircuitClosureEngine {
     double? disconnectionOperatingTimeS;
     var disconnectionStatus = EngineeringCheckStatus.indeterminate;
     if (disconnectionFault != null &&
+        disconnectionFaultMatchesCable &&
         timeCurrent != null &&
         timeCurrent.deviceId == selectedDevice.id &&
         policy.requiredMaxDisconnectionTimeS != null) {
@@ -438,6 +459,7 @@ abstract final class ElectricalShortCircuitClosureEngine {
     double? thermalCapacityA2s;
     var thermalStatus = EngineeringCheckStatus.indeterminate;
     if (thermalFault != null &&
+        thermalFaultMatchesCable &&
         timeCurrent != null &&
         timeCurrent.deviceId == selectedDevice.id &&
         thermalEvidence != null &&
