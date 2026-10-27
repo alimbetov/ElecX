@@ -50,16 +50,16 @@ abstract final class PhaseAssignmentEngine {
             circuit: circuit,
             activeCurrentA:
                 circuit.calculation.designPowerW / request.lineNeutralVoltageV,
-            reactiveCurrentA:
-                circuit.calculation.designReactivePowerVar /
-                    request.lineNeutralVoltageV,
+            reactiveCurrentA: circuit.calculation.designReactivePowerVar /
+                request.lineNeutralVoltageV,
           ),
         );
       }
     }
 
     singlePhase.sort((left, right) {
-      final byApparent = right.apparentCurrentA.compareTo(left.apparentCurrentA);
+      final byApparent =
+          right.apparentCurrentA.compareTo(left.apparentCurrentA);
       if (byApparent != 0) return byApparent;
       return left.circuit.id.compareTo(right.circuit.id);
     });
@@ -81,8 +81,7 @@ abstract final class PhaseAssignmentEngine {
       final selectedPhase = bestPhase!;
       state[selectedPhase]!.addSinglePhase(
         powerW: candidate.circuit.calculation.designPowerW,
-        reactivePowerVar:
-            candidate.circuit.calculation.designReactivePowerVar,
+        reactivePowerVar: candidate.circuit.calculation.designReactivePowerVar,
         voltageV: request.lineNeutralVoltageV,
       );
       assignments.add(
@@ -167,8 +166,7 @@ final class _SinglePhaseCandidate {
   final double reactiveCurrentA;
 
   double get apparentCurrentA => math.sqrt(
-        activeCurrentA * activeCurrentA +
-            reactiveCurrentA * reactiveCurrentA,
+        activeCurrentA * activeCurrentA + reactiveCurrentA * reactiveCurrentA,
       );
 }
 
