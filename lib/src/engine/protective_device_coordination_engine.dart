@@ -72,7 +72,8 @@ final class ElectricalProtectionCoordinationClosureOutcome {
   ElectricalProtectionCoordinationClosureOutcome({
     required this.d5Outcome,
     required this.policy,
-    required Iterable<ProtectiveDeviceCoordinationEvidenceEvaluation> evaluations,
+    required Iterable<ProtectiveDeviceCoordinationEvidenceEvaluation>
+        evaluations,
     required this.selectedEvidence,
     required this.status,
   }) : evaluations = List.unmodifiable(evaluations) {
@@ -114,7 +115,8 @@ final class ElectricalProtectionCoordinationClosureOutcome {
 
   bool get isClosed =>
       status ==
-          ProtectiveDeviceCoordinationClosureStatus.closedRequiredWithEvidence ||
+          ProtectiveDeviceCoordinationClosureStatus
+              .closedRequiredWithEvidence ||
       status == ProtectiveDeviceCoordinationClosureStatus.closedNotRequired;
 }
 
@@ -228,7 +230,8 @@ abstract final class ProtectiveDeviceCoordinationEngine {
         break;
       case ProtectiveDeviceSelectivityKind.limited:
         if (evidence.selectivityLimitA! < prospectiveShortCircuitCurrentA) {
-          reasons.add('selectivity-limit-below-prospective-short-circuit-current');
+          reasons
+              .add('selectivity-limit-below-prospective-short-circuit-current');
         }
     }
 
