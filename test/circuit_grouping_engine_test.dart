@@ -7,8 +7,10 @@ void main() {
   group('P9.5-D circuit grouping engine', () {
     test('Q01 synthesis is deterministic across input order', () {
       final loads = [
-        _load('socket-a', 1200, ElectricalCircuitLoadKind.generalSocket, 'room-a'),
-        _load('socket-b', 900, ElectricalCircuitLoadKind.generalSocket, 'room-b'),
+        _load('socket-a', 1200, ElectricalCircuitLoadKind.generalSocket,
+            'room-a'),
+        _load(
+            'socket-b', 900, ElectricalCircuitLoadKind.generalSocket, 'room-b'),
         _load('light-a', 300, ElectricalCircuitLoadKind.lighting, 'room-a'),
       ];
 
@@ -122,8 +124,10 @@ void main() {
 
     test('Q05 location separation is controlled only by policy', () {
       final loads = [
-        _load('socket-a', 500, ElectricalCircuitLoadKind.generalSocket, 'room-a'),
-        _load('socket-b', 500, ElectricalCircuitLoadKind.generalSocket, 'room-b'),
+        _load(
+            'socket-a', 500, ElectricalCircuitLoadKind.generalSocket, 'room-a'),
+        _load(
+            'socket-b', 500, ElectricalCircuitLoadKind.generalSocket, 'room-b'),
       ];
 
       final separated = CircuitGroupingEngine.synthesize(
