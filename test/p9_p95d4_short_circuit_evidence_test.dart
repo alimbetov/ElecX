@@ -195,6 +195,7 @@ _D4EvidenceFixture _fixture({double requiredMaxDisconnectionTimeS = 0.4}) {
 FaultLoopCaseEvidence _faultCase(String id, double sourceResistanceOhm) =>
     FaultLoopCaseEvidence(
       id: id,
+      cableId: 'cable-2.5',
       faultVoltageV: 230,
       sourceResistanceOhm: sourceResistanceOhm,
       sourceReactanceOhm: 0,
