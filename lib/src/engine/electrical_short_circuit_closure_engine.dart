@@ -4,7 +4,7 @@ import 'cable_sizing_engine.dart';
 import 'electrical_circuit_closure_engine.dart';
 
 const String electricalShortCircuitClosureVersion =
-    'electrical.short-circuit-closure.v1';
+    'electrical.short-circuit-closure.v2';
 
 /// One source-pinned fault-loop case.
 ///
@@ -42,7 +42,8 @@ final class FaultLoopCaseEvidence {
     ];
     if (impedanceValues.any((value) => !value.isFinite || value < 0)) {
       throw ArgumentError(
-          'Fault-loop impedance values must be finite and >= 0.');
+        'Fault-loop impedance values must be finite and >= 0.',
+      );
     }
     if (impedanceValues.every((value) => value == 0)) {
       throw ArgumentError('Fault-loop impedance evidence cannot be all zero.');
@@ -158,7 +159,8 @@ final class ProtectiveConductorThermalEvidence {
     if (!crossSectionMm2.isFinite || crossSectionMm2 <= 0) {
       throw ArgumentError.value(crossSectionMm2, 'crossSectionMm2');
     }
-    if (!kCoefficientArootSPerMm2.isFinite || kCoefficientArootSPerMm2 <= 0) {
+    if (!kCoefficientArootSPerMm2.isFinite ||
+        kCoefficientArootSPerMm2 <= 0) {
       throw ArgumentError.value(
         kCoefficientArootSPerMm2,
         'kCoefficientArootSPerMm2',
@@ -199,7 +201,8 @@ final class ElectricalShortCircuitClosurePolicy {
       throw ArgumentError('D4 policy identity/source must be non-empty.');
     }
     final requiredTime = requiredMaxDisconnectionTimeS;
-    if (requiredTime != null && (!requiredTime.isFinite || requiredTime <= 0)) {
+    if (requiredTime != null &&
+        (!requiredTime.isFinite || requiredTime <= 0)) {
       throw ArgumentError.value(
         requiredMaxDisconnectionTimeS,
         'requiredMaxDisconnectionTimeS',
@@ -379,10 +382,22 @@ abstract final class ElectricalShortCircuitClosureEngine {
     }
 
     final thermalEvidence = policy.thermalEvidence;
+    final selectedConductorCrossSectionMm2 =
+        selectedCable.cable.conductorCrossSectionMm2;
+    var thermalEvidenceMatchesCable = false;
     if (thermalEvidence == null) {
       reasons.add('missing-protective-conductor-thermal-evidence');
     } else if (thermalEvidence.cableId != selectedCable.cable.id) {
       reasons.add('thermal-evidence-cable-does-not-match-selected-cable');
+    } else if (selectedConductorCrossSectionMm2 == null) {
+      reasons.add('selected-cable-conductor-cross-section-is-unknown');
+    } else if (thermalEvidence.crossSectionMm2 >
+        selectedConductorCrossSectionMm2 + 1e-9) {
+      reasons.add(
+        'thermal-evidence-cross-section-exceeds-selected-cable-conductor',
+      );
+    } else {
+      thermalEvidenceMatchesCable = true;
     }
 
     final d3ProspectiveCurrentA =
@@ -428,7 +443,7 @@ abstract final class ElectricalShortCircuitClosureEngine {
         timeCurrent != null &&
         timeCurrent.deviceId == selectedDevice.id &&
         thermalEvidence != null &&
-        thermalEvidence.cableId == selectedCable.cable.id) {
+        thermalEvidenceMatchesCable) {
       thermalOperatingTimeS = timeCurrent.maximumOperatingTimeAt(
         thermalFault.faultCurrentA,
       );
@@ -485,13 +500,17 @@ abstract final class ElectricalShortCircuitClosureEngine {
     if (!impedance.isFinite || impedance <= 0) {
       throw StateError('Fault-loop impedance must be finite and > 0.');
     }
+    final faultCurrentA = evidence.faultVoltageV / impedance;
+    if (!faultCurrentA.isFinite || faultCurrentA <= 0) {
+      throw StateError('Fault current must be finite and > 0.');
+    }
     return FaultLoopCalculationResult(
       caseId: evidence.id,
       routeLengthMm: routeLengthMm,
       loopResistanceOhm: resistance,
       loopReactanceOhm: reactance,
       loopImpedanceOhm: impedance,
-      faultCurrentA: evidence.faultVoltageV / impedance,
+      faultCurrentA: faultCurrentA,
     );
   }
 }
