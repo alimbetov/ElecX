@@ -134,7 +134,8 @@ abstract final class ApartmentResidualCurrentClosureEvidenceService {
     required ApartmentEngineeringRequirement protectionRequirement,
     required ElectricalCircuitClosureResult d3Closure,
   }) {
-    final overloadFact = protectionRequirement.factEvidence['protection.overload'];
+    final overloadFact =
+        protectionRequirement.factEvidence['protection.overload'];
     if (overloadFact == null) {
       throw ArgumentError('D5 evidence requires prior D3 overload evidence.');
     }
@@ -236,7 +237,8 @@ abstract final class ApartmentResidualCurrentClosureEvidenceService {
       ),
       MapEntry(
         'maximumResidualOperatingCurrentMa',
-        policy.maximumResidualOperatingCurrentMa?.toString() ?? 'not-applicable',
+        policy.maximumResidualOperatingCurrentMa?.toString() ??
+            'not-applicable',
       ),
       MapEntry('allowedTypes', allowedTypes.join(',')),
       MapEntry(
@@ -322,7 +324,8 @@ abstract final class ApartmentResidualCurrentClosureEvidenceService {
       ),
       MapEntry(
         'allowedTypes',
-        (policy.allowedTypes.map((item) => item.name).toList()..sort()).join(','),
+        (policy.allowedTypes.map((item) => item.name).toList()..sort())
+            .join(','),
       ),
       MapEntry(
         'preferredTypes',
@@ -403,7 +406,8 @@ abstract final class ApartmentResidualCurrentClosureEvidenceService {
         MapEntry(
           evaluation.candidate.id,
           p9CanonicalSerializeFields([
-            MapEntry('candidate', _candidateSerialization(evaluation.candidate)),
+            MapEntry(
+                'candidate', _candidateSerialization(evaluation.candidate)),
             MapEntry('rejections', evaluation.rejections.join(',')),
           ]),
         ),
