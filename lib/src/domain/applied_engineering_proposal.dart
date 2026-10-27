@@ -32,14 +32,16 @@ final class AppliedEngineeringProposalSnapshot {
             _fingerprint(candidateSetFingerprint, 'candidateSetFingerprint'),
         candidateFingerprint =
             _fingerprint(candidateFingerprint, 'candidateFingerprint'),
-        intentFingerprint = _fingerprint(intentFingerprint, 'intentFingerprint'),
+        intentFingerprint =
+            _fingerprint(intentFingerprint, 'intentFingerprint'),
         d1RequirementsFingerprint = _fingerprint(
           d1RequirementsFingerprint,
           'd1RequirementsFingerprint',
         ),
         requirementsFingerprint =
             _fingerprint(requirementsFingerprint, 'requirementsFingerprint'),
-        outputFingerprint = _fingerprint(outputFingerprint, 'outputFingerprint'),
+        outputFingerprint =
+            _fingerprint(outputFingerprint, 'outputFingerprint'),
         proposalFingerprint =
             _fingerprint(proposalFingerprint, 'proposalFingerprint'),
         loadScheduleRows = _rows(loadScheduleRows, 'loadScheduleRows'),
