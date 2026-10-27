@@ -89,7 +89,8 @@ abstract final class ApartmentCircuitCalculationEvidenceService {
       p9CanonicalSerializeFields([
         MapEntry('boardPhaseSystem', result.boardPhaseSystem.name),
         MapEntry('lineNeutralVoltageV', result.lineNeutralVoltageV.toString()),
-        MapEntry('lineLineVoltageV', result.lineLineVoltageV?.toString() ?? 'n/a'),
+        MapEntry(
+            'lineLineVoltageV', result.lineLineVoltageV?.toString() ?? 'n/a'),
         for (final assigned in result.circuits)
           MapEntry(
             assigned.id,
