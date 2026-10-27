@@ -273,6 +273,9 @@ abstract final class ResidualCurrentProtectionEngine {
             1e-9) {
           reasons.add('rcbo-rated-current-does-not-match-d3-device');
         }
+        if (candidate.poleCount != selectedOvercurrent.poleCount) {
+          reasons.add('rcbo-pole-count-does-not-match-d3-device');
+        }
     }
 
     return ResidualCurrentCandidateEvaluation(
