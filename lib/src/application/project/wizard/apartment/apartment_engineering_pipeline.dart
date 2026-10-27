@@ -13,7 +13,7 @@ import 'apartment_circuit_calculation_evidence.dart';
 import 'apartment_circuit_closure_evidence.dart';
 import 'apartment_circuit_installation_method_evidence.dart';
 import 'apartment_engineering_output_projection.dart';
-import 'apartment_engineering_requirements.dart';
+import 'apartment_engineering_requirements_adapter.dart';
 import 'apartment_protection_coordination_evidence.dart';
 import 'apartment_residual_current_closure_evidence.dart';
 import 'apartment_short_circuit_closure_evidence.dart';
@@ -38,13 +38,16 @@ final class ApartmentEngineeringProposal {
   });
 
   factory ApartmentEngineeringProposal.bind({
+    required String candidateSetFingerprint,
     required ApartmentCandidateCard selected,
     required ApartmentEngineeringOutputProjection output,
   }) {
-    final d1 = selected.engineeringRequirements.requirements;
-    if (d1 == null || !selected.engineeringRequirements.accepted) {
-      throw ArgumentError(
-        'P9.6 engineering proposal requires accepted D1 requirements.',
+    final d1 = selected.engineeringRequirements;
+    if (candidateSetFingerprint.trim().isEmpty) {
+      throw ArgumentError.value(
+        candidateSetFingerprint,
+        'candidateSetFingerprint',
+        'Must be non-empty.',
       );
     }
     if (d1.selectedCandidateFingerprint != selected.candidateFingerprint) {
@@ -52,12 +55,13 @@ final class ApartmentEngineeringProposal {
         'P9.6 D1 requirements are not bound to the selected candidate.',
       );
     }
+    _requireSha256(d1.requirementsFingerprint, 'd1RequirementsFingerprint');
     _requireSha256(output.requirementsFingerprint, 'requirementsFingerprint');
     _requireSha256(output.outputFingerprint, 'outputFingerprint');
 
     final stable = p9CanonicalSerializeFields([
       const MapEntry('schema', apartmentEngineeringProposalVersion),
-      MapEntry('candidateSetFingerprint', selected.candidateSetFingerprint),
+      MapEntry('candidateSetFingerprint', candidateSetFingerprint),
       MapEntry('candidateFingerprint', selected.candidateFingerprint),
       MapEntry('intentFingerprint', selected.identity.intentFingerprint),
       MapEntry('templateId', selected.identity.templateIdValue),
@@ -75,7 +79,7 @@ final class ApartmentEngineeringProposal {
     ]);
 
     return ApartmentEngineeringProposal._(
-      candidateSetFingerprint: selected.candidateSetFingerprint,
+      candidateSetFingerprint: candidateSetFingerprint,
       candidateFingerprint: selected.candidateFingerprint,
       intentFingerprint: selected.identity.intentFingerprint,
       d1RequirementsFingerprint: d1.requirementsFingerprint,
@@ -91,19 +95,22 @@ final class ApartmentEngineeringProposal {
   final ApartmentEngineeringOutputProjection output;
   final String proposalFingerprint;
 
-  void validateAgainst(ApartmentCandidateCard selected) {
-    final d1 = selected.engineeringRequirements.requirements;
-    if (d1 == null ||
-        candidateSetFingerprint != selected.candidateSetFingerprint ||
+  void validateAgainst({
+    required String candidateSetFingerprint,
+    required ApartmentCandidateCard selected,
+  }) {
+    final d1 = selected.engineeringRequirements;
+    if (this.candidateSetFingerprint != candidateSetFingerprint ||
         candidateFingerprint != selected.candidateFingerprint ||
         intentFingerprint != selected.identity.intentFingerprint ||
         d1RequirementsFingerprint != d1.requirementsFingerprint) {
       throw ArgumentError(
-        'P9.6 engineering proposal does not match the selected candidate.',
+        'P9.6 engineering proposal does not match the selected candidate set.',
       );
     }
 
     final rebound = ApartmentEngineeringProposal.bind(
+      candidateSetFingerprint: candidateSetFingerprint,
       selected: selected,
       output: output,
     );
@@ -164,6 +171,7 @@ abstract interface class ApartmentEngineeringPipelineSource {
 
 abstract interface class ApartmentEngineeringPipeline {
   ApartmentEngineeringProposal generate({
+    required String candidateSetFingerprint,
     required ApartmentCandidateCard selected,
     required WizardGenerationContext context,
   });
@@ -178,13 +186,11 @@ final class ApartmentEngineeringPipelineOrchestrator
 
   @override
   ApartmentEngineeringProposal generate({
+    required String candidateSetFingerprint,
     required ApartmentCandidateCard selected,
     required WizardGenerationContext context,
   }) {
-    final d1 = selected.engineeringRequirements.requirements;
-    if (d1 == null || !selected.engineeringRequirements.accepted) {
-      throw StateError('P9.6 requires accepted D1 engineering requirements.');
-    }
+    final d1 = selected.engineeringRequirements;
 
     final calculationRequest = source.calculationRequest(
       selected: selected,
@@ -273,6 +279,7 @@ final class ApartmentEngineeringPipelineOrchestrator
       requirements: requirements,
     );
     return ApartmentEngineeringProposal.bind(
+      candidateSetFingerprint: candidateSetFingerprint,
       selected: selected,
       output: output,
     );
