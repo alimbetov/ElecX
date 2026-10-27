@@ -85,7 +85,8 @@ final class ResidualCurrentProtectiveDeviceSpec {
           );
         }
       case ResidualCurrentDeviceKind.rcbo:
-        if (overcurrentDeviceId == null || overcurrentDeviceId!.trim().isEmpty) {
+        if (overcurrentDeviceId == null ||
+            overcurrentDeviceId!.trim().isEmpty) {
           throw ArgumentError(
             'RCBO candidate must bind to an exact D3 overcurrent device.',
           );
