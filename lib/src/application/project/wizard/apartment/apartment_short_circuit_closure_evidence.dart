@@ -29,7 +29,8 @@ abstract final class ApartmentShortCircuitClosureEvidenceService {
         'D4 evidence requires prior D3 conductor-constraint evidence.',
       );
     }
-    final overloadFact = protectionRequirement.factEvidence['protection.overload'];
+    final overloadFact =
+        protectionRequirement.factEvidence['protection.overload'];
     if (overloadFact == null) {
       throw ArgumentError('D4 evidence requires prior D3 overload evidence.');
     }
