@@ -1,3 +1,4 @@
+import 'applied_engineering_proposal.dart';
 import 'boundary_construction_registry.dart';
 import 'boundary_edge_identity_registry.dart';
 import 'boundary_host_registry.dart';
@@ -101,6 +102,10 @@ final class ProjectEngineeringNorth {
 /// [generationProvenanceRegistry] is the P9.12 canonical lineage store. It is
 /// versioned/persisted project state and therefore participates in the same
 /// preview, commit and Undo/Redo lifecycle as every other root metadata field.
+///
+/// [appliedEngineeringProposalRegistry] stores the exact frozen P9 engineering
+/// proposal committed by Apply. It is deliberately independent from wizard
+/// application classes while retaining canonical D8 output serializations.
 final class ProjectEngineeringMetadata {
   const ProjectEngineeringMetadata({
     this.projectNorth,
@@ -114,6 +119,8 @@ final class ProjectEngineeringMetadata {
         const BoundaryConstructionRegistry.empty(),
     this.generationProvenanceRegistry =
         const GenerationProvenanceRegistry.empty(),
+    this.appliedEngineeringProposalRegistry =
+        const AppliedEngineeringProposalRegistry.empty(),
   });
 
   final ProjectEngineeringNorth? projectNorth;
@@ -122,6 +129,7 @@ final class ProjectEngineeringMetadata {
   final BoundaryWallProfileRegistry boundaryWallProfileRegistry;
   final BoundaryConstructionRegistry boundaryConstructionRegistry;
   final GenerationProvenanceRegistry generationProvenanceRegistry;
+  final AppliedEngineeringProposalRegistry appliedEngineeringProposalRegistry;
 
   ProjectEngineeringMetadata copyWith({
     ProjectEngineeringNorth? projectNorth,
@@ -131,6 +139,7 @@ final class ProjectEngineeringMetadata {
     BoundaryWallProfileRegistry? boundaryWallProfileRegistry,
     BoundaryConstructionRegistry? boundaryConstructionRegistry,
     GenerationProvenanceRegistry? generationProvenanceRegistry,
+    AppliedEngineeringProposalRegistry? appliedEngineeringProposalRegistry,
   }) {
     if (clearProjectNorth && projectNorth != null) {
       throw ArgumentError(
@@ -150,6 +159,8 @@ final class ProjectEngineeringMetadata {
           boundaryConstructionRegistry ?? this.boundaryConstructionRegistry,
       generationProvenanceRegistry:
           generationProvenanceRegistry ?? this.generationProvenanceRegistry,
+      appliedEngineeringProposalRegistry: appliedEngineeringProposalRegistry ??
+          this.appliedEngineeringProposalRegistry,
     );
   }
 
@@ -184,6 +195,11 @@ final class ProjectEngineeringMetadata {
   ) =>
       copyWith(generationProvenanceRegistry: registry);
 
+  ProjectEngineeringMetadata withAppliedEngineeringProposalRegistry(
+    AppliedEngineeringProposalRegistry registry,
+  ) =>
+      copyWith(appliedEngineeringProposalRegistry: registry);
+
   @override
   bool operator ==(Object other) =>
       other is ProjectEngineeringMetadata &&
@@ -192,7 +208,9 @@ final class ProjectEngineeringMetadata {
       other.boundaryHostedObjectRegistry.sameAs(boundaryHostedObjectRegistry) &&
       other.boundaryWallProfileRegistry.sameAs(boundaryWallProfileRegistry) &&
       other.boundaryConstructionRegistry.sameAs(boundaryConstructionRegistry) &&
-      other.generationProvenanceRegistry.sameAs(generationProvenanceRegistry);
+      other.generationProvenanceRegistry.sameAs(generationProvenanceRegistry) &&
+      other.appliedEngineeringProposalRegistry
+          .sameAs(appliedEngineeringProposalRegistry);
 
   @override
   int get hashCode {
@@ -274,6 +292,18 @@ final class ProjectEngineeringMetadata {
       for (final key in overridden) {
         result = Object.hash(result, key);
       }
+    }
+    final applied = appliedEngineeringProposalRegistry.byLevel.entries.toList()
+      ..sort((a, b) => a.key.value.compareTo(b.key.value));
+    for (final entry in applied) {
+      final snapshot = entry.value;
+      result = Object.hash(
+        result,
+        entry.key,
+        snapshot.proposalFingerprint,
+        snapshot.outputFingerprint,
+        snapshot.requirementsFingerprint,
+      );
     }
     return result;
   }
