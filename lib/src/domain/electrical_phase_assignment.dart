@@ -51,10 +51,23 @@ final class ElectricalPhaseAssignmentRequest {
 }
 
 final class PhaseAssignedElectricalCircuit {
-  const PhaseAssignedElectricalCircuit({
+  PhaseAssignedElectricalCircuit({
     required this.circuit,
     required this.phase,
-  });
+  }) {
+    final isSingle =
+        circuit.phaseSystem == ElectricalLoadPhaseSystem.singlePhaseAc;
+    if (isSingle && phase == null) {
+      throw ArgumentError(
+        'Single-phase circuit ${circuit.id} requires an assigned phase.',
+      );
+    }
+    if (!isSingle && phase != null) {
+      throw ArgumentError(
+        'Balanced three-phase circuit ${circuit.id} must not target one phase.',
+      );
+    }
+  }
 
   final CalculatedElectricalCircuit circuit;
 
@@ -70,7 +83,8 @@ final class ElectricalAssignedPhaseLoad {
     required this.designPowerW,
     required this.designReactivePowerVar,
     required this.designCurrentA,
-  });
+  })  : assert(designPowerW >= 0),
+        assert(designCurrentA >= 0);
 
   final DistributionBoardPhase phase;
   final double designPowerW;
@@ -90,7 +104,25 @@ final class ElectricalPhaseAssignmentResult {
     required this.maxPhaseCurrentA,
     required this.phaseCurrentImbalanceRatio,
   })  : circuits = List.unmodifiable(circuits),
-        phaseLoads = List.unmodifiable(phaseLoads);
+        phaseLoads = List.unmodifiable(phaseLoads) {
+    final circuitIds = <String>{};
+    for (final circuit in this.circuits) {
+      if (!circuitIds.add(circuit.id)) {
+        throw ArgumentError('Duplicate phase-assigned circuit ${circuit.id}.');
+      }
+    }
+    final phases = <DistributionBoardPhase>{};
+    for (final phaseLoad in this.phaseLoads) {
+      if (!phases.add(phaseLoad.phase)) {
+        throw ArgumentError(
+          'Duplicate phase-load result ${phaseLoad.phase.name}.',
+        );
+      }
+    }
+    if (maxPhaseCurrentA < 0 || phaseCurrentImbalanceRatio < 0) {
+      throw ArgumentError('Phase-assignment metrics must be non-negative.');
+    }
+  }
 
   final List<PhaseAssignedElectricalCircuit> circuits;
   final List<ElectricalAssignedPhaseLoad> phaseLoads;
