@@ -485,12 +485,15 @@ abstract final class ApartmentEngineeringOutputProjectionService {
       final overcurrent = d3.selectedProtection;
       final disconnectionFault = d4.disconnectionFault;
       final thermalFault = d4.thermalFault;
+      final requiredDisconnectionTimeS =
+          d4.policy.requiredMaxDisconnectionTimeS;
       if (selectedCable == null ||
           sizing == null ||
           overcurrent == null ||
           disconnectionFault == null ||
           thermalFault == null ||
           d4.disconnectionOperatingTimeS == null ||
+          requiredDisconnectionTimeS == null ||
           d4.faultEnergyA2s == null ||
           d4.thermalCapacityA2s == null) {
         throw StateError(
@@ -587,8 +590,7 @@ abstract final class ApartmentEngineeringOutputProjectionService {
           minimumFaultCurrentA: disconnectionFault.faultCurrentA,
           maximumFaultCurrentA: thermalFault.faultCurrentA,
           disconnectionOperatingTimeS: d4.disconnectionOperatingTimeS!,
-          requiredMaxDisconnectionTimeS:
-              d4.policy.requiredMaxDisconnectionTimeS,
+          requiredMaxDisconnectionTimeS: requiredDisconnectionTimeS,
           faultEnergyA2s: d4.faultEnergyA2s!,
           thermalCapacityA2s: d4.thermalCapacityA2s!,
           residualApplicability: d5.policy.applicability.name,
@@ -736,14 +738,16 @@ abstract final class ApartmentEngineeringOutputProjectionService {
     _requireFact(
       requirement: circuit,
       factKey: 'circuit.definition',
-      expectedValue: _definitionEvidence(phaseAssignment),
+      expectedValue: ApartmentCircuitCalculationEvidenceService
+          .definitionEvidenceValue(phaseAssignment),
       expectedSourceId: electricalCircuitCalculationVersion,
       expectedSourceRevision: electricalPhaseAssignmentVersion,
     );
     _requireFact(
       requirement: circuit,
       factKey: 'circuit.loadAssignments',
-      expectedValue: _assignmentEvidence(calculation),
+      expectedValue: ApartmentCircuitCalculationEvidenceService
+          .loadAssignmentsEvidenceValue(calculation),
       expectedSourceId: electricalCircuitCalculationVersion,
       expectedSourceRevision: electricalPhaseAssignmentVersion,
     );
@@ -863,66 +867,6 @@ abstract final class ApartmentEngineeringOutputProjectionService {
       );
     }
     return matches.single;
-  }
-
-  static String _definitionEvidence(ElectricalPhaseAssignmentResult result) {
-    final assignedCircuits = result.circuits.toList()
-      ..sort((left, right) => left.id.compareTo(right.id));
-    return p9CanonicalSerializeFields([
-      MapEntry('boardPhaseSystem', result.boardPhaseSystem.name),
-      MapEntry('lineNeutralVoltageV', result.lineNeutralVoltageV.toString()),
-      MapEntry(
-        'lineLineVoltageV',
-        result.lineLineVoltageV?.toString() ?? 'n/a',
-      ),
-      for (final assigned in assignedCircuits)
-        MapEntry(
-          assigned.id,
-          p9CanonicalSerializeFields([
-            MapEntry('phaseSystem', assigned.circuit.phaseSystem.name),
-            MapEntry(
-              'phase',
-              assigned.phase?.name ?? 'threePhaseBalanced',
-            ),
-            MapEntry(
-              'connectedPowerW',
-              assigned.circuit.calculation.connectedPowerW.toString(),
-            ),
-            MapEntry(
-              'designPowerW',
-              assigned.circuit.calculation.designPowerW.toString(),
-            ),
-            MapEntry(
-              'designReactivePowerVar',
-              assigned.circuit.calculation.designReactivePowerVar.toString(),
-            ),
-            MapEntry(
-              'designApparentPowerVa',
-              assigned.circuit.calculation.designApparentPowerVa.toString(),
-            ),
-            MapEntry(
-              'designCurrentA',
-              assigned.circuit.calculation.designCurrentA.toString(),
-            ),
-            MapEntry('policySourceId', assigned.circuit.policySourceId),
-            MapEntry(
-              'policySourceRevision',
-              assigned.circuit.policySourceRevision,
-            ),
-          ]),
-        ),
-    ]);
-  }
-
-  static String _assignmentEvidence(
-    ElectricalCircuitCalculationResult calculation,
-  ) {
-    final circuits = calculation.circuits.toList()
-      ..sort((left, right) => left.id.compareTo(right.id));
-    return p9CanonicalSerializeFields([
-      for (final calculated in circuits)
-        MapEntry(calculated.id, calculated.circuit.loadIds.join(',')),
-    ]);
   }
 
   static String _assignedPhaseLabel(PhaseAssignedElectricalCircuit assigned) =>
