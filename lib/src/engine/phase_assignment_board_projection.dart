@@ -30,8 +30,7 @@ abstract final class PhaseAssignmentBoardProjection {
           phaseSystem: phaseSystem,
           connectedPowerW: calculated.calculation.connectedPowerW.toDouble(),
           designPowerW: calculated.calculation.designPowerW,
-          designReactivePowerVar:
-              calculated.calculation.designReactivePowerVar,
+          designReactivePowerVar: calculated.calculation.designReactivePowerVar,
           phase: assigned.phase,
         ),
       );
