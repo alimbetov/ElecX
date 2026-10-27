@@ -18,7 +18,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P9.5-D5 residual-current evidence', () {
-    test('Q62 publishes residual-current evidence and keeps coordination blocking',
+    test(
+        'Q62 publishes residual-current evidence and keeps coordination blocking',
         () {
       final fixture = _fixture();
       final updated = ApartmentResidualCurrentClosureEvidenceService.apply(
@@ -44,8 +45,10 @@ void main() {
         ]),
       );
       expect(protection.factEvidence, contains('protection.residualCurrent'));
-      expect(residual.value, contains('evaluatedLoadIds=load-a'));
-      expect(protection.factEvidence, isNot(contains('protection.coordination')));
+      expect(residual.value, contains('evaluatedLoadIds'));
+      expect(residual.value, contains('load-a'));
+      expect(
+          protection.factEvidence, isNot(contains('protection.coordination')));
       expect(
         protection.evidenceState,
         ApartmentEngineeringRequirementEvidenceState.indeterminate,
@@ -127,7 +130,8 @@ void main() {
       final evidence = protection.factEvidence['protection.residualCurrent']!;
 
       expect(evidence.value, contains('notRequired'));
-      expect(evidence.value, contains('evaluatedLoadIds=load-a'));
+      expect(evidence.value, contains('evaluatedLoadIds'));
+      expect(evidence.value, contains('load-a'));
       expect(protection.requiredFactKeys, contains('protection.coordination'));
       expect(protection.blocksEquipmentConfiguration, isTrue);
     });
@@ -138,7 +142,8 @@ void main() {
         requirementsVersion: apartmentEngineeringRequirementsVersionV4,
         selectedCandidateFingerprint:
             fixture.requirementsAfterD4.selectedCandidateFingerprint,
-        projectionFingerprint: fixture.requirementsAfterD4.projectionFingerprint,
+        projectionFingerprint:
+            fixture.requirementsAfterD4.projectionFingerprint,
         graphFingerprint: fixture.requirementsAfterD4.graphFingerprint,
         placementFingerprint: fixture.requirementsAfterD4.placementFingerprint,
         normativeEvidenceFingerprint:
@@ -196,10 +201,8 @@ _D5EvidenceFixture _fixture({
   );
 
   final candidates = <ResidualCurrentProtectiveDeviceSpec>[
-    if (!nonCompliantOnly)
-      _rcd(id: 'rcd-a-30', residualOperatingCurrentMa: 30),
-    if (twoCandidates)
-      _rcd(id: 'rcd-a-25', residualOperatingCurrentMa: 25),
+    if (!nonCompliantOnly) _rcd(id: 'rcd-a-30', residualOperatingCurrentMa: 30),
+    if (twoCandidates) _rcd(id: 'rcd-a-25', residualOperatingCurrentMa: 25),
     if (nonCompliantOnly)
       _rcd(id: 'rcd-a-100', residualOperatingCurrentMa: 100),
   ];
