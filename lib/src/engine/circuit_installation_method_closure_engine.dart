@@ -43,9 +43,8 @@ final class ElectricalCircuitInstallationMethodClosureRequest {
           section.sectionId: section,
       };
       final expectedSectionIds = ampacityBySection.keys.toSet();
-      final actualSectionIds = policy.sections
-          .map((section) => section.sectionId)
-          .toSet();
+      final actualSectionIds =
+          policy.sections.map((section) => section.sectionId).toSet();
       if (!_sameStringSet(expectedSectionIds, actualSectionIds)) {
         throw ArgumentError(
           'D7 installation sections do not match D3 ampacity sections for ${policy.circuitId}.',
@@ -94,7 +93,8 @@ final class ElectricalCircuitInstallationMethodClosureOutcome {
 
 final class ElectricalCircuitInstallationMethodClosureResult {
   ElectricalCircuitInstallationMethodClosureResult({
-    required Iterable<ElectricalCircuitInstallationMethodClosureOutcome> outcomes,
+    required Iterable<ElectricalCircuitInstallationMethodClosureOutcome>
+        outcomes,
   }) : outcomes = List.unmodifiable(outcomes) {
     if (this.outcomes.isEmpty) {
       throw ArgumentError('D7 result must contain circuit outcomes.');
