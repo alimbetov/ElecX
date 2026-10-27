@@ -1,3 +1,4 @@
+import '../../../../domain/residual_current_protection.dart';
 import '../../../../engine/electrical_circuit_closure_engine.dart';
 import '../../../../engine/electrical_short_circuit_closure_engine.dart';
 import '../../../../engine/residual_current_protection_engine.dart';
@@ -355,7 +356,9 @@ abstract final class ApartmentResidualCurrentClosureEvidenceService {
     ]);
   }
 
-  static String _candidateSerialization(candidate) =>
+  static String _candidateSerialization(
+    ResidualCurrentProtectiveDeviceSpec candidate,
+  ) =>
       p9CanonicalSerializeFields([
         MapEntry('id', candidate.id),
         MapEntry('kind', candidate.kind.name),
@@ -407,7 +410,9 @@ abstract final class ApartmentResidualCurrentClosureEvidenceService {
           evaluation.candidate.id,
           p9CanonicalSerializeFields([
             MapEntry(
-                'candidate', _candidateSerialization(evaluation.candidate)),
+              'candidate',
+              _candidateSerialization(evaluation.candidate),
+            ),
             MapEntry('rejections', evaluation.rejections.join(',')),
           ]),
         ),
