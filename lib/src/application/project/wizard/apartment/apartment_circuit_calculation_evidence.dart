@@ -1,4 +1,5 @@
 import '../../../../domain/electrical_circuit_calculation.dart';
+import '../../../../domain/electrical_load_calculation.dart';
 import '../../../../domain/electrical_phase_assignment.dart';
 import '../../../../engine/electrical_circuit_calculation_engine.dart';
 import '../../../../engine/phase_assignment_engine.dart';
@@ -217,7 +218,10 @@ abstract final class ApartmentCircuitCalculationEvidenceService {
     return true;
   }
 
-  static bool _sameContributions(List<dynamic> left, List<dynamic> right) {
+  static bool _sameContributions(
+    List<ElectricalLoadContribution> left,
+    List<ElectricalLoadContribution> right,
+  ) {
     if (left.length != right.length) return false;
     for (var index = 0; index < left.length; index++) {
       final a = left[index];
