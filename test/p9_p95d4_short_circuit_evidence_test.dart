@@ -14,7 +14,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P9.5-D4 short-circuit evidence', () {
-    test('Q36 proves short-circuit and disconnection but keeps RCD blocking', () {
+    test('Q36 proves short-circuit and disconnection but keeps RCD blocking',
+        () {
       final fixture = _fixture();
       final updated = ApartmentShortCircuitClosureEvidenceService.apply(
         requirements: _requirementsAfterD3(),
@@ -38,8 +39,10 @@ void main() {
         protection.factEvidence,
         isNot(contains('protection.residualCurrent')),
       );
-      expect(protection.evidenceState,
-          ApartmentEngineeringRequirementEvidenceState.indeterminate);
+      expect(
+        protection.evidenceState,
+        ApartmentEngineeringRequirementEvidenceState.indeterminate,
+      );
       expect(protection.blocksEquipmentConfiguration, isTrue);
       expect(updated.readyForEquipmentConfiguration, isFalse);
     });
@@ -94,6 +97,20 @@ void main() {
     test('Q39 D4 cannot bypass missing D3 overload evidence', () {
       final fixture = _fixture();
       final requirements = _requirementsAfterD3(includeOverload: false);
+
+      expect(
+        () => ApartmentShortCircuitClosureEvidenceService.apply(
+          requirements: requirements,
+          request: fixture.request,
+          closure: fixture.closure,
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('Q40 D4 cannot bypass missing D3 conductor evidence', () {
+      final fixture = _fixture();
+      final requirements = _requirementsAfterD3(includeConductor: false);
 
       expect(
         () => ApartmentShortCircuitClosureEvidenceService.apply(
@@ -283,6 +300,7 @@ ElectricalCircuitCalculationResult _calculation() {
 
 ApartmentEngineeringDesignRequirements _requirementsAfterD3({
   bool includeOverload = true,
+  bool includeConductor = true,
 }) =>
     ApartmentEngineeringDesignRequirements(
       requirementsVersion: apartmentEngineeringRequirementsVersion,
@@ -339,7 +357,7 @@ ApartmentEngineeringDesignRequirements _requirementsAfterD3({
           factEvidence: [
             _fact('circuit.definition'),
             _fact('circuit.loadAssignments'),
-            _fact('circuit.conductorConstraints'),
+            if (includeConductor) _fact('circuit.conductorConstraints'),
           ],
         ),
         ApartmentEngineeringRequirement(
