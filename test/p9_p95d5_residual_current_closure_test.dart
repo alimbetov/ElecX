@@ -274,6 +274,34 @@ void main() {
       expect(outcome.selectedDevice!.overcurrentDeviceId, _rcbo16.id);
     });
 
+    test('Q59B RCBO residual profile must match exact D3 pole count', () {
+      final request = ElectricalResidualCurrentClosureRequest(
+        d4Closure: _d4Closure(overcurrent: _rcbo16),
+        policies: [
+          _requiredPolicy(
+            allowedDeviceKinds: const {ResidualCurrentDeviceKind.rcbo},
+            preferredDeviceKinds: const [ResidualCurrentDeviceKind.rcbo],
+            candidates: [
+              _rcbo(
+                id: 'rcbo-wrong-poles',
+                overcurrentDeviceId: _rcbo16.id,
+                poleCount: 4,
+              ),
+            ],
+          ),
+        ],
+      );
+
+      final outcome =
+          ResidualCurrentProtectionEngine.close(request).outcomes.single;
+
+      expect(outcome.isClosed, isFalse);
+      expect(
+        outcome.evaluations.single.rejections,
+        contains('rcbo-pole-count-does-not-match-d3-device'),
+      );
+    });
+
     test('Q60 candidate order does not change deterministic D5 selection', () {
       final first = _rcd(id: 'rcd-z', type: ResidualCurrentType.a);
       final second = _rcd(id: 'rcd-a', type: ResidualCurrentType.a);
@@ -401,6 +429,7 @@ ResidualCurrentProtectiveDeviceSpec _rcd({
 ResidualCurrentProtectiveDeviceSpec _rcbo({
   required String id,
   required String overcurrentDeviceId,
+  int poleCount = 2,
 }) =>
     ResidualCurrentProtectiveDeviceSpec(
       id: id,
@@ -408,7 +437,7 @@ ResidualCurrentProtectiveDeviceSpec _rcbo({
       ratedCurrentA: 16,
       residualOperatingCurrentMa: 30,
       residualType: ResidualCurrentType.a,
-      poleCount: 2,
+      poleCount: poleCount,
       overcurrentDeviceId: overcurrentDeviceId,
       conditionalShortCircuitCurrentA: null,
       compatibleBackupOvercurrentDeviceIds: const [],
