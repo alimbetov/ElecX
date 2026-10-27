@@ -27,8 +27,12 @@ void main() {
         closure: fixture.d5Closure,
       );
       final protection = _protection(updated);
+      final residual = protection.factEvidence['protection.residualCurrent']!;
 
-      expect(updated.requirementsVersion, apartmentEngineeringRequirementsVersionV4);
+      expect(
+        updated.requirementsVersion,
+        apartmentEngineeringRequirementsVersionV4,
+      );
       expect(
         protection.requiredFactKeys,
         containsAll([
@@ -40,6 +44,7 @@ void main() {
         ]),
       );
       expect(protection.factEvidence, contains('protection.residualCurrent'));
+      expect(residual.value, contains('evaluatedLoadIds=load-a'));
       expect(protection.factEvidence, isNot(contains('protection.coordination')));
       expect(
         protection.evidenceState,
@@ -122,6 +127,7 @@ void main() {
       final evidence = protection.factEvidence['protection.residualCurrent']!;
 
       expect(evidence.value, contains('notRequired'));
+      expect(evidence.value, contains('evaluatedLoadIds=load-a'));
       expect(protection.requiredFactKeys, contains('protection.coordination'));
       expect(protection.blocksEquipmentConfiguration, isTrue);
     });
@@ -155,8 +161,10 @@ void main() {
   });
 }
 
+const _mcb16Id = 'mcb-c16-6ka';
+
 const _mcb16 = OvercurrentProtectiveDeviceSpec(
-  id: 'mcb-c16-6ka',
+  id: _mcb16Id,
   kind: OvercurrentDeviceKind.mcb,
   ratedCurrentA: 16,
   breakingCapacityKa: 6,
@@ -200,6 +208,7 @@ _D5EvidenceFixture _fixture({
           circuitId: 'circuit-001',
           applicability: ResidualCurrentApplicability.notRequired,
           rationaleCode: 'qualification.not-required',
+          evaluatedLoadIds: const ['load-a'],
           applicabilityEvidenceIds: const ['norm-not-required'],
           loadCharacteristicEvidenceIds: const [],
           maximumResidualOperatingCurrentMa: null,
@@ -217,6 +226,7 @@ _D5EvidenceFixture _fixture({
           circuitId: 'circuit-001',
           applicability: ResidualCurrentApplicability.required,
           rationaleCode: 'qualification.required',
+          evaluatedLoadIds: const ['load-a'],
           applicabilityEvidenceIds: const ['norm-required'],
           loadCharacteristicEvidenceIds: const ['load-characteristic'],
           maximumResidualOperatingCurrentMa: 30,
@@ -256,7 +266,7 @@ ResidualCurrentProtectiveDeviceSpec _rcd({
       poleCount: 2,
       overcurrentDeviceId: null,
       conditionalShortCircuitCurrentA: 6000,
-      compatibleBackupOvercurrentDeviceIds: const [_mcb16.id],
+      compatibleBackupOvercurrentDeviceIds: const [_mcb16Id],
       sourceId: 'residual-catalog',
       sourceRevision: '2026.1',
     );
