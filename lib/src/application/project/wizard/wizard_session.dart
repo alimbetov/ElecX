@@ -49,6 +49,7 @@ final class WizardSession {
   WizardParameterValidation _validation =
       const WizardParameterValidation.valid();
   ReservedProjectMutationPreview? _preview;
+  ReservedProjectCommand? _generatedCommand;
   ReservedProjectMutationCommitResult? _commitResult;
   WizardPreviewBlockReason? _blockReason;
   Object? _failure;
@@ -59,6 +60,14 @@ final class WizardSession {
   WizardParameters? get parameters => _parameters;
   WizardParameterValidation get validation => _validation;
   ReservedProjectMutationPreview? get preview => _preview;
+
+  /// The exact immutable command used to create [preview].
+  ///
+  /// Provider-specific presentation may inspect this object to render rich
+  /// preview data, but Apply always commits the already frozen reserved preview
+  /// and never rebuilds the command or reruns a provider pipeline.
+  ReservedProjectCommand? get generatedCommand => _generatedCommand;
+
   ReservedProjectMutationCommitResult? get commitResult => _commitResult;
   WizardPreviewBlockReason? get blockReason => _blockReason;
   Object? get failure => _failure;
@@ -142,6 +151,7 @@ final class WizardSession {
         WizardGenerationContext(target: _target, project: mutations.project),
       );
       final reserved = mutations.preview(command);
+      _generatedCommand = command;
       _preview = reserved;
       if (!reserved.hasChanges) {
         _blockReason = WizardPreviewBlockReason.noChanges;
@@ -252,6 +262,7 @@ final class WizardSession {
       mutations.discardPreview(planned);
       _preview = null;
     }
+    _generatedCommand = null;
   }
 }
 
