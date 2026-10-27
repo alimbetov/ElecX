@@ -17,17 +17,11 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('P9.5-D6 protection coordination closure', () {
     test('Q68 total-selectivity manufacturer evidence closes exact pair', () {
-      final request = ElectricalProtectionCoordinationClosureRequest(
-        d5Closure: _d5Closure(),
-        policies: [
-          _requiredCoordinationPolicy(
-            evidence: [_totalEvidence(id: 'sel-total')],
-          ),
-        ],
-      );
-
-      final outcome =
-          ProtectiveDeviceCoordinationEngine.close(request).outcomes.single;
+      final outcome = ProtectiveDeviceCoordinationEngine.close(
+        _d6Request(
+          overcurrentEvidence: [_totalEvidence(id: 'sel-total')],
+        ),
+      ).outcomes.single;
 
       expect(
         outcome.status,
@@ -35,23 +29,20 @@ void main() {
       );
       expect(outcome.selectedEvidence!.id, 'sel-total');
       expect(
-        outcome.selectedEvidence!.kind,
-        ProtectiveDeviceSelectivityKind.total,
+        outcome.residualCurrentStatus,
+        ResidualCurrentCoordinationClosureStatus.closedNotRequired,
       );
+      expect(outcome.isClosed, isTrue);
     });
 
     test('Q69 limited selectivity closes only when limit covers D3 Ik', () {
-      final request = ElectricalProtectionCoordinationClosureRequest(
-        d5Closure: _d5Closure(),
-        policies: [
-          _requiredCoordinationPolicy(
-            evidence: [_limitedEvidence(id: 'sel-4ka', limitA: 4000)],
-          ),
-        ],
-      );
-
-      final outcome =
-          ProtectiveDeviceCoordinationEngine.close(request).outcomes.single;
+      final outcome = ProtectiveDeviceCoordinationEngine.close(
+        _d6Request(
+          overcurrentEvidence: [
+            _limitedEvidence(id: 'sel-4ka', limitA: 4000),
+          ],
+        ),
+      ).outcomes.single;
 
       expect(outcome.isClosed, isTrue);
       expect(outcome.selectedEvidence!.selectivityLimitA, 4000);
@@ -59,23 +50,19 @@ void main() {
 
     test('Q70 selectivity limit below prospective fault current fails closed',
         () {
-      final request = ElectricalProtectionCoordinationClosureRequest(
-        d5Closure: _d5Closure(),
-        policies: [
-          _requiredCoordinationPolicy(
-            evidence: [_limitedEvidence(id: 'sel-2ka', limitA: 2000)],
-          ),
-        ],
-      );
-
-      final outcome =
-          ProtectiveDeviceCoordinationEngine.close(request).outcomes.single;
+      final outcome = ProtectiveDeviceCoordinationEngine.close(
+        _d6Request(
+          overcurrentEvidence: [
+            _limitedEvidence(id: 'sel-2ka', limitA: 2000),
+          ],
+        ),
+      ).outcomes.single;
 
       expect(
         outcome.status,
         ProtectiveDeviceCoordinationClosureStatus.noCompliantEvidence,
       );
-      expect(outcome.selectedEvidence, isNull);
+      expect(outcome.isClosed, isFalse);
       expect(
         outcome.evaluations.single.rejections,
         contains('selectivity-limit-below-prospective-short-circuit-current'),
@@ -83,9 +70,10 @@ void main() {
     });
 
     test('Q71 stale downstream-device policy cannot be replayed', () {
+      final d5 = _d5Closure();
       expect(
         () => ElectricalProtectionCoordinationClosureRequest(
-          d5Closure: _d5Closure(),
+          d5Closure: d5,
           policies: [
             ProtectiveDeviceCoordinationPolicy(
               circuitId: 'circuit-001',
@@ -99,33 +87,28 @@ void main() {
               sourceRevision: '2026.1',
             ),
           ],
+          residualCurrentPolicies: [_noResidualCoordinationPolicy()],
         ),
         throwsArgumentError,
       );
     });
 
     test('Q72 manufacturer evidence for a different pair is rejected', () {
-      final request = ElectricalProtectionCoordinationClosureRequest(
-        d5Closure: _d5Closure(),
-        policies: [
-          _requiredCoordinationPolicy(
-            evidence: [
-              ProtectiveDeviceSelectivityEvidence(
-                id: 'wrong-pair',
-                downstreamDeviceId: _mcb16.id,
-                upstreamDeviceId: 'different-upstream',
-                kind: ProtectiveDeviceSelectivityKind.total,
-                selectivityLimitA: null,
-                sourceId: 'manufacturer-table',
-                sourceRevision: '2026.1',
-              ),
-            ],
-          ),
-        ],
-      );
-
-      final outcome =
-          ProtectiveDeviceCoordinationEngine.close(request).outcomes.single;
+      final outcome = ProtectiveDeviceCoordinationEngine.close(
+        _d6Request(
+          overcurrentEvidence: [
+            ProtectiveDeviceSelectivityEvidence(
+              id: 'wrong-pair',
+              downstreamDeviceId: _mcb16.id,
+              upstreamDeviceId: 'different-upstream',
+              kind: ProtectiveDeviceSelectivityKind.total,
+              selectivityLimitA: null,
+              sourceId: 'manufacturer-table',
+              sourceRevision: '2026.1',
+            ),
+          ],
+        ),
+      ).outcomes.single;
 
       expect(outcome.isClosed, isFalse);
       expect(
@@ -134,10 +117,10 @@ void main() {
       );
     });
 
-    test('Q73 explicit not-required coordination closes without pair evidence',
-        () {
+    test('Q73 explicit not-required overcurrent coordination closes', () {
+      final d5 = _d5Closure();
       final request = ElectricalProtectionCoordinationClosureRequest(
-        d5Closure: _d5Closure(),
+        d5Closure: d5,
         policies: [
           ProtectiveDeviceCoordinationPolicy(
             circuitId: 'circuit-001',
@@ -152,16 +135,16 @@ void main() {
             sourceRevision: '2026.1',
           ),
         ],
+        residualCurrentPolicies: [_noResidualCoordinationPolicy()],
       );
 
       final outcome =
           ProtectiveDeviceCoordinationEngine.close(request).outcomes.single;
-
       expect(
         outcome.status,
         ProtectiveDeviceCoordinationClosureStatus.closedNotRequired,
       );
-      expect(outcome.selectedEvidence, isNull);
+      expect(outcome.isClosed, isTrue);
     });
 
     test('Q74 deterministic evidence selection prefers total selectivity', () {
@@ -170,18 +153,10 @@ void main() {
         _totalEvidence(id: 'a-total'),
       ];
       final forward = ProtectiveDeviceCoordinationEngine.close(
-        ElectricalProtectionCoordinationClosureRequest(
-          d5Closure: _d5Closure(),
-          policies: [_requiredCoordinationPolicy(evidence: evidence)],
-        ),
+        _d6Request(overcurrentEvidence: evidence),
       ).outcomes.single.selectedEvidence;
       final reverse = ProtectiveDeviceCoordinationEngine.close(
-        ElectricalProtectionCoordinationClosureRequest(
-          d5Closure: _d5Closure(),
-          policies: [
-            _requiredCoordinationPolicy(evidence: evidence.reversed.toList()),
-          ],
-        ),
+        _d6Request(overcurrentEvidence: evidence.reversed.toList()),
       ).outcomes.single.selectedEvidence;
 
       expect(forward!.id, 'a-total');
@@ -200,6 +175,67 @@ void main() {
           sourceRevision: '2026.1',
         ),
         throwsArgumentError,
+      );
+    });
+
+    test('Q75B exact residual-current pair evidence closes D6', () {
+      final d5 = _d5Closure(withResidualDevice: true);
+      final request = ElectricalProtectionCoordinationClosureRequest(
+        d5Closure: d5,
+        policies: [
+          _requiredCoordinationPolicy(
+            evidence: [_totalEvidence(id: 'sel-total')],
+          ),
+        ],
+        residualCurrentPolicies: [
+          _requiredResidualCoordinationPolicy(
+            evidence: [_residualPairEvidence(id: 'rcd-pair')],
+          ),
+        ],
+      );
+
+      final outcome =
+          ProtectiveDeviceCoordinationEngine.close(request).outcomes.single;
+
+      expect(outcome.d5Outcome.selectedDevice!.id, _downstreamRcd.id);
+      expect(
+        outcome.residualCurrentStatus,
+        ResidualCurrentCoordinationClosureStatus.closedRequiredWithEvidence,
+      );
+      expect(outcome.selectedResidualCurrentEvidence!.id, 'rcd-pair');
+      expect(outcome.isClosed, isTrue);
+    });
+
+    test('Q75C residual-current evidence for another pair fails closed', () {
+      final d5 = _d5Closure(withResidualDevice: true);
+      final request = ElectricalProtectionCoordinationClosureRequest(
+        d5Closure: d5,
+        policies: [
+          _requiredCoordinationPolicy(
+            evidence: [_totalEvidence(id: 'sel-total')],
+          ),
+        ],
+        residualCurrentPolicies: [
+          _requiredResidualCoordinationPolicy(
+            evidence: [
+              ResidualCurrentSelectivityEvidence(
+                id: 'wrong-residual-pair',
+                downstreamDeviceId: _downstreamRcd.id,
+                upstreamDeviceId: 'different-upstream-rcd',
+                sourceId: 'manufacturer-residual-table',
+                sourceRevision: '2026.1',
+              ),
+            ],
+          ),
+        ],
+      );
+
+      final outcome =
+          ProtectiveDeviceCoordinationEngine.close(request).outcomes.single;
+      expect(outcome.isClosed, isFalse);
+      expect(
+        outcome.residualCurrentEvaluations.single.rejections,
+        contains('residual-coordination-upstream-device-mismatch'),
       );
     });
   });
@@ -227,6 +263,47 @@ const _upstream = OvercurrentProtectiveDeviceSpec(
   sourceRevision: 'r1',
 );
 
+final _downstreamRcd = ResidualCurrentProtectiveDeviceSpec(
+  id: 'rcd-40a-30ma-a',
+  kind: ResidualCurrentDeviceKind.rcd,
+  ratedCurrentA: 40,
+  residualOperatingCurrentMa: 30,
+  residualType: ResidualCurrentType.a,
+  poleCount: 2,
+  overcurrentDeviceId: null,
+  conditionalShortCircuitCurrentA: 6000,
+  compatibleBackupOvercurrentDeviceIds: const [_mcb16.id],
+  sourceId: 'residual-device-catalog',
+  sourceRevision: '2026.1',
+);
+
+final _upstreamRcd = ResidualCurrentProtectiveDeviceSpec(
+  id: 'rcd-63a-100ma-a-upstream',
+  kind: ResidualCurrentDeviceKind.rcd,
+  ratedCurrentA: 63,
+  residualOperatingCurrentMa: 100,
+  residualType: ResidualCurrentType.a,
+  poleCount: 2,
+  overcurrentDeviceId: null,
+  conditionalShortCircuitCurrentA: 10000,
+  compatibleBackupOvercurrentDeviceIds: const [_upstream.id],
+  sourceId: 'residual-device-catalog',
+  sourceRevision: '2026.1',
+);
+
+ElectricalProtectionCoordinationClosureRequest _d6Request({
+  required List<ProtectiveDeviceSelectivityEvidence> overcurrentEvidence,
+}) {
+  final d5 = _d5Closure();
+  return ElectricalProtectionCoordinationClosureRequest(
+    d5Closure: d5,
+    policies: [
+      _requiredCoordinationPolicy(evidence: overcurrentEvidence),
+    ],
+    residualCurrentPolicies: [_noResidualCoordinationPolicy()],
+  );
+}
+
 ProtectiveDeviceCoordinationPolicy _requiredCoordinationPolicy({
   required List<ProtectiveDeviceSelectivityEvidence> evidence,
 }) =>
@@ -239,6 +316,34 @@ ProtectiveDeviceCoordinationPolicy _requiredCoordinationPolicy({
       upstreamDevice: _upstream,
       selectivityEvidence: evidence,
       sourceId: 'coordination-policy',
+      sourceRevision: '2026.1',
+    );
+
+ResidualCurrentDeviceCoordinationPolicy _noResidualCoordinationPolicy() =>
+    ResidualCurrentDeviceCoordinationPolicy(
+      circuitId: 'circuit-001',
+      applicability: ResidualCurrentCoordinationApplicability.notRequired,
+      rationaleCode: 'qualification.no-local-residual-device',
+      evaluatedDownstreamDeviceId: null,
+      applicabilityEvidenceIds: const ['residual-coordination-not-applicable'],
+      upstreamDevice: null,
+      selectivityEvidence: const [],
+      sourceId: 'residual-coordination-policy',
+      sourceRevision: '2026.1',
+    );
+
+ResidualCurrentDeviceCoordinationPolicy _requiredResidualCoordinationPolicy({
+  required List<ResidualCurrentSelectivityEvidence> evidence,
+}) =>
+    ResidualCurrentDeviceCoordinationPolicy(
+      circuitId: 'circuit-001',
+      applicability: ResidualCurrentCoordinationApplicability.required,
+      rationaleCode: 'qualification.residual-coordination-required',
+      evaluatedDownstreamDeviceId: _downstreamRcd.id,
+      applicabilityEvidenceIds: const ['residual-coordination-rule'],
+      upstreamDevice: _upstreamRcd,
+      selectivityEvidence: evidence,
+      sourceId: 'residual-coordination-policy',
       sourceRevision: '2026.1',
     );
 
@@ -267,30 +372,60 @@ ProtectiveDeviceSelectivityEvidence _limitedEvidence({
       sourceRevision: '2026.1',
     );
 
-ElectricalResidualCurrentClosureResult _d5Closure() {
+ResidualCurrentSelectivityEvidence _residualPairEvidence({required String id}) =>
+    ResidualCurrentSelectivityEvidence(
+      id: id,
+      downstreamDeviceId: _downstreamRcd.id,
+      upstreamDeviceId: _upstreamRcd.id,
+      sourceId: 'manufacturer-residual-table',
+      sourceRevision: '2026.1',
+    );
+
+ElectricalResidualCurrentClosureResult _d5Closure({
+  bool withResidualDevice = false,
+}) {
   final d4 = _d4Closure();
+  final policy = withResidualDevice
+      ? ResidualCurrentProtectionPolicy(
+          circuitId: 'circuit-001',
+          applicability: ResidualCurrentApplicability.required,
+          rationaleCode: 'qualification.rcd-required',
+          evaluatedLoadIds: const ['load-a'],
+          applicabilityEvidenceIds: const ['norm-rcd-required'],
+          loadCharacteristicEvidenceIds: const ['load-ac-characteristic'],
+          maximumResidualOperatingCurrentMa: 30,
+          allowedTypes: const {ResidualCurrentType.a},
+          preferredTypes: const [ResidualCurrentType.a],
+          allowedDeviceKinds: const {ResidualCurrentDeviceKind.rcd},
+          preferredDeviceKinds: const [ResidualCurrentDeviceKind.rcd],
+          minimumPoleCount: 2,
+          sensitivityPreference:
+              ResidualCurrentSensitivityPreference.lowestAvailable,
+          candidates: [_downstreamRcd],
+          sourceId: 'qualification-rccd-policy',
+          sourceRevision: '2026.1',
+        )
+      : ResidualCurrentProtectionPolicy(
+          circuitId: 'circuit-001',
+          applicability: ResidualCurrentApplicability.notRequired,
+          rationaleCode: 'qualification.rcd-not-required',
+          evaluatedLoadIds: const ['load-a'],
+          applicabilityEvidenceIds: const ['norm-not-applicable-rule'],
+          loadCharacteristicEvidenceIds: const [],
+          maximumResidualOperatingCurrentMa: null,
+          allowedTypes: const {},
+          preferredTypes: const [],
+          allowedDeviceKinds: const {},
+          preferredDeviceKinds: const [],
+          minimumPoleCount: null,
+          sensitivityPreference: null,
+          candidates: const [],
+          sourceId: 'qualification-rccd-policy',
+          sourceRevision: '2026.1',
+        );
   final request = ElectricalResidualCurrentClosureRequest(
     d4Closure: d4,
-    policies: [
-      ResidualCurrentProtectionPolicy(
-        circuitId: 'circuit-001',
-        applicability: ResidualCurrentApplicability.notRequired,
-        rationaleCode: 'qualification.rcd-not-required',
-        evaluatedLoadIds: const ['load-a'],
-        applicabilityEvidenceIds: const ['norm-not-applicable-rule'],
-        loadCharacteristicEvidenceIds: const [],
-        maximumResidualOperatingCurrentMa: null,
-        allowedTypes: const {},
-        preferredTypes: const [],
-        allowedDeviceKinds: const {},
-        preferredDeviceKinds: const [],
-        minimumPoleCount: null,
-        sensitivityPreference: null,
-        candidates: const [],
-        sourceId: 'qualification-rccd-policy',
-        sourceRevision: '2026.1',
-      ),
-    ],
+    policies: [policy],
   );
   final d5 = ResidualCurrentProtectionEngine.close(request);
   if (!d5.isFullyClosed) {
