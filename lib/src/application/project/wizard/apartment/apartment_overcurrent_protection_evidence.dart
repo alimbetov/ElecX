@@ -2,9 +2,13 @@ import '../../../../domain/overcurrent_protection.dart';
 import '../../../../engine/overcurrent_protection_selection_engine.dart';
 import 'apartment_engineering_requirements.dart';
 
-/// Adds proven overload and breaking-capacity evidence without falsely marking
-/// the whole protection domain as proven. Residual-current and disconnection
-/// evidence are still mandatory, so the requirement remains indeterminate.
+/// Adds proven overload coordination evidence without falsely marking the whole
+/// protection domain as proven.
+///
+/// Breaking capacity participates in candidate filtering, but it is not enough
+/// to establish the broader `protection.shortCircuit` fact. Short-circuit
+/// thermal withstand, residual-current protection and disconnection evidence
+/// remain mandatory, so the requirement stays indeterminate.
 abstract final class ApartmentOvercurrentProtectionEvidenceService {
   static ApartmentEngineeringDesignRequirements apply({
     required ApartmentEngineeringDesignRequirements requirements,
@@ -32,28 +36,6 @@ abstract final class ApartmentOvercurrentProtectionEvidenceService {
     final selected = selection.selected!;
     _validateSelectionBinding(request: request, selected: selected);
     final current = protectionRequirements.single;
-    final factEvidence = <ApartmentEngineeringFactEvidence>[
-      ApartmentEngineeringFactEvidence(
-        factKey: 'protection.overload',
-        valueKind: ApartmentEngineeringFactValueKind.text,
-        value: 'Ib=${request.designCurrentA};In=${selected.ratedCurrentA};'
-            'Iz=${request.cableAmpacityA};device=${selected.id}',
-        unit: ApartmentEngineeringFactUnit.code,
-        sourceId: overcurrentProtectionSelectionVersion,
-        sourceRevision: overcurrentProtectionSelectionVersion,
-      ),
-      ApartmentEngineeringFactEvidence(
-        factKey: 'protection.shortCircuit',
-        valueKind: ApartmentEngineeringFactValueKind.text,
-        value: 'Ipsc=${request.prospectiveShortCircuitCurrentA};'
-            'breakingCapacityKa=${selected.breakingCapacityKa};'
-            'device=${selected.id}',
-        unit: ApartmentEngineeringFactUnit.code,
-        sourceId: selected.sourceId,
-        sourceRevision: selected.sourceRevision,
-      ),
-    ];
-
     final partialProtection = ApartmentEngineeringRequirement(
       requirementId: current.requirementId,
       domain: current.domain,
@@ -63,7 +45,19 @@ abstract final class ApartmentOvercurrentProtectionEvidenceService {
       criticality: current.criticality,
       rationaleCode: 'p9.requirements.protection-overcurrent-proven-partial',
       requiredFactKeys: current.requiredFactKeys,
-      factEvidence: factEvidence,
+      factEvidence: [
+        ApartmentEngineeringFactEvidence(
+          factKey: 'protection.overload',
+          valueKind: ApartmentEngineeringFactValueKind.text,
+          value: 'Ib=${request.designCurrentA};In=${selected.ratedCurrentA};'
+              'Iz=${request.cableAmpacityA};device=${selected.id};'
+              'breakingCapacityKa=${selected.breakingCapacityKa};'
+              'Ipsc=${request.prospectiveShortCircuitCurrentA}',
+          unit: ApartmentEngineeringFactUnit.code,
+          sourceId: overcurrentProtectionSelectionVersion,
+          sourceRevision: overcurrentProtectionSelectionVersion,
+        ),
+      ],
     );
 
     return ApartmentEngineeringDesignRequirements(
