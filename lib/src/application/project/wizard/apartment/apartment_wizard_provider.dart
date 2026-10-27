@@ -387,9 +387,10 @@ final class ApartmentReservedProjectCommand implements ReservedProjectCommand {
         levelId: target.levelId,
         proposal: proposal,
       );
-      engineeringMetadata = engineeringMetadata
-          .withAppliedEngineeringProposalRegistry(
-        engineeringMetadata.appliedEngineeringProposalRegistry.replace(snapshot),
+      engineeringMetadata =
+          engineeringMetadata.withAppliedEngineeringProposalRegistry(
+        engineeringMetadata.appliedEngineeringProposalRegistry
+            .replace(snapshot),
       );
     }
     return ProjectCommandCandidate.fromState(
@@ -405,7 +406,8 @@ final class ApartmentReservedProjectCommand implements ReservedProjectCommand {
     final proposal = engineeringProposal;
     if (proposal == null) return;
     if (proposal.candidateSetFingerprint != candidateSetFingerprint ||
-        proposal.candidateFingerprint != candidateIdentity.candidateFingerprint ||
+        proposal.candidateFingerprint !=
+            candidateIdentity.candidateFingerprint ||
         proposal.intentFingerprint != candidateIdentity.intentFingerprint) {
       throw StateError(
         'Frozen P9.6 engineering proposal no longer matches the reserved '
