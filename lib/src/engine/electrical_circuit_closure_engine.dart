@@ -308,6 +308,7 @@ abstract final class ElectricalCircuitClosureEngine {
     required ElectricalCircuitCableCandidate candidate,
   }) {
     final cable = candidate.cable;
+    final calculation = circuit.calculation;
     final structuralRejections = <String>[];
     if (!cable.isPower) {
       structuralRejections.add('cable-not-power-rated');
@@ -326,8 +327,11 @@ abstract final class ElectricalCircuitClosureEngine {
         cable.ratedVoltageV! < policy.minimumCableRatedVoltageV) {
       structuralRejections.add('cable-rated-voltage-below-policy-minimum');
     }
+    if (cable.ratedVoltageV == null ||
+        cable.ratedVoltageV! < calculation.nominalVoltageV) {
+      structuralRejections.add('cable-rated-voltage-below-circuit-voltage');
+    }
 
-    final calculation = circuit.calculation;
     final reactivePowerKind = calculation.designReactivePowerVar < 0
         ? ElectricalReactivePowerKind.leading
         : ElectricalReactivePowerKind.lagging;
