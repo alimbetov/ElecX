@@ -13,7 +13,8 @@ abstract final class ApartmentCircuitSynthesisEvidenceService {
   }) {
     final circuitRequirements = requirements.requirements
         .where(
-          (item) => item.domain == ApartmentEngineeringRequirementDomain.circuit,
+          (item) =>
+              item.domain == ApartmentEngineeringRequirementDomain.circuit,
         )
         .toList(growable: false);
     if (circuitRequirements.length != 1) {
@@ -82,7 +83,8 @@ abstract final class ApartmentCircuitSynthesisEvidenceService {
     );
   }
 
-  static String _definitionEvidence(ElectricalCircuitSynthesisResult synthesis) =>
+  static String _definitionEvidence(
+          ElectricalCircuitSynthesisResult synthesis) =>
       p9CanonicalSerializeFields([
         for (final circuit in synthesis.circuits)
           MapEntry(
@@ -95,7 +97,8 @@ abstract final class ApartmentCircuitSynthesisEvidenceService {
           ),
       ]);
 
-  static String _assignmentEvidence(ElectricalCircuitSynthesisResult synthesis) =>
+  static String _assignmentEvidence(
+          ElectricalCircuitSynthesisResult synthesis) =>
       p9CanonicalSerializeFields([
         for (final circuit in synthesis.circuits)
           MapEntry(circuit.id, circuit.loadIds.join(',')),
