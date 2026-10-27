@@ -341,7 +341,8 @@ ApartmentEngineeringDesignRequirements _requirementsAfterD3({
       ApartmentCircuitClosureEvidenceService.overloadEvidenceValue(d3);
   final d3SourceRevision =
       ApartmentCircuitClosureEvidenceService.sourceRevisionValue(d3);
-  final sourceRevision = staleSourceRevision ? 'stale-revision' : d3SourceRevision;
+  final sourceRevision =
+      staleSourceRevision ? 'stale-revision' : d3SourceRevision;
   return ApartmentEngineeringDesignRequirements(
     requirementsVersion: apartmentEngineeringRequirementsVersion,
     selectedCandidateFingerprint: 'candidate-fp',
