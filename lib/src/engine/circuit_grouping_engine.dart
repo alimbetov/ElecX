@@ -2,7 +2,7 @@ import '../domain/electrical_circuit_synthesis.dart';
 import '../domain/electrical_load_calculation.dart';
 
 const String electricalCircuitSynthesisVersion =
-    'electrical.circuit-synthesis.v1';
+    'electrical.circuit-synthesis.v2';
 
 /// Deterministic policy-driven circuit synthesis.
 ///
@@ -14,6 +14,8 @@ abstract final class CircuitGroupingEngine {
   static ElectricalCircuitSynthesisResult synthesize(
     ElectricalCircuitSynthesisRequest request,
   ) {
+    _validateRequest(request);
+
     final dedicated = <_CircuitDraft>[];
     final groupedCandidates = <CircuitSynthesisLoad>[];
 
@@ -21,7 +23,7 @@ abstract final class CircuitGroupingEngine {
       ..sort(_compareLoadsForClassification);
 
     for (final item in orderedLoads) {
-      final matchingRule = _firstMatchingDedicatedRule(
+      final matchingRule = _matchingDedicatedRule(
         request.dedicatedCircuitPolicy,
         item,
       );
@@ -115,14 +117,58 @@ abstract final class CircuitGroupingEngine {
     return ElectricalCircuitSynthesisResult(circuits: circuits);
   }
 
-  static DedicatedCircuitRule? _firstMatchingDedicatedRule(
+  static void _validateRequest(ElectricalCircuitSynthesisRequest request) {
+    for (final item in request.loads) {
+      final load = item.load;
+      if (item.locationId.trim().isEmpty) {
+        throw ArgumentError(
+          'Circuit-synthesis load ${load.id} requires a non-empty location.',
+        );
+      }
+      if (load.id.trim().isEmpty ||
+          load.sourceId.trim().isEmpty ||
+          load.sourceRevision.trim().isEmpty) {
+        throw ArgumentError(
+          'Circuit-synthesis load identity/source fields must be non-empty.',
+        );
+      }
+      if (load.ratedPowerW < 0) {
+        throw ArgumentError.value(load.ratedPowerW, 'ratedPowerW');
+      }
+      if (load.quantity <= 0) {
+        throw ArgumentError.value(load.quantity, 'quantity');
+      }
+      if (!load.utilizationFactor.isFinite ||
+          load.utilizationFactor <= 0 ||
+          load.utilizationFactor > 1) {
+        throw ArgumentError.value(
+          load.utilizationFactor,
+          'utilizationFactor',
+        );
+      }
+      if (!load.powerFactor.isFinite ||
+          load.powerFactor <= 0 ||
+          load.powerFactor > 1) {
+        throw ArgumentError.value(load.powerFactor, 'powerFactor');
+      }
+    }
+  }
+
+  static DedicatedCircuitRule? _matchingDedicatedRule(
     DedicatedCircuitPolicy policy,
     CircuitSynthesisLoad item,
   ) {
-    for (final rule in policy.rules) {
-      if (rule.matches(item)) return rule;
+    final matches = policy.rules
+        .where((rule) => rule.matches(item))
+        .toList(growable: false);
+    if (matches.length > 1) {
+      throw StateError(
+        'Load ${item.load.id} matches multiple dedicated-circuit rules: '
+        '${matches.map((rule) => rule.id).join(', ')}. Explicit policy '
+        'precedence is required instead of lexical first-match behavior.',
+      );
     }
-    return null;
+    return matches.isEmpty ? null : matches.single;
   }
 
   static String _groupingBucketKey(
