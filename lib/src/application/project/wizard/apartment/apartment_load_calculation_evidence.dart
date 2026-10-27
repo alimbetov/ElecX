@@ -106,9 +106,8 @@ abstract final class ApartmentLoadCalculationEvidenceService {
       );
     }
     final requestIds = request.loads.map((item) => item.id).toSet();
-    final resultIds = calculation.contributions
-        .map((item) => item.loadId)
-        .toSet();
+    final resultIds =
+        calculation.contributions.map((item) => item.loadId).toSet();
     if (requestIds.length != resultIds.length ||
         !requestIds.containsAll(resultIds)) {
       throw ArgumentError(
