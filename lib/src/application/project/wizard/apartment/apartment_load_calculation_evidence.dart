@@ -58,6 +58,14 @@ abstract final class ApartmentLoadCalculationEvidenceService {
         sourceId: request.diversityPolicy.sourceId,
         sourceRevision: request.diversityPolicy.sourceRevision,
       ),
+      ApartmentEngineeringFactEvidence(
+        factKey: 'load.reservePolicy',
+        valueKind: ApartmentEngineeringFactValueKind.text,
+        value: request.reservePolicy.id,
+        unit: ApartmentEngineeringFactUnit.code,
+        sourceId: request.reservePolicy.sourceId,
+        sourceRevision: request.reservePolicy.sourceRevision,
+      ),
     ];
 
     final provenLoad = ApartmentEngineeringRequirement(
