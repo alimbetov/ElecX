@@ -2,7 +2,8 @@ import 'dart:math' as math;
 
 import '../domain/electrical_load_calculation.dart';
 
-const String electricalLoadCalculationVersion = 'electrical.load-calculation.v1';
+const String electricalLoadCalculationVersion =
+    'electrical.load-calculation.v1';
 
 /// Deterministic active/apparent-power calculation for one electrical group.
 ///
@@ -42,9 +43,8 @@ abstract final class LoadCalculationEngine {
     final designPowerW = utilizedPowerW * diversity * reserveMultiplier;
     final designApparentPowerVa =
         utilizedApparentPowerVa * diversity * reserveMultiplier;
-    final equivalentPowerFactor = designApparentPowerVa == 0
-        ? 1.0
-        : designPowerW / designApparentPowerVa;
+    final equivalentPowerFactor =
+        designApparentPowerVa == 0 ? 1.0 : designPowerW / designApparentPowerVa;
     final currentDivisor = switch (request.phaseSystem) {
       ElectricalLoadPhaseSystem.singlePhaseAc => request.nominalVoltageV,
       ElectricalLoadPhaseSystem.threePhaseAc =>
