@@ -189,7 +189,8 @@ abstract final class CableSizingEngine {
 
   static void _validateRequest(CableSizingRequest request) {
     final requirement = request.requirement;
-    if (!requirement.designCurrentA.isFinite || requirement.designCurrentA <= 0) {
+    if (!requirement.designCurrentA.isFinite ||
+        requirement.designCurrentA <= 0) {
       throw ArgumentError.value(requirement.designCurrentA, 'designCurrentA');
     }
     if (!requirement.nominalVoltageV.isFinite ||
@@ -238,7 +239,8 @@ abstract final class CableSizingEngine {
       final factorIds = <String>{};
       for (final factor in section.factors) {
         if (factor.id.trim().isEmpty) {
-          throw ArgumentError('Thermal correction factor id must be non-empty.');
+          throw ArgumentError(
+              'Thermal correction factor id must be non-empty.');
         }
         if (!factorIds.add(factor.id)) {
           throw ArgumentError(
