@@ -1,4 +1,5 @@
 import '../../../../engine/electrical_short_circuit_closure_engine.dart';
+import 'apartment_circuit_closure_evidence.dart';
 import 'apartment_engineering_requirements.dart';
 import 'p9_canonical_serialization.dart';
 
@@ -21,15 +22,37 @@ abstract final class ApartmentShortCircuitClosureEvidenceService {
       requirements,
       ApartmentEngineeringRequirementDomain.protection,
     );
-    if (!circuitRequirement.factEvidence
-        .containsKey('circuit.conductorConstraints')) {
+    final conductorFact =
+        circuitRequirement.factEvidence['circuit.conductorConstraints'];
+    if (conductorFact == null) {
       throw ArgumentError(
         'D4 evidence requires prior D3 conductor-constraint evidence.',
       );
     }
-    if (!protectionRequirement.factEvidence
-        .containsKey('protection.overload')) {
+    final overloadFact = protectionRequirement.factEvidence['protection.overload'];
+    if (overloadFact == null) {
       throw ArgumentError('D4 evidence requires prior D3 overload evidence.');
+    }
+
+    final expectedConductorEvidence =
+        ApartmentCircuitClosureEvidenceService.conductorEvidenceValue(
+      request.d3Closure,
+    );
+    final expectedOverloadEvidence =
+        ApartmentCircuitClosureEvidenceService.overloadEvidenceValue(
+      request.d3Closure,
+    );
+    if (conductorFact.valueKind != ApartmentEngineeringFactValueKind.text ||
+        conductorFact.value != expectedConductorEvidence) {
+      throw ArgumentError(
+        'D4 conductor evidence does not match the supplied D3 closure.',
+      );
+    }
+    if (overloadFact.valueKind != ApartmentEngineeringFactValueKind.text ||
+        overloadFact.value != expectedOverloadEvidence) {
+      throw ArgumentError(
+        'D4 overload evidence does not match the supplied D3 closure.',
+      );
     }
     if (!closure.isFullyClosed) {
       throw ArgumentError(
@@ -63,7 +86,7 @@ abstract final class ApartmentShortCircuitClosureEvidenceService {
         ApartmentEngineeringFactEvidence(
           factKey: 'protection.shortCircuit',
           valueKind: ApartmentEngineeringFactValueKind.text,
-          value: _shortCircuitEvidence(closure),
+          value: shortCircuitEvidenceValue(closure),
           unit: ApartmentEngineeringFactUnit.code,
           sourceId: electricalShortCircuitClosureVersion,
           sourceRevision: sourceRevision,
@@ -71,7 +94,7 @@ abstract final class ApartmentShortCircuitClosureEvidenceService {
         ApartmentEngineeringFactEvidence(
           factKey: 'protection.disconnection',
           valueKind: ApartmentEngineeringFactValueKind.text,
-          value: _disconnectionEvidence(closure),
+          value: disconnectionEvidenceValue(closure),
           unit: ApartmentEngineeringFactUnit.code,
           sourceId: electricalShortCircuitClosureVersion,
           sourceRevision: sourceRevision,
@@ -96,6 +119,109 @@ abstract final class ApartmentShortCircuitClosureEvidenceService {
             item,
       ],
     );
+  }
+
+  /// Canonical D4 short-circuit proof used by D5+ for exact-lineage binding.
+  static String shortCircuitEvidenceValue(
+    ElectricalShortCircuitClosureResult closure,
+  ) {
+    final outcomes = closure.outcomes.toList()
+      ..sort((left, right) => left.circuitId.compareTo(right.circuitId));
+    return p9CanonicalSerializeFields([
+      for (final outcome in outcomes)
+        MapEntry(
+          outcome.circuitId,
+          p9CanonicalSerializeFields([
+            MapEntry('deviceId', outcome.d3Outcome.selectedProtection!.id),
+            MapEntry(
+              'breakingCapacityKa',
+              outcome.d3Outcome.selectedProtection!.breakingCapacityKa
+                  .toString(),
+            ),
+            MapEntry('cableId', outcome.d3Outcome.selectedCable!.cable.id),
+            MapEntry(
+              'd3ProspectiveShortCircuitCurrentA',
+              outcome.d3Outcome.policy.prospectiveShortCircuitCurrentA
+                  .toString(),
+            ),
+            MapEntry(
+              'thermalFaultCurrentA',
+              outcome.thermalFault!.faultCurrentA.toString(),
+            ),
+            MapEntry(
+              'thermalLoopImpedanceOhm',
+              outcome.thermalFault!.loopImpedanceOhm.toString(),
+            ),
+            MapEntry('faultEnergyA2s', outcome.faultEnergyA2s!.toString()),
+            MapEntry(
+              'thermalCapacityA2s',
+              outcome.thermalCapacityA2s!.toString(),
+            ),
+            MapEntry(
+              'protectiveCrossSectionMm2',
+              outcome.policy.thermalEvidence!.crossSectionMm2.toString(),
+            ),
+            MapEntry(
+              'kCoefficientArootSPerMm2',
+              outcome.policy.thermalEvidence!.kCoefficientArootSPerMm2
+                  .toString(),
+            ),
+            MapEntry(
+              'thermalOperatingTimeUpperBoundS',
+              outcome.thermalOperatingTimeS!.toString(),
+            ),
+          ]),
+        ),
+    ]);
+  }
+
+  /// Canonical D4 automatic-disconnection proof used by D5+ for lineage.
+  static String disconnectionEvidenceValue(
+    ElectricalShortCircuitClosureResult closure,
+  ) {
+    final outcomes = closure.outcomes.toList()
+      ..sort((left, right) => left.circuitId.compareTo(right.circuitId));
+    return p9CanonicalSerializeFields([
+      for (final outcome in outcomes)
+        MapEntry(
+          outcome.circuitId,
+          p9CanonicalSerializeFields([
+            MapEntry('deviceId', outcome.d3Outcome.selectedProtection!.id),
+            MapEntry(
+              'minimumFaultCurrentA',
+              outcome.disconnectionFault!.faultCurrentA.toString(),
+            ),
+            MapEntry(
+              'loopResistanceOhm',
+              outcome.disconnectionFault!.loopResistanceOhm.toString(),
+            ),
+            MapEntry(
+              'loopReactanceOhm',
+              outcome.disconnectionFault!.loopReactanceOhm.toString(),
+            ),
+            MapEntry(
+              'loopImpedanceOhm',
+              outcome.disconnectionFault!.loopImpedanceOhm.toString(),
+            ),
+            MapEntry(
+              'requiredMaxDisconnectionTimeS',
+              outcome.policy.requiredMaxDisconnectionTimeS!.toString(),
+            ),
+            MapEntry(
+              'operatingTimeUpperBoundS',
+              outcome.disconnectionOperatingTimeS!.toString(),
+            ),
+            MapEntry(
+              'timeCurrentSourceId',
+              outcome.policy.timeCurrentEvidence!.sourceId,
+            ),
+            MapEntry(
+              'timeCurrentSourceRevision',
+              outcome.policy.timeCurrentEvidence!.sourceRevision,
+            ),
+          ]),
+        ),
+    ]);
   }
 
   static ApartmentEngineeringRequirement _singleRequirement(
@@ -133,6 +259,10 @@ abstract final class ApartmentShortCircuitClosureEvidenceService {
     final cableCandidate = outcome.d3Outcome.selectedCable!;
     return p9CanonicalSerializeFields([
       MapEntry('d3CableId', cableCandidate.cable.id),
+      MapEntry(
+        'd3CableConductorCrossSectionMm2',
+        cableCandidate.cable.conductorCrossSectionMm2!.toString(),
+      ),
       MapEntry('d3CableSourceId', cableCandidate.sourceId),
       MapEntry('d3CableSourceRevision', cableCandidate.sourceRevision),
       MapEntry('d3DeviceId', device.id),
@@ -213,107 +343,6 @@ abstract final class ApartmentShortCircuitClosureEvidenceService {
         MapEntry('sourceRevision', evidence.sourceRevision),
       ]);
 
-  static String _shortCircuitEvidence(
-    ElectricalShortCircuitClosureResult closure,
-  ) {
-    final outcomes = closure.outcomes.toList()
-      ..sort((left, right) => left.circuitId.compareTo(right.circuitId));
-    return p9CanonicalSerializeFields([
-      for (final outcome in outcomes)
-        MapEntry(
-          outcome.circuitId,
-          p9CanonicalSerializeFields([
-            MapEntry('deviceId', outcome.d3Outcome.selectedProtection!.id),
-            MapEntry(
-              'breakingCapacityKa',
-              outcome.d3Outcome.selectedProtection!.breakingCapacityKa
-                  .toString(),
-            ),
-            MapEntry('cableId', outcome.d3Outcome.selectedCable!.cable.id),
-            MapEntry(
-              'd3ProspectiveShortCircuitCurrentA',
-              outcome.d3Outcome.policy.prospectiveShortCircuitCurrentA
-                  .toString(),
-            ),
-            MapEntry(
-              'thermalFaultCurrentA',
-              outcome.thermalFault!.faultCurrentA.toString(),
-            ),
-            MapEntry(
-              'thermalLoopImpedanceOhm',
-              outcome.thermalFault!.loopImpedanceOhm.toString(),
-            ),
-            MapEntry('faultEnergyA2s', outcome.faultEnergyA2s!.toString()),
-            MapEntry(
-              'thermalCapacityA2s',
-              outcome.thermalCapacityA2s!.toString(),
-            ),
-            MapEntry(
-              'protectiveCrossSectionMm2',
-              outcome.policy.thermalEvidence!.crossSectionMm2.toString(),
-            ),
-            MapEntry(
-              'kCoefficientArootSPerMm2',
-              outcome.policy.thermalEvidence!.kCoefficientArootSPerMm2
-                  .toString(),
-            ),
-            MapEntry(
-              'thermalOperatingTimeUpperBoundS',
-              outcome.thermalOperatingTimeS!.toString(),
-            ),
-          ]),
-        ),
-    ]);
-  }
-
-  static String _disconnectionEvidence(
-    ElectricalShortCircuitClosureResult closure,
-  ) {
-    final outcomes = closure.outcomes.toList()
-      ..sort((left, right) => left.circuitId.compareTo(right.circuitId));
-    return p9CanonicalSerializeFields([
-      for (final outcome in outcomes)
-        MapEntry(
-          outcome.circuitId,
-          p9CanonicalSerializeFields([
-            MapEntry('deviceId', outcome.d3Outcome.selectedProtection!.id),
-            MapEntry(
-              'minimumFaultCurrentA',
-              outcome.disconnectionFault!.faultCurrentA.toString(),
-            ),
-            MapEntry(
-              'loopResistanceOhm',
-              outcome.disconnectionFault!.loopResistanceOhm.toString(),
-            ),
-            MapEntry(
-              'loopReactanceOhm',
-              outcome.disconnectionFault!.loopReactanceOhm.toString(),
-            ),
-            MapEntry(
-              'loopImpedanceOhm',
-              outcome.disconnectionFault!.loopImpedanceOhm.toString(),
-            ),
-            MapEntry(
-              'requiredMaxDisconnectionTimeS',
-              outcome.policy.requiredMaxDisconnectionTimeS!.toString(),
-            ),
-            MapEntry(
-              'operatingTimeUpperBoundS',
-              outcome.disconnectionOperatingTimeS!.toString(),
-            ),
-            MapEntry(
-              'timeCurrentSourceId',
-              outcome.policy.timeCurrentEvidence!.sourceId,
-            ),
-            MapEntry(
-              'timeCurrentSourceRevision',
-              outcome.policy.timeCurrentEvidence!.sourceRevision,
-            ),
-          ]),
-        ),
-    ]);
-  }
-
   static String _canonicalClosure(
     ElectricalShortCircuitClosureResult closure,
   ) {
@@ -336,6 +365,11 @@ abstract final class ApartmentShortCircuitClosureEvidenceService {
           outcome.d3Outcome.selectedProtection!.breakingCapacityKa.toString(),
         ),
         MapEntry('d3CableId', outcome.d3Outcome.selectedCable!.cable.id),
+        MapEntry(
+          'd3CableConductorCrossSectionMm2',
+          outcome.d3Outcome.selectedCable!.cable.conductorCrossSectionMm2
+              .toString(),
+        ),
         MapEntry(
           'd3ProspectiveShortCircuitCurrentA',
           outcome.d3Outcome.policy.prospectiveShortCircuitCurrentA.toString(),
