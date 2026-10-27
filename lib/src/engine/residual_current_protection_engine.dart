@@ -14,17 +14,30 @@ final class ElectricalResidualCurrentClosureRequest {
       throw ArgumentError('D5 requires a fully closed D4 result.');
     }
 
-    final expectedIds = d4Closure.outcomes.map((item) => item.circuitId).toSet();
+    final outcomesById = {
+      for (final outcome in d4Closure.outcomes) outcome.circuitId: outcome,
+    };
+    final expectedIds = outcomesById.keys.toSet();
     final actualIds = <String>{};
     for (final policy in this.policies) {
       if (!actualIds.add(policy.circuitId)) {
         throw ArgumentError('Duplicate D5 policy ${policy.circuitId}.');
       }
-      if (!expectedIds.contains(policy.circuitId)) {
+      final d4Outcome = outcomesById[policy.circuitId];
+      if (d4Outcome == null) {
         throw ArgumentError(
           'D5 policy references unknown circuit ${policy.circuitId}.',
         );
       }
+
+      final expectedLoadIds = d4Outcome.d3Outcome.circuit.circuit.loadIds.toList()
+        ..sort();
+      if (!_sameStringList(policy.evaluatedLoadIds, expectedLoadIds)) {
+        throw ArgumentError(
+          'D5 policy load set does not match circuit ${policy.circuitId}.',
+        );
+      }
+
       if (policy.applicability == ResidualCurrentApplicability.required) {
         if (policy.preferredTypes.toSet().length != policy.allowedTypes.length ||
             !policy.preferredTypes.toSet().containsAll(policy.allowedTypes)) {
@@ -293,4 +306,12 @@ abstract final class ResidualCurrentProtectionEngine {
 
     return left.id.compareTo(right.id);
   }
+}
+
+bool _sameStringList(List<String> left, List<String> right) {
+  if (left.length != right.length) return false;
+  for (var index = 0; index < left.length; index++) {
+    if (left[index] != right[index]) return false;
+  }
+  return true;
 }
