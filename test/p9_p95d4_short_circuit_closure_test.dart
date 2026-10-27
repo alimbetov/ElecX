@@ -40,7 +40,8 @@ void main() {
       expect(longCurrent, lessThan(shortCurrent));
     });
 
-    test('Q27 certified time-current upper bound proves disconnection time', () {
+    test('Q27 certified time-current upper bound proves disconnection time',
+        () {
       final fixture = _fixture(requiredMaxDisconnectionTimeS: 0.4);
       final outcome = ElectricalShortCircuitClosureEngine.close(
         fixture.request,
@@ -50,7 +51,8 @@ void main() {
       expect(outcome.disconnectionStatus, EngineeringCheckStatus.pass);
     });
 
-    test('Q28 D4 does not interpolate between time-current evidence points', () {
+    test('Q28 D4 does not interpolate between time-current evidence points',
+        () {
       final evidence = ProtectiveDeviceTimeCurrentEvidence(
         deviceId: _c16.id,
         points: const [
@@ -92,10 +94,9 @@ void main() {
         fixture.request,
       ).outcomes.single;
 
-      final expectedEnergy =
+      final expectedEnergy = outcome.thermalFault!.faultCurrentA *
           outcome.thermalFault!.faultCurrentA *
-              outcome.thermalFault!.faultCurrentA *
-              outcome.thermalOperatingTimeS!;
+          outcome.thermalOperatingTimeS!;
       final expectedCapacity = (143 * 2.5) * (143 * 2.5);
 
       expect(outcome.faultEnergyA2s, closeTo(expectedEnergy, 1e-6));
@@ -147,7 +148,8 @@ void main() {
       );
     });
 
-    test('Q34 D4 rejects fault cases above D3 upstream prospective current', () {
+    test('Q34 D4 rejects fault cases above D3 upstream prospective current',
+        () {
       final fixture = _fixture(
         disconnectionSourceResistanceOhm: 0.001,
         thermalSourceResistanceOhm: 0.001,
