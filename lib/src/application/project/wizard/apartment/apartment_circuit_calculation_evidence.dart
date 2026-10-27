@@ -50,7 +50,7 @@ abstract final class ApartmentCircuitCalculationEvidenceService {
         ApartmentEngineeringFactEvidence(
           factKey: 'circuit.definition',
           valueKind: ApartmentEngineeringFactValueKind.text,
-          value: _definitionEvidence(assignment),
+          value: definitionEvidenceValue(assignment),
           unit: ApartmentEngineeringFactUnit.code,
           sourceId: electricalCircuitCalculationVersion,
           sourceRevision: electricalPhaseAssignmentVersion,
@@ -58,7 +58,7 @@ abstract final class ApartmentCircuitCalculationEvidenceService {
         ApartmentEngineeringFactEvidence(
           factKey: 'circuit.loadAssignments',
           valueKind: ApartmentEngineeringFactValueKind.text,
-          value: _assignmentEvidence(calculation),
+          value: loadAssignmentsEvidenceValue(calculation),
           unit: ApartmentEngineeringFactUnit.code,
           sourceId: electricalCircuitCalculationVersion,
           sourceRevision: electricalPhaseAssignmentVersion,
@@ -85,12 +85,18 @@ abstract final class ApartmentCircuitCalculationEvidenceService {
     );
   }
 
-  static String _definitionEvidence(ElectricalPhaseAssignmentResult result) =>
+  /// Canonical D2 circuit-definition evidence reused by downstream projections
+  /// that must prove they are bound to the exact phase-assignment result.
+  static String definitionEvidenceValue(
+    ElectricalPhaseAssignmentResult result,
+  ) =>
       p9CanonicalSerializeFields([
         MapEntry('boardPhaseSystem', result.boardPhaseSystem.name),
         MapEntry('lineNeutralVoltageV', result.lineNeutralVoltageV.toString()),
         MapEntry(
-            'lineLineVoltageV', result.lineLineVoltageV?.toString() ?? 'n/a'),
+          'lineLineVoltageV',
+          result.lineLineVoltageV?.toString() ?? 'n/a',
+        ),
         for (final assigned in result.circuits)
           MapEntry(
             assigned.id,
@@ -129,7 +135,8 @@ abstract final class ApartmentCircuitCalculationEvidenceService {
           ),
       ]);
 
-  static String _assignmentEvidence(
+  /// Canonical D2 load-assignment evidence reused by downstream projections.
+  static String loadAssignmentsEvidenceValue(
     ElectricalCircuitCalculationResult result,
   ) =>
       p9CanonicalSerializeFields([
