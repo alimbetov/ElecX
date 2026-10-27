@@ -183,6 +183,31 @@ void main() {
       expect(outcome.thermalStatus, EngineeringCheckStatus.indeterminate);
       expect(outcome.isClosed, isFalse);
     });
+
+    test('Q48 fault-loop impedance must bind to the D3 selected cable', () {
+      final fixture = _fixture(faultLoopCableId: 'other-cable');
+      final outcome = ElectricalShortCircuitClosureEngine.close(
+        fixture.request,
+      ).outcomes.single;
+
+      expect(
+        outcome.upstreamConsistencyStatus,
+        EngineeringCheckStatus.indeterminate,
+      );
+      expect(outcome.disconnectionStatus, EngineeringCheckStatus.indeterminate);
+      expect(outcome.thermalStatus, EngineeringCheckStatus.indeterminate);
+      expect(outcome.isClosed, isFalse);
+      expect(
+        outcome.reasons,
+        contains(
+          'disconnection-fault-loop-cable-does-not-match-selected-cable',
+        ),
+      );
+      expect(
+        outcome.reasons,
+        contains('thermal-fault-loop-cable-does-not-match-selected-cable'),
+      );
+    });
   });
 }
 
@@ -214,6 +239,7 @@ _D4Fixture _fixture({
   double protectiveCrossSectionMm2 = 2.5,
   String timeCurrentDeviceId = 'mcb-c16-6ka',
   String thermalCableId = 'cable-2.5',
+  String faultLoopCableId = 'cable-2.5',
   double disconnectionSourceResistanceOhm = 0.04,
   double thermalSourceResistanceOhm = 0.02,
   double phaseResistanceOhmPerKm = 7.41,
@@ -227,6 +253,7 @@ _D4Fixture _fixture({
         ? null
         : _faultCase(
             id: 'minimum-disconnection',
+            cableId: faultLoopCableId,
             sourceResistanceOhm: disconnectionSourceResistanceOhm,
             phaseResistanceOhmPerKm: phaseResistanceOhmPerKm,
             protectiveResistanceOhmPerKm: protectiveResistanceOhmPerKm,
@@ -235,6 +262,7 @@ _D4Fixture _fixture({
         ? null
         : _faultCase(
             id: 'maximum-thermal',
+            cableId: faultLoopCableId,
             sourceResistanceOhm: thermalSourceResistanceOhm,
             phaseResistanceOhmPerKm: phaseResistanceOhmPerKm,
             protectiveResistanceOhmPerKm: protectiveResistanceOhmPerKm,
@@ -283,12 +311,14 @@ _D4Fixture _fixture({
 
 FaultLoopCaseEvidence _faultCase({
   required String id,
+  required String cableId,
   required double sourceResistanceOhm,
   required double phaseResistanceOhmPerKm,
   required double protectiveResistanceOhmPerKm,
 }) =>
     FaultLoopCaseEvidence(
       id: id,
+      cableId: cableId,
       faultVoltageV: 230,
       sourceResistanceOhm: sourceResistanceOhm,
       sourceReactanceOhm: 0,
