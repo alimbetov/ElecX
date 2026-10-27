@@ -22,7 +22,7 @@ final class CircuitSynthesisLoad {
     required this.kind,
     required this.locationId,
     required this.requiredPhaseSystem,
-  })  : assert(locationId != '');
+  }) : assert(locationId != '');
 
   final ElectricalLoadInput load;
   final ElectricalCircuitLoadKind kind;
@@ -163,12 +163,14 @@ final class ElectricalCircuitSynthesisRequest {
     required this.dedicatedCircuitPolicy,
   }) : loads = List.unmodifiable(loads) {
     if (this.loads.isEmpty) {
-      throw ArgumentError('At least one load is required for circuit synthesis.');
+      throw ArgumentError(
+          'At least one load is required for circuit synthesis.');
     }
     final ids = <String>{};
     for (final item in this.loads) {
       if (!ids.add(item.load.id)) {
-        throw ArgumentError('Duplicate circuit-synthesis load ${item.load.id}.');
+        throw ArgumentError(
+            'Duplicate circuit-synthesis load ${item.load.id}.');
       }
     }
   }
@@ -194,7 +196,8 @@ final class SynthesizedElectricalCircuit {
             ..sort((left, right) => left.load.id.compareTo(right.load.id)),
         ) {
     if (id.trim().isEmpty || this.loads.isEmpty) {
-      throw ArgumentError('Synthesized circuit identity/loads must be non-empty.');
+      throw ArgumentError(
+          'Synthesized circuit identity/loads must be non-empty.');
     }
     if (dedicated && this.loads.length != 1) {
       throw ArgumentError('Dedicated circuit must contain exactly one load.');
