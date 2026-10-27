@@ -46,6 +46,10 @@ void main() {
         load.establishedFacts['load.diversityPolicy'],
         'residential-general-0.80 code',
       );
+      expect(
+        load.establishedFacts['load.reservePolicy'],
+        'project-reserve-20 code',
+      );
       expect(updated.blockingUnresolvedRequirements, hasLength(3));
       expect(updated.readyForEquipmentConfiguration, isFalse);
     });
