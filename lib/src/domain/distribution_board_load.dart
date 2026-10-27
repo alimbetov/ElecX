@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 enum DistributionBoardPhaseSystem { singlePhase, threePhase }
 
 enum DistributionBoardPhase { l1, l2, l3 }
@@ -29,21 +31,10 @@ final class BoardCircuitLoad {
   final double designReactivePowerVar;
   final DistributionBoardPhase? phase;
 
-  double get designApparentPowerVa =>
-      (designPowerW * designPowerW +
-              designReactivePowerVar * designReactivePowerVar)
-          .sqrt();
-}
-
-extension _SquareRoot on double {
-  double sqrt() {
-    if (this == 0) return 0;
-    var estimate = this > 1 ? this : 1.0;
-    for (var i = 0; i < 24; i++) {
-      estimate = 0.5 * (estimate + this / estimate);
-    }
-    return estimate;
-  }
+  double get designApparentPowerVa => math.sqrt(
+        designPowerW * designPowerW +
+            designReactivePowerVar * designReactivePowerVar,
+      );
 }
 
 final class DistributionBoardLoadRequest {
