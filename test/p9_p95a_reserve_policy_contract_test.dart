@@ -1,5 +1,6 @@
 import 'package:elecx/src/application/project/wizard/apartment/apartment_candidate_set_service.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_requirements.dart';
+import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_requirements_adapter.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_wizard_parameters.dart';
 import 'package:elecx/src/application/project/wizard/wizard_contracts.dart';
 import 'package:elecx/src/domain/apartment_topology.dart';
