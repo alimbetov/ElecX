@@ -34,7 +34,8 @@ void main() {
   });
 
   group('P9.6 Generate -> Preview/Diff -> Apply engineering lifecycle', () {
-    test('Q91 Generate runs engineering pipeline once and freezes proposal', () {
+    test('Q91 Generate runs engineering pipeline once and freezes proposal',
+        () {
       final pipeline = _CountingPipeline(outputFingerprint: _sha('b'));
       final session = _session(
         fixture: fixture,
@@ -50,7 +51,8 @@ void main() {
       expect(session.generatePreview(), isTrue);
 
       expect(pipeline.callCount, 1);
-      final command = session.generatedCommand as ApartmentReservedProjectCommand;
+      final command =
+          session.generatedCommand as ApartmentReservedProjectCommand;
       expect(command.hasEngineeringProposal, isTrue);
       expect(
         command.engineeringProposal!.candidateFingerprint,
@@ -81,7 +83,8 @@ void main() {
       );
       expect(session.generatePreview(), isTrue);
 
-      final command = session.generatedCommand as ApartmentReservedProjectCommand;
+      final command =
+          session.generatedCommand as ApartmentReservedProjectCommand;
       final proposal = command.engineeringProposal!;
       expect(session.preview, isNotNull);
       expect(session.preview!.normalizedIntentKey, command.normalizedIntentKey);
