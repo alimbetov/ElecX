@@ -153,8 +153,7 @@ final class _PhaseAccumulator {
       powerW * powerW + reactivePowerVar * reactivePowerVar,
     );
     final currentA = math.sqrt(
-      activeCurrentA * activeCurrentA +
-          reactiveCurrentA * reactiveCurrentA,
+      activeCurrentA * activeCurrentA + reactiveCurrentA * reactiveCurrentA,
     );
     return BoardPhaseLoadResult(
       phase: phase,
