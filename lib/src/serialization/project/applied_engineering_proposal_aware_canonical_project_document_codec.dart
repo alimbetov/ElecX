@@ -30,8 +30,8 @@ final class AppliedEngineeringProposalAwareCanonicalProjectDocumentCodec
       payload: <String, Object?>{
         ...base.payload,
         'appliedEngineeringProposals': _encodeRegistry(
-          snapshot.aggregate.engineeringMetadata
-              .appliedEngineeringProposalRegistry,
+          snapshot
+              .aggregate.engineeringMetadata.appliedEngineeringProposalRegistry,
         ),
       },
     );
@@ -55,8 +55,8 @@ final class AppliedEngineeringProposalAwareCanonicalProjectDocumentCodec
     );
     final base = _base.decode(
       ProjectDocument(
-        schemaVersion:
-            GenerationProvenanceAwareCanonicalProjectDocumentCodec.schemaVersion,
+        schemaVersion: GenerationProvenanceAwareCanonicalProjectDocumentCodec
+            .schemaVersion,
         payload: document.payload,
       ),
     );
@@ -82,7 +82,8 @@ final class AppliedEngineeringProposalAwareCanonicalProjectDocumentCodec
     AppliedEngineeringProposalRegistry registry,
   ) {
     final proposals = registry.byLevel.values.toList()
-      ..sort((left, right) => left.levelId.value.compareTo(right.levelId.value));
+      ..sort(
+          (left, right) => left.levelId.value.compareTo(right.levelId.value));
     return <String, Object?>{
       'schemaVersion': proposalSchemaVersion,
       'proposals': <Object?>[
