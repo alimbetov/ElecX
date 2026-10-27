@@ -140,7 +140,7 @@ final class CanonicalEditorProductionRuntimeConfig {
       final engineeringPipeline = resolved.apartmentEngineeringPipeline;
       if (engineeringPipeline != null) {
         ApartmentEngineeringPipelineRuntimeRegistry.bind(
-          project: resolved.session.project,
+          session: resolved.session,
           pipeline: engineeringPipeline,
         );
       }
