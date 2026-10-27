@@ -49,8 +49,8 @@ final class ApartmentWizardProvider
     this.candidateSetService = const ApartmentCandidateSetService(),
     this.materializer = const ApartmentCanonicalMaterializer(),
     this.provenanceBuilder = const ApartmentGenerationProvenanceBuilder(),
-    required ApartmentEngineeringPipeline engineeringPipeline,
-  }) : engineeringPipeline = engineeringPipeline;
+    required this.engineeringPipeline,
+  });
 
   const ApartmentWizardProvider.geometryOnly({
     this.candidateSetService = const ApartmentCandidateSetService(),
@@ -402,7 +402,8 @@ final class ApartmentReservedProjectCommand implements ReservedProjectCommand {
       );
       engineeringMetadata =
           engineeringMetadata.withAppliedEngineeringProposalRegistry(
-        engineeringMetadata.appliedEngineeringProposalRegistry.replace(snapshot),
+        engineeringMetadata.appliedEngineeringProposalRegistry
+            .replace(snapshot),
       );
     }
     return ProjectCommandCandidate.fromState(
