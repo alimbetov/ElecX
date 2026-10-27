@@ -272,7 +272,7 @@ final _downstreamRcd = ResidualCurrentProtectiveDeviceSpec(
   poleCount: 2,
   overcurrentDeviceId: null,
   conditionalShortCircuitCurrentA: 6000,
-  compatibleBackupOvercurrentDeviceIds: const [_mcb16.id],
+  compatibleBackupOvercurrentDeviceIds: [_mcb16.id],
   sourceId: 'residual-device-catalog',
   sourceRevision: '2026.1',
 );
@@ -286,7 +286,7 @@ final _upstreamRcd = ResidualCurrentProtectiveDeviceSpec(
   poleCount: 2,
   overcurrentDeviceId: null,
   conditionalShortCircuitCurrentA: 10000,
-  compatibleBackupOvercurrentDeviceIds: const [_upstream.id],
+  compatibleBackupOvercurrentDeviceIds: [_upstream.id],
   sourceId: 'residual-device-catalog',
   sourceRevision: '2026.1',
 );
@@ -372,7 +372,8 @@ ProtectiveDeviceSelectivityEvidence _limitedEvidence({
       sourceRevision: '2026.1',
     );
 
-ResidualCurrentSelectivityEvidence _residualPairEvidence({required String id}) =>
+ResidualCurrentSelectivityEvidence _residualPairEvidence(
+        {required String id}) =>
     ResidualCurrentSelectivityEvidence(
       id: id,
       downstreamDeviceId: _downstreamRcd.id,
