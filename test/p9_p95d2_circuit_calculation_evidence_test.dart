@@ -76,7 +76,8 @@ void main() {
       );
     });
 
-    test('Q12 same-power load identity substitution fails at domain boundary', () {
+    test('Q12 same-power load identity substitution fails at domain boundary',
+        () {
       final fixture = _calculatedFixture();
       final original = fixture.calculation.circuits.first;
       final originalLoad = original.circuit.loads.single;
@@ -119,7 +120,8 @@ void main() {
       );
     });
 
-    test('Q13 tampered calculation provenance is rejected by evidence binder', () {
+    test('Q13 tampered calculation provenance is rejected by evidence binder',
+        () {
       final fixture = _calculatedFixture();
       final original = fixture.calculation.circuits.first;
       final tamperedCalculation = ElectricalCircuitCalculationResult(
