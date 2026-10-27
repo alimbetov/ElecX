@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import '../domain/cable_spec.dart';
+import '../domain/electrical_load_calculation.dart';
 
 enum CircuitPhaseSystem { dc, singlePhaseAc, threePhaseAc }
 
@@ -14,6 +15,7 @@ final class CircuitElectricalRequirement {
     required this.routeLengthMm,
     required this.maxVoltageDropRatio,
     this.powerFactor = 1.0,
+    this.reactivePowerKind = ElectricalReactivePowerKind.lagging,
   })  : assert(designCurrentA > 0),
         assert(nominalVoltageV > 0),
         assert(routeLengthMm >= 0),
@@ -26,6 +28,7 @@ final class CircuitElectricalRequirement {
   final double routeLengthMm;
   final double maxVoltageDropRatio;
   final double powerFactor;
+  final ElectricalReactivePowerKind reactivePowerKind;
 }
 
 /// Cable impedance evidence used for voltage-drop calculations. It is kept
@@ -212,15 +215,23 @@ abstract final class CableSizingEngine {
     final lengthKm = requirement.routeLengthMm / 1000000.0;
     final cosPhi = requirement.powerFactor;
     final sinPhi = math.sqrt(math.max(0, 1 - cosPhi * cosPhi));
+    final reactiveSign =
+        requirement.reactivePowerKind == ElectricalReactivePowerKind.lagging
+            ? 1.0
+            : -1.0;
     final impedanceTerm = evidence.resistanceOhmPerKm * cosPhi +
-        evidence.reactanceOhmPerKm * sinPhi;
-
-    return switch (requirement.phaseSystem) {
-      CircuitPhaseSystem.threePhaseAc =>
-        math.sqrt(3) * requirement.designCurrentA * lengthKm * impedanceTerm,
-      CircuitPhaseSystem.dc ||
-      CircuitPhaseSystem.singlePhaseAc =>
-        2 * requirement.designCurrentA * lengthKm * impedanceTerm,
+        reactiveSign * evidence.reactanceOhmPerKm * sinPhi;
+    final multiplier = switch (requirement.phaseSystem) {
+      CircuitPhaseSystem.threePhaseAc => math.sqrt(3),
+      CircuitPhaseSystem.dc || CircuitPhaseSystem.singlePhaseAc => 2.0,
     };
+
+    // A leading load may turn the approximation into voltage rise. The sizing
+    // constraint is the magnitude of voltage deviation, so compare |ΔU|.
+    return (multiplier *
+            requirement.designCurrentA *
+            lengthKm *
+            impedanceTerm)
+        .abs();
   }
 }
