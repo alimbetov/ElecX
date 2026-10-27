@@ -244,9 +244,6 @@ void main() {
       final board = DistributionBoardLoadEngine.calculate(
         PhaseAssignmentBoardProjection.toBoardRequest(
           assignment: assignment,
-          boardPhaseSystem: DistributionBoardPhaseSystem.threePhase,
-          lineNeutralVoltageV: 230,
-          lineLineVoltageV: 400,
           availablePowerW: 15000,
           supplyMaxCurrentA: 32,
         ),
