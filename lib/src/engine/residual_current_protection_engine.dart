@@ -30,8 +30,8 @@ final class ElectricalResidualCurrentClosureRequest {
         );
       }
 
-      final expectedLoadIds = d4Outcome.d3Outcome.circuit.circuit.loadIds.toList()
-        ..sort();
+      final expectedLoadIds =
+          d4Outcome.d3Outcome.circuit.circuit.loadIds.toList()..sort();
       if (!_sameStringList(policy.evaluatedLoadIds, expectedLoadIds)) {
         throw ArgumentError(
           'D5 policy load set does not match circuit ${policy.circuitId}.',
@@ -39,7 +39,8 @@ final class ElectricalResidualCurrentClosureRequest {
       }
 
       if (policy.applicability == ResidualCurrentApplicability.required) {
-        if (policy.preferredTypes.toSet().length != policy.allowedTypes.length ||
+        if (policy.preferredTypes.toSet().length !=
+                policy.allowedTypes.length ||
             !policy.preferredTypes.toSet().containsAll(policy.allowedTypes)) {
           throw ArgumentError(
             'D5 preferred residual-current types must explicitly order every allowed type.',
@@ -267,7 +268,8 @@ abstract final class ResidualCurrentProtectionEngine {
         if (candidate.overcurrentDeviceId != selectedOvercurrent.id) {
           reasons.add('rcbo-does-not-bind-d3-selected-overcurrent-device');
         }
-        if ((candidate.ratedCurrentA - selectedOvercurrent.ratedCurrentA).abs() >
+        if ((candidate.ratedCurrentA - selectedOvercurrent.ratedCurrentA)
+                .abs() >
             1e-9) {
           reasons.add('rcbo-rated-current-does-not-match-d3-device');
         }
