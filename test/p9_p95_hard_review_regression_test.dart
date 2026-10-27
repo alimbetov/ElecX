@@ -157,7 +157,8 @@ void main() {
       );
     });
 
-    test('Q47 ambiguous dedicated rules fail closed without hidden priority', () {
+    test('Q47 ambiguous dedicated rules fail closed without hidden priority',
+        () {
       final request = ElectricalCircuitSynthesisRequest(
         loads: const [
           CircuitSynthesisLoad(
