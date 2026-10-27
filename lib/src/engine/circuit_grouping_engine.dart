@@ -1,6 +1,9 @@
 import '../domain/electrical_circuit_synthesis.dart';
 import '../domain/electrical_load_calculation.dart';
 
+const String electricalCircuitSynthesisVersion =
+    'electrical.circuit-synthesis.v1';
+
 /// Deterministic policy-driven circuit synthesis.
 ///
 /// The engine applies source-pinned grouping and dedicated-circuit policies. It
