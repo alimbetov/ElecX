@@ -11,11 +11,13 @@ final class ElectricalPhaseAssignmentRequest {
     required this.lineNeutralVoltageV,
     this.lineLineVoltageV,
   }) {
-    if (lineNeutralVoltageV <= 0) {
+    if (!lineNeutralVoltageV.isFinite || lineNeutralVoltageV <= 0) {
       throw ArgumentError.value(lineNeutralVoltageV, 'lineNeutralVoltageV');
     }
     if (boardPhaseSystem == DistributionBoardPhaseSystem.threePhase &&
-        (lineLineVoltageV == null || lineLineVoltageV! <= 0)) {
+        (lineLineVoltageV == null ||
+            !lineLineVoltageV!.isFinite ||
+            lineLineVoltageV! <= 0)) {
       throw ArgumentError('Three-phase board requires lineLineVoltageV.');
     }
     for (final circuit in calculation.circuits) {
@@ -78,13 +80,25 @@ final class PhaseAssignedElectricalCircuit {
 }
 
 final class ElectricalAssignedPhaseLoad {
-  const ElectricalAssignedPhaseLoad({
+  ElectricalAssignedPhaseLoad({
     required this.phase,
     required this.designPowerW,
     required this.designReactivePowerVar,
     required this.designCurrentA,
-  })  : assert(designPowerW >= 0),
-        assert(designCurrentA >= 0);
+  }) {
+    if (!designPowerW.isFinite || designPowerW < 0) {
+      throw ArgumentError.value(designPowerW, 'designPowerW');
+    }
+    if (!designReactivePowerVar.isFinite) {
+      throw ArgumentError.value(
+        designReactivePowerVar,
+        'designReactivePowerVar',
+      );
+    }
+    if (!designCurrentA.isFinite || designCurrentA < 0) {
+      throw ArgumentError.value(designCurrentA, 'designCurrentA');
+    }
+  }
 
   final DistributionBoardPhase phase;
   final double designPowerW;
@@ -101,14 +115,33 @@ final class ElectricalPhaseAssignmentResult {
   ElectricalPhaseAssignmentResult({
     required Iterable<PhaseAssignedElectricalCircuit> circuits,
     required Iterable<ElectricalAssignedPhaseLoad> phaseLoads,
+    required this.boardPhaseSystem,
+    required this.lineNeutralVoltageV,
+    required this.lineLineVoltageV,
     required this.maxPhaseCurrentA,
     required this.phaseCurrentImbalanceRatio,
   })  : circuits = List.unmodifiable(circuits),
         phaseLoads = List.unmodifiable(phaseLoads) {
+    if (!lineNeutralVoltageV.isFinite || lineNeutralVoltageV <= 0) {
+      throw ArgumentError.value(lineNeutralVoltageV, 'lineNeutralVoltageV');
+    }
+    if (boardPhaseSystem == DistributionBoardPhaseSystem.threePhase &&
+        (lineLineVoltageV == null ||
+            !lineLineVoltageV!.isFinite ||
+            lineLineVoltageV! <= 0)) {
+      throw ArgumentError('Three-phase result requires lineLineVoltageV.');
+    }
     final circuitIds = <String>{};
     for (final circuit in this.circuits) {
       if (!circuitIds.add(circuit.id)) {
         throw ArgumentError('Duplicate phase-assigned circuit ${circuit.id}.');
+      }
+      if (boardPhaseSystem == DistributionBoardPhaseSystem.singlePhase &&
+          circuit.phase != null &&
+          circuit.phase != DistributionBoardPhase.l1) {
+        throw ArgumentError(
+          'Single-phase board can assign circuits only to L1.',
+        );
       }
     }
     final phases = <DistributionBoardPhase>{};
@@ -119,13 +152,29 @@ final class ElectricalPhaseAssignmentResult {
         );
       }
     }
-    if (maxPhaseCurrentA < 0 || phaseCurrentImbalanceRatio < 0) {
-      throw ArgumentError('Phase-assignment metrics must be non-negative.');
+    final expectedPhases =
+        boardPhaseSystem == DistributionBoardPhaseSystem.singlePhase
+            ? const {DistributionBoardPhase.l1}
+            : DistributionBoardPhase.values.toSet();
+    if (phases.length != expectedPhases.length ||
+        !phases.containsAll(expectedPhases)) {
+      throw ArgumentError(
+        'Phase-load results do not match the board phase system.',
+      );
+    }
+    if (!maxPhaseCurrentA.isFinite ||
+        maxPhaseCurrentA < 0 ||
+        !phaseCurrentImbalanceRatio.isFinite ||
+        phaseCurrentImbalanceRatio < 0) {
+      throw ArgumentError('Phase-assignment metrics must be finite/non-negative.');
     }
   }
 
   final List<PhaseAssignedElectricalCircuit> circuits;
   final List<ElectricalAssignedPhaseLoad> phaseLoads;
+  final DistributionBoardPhaseSystem boardPhaseSystem;
+  final double lineNeutralVoltageV;
+  final double? lineLineVoltageV;
   final double maxPhaseCurrentA;
   final double phaseCurrentImbalanceRatio;
 }
