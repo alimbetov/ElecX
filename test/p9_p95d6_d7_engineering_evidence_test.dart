@@ -42,10 +42,11 @@ void main() {
       );
       expect(protection.isResolved, isTrue);
       expect(protection.factEvidence, contains('protection.coordination'));
-      expect(
-        protection.factEvidence['protection.coordination']!.value,
-        contains('sel-total'),
-      );
+      final coordination =
+          protection.factEvidence['protection.coordination']!.value;
+      expect(coordination, contains('sel-total'));
+      expect(coordination, contains('residualStatus'));
+      expect(coordination, contains('closedNotRequired'));
       expect(circuit.isResolved, isFalse);
       expect(
         circuit.factEvidence,
@@ -94,6 +95,11 @@ void main() {
             selectedEvidence: alternate,
             status: ProtectiveDeviceCoordinationClosureStatus
                 .closedRequiredWithEvidence,
+            residualCurrentPolicy: original.residualCurrentPolicy,
+            residualCurrentEvaluations: original.residualCurrentEvaluations,
+            selectedResidualCurrentEvidence:
+                original.selectedResidualCurrentEvidence,
+            residualCurrentStatus: original.residualCurrentStatus,
           ),
         ],
       );
@@ -127,7 +133,9 @@ void main() {
       expect(installation.value, contains('reference-method-B2'));
       expect(installation.value, contains('ampacity-table'));
       expect(
-          fixture.requirementsAfterD7.readyForEquipmentConfiguration, isTrue);
+        fixture.requirementsAfterD7.readyForEquipmentConfiguration,
+        isTrue,
+      );
       expect(gate.accepted, isTrue);
       expect(gate.blockerCodes, isEmpty);
     });
@@ -278,6 +286,21 @@ _EngineeringEvidenceFixture _fixture({
         upstreamDevice: _upstream,
         selectivityEvidence: selectivityEvidence,
         sourceId: 'coordination-policy',
+        sourceRevision: '2026.1',
+      ),
+    ],
+    residualCurrentPolicies: [
+      ResidualCurrentDeviceCoordinationPolicy(
+        circuitId: 'circuit-001',
+        applicability: ResidualCurrentCoordinationApplicability.notRequired,
+        rationaleCode: 'qualification.no-local-residual-device',
+        evaluatedDownstreamDeviceId: null,
+        applicabilityEvidenceIds: const [
+          'residual-coordination-not-applicable',
+        ],
+        upstreamDevice: null,
+        selectivityEvidence: const [],
+        sourceId: 'residual-coordination-policy',
         sourceRevision: '2026.1',
       ),
     ],
