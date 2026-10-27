@@ -20,30 +20,12 @@ final class ElectricalPhaseAssignmentRequest {
             lineLineVoltageV! <= 0)) {
       throw ArgumentError('Three-phase board requires lineLineVoltageV.');
     }
-    for (final circuit in calculation.circuits) {
-      switch (circuit.phaseSystem) {
-        case ElectricalLoadPhaseSystem.singlePhaseAc:
-          if (circuit.calculation.nominalVoltageV != lineNeutralVoltageV) {
-            throw ArgumentError(
-              'Circuit ${circuit.id} nominal voltage does not match board '
-              'line-neutral voltage.',
-            );
-          }
-        case ElectricalLoadPhaseSystem.threePhaseAc:
-          if (boardPhaseSystem == DistributionBoardPhaseSystem.singlePhase) {
-            throw ArgumentError(
-              'Single-phase board cannot accept three-phase circuit '
-              '${circuit.id}.',
-            );
-          }
-          if (circuit.calculation.nominalVoltageV != lineLineVoltageV) {
-            throw ArgumentError(
-              'Circuit ${circuit.id} nominal voltage does not match board '
-              'line-line voltage.',
-            );
-          }
-      }
-    }
+    _validateCircuitVoltages(
+      calculation: calculation,
+      boardPhaseSystem: boardPhaseSystem,
+      lineNeutralVoltageV: lineNeutralVoltageV,
+      lineLineVoltageV: lineLineVoltageV,
+    );
   }
 
   final ElectricalCircuitCalculationResult calculation;
@@ -144,6 +126,15 @@ final class ElectricalPhaseAssignmentResult {
         );
       }
     }
+    _validateCircuitVoltages(
+      calculation: ElectricalCircuitCalculationResult(
+        circuits: [for (final assigned in this.circuits) assigned.circuit],
+      ),
+      boardPhaseSystem: boardPhaseSystem,
+      lineNeutralVoltageV: lineNeutralVoltageV,
+      lineLineVoltageV: lineLineVoltageV,
+    );
+
     final phases = <DistributionBoardPhase>{};
     for (final phaseLoad in this.phaseLoads) {
       if (!phases.add(phaseLoad.phase)) {
@@ -177,4 +168,36 @@ final class ElectricalPhaseAssignmentResult {
   final double? lineLineVoltageV;
   final double maxPhaseCurrentA;
   final double phaseCurrentImbalanceRatio;
+}
+
+void _validateCircuitVoltages({
+  required ElectricalCircuitCalculationResult calculation,
+  required DistributionBoardPhaseSystem boardPhaseSystem,
+  required double lineNeutralVoltageV,
+  required double? lineLineVoltageV,
+}) {
+  for (final circuit in calculation.circuits) {
+    switch (circuit.phaseSystem) {
+      case ElectricalLoadPhaseSystem.singlePhaseAc:
+        if (circuit.calculation.nominalVoltageV != lineNeutralVoltageV) {
+          throw ArgumentError(
+            'Circuit ${circuit.id} nominal voltage does not match board '
+            'line-neutral voltage.',
+          );
+        }
+      case ElectricalLoadPhaseSystem.threePhaseAc:
+        if (boardPhaseSystem == DistributionBoardPhaseSystem.singlePhase) {
+          throw ArgumentError(
+            'Single-phase board cannot accept three-phase circuit '
+            '${circuit.id}.',
+          );
+        }
+        if (circuit.calculation.nominalVoltageV != lineLineVoltageV) {
+          throw ArgumentError(
+            'Circuit ${circuit.id} nominal voltage does not match board '
+            'line-line voltage.',
+          );
+        }
+    }
+  }
 }
