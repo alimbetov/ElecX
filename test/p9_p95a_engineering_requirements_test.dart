@@ -136,7 +136,9 @@ void main() {
       expect(requirements.unresolvedRequirements, hasLength(4));
       expect(requirements.blockingUnresolvedRequirements, hasLength(4));
       expect(
-        requirements.requirements.map((requirement) => requirement.domain).toSet(),
+        requirements.requirements
+            .map((requirement) => requirement.domain)
+            .toSet(),
         ApartmentEngineeringRequirementDomain.values.toSet(),
       );
       for (final requirement in requirements.requirements) {
@@ -284,7 +286,8 @@ void main() {
       };
 
       expect(
-        byDomain[ApartmentEngineeringRequirementDomain.supply]!.requiredFactKeys,
+        byDomain[ApartmentEngineeringRequirementDomain.supply]!
+            .requiredFactKeys,
         containsAll(<String>[
           'supply.voltageV',
           'supply.phaseCount',
