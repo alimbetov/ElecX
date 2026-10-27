@@ -114,8 +114,7 @@ void main() {
         fixture.requirementsAfterD7,
         ApartmentEngineeringRequirementDomain.circuit,
       );
-      final installation =
-          circuit.factEvidence['circuit.installationMethod']!;
+      final installation = circuit.factEvidence['circuit.installationMethod']!;
       final gate = ApartmentEngineeringFinalGateService.evaluate(
         fixture.requirementsAfterD7,
       );
@@ -127,12 +126,14 @@ void main() {
       expect(circuit.isResolved, isTrue);
       expect(installation.value, contains('reference-method-B2'));
       expect(installation.value, contains('ampacity-table'));
-      expect(fixture.requirementsAfterD7.readyForEquipmentConfiguration, isTrue);
+      expect(
+          fixture.requirementsAfterD7.readyForEquipmentConfiguration, isTrue);
       expect(gate.accepted, isTrue);
       expect(gate.blockerCodes, isEmpty);
     });
 
-    test('Q80 D7 rejects installation evidence bound to another ampacity source',
+    test(
+        'Q80 D7 rejects installation evidence bound to another ampacity source',
         () {
       final fixture = _fixture(buildD7Evidence: false);
 
@@ -161,7 +162,8 @@ void main() {
       );
     });
 
-    test('Q81 final gate refuses D6 state while installation remains unresolved',
+    test(
+        'Q81 final gate refuses D6 state while installation remains unresolved',
         () {
       final fixture = _fixture(buildD7Evidence: false);
       final gate = ApartmentEngineeringFinalGateService.evaluate(
@@ -350,8 +352,7 @@ ProtectiveDeviceSelectivityEvidence _coordinationEvidence(
       sourceRevision: '2026.1',
     );
 
-ElectricalCircuitClosureRequest _d3Request() =>
-    ElectricalCircuitClosureRequest(
+ElectricalCircuitClosureRequest _d3Request() => ElectricalCircuitClosureRequest(
       calculation: _calculation(),
       policies: [
         ElectricalCircuitClosurePolicy(
@@ -604,7 +605,9 @@ ApartmentEngineeringRequirement _provenRequirement({
       criticality: criticality,
       rationaleCode: 'qualification.$id-proven',
       requiredFactKeys: facts,
-      factEvidence: [for (final key in facts) _fact(key, 'qualification-value')],
+      factEvidence: [
+        for (final key in facts) _fact(key, 'qualification-value')
+      ],
     );
 
 ApartmentEngineeringFactEvidence _fact(String key, String value) =>
