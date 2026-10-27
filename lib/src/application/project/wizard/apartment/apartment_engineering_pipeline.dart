@@ -72,7 +72,8 @@ final class ApartmentEngineeringProposal {
         selected.identity.geometryAlgorithmVersion,
       ),
       MapEntry('geometryFingerprint', selected.identity.geometryFingerprint),
-      MapEntry('scoringProfileVersion', selected.identity.scoringProfileVersion),
+      MapEntry(
+          'scoringProfileVersion', selected.identity.scoringProfileVersion),
       MapEntry('d1RequirementsFingerprint', d1.requirementsFingerprint),
       MapEntry('d8RequirementsFingerprint', output.requirementsFingerprint),
       MapEntry('d8OutputFingerprint', output.outputFingerprint),
@@ -290,8 +291,7 @@ void _requireSha256(String value, String fieldName) {
   final normalized = value.trim().toLowerCase();
   final valid = normalized.length == 64 &&
       normalized.codeUnits.every(
-        (unit) =>
-            (unit >= 48 && unit <= 57) || (unit >= 97 && unit <= 102),
+        (unit) => (unit >= 48 && unit <= 57) || (unit >= 97 && unit <= 102),
       );
   if (!valid) {
     throw ArgumentError.value(value, fieldName, 'Expected SHA-256 hex value.');
