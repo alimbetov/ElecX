@@ -19,7 +19,8 @@ void main() {
     });
 
     test('P9.5-C-Q02 unresolved requirements fail closed', () {
-      final result = const ApartmentEquipmentAutoConfigurationService().configure(
+      final result =
+          const ApartmentEquipmentAutoConfigurationService().configure(
         requirements: _requirements(),
         catalog: _catalog(),
       );
@@ -31,7 +32,8 @@ void main() {
 
     test('P9.5-CDE-Q03 selects eligible products and explains rejections', () {
       final requirements = _requirements().bindAuthoritativeEvidence(_facts());
-      final result = const ApartmentEquipmentAutoConfigurationService().configure(
+      final result =
+          const ApartmentEquipmentAutoConfigurationService().configure(
         requirements: requirements,
         catalog: _catalog(),
       );
@@ -52,7 +54,9 @@ void main() {
         'cable-2.5',
       );
       expect(
-        configuration.selectedFor(ApartmentEquipmentConfigurationSlot.panel).variantId,
+        configuration
+            .selectedFor(ApartmentEquipmentConfigurationSlot.panel)
+            .variantId,
         'panel-12',
       );
       expect(configuration.totalPriceMinor, 22300);
@@ -71,7 +75,8 @@ void main() {
         configuration.rejectedCandidates.any(
           (decision) =>
               decision.variant.variantId == 'rcbo-16a-badnorm' &&
-              decision.state == ApartmentEquipmentCandidateState.normativeRejected,
+              decision.state ==
+                  ApartmentEquipmentCandidateState.normativeRejected,
         ),
         isTrue,
       );
@@ -126,12 +131,14 @@ void main() {
       );
     });
 
-    test('P9.5-C-Q06 missing feasible equipment class blocks configuration', () {
+    test('P9.5-C-Q06 missing feasible equipment class blocks configuration',
+        () {
       final requirements = _requirements().bindAuthoritativeEvidence(_facts());
       final withoutCable = _variants().where(
         (variant) => variant.kind != ApartmentEquipmentProductKind.cable,
       );
-      final result = const ApartmentEquipmentAutoConfigurationService().configure(
+      final result =
+          const ApartmentEquipmentAutoConfigurationService().configure(
         requirements: requirements,
         catalog: _catalog(variants: withoutCable),
       );
@@ -222,31 +229,32 @@ List<ApartmentEngineeringFactEvidence> _facts({
   String sourceRevision = 'engineering-r1',
 }) =>
     [
-      _fact('supply.availablePowerW', 7000,
-          ApartmentEngineeringFactUnit.watt, sourceRevision),
-      _fact('supply.frequencyHz', 50,
-          ApartmentEngineeringFactUnit.hertz, sourceRevision),
-      _fact('supply.phaseCount', 1,
-          ApartmentEngineeringFactUnit.count, sourceRevision),
+      _fact('supply.availablePowerW', 7000, ApartmentEngineeringFactUnit.watt,
+          sourceRevision),
+      _fact('supply.frequencyHz', 50, ApartmentEngineeringFactUnit.hertz,
+          sourceRevision),
+      _fact('supply.phaseCount', 1, ApartmentEngineeringFactUnit.count,
+          sourceRevision),
       _fact('supply.prospectiveShortCircuitCurrentA', 4500,
           ApartmentEngineeringFactUnit.ampere, sourceRevision),
-      _fact('supply.voltageV', 230,
-          ApartmentEngineeringFactUnit.volt, sourceRevision),
-      _fact('load.connectedPowerW', 3500,
-          ApartmentEngineeringFactUnit.watt, sourceRevision),
-      _fact('load.designCurrentA', 16,
-          ApartmentEngineeringFactUnit.ampere, sourceRevision),
-      _fact('load.designPowerW', 3680,
-          ApartmentEngineeringFactUnit.watt, sourceRevision),
+      _fact('supply.voltageV', 230, ApartmentEngineeringFactUnit.volt,
+          sourceRevision),
+      _fact('load.connectedPowerW', 3500, ApartmentEngineeringFactUnit.watt,
+          sourceRevision),
+      _fact('load.designCurrentA', 16, ApartmentEngineeringFactUnit.ampere,
+          sourceRevision),
+      _fact('load.designPowerW', 3680, ApartmentEngineeringFactUnit.watt,
+          sourceRevision),
       _textFact('load.diversityPolicy', 'residential.v1', sourceRevision),
       _decimalFact('circuit.conductorConstraints', 2.5,
           ApartmentEngineeringFactUnit.squareMillimeter, sourceRevision),
       _textFact('circuit.definition', 'single-final-circuit', sourceRevision),
       _textFact('circuit.installationMethod', 'B2', sourceRevision),
       _textFact('circuit.loadAssignments', 'general-sockets', sourceRevision),
-      _textFact('protection.disconnection', 'automatic-disconnection', sourceRevision),
-      _fact('protection.overload', 16,
-          ApartmentEngineeringFactUnit.ampere, sourceRevision),
+      _textFact('protection.disconnection', 'automatic-disconnection',
+          sourceRevision),
+      _fact('protection.overload', 16, ApartmentEngineeringFactUnit.ampere,
+          sourceRevision),
       _fact('protection.residualCurrent', 30,
           ApartmentEngineeringFactUnit.milliampere, sourceRevision),
       _decimalFact('protection.shortCircuit', 6.0,
@@ -313,14 +321,15 @@ ApartmentVerifiedProductVariantCatalog _catalog({
 List<ApartmentVerifiedProductVariant> _variants() => [
       _protection('mcb-16a-6ka', ApartmentEquipmentProductKind.circuitBreaker,
           16, 6, 1, 5000),
-      _protection('rcbo-16a-3ka', ApartmentEquipmentProductKind.rcbo,
-          16, 3, 2, 8000),
-      _protection('rcbo-16a-6ka', ApartmentEquipmentProductKind.rcbo,
-          16, 6, 2, 12000),
-      _protection('rcbo-20a-10ka', ApartmentEquipmentProductKind.rcbo,
-          20, 10, 2, 11000),
-      _protection('rcbo-16a-badnorm', ApartmentEquipmentProductKind.rcbo,
-          16, 6, 2, 9000, profileId: 'other.profile'),
+      _protection(
+          'rcbo-16a-3ka', ApartmentEquipmentProductKind.rcbo, 16, 3, 2, 8000),
+      _protection(
+          'rcbo-16a-6ka', ApartmentEquipmentProductKind.rcbo, 16, 6, 2, 12000),
+      _protection('rcbo-20a-10ka', ApartmentEquipmentProductKind.rcbo, 20, 10,
+          2, 11000),
+      _protection('rcbo-16a-badnorm', ApartmentEquipmentProductKind.rcbo, 16, 6,
+          2, 9000,
+          profileId: 'other.profile'),
       _cable('cable-1.5', 1.5, 20, 200),
       _cable('cable-2.5', 2.5, 21, 300),
       _cable('cable-4.0', 4, 27, 350),
@@ -346,7 +355,8 @@ ApartmentVerifiedProductVariant _protection(
         ratedVoltageV: 230,
         ratedCurrentA: currentA,
         breakingCapacityKA: breakingKA,
-        residualCurrentMA: kind == ApartmentEquipmentProductKind.rcbo ? 30 : null,
+        residualCurrentMA:
+            kind == ApartmentEquipmentProductKind.rcbo ? 30 : null,
         poleCount: kind == ApartmentEquipmentProductKind.rcbo ? 2 : 1,
         moduleWidth: modules,
       ),
