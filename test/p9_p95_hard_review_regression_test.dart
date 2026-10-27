@@ -5,6 +5,7 @@ import 'package:elecx/src/domain/electrical_load_calculation.dart';
 import 'package:elecx/src/domain/overcurrent_protection.dart';
 import 'package:elecx/src/domain/route_medium.dart';
 import 'package:elecx/src/engine/cable_sizing_engine.dart';
+import 'package:elecx/src/engine/circuit_grouping_engine.dart';
 import 'package:elecx/src/engine/electrical_circuit_calculation_engine.dart';
 import 'package:elecx/src/engine/electrical_circuit_closure_engine.dart';
 import 'package:elecx/src/engine/electrical_short_circuit_closure_engine.dart';
@@ -129,6 +130,64 @@ void main() {
         ),
       );
     });
+
+    test('Q46 circuit synthesis rejects whitespace-only location at runtime',
+        () {
+      final request = ElectricalCircuitSynthesisRequest(
+        loads: const [
+          CircuitSynthesisLoad(
+            load: _validLoad,
+            kind: ElectricalCircuitLoadKind.other,
+            locationId: '   ',
+            requiredPhaseSystem: ElectricalLoadPhaseSystem.singlePhaseAc,
+          ),
+        ],
+        groupingPolicy: _groupingPolicy(),
+        dedicatedCircuitPolicy: DedicatedCircuitPolicy(
+          id: 'dedicated-none',
+          rules: const [],
+          sourceId: 'qualification-policy',
+          sourceRevision: 'r1',
+        ),
+      );
+
+      expect(() => CircuitGroupingEngine.synthesize(request), throwsArgumentError);
+    });
+
+    test('Q47 ambiguous dedicated rules fail closed without hidden priority', () {
+      final request = ElectricalCircuitSynthesisRequest(
+        loads: const [
+          CircuitSynthesisLoad(
+            load: _validLoad,
+            kind: ElectricalCircuitLoadKind.other,
+            locationId: 'qualification',
+            requiredPhaseSystem: ElectricalLoadPhaseSystem.singlePhaseAc,
+          ),
+        ],
+        groupingPolicy: _groupingPolicy(),
+        dedicatedCircuitPolicy: DedicatedCircuitPolicy(
+          id: 'dedicated-ambiguous',
+          rules: [
+            DedicatedCircuitRule(
+              id: 'by-kind',
+              loadKinds: const {ElectricalCircuitLoadKind.other},
+              sourceId: 'qualification-policy',
+              sourceRevision: 'r1',
+            ),
+            DedicatedCircuitRule(
+              id: 'by-id',
+              loadIds: const {'load-a'},
+              sourceId: 'qualification-policy',
+              sourceRevision: 'r1',
+            ),
+          ],
+          sourceId: 'qualification-policy',
+          sourceRevision: 'r1',
+        ),
+      );
+
+      expect(() => CircuitGroupingEngine.synthesize(request), throwsStateError);
+    });
   });
 }
 
@@ -167,6 +226,16 @@ const _c10 = OvercurrentProtectiveDeviceSpec(
   sourceId: 'device-catalog',
   sourceRevision: 'r1',
 );
+
+CircuitGroupingPolicy _groupingPolicy() => CircuitGroupingPolicy(
+      id: 'grouping-policy',
+      maxGroupedLoadsPerCircuit: 8,
+      maxGroupedConnectedPowerW: 5000,
+      separateByLocation: false,
+      separateByLoadKind: false,
+      sourceId: 'qualification-policy',
+      sourceRevision: 'r1',
+    );
 
 CableSpec _cable() => CableSpec(
       id: 'cable-2.5',
