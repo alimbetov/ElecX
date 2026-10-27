@@ -70,8 +70,8 @@ abstract final class ApartmentProtectionCoordinationEvidenceService {
       ),
     ];
     final evidenceKeys = evidence.map((item) => item.factKey).toSet();
-    final allFactsPresent = protectionRequirement.requiredFactKeys
-        .every(evidenceKeys.contains);
+    final allFactsPresent =
+        protectionRequirement.requiredFactKeys.every(evidenceKeys.contains);
     if (!allFactsPresent) {
       throw ArgumentError(
         'D6 cannot close protection while required protection facts are missing.',
@@ -138,7 +138,8 @@ abstract final class ApartmentProtectionCoordinationEvidenceService {
     final residualFact =
         protectionRequirement.factEvidence['protection.residualCurrent'];
     if (residualFact == null) {
-      throw ArgumentError('D6 evidence requires prior D5 residual-current evidence.');
+      throw ArgumentError(
+          'D6 evidence requires prior D5 residual-current evidence.');
     }
 
     final expectedValue = ApartmentResidualCurrentClosureEvidenceService
@@ -186,7 +187,8 @@ abstract final class ApartmentProtectionCoordinationEvidenceService {
         'applicabilityEvidenceIds',
         policy.applicabilityEvidenceIds.join(','),
       ),
-      MapEntry('upstreamDeviceId', policy.upstreamDevice?.id ?? 'not-applicable'),
+      MapEntry(
+          'upstreamDeviceId', policy.upstreamDevice?.id ?? 'not-applicable'),
       MapEntry('status', outcome.status.name),
       MapEntry('selectedEvidenceId', selected?.id ?? 'none'),
       MapEntry('selectedKind', selected?.kind.name ?? 'none'),
