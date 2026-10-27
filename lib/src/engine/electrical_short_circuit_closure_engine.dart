@@ -159,8 +159,7 @@ final class ProtectiveConductorThermalEvidence {
     if (!crossSectionMm2.isFinite || crossSectionMm2 <= 0) {
       throw ArgumentError.value(crossSectionMm2, 'crossSectionMm2');
     }
-    if (!kCoefficientArootSPerMm2.isFinite ||
-        kCoefficientArootSPerMm2 <= 0) {
+    if (!kCoefficientArootSPerMm2.isFinite || kCoefficientArootSPerMm2 <= 0) {
       throw ArgumentError.value(
         kCoefficientArootSPerMm2,
         'kCoefficientArootSPerMm2',
@@ -201,8 +200,7 @@ final class ElectricalShortCircuitClosurePolicy {
       throw ArgumentError('D4 policy identity/source must be non-empty.');
     }
     final requiredTime = requiredMaxDisconnectionTimeS;
-    if (requiredTime != null &&
-        (!requiredTime.isFinite || requiredTime <= 0)) {
+    if (requiredTime != null && (!requiredTime.isFinite || requiredTime <= 0)) {
       throw ArgumentError.value(
         requiredMaxDisconnectionTimeS,
         'requiredMaxDisconnectionTimeS',
