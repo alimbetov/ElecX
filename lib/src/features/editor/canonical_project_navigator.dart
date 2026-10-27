@@ -96,7 +96,7 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
         CanonicalEditorWizardRuntimeRegistry.resolve(session);
     final activeLevelId = navigation.activeLevelId;
     final apartmentEngineeringPipeline =
-        ApartmentEngineeringPipelineRuntimeRegistry.resolve(session.project);
+        ApartmentEngineeringPipelineRuntimeRegistry.resolve(session);
     final canStartApartment = activeLevelId == null ||
         (_isEmptyApartmentTarget(activeLevelId) &&
             apartmentEngineeringPipeline != null);
@@ -360,7 +360,7 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
         final level = before.stores.levels[activeLevelId];
         if (level == null || !_isEmptyApartmentTarget(activeLevelId)) return;
         final engineeringPipeline =
-            ApartmentEngineeringPipelineRuntimeRegistry.resolve(before);
+            ApartmentEngineeringPipelineRuntimeRegistry.resolve(session);
         if (engineeringPipeline == null) {
           throw StateError(
             'Production Apartment Wizard requires an authoritative '
