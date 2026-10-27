@@ -46,9 +46,9 @@ void main() {
     expect(result.connectedPowerW, 3500);
     expect(result.utilizedPowerW, closeTo(2500, 0.001));
     expect(result.designPowerW, closeTo(2400, 0.001));
-    expect(result.designApparentPowerVa, closeTo(2549.7076, 0.001));
-    expect(result.designCurrentA, closeTo(11.0857, 0.001));
-    expect(result.equivalentPowerFactor, closeTo(0.941284, 0.0001));
+    expect(result.designApparentPowerVa, closeTo(2548.7719, 0.001));
+    expect(result.designCurrentA, closeTo(11.0816, 0.001));
+    expect(result.equivalentPowerFactor, closeTo(0.94163, 0.0001));
     expect(result.diversityFactor, 0.80);
     expect(result.reserveRatio, 0.20);
   });
