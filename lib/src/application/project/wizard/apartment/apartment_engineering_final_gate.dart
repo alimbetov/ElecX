@@ -60,7 +60,8 @@ abstract final class ApartmentEngineeringFinalGateService {
     }
 
     for (final requirement in requirements.blockingUnresolvedRequirements) {
-      blockers.add('unresolved:${requirement.domain.name}:${requirement.requirementId}');
+      blockers.add(
+          'unresolved:${requirement.domain.name}:${requirement.requirementId}');
     }
     if (!requirements.readyForEquipmentConfiguration) {
       blockers.add('requirements-not-ready-for-equipment-configuration');
