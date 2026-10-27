@@ -336,8 +336,7 @@ ApartmentEngineeringDesignRequirements _requirementsAfterD3({
       _unresolved(
         id: 'supply',
         domain: ApartmentEngineeringRequirementDomain.supply,
-        criticality:
-            ApartmentEngineeringRequirementCriticality.safetyCritical,
+        criticality: ApartmentEngineeringRequirementCriticality.safetyCritical,
         facts: const [
           'supply.availablePowerW',
           'supply.frequencyHz',
@@ -395,8 +394,7 @@ ApartmentEngineeringDesignRequirements _requirementsAfterD3({
         subjectStableId: 'projection-fp',
         evidenceState:
             ApartmentEngineeringRequirementEvidenceState.indeterminate,
-        criticality:
-            ApartmentEngineeringRequirementCriticality.safetyCritical,
+        criticality: ApartmentEngineeringRequirementCriticality.safetyCritical,
         rationaleCode: 'qualification.protection-d3',
         requiredFactKeys: const [
           'protection.disconnection',
