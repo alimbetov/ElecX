@@ -13,7 +13,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P9.5-D2 circuit calculation', () {
-    test('Q01 calculates circuit P/Q/S/Ib through authoritative load engine', () {
+    test('Q01 calculates circuit P/Q/S/Ib through authoritative load engine',
+        () {
       final synthesis = _synthesis([
         _circuit(
           'circuit-001',
@@ -251,7 +252,8 @@ void main() {
         ),
       );
 
-      expect(board.maxPhaseCurrentA, closeTo(assignment.maxPhaseCurrentA, 1e-9));
+      expect(
+          board.maxPhaseCurrentA, closeTo(assignment.maxPhaseCurrentA, 1e-9));
       expect(
         board.phaseCurrentImbalanceRatio,
         closeTo(assignment.phaseCurrentImbalanceRatio, 1e-9),
@@ -260,7 +262,9 @@ void main() {
       expect(board.currentCapacityStatus, BoardCapacityStatus.pass);
     });
 
-    test('Q09 voltage mismatch and three-phase circuit on 1ph board fail closed', () {
+    test(
+        'Q09 voltage mismatch and three-phase circuit on 1ph board fail closed',
+        () {
       final single = _calculateSinglePhaseCircuits([_load('a', 1000)]);
       expect(
         () => ElectricalPhaseAssignmentRequest(
@@ -322,11 +326,10 @@ ElectricalCircuitCalculationRequest _calculationRequest(
         for (final circuit in synthesis.circuits)
           _policy(
             circuit.id,
-            nominalVoltageV:
-                circuit.requiredPhaseSystem ==
-                        ElectricalLoadPhaseSystem.singlePhaseAc
-                    ? 230
-                    : 400,
+            nominalVoltageV: circuit.requiredPhaseSystem ==
+                    ElectricalLoadPhaseSystem.singlePhaseAc
+                ? 230
+                : 400,
           ),
       ],
     );
