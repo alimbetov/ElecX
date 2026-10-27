@@ -4,6 +4,7 @@ import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_candidate_set_service.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_output_projection.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_pipeline.dart';
+import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_requirements_adapter.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_wizard_parameters.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_wizard_provider.dart';
 import 'package:elecx/src/application/project/wizard/project_wizard_mutation_port.dart';
@@ -54,6 +55,10 @@ void main() {
       expect(
         command.engineeringProposal!.candidateFingerprint,
         card.candidateFingerprint,
+      );
+      expect(
+        command.engineeringProposal!.candidateSetFingerprint,
+        candidateSet.candidateSetFingerprint,
       );
       expect(
         command.engineeringProposal!.output.outputFingerprint,
@@ -148,7 +153,6 @@ void main() {
       ).generateTyped(parameters, context) as ApartmentReservedProjectCommand;
 
       final firstIntent = jsonDecode(first.normalizedIntentKey) as Map;
-      final secondIntent = jsonDecode(second.normalizedIntentKey) as Map;
       expect(
         firstIntent['engineeringProposalFingerprint'],
         first.engineeringProposal!.proposalFingerprint,
@@ -157,10 +161,7 @@ void main() {
         firstIntent['engineeringOutputFingerprint'],
         first.engineeringProposal!.output.outputFingerprint,
       );
-      expect(
-        first.normalizedIntentKey,
-        isNot(second.normalizedIntentKey),
-      );
+      expect(first.normalizedIntentKey, isNot(second.normalizedIntentKey));
     });
 
     test('Q96 Back discards the frozen engineering preview command', () {
@@ -196,11 +197,12 @@ final class _CountingPipeline implements ApartmentEngineeringPipeline {
 
   @override
   ApartmentEngineeringProposal generate({
+    required String candidateSetFingerprint,
     required ApartmentCandidateCard selected,
     required WizardGenerationContext context,
   }) {
     callCount++;
-    final requirements = selected.engineeringRequirements.requirements!;
+    final requirements = selected.engineeringRequirements;
     final output = ApartmentEngineeringOutputProjection(
       loadSchedule: const [],
       circuitSchedule: const [],
@@ -220,6 +222,7 @@ final class _CountingPipeline implements ApartmentEngineeringPipeline {
       outputFingerprint: outputFingerprint,
     );
     return ApartmentEngineeringProposal.bind(
+      candidateSetFingerprint: candidateSetFingerprint,
       selected: selected,
       output: output,
     );
