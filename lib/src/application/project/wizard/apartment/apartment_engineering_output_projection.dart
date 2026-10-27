@@ -1,14 +1,21 @@
-import '../../../project/project.dart' show DistributionBoardPhaseSystem;
 import '../../../../domain/electrical_circuit_calculation.dart';
-import '../../../../domain/electrical_load_calculation.dart';
 import '../../../../domain/electrical_phase_assignment.dart';
 import '../../../../domain/residual_current_protection.dart';
 import '../../../../engine/circuit_installation_method_closure_engine.dart';
+import '../../../../engine/electrical_circuit_calculation_engine.dart';
+import '../../../../engine/electrical_circuit_closure_engine.dart';
+import '../../../../engine/electrical_short_circuit_closure_engine.dart';
 import '../../../../engine/phase_assignment_engine.dart';
 import '../../../../engine/protective_device_coordination_engine.dart';
 import '../../../../engine/residual_current_protection_engine.dart';
+import 'apartment_circuit_calculation_evidence.dart';
+import 'apartment_circuit_closure_evidence.dart';
+import 'apartment_circuit_installation_method_evidence.dart';
 import 'apartment_engineering_final_gate.dart';
 import 'apartment_engineering_requirements.dart';
+import 'apartment_protection_coordination_evidence.dart';
+import 'apartment_residual_current_closure_evidence.dart';
+import 'apartment_short_circuit_closure_evidence.dart';
 import 'p9_canonical_serialization.dart';
 import 'p9_sha256.dart';
 
@@ -25,7 +32,7 @@ enum ApartmentEngineeringSldNodeKind {
 }
 
 final class ApartmentEngineeringLoadScheduleRow {
-  ApartmentEngineeringLoadScheduleRow({
+  const ApartmentEngineeringLoadScheduleRow({
     required this.circuitId,
     required this.loadId,
     required this.assignedPhase,
@@ -67,7 +74,7 @@ final class ApartmentEngineeringLoadScheduleRow {
 }
 
 final class ApartmentEngineeringInstallationSectionOutput {
-  ApartmentEngineeringInstallationSectionOutput({
+  const ApartmentEngineeringInstallationSectionOutput({
     required this.sectionId,
     required this.installationMethodId,
     required this.ampacitySourceKey,
@@ -263,7 +270,7 @@ final class ApartmentEngineeringCircuitScheduleRow {
 }
 
 final class ApartmentEngineeringPhaseSummary {
-  ApartmentEngineeringPhaseSummary({
+  const ApartmentEngineeringPhaseSummary({
     required this.phase,
     required this.designPowerW,
     required this.designReactivePowerVar,
@@ -321,7 +328,7 @@ final class ApartmentEngineeringPanelSummary {
 }
 
 final class ApartmentEngineeringSldNode {
-  ApartmentEngineeringSldNode({
+  const ApartmentEngineeringSldNode({
     required this.id,
     required this.kind,
     required this.circuitId,
@@ -342,7 +349,7 @@ final class ApartmentEngineeringSldNode {
 }
 
 final class ApartmentEngineeringSldEdge {
-  ApartmentEngineeringSldEdge({
+  const ApartmentEngineeringSldEdge({
     required this.id,
     required this.fromNodeId,
     required this.toNodeId,
@@ -363,7 +370,7 @@ final class ApartmentEngineeringSldEdge {
 }
 
 final class ApartmentEngineeringExplanation {
-  ApartmentEngineeringExplanation({
+  const ApartmentEngineeringExplanation({
     required this.code,
     required this.circuitId,
     required this.value,
@@ -442,10 +449,20 @@ abstract final class ApartmentEngineeringOutputProjectionService {
       );
     }
 
+    _requireCalculatedCircuitBinding(
+      d7Outcomes: d7Outcomes,
+      phaseByCircuit: phaseByCircuit,
+    );
+    _requireFinalEvidenceLineage(
+      requirements: requirements,
+      d7Closure: d7Closure,
+      phaseAssignment: phaseAssignment,
+    );
+
     final loadSchedule = <ApartmentEngineeringLoadScheduleRow>[];
     final circuitSchedule = <ApartmentEngineeringCircuitScheduleRow>[];
     final sldNodes = <ApartmentEngineeringSldNode>[
-      ApartmentEngineeringSldNode(
+      const ApartmentEngineeringSldNode(
         id: 'sld:board',
         kind: ApartmentEngineeringSldNodeKind.board,
         circuitId: null,
@@ -463,15 +480,6 @@ abstract final class ApartmentEngineeringOutputProjectionService {
       final calculated = d3.circuit;
       final calculation = calculated.calculation;
       final assigned = phaseByCircuit[d7.circuitId]!;
-
-      if (_calculatedCircuitBinding(calculated) !=
-          _calculatedCircuitBinding(assigned.circuit)) {
-        throw ArgumentError(
-          'D8 phase assignment is not bound to the D7 calculated circuit '
-          '${d7.circuitId}.',
-        );
-      }
-
       final selectedCable = d3.selectedCable;
       final sizing = d3.selectedCableSizing;
       final overcurrent = d3.selectedProtection;
@@ -489,6 +497,7 @@ abstract final class ApartmentEngineeringOutputProjectionService {
           'D8 cannot project incomplete D3/D4 evidence for ${d7.circuitId}.',
         );
       }
+
       final cable = selectedCable.cable;
       final crossSection = cable.conductorCrossSectionMm2;
       final conductorCount = cable.conductorCount;
@@ -604,12 +613,7 @@ abstract final class ApartmentEngineeringOutputProjectionService {
         residualDevice: residual,
         cableId: cable.id,
       );
-      explanations.addAll(
-        _explanations(
-          d7: d7,
-          assigned: assigned,
-        ),
-      );
+      explanations.addAll(_explanations(d7: d7, assigned: assigned));
     }
 
     loadSchedule.sort((left, right) {
@@ -672,6 +676,253 @@ abstract final class ApartmentEngineeringOutputProjectionService {
       requirementsFingerprint: requirements.requirementsFingerprint,
       outputFingerprint: p9Sha256Hex(outputSerialization),
     );
+  }
+
+  static void _requireCalculatedCircuitBinding({
+    required List<ElectricalCircuitInstallationMethodClosureOutcome> d7Outcomes,
+    required Map<String, PhaseAssignedElectricalCircuit> phaseByCircuit,
+  }) {
+    for (final d7 in d7Outcomes) {
+      final calculated = d7.d6Outcome.d5Outcome.d4Outcome.d3Outcome.circuit;
+      final assigned = phaseByCircuit[d7.circuitId]!;
+      if (_calculatedCircuitBinding(calculated) !=
+          _calculatedCircuitBinding(assigned.circuit)) {
+        throw ArgumentError(
+          'D8 phase assignment is not bound to the D7 calculated circuit '
+          '${d7.circuitId}.',
+        );
+      }
+    }
+  }
+
+  static void _requireFinalEvidenceLineage({
+    required ApartmentEngineeringDesignRequirements requirements,
+    required ElectricalCircuitInstallationMethodClosureResult d7Closure,
+    required ElectricalPhaseAssignmentResult phaseAssignment,
+  }) {
+    final circuit = _singleRequirement(
+      requirements,
+      ApartmentEngineeringRequirementDomain.circuit,
+    );
+    final protection = _singleRequirement(
+      requirements,
+      ApartmentEngineeringRequirementDomain.protection,
+    );
+    final d3Closure = ElectricalCircuitClosureResult(
+      outcomes: [
+        for (final outcome in d7Closure.outcomes)
+          outcome.d6Outcome.d5Outcome.d4Outcome.d3Outcome,
+      ],
+    );
+    final d4Closure = ElectricalShortCircuitClosureResult(
+      outcomes: [
+        for (final outcome in d7Closure.outcomes)
+          outcome.d6Outcome.d5Outcome.d4Outcome,
+      ],
+    );
+    final d5Closure = ElectricalResidualCurrentClosureResult(
+      outcomes: [
+        for (final outcome in d7Closure.outcomes)
+          outcome.d6Outcome.d5Outcome,
+      ],
+    );
+    final d6Closure = ElectricalProtectionCoordinationClosureResult(
+      outcomes: [for (final outcome in d7Closure.outcomes) outcome.d6Outcome],
+    );
+    final calculation = ElectricalCircuitCalculationResult(
+      circuits: [for (final outcome in d3Closure.outcomes) outcome.circuit],
+    );
+
+    _requireFact(
+      requirement: circuit,
+      factKey: 'circuit.definition',
+      expectedValue: _definitionEvidence(phaseAssignment),
+      expectedSourceId: electricalCircuitCalculationVersion,
+      expectedSourceRevision: electricalPhaseAssignmentVersion,
+    );
+    _requireFact(
+      requirement: circuit,
+      factKey: 'circuit.loadAssignments',
+      expectedValue: _assignmentEvidence(calculation),
+      expectedSourceId: electricalCircuitCalculationVersion,
+      expectedSourceRevision: electricalPhaseAssignmentVersion,
+    );
+    final d3Revision =
+        ApartmentCircuitClosureEvidenceService.sourceRevisionValue(d3Closure);
+    _requireFact(
+      requirement: circuit,
+      factKey: 'circuit.conductorConstraints',
+      expectedValue:
+          ApartmentCircuitClosureEvidenceService.conductorEvidenceValue(
+        d3Closure,
+      ),
+      expectedSourceId: electricalCircuitClosureVersion,
+      expectedSourceRevision: d3Revision,
+    );
+    _requireFact(
+      requirement: protection,
+      factKey: 'protection.overload',
+      expectedValue: ApartmentCircuitClosureEvidenceService.overloadEvidenceValue(
+        d3Closure,
+      ),
+      expectedSourceId: electricalCircuitClosureVersion,
+      expectedSourceRevision: d3Revision,
+    );
+
+    final d4Revision =
+        ApartmentShortCircuitClosureEvidenceService.sourceRevisionValue(
+      d4Closure,
+    );
+    _requireFact(
+      requirement: protection,
+      factKey: 'protection.shortCircuit',
+      expectedValue:
+          ApartmentShortCircuitClosureEvidenceService.shortCircuitEvidenceValue(
+        d4Closure,
+      ),
+      expectedSourceId: electricalShortCircuitClosureVersion,
+      expectedSourceRevision: d4Revision,
+    );
+    _requireFact(
+      requirement: protection,
+      factKey: 'protection.disconnection',
+      expectedValue:
+          ApartmentShortCircuitClosureEvidenceService.disconnectionEvidenceValue(
+        d4Closure,
+      ),
+      expectedSourceId: electricalShortCircuitClosureVersion,
+      expectedSourceRevision: d4Revision,
+    );
+
+    _requireFact(
+      requirement: protection,
+      factKey: 'protection.residualCurrent',
+      expectedValue: ApartmentResidualCurrentClosureEvidenceService
+          .residualCurrentEvidenceValue(d5Closure),
+      expectedSourceId: electricalResidualCurrentClosureVersion,
+      expectedSourceRevision:
+          ApartmentResidualCurrentClosureEvidenceService.sourceRevisionValue(
+        d5Closure,
+      ),
+    );
+    _requireFact(
+      requirement: protection,
+      factKey: 'protection.coordination',
+      expectedValue: ApartmentProtectionCoordinationEvidenceService
+          .coordinationEvidenceValue(d6Closure),
+      expectedSourceId: electricalProtectionCoordinationClosureVersion,
+      expectedSourceRevision:
+          ApartmentProtectionCoordinationEvidenceService.sourceRevisionValue(
+        d6Closure,
+      ),
+    );
+    _requireFact(
+      requirement: circuit,
+      factKey: 'circuit.installationMethod',
+      expectedValue: ApartmentCircuitInstallationMethodEvidenceService
+          .installationMethodEvidenceValue(d7Closure),
+      expectedSourceId: electricalCircuitInstallationMethodClosureVersion,
+      expectedSourceRevision:
+          ApartmentCircuitInstallationMethodEvidenceService.sourceRevisionValue(
+        d7Closure,
+      ),
+    );
+  }
+
+  static void _requireFact({
+    required ApartmentEngineeringRequirement requirement,
+    required String factKey,
+    required String expectedValue,
+    required String expectedSourceId,
+    required String expectedSourceRevision,
+  }) {
+    final fact = requirement.factEvidence[factKey];
+    if (fact == null ||
+        fact.valueKind != ApartmentEngineeringFactValueKind.text ||
+        fact.unit != ApartmentEngineeringFactUnit.code ||
+        fact.value != expectedValue ||
+        fact.sourceId != expectedSourceId ||
+        fact.sourceRevision != expectedSourceRevision) {
+      throw ArgumentError(
+        'D8 final evidence $factKey does not match the supplied D2-D7 lineage.',
+      );
+    }
+  }
+
+  static ApartmentEngineeringRequirement _singleRequirement(
+    ApartmentEngineeringDesignRequirements requirements,
+    ApartmentEngineeringRequirementDomain domain,
+  ) {
+    final matches = requirements.requirements
+        .where((item) => item.domain == domain)
+        .toList(growable: false);
+    if (matches.length != 1) {
+      throw StateError(
+        'D8 requires exactly one ${domain.name} requirement; '
+        'found ${matches.length}.',
+      );
+    }
+    return matches.single;
+  }
+
+  static String _definitionEvidence(ElectricalPhaseAssignmentResult result) {
+    final assignedCircuits = result.circuits.toList()
+      ..sort((left, right) => left.id.compareTo(right.id));
+    return p9CanonicalSerializeFields([
+      MapEntry('boardPhaseSystem', result.boardPhaseSystem.name),
+      MapEntry('lineNeutralVoltageV', result.lineNeutralVoltageV.toString()),
+      MapEntry(
+        'lineLineVoltageV',
+        result.lineLineVoltageV?.toString() ?? 'n/a',
+      ),
+      for (final assigned in assignedCircuits)
+        MapEntry(
+          assigned.id,
+          p9CanonicalSerializeFields([
+            MapEntry('phaseSystem', assigned.circuit.phaseSystem.name),
+            MapEntry(
+              'phase',
+              assigned.phase?.name ?? 'threePhaseBalanced',
+            ),
+            MapEntry(
+              'connectedPowerW',
+              assigned.circuit.calculation.connectedPowerW.toString(),
+            ),
+            MapEntry(
+              'designPowerW',
+              assigned.circuit.calculation.designPowerW.toString(),
+            ),
+            MapEntry(
+              'designReactivePowerVar',
+              assigned.circuit.calculation.designReactivePowerVar.toString(),
+            ),
+            MapEntry(
+              'designApparentPowerVa',
+              assigned.circuit.calculation.designApparentPowerVa.toString(),
+            ),
+            MapEntry(
+              'designCurrentA',
+              assigned.circuit.calculation.designCurrentA.toString(),
+            ),
+            MapEntry('policySourceId', assigned.circuit.policySourceId),
+            MapEntry(
+              'policySourceRevision',
+              assigned.circuit.policySourceRevision,
+            ),
+          ]),
+        ),
+    ]);
+  }
+
+  static String _assignmentEvidence(
+    ElectricalCircuitCalculationResult calculation,
+  ) {
+    final circuits = calculation.circuits.toList()
+      ..sort((left, right) => left.id.compareTo(right.id));
+    return p9CanonicalSerializeFields([
+      for (final calculated in circuits)
+        MapEntry(calculated.id, calculated.circuit.loadIds.join(',')),
+    ]);
   }
 
   static String _assignedPhaseLabel(PhaseAssignedElectricalCircuit assigned) =>
@@ -781,7 +1032,7 @@ abstract final class ApartmentEngineeringOutputProjectionService {
     final cable = d3.selectedCable!;
     final overcurrent = d3.selectedProtection!;
     final residual = d5.selectedDevice;
-    final result = <ApartmentEngineeringExplanation>[
+    return [
       ApartmentEngineeringExplanation(
         code: 'phase.assignment',
         circuitId: d7.circuitId,
@@ -858,14 +1109,15 @@ abstract final class ApartmentEngineeringOutputProjectionService {
         code: 'installation.method',
         circuitId: d7.circuitId,
         value: d7.policy.sections
-            .map((section) =>
-                '${section.sectionId}:${section.installationMethodId}')
+            .map(
+              (section) =>
+                  '${section.sectionId}:${section.installationMethodId}',
+            )
             .join(','),
         sourceId: d7.policy.sourceId,
         sourceRevision: d7.policy.sourceRevision,
       ),
     ];
-    return result;
   }
 
   static String _calculatedCircuitBinding(CalculatedElectricalCircuit circuit) {
