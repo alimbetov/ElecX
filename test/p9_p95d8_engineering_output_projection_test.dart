@@ -255,7 +255,7 @@ void main() {
         throwsUnsupportedError,
       );
       expect(
-        () => projection.sldNodes.add(projection.sldNodes.single),
+        () => projection.sldNodes.add(projection.sldNodes.first),
         throwsUnsupportedError,
       );
       expect(
