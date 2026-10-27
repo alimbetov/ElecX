@@ -228,8 +228,8 @@ final class ApartmentEngineeringPipelineOrchestrator
 
   const ApartmentEngineeringPipelineOrchestrator.production({
     required this.source,
-    required ApartmentEngineeringPipelinePreD2Source preD2Source,
-  }) : preD2Source = preD2Source;
+    required this.preD2Source,
+  });
 
   final ApartmentEngineeringPipelineSource source;
   final ApartmentEngineeringPipelinePreD2Source? preD2Source;
