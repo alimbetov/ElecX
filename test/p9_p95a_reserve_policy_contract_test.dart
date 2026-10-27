@@ -23,8 +23,10 @@ void main() {
       (item) => item.domain == ApartmentEngineeringRequirementDomain.load,
     );
     expect(load.requiredFactKeys, contains('load.reservePolicy'));
-    expect(load.evidenceState,
-        ApartmentEngineeringRequirementEvidenceState.notEvaluated);
+    expect(
+      load.evidenceState,
+      ApartmentEngineeringRequirementEvidenceState.notEvaluated,
+    );
   });
 }
 
