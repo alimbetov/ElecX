@@ -1,3 +1,4 @@
+import '../../../../engine/cable_sizing_engine.dart';
 import '../../../../engine/electrical_circuit_closure_engine.dart';
 export '../../../../engine/electrical_circuit_closure_engine.dart'
     show electricalCircuitClosureVersion;
@@ -184,6 +185,10 @@ abstract final class ApartmentCircuitClosureEvidenceService {
       MapEntry('conductorCount', cable.conductorCount!.toString()),
       MapEntry('conductorMaterial', cable.conductorMaterial.name),
       MapEntry('ratedVoltageV', cable.ratedVoltageV!.toString()),
+      MapEntry(
+        'selectedCableInput',
+        _selectedCableInputSerialization(candidate),
+      ),
       MapEntry('routeLengthMm', candidate.routeLengthMm.toString()),
       MapEntry(
         'maxVoltageDropRatio',
@@ -286,6 +291,12 @@ abstract final class ApartmentCircuitClosureEvidenceService {
         'selectedCableCandidateRevision',
         selectedCable?.sourceRevision ?? 'none',
       ),
+      MapEntry(
+        'selectedCableInput',
+        selectedCable == null
+            ? 'none'
+            : _selectedCableInputSerialization(selectedCable),
+      ),
       MapEntry('IzA', selectedSizing?.governingAmpacityA?.toString() ?? 'none'),
       MapEntry(
         'governingSectionId',
@@ -317,6 +328,58 @@ abstract final class ApartmentCircuitClosureEvidenceService {
         'selectedDeviceSourceRevision',
         selectedProtection?.sourceRevision ?? 'none',
       ),
+    ]);
+  }
+
+  static String _selectedCableInputSerialization(
+    ElectricalCircuitCableCandidate candidate,
+  ) {
+    final impedance = candidate.impedanceEvidence;
+    final sections = candidate.ampacitySections.toList()
+      ..sort((left, right) => left.sectionId.compareTo(right.sectionId));
+    return p9CanonicalSerializeFields([
+      MapEntry('routeLengthMm', candidate.routeLengthMm.toString()),
+      MapEntry(
+        'maxVoltageDropRatio',
+        candidate.maxVoltageDropRatio.toString(),
+      ),
+      MapEntry(
+        'impedanceResistanceOhmPerKm',
+        impedance?.resistanceOhmPerKm.toString() ?? 'none',
+      ),
+      MapEntry(
+        'impedanceReactanceOhmPerKm',
+        impedance?.reactanceOhmPerKm.toString() ?? 'none',
+      ),
+      MapEntry('impedanceSourceKey', impedance?.sourceKey ?? 'none'),
+      for (final section in sections)
+        MapEntry(
+          'ampacitySection:${section.sectionId}',
+          _ampacitySectionSerialization(section),
+        ),
+      MapEntry('candidateSourceId', candidate.sourceId),
+      MapEntry('candidateSourceRevision', candidate.sourceRevision),
+    ]);
+  }
+
+  static String _ampacitySectionSerialization(
+    SectionAmpacityEvidence section,
+  ) {
+    final factors = section.factors.toList()
+      ..sort((left, right) => left.id.compareTo(right.id));
+    return p9CanonicalSerializeFields([
+      MapEntry('sectionId', section.sectionId),
+      MapEntry('baseAmpacityA', section.baseAmpacityA.toString()),
+      MapEntry('sourceKey', section.sourceKey ?? 'none'),
+      for (final factor in factors)
+        MapEntry(
+          'factor:${factor.id}',
+          p9CanonicalSerializeFields([
+            MapEntry('id', factor.id),
+            MapEntry('factor', factor.factor.toString()),
+            MapEntry('reason', factor.reason ?? 'none'),
+          ]),
+        ),
     ]);
   }
 }
