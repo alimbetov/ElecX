@@ -628,8 +628,7 @@ abstract final class ApartmentEngineeringOutputProjectionService {
     sldNodes.sort((left, right) => left.id.compareTo(right.id));
     sldEdges.sort((left, right) => left.id.compareTo(right.id));
     explanations.sort((left, right) {
-      final byCircuit =
-          (left.circuitId ?? '').compareTo(right.circuitId ?? '');
+      final byCircuit = (left.circuitId ?? '').compareTo(right.circuitId ?? '');
       return byCircuit != 0 ? byCircuit : left.code.compareTo(right.code);
     });
 
@@ -724,8 +723,7 @@ abstract final class ApartmentEngineeringOutputProjectionService {
     );
     final d5Closure = ElectricalResidualCurrentClosureResult(
       outcomes: [
-        for (final outcome in d7Closure.outcomes)
-          outcome.d6Outcome.d5Outcome,
+        for (final outcome in d7Closure.outcomes) outcome.d6Outcome.d5Outcome,
       ],
     );
     final d6Closure = ElectricalProtectionCoordinationClosureResult(
@@ -738,8 +736,9 @@ abstract final class ApartmentEngineeringOutputProjectionService {
     _requireFact(
       requirement: circuit,
       factKey: 'circuit.definition',
-      expectedValue: ApartmentCircuitCalculationEvidenceService
-          .definitionEvidenceValue(phaseAssignment),
+      expectedValue:
+          ApartmentCircuitCalculationEvidenceService.definitionEvidenceValue(
+              phaseAssignment),
       expectedSourceId: electricalCircuitCalculationVersion,
       expectedSourceRevision: electricalPhaseAssignmentVersion,
     );
@@ -766,7 +765,8 @@ abstract final class ApartmentEngineeringOutputProjectionService {
     _requireFact(
       requirement: protection,
       factKey: 'protection.overload',
-      expectedValue: ApartmentCircuitClosureEvidenceService.overloadEvidenceValue(
+      expectedValue:
+          ApartmentCircuitClosureEvidenceService.overloadEvidenceValue(
         d3Closure,
       ),
       expectedSourceId: electricalCircuitClosureVersion,
@@ -790,8 +790,8 @@ abstract final class ApartmentEngineeringOutputProjectionService {
     _requireFact(
       requirement: protection,
       factKey: 'protection.disconnection',
-      expectedValue:
-          ApartmentShortCircuitClosureEvidenceService.disconnectionEvidenceValue(
+      expectedValue: ApartmentShortCircuitClosureEvidenceService
+          .disconnectionEvidenceValue(
         d4Closure,
       ),
       expectedSourceId: electricalShortCircuitClosureVersion,
@@ -881,9 +881,8 @@ abstract final class ApartmentEngineeringOutputProjectionService {
     required String cableId,
   }) {
     final protectionNodeId = 'sld:$circuitId:protection';
-    final isCombined =
-        residualDevice?.kind == ResidualCurrentDeviceKind.rcbo &&
-            residualDevice?.overcurrentDeviceId == overcurrentDeviceId;
+    final isCombined = residualDevice?.kind == ResidualCurrentDeviceKind.rcbo &&
+        residualDevice?.overcurrentDeviceId == overcurrentDeviceId;
     nodes.add(
       ApartmentEngineeringSldNode(
         id: protectionNodeId,
@@ -987,8 +986,7 @@ abstract final class ApartmentEngineeringOutputProjectionService {
       ApartmentEngineeringExplanation(
         code: 'cable.governingAmpacity',
         circuitId: d7.circuitId,
-        value:
-            '${sizing.governingSectionId}:${sizing.governingAmpacityA}A',
+        value: '${sizing.governingSectionId}:${sizing.governingAmpacityA}A',
         sourceId: cable.sourceId,
         sourceRevision: cable.sourceRevision,
       ),
