@@ -12,7 +12,7 @@ import 'package:elecx/src/engine/overcurrent_protection_selection_engine.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('overcurrent proof stays partial until residual/disconnection evidence', () {
+  test('overcurrent proof stays partial until short-circuit/RCD/disconnection', () {
     final fixture = _projectFixture();
     final generated = const ApartmentCandidateSetService().generate(
       input: _request(),
@@ -54,7 +54,10 @@ void main() {
       ApartmentEngineeringRequirementEvidenceState.indeterminate,
     );
     expect(protection.factEvidence.keys, contains('protection.overload'));
-    expect(protection.factEvidence.keys, contains('protection.shortCircuit'));
+    expect(
+      protection.factEvidence.keys,
+      isNot(contains('protection.shortCircuit')),
+    );
     expect(
       protection.factEvidence.keys,
       isNot(contains('protection.residualCurrent')),
