@@ -91,8 +91,7 @@ abstract final class CircuitGroupingEngine {
       grouped.addAll(drafts);
     }
 
-    final drafts = [...dedicated, ...grouped]
-      ..sort(_compareCircuitDrafts);
+    final drafts = [...dedicated, ...grouped]..sort(_compareCircuitDrafts);
 
     final circuits = <SynthesizedElectricalCircuit>[];
     for (var index = 0; index < drafts.length; index++) {
@@ -175,10 +174,10 @@ abstract final class CircuitGroupingEngine {
     if (byDedicated != 0) return byDedicated;
     final byPhase = left.phaseSystem.name.compareTo(right.phaseSystem.name);
     if (byPhase != 0) return byPhase;
-    final leftIds = (left.loads.map((item) => item.load.id).toList()..sort())
-        .join('|');
-    final rightIds = (right.loads.map((item) => item.load.id).toList()..sort())
-        .join('|');
+    final leftIds =
+        (left.loads.map((item) => item.load.id).toList()..sort()).join('|');
+    final rightIds =
+        (right.loads.map((item) => item.load.id).toList()..sort()).join('|');
     return leftIds.compareTo(rightIds);
   }
 }
