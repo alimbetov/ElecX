@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import '../domain/distribution_board_load.dart';
+import '../domain/electrical_circuit_calculation.dart';
 import '../domain/electrical_load_calculation.dart';
 import '../domain/electrical_phase_assignment.dart';
 
