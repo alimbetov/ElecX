@@ -1,7 +1,6 @@
 import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_evidence_binding.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_requirements.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_equipment_autoconfiguration_service.dart';
-import 'package:elecx/src/application/project/wizard/apartment/apartment_equipment_configuration.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_equipment_selection.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_verified_product_catalog.dart';
 import 'package:flutter_test/flutter_test.dart';
