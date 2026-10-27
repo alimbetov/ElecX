@@ -19,6 +19,8 @@ abstract final class LoadCalculationEngine {
   static ElectricalLoadCalculationResult calculate(
     ElectricalLoadCalculationRequest request,
   ) {
+    _validateRequest(request);
+
     final contributions = <ElectricalLoadContribution>[
       for (final load in request.loads)
         ElectricalLoadContribution(
@@ -77,6 +79,74 @@ abstract final class LoadCalculationEngine {
       nominalVoltageV: request.nominalVoltageV,
       contributions: List.unmodifiable(contributions),
     );
+  }
+
+  static void _validateRequest(ElectricalLoadCalculationRequest request) {
+    if (!request.nominalVoltageV.isFinite || request.nominalVoltageV <= 0) {
+      throw ArgumentError.value(request.nominalVoltageV, 'nominalVoltageV');
+    }
+    if (request.loads.isEmpty) {
+      throw ArgumentError('At least one electrical load is required.');
+    }
+
+    final loadIds = <String>{};
+    for (final load in request.loads) {
+      if (load.id.trim().isEmpty ||
+          load.sourceId.trim().isEmpty ||
+          load.sourceRevision.trim().isEmpty) {
+        throw ArgumentError(
+          'Electrical load identity/source fields must be non-empty.',
+        );
+      }
+      if (!loadIds.add(load.id)) {
+        throw ArgumentError('Duplicate electrical load id ${load.id}.');
+      }
+      if (load.ratedPowerW < 0) {
+        throw ArgumentError.value(load.ratedPowerW, 'ratedPowerW');
+      }
+      if (load.quantity <= 0) {
+        throw ArgumentError.value(load.quantity, 'quantity');
+      }
+      if (!load.utilizationFactor.isFinite ||
+          load.utilizationFactor <= 0 ||
+          load.utilizationFactor > 1) {
+        throw ArgumentError.value(
+          load.utilizationFactor,
+          'utilizationFactor',
+        );
+      }
+      if (!load.powerFactor.isFinite ||
+          load.powerFactor <= 0 ||
+          load.powerFactor > 1) {
+        throw ArgumentError.value(load.powerFactor, 'powerFactor');
+      }
+    }
+
+    final diversity = request.diversityPolicy;
+    if (diversity.id.trim().isEmpty ||
+        diversity.sourceId.trim().isEmpty ||
+        diversity.sourceRevision.trim().isEmpty) {
+      throw ArgumentError(
+        'Electrical diversity policy identity/source must be non-empty.',
+      );
+    }
+    if (!diversity.factor.isFinite ||
+        diversity.factor <= 0 ||
+        diversity.factor > 1) {
+      throw ArgumentError.value(diversity.factor, 'diversityFactor');
+    }
+
+    final reserve = request.reservePolicy;
+    if (reserve.id.trim().isEmpty ||
+        reserve.sourceId.trim().isEmpty ||
+        reserve.sourceRevision.trim().isEmpty) {
+      throw ArgumentError(
+        'Electrical reserve policy identity/source must be non-empty.',
+      );
+    }
+    if (!reserve.reserveRatio.isFinite || reserve.reserveRatio < 0) {
+      throw ArgumentError.value(reserve.reserveRatio, 'reserveRatio');
+    }
   }
 
   static double _reactivePowerVar(ElectricalLoadInput load) {
