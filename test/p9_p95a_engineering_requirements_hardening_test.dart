@@ -4,7 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P9.5-A engineering requirements hardening', () {
-    test('P9.5-A-Q11 proven requirement rejects missing mandatory evidence', () {
+    test('P9.5-A-Q11 proven requirement rejects missing mandatory evidence',
+        () {
       expect(
         () => _requirement(
           state: ApartmentEngineeringRequirementEvidenceState.proven,
@@ -51,7 +52,8 @@ void main() {
       expect(advisory.blocksEquipmentConfiguration, isFalse);
     });
 
-    test('P9.5-A-Q14 not-evaluated and N/A states cannot carry proven facts', () {
+    test('P9.5-A-Q14 not-evaluated and N/A states cannot carry proven facts',
+        () {
       for (final state in [
         ApartmentEngineeringRequirementEvidenceState.notEvaluated,
         ApartmentEngineeringRequirementEvidenceState.notApplicable,
@@ -150,7 +152,8 @@ void main() {
       expect(first, isNot(second));
     });
 
-    test('P9.5-A-Q20 typed provenance participates in deterministic identity', () {
+    test('P9.5-A-Q20 typed provenance participates in deterministic identity',
+        () {
       final first = _voltageEvidence();
       final same = _voltageEvidence();
       final differentRevision = ApartmentEngineeringFactEvidence(
