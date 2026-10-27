@@ -120,7 +120,8 @@ void main() {
 
       final outcome = result.outcomes.single;
       expect(outcome.selectedCableSizing!.governingSectionId, 'riser');
-      expect(outcome.selectedCableSizing!.governingAmpacityA, closeTo(17, 1e-9));
+      expect(
+          outcome.selectedCableSizing!.governingAmpacityA, closeTo(17, 1e-9));
       expect(outcome.selectedProtection!.id, _c16.id);
       expect(
         outcome.protectionSelection!.rejections[_c20.id],
@@ -128,7 +129,8 @@ void main() {
       );
     });
 
-    test('Q18 missing cable evidence fails closed before protection selection', () {
+    test('Q18 missing cable evidence fails closed before protection selection',
+        () {
       final calculation = _calculation([_load('load-a', 2000)]);
       final candidate = ElectricalCircuitCableCandidate(
         cable: _cable('cable-2.5', 2.5),
