@@ -37,6 +37,7 @@ void main() {
       expect(definition, contains('designCurrentA'));
       expect(definition, contains('phase'));
       expect(definition, contains('l1'));
+      expect(definition, contains('lineNeutralVoltageV'));
       expect(circuit.blocksEquipmentConfiguration, isTrue);
       expect(updated.readyForEquipmentConfiguration, isFalse);
     });
@@ -55,6 +56,9 @@ void main() {
           ...fixture.assignment.circuits.skip(1),
         ],
         phaseLoads: fixture.assignment.phaseLoads,
+        boardPhaseSystem: fixture.assignment.boardPhaseSystem,
+        lineNeutralVoltageV: fixture.assignment.lineNeutralVoltageV,
+        lineLineVoltageV: fixture.assignment.lineLineVoltageV,
         maxPhaseCurrentA: fixture.assignment.maxPhaseCurrentA,
         phaseCurrentImbalanceRatio:
             fixture.assignment.phaseCurrentImbalanceRatio,
@@ -72,7 +76,7 @@ void main() {
       );
     });
 
-    test('Q12 same-power load identity substitution is rejected', () {
+    test('Q12 same-power load identity substitution fails at domain boundary', () {
       final fixture = _calculatedFixture();
       final original = fixture.calculation.circuits.first;
       final originalLoad = original.circuit.loads.single;
@@ -103,12 +107,27 @@ void main() {
         dedicatedPolicyId: original.circuit.dedicatedPolicyId,
         dedicatedPolicyRevision: original.circuit.dedicatedPolicyRevision,
       );
+
+      expect(
+        () => CalculatedElectricalCircuit(
+          circuit: substitutedCircuit,
+          calculation: original.calculation,
+          policySourceId: original.policySourceId,
+          policySourceRevision: original.policySourceRevision,
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('Q13 tampered calculation provenance is rejected by evidence binder', () {
+      final fixture = _calculatedFixture();
+      final original = fixture.calculation.circuits.first;
       final tamperedCalculation = ElectricalCircuitCalculationResult(
         circuits: [
           CalculatedElectricalCircuit(
-            circuit: substitutedCircuit,
+            circuit: original.circuit,
             calculation: original.calculation,
-            policySourceId: original.policySourceId,
+            policySourceId: 'tampered-policy-source',
             policySourceRevision: original.policySourceRevision,
           ),
           ...fixture.calculation.circuits.skip(1),
@@ -122,6 +141,24 @@ void main() {
           calculation: tamperedCalculation,
           assignmentRequest: fixture.assignmentRequest,
           assignment: fixture.assignment,
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('Q14 phase result rejects a different board voltage context', () {
+      final fixture = _calculatedFixture();
+
+      expect(
+        () => ElectricalPhaseAssignmentResult(
+          circuits: fixture.assignment.circuits,
+          phaseLoads: fixture.assignment.phaseLoads,
+          boardPhaseSystem: fixture.assignment.boardPhaseSystem,
+          lineNeutralVoltageV: 220,
+          lineLineVoltageV: 380,
+          maxPhaseCurrentA: fixture.assignment.maxPhaseCurrentA,
+          phaseCurrentImbalanceRatio:
+              fixture.assignment.phaseCurrentImbalanceRatio,
         ),
         throwsArgumentError,
       );
