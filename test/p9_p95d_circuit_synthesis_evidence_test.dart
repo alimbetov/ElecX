@@ -7,7 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P9.5-D circuit synthesis evidence', () {
-    test('Q01 synthesis proves assignments but keeps circuit domain blocking', () {
+    test('Q01 synthesis proves assignments but keeps circuit domain blocking',
+        () {
       final request = _request();
       final synthesis = CircuitGroupingEngine.synthesize(request);
       final updated = ApartmentCircuitSynthesisEvidenceService.apply(
@@ -28,8 +29,10 @@ void main() {
         'circuit.loadAssignments',
       ]);
       expect(circuit.blocksEquipmentConfiguration, isTrue);
-      expect(circuit.factEvidence, isNot(contains('circuit.conductorConstraints')));
-      expect(circuit.factEvidence, isNot(contains('circuit.installationMethod')));
+      expect(circuit.factEvidence,
+          isNot(contains('circuit.conductorConstraints')));
+      expect(
+          circuit.factEvidence, isNot(contains('circuit.installationMethod')));
       expect(updated.readyForEquipmentConfiguration, isFalse);
     });
 
