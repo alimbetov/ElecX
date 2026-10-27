@@ -44,7 +44,8 @@ void main() {
 
     expect(result.connectedPowerW, 6900);
     expect(result.designPowerW, 6900);
-    expect(result.phaseLoads.map((item) => item.designCurrentA), everyElement(10));
+    expect(
+        result.phaseLoads.map((item) => item.designCurrentA), everyElement(10));
     expect(result.maxPhaseCurrentA, 10);
     expect(result.phaseCurrentImbalanceRatio, 0);
     expect(result.powerCapacityStatus, BoardCapacityStatus.pass);
