@@ -170,6 +170,18 @@ abstract final class ApartmentCircuitCalculationEvidenceService {
         );
       }
     }
+    for (var index = 0; index < expected.phaseLoads.length; index++) {
+      final left = expected.phaseLoads[index];
+      final right = assignment.phaseLoads[index];
+      if (left.phase != right.phase ||
+          left.designPowerW != right.designPowerW ||
+          left.designReactivePowerVar != right.designReactivePowerVar ||
+          left.designCurrentA != right.designCurrentA) {
+        throw ArgumentError(
+          'Phase-assignment phase loads do not match the supplied request.',
+        );
+      }
+    }
   }
 
   static bool _sameCalculation(
@@ -186,6 +198,7 @@ abstract final class ApartmentCircuitCalculationEvidenceService {
           a.phaseSystem != b.phaseSystem ||
           a.policySourceId != b.policySourceId ||
           a.policySourceRevision != b.policySourceRevision ||
+          !_sameStringList(a.circuit.loadIds, b.circuit.loadIds) ||
           x.connectedPowerW != y.connectedPowerW ||
           x.designPowerW != y.designPowerW ||
           x.designReactivePowerVar != y.designReactivePowerVar ||
@@ -196,9 +209,33 @@ abstract final class ApartmentCircuitCalculationEvidenceService {
           x.diversityFactor != y.diversityFactor ||
           x.reservePolicyId != y.reservePolicyId ||
           x.reserveRatio != y.reserveRatio ||
-          x.nominalVoltageV != y.nominalVoltageV) {
+          x.nominalVoltageV != y.nominalVoltageV ||
+          !_sameContributions(x.contributions, y.contributions)) {
         return false;
       }
+    }
+    return true;
+  }
+
+  static bool _sameContributions(List<dynamic> left, List<dynamic> right) {
+    if (left.length != right.length) return false;
+    for (var index = 0; index < left.length; index++) {
+      final a = left[index];
+      final b = right[index];
+      if (a.loadId != b.loadId ||
+          a.connectedPowerW != b.connectedPowerW ||
+          a.utilizedPowerW != b.utilizedPowerW ||
+          a.utilizedReactivePowerVar != b.utilizedReactivePowerVar) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static bool _sameStringList(List<String> left, List<String> right) {
+    if (left.length != right.length) return false;
+    for (var index = 0; index < left.length; index++) {
+      if (left[index] != right[index]) return false;
     }
     return true;
   }
