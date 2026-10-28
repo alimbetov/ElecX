@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../application/project/wizard/apartment/apartment_engineering_output_projection.dart';
 import '../../application/project/wizard/apartment/apartment_engineering_pipeline.dart';
 
 /// Human-facing view of the exact D8 proposal frozen by Apartment Wizard
@@ -141,7 +142,9 @@ final class ApartmentEngineeringPreviewPanel extends StatelessWidget {
         constraints: const BoxConstraints(minWidth: 110),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
-          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
