@@ -53,7 +53,8 @@ void main() {
       Future<EditorProjectStore> openProjectStore() async {
         projectStoreAttempts++;
         if (projectStoreAttempts == 1) {
-          throw const FileSystemExceptionForTest('simulated native storage failure');
+          throw const FileSystemExceptionForTest(
+              'simulated native storage failure');
         }
         return _EmptyProjectStore();
       }
@@ -74,15 +75,18 @@ void main() {
         find.text('ElecX local storage could not be initialized.'),
         findsOneWidget,
       );
-      expect(find.textContaining('simulated native storage failure'), findsNothing);
-      expect(find.byKey(const ValueKey('platform-storage-retry')), findsOneWidget);
+      expect(find.textContaining('simulated native storage failure'),
+          findsNothing);
+      expect(
+          find.byKey(const ValueKey('platform-storage-retry')), findsOneWidget);
 
       await tester.tap(find.byKey(const ValueKey('platform-storage-retry')));
       await tester.pumpAndSettle();
 
       expect(projectStoreAttempts, 2);
       expect(find.byType(ProjectHubScreen), findsOneWidget);
-      expect(find.text('ElecX local storage could not be initialized.'), findsNothing);
+      expect(find.text('ElecX local storage could not be initialized.'),
+          findsNothing);
     },
   );
 }
