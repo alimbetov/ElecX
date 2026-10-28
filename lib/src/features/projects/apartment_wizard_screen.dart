@@ -11,6 +11,7 @@ import '../../application/project/wizard/wizard_preview_scene.dart';
 import '../../application/project/wizard/wizard_session.dart';
 import '../../domain/apartment_topology.dart';
 import '../../domain/apartment_topology/apartment_vector_scene.dart';
+import 'apartment_engineering_preview_panel.dart';
 import 'project_wizard_localizations.dart';
 import 'wizard_candidate_carousel.dart';
 import 'wizard_diff_panel.dart';
@@ -73,6 +74,11 @@ final class _ApartmentWizardScreenState extends State<ApartmentWizardScreen> {
   bool _applyInProgress = false;
 
   WizardSession get _session => widget.session;
+
+  ApartmentReservedProjectCommand? get _frozenApartmentCommand {
+    final command = _session.generatedCommand;
+    return command is ApartmentReservedProjectCommand ? command : null;
+  }
 
   @override
   void initState() {
@@ -638,13 +644,27 @@ final class _ApartmentWizardScreenState extends State<ApartmentWizardScreen> {
       title: l10n.apartmentCanonicalPreview,
       scene: scene,
     );
+    final proposal = _frozenApartmentCommand?.engineeringProposal;
     return Padding(
       padding: const EdgeInsets.all(12),
-      child: WizardCandidateCarousel(
-        candidates: [card],
-        selectedId: card.id,
-        onSelected: (_) {},
-        viewportState: _previewViewport,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            flex: 5,
+            child: WizardCandidateCarousel(
+              candidates: [card],
+              selectedId: card.id,
+              onSelected: (_) {},
+              viewportState: _previewViewport,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            flex: 4,
+            child: ApartmentEngineeringPreviewPanel(proposal: proposal),
+          ),
+        ],
       ),
     );
   }
