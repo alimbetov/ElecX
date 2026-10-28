@@ -83,6 +83,32 @@ void main() {
       );
     });
   });
+
+  group('PRE10 P9 provenance forward compatibility', () {
+    test('PRE10-CQ26 unknown manifest field is rejected, never discarded', () {
+      final fixture = _fixture();
+      final document = codec.encode(fixture.snapshot);
+      final tampered = _addUnknownManifestField(document);
+
+      expect(() => codec.decode(tampered), throwsFormatException);
+    });
+
+    test('PRE10-CQ26 unknown entity field is rejected, never discarded', () {
+      final fixture = _fixture();
+      final document = codec.encode(fixture.snapshot);
+      final tampered = _addUnknownEntityField(document);
+
+      expect(() => codec.decode(tampered), throwsFormatException);
+    });
+
+    test('PRE10-CQ26 unknown provenance root field is rejected', () {
+      final fixture = _fixture();
+      final document = codec.encode(fixture.snapshot);
+      final tampered = _addUnknownRegistryField(document);
+
+      expect(() => codec.decode(tampered), throwsFormatException);
+    });
+  });
 }
 
 ProjectDocument _tamperBaseline(ProjectDocument source, String value) {
@@ -95,6 +121,44 @@ ProjectDocument _tamperBaseline(ProjectDocument source, String value) {
   entity['generatedBaselineFingerprint'] = value;
   entities[0] = entity;
   registry['entities'] = entities;
+  payload['generationProvenance'] = registry;
+  return ProjectDocument(schemaVersion: source.schemaVersion, payload: payload);
+}
+
+ProjectDocument _addUnknownManifestField(ProjectDocument source) {
+  final payload = Map<String, Object?>.from(source.payload);
+  final registry = Map<String, Object?>.from(
+    payload['generationProvenance']! as Map,
+  );
+  final manifests = List<Object?>.from(registry['manifests']! as List);
+  final manifest = Map<String, Object?>.from(manifests.single! as Map);
+  manifest['futureSelectiveRegenerationPolicy'] = 'future-v2';
+  manifests[0] = manifest;
+  registry['manifests'] = manifests;
+  payload['generationProvenance'] = registry;
+  return ProjectDocument(schemaVersion: source.schemaVersion, payload: payload);
+}
+
+ProjectDocument _addUnknownEntityField(ProjectDocument source) {
+  final payload = Map<String, Object?>.from(source.payload);
+  final registry = Map<String, Object?>.from(
+    payload['generationProvenance']! as Map,
+  );
+  final entities = List<Object?>.from(registry['entities']! as List);
+  final entity = Map<String, Object?>.from(entities.single! as Map);
+  entity['futureOverridePolicy'] = 'future-v2';
+  entities[0] = entity;
+  registry['entities'] = entities;
+  payload['generationProvenance'] = registry;
+  return ProjectDocument(schemaVersion: source.schemaVersion, payload: payload);
+}
+
+ProjectDocument _addUnknownRegistryField(ProjectDocument source) {
+  final payload = Map<String, Object?>.from(source.payload);
+  final registry = Map<String, Object?>.from(
+    payload['generationProvenance']! as Map,
+  );
+  registry['futureSchemaMetadata'] = {'revision': 2};
   payload['generationProvenance'] = registry;
   return ProjectDocument(schemaVersion: source.schemaVersion, payload: payload);
 }
