@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../../../../domain/apartment_topology.dart';
 import '../../../../domain/apartment_topology/apartment_geometry.dart';
 import '../../../../domain/apartment_topology/apartment_topology_models.dart';
+import '../../../../domain/applied_engineering_proposal_lineage.dart';
 import '../../../../domain/project_aggregate.dart';
 import '../../../../domain/project_identity.dart';
 import '../../project_mutation.dart';
@@ -406,6 +407,10 @@ final class ApartmentReservedProjectCommand implements ReservedProjectCommand {
             .replace(snapshot),
       );
     }
+    AppliedEngineeringProposalLineageValidator.validateOrThrow(
+      provenance: engineeringMetadata.generationProvenanceRegistry,
+      proposals: engineeringMetadata.appliedEngineeringProposalRegistry,
+    );
     return ProjectCommandCandidate.fromState(
       state: ProjectMutableState(
         engineeringMetadata: engineeringMetadata,
