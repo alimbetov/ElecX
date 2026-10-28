@@ -9,6 +9,7 @@ import 'package:elecx/src/domain/geometry.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_model.dart';
+import 'package:elecx/src/domain/project_orientation.dart';
 import 'package:elecx/src/domain/site_outdoor_model.dart';
 import 'package:elecx/src/features/editor/canonical_editor_legacy_bootstrap.dart';
 import 'package:elecx/src/features/editor/canonical_editor_runtime_cutover.dart';
@@ -61,7 +62,8 @@ void main() {
           reason: 'P9 Apply selects the new Zone, not an arbitrary first room.',
         );
 
-        final beforeSpaceCount = fixture.workspace.activeLevel!.level.spaces.length;
+        final beforeSpaceCount =
+            fixture.workspace.activeLevel!.level.spaces.length;
         final beforeZoneCount = fixture.workspace.activeLevel!.zones.length;
         final second = binding.pushCanonicalToEditor();
         expect(second.canOpen, isTrue);
@@ -69,7 +71,8 @@ void main() {
           fixture.workspace.activeLevel!.level.spaces,
           hasLength(beforeSpaceCount),
         );
-        expect(fixture.workspace.activeLevel!.zones, hasLength(beforeZoneCount));
+        expect(
+            fixture.workspace.activeLevel!.zones, hasLength(beforeZoneCount));
 
         fixture.session.selectRoom(_livingId);
         binding.pushCanonicalToEditor();
