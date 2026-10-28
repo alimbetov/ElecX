@@ -60,7 +60,8 @@ void main() {
         isNull,
         reason: presentation.label,
       );
-      expect(harness.session.preview, same(preview), reason: presentation.label);
+      expect(harness.session.preview, same(preview),
+          reason: presentation.label);
       expect(
         harness.session.preview!.normalizedIntentKey,
         normalizedIntentKey,
@@ -86,7 +87,8 @@ void main() {
       expect(
         find.byKey(const ValueKey('apartment-apply')),
         findsOneWidget,
-        reason: '${presentation.label}: primary Apply action must stay reachable',
+        reason:
+            '${presentation.label}: primary Apply action must stay reachable',
       );
     }
   });
