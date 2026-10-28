@@ -1,0 +1,224 @@
+name: P9.13 Final Acceptance
+
+on:
+  push:
+    branches:
+      - main
+      - "feat/p9-apartment-topology-generator"
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: p9-final-acceptance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  domain-qualification:
+    name: A Domain qualification
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Reference environment
+        run: |
+          uname -a
+          lscpu
+          free -m
+          flutter --version
+      - name: Enforce P9.13 qualification formatting
+        run: dart format --output=none --set-exit-if-changed qualification_test tool
+      - name: Supported + invalid + property/fuzz + determinism
+        run: >-
+          flutter test --concurrency=1
+          qualification_test/p9_p913_domain_qualification_test.dart
+
+  engineering-transactional:
+    name: B-C Engineering + transactional qualification
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Engineering-enabled / frozen proposal / provenance
+        run: >-
+          flutter test --concurrency=1
+          test/p9_p96_apartment_wizard_engineering_pipeline_test.dart
+          test/p9_p96_apartment_engineering_preview_panel_test.dart
+          test/p9_p96_applied_engineering_persistence_test.dart
+          test/p9_p96_production_persistence_owner_test.dart
+          test/p9_generation_provenance_test.dart
+      - name: Preview Diff Apply Undo Redo Save Reopen
+        run: >-
+          flutter test --concurrency=1
+          test/p9_apartment_p8_preview_diff_integration_test.dart
+          test/p9_apartment_wizard_ui_acceptance_test.dart
+
+  semantic-parity:
+    name: G Semantic parity (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Emit semantic parity artifact
+        run: dart run tool/p9_semantic_parity.dart build/p9-final-acceptance/p9-semantic-parity.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p9-semantic-parity-${{ runner.os }}
+          path: build/p9-final-acceptance/p9-semantic-parity.json
+          if-no-files-found: error
+          retention-days: 30
+
+  cross-platform-semantic-equality:
+    name: G Cross-platform semantic equality
+    needs: semantic-parity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: p9-semantic-parity-*
+          path: parity
+      - name: Compare Linux macOS Windows byte semantics
+        run: |
+          set -euo pipefail
+          find parity -name p9-semantic-parity.json -print -exec sha256sum {} \;
+          linux="parity/p9-semantic-parity-Linux/p9-semantic-parity.json"
+          macos="parity/p9-semantic-parity-macOS/p9-semantic-parity.json"
+          windows="parity/p9-semantic-parity-Windows/p9-semantic-parity.json"
+          test -f "$linux"
+          test -f "$macos"
+          test -f "$windows"
+          cmp --silent "$linux" "$macos"
+          cmp --silent "$linux" "$windows"
+
+  desktop-native:
+    name: D Desktop native (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: Linux
+          - os: windows-latest
+            target: Windows
+          - os: macos-latest
+            target: macOS
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Install Linux desktop dependencies
+        if: runner.os == 'Linux'
+        run: >-
+          sudo apt-get update && sudo apt-get install -y
+          clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+      - run: flutter pub get
+      - name: Build Linux debug
+        if: runner.os == 'Linux'
+        run: flutter build linux --debug
+      - name: Build Windows debug
+        if: runner.os == 'Windows'
+        run: flutter build windows --debug
+      - name: Build macOS debug
+        if: runner.os == 'macOS'
+        run: flutter build macos --debug
+
+  android-native:
+    name: E-F Android phone + tablet native build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Build Android debug APK
+        run: flutter build apk --debug
+      - name: P9 compact/tablet semantic UI contract
+        run: >-
+          flutter test --concurrency=1
+          test/p9_apartment_wizard_ui_acceptance_test.dart
+
+  apple-mobile-native:
+    name: E-F iOS + iPadOS native build
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Build iOS/iPadOS debug without signing
+        run: flutter build ios --debug --no-codesign
+      - name: P9 compact/tablet semantic UI contract
+        run: >-
+          flutter test --concurrency=1
+          test/p9_apartment_wizard_ui_acceptance_test.dart
+
+  exact-sha-final-audit:
+    name: H exact-SHA final audit
+    needs:
+      - domain-qualification
+      - engineering-transactional
+      - cross-platform-semantic-equality
+      - desktop-native
+      - android-native
+      - apple-mobile-native
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Assert checkout is exact workflow SHA
+        run: test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+      - name: Create exact-SHA audit evidence
+        run: |
+          mkdir -p build/p9-final-acceptance
+          cat > build/p9-final-acceptance/p9.13-final-audit.md <<EOF
+          # P9.13 exact-SHA final audit
+
+          - repository: ${GITHUB_REPOSITORY}
+          - branch/ref: ${GITHUB_REF}
+          - exact commit SHA: ${GITHUB_SHA}
+          - workflow run: ${GITHUB_RUN_ID}
+          - domain qualification: PASS
+          - engineering + transactional qualification: PASS
+          - Linux/macOS/Windows semantic parity: PASS
+          - Linux/Windows/macOS desktop native builds: PASS
+          - Android phone/tablet native build gate: PASS
+          - iOS/iPadOS native build gate: PASS
+          - disposition: P9.13 automated acceptance gates PASS for this exact SHA
+          EOF
+          cat build/p9-final-acceptance/p9.13-final-audit.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p9.13-exact-sha-final-audit-${{ github.sha }}
+          path: build/p9-final-acceptance/p9.13-final-audit.md
+          if-no-files-found: error
+          retention-days: 90
