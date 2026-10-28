@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import '../domain/cable_spec.dart';
+import '../domain/electrical_load_calculation.dart';
 
 enum CircuitPhaseSystem { dc, singlePhaseAc, threePhaseAc }
 
@@ -14,6 +15,7 @@ final class CircuitElectricalRequirement {
     required this.routeLengthMm,
     required this.maxVoltageDropRatio,
     this.powerFactor = 1.0,
+    this.reactivePowerKind = ElectricalReactivePowerKind.lagging,
   })  : assert(designCurrentA > 0),
         assert(nominalVoltageV > 0),
         assert(routeLengthMm >= 0),
@@ -26,6 +28,7 @@ final class CircuitElectricalRequirement {
   final double routeLengthMm;
   final double maxVoltageDropRatio;
   final double powerFactor;
+  final ElectricalReactivePowerKind reactivePowerKind;
 }
 
 /// Cable impedance evidence used for voltage-drop calculations. It is kept
@@ -130,6 +133,8 @@ final class CableSizingResult {
 
 abstract final class CableSizingEngine {
   static CableSizingResult evaluate(CableSizingRequest request) {
+    _validateRequest(request);
+
     final impedance = request.impedanceEvidence;
     final ampacitySections = request.ampacitySections;
 
@@ -182,6 +187,81 @@ abstract final class CableSizingEngine {
     );
   }
 
+  static void _validateRequest(CableSizingRequest request) {
+    final requirement = request.requirement;
+    if (!requirement.designCurrentA.isFinite ||
+        requirement.designCurrentA <= 0) {
+      throw ArgumentError.value(requirement.designCurrentA, 'designCurrentA');
+    }
+    if (!requirement.nominalVoltageV.isFinite ||
+        requirement.nominalVoltageV <= 0) {
+      throw ArgumentError.value(requirement.nominalVoltageV, 'nominalVoltageV');
+    }
+    if (!requirement.routeLengthMm.isFinite || requirement.routeLengthMm < 0) {
+      throw ArgumentError.value(requirement.routeLengthMm, 'routeLengthMm');
+    }
+    if (!requirement.maxVoltageDropRatio.isFinite ||
+        requirement.maxVoltageDropRatio <= 0 ||
+        requirement.maxVoltageDropRatio >= 1) {
+      throw ArgumentError.value(
+        requirement.maxVoltageDropRatio,
+        'maxVoltageDropRatio',
+      );
+    }
+    if (!requirement.powerFactor.isFinite ||
+        requirement.powerFactor <= 0 ||
+        requirement.powerFactor > 1) {
+      throw ArgumentError.value(requirement.powerFactor, 'powerFactor');
+    }
+
+    final impedance = request.impedanceEvidence;
+    if (impedance != null &&
+        (!impedance.resistanceOhmPerKm.isFinite ||
+            impedance.resistanceOhmPerKm < 0 ||
+            !impedance.reactanceOhmPerKm.isFinite ||
+            impedance.reactanceOhmPerKm < 0)) {
+      throw ArgumentError(
+        'Cable impedance evidence must be finite and non-negative.',
+      );
+    }
+
+    final sectionIds = <String>{};
+    for (final section in request.ampacitySections) {
+      if (section.sectionId.trim().isEmpty) {
+        throw ArgumentError('Ampacity section id must be non-empty.');
+      }
+      if (!sectionIds.add(section.sectionId)) {
+        throw ArgumentError('Duplicate ampacity section ${section.sectionId}.');
+      }
+      if (!section.baseAmpacityA.isFinite || section.baseAmpacityA <= 0) {
+        throw ArgumentError.value(section.baseAmpacityA, 'baseAmpacityA');
+      }
+      final factorIds = <String>{};
+      for (final factor in section.factors) {
+        if (factor.id.trim().isEmpty) {
+          throw ArgumentError(
+              'Thermal correction factor id must be non-empty.');
+        }
+        if (!factorIds.add(factor.id)) {
+          throw ArgumentError(
+            'Duplicate thermal correction factor ${factor.id} on '
+            '${section.sectionId}.',
+          );
+        }
+        if (!factor.factor.isFinite || factor.factor <= 0) {
+          throw ArgumentError.value(factor.factor, 'thermalCorrectionFactor');
+        }
+      }
+      final adjusted = section.adjustedAmpacityA;
+      if (!adjusted.isFinite || adjusted <= 0) {
+        throw ArgumentError(
+          'Adjusted ampacity must be finite and positive for '
+          '${section.sectionId}.',
+        );
+      }
+    }
+  }
+
   static EngineeringCheckStatus _currentStatus(
     CircuitElectricalRequirement requirement,
     List<SectionAmpacityEvidence> sections,
@@ -212,15 +292,20 @@ abstract final class CableSizingEngine {
     final lengthKm = requirement.routeLengthMm / 1000000.0;
     final cosPhi = requirement.powerFactor;
     final sinPhi = math.sqrt(math.max(0, 1 - cosPhi * cosPhi));
+    final reactiveSign =
+        requirement.reactivePowerKind == ElectricalReactivePowerKind.lagging
+            ? 1.0
+            : -1.0;
     final impedanceTerm = evidence.resistanceOhmPerKm * cosPhi +
-        evidence.reactanceOhmPerKm * sinPhi;
-
-    return switch (requirement.phaseSystem) {
-      CircuitPhaseSystem.threePhaseAc =>
-        math.sqrt(3) * requirement.designCurrentA * lengthKm * impedanceTerm,
-      CircuitPhaseSystem.dc ||
-      CircuitPhaseSystem.singlePhaseAc =>
-        2 * requirement.designCurrentA * lengthKm * impedanceTerm,
+        reactiveSign * evidence.reactanceOhmPerKm * sinPhi;
+    final multiplier = switch (requirement.phaseSystem) {
+      CircuitPhaseSystem.threePhaseAc => math.sqrt(3),
+      CircuitPhaseSystem.dc || CircuitPhaseSystem.singlePhaseAc => 2.0,
     };
+
+    // A leading load may turn the approximation into voltage rise. The sizing
+    // constraint is the magnitude of voltage deviation, so compare |ΔU|.
+    return (multiplier * requirement.designCurrentA * lengthKm * impedanceTerm)
+        .abs();
   }
 }

@@ -10,16 +10,30 @@ enum InstallationGuideKind {
 
 enum InstallationGuideAuthority { normative, projectPreset, advisory }
 
+/// Traceable source metadata for a normative/advisory installation statement.
+///
+/// [revision] is deliberately explicit: a compliance result without the exact
+/// source edition cannot be reproduced safely after a ruleset update.
 final class InstallationGuideSource {
   const InstallationGuideSource({
     required this.code,
     required this.title,
     this.clause,
+    this.revision,
+    this.effectiveFrom,
+    this.sourceUri,
+    this.authority = InstallationGuideAuthority.normative,
   });
 
   final String code;
   final String title;
   final String? clause;
+  final String? revision;
+  final String? effectiveFrom;
+  final String? sourceUri;
+  final InstallationGuideAuthority authority;
+
+  bool get isRevisionPinned => revision != null && revision!.trim().isNotEmpty;
 }
 
 /// A visual/semantic installation guide bound to one physical room surface.

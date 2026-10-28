@@ -1,6 +1,7 @@
 import 'surfaces.dart';
 
 enum EngineeringDiscipline {
+  architecture,
   power,
   lighting,
   lowVoltage,

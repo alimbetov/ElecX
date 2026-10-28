@@ -1,10 +1,23 @@
+import '../../../domain/boundary_topology.dart';
 import '../../../domain/project_aggregate.dart';
 import '../../../domain/project_identity.dart';
+import '../../../domain/project_space_semantics.dart';
 import '../project_mutation_reservation.dart';
 
 enum WizardDiffKind { add, update, remove }
 
-enum WizardDiffEntityCategory { site, building, level, other }
+enum WizardDiffEntityCategory {
+  site,
+  building,
+  level,
+  structuralZone,
+  space,
+  opening,
+  adjacency,
+  boundaryTopology,
+  provenance,
+  other,
+}
 
 final class WizardFieldChange {
   const WizardFieldChange({
@@ -27,6 +40,7 @@ final class WizardDiffEntry {
     required String sortKey,
     this.entityId,
     this.context,
+    this.groupKey,
     Iterable<WizardFieldChange> fields = const [],
   })  : _sortKey = sortKey,
         fields = List.unmodifiable(fields);
@@ -36,6 +50,7 @@ final class WizardDiffEntry {
   final EntityId? entityId;
   final String title;
   final String? context;
+  final String? groupKey;
   final List<WizardFieldChange> fields;
   final String semanticKey;
   final String _sortKey;
@@ -46,6 +61,7 @@ final class WizardDiffEntry {
     final searchable = <String>[
       title,
       context ?? '',
+      groupKey ?? '',
       semanticKey,
       entityId?.value ?? '',
       for (final field in fields) ...[
@@ -56,6 +72,15 @@ final class WizardDiffEntry {
     ].join('\n').toLowerCase();
     return searchable.contains(query);
   }
+}
+
+final class WizardDiffGroup {
+  WizardDiffGroup(
+      {required this.key, required Iterable<WizardDiffEntry> entries})
+      : entries = List.unmodifiable(entries);
+
+  final String key;
+  final List<WizardDiffEntry> entries;
 }
 
 final class WizardDiffModel {
@@ -88,6 +113,18 @@ final class WizardDiffModel {
               entry.matches(query),
         ),
       );
+
+  List<WizardDiffGroup> grouped() {
+    final groups = <String, List<WizardDiffEntry>>{};
+    for (final entry in entries) {
+      final key = entry.groupKey ?? 'entry:${entry.semanticKey}';
+      (groups[key] ??= <WizardDiffEntry>[]).add(entry);
+    }
+    return List.unmodifiable([
+      for (final entry in groups.entries)
+        WizardDiffGroup(key: entry.key, entries: entry.value),
+    ]);
+  }
 }
 
 /// Converts canonical typed semantic operations into a stable, human-facing
@@ -168,8 +205,9 @@ final class WizardDiffProjector {
       kind: kind,
       category: category,
       entityId: id,
-      title: _title(id, displayEntity),
+      title: _title(id, displayEntity, before, candidate),
       context: _context(id, displayEntity, before, candidate),
+      groupKey: _groupKey(id, displayEntity),
       fields: fields,
       semanticKey: semanticKey,
       sortKey: _sortKey(id, displayEntity, before, candidate),
@@ -180,6 +218,11 @@ final class WizardDiffProjector {
     if (id is SiteId) return project.stores.sites[id];
     if (id is BuildingId) return project.stores.buildings[id];
     if (id is LevelId) return project.stores.levels[id];
+    if (id is ZoneId) return project.stores.zones[id];
+    if (id is SpaceId) return project.stores.spaces[id];
+    if (id is OpeningId) return project.stores.openings[id];
+    if (id is SpaceAdjacencyId) return project.stores.adjacencies[id];
+    if (id is BoundaryEdgeId) return project.index.boundaryEdges[id];
     return null;
   }
 
@@ -187,14 +230,48 @@ final class WizardDiffProjector {
     if (id is SiteId) return WizardDiffEntityCategory.site;
     if (id is BuildingId) return WizardDiffEntityCategory.building;
     if (id is LevelId) return WizardDiffEntityCategory.level;
+    if (id is ZoneId) return WizardDiffEntityCategory.structuralZone;
+    if (id is SpaceId) return WizardDiffEntityCategory.space;
+    if (id is OpeningId) return WizardDiffEntityCategory.opening;
+    if (id is SpaceAdjacencyId) return WizardDiffEntityCategory.adjacency;
+    if (id is BoundaryEdgeId) return WizardDiffEntityCategory.boundaryTopology;
     return WizardDiffEntityCategory.other;
   }
 
-  String _title(EntityId id, Object? entity) {
+  String _title(
+    EntityId id,
+    Object? entity,
+    ProjectAggregateRoot before,
+    ProjectAggregateRoot candidate,
+  ) {
     if (entity is ProjectSiteEntity) return 'Site “${entity.name}”';
     if (entity is ProjectBuildingEntity) return 'Building “${entity.name}”';
     if (entity is ProjectLevelEntity) {
       return 'Level ${entity.levelNumber} — ${entity.name}';
+    }
+    if (entity is ProjectStructuralZoneEntity) {
+      return entity.kind == ProjectStructuralZoneKind.apartment
+          ? 'Apartment “${entity.name}”'
+          : 'Structural zone “${entity.name}”';
+    }
+    if (entity is ProjectSpaceEntity) return 'Space “${entity.name}”';
+    if (entity is ProjectOpeningEntity) {
+      final names = entity.connectedSpaceIds
+          .map((spaceId) => _spaceName(candidate, before, spaceId))
+          .toList()
+        ..sort();
+      return entity.connectedSpaceIds.length == 1
+          ? 'Entrance to ${names.single}'
+          : '${_openingLabel(entity.kind)}: ${names.join(' ↔ ')}';
+    }
+    if (entity is ProjectSpaceAdjacencyEntity) {
+      final left = _spaceName(candidate, before, entity.spaceAId);
+      final right = _spaceName(candidate, before, entity.spaceBId);
+      return '${_adjacencyLabel(entity.kind)}: $left ↔ $right';
+    }
+    if (entity is ProjectBoundaryEdge) {
+      final spaceName = _spaceName(candidate, before, entity.spaceId);
+      return 'Boundary — $spaceName';
     }
     return '${id.runtimeType} ${id.value}';
   }
@@ -215,6 +292,36 @@ final class WizardDiffProjector {
           before.stores.buildings[entity.buildingId];
       return building == null ? null : 'Building “${building.name}”';
     }
+    if (entity is ProjectStructuralZoneEntity) {
+      return _levelContext(candidate, before, entity.levelId);
+    }
+    if (entity is ProjectSpaceEntity) {
+      final zone = candidate.stores.zones.values
+          .where((zone) => zone.spaceIds.contains(entity.id))
+          .cast<ProjectStructuralZoneEntity?>()
+          .firstWhere((zone) => zone != null, orElse: () => null);
+      return zone == null
+          ? _levelContext(candidate, before, entity.levelId)
+          : '${zone.name} · ${_levelContext(candidate, before, entity.levelId)}';
+    }
+    if (entity is ProjectOpeningEntity) {
+      return _levelContext(candidate, before, entity.levelId);
+    }
+    if (entity is ProjectSpaceAdjacencyEntity) {
+      return 'Spaces on the same canonical apartment graph';
+    }
+    if (entity is ProjectBoundaryEdge) {
+      return 'Space “${_spaceName(candidate, before, entity.spaceId)}”';
+    }
+    return null;
+  }
+
+  String? _groupKey(EntityId id, Object? entity) {
+    if (entity is ProjectBoundaryEdge) return 'space:${entity.spaceId.value}';
+    if (id is SpaceId) return 'space:${id.value}';
+    if (id is OpeningId || id is SpaceAdjacencyId) return 'relations';
+    if (id is ZoneId) return 'zones';
+    if (id is LevelId) return 'level:${id.value}';
     return null;
   }
 
@@ -256,6 +363,44 @@ final class WizardDiffProjector {
         'Kind': entity.kind.name,
         'Floor-to-floor': '${entity.floorToFloorHeightMm} mm',
         'Display order': entity.displayOrder.toString(),
+        'Structural zones': entity.zoneIds.length.toString(),
+        'Spaces': entity.spaceIds.length.toString(),
+      };
+    }
+    if (entity is ProjectStructuralZoneEntity) {
+      return {
+        'Name': entity.name,
+        'Kind': entity.kind.name,
+        'Spaces': entity.spaceIds.length.toString(),
+      };
+    }
+    if (entity is ProjectSpaceEntity) {
+      return {
+        'Name': entity.name,
+        'Type': entity.type.name,
+        'Usage': entity.usage.name,
+      };
+    }
+    if (entity is ProjectOpeningEntity) {
+      return {
+        'Kind': entity.kind.name,
+        'Width': '${entity.widthMm} mm',
+        'Height': '${entity.heightMm} mm',
+        'Base elevation': '${entity.baseElevationMm} mm',
+        'Connected spaces': entity.connectedSpaceIds.length.toString(),
+      };
+    }
+    if (entity is ProjectSpaceAdjacencyEntity) {
+      return {
+        'Kind': entity.kind.name,
+        'Opening': entity.openingId == null ? 'No' : 'Yes',
+      };
+    }
+    if (entity is ProjectBoundaryEdge) {
+      return {
+        'Start': '${entity.start.xMm}, ${entity.start.yMm} mm',
+        'End': '${entity.end.xMm}, ${entity.end.yMm} mm',
+        'Length': '${_edgeLength(entity)} mm',
       };
     }
     return const {};
@@ -278,8 +423,71 @@ final class WizardDiffProjector {
       return '2|${buildingOrder.toString().padLeft(6, '0')}|'
           '${entity.displayOrder.toString().padLeft(6, '0')}|${id.value}';
     }
-    return '8|${id.runtimeType}|${id.value}';
+    if (entity is ProjectStructuralZoneEntity) {
+      return '3|${entity.name}|${id.value}';
+    }
+    if (entity is ProjectSpaceEntity) {
+      return '4|${entity.usage.name}|${entity.name}|${id.value}';
+    }
+    if (entity is ProjectOpeningEntity) {
+      final names = entity.connectedSpaceIds
+          .map((spaceId) => _spaceName(candidate, before, spaceId))
+          .toList()
+        ..sort();
+      return '5|${names.join('|')}|${entity.kind.name}|${id.value}';
+    }
+    if (entity is ProjectSpaceAdjacencyEntity) {
+      final left = _spaceName(candidate, before, entity.spaceAId);
+      final right = _spaceName(candidate, before, entity.spaceBId);
+      return '6|$left|$right|${entity.kind.name}|${id.value}';
+    }
+    if (entity is ProjectBoundaryEdge) {
+      final space = _spaceName(candidate, before, entity.spaceId);
+      return '7|$space|${entity.start.xMm}|${entity.start.yMm}|${id.value}';
+    }
+    return '9|${id.runtimeType}|${id.value}';
   }
+
+  String _spaceName(
+    ProjectAggregateRoot candidate,
+    ProjectAggregateRoot before,
+    SpaceId id,
+  ) =>
+      candidate.stores.spaces[id]?.name ??
+      before.stores.spaces[id]?.name ??
+      'Space';
+
+  String _levelContext(
+    ProjectAggregateRoot candidate,
+    ProjectAggregateRoot before,
+    LevelId levelId,
+  ) {
+    final level =
+        candidate.stores.levels[levelId] ?? before.stores.levels[levelId];
+    return level == null
+        ? 'Level'
+        : 'Level ${level.levelNumber} — ${level.name}';
+  }
+
+  int _edgeLength(ProjectBoundaryEdge edge) =>
+      (edge.end.xMm - edge.start.xMm).abs() +
+      (edge.end.yMm - edge.start.yMm).abs();
+
+  String _openingLabel(OpeningKind kind) => switch (kind) {
+        OpeningKind.door => 'Door',
+        OpeningKind.openPassage => 'Open passage',
+        OpeningKind.window => 'Window',
+        OpeningKind.hatch => 'Hatch',
+        OpeningKind.serviceOpening => 'Service opening',
+        OpeningKind.other => 'Opening',
+      };
+
+  String _adjacencyLabel(SpaceAdjacencyKind kind) => switch (kind) {
+        SpaceAdjacencyKind.sharedBoundary => 'Shared boundary',
+        SpaceAdjacencyKind.opening => 'Door connection',
+        SpaceAdjacencyKind.openPassage => 'Open connection',
+        SpaceAdjacencyKind.vertical => 'Vertical connection',
+      };
 
   String _semanticTitle(ProjectSemanticOperation operation) {
     if (operation is CreatePenetrationOperation) return 'Create penetration';

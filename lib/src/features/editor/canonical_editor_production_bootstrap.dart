@@ -3,6 +3,7 @@ import '../../application/project/project_mutation.dart';
 import '../../application/project/project_mutation_reservation.dart';
 import '../../application/project/project_repository.dart';
 import '../../application/project/project_structure_authoring.dart';
+import '../../application/project/wizard/apartment/apartment_engineering_pipeline.dart';
 import '../../application/project/wizard/project_wizard_mutation_port.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/project_model.dart';
@@ -17,6 +18,7 @@ final class CanonicalEditorProductionHandle {
     required this.session,
     required this.wizardMutations,
     required this.binding,
+    this.apartmentEngineeringPipeline,
   }) : runtimeConfig = CanonicalEditorProductionRuntimeConfig(
           resolveRuntime: (workspace, metadata) {
             if (metadata.projectId != owner.projectId.value ||
@@ -27,6 +29,7 @@ final class CanonicalEditorProductionHandle {
               session: session,
               wizardMutations: wizardMutations,
               binding: binding,
+              apartmentEngineeringPipeline: apartmentEngineeringPipeline,
               persistenceOwnerProjectId: owner.projectId,
             );
           },
@@ -65,6 +68,12 @@ final class CanonicalEditorProductionHandle {
   final ProjectStructureAuthoringSession session;
   final ProjectWizardMutationPort wizardMutations;
   final CanonicalEditorWorkspaceBinding binding;
+
+  /// Optional source-backed P9 capability supplied by the outer production
+  /// composition root. The canonical bootstrap never fabricates electrical
+  /// supply, load or protection inputs when this capability is absent.
+  final ApartmentEngineeringPipeline? apartmentEngineeringPipeline;
+
   final CanonicalEditorProductionRuntimeConfig runtimeConfig;
 
   Future<void> saveCanonical() => owner.save();
@@ -86,7 +95,8 @@ final class CanonicalEditorProductionHandle {
   }
 
   /// Rebuilds only the legacy/canonical binding after structural projection.
-  /// Owner, mutation session, Wizard port and Undo/Redo history stay shared.
+  /// Owner, mutation session, Wizard port, engineering capability and Undo/Redo
+  /// history stay shared.
   CanonicalEditorProductionHandle rebindToLegacy(
     EditorProjectDocument legacyDocument,
   ) {
@@ -101,12 +111,14 @@ final class CanonicalEditorProductionHandle {
       session: session,
       wizardMutations: wizardMutations,
       binding: bootstrap.binding,
+      apartmentEngineeringPipeline: apartmentEngineeringPipeline,
     );
   }
 
   static Future<CanonicalEditorProductionHandle> loadOrBootstrap({
     required EditorProjectDocument legacyDocument,
     required ProjectRepository repository,
+    ApartmentEngineeringPipeline? apartmentEngineeringPipeline,
   }) async {
     final bootstrap = CanonicalEditorLegacyBootstrap.create(legacyDocument);
     var owner = await CanonicalProjectPersistenceOwner.load(
@@ -147,6 +159,7 @@ final class CanonicalEditorProductionHandle {
       session: session,
       wizardMutations: wizardMutations,
       binding: bootstrap.binding,
+      apartmentEngineeringPipeline: apartmentEngineeringPipeline,
     );
   }
 }

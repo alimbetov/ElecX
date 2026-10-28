@@ -2,12 +2,16 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../application/project/project_mutation_reservation.dart';
 import '../../application/project/project_navigator_projection.dart';
 import '../../application/project/project_structure_authoring.dart';
+import '../../application/project/wizard/apartment/apartment_engineering_pipeline_runtime_registry.dart';
+import '../../application/project/wizard/apartment/apartment_wizard_provider.dart';
 import '../../application/project/wizard/basic_building_wizard_provider.dart';
 import '../../application/project/wizard/wizard_contracts.dart';
 import '../../application/project/wizard/wizard_session.dart';
 import '../../domain/project_identity.dart';
+import '../projects/apartment_wizard_screen.dart';
 import '../projects/project_wizard_screen.dart';
 import 'canonical_editor_wizard_runtime_registry.dart';
 import 'project_structure_authoring_controls.dart';
@@ -90,6 +94,11 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
     final currentLeafId = projection.currentLeafId(navigation);
     final wizardMutations =
         CanonicalEditorWizardRuntimeRegistry.resolve(session);
+    final activeLevelId = navigation.activeLevelId;
+    final apartmentEngineeringPipeline =
+        ApartmentEngineeringPipelineRuntimeRegistry.resolve(session);
+    final canStartApartment =
+        activeLevelId == null || _isEmptyApartmentTarget(activeLevelId);
 
     if (_lastRenderedLeafId != currentLeafId) {
       _lastRenderedLeafId = currentLeafId;
@@ -132,10 +141,19 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
             padding: const EdgeInsets.all(10),
             child: ProjectStructureAuthoringControls(
               compact: widget.compact,
-              onStartWizard:
-                  wizardMutations != null && widget.onAuthoringCommitted != null
-                      ? _startWizard
-                      : null,
+              wizardLabel: activeLevelId == null
+                  ? 'Building Wizard'
+                  : 'Apartment Wizard',
+              wizardTooltip: activeLevelId == null
+                  ? 'Create a building with Wizard'
+                  : apartmentEngineeringPipeline == null
+                      ? 'Generate apartment topology; engineering output requires authoritative electrical inputs'
+                      : 'Generate apartment topology with frozen engineering output',
+              onStartWizard: wizardMutations != null &&
+                      widget.onAuthoringCommitted != null &&
+                      canStartApartment
+                  ? _startWizard
+                  : null,
               onAddBuilding:
                   availability.canAddBuilding && widget.requestBuilding != null
                       ? _addBuilding
@@ -152,6 +170,21 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
         ],
       ),
     );
+  }
+
+  bool _isEmptyApartmentTarget(LevelId levelId) {
+    final current = session.project;
+    final level = current.stores.levels[levelId];
+    if (level == null ||
+        level.spaceIds.isNotEmpty ||
+        level.zoneIds.isNotEmpty) {
+      return false;
+    }
+    final hasSpaces =
+        current.stores.spaces.values.any((space) => space.levelId == levelId);
+    final hasZones =
+        current.stores.zones.values.any((zone) => zone.levelId == levelId);
+    return !hasSpaces && !hasZones;
   }
 
   ProjectNavigatorProjection _projectionForCurrentProject() {
@@ -319,18 +352,49 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
 
     final before = session.project;
     try {
-      final committed = await ProjectWizardScreen.show(
-        context: context,
-        session: WizardSession(
-          target: SiteWizardTarget(
-            projectId: before.id,
-            siteId: before.siteId,
-            baseVersion: before.version,
+      final activeLevelId = session.navigation.activeLevelId;
+      final ReservedProjectMutationCommitResult? committed;
+      EntityId fallbackCreatedId;
+      if (activeLevelId != null) {
+        final level = before.stores.levels[activeLevelId];
+        if (level == null || !_isEmptyApartmentTarget(activeLevelId)) return;
+        final engineeringPipeline =
+            ApartmentEngineeringPipelineRuntimeRegistry.resolve(session);
+        final ApartmentWizardProvider provider = engineeringPipeline == null
+            ? const ApartmentWizardProvider.geometryOnly()
+            : ApartmentWizardProvider.production(
+                engineeringPipeline: engineeringPipeline,
+              );
+        committed = await ApartmentWizardScreen.show(
+          context: context,
+          session: WizardSession(
+            target: LevelWizardTarget(
+              projectId: before.id,
+              siteId: before.siteId,
+              baseVersion: before.version,
+              buildingId: level.buildingId,
+              levelId: level.id,
+            ),
+            registry: WizardProviderRegistry([provider]),
+            mutations: mutations,
           ),
-          registry: WizardProviderRegistry([BasicBuildingWizardProvider()]),
-          mutations: mutations,
-        ),
-      );
+        );
+        fallbackCreatedId = activeLevelId;
+      } else {
+        committed = await ProjectWizardScreen.show(
+          context: context,
+          session: WizardSession(
+            target: SiteWizardTarget(
+              projectId: before.id,
+              siteId: before.siteId,
+              baseVersion: before.version,
+            ),
+            registry: WizardProviderRegistry([BasicBuildingWizardProvider()]),
+            mutations: mutations,
+          ),
+        );
+        fallbackCreatedId = before.siteId;
+      }
       if (!mounted || committed == null) return;
 
       final after = committed.mutation.project;
@@ -338,12 +402,21 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
           .where((id) => !before.stores.buildings.containsKey(id))
           .toList()
         ..sort((a, b) => a.value.compareTo(b.value));
-      final EntityId createdId =
-          createdBuildings.isNotEmpty ? createdBuildings.first : after.siteId;
+      final createdZones = after.stores.zones.keys
+          .where((id) => !before.stores.zones.containsKey(id))
+          .toList()
+        ..sort((a, b) => a.value.compareTo(b.value));
+      final EntityId createdId = createdZones.isNotEmpty
+          ? createdZones.first
+          : createdBuildings.isNotEmpty
+              ? createdBuildings.first
+              : fallbackCreatedId;
 
       session.adoptNavigation(session.navigation.reconcile(after));
       if (createdId is BuildingId) {
         session.activateBuilding(createdId);
+      } else if (createdId is ZoneId) {
+        session.selectZone(createdId);
       }
 
       await _notifyAuthoringCommitted(

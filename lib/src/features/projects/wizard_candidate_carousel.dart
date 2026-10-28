@@ -16,20 +16,52 @@ final class WizardCandidateCard {
   final WizardPreviewScene scene;
 }
 
-/// Provider-neutral P8 candidate carousel. Candidate selection is presentation
-/// state only: browsing never reserves canonical identities or mutates project
-/// state. Providers with a single prepared candidate use the same surface.
+final class PreviewViewportState extends ChangeNotifier {
+  PreviewViewportState() {
+    transformationController.addListener(_onMatrixChanged);
+  }
+
+  static const double minScale = 1.0;
+  static const double maxScale = 8.0;
+  static const double zoomStep = 1.25;
+
+  final TransformationController transformationController =
+      TransformationController();
+
+  double get scale => transformationController.value.getMaxScaleOnAxis();
+
+  void zoomIn() => _setScale(scale * zoomStep);
+  void zoomOut() => _setScale(scale / zoomStep);
+  void resetView() => transformationController.value = Matrix4.identity();
+
+  void _setScale(double requestedScale) {
+    final next = requestedScale.clamp(minScale, maxScale).toDouble();
+    transformationController.value = Matrix4.diagonal3Values(next, next, 1);
+  }
+
+  void _onMatrixChanged() => notifyListeners();
+
+  @override
+  void dispose() {
+    transformationController.removeListener(_onMatrixChanged);
+    transformationController.dispose();
+    super.dispose();
+  }
+}
+
 final class WizardCandidateCarousel extends StatefulWidget {
   const WizardCandidateCarousel({
     required this.candidates,
     required this.selectedId,
     required this.onSelected,
+    this.viewportState,
     super.key,
   });
 
   final List<WizardCandidateCard> candidates;
   final String selectedId;
   final ValueChanged<String> onSelected;
+  final PreviewViewportState? viewportState;
 
   @override
   State<WizardCandidateCarousel> createState() =>
@@ -115,9 +147,17 @@ final class _WizardCandidateCarouselState
   @override
   Widget build(BuildContext context) {
     final l10n = ProjectWizardLocalizations.of(context);
+    final materialL10n = MaterialLocalizations.of(context);
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final navigationButtonStyle = reduceMotion
+        ? const ButtonStyle(animationDuration: Duration.zero)
+        : null;
     if (widget.candidates.isEmpty) {
       return Center(child: Text(l10n.noCandidates));
     }
+    final frozenSingleCandidate =
+        widget.candidates.length == 1 && widget.viewportState != null;
     return Focus(
       autofocus: true,
       onKeyEvent: _onKeyEvent,
@@ -145,13 +185,18 @@ final class _WizardCandidateCarouselState
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text(
-                            candidate.title,
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 8),
+                          if (!frozenSingleCandidate) ...[
+                            Text(
+                              candidate.title,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 8),
+                          ],
                           Expanded(
-                            child: WizardPreviewCanvas(scene: candidate.scene),
+                            child: WizardPreviewCanvas(
+                              scene: candidate.scene,
+                              viewportState: widget.viewportState,
+                            ),
                           ),
                         ],
                       ),
@@ -161,17 +206,162 @@ final class _WizardCandidateCarouselState
               },
             ),
           ),
-          Semantics(
-            liveRegion: true,
-            label: l10n.selectedCandidate(
-              _selectedIndex + 1,
-              widget.candidates.length,
+          if (widget.candidates.length > 1)
+            Semantics(
+              liveRegion: true,
+              label: l10n.selectedCandidate(
+                _selectedIndex + 1,
+                widget.candidates.length,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Semantics(
+                      label: materialL10n.previousPageTooltip,
+                      button: true,
+                      enabled: _selectedIndex > 0,
+                      child: ExcludeSemantics(
+                        child: IconButton(
+                          key: const ValueKey('wizard-candidate-previous'),
+                          style: navigationButtonStyle,
+                          onPressed: _selectedIndex > 0
+                              ? () => _select(_selectedIndex - 1)
+                              : null,
+                          icon: const Icon(Icons.chevron_left),
+                        ),
+                      ),
+                    ),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(minWidth: 64),
+                      child: Text(
+                        '${_selectedIndex + 1} / ${widget.candidates.length}',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
+                    ),
+                    Semantics(
+                      label: materialL10n.nextPageTooltip,
+                      button: true,
+                      enabled: _selectedIndex < widget.candidates.length - 1,
+                      child: ExcludeSemantics(
+                        child: IconButton(
+                          key: const ValueKey('wizard-candidate-next'),
+                          style: navigationButtonStyle,
+                          onPressed:
+                              _selectedIndex < widget.candidates.length - 1
+                                  ? () => _select(_selectedIndex + 1)
+                                  : null,
+                          icon: const Icon(Icons.chevron_right),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Text(
-                '${_selectedIndex + 1} / ${widget.candidates.length}',
-                style: Theme.of(context).textTheme.labelLarge,
+        ],
+      ),
+    );
+  }
+}
+
+final class WizardPreviewCanvas extends StatefulWidget {
+  const WizardPreviewCanvas(
+      {required this.scene, this.viewportState, super.key});
+
+  final WizardPreviewScene scene;
+  final PreviewViewportState? viewportState;
+
+  @override
+  State<WizardPreviewCanvas> createState() => _WizardPreviewCanvasState();
+}
+
+final class _WizardPreviewCanvasState extends State<WizardPreviewCanvas> {
+  PreviewViewportState? _ownedViewportState;
+
+  PreviewViewportState get _viewportState =>
+      widget.viewportState ?? (_ownedViewportState ??= PreviewViewportState());
+
+  @override
+  void didUpdateWidget(covariant WizardPreviewCanvas oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.viewportState == null && widget.viewportState != null) {
+      _ownedViewportState?.dispose();
+      _ownedViewportState = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _ownedViewportState?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final viewport = _viewportState;
+    final l10n = ProjectWizardLocalizations.of(context);
+    return Semantics(
+      image: true,
+      label: widget.scene.semanticLabel,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: InteractiveViewer(
+              transformationController: viewport.transformationController,
+              minScale: PreviewViewportState.minScale,
+              maxScale: PreviewViewportState.maxScale,
+              panEnabled: true,
+              scaleEnabled: true,
+              clipBehavior: Clip.hardEdge,
+              child: SizedBox.expand(
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: SizedBox(
+                    width: widget.scene.width,
+                    height: widget.scene.height,
+                    child: CustomPaint(
+                      painter: _WizardPreviewPainter(
+                        scene: widget.scene,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 4,
+            right: 4,
+            child: Material(
+              color:
+                  Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(10),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    key: const ValueKey('wizard-preview-zoom-out'),
+                    tooltip: l10n.zoomOut,
+                    onPressed: viewport.zoomOut,
+                    icon: const Icon(Icons.remove),
+                  ),
+                  IconButton(
+                    key: const ValueKey('wizard-preview-reset-view'),
+                    tooltip: l10n.resetView,
+                    onPressed: viewport.resetView,
+                    icon: const Icon(Icons.center_focus_strong),
+                  ),
+                  IconButton(
+                    key: const ValueKey('wizard-preview-zoom-in'),
+                    tooltip: l10n.zoomIn,
+                    onPressed: viewport.zoomIn,
+                    icon: const Icon(Icons.add),
+                  ),
+                ],
               ),
             ),
           ),
@@ -179,25 +369,6 @@ final class _WizardCandidateCarouselState
       ),
     );
   }
-}
-
-final class WizardPreviewCanvas extends StatelessWidget {
-  const WizardPreviewCanvas({required this.scene, super.key});
-
-  final WizardPreviewScene scene;
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-        image: true,
-        label: scene.semanticLabel,
-        child: CustomPaint(
-          painter: _WizardPreviewPainter(
-            scene: scene,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
-          child: const SizedBox.expand(),
-        ),
-      );
 }
 
 final class _WizardPreviewPainter extends CustomPainter {
@@ -209,15 +380,6 @@ final class _WizardPreviewPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (size.isEmpty) return;
-    final horizontalScale = (size.width / scene.width).clamp(0.05, 100.0);
-    final verticalScale = (size.height / scene.height).clamp(0.05, 100.0);
-    final fitted =
-        horizontalScale < verticalScale ? horizontalScale : verticalScale;
-    final dx = (size.width - scene.width * fitted) / 2;
-    final dy = (size.height - scene.height * fitted) / 2;
-    canvas.save();
-    canvas.translate(dx, dy);
-    canvas.scale(fitted);
     final stroke = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
@@ -225,12 +387,7 @@ final class _WizardPreviewPainter extends CustomPainter {
     for (final element in scene.elements) {
       if (element is WizardPreviewRect) {
         canvas.drawRect(
-          Rect.fromLTWH(
-            element.x,
-            element.y,
-            element.width,
-            element.height,
-          ),
+          Rect.fromLTWH(element.x, element.y, element.width, element.height),
           stroke,
         );
       } else if (element is WizardPreviewLine) {
@@ -239,6 +396,15 @@ final class _WizardPreviewPainter extends CustomPainter {
           Offset(element.x2, element.y2),
           stroke,
         );
+      } else if (element is WizardPreviewPolygon) {
+        final path = Path();
+        final first = element.points.first;
+        path.moveTo(first.x, first.y);
+        for (final point in element.points.skip(1)) {
+          path.lineTo(point.x, point.y);
+        }
+        path.close();
+        canvas.drawPath(path, stroke);
       } else if (element is WizardPreviewText) {
         final painter = TextPainter(
           text: TextSpan(
@@ -250,7 +416,6 @@ final class _WizardPreviewPainter extends CustomPainter {
         painter.paint(canvas, Offset(element.x, element.y - painter.height));
       }
     }
-    canvas.restore();
   }
 
   @override

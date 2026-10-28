@@ -3,6 +3,8 @@ import '../../application/project/project_mutation.dart';
 import '../../application/project/project_north_editing.dart';
 import '../../application/project/project_space_semantics_editing.dart';
 import '../../application/project/project_structure_authoring.dart';
+import '../../application/project/wizard/apartment/apartment_engineering_pipeline.dart';
+import '../../application/project/wizard/apartment/apartment_engineering_pipeline_runtime_registry.dart';
 import '../../application/project/wizard/project_wizard_mutation_port.dart';
 import '../../domain/project_identity.dart';
 import 'canonical_editor_runtime_cutover.dart';
@@ -67,6 +69,7 @@ final class CanonicalEditorResolvedRuntime {
     required this.session,
     required this.wizardMutations,
     required this.binding,
+    this.apartmentEngineeringPipeline,
     this.materializer = const ExistingBindingCanonicalEditorMaterializer(),
     this.persistenceOwnerProjectId,
   });
@@ -76,6 +79,11 @@ final class CanonicalEditorResolvedRuntime {
   /// P8 Wizard façade over the exact same canonical mutation timeline as
   /// [session]. This is runtime capability wiring, not an RBAC decision.
   final ProjectWizardMutationPort wizardMutations;
+
+  /// Source-backed P9 engineering capability for the production Apartment
+  /// Wizard. Null means that production engineering generation is unavailable;
+  /// callers must not silently downgrade to a geometry-only Apartment Wizard.
+  final ApartmentEngineeringPipeline? apartmentEngineeringPipeline;
 
   final CanonicalEditorWorkspaceBinding binding;
   final CanonicalEditorMaterializer materializer;
@@ -116,9 +124,9 @@ final class CanonicalEditorProductionRuntimeConfig {
       onBoundaryTopologyCommitted;
 
   /// Resolves the production runtime and binds the already-composed P8 Wizard
-  /// port to that exact canonical authoring-session identity. The Navigator can
-  /// therefore launch a contextual Wizard without constructing a second
-  /// ProjectMutationSession, Undo stack or persistence owner.
+  /// port and optional P9 engineering pipeline to the exact canonical runtime.
+  /// The Navigator therefore never constructs a second mutation timeline and
+  /// never invents engineering inputs locally.
   CanonicalEditorResolvedRuntime? resolveRuntime(
     EditorBuildingWorkspace workspace,
     EditorProjectMetadata metadata,
@@ -129,6 +137,13 @@ final class CanonicalEditorProductionRuntimeConfig {
         session: resolved.session,
         mutations: resolved.wizardMutations,
       );
+      final engineeringPipeline = resolved.apartmentEngineeringPipeline;
+      if (engineeringPipeline != null) {
+        ApartmentEngineeringPipelineRuntimeRegistry.bind(
+          session: resolved.session,
+          pipeline: engineeringPipeline,
+        );
+      }
     }
     return resolved;
   }
