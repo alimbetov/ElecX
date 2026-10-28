@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_candidate_set_service.dart';
+import 'package:elecx/src/application/project/wizard/apartment/apartment_preview_presentation.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_wizard_parameters.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_wizard_provider.dart';
 import 'package:elecx/src/application/project/wizard/project_wizard_mutation_port.dart';
@@ -20,27 +21,27 @@ void main() {
   test('P9.13 D-F authoritative width breakpoints are exact', () {
     expect(
       ElecXPresentationPolicy.widthClassFor(599),
-      ElecXWidthClass.compact,
+      ElecXResponsiveWidthClass.compact,
     );
     expect(
       ElecXPresentationPolicy.widthClassFor(600),
-      ElecXWidthClass.medium,
+      ElecXResponsiveWidthClass.medium,
     );
     expect(
       ElecXPresentationPolicy.widthClassFor(1023),
-      ElecXWidthClass.medium,
+      ElecXResponsiveWidthClass.medium,
     );
     expect(
       ElecXPresentationPolicy.widthClassFor(1024),
-      ElecXWidthClass.expanded,
+      ElecXResponsiveWidthClass.expanded,
     );
     expect(
       ElecXPresentationPolicy.widthClassFor(1439),
-      ElecXWidthClass.expanded,
+      ElecXResponsiveWidthClass.expanded,
     );
     expect(
       ElecXPresentationPolicy.widthClassFor(1440),
-      ElecXWidthClass.large,
+      ElecXResponsiveWidthClass.large,
     );
   });
 
