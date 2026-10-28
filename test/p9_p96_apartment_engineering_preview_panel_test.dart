@@ -199,8 +199,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final preview =
-        find.byKey(const ValueKey('apartment-engineering-preview'));
+    final preview = find.byKey(const ValueKey('apartment-engineering-preview'));
     expect(preview, findsOneWidget);
     expect(
       find.byKey(const ValueKey('apartment-engineering-circuit-C1')),
@@ -230,8 +229,8 @@ void main() {
     await _dragUntilVisible(
       tester,
       scrollable: previewListView,
-      target:
-          find.byKey(const ValueKey('apartment-engineering-sld-node-node.board')),
+      target: find
+          .byKey(const ValueKey('apartment-engineering-sld-node-node.board')),
     );
     await _dragUntilVisible(
       tester,
