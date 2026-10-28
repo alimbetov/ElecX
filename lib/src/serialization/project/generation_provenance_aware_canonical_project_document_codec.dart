@@ -28,7 +28,10 @@ final class GenerationProvenanceAwareCanonicalProjectDocumentCodec
   ProjectDocument encode(ProjectSnapshot snapshot) {
     final registry =
         snapshot.aggregate.engineeringMetadata.generationProvenanceRegistry;
-    GenerationProvenanceIntegrityValidator.validateOrThrow(registry);
+    GenerationProvenanceIntegrityValidator.validateOrThrow(
+      registry,
+      project: snapshot.aggregate,
+    );
     final base = _base.encode(snapshot);
     return ProjectDocument(
       schemaVersion: schemaVersion,
@@ -67,7 +70,10 @@ final class GenerationProvenanceAwareCanonicalProjectDocumentCodec
       projectId: base.id,
       entityExists: (id) => _entityExists(stores, id),
     );
-    GenerationProvenanceIntegrityValidator.validateOrThrow(registry);
+    GenerationProvenanceIntegrityValidator.validateOrThrow(
+      registry,
+      project: base.aggregate,
+    );
     final aggregate = ProjectAggregateRoot(
       id: base.id,
       siteId: base.siteId,
