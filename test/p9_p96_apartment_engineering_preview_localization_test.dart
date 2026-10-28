@@ -10,7 +10,8 @@ void main() {
       const MaterialApp(
         locale: Locale('ru'),
         supportedLocales: ProjectWizardLocalizations.supportedLocales,
-        localizationsDelegates: ProjectWizardLocalizations.localizationsDelegates,
+        localizationsDelegates:
+            ProjectWizardLocalizations.localizationsDelegates,
         home: Scaffold(
           body: SizedBox(
             width: 900,
