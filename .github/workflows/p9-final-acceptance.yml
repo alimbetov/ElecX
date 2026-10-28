@@ -31,7 +31,9 @@ jobs:
           free -m
           flutter --version
       - name: Enforce P9.13 qualification formatting
-        run: dart format --output=none --set-exit-if-changed qualification_test tool
+        run: |
+          dart format qualification_test tool
+          git diff --exit-code -- qualification_test tool
       - name: Supported + invalid + property/fuzz + determinism
         run: >-
           flutter test --concurrency=1
