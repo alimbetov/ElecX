@@ -249,7 +249,8 @@ void main() {
       expect(session.generatedCommand, isNull);
       expect(session.preview, isNull);
       expect(session.failure, isNotNull);
-      expect(session.failure.toString(), contains('engineering-pipeline-invalid'));
+      expect(
+          session.failure.toString(), contains('engineering-pipeline-invalid'));
     });
   });
 }
