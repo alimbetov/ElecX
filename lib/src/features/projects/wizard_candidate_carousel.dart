@@ -255,7 +255,8 @@ final class _WizardCandidateCarouselState
 }
 
 final class WizardPreviewCanvas extends StatefulWidget {
-  const WizardPreviewCanvas({required this.scene, this.viewportState, super.key});
+  const WizardPreviewCanvas(
+      {required this.scene, this.viewportState, super.key});
 
   final WizardPreviewScene scene;
   final PreviewViewportState? viewportState;
