@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feat/pre-p10-cross-platform-hardening
+      - feat/pre-p10-defect-remediation
   pull_request:
     paths:
       - 'lib/**'
@@ -29,7 +30,12 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version-file: pubspec.yaml
           cache: true
+      - name: Verify pinned Flutter toolchain
+        run: |
+          flutter --version
+          test "$(flutter --version --machine | python3 -c 'import json,sys; print(json.load(sys.stdin)["frameworkVersion"])')" = "3.47.7"
       - run: flutter pub get
       - name: Reference environment
         run: flutter --version
@@ -59,7 +65,12 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version-file: pubspec.yaml
           cache: true
+      - name: Verify pinned Flutter toolchain
+        run: |
+          flutter --version
+          test "$(flutter --version --machine | python3 -c 'import json,sys; print(json.load(sys.stdin)["frameworkVersion"])')" = "3.47.7"
       - run: flutter pub get
       - name: Execute Hub retry and canonical backup probes
         id: recovery-probes
@@ -87,7 +98,12 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version-file: pubspec.yaml
           cache: true
+      - name: Verify pinned Flutter toolchain
+        run: |
+          flutter --version
+          test "$(flutter --version --machine | python3 -c 'import json,sys; print(json.load(sys.stdin)["frameworkVersion"])')" = "3.47.7"
       - run: flutter pub get
       - name: Execute same-session storage retry probe
         id: storage-init-probe
