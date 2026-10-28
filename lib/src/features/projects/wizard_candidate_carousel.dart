@@ -238,9 +238,10 @@ final class _WizardCandidateCarouselState
                       child: ExcludeSemantics(
                         child: IconButton(
                           key: const ValueKey('wizard-candidate-next'),
-                          onPressed: _selectedIndex < widget.candidates.length - 1
-                              ? () => _select(_selectedIndex + 1)
-                              : null,
+                          onPressed:
+                              _selectedIndex < widget.candidates.length - 1
+                                  ? () => _select(_selectedIndex + 1)
+                                  : null,
                           icon: const Icon(Icons.chevron_right),
                         ),
                       ),
