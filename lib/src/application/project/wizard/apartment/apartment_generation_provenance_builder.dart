@@ -1,5 +1,6 @@
 import '../../../../domain/apartment_topology/apartment_geometry.dart';
 import '../../../../domain/generation_provenance.dart';
+import '../../../../domain/generation_provenance_integrity.dart';
 import '../../../../domain/project_aggregate.dart';
 import '../../../../domain/project_identity.dart';
 import '../../project_mutation_reservation.dart';
@@ -189,7 +190,10 @@ final class ApartmentGenerationProvenanceBuilder {
       apartmentZoneId: zoneId,
       generatedEntityIds: generatedIds,
     );
-    return current.addGeneration(manifest: manifest, provenances: generated);
+    final registry =
+        current.addGeneration(manifest: manifest, provenances: generated);
+    GenerationProvenanceIntegrityValidator.validateOrThrow(registry);
+    return registry;
   }
 
   String _baselineFingerprint(String generationKey, String baseline) =>
