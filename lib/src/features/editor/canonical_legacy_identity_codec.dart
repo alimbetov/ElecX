@@ -15,7 +15,8 @@ abstract final class CanonicalLegacyIdentityCodec {
   static bool isEncodedLevelId(String legacyId) =>
       legacyId.startsWith(levelPrefix);
 
-  static bool isEncodedZoneId(String legacyId) => legacyId.startsWith(zonePrefix);
+  static bool isEncodedZoneId(String legacyId) =>
+      legacyId.startsWith(zonePrefix);
 
   static bool isEncodedSpaceId(String legacyId) =>
       legacyId.startsWith(spacePrefix);
@@ -98,7 +99,8 @@ abstract final class CanonicalLegacyIdentityCodec {
       throw FormatException('Malformed encoded canonical $kind: $error');
     }
     if (decoded.isEmpty || Uri.encodeComponent(decoded) != encoded) {
-      throw FormatException('Encoded canonical $kind is not in canonical form.');
+      throw FormatException(
+          'Encoded canonical $kind is not in canonical form.');
     }
     return decoded;
   }
