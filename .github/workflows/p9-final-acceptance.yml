@@ -58,6 +58,7 @@ jobs:
       - name: Static analysis
         id: static-analysis
         run: |
+          set -o pipefail
           mkdir -p build/p9-final-acceptance
           flutter analyze 2>&1 | tee build/p9-final-acceptance/flutter-analyze.log
       - name: Upload analyzer failure diagnostics
@@ -69,10 +70,22 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: P8 NFR accessibility and i18n regression gate
-        run: >-
-          flutter test --concurrency=1
-          test/p8_wizard_nfr_a11y_i18n_qualification_test.dart
-          test/p8_wizard_r23_extended_qualification_test.dart
+        id: p8-regression
+        run: |
+          set -o pipefail
+          mkdir -p build/p9-final-acceptance
+          flutter test --concurrency=1 \
+            test/p8_wizard_nfr_a11y_i18n_qualification_test.dart \
+            test/p8_wizard_r23_extended_qualification_test.dart \
+            2>&1 | tee build/p9-final-acceptance/p8-regression.log
+      - name: Upload P8 regression failure diagnostics
+        if: failure() && steps.p8-regression.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: p9.13-p8-regression-failure-${{ github.sha }}
+          path: build/p9-final-acceptance/p8-regression.log
+          if-no-files-found: error
+          retention-days: 14
       - name: Complete Flutter regression suite
         run: flutter test
       - name: Acceptance evidence structure exists
@@ -171,6 +184,7 @@ jobs:
       - name: GJ-01..04 Preview Diff Apply Undo Redo Save Reopen input continuity
         id: golden-journeys
         run: |
+          set -o pipefail
           mkdir -p build/p9-final-acceptance
           flutter test --concurrency=1 \
             qualification_test/p9_p913_golden_journey_test.dart \
@@ -189,6 +203,7 @@ jobs:
       - name: NG-01..10 negative journey regression set
         id: negative-journeys
         run: |
+          set -o pipefail
           mkdir -p build/p9-final-acceptance
           flutter test --concurrency=1 \
             qualification_test/p9_p913_negative_journeys_test.dart \
@@ -221,6 +236,7 @@ jobs:
       - name: Viewport locale text-scale theme matrix and GJ-03
         id: responsive-matrix
         run: |
+          set -o pipefail
           mkdir -p build/p9-final-acceptance
           flutter test --concurrency=1 \
             qualification_test/p9_p913_responsive_matrix_test.dart \
@@ -340,9 +356,21 @@ jobs:
       - name: Build Android debug APK
         run: flutter build apk --debug
       - name: P9 compact/tablet semantic UI contract
-        run: >-
-          flutter test --concurrency=1
-          qualification_test/p9_p913_responsive_matrix_test.dart
+        id: android-responsive
+        run: |
+          set -o pipefail
+          mkdir -p build/p9-final-acceptance
+          flutter test --concurrency=1 \
+            qualification_test/p9_p913_responsive_matrix_test.dart \
+            2>&1 | tee build/p9-final-acceptance/android-responsive.log
+      - name: Upload Android responsive failure diagnostics
+        if: failure() && steps.android-responsive.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: p9.13-android-responsive-failure-${{ github.sha }}
+          path: build/p9-final-acceptance/android-responsive.log
+          if-no-files-found: error
+          retention-days: 14
 
   apple-mobile-native:
     name: E-F iOS + iPadOS native build
@@ -360,9 +388,21 @@ jobs:
       - name: Build iOS/iPadOS debug without signing
         run: flutter build ios --debug --no-codesign
       - name: P9 compact/tablet semantic UI contract
-        run: >-
-          flutter test --concurrency=1
-          qualification_test/p9_p913_responsive_matrix_test.dart
+        id: apple-responsive
+        run: |
+          set -o pipefail
+          mkdir -p build/p9-final-acceptance
+          flutter test --concurrency=1 \
+            qualification_test/p9_p913_responsive_matrix_test.dart \
+            2>&1 | tee build/p9-final-acceptance/apple-responsive.log
+      - name: Upload Apple responsive failure diagnostics
+        if: failure() && steps.apple-responsive.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: p9.13-apple-responsive-failure-${{ github.sha }}
+          path: build/p9-final-acceptance/apple-responsive.log
+          if-no-files-found: error
+          retention-days: 14
 
   exact-sha-final-audit:
     name: H exact-SHA final audit
