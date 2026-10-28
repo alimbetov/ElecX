@@ -137,13 +137,10 @@ final class CanonicalEditorProductionRuntimeConfig {
         session: resolved.session,
         mutations: resolved.wizardMutations,
       );
-      final engineeringPipeline = resolved.apartmentEngineeringPipeline;
-      if (engineeringPipeline != null) {
-        ApartmentEngineeringPipelineRuntimeRegistry.bind(
-          session: resolved.session,
-          pipeline: engineeringPipeline,
-        );
-      }
+      ApartmentEngineeringPipelineRuntimeRegistry.replace(
+        session: resolved.session,
+        pipeline: resolved.apartmentEngineeringPipeline,
+      );
     }
     return resolved;
   }
