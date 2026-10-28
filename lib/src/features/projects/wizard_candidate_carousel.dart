@@ -148,6 +148,11 @@ final class _WizardCandidateCarouselState
   Widget build(BuildContext context) {
     final l10n = ProjectWizardLocalizations.of(context);
     final materialL10n = MaterialLocalizations.of(context);
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final navigationButtonStyle = reduceMotion
+        ? const ButtonStyle(animationDuration: Duration.zero)
+        : null;
     if (widget.candidates.isEmpty) {
       return Center(child: Text(l10n.noCandidates));
     }
@@ -216,6 +221,7 @@ final class _WizardCandidateCarouselState
                       child: ExcludeSemantics(
                         child: IconButton(
                           key: const ValueKey('wizard-candidate-previous'),
+                          style: navigationButtonStyle,
                           onPressed: _selectedIndex > 0
                               ? () => _select(_selectedIndex - 1)
                               : null,
@@ -238,6 +244,7 @@ final class _WizardCandidateCarouselState
                       child: ExcludeSemantics(
                         child: IconButton(
                           key: const ValueKey('wizard-candidate-next'),
+                          style: navigationButtonStyle,
                           onPressed:
                               _selectedIndex < widget.candidates.length - 1
                                   ? () => _select(_selectedIndex + 1)
