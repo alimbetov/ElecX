@@ -21,10 +21,12 @@ void main() {
         ),
         isEmpty,
       );
-      expect(() => codec.decode(codec.encode(fixture.snapshot)), returnsNormally);
+      expect(
+          () => codec.decode(codec.encode(fixture.snapshot)), returnsNormally);
     });
 
-    test('foreign level under a different building is rejected before Save', () {
+    test('foreign level under a different building is rejected before Save',
+        () {
       final fixture = _fixture(
         manifestBuildingId: BuildingId('building-a'),
         manifestLevelId: LevelId('level-b'),
@@ -38,7 +40,8 @@ void main() {
       expect(
         issues.any(
           (issue) =>
-              issue.code == GenerationProvenanceIssueCode.entityManifestMismatch &&
+              issue.code ==
+                  GenerationProvenanceIssueCode.entityManifestMismatch &&
               issue.message.contains('does not belong to building'),
         ),
         isTrue,
@@ -60,7 +63,8 @@ void main() {
       );
     });
 
-    test('foreign generated entity outside the apartment target is rejected', () {
+    test('foreign generated entity outside the apartment target is rejected',
+        () {
       final fixture = _fixture(generatedEntityId: SpaceId('space-b'));
 
       final issues = GenerationProvenanceIntegrityValidator.validate(
@@ -71,7 +75,8 @@ void main() {
         issues.any(
           (issue) =>
               issue.entityId == SpaceId('space-b') &&
-              issue.code == GenerationProvenanceIssueCode.entityManifestMismatch,
+              issue.code ==
+                  GenerationProvenanceIssueCode.entityManifestMismatch,
         ),
         isTrue,
       );
