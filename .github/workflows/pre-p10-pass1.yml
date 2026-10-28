@@ -77,3 +77,31 @@ jobs:
           path: build/pre-p10-pass1/recovery-probes.log
           if-no-files-found: error
           retention-days: 30
+
+  platform-store-init-discovery:
+    name: PASS1-Q06 platform storage initialization recovery
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Execute same-session storage retry probe
+        id: storage-init-probe
+        run: |
+          set -o pipefail
+          mkdir -p build/pre-p10-pass1
+          flutter test --concurrency=1 \
+            qualification_test/pre_p10_platform_store_init_qualification_test.dart \
+            2>&1 | tee build/pre-p10-pass1/storage-init-probe.log
+      - name: Upload storage-init diagnostics
+        if: failure() && steps.storage-init-probe.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pre-p10-pass1-storage-init-${{ github.sha }}
+          path: build/pre-p10-pass1/storage-init-probe.log
+          if-no-files-found: error
+          retention-days: 30
