@@ -28,7 +28,8 @@ void main() {
       );
     });
 
-    test('PRE10-CQ24 tampered persisted baseline SHA is rejected on Reopen', () {
+    test('PRE10-CQ24 tampered persisted baseline SHA is rejected on Reopen',
+        () {
       final fixture = _fixture();
       final document = codec.encode(fixture.snapshot);
       final tampered = _tamperBaseline(document, 'tampered-baseline');
@@ -60,7 +61,8 @@ void main() {
       );
     });
 
-    test('PRE10-CQ25 removed key tombstone without active reuse round-trips', () {
+    test('PRE10-CQ25 removed key tombstone without active reuse round-trips',
+        () {
       final fixture = _fixture(removedSpaceTombstone: true);
 
       expect(
@@ -76,8 +78,7 @@ void main() {
 
       expect(manifest.removedGenerationKeys, contains('space:removed:1'));
       expect(
-        restored.entities.values
-            .map((provenance) => provenance.generationKey),
+        restored.entities.values.map((provenance) => provenance.generationKey),
         isNot(contains('space:removed:1')),
       );
     });
