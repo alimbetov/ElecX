@@ -148,8 +148,9 @@ final class CanonicalEditorProductionRuntimeConfig {
   bool get authoringEnabled =>
       onCanonicalMutationCommitted != null && onAuthoringCommitted != null;
 
-  /// Wizard Apply needs canonical ownership acknowledgement just like any
-  /// ordinary canonical mutation. Future authorization/RBAC remains an outer
-  /// composition concern.
-  bool get wizardMutationEnabled => onCanonicalMutationCommitted != null;
+  /// Wizard Apply requires both canonical ownership acknowledgement and the
+  /// structural-authoring acknowledgement consumed by the production UI.
+  /// Advertising the capability with only one callback would create a runtime
+  /// state in which the Wizard appears enabled but cannot commit.
+  bool get wizardMutationEnabled => authoringEnabled;
 }
