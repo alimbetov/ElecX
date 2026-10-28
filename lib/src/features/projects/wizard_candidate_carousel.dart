@@ -197,57 +197,58 @@ final class _WizardCandidateCarouselState
               },
             ),
           ),
-          Semantics(
-            liveRegion: true,
-            label: l10n.selectedCandidate(
-              _selectedIndex + 1,
-              widget.candidates.length,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Semantics(
-                    label: materialL10n.previousPageTooltip,
-                    button: true,
-                    enabled: _selectedIndex > 0,
-                    child: ExcludeSemantics(
-                      child: IconButton(
-                        key: const ValueKey('wizard-candidate-previous'),
-                        onPressed: _selectedIndex > 0
-                            ? () => _select(_selectedIndex - 1)
-                            : null,
-                        icon: const Icon(Icons.chevron_left),
+          if (widget.candidates.length > 1)
+            Semantics(
+              liveRegion: true,
+              label: l10n.selectedCandidate(
+                _selectedIndex + 1,
+                widget.candidates.length,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Semantics(
+                      label: materialL10n.previousPageTooltip,
+                      button: true,
+                      enabled: _selectedIndex > 0,
+                      child: ExcludeSemantics(
+                        child: IconButton(
+                          key: const ValueKey('wizard-candidate-previous'),
+                          onPressed: _selectedIndex > 0
+                              ? () => _select(_selectedIndex - 1)
+                              : null,
+                          icon: const Icon(Icons.chevron_left),
+                        ),
                       ),
                     ),
-                  ),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(minWidth: 64),
-                    child: Text(
-                      '${_selectedIndex + 1} / ${widget.candidates.length}',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.labelLarge,
-                    ),
-                  ),
-                  Semantics(
-                    label: materialL10n.nextPageTooltip,
-                    button: true,
-                    enabled: _selectedIndex < widget.candidates.length - 1,
-                    child: ExcludeSemantics(
-                      child: IconButton(
-                        key: const ValueKey('wizard-candidate-next'),
-                        onPressed: _selectedIndex < widget.candidates.length - 1
-                            ? () => _select(_selectedIndex + 1)
-                            : null,
-                        icon: const Icon(Icons.chevron_right),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(minWidth: 64),
+                      child: Text(
+                        '${_selectedIndex + 1} / ${widget.candidates.length}',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.labelLarge,
                       ),
                     ),
-                  ),
-                ],
+                    Semantics(
+                      label: materialL10n.nextPageTooltip,
+                      button: true,
+                      enabled: _selectedIndex < widget.candidates.length - 1,
+                      child: ExcludeSemantics(
+                        child: IconButton(
+                          key: const ValueKey('wizard-candidate-next'),
+                          onPressed: _selectedIndex < widget.candidates.length - 1
+                              ? () => _select(_selectedIndex + 1)
+                              : null,
+                          icon: const Icon(Icons.chevron_right),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
