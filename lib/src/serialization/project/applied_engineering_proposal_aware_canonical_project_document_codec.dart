@@ -136,13 +136,15 @@ final class AppliedEngineeringProposalAwareCanonicalProjectDocumentCodec
       }
       byLevel[levelId] = AppliedEngineeringProposalSnapshot(
         levelId: levelId,
-        proposalVersion: _string(
+        proposalVersion: _supportedVersion(
           value['proposalVersion'],
           'appliedEngineeringProposal.proposalVersion',
+          supportedApartmentEngineeringProposalVersion,
         ),
-        outputProjectionVersion: _string(
+        outputProjectionVersion: _supportedVersion(
           value['outputProjectionVersion'],
           'appliedEngineeringProposal.outputProjectionVersion',
+          supportedApartmentEngineeringOutputProjectionVersion,
         ),
         candidateSetFingerprint: _string(
           value['candidateSetFingerprint'],
@@ -225,6 +227,20 @@ final class AppliedEngineeringProposalAwareCanonicalProjectDocumentCodec
       throw FormatException('$path must be a non-empty string.');
     }
     return value;
+  }
+
+  static String _supportedVersion(
+    Object? value,
+    String path,
+    String supportedVersion,
+  ) {
+    final version = _string(value, path);
+    if (version != supportedVersion) {
+      throw FormatException(
+        'Unsupported $path $version; expected $supportedVersion.',
+      );
+    }
+    return version;
   }
 
   static List<String> _stringList(Object? value, String path) =>
