@@ -97,8 +97,9 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
     final activeLevelId = navigation.activeLevelId;
     final apartmentEngineeringPipeline =
         ApartmentEngineeringPipelineRuntimeRegistry.resolve(session);
-    final canStartApartment =
-        activeLevelId == null || _isEmptyApartmentTarget(activeLevelId);
+    final canStartApartment = activeLevelId == null ||
+        (_isEmptyApartmentTarget(activeLevelId) &&
+            apartmentEngineeringPipeline != null);
 
     if (_lastRenderedLeafId != currentLeafId) {
       _lastRenderedLeafId = currentLeafId;
@@ -147,7 +148,7 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
               wizardTooltip: activeLevelId == null
                   ? 'Create a building with Wizard'
                   : apartmentEngineeringPipeline == null
-                      ? 'Generate apartment topology; engineering output requires authoritative electrical inputs'
+                      ? 'Apartment Wizard unavailable: authoritative electrical inputs are required'
                       : 'Generate apartment topology with frozen engineering output',
               onStartWizard: wizardMutations != null &&
                       widget.onAuthoringCommitted != null &&
@@ -360,11 +361,14 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
         if (level == null || !_isEmptyApartmentTarget(activeLevelId)) return;
         final engineeringPipeline =
             ApartmentEngineeringPipelineRuntimeRegistry.resolve(session);
-        final ApartmentWizardProvider provider = engineeringPipeline == null
-            ? const ApartmentWizardProvider.geometryOnly()
-            : ApartmentWizardProvider.production(
-                engineeringPipeline: engineeringPipeline,
-              );
+        if (engineeringPipeline == null) {
+          throw StateError(
+            'Production Apartment Wizard requires an authoritative engineering pipeline.',
+          );
+        }
+        final provider = ApartmentWizardProvider.production(
+          engineeringPipeline: engineeringPipeline,
+        );
         committed = await ApartmentWizardScreen.show(
           context: context,
           session: WizardSession(
