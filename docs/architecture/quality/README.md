@@ -15,18 +15,26 @@ This directory is the authoritative PRE-P10 cross-platform hardening specificati
    - severity/status/closure rules;
    - PRE-P10 exit criteria.
 
-2. **Current PASS-1 defect ledger** — `pre-p10-pass1-findings-v2.md`
+2. **Current PASS-1 defect ledger** — `pre-p10-pass1-findings-v3.md`
    - repository/architecture/platform inventory;
    - all currently confirmed `PRE10-Dxxx` defects;
    - exact detecting SHA/workflow evidence where executable evidence exists;
    - root cause and fix strategy;
+   - fix-candidate and awaiting-qualification states;
    - regression and closure gates;
    - verified non-defects / already-strong areas;
    - active discovery probes.
 
-## Historical document
+3. **P1–P9 traceability inventory** — `pre-p10-pass1-traceability-v1.md`
+   - domain/application coverage;
+   - Flutter UI/production-composition coverage;
+   - native runtime gaps;
+   - reused test families;
+   - required PRE-P10 product journeys.
 
-`pre-p10-pass1-findings-v1.md` is retained as the first PASS-1 snapshot. It is superseded by v2 and must not be used as the current defect disposition.
+## Historical documents
+
+`pre-p10-pass1-findings-v1.md` and `pre-p10-pass1-findings-v2.md` are retained as historical PASS-1 snapshots. They are superseded by v3 and must not be used as the current defect disposition.
 
 ## Governance
 
