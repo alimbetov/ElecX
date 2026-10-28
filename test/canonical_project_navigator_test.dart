@@ -204,7 +204,7 @@ void main() {
         );
         expect(
           session.project.stores.levels.keys,
-          isNot(contains(LevelId('level-generated')),
+          isNot(contains(LevelId('level-generated'))),
         );
       },
     );
