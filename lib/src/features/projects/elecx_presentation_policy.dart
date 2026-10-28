@@ -14,11 +14,12 @@ final class ElecXPresentationPolicy {
       responsiveWidthClassFor(logicalWidth);
 
   /// Chooses a safe visual density while preserving the authoritative width
-  /// class. MEDIUM remains a two-region layout even at large text scales so a
-  /// short landscape viewport does not acquire an additional navigation row.
-  /// Expanded classes may collapse one density level for accessibility, but
-  /// presentation never changes generation, ordering, reservation,
-  /// fingerprints, or canonical state.
+  /// class. Large text may project a MEDIUM viewport into compact visual density
+  /// when the denser two-region composition would make primary actions or
+  /// preview content unreachable. The authoritative width class remains MEDIUM;
+  /// only presentation density changes. Expanded classes may collapse one
+  /// density level for accessibility. Generation, ordering, reservation,
+  /// fingerprints, and canonical state are never affected.
   static ElecXLayoutMode layoutModeFor({
     required double logicalWidth,
     required double textScaleFactor,
@@ -28,7 +29,8 @@ final class ElecXPresentationPolicy {
 
     return switch (widthClass) {
       ElecXResponsiveWidthClass.compact => ElecXLayoutMode.compact,
-      ElecXResponsiveWidthClass.medium => ElecXLayoutMode.medium,
+      ElecXResponsiveWidthClass.medium =>
+        scale >= 1.8 ? ElecXLayoutMode.compact : ElecXLayoutMode.medium,
       ElecXResponsiveWidthClass.expanded =>
         scale >= 1.8 ? ElecXLayoutMode.medium : ElecXLayoutMode.expanded,
       ElecXResponsiveWidthClass.large =>
