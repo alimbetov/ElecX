@@ -12,6 +12,7 @@ import '../../application/project/wizard/wizard_session.dart';
 import '../../domain/apartment_topology.dart';
 import '../../domain/apartment_topology/apartment_vector_scene.dart';
 import 'apartment_engineering_preview_panel.dart';
+import 'elecx_presentation_policy.dart';
 import 'project_wizard_localizations.dart';
 import 'wizard_candidate_carousel.dart';
 import 'wizard_diff_panel.dart';
@@ -360,12 +361,15 @@ final class _ApartmentWizardScreenState extends State<ApartmentWizardScreen> {
         ),
         body: LayoutBuilder(
           builder: (context, constraints) {
-            final textScale = MediaQuery.textScalerOf(context).scale(1);
-            final effectiveWidth =
-                constraints.maxWidth / (textScale > 1 ? textScale : 1);
-            if (effectiveWidth >= 1100) return _expandedLayout();
-            if (effectiveWidth >= 760) return _mediumLayout();
-            return _compactLayout();
+            final mode = ElecXPresentationPolicy.layoutModeFor(
+              logicalWidth: constraints.maxWidth,
+              textScaleFactor: MediaQuery.textScalerOf(context).scale(1),
+            );
+            return switch (mode) {
+              ElecXLayoutMode.compact => _compactLayout(),
+              ElecXLayoutMode.medium => _mediumLayout(),
+              ElecXLayoutMode.expanded => _expandedLayout(),
+            };
           },
         ),
         bottomNavigationBar: _actionBar(),
@@ -408,6 +412,7 @@ final class _ApartmentWizardScreenState extends State<ApartmentWizardScreen> {
       children: [
         NavigationBar(
           selectedIndex: pages.indexOf(_compactPage),
+          labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
           onDestinationSelected: (index) =>
               setState(() => _compactPage = pages[index]),
           destinations: [
