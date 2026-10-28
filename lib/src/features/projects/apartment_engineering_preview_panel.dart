@@ -248,8 +248,9 @@ final class ApartmentEngineeringPreviewPanel extends StatelessWidget {
             contentPadding: EdgeInsets.zero,
             leading: Icon(_sldIcon(node.kind), size: 18),
             title: Text('${node.kind.name} · ${node.referenceId}'),
-            subtitle:
-                node.circuitId == null ? null : Text('Circuit ${node.circuitId}'),
+            subtitle: node.circuitId == null
+                ? null
+                : Text('Circuit ${node.circuitId}'),
           ),
         if (output.sldEdges.isNotEmpty)
           Padding(
