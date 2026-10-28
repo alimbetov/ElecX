@@ -210,12 +210,36 @@ void main() {
     expect(find.text('Cable'), findsOneWidget);
     expect(find.text('Overcurrent protection'), findsOneWidget);
     expect(find.text('RCD / residual protection'), findsOneWidget);
+
+    final previewScroll = find.descendant(
+      of: find.byKey(const ValueKey('apartment-engineering-preview')),
+      matching: find.byType(Scrollable),
+    );
+    expect(previewScroll, findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('Single-line diagram'),
+      300,
+      scrollable: previewScroll,
+    );
     expect(find.text('Single-line diagram'), findsOneWidget);
-    expect(find.text('Why'), findsOneWidget);
-    expect(find.text('P9.WHY.CABLE_AMPACITY'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('apartment-engineering-sld-node-node.board')),
       findsOneWidget,
+    );
+
+    await tester.scrollUntilVisible(
+      find.text('Why'),
+      300,
+      scrollable: previewScroll,
+    );
+    expect(find.text('Why'), findsOneWidget);
+    expect(find.text('P9.WHY.CABLE_AMPACITY'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('apartment-engineering-fingerprints')),
+      300,
+      scrollable: previewScroll,
     );
     expect(
       find.byKey(const ValueKey('apartment-engineering-fingerprints')),
