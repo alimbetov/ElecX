@@ -323,9 +323,19 @@ final class _ReplaceBoundaryTopologyCommand implements ProjectCommand {
     topology.validateOrThrow();
     BoundaryGeometryIntegrity.validateOrThrow(topology);
 
+    final lineage = _preservedLineage(topology);
+    final hostedRegistry = current.engineeringMetadata.boundaryHostedObjectRegistry
+        .remapSpace(
+      before: currentTopology,
+      after: topology,
+      lineage: lineage,
+    );
+    final metadata = current.engineeringMetadata
+        .withBoundaryHostedObjectRegistry(hostedRegistry);
+
     return ProjectCommandCandidate.fromState(
       state: ProjectMutableState(
-        engineeringMetadata: current.engineeringMetadata,
+        engineeringMetadata: metadata,
         stores: current.stores.copyWith(
           boundaries: <SpaceId, SpaceBoundaryTopology>{
             ...current.stores.boundaries,
