@@ -780,6 +780,18 @@ final class _ApartmentWizardScreenState extends State<ApartmentWizardScreen> {
             message: l10n.validationMessage(issue.code, issue.message),
           ),
         ),
+      for (final failure in _exploration.failures)
+        Padding(
+          key: ValueKey('apartment-generation-failure-${failure.code}'),
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _messageCard(
+            icon: failure.isBlocker
+                ? Icons.error_outline
+                : Icons.warning_amber_outlined,
+            title: failure.isBlocker ? l10n.fixRequired : l10n.warning,
+            message: l10n.validationMessage(failure.code, failure.code),
+          ),
+        ),
     ];
   }
 
