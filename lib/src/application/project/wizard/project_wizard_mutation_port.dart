@@ -56,8 +56,7 @@ final class SharedProjectWizardMutationPort
   /// coordinator so its consumed-reservation tombstone becomes unreachable as
   /// soon as the preview reaches a terminal lifecycle state.
   final Map<ReservedProjectMutationPreview, ReservedProjectMutationCoordinator>
-      _activePreviews =
-      Map<ReservedProjectMutationPreview,
+      _activePreviews = Map<ReservedProjectMutationPreview,
           ReservedProjectMutationCoordinator>.identity();
 
   /// Terminal lifecycle is attached weakly to the preview object. Expando does
