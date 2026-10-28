@@ -1,4 +1,5 @@
 import 'package:elecx/src/application/project/project_snapshot.dart';
+import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_output_integrity.dart';
 import 'package:elecx/src/domain/applied_engineering_proposal.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
@@ -61,6 +62,33 @@ void main() {
         supportedApartmentEngineeringOutputProjectionVersion,
       );
     });
+
+    test('PRE10-CQ17 tampered D8 payload with preserved hash is rejected', () {
+      final original = _documentWithProposal(
+        proposalVersion: supportedApartmentEngineeringProposalVersion,
+        outputProjectionVersion:
+            supportedApartmentEngineeringOutputProjectionVersion,
+      );
+      final payload = Map<String, Object?>.from(original.payload);
+      final registry = Map<String, Object?>.from(
+        payload['appliedEngineeringProposals']! as Map,
+      );
+      final proposals = List<Object?>.from(registry['proposals']! as List);
+      final proposal = Map<String, Object?>.from(proposals.single! as Map);
+      final originalFingerprint = proposal['outputFingerprint'];
+
+      proposal['panelSummary'] = 'tampered-panel-summary';
+      expect(proposal['outputFingerprint'], originalFingerprint);
+      proposals[0] = proposal;
+      registry['proposals'] = proposals;
+      payload['appliedEngineeringProposals'] = registry;
+
+      final tampered = ProjectDocument(
+        schemaVersion: original.schemaVersion,
+        payload: payload,
+      );
+      expect(() => codec.decode(tampered), throwsFormatException);
+    });
   });
 }
 
@@ -115,6 +143,24 @@ ProjectDocument _documentWithProposal({
     ),
   );
 
+  const panelSummary = 'panel-summary';
+  const loadScheduleRows = <String>[];
+  const circuitScheduleRows = <String>[];
+  const sldNodes = <String>[];
+  const sldEdges = <String>[];
+  const explanations = <String>[];
+  final requirementsFingerprint = _sha('5');
+  final outputFingerprint = computeApartmentEngineeringOutputFingerprint(
+    outputProjectionVersion: outputProjectionVersion,
+    requirementsFingerprint: requirementsFingerprint,
+    loadScheduleRows: loadScheduleRows,
+    circuitScheduleRows: circuitScheduleRows,
+    panelSummary: panelSummary,
+    sldNodes: sldNodes,
+    sldEdges: sldEdges,
+    explanations: explanations,
+  );
+
   final payload = Map<String, Object?>.from(encoded.payload);
   final registry = Map<String, Object?>.from(
     payload['appliedEngineeringProposals']! as Map,
@@ -128,15 +174,15 @@ ProjectDocument _documentWithProposal({
       'candidateFingerprint': _sha('2'),
       'intentFingerprint': _sha('3'),
       'd1RequirementsFingerprint': _sha('4'),
-      'requirementsFingerprint': _sha('5'),
-      'outputFingerprint': _sha('6'),
+      'requirementsFingerprint': requirementsFingerprint,
+      'outputFingerprint': outputFingerprint,
       'proposalFingerprint': _sha('7'),
-      'loadScheduleRows': <Object?>[],
-      'circuitScheduleRows': <Object?>[],
-      'panelSummary': 'panel-summary',
-      'sldNodes': <Object?>[],
-      'sldEdges': <Object?>[],
-      'explanations': <Object?>[],
+      'loadScheduleRows': loadScheduleRows,
+      'circuitScheduleRows': circuitScheduleRows,
+      'panelSummary': panelSummary,
+      'sldNodes': sldNodes,
+      'sldEdges': sldEdges,
+      'explanations': explanations,
     },
   ];
   payload['appliedEngineeringProposals'] = registry;
