@@ -17,7 +17,7 @@ class _PinUnlockScreenState extends State<PinUnlockScreen> {
   String _pin = '';
   Timer? _unlockTimer;
 
-  static const _digitKeys = <LogicalKeyboardKey, String>{
+  static final _digitKeys = <LogicalKeyboardKey, String>{
     LogicalKeyboardKey.digit0: '0',
     LogicalKeyboardKey.digit1: '1',
     LogicalKeyboardKey.digit2: '2',
