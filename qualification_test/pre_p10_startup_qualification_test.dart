@@ -87,12 +87,12 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.digit3);
       await tester.sendKeyEvent(LogicalKeyboardKey.digit4);
 
-      // The production unlock intentionally waits 120 ms before replacing the
-      // route. Pump past that timer, then let the MaterialPageRoute transition
-      // finish before asserting the destination. This preserves the behavioral
-      // assertion while avoiding a timing race with the route animation.
+      // Production unlock intentionally waits 120 ms. Pump beyond that delay,
+      // then advance the MaterialPageRoute transition by a bounded duration.
+      // Do not use pumpAndSettle here: Project Hub owns asynchronous surfaces
+      // that can keep scheduling frames even after navigation is complete.
       await tester.pump(const Duration(milliseconds: 150));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 400));
 
       expect(
         find.byType(PlatformProjectHubScreen),
