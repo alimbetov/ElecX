@@ -120,7 +120,7 @@ void main() {
     });
 
     test('Q94 geometry-only provider remains source-compatible', () {
-      const provider = ApartmentWizardProvider();
+      const provider = ApartmentWizardProvider.geometryOnly();
       final card = candidateSet.candidates.first;
       final command = provider.generateTyped(
         ApartmentWizardParameters(
@@ -189,6 +189,68 @@ void main() {
       expect(session.preview, isNull);
       expect(session.status, WizardSessionStatus.editingParameters);
     });
+
+    test('Q102 stale canonical version blocks frozen preview commit', () {
+      final pipeline = _CountingPipeline(outputFingerprint: _sha('1'));
+      final mutations = ProjectMutationSession(fixture.project);
+      final session = WizardSession(
+        target: fixture.target,
+        registry: WizardProviderRegistry([
+          ApartmentWizardProvider.production(engineeringPipeline: pipeline),
+        ]),
+        mutations: SharedProjectWizardMutationPort(
+          mutations: mutations,
+          idFactory: SecureRandomEntityIdFactory(),
+        ),
+      );
+      _prepareSelection(
+        session: session,
+        request: request,
+        selection: candidateSet.selectionFor(candidateSet.candidates.first),
+      );
+      expect(session.generatePreview(), isTrue);
+      expect(pipeline.callCount, 1);
+
+      final externalMutation = mutations.commit(
+        ProjectMutationRequest(
+          expectedVersion: mutations.current.version,
+          command: const _RenameSiteCommand('Site changed elsewhere'),
+        ),
+      );
+      expect(externalMutation, isNotNull);
+
+      expect(session.confirm(), isFalse);
+      expect(session.status, WizardSessionStatus.previewBlocked);
+      expect(session.blockReason, WizardPreviewBlockReason.staleBaseVersion);
+      expect(session.commitResult, isNull);
+      expect(pipeline.callCount, 1);
+      expect(
+        mutations.current.engineeringMetadata.appliedEngineeringProposalRegistry
+            .forLevel(fixture.target.levelId),
+        isNull,
+      );
+    });
+
+    test('Q103 tampered candidate-set lineage is rejected before Preview', () {
+      final session = _session(
+        fixture: fixture,
+        provider: ApartmentWizardProvider.production(
+          engineeringPipeline: _WrongLineagePipeline(),
+        ),
+      );
+      _prepareSelection(
+        session: session,
+        request: request,
+        selection: candidateSet.selectionFor(candidateSet.candidates.first),
+      );
+
+      expect(session.generatePreview(), isFalse);
+      expect(session.status, WizardSessionStatus.failed);
+      expect(session.generatedCommand, isNull);
+      expect(session.preview, isNull);
+      expect(session.failure, isNotNull);
+      expect(session.failure.toString(), contains('engineering-pipeline-invalid'));
+    });
   });
 }
 
@@ -205,31 +267,57 @@ final class _CountingPipeline implements ApartmentEngineeringPipeline {
     required WizardGenerationContext context,
   }) {
     callCount++;
-    final requirements = selected.engineeringRequirements;
-    final output = ApartmentEngineeringOutputProjection(
-      loadSchedule: const [],
-      circuitSchedule: const [],
-      panelSummary: ApartmentEngineeringPanelSummary(
-        boardPhaseSystem: 'singlePhase',
-        lineNeutralVoltageV: 230,
-        lineLineVoltageV: null,
-        maxPhaseCurrentA: 0,
-        phaseCurrentImbalanceRatio: 0,
-        branchCircuitCount: 0,
-        phaseLoads: const [],
-      ),
-      sldNodes: const [],
-      sldEdges: const [],
-      explanations: const [],
-      requirementsFingerprint: requirements.requirementsFingerprint,
-      outputFingerprint: outputFingerprint,
-    );
-    return ApartmentEngineeringProposal.bind(
+    return _proposal(
       candidateSetFingerprint: candidateSetFingerprint,
       selected: selected,
-      output: output,
+      outputFingerprint: outputFingerprint,
     );
   }
+}
+
+final class _WrongLineagePipeline implements ApartmentEngineeringPipeline {
+  @override
+  ApartmentEngineeringProposal generate({
+    required String candidateSetFingerprint,
+    required ApartmentCandidateCard selected,
+    required WizardGenerationContext context,
+  }) =>
+      _proposal(
+        candidateSetFingerprint: _sha('0'),
+        selected: selected,
+        outputFingerprint: _sha('2'),
+      );
+}
+
+ApartmentEngineeringProposal _proposal({
+  required String candidateSetFingerprint,
+  required ApartmentCandidateCard selected,
+  required String outputFingerprint,
+}) {
+  final requirements = selected.engineeringRequirements;
+  final output = ApartmentEngineeringOutputProjection(
+    loadSchedule: const [],
+    circuitSchedule: const [],
+    panelSummary: ApartmentEngineeringPanelSummary(
+      boardPhaseSystem: 'singlePhase',
+      lineNeutralVoltageV: 230,
+      lineLineVoltageV: null,
+      maxPhaseCurrentA: 0,
+      phaseCurrentImbalanceRatio: 0,
+      branchCircuitCount: 0,
+      phaseLoads: const [],
+    ),
+    sldNodes: const [],
+    sldEdges: const [],
+    explanations: const [],
+    requirementsFingerprint: requirements.requirementsFingerprint,
+    outputFingerprint: outputFingerprint,
+  );
+  return ApartmentEngineeringProposal.bind(
+    candidateSetFingerprint: candidateSetFingerprint,
+    selected: selected,
+    output: output,
+  );
 }
 
 WizardSession _session({
@@ -337,4 +425,41 @@ _ProjectFixture _projectFixture() {
       levelId: levelId,
     ),
   );
+}
+
+final class _RenameSiteCommand implements ProjectCommand {
+  const _RenameSiteCommand(this.name);
+
+  final String name;
+
+  @override
+  String get commandType => 'test.rename-site';
+
+  @override
+  ProjectCommandCandidate buildCandidate(ProjectAggregateRoot current) {
+    final site = current.stores.sites[current.siteId]!;
+    return ProjectCommandCandidate(
+      stores: ProjectEntityStores(
+        sites: {
+          ...current.stores.sites,
+          current.siteId: ProjectSiteEntity(
+            id: site.id,
+            name: name,
+            buildingIds: site.buildingIds,
+          ),
+        },
+        buildings: current.stores.buildings,
+        levels: current.stores.levels,
+        slabs: current.stores.slabs,
+        verticalCores: current.stores.verticalCores,
+        zones: current.stores.zones,
+        spaces: current.stores.spaces,
+        openings: current.stores.openings,
+        adjacencies: current.stores.adjacencies,
+        overlays: current.stores.overlays,
+        boundaries: current.stores.boundaries,
+      ),
+      affectedEntityIds: {site.id},
+    );
+  }
 }
