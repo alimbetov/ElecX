@@ -51,7 +51,7 @@ void main() {
     final versionBefore = mutations.current.version;
     final storesBefore = mutations.current.stores;
     tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(800, 600);
+    tester.view.physicalSize = const Size(800, 1200);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
 
