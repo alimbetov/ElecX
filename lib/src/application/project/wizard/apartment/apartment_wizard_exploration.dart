@@ -1,5 +1,6 @@
 import 'apartment_candidate_set_service.dart';
 import 'apartment_wizard_parameters.dart';
+import 'p9_failure.dart';
 
 /// P9.9 apartment-specific exploration state layered beside the shared P8
 /// [WizardSession].
@@ -35,6 +36,7 @@ final class ApartmentWizardExplorationController {
 
   ApartmentWizardParameters _parameters;
   ApartmentCandidateSet? _candidateSet;
+  List<P9Failure> _failures = const [];
   ApartmentWizardExplorationStatus _status =
       ApartmentWizardExplorationStatus.editingParameters;
   int _requestRevision = 0;
@@ -42,6 +44,7 @@ final class ApartmentWizardExplorationController {
 
   ApartmentWizardParameters get parameters => _parameters;
   ApartmentCandidateSet? get candidateSet => _candidateSet;
+  List<P9Failure> get failures => _failures;
   ApartmentWizardExplorationStatus get status => _status;
   int get requestRevision => _requestRevision;
   ApartmentGenerationTicket? get inFlight => _inFlight;
@@ -65,6 +68,7 @@ final class ApartmentWizardExplorationController {
 
     _requestRevision++;
     _candidateSet = null;
+    _failures = const [];
     _inFlight = null;
     _status = ApartmentWizardExplorationStatus.editingParameters;
     if (previousSelection != null && _parameters.selection != null) {
@@ -86,6 +90,7 @@ final class ApartmentWizardExplorationController {
     if (active != null && active.requestRevision == _requestRevision) {
       return active;
     }
+    _failures = const [];
     final ticket = ApartmentGenerationTicket(
       requestRevision: _requestRevision,
       intentFingerprint: request.intentFingerprint,
@@ -121,6 +126,7 @@ final class ApartmentWizardExplorationController {
     if (!result.accepted || nextSet == null) {
       _inFlight = null;
       _candidateSet = null;
+      _failures = List.unmodifiable(result.failures);
       _parameters = _parameters.withSelection(null);
       _status = ApartmentWizardExplorationStatus.failed;
       return true;
@@ -132,6 +138,7 @@ final class ApartmentWizardExplorationController {
 
     _inFlight = null;
     _candidateSet = nextSet;
+    _failures = const [];
     _parameters = _parameters.withSelection(null);
     _status = ApartmentWizardExplorationStatus.candidatesReady;
     return true;
@@ -177,6 +184,7 @@ final class ApartmentWizardExplorationController {
   void discardTransientState() {
     _inFlight = null;
     _candidateSet = null;
+    _failures = const [];
     _parameters = _parameters.withSelection(null);
     _status = ApartmentWizardExplorationStatus.editingParameters;
   }
@@ -189,7 +197,10 @@ final class ApartmentWizardExplorationController {
         _status = ApartmentWizardExplorationStatus.candidatesReady;
         break;
       case ApartmentWizardExplorationStatus.candidatesReady:
+        _status = ApartmentWizardExplorationStatus.editingParameters;
+        break;
       case ApartmentWizardExplorationStatus.failed:
+        _failures = const [];
         _status = ApartmentWizardExplorationStatus.editingParameters;
         break;
       case ApartmentWizardExplorationStatus.generating:
@@ -204,6 +215,7 @@ final class ApartmentWizardExplorationController {
   void _failAuthoritativeGeneration() {
     _inFlight = null;
     _candidateSet = null;
+    _failures = const [];
     _parameters = _parameters.withSelection(null);
     _status = ApartmentWizardExplorationStatus.failed;
   }
