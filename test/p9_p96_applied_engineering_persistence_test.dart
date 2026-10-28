@@ -228,7 +228,8 @@ final class _Pipeline implements ApartmentEngineeringPipeline {
       branchCircuitCount: int.parse(outputFingerprint[0], radix: 16),
       phaseLoads: const [],
     );
-    final derivedOutputFingerprint = computeApartmentEngineeringOutputFingerprint(
+    final derivedOutputFingerprint =
+        computeApartmentEngineeringOutputFingerprint(
       outputProjectionVersion: apartmentEngineeringOutputProjectionVersion,
       requirementsFingerprint: requirements.requirementsFingerprint,
       loadScheduleRows: const [],
