@@ -49,3 +49,31 @@ jobs:
           path: build/pre-p10-pass1/startup-probes.log
           if-no-files-found: error
           retention-days: 30
+
+  persistence-recovery-discovery:
+    name: PASS1-Q04-Q05 persistence recovery discovery
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Execute Hub retry and canonical backup probes
+        id: recovery-probes
+        run: |
+          set -o pipefail
+          mkdir -p build/pre-p10-pass1
+          flutter test --concurrency=1 \
+            qualification_test/pre_p10_recovery_qualification_test.dart \
+            2>&1 | tee build/pre-p10-pass1/recovery-probes.log
+      - name: Upload recovery discovery diagnostics
+        if: failure() && steps.recovery-probes.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pre-p10-pass1-recovery-${{ github.sha }}
+          path: build/pre-p10-pass1/recovery-probes.log
+          if-no-files-found: error
+          retention-days: 30
