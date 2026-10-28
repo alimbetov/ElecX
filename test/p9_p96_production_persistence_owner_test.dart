@@ -31,7 +31,8 @@ void main() {
       final fixture = _projectFixture();
       final repository = JsonProjectRepository(
         rootDirectory: temp,
-        codec: const AppliedEngineeringProposalAwareCanonicalProjectDocumentCodec(),
+        codec:
+            const AppliedEngineeringProposalAwareCanonicalProjectDocumentCodec(),
       );
       final now = DateTime.utc(2026, 10, 28, 2, 30);
       final owner = CanonicalProjectPersistenceOwner(
@@ -87,8 +88,8 @@ void main() {
         result: committed,
         now: now.add(const Duration(minutes: 1)),
       );
-      final beforeSave = owner.project.engineeringMetadata
-          .appliedEngineeringProposalRegistry
+      final beforeSave = owner
+          .project.engineeringMetadata.appliedEngineeringProposalRegistry
           .forLevel(fixture.target.levelId);
       expect(beforeSave, isNotNull);
       expect(beforeSave!.proposalFingerprint, frozen.proposalFingerprint);
@@ -105,8 +106,8 @@ void main() {
         projectId: fixture.project.id,
       );
       expect(loaded, isNotNull);
-      final afterReload = loaded!.project.engineeringMetadata
-          .appliedEngineeringProposalRegistry
+      final afterReload = loaded!
+          .project.engineeringMetadata.appliedEngineeringProposalRegistry
           .forLevel(fixture.target.levelId);
       expect(afterReload, isNotNull);
       expect(afterReload!.sameAs(beforeSave), isTrue);
