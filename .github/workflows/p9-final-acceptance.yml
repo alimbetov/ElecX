@@ -30,8 +30,31 @@ jobs:
           lscpu
           free -m
           flutter --version
+      - name: Check repository and qualification formatting
+        id: repository-format
+        continue-on-error: true
+        run: |
+          mkdir -p build/p9-final-acceptance
+          set +e
+          dart format --output=none --set-exit-if-changed lib test qualification_test tool
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            dart format lib test qualification_test tool
+            git diff -- lib test qualification_test tool > build/p9-final-acceptance/repository-format.diff
+          fi
+          exit "$status"
+      - name: Upload repository formatter diagnostics
+        if: steps.repository-format.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: p9.13-repository-format-failure-${{ github.sha }}
+          path: build/p9-final-acceptance/repository-format.diff
+          if-no-files-found: error
+          retention-days: 14
       - name: Enforce repository and qualification formatting
-        run: dart format --output=none --set-exit-if-changed lib test qualification_test tool
+        if: steps.repository-format.outcome == 'failure'
+        run: exit 1
       - name: Static analysis
         id: static-analysis
         run: |
@@ -74,10 +97,31 @@ jobs:
           lscpu
           free -m
           flutter --version
-      - name: Enforce P9.13 qualification formatting
+      - name: Check P9.13 qualification formatting
+        id: qualification-format
+        continue-on-error: true
         run: |
-          dart format qualification_test tool
-          git diff --exit-code -- qualification_test tool
+          mkdir -p build/p9-final-acceptance
+          set +e
+          dart format --output=none --set-exit-if-changed qualification_test tool
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            dart format qualification_test tool
+            git diff -- qualification_test tool > build/p9-final-acceptance/qualification-format.diff
+          fi
+          exit "$status"
+      - name: Upload P9.13 qualification formatter diagnostics
+        if: steps.qualification-format.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: p9.13-qualification-format-failure-${{ github.sha }}
+          path: build/p9-final-acceptance/qualification-format.diff
+          if-no-files-found: error
+          retention-days: 14
+      - name: Enforce P9.13 qualification formatting
+        if: steps.qualification-format.outcome == 'failure'
+        run: exit 1
       - name: Supported + invalid + property/fuzz + determinism
         run: >-
           flutter test --concurrency=1
