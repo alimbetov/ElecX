@@ -51,7 +51,7 @@ abstract final class AppliedEngineeringProposalLineageValidator {
   }) {
     final issues = <AppliedEngineeringProposalLineageIssue>[];
 
-    for (final proposal in proposals.proposals.values) {
+    for (final proposal in proposals.byLevel.values) {
       final manifests = provenance.manifests.values
           .where((manifest) => manifest.levelId == proposal.levelId)
           .toList(growable: false);
