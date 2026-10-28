@@ -37,6 +37,28 @@ jobs:
           flutter test --concurrency=1
           qualification_test/p9_p913_domain_qualification_test.dart
 
+  performance-qualification:
+    name: A-C P9.13 performance + memory NFRs
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Reference environment
+        run: |
+          uname -a
+          lscpu
+          free -m
+          flutter --version
+      - name: Candidate vector preview materialization memory gates
+        run: >-
+          flutter test --concurrency=1
+          qualification_test/p9_p913_performance_qualification_test.dart
+
   engineering-transactional:
     name: B-C Engineering + transactional qualification
     runs-on: ubuntu-latest
@@ -203,6 +225,7 @@ jobs:
     name: H exact-SHA final audit
     needs:
       - domain-qualification
+      - performance-qualification
       - engineering-transactional
       - responsive-qualification
       - cross-platform-semantic-equality
@@ -225,6 +248,7 @@ jobs:
           - exact commit SHA: ${GITHUB_SHA}
           - workflow run: ${GITHUB_RUN_ID}
           - domain qualification: PASS
+          - P9.13 performance + memory gates: PASS
           - engineering + transactional qualification: PASS
           - responsive phone/tablet/desktop qualification: PASS
           - Linux/macOS/Windows semantic parity: PASS
