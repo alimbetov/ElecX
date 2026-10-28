@@ -6,7 +6,6 @@ import 'package:elecx/src/application/project/project_repository.dart';
 import 'package:elecx/src/application/project/project_snapshot.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_candidate_set_service.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_topology_vector_renderer.dart';
-import 'package:elecx/src/application/project/wizard/apartment/apartment_wizard_exploration.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_wizard_parameters.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_wizard_provider.dart';
 import 'package:elecx/src/application/project/wizard/project_wizard_mutation_port.dart';
