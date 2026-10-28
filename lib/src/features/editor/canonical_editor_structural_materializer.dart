@@ -248,9 +248,8 @@ final class CanonicalEditorStructuralMaterializer
       ..sort((left, right) => left.value.compareTo(right.value));
     final legacySpaces = <EngineeringSpace>[];
     final spaceBindings = <SpaceId, String>{};
-    final existingLegacySpaceIds = legacyLevel.level.spaces
-        .map((space) => space.id)
-        .toSet();
+    final existingLegacySpaceIds =
+        legacyLevel.level.spaces.map((space) => space.id).toSet();
 
     for (final spaceId in canonicalSpaceIds) {
       final space = project.index.space(spaceId)!;
