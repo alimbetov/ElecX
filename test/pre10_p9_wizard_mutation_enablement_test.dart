@@ -16,7 +16,8 @@ void main() {
             : null,
       );
 
-  test('PRE10-CQ27 wizard mutation capability requires both ownership hooks', () {
+  test('PRE10-CQ27 wizard mutation capability requires both ownership hooks',
+      () {
     final disabled = config();
     expect(disabled.authoringEnabled, isFalse);
     expect(disabled.wizardMutationEnabled, isFalse);
