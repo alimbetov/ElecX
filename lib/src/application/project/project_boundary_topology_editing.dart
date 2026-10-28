@@ -324,8 +324,8 @@ final class _ReplaceBoundaryTopologyCommand implements ProjectCommand {
     BoundaryGeometryIntegrity.validateOrThrow(topology);
 
     final lineage = _preservedLineage(topology);
-    final hostedRegistry = current.engineeringMetadata.boundaryHostedObjectRegistry
-        .remapSpace(
+    final hostedRegistry =
+        current.engineeringMetadata.boundaryHostedObjectRegistry.remapSpace(
       before: currentTopology,
       after: topology,
       lineage: lineage,
