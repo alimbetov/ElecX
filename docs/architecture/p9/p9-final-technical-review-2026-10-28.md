@@ -1,16 +1,17 @@
 # P9 Apartment Topology Generator — Final Technical Review
 
-Date: 2026-10-28
-
+Date: 2026-10-28  
 Branch: `feat/p9-apartment-topology-generator`
 
 ## Decision
 
-P9 is a **feature-complete merge candidate**.
+```text
+P9 = IMPLEMENTED, QUALIFICATION INCOMPLETE
+```
 
-Final merge acceptance is intentionally SHA-bound: the exact branch HEAD to be merged must pass the repository Flutter workflow with formatting, static analysis, the P8 NFR gates and the complete Flutter test suite, and the branch must not be behind `main`.
+P9.1-P9.12 are feature-complete and qualified. P9.13 acceptance-hardening is implemented, but P9 cannot be marked accepted until one exact final branch SHA passes the complete self-contained P9.13 workflow and is not behind `main`.
 
-This review does not permit a green result from an older SHA to qualify a newer documentation or code commit.
+A green result from any older SHA does not qualify a newer code, test or documentation commit.
 
 ## Scope boundary
 
@@ -30,8 +31,6 @@ parameters
 
 The D1-D8 apartment electrical engineering pipeline is an additive capability layered on the same frozen Wizard command. It must never invent authoritative electrical data merely to make P9 topology usable.
 
-Two explicit runtime modes therefore exist:
-
 ```text
 topology-only
   no authoritative electrical pipeline is configured
@@ -46,25 +45,17 @@ engineering-enabled
   Apply persists the same proposal without rerunning the pipeline
 ```
 
-Silent fallback from engineering-enabled generation to fabricated or assumed electrical values is forbidden.
+Silent fallback to fabricated electrical values is forbidden.
 
 ## Review findings and resolutions
 
 ### R1 — production Wizard composition could silently omit engineering
 
-Resolution:
-
-- production and topology-only provider construction are explicit;
-- `ApartmentWizardProvider.production(...)` requires a pipeline;
-- `ApartmentWizardProvider.geometryOnly()` represents the topology-only mode;
-- runtime capability registration is scoped to `ProjectStructureAuthoringSession`, so it survives canonical project mutations, Undo and Redo;
-- the canonical navigator chooses one of the two modes explicitly.
+**CLOSED.** Production and topology-only provider construction are explicit. `ApartmentWizardProvider.production(...)` requires a pipeline; `ApartmentWizardProvider.geometryOnly()` is explicit topology-only mode. Runtime capability registration survives canonical mutations, Undo and Redo.
 
 ### R2 — full engineering orchestration started too late in the evidence chain
 
-Resolution:
-
-The production orchestrator supports the complete upstream chain before D2:
+**CLOSED.** Production orchestration supports:
 
 ```text
 D1 requirements
@@ -79,37 +70,15 @@ Qualification fixture values are not production defaults.
 
 ### R3 — Preview hid the frozen D8 engineering output
 
-Resolution:
-
-`ApartmentEngineeringPreviewPanel` reads the exact `ApartmentEngineeringProposal` already frozen in `WizardSession.generatedCommand`. It performs no engineering calculation.
-
-The engineering-enabled Preview exposes:
-
-- panel summary;
-- circuits and assigned phase;
-- cable and conductor sizing;
-- overcurrent protection;
-- RCD/residual-current protection;
-- fault current and disconnection evidence;
-- protection coordination;
-- installation sections and evidence sources;
-- SLD nodes/connections;
-- Why/explanation evidence;
-- proposal/output/requirements fingerprints.
-
-Topology-only Preview instead exposes an explicit no-electrical-assumptions state.
+**CLOSED.** `ApartmentEngineeringPreviewPanel` reads the exact `ApartmentEngineeringProposal` already frozen in `WizardSession.generatedCommand` and performs no engineering calculation. Engineering-enabled Preview exposes circuits, phase, cable/conductor sizing, overcurrent/RCD, fault/disconnection evidence, coordination, installation evidence, SLD, Why evidence and fingerprints. Topology-only Preview explicitly reports the no-electrical-assumptions state.
 
 ### R4 — applied engineering metadata was not first-class in canonical diff
 
-Resolution:
-
-`ProjectEngineeringMetadataDiff` now tracks `appliedEngineeringProposalRegistryChanged`. Therefore Apply, Undo and Redo changes to the frozen engineering snapshot are observable in the canonical change-set.
+**CLOSED.** `ProjectEngineeringMetadataDiff` tracks `appliedEngineeringProposalRegistryChanged`, so Apply/Undo/Redo engineering-snapshot changes are observable in the canonical change-set.
 
 ### R5 — persistence qualification stopped at codec level
 
-Resolution:
-
-Production-path qualification now exercises:
+**CLOSED.** Production-path qualification exercises:
 
 ```text
 Wizard Apply
@@ -123,62 +92,113 @@ Wizard Apply
 
 ### R6 — stale/tampered Preview qualification was incomplete
 
-Resolution:
+**CLOSED.** Qualification proves stale base-version rejection, no stale engineering persistence, candidate-set lineage tamper rejection and no engineering rerun after a valid frozen Preview.
 
-Qualification now proves:
+### R7 — repository hygiene contained generated analyzer/test output
 
-- a canonical mutation after Preview blocks Apply with `staleBaseVersion`;
-- stale failure does not persist an engineering snapshot;
-- candidate-set lineage tampering fails before Preview can become applicable;
-- Apply does not rerun engineering after a valid frozen Preview.
+**CLOSED.** Tracked generated analyzer/test logs are removed; `/analyze.log` and `/test.log` are ignored. CI output remains evidence, not source-controlled product state.
 
-### R7 — repository hygiene contained generated analyzer output
+### R8 — production responsive policy diverged from authoritative P9 width classes
 
-Resolution:
+Historical production UI used implicit layout boundaries around 760/1100 while the authoritative contract defines:
 
-The tracked root `analyze.log` was removed. Analyzer output remains CI evidence, not source-controlled product state.
+```text
+COMPACT     < 600
+MEDIUM      600..1023
+EXPANDED    1024..1439
+LARGE       >= 1440
+```
 
-## Merge gates
+**REMEDIATED / EXACT-SHA REQUALIFICATION REQUIRED.** Production now reuses the shared `responsiveWidthClassFor` classification through `ElecXPresentationPolicy`. Accessibility/text scaling may reduce pane density, but cannot redefine the authoritative width class or affect semantic generation state. Qualification explicitly asserts 599/600, 1023/1024 and 1439/1440 boundaries.
 
-| Gate | Requirement | Review disposition |
+### R9 — unsupported-but-valid candidate generation lost blocking reasons
+
+**REMEDIATED / EXACT-SHA REQUALIFICATION REQUIRED.** `ApartmentWizardExplorationController` retains immutable failures for the current semantic revision. Production UI surfaces typed blocker cards while preserving request input and leaving the canonical project unchanged.
+
+### R10 — compact/touch candidate navigation depended on gesture discovery
+
+**REMEDIATED / EXACT-SHA REQUALIFICATION REQUIRED.** `WizardCandidateCarousel` now exposes explicit Previous/Next controls in addition to swipe and keyboard navigation. GJ-04 validates >=48dp controls and equivalent selection/Apply semantics for keyboard, mouse, touch and stylus-as-pointer.
+
+### R11 — Golden Journey acceptance was incomplete
+
+**REMEDIATED / EXACT-SHA REQUALIFICATION REQUIRED.** P9.13 now includes:
+
+```text
+GJ-01 exact 3-room / 78.5 m² journey
+      Preview/Diff -> Apply -> Undo/Redo -> Save/Reopen
+      -> manual rename -> canonical boundary geometry edit
+      -> stable BoundaryEdgeIds -> field-aware provenance overrides -> reopen
+
+GJ-02 existing multi-level / multi-building isolation
+
+GJ-03 responsive continuity across phone/tablet/desktop,
+      RU/EN, text scale/theme, compact full Diff and exact reserved Apply
+
+GJ-04 keyboard / mouse / touch / stylus-as-pointer semantic equality
+```
+
+### R12 — negative-journey coverage had acceptance gaps
+
+**REMEDIATED / EXACT-SHA REQUALIFICATION REQUIRED.** Dedicated P9.13 coverage was added for NG-02 unsupported valid request, NG-06 renderer rejection immutability and NG-07 repository-save failure durability. Existing regression tests remain authoritative anchors for NG-01/03/04/05/08/09/10. Mapping is recorded in `p9.13-requirement-traceability-v1.md`.
+
+### R13 — specialized final workflow could pass without repository-wide quality gates
+
+**CLOSED BY DESIGN / EXACT-SHA RUN REQUIRED.** `.github/workflows/p9-final-acceptance.yml` now has a repository-quality prerequisite that runs formatting, `flutter analyze`, P8 accessibility/i18n regressions and the complete Flutter test suite. `H exact-SHA final audit` depends on this plus all P9.13 A-G/native jobs.
+
+### R14 — acceptance evidence and traceability were not repository-controlled
+
+**CLOSED STRUCTURALLY.** Added:
+
+```text
+docs/architecture/p9/p9.13-requirement-traceability-v1.md
+docs/architecture/p9/p9-acceptance-audit-v1-2026-10-28.md
+```
+
+The acceptance audit remains a living record until the final exact-SHA workflow and ancestry check are complete.
+
+## P9.13 hard acceptance matrix
+
+| Area | Current implementation/evidence | Merge disposition |
 |---|---|---|
-| C1 | explicit production/topology runtime composition | CLOSED |
-| C2 | Generate -> Preview/Diff -> Apply uses one frozen command and no rerun | CLOSED |
-| C3 | Preview exposes D8 circuits/cable/protection/RCD/SLD/Why | CLOSED |
-| C4 | save/reload restores exact engineering snapshot | CLOSED |
-| C5 | Undo/Redo restores exact snapshot and does not rerun pipeline | CLOSED |
-| C6 | stale/tampered proposals fail closed | CLOSED |
-| C7 | exact final HEAD passes the complete repository CI workflow | REQUIRED AT MERGE |
-| C8 | repository/docs hygiene and branch not behind `main` | REQUIRED AT MERGE |
-
-C7 and the ancestry portion of C8 are deliberately evaluated on the final SHA after all review/documentation commits.
+| A Domain 250 supported / 100 invalid / 1500 fuzz / x10 determinism | implemented; historical gate green | RECHECK FINAL SHA |
+| A-C p95/p99/RSS | implemented; historical gate green | RECHECK FINAL SHA |
+| B topology-only / engineering-enabled / frozen proposal | implemented | RECHECK FINAL SHA |
+| C Preview/Diff / Apply / Undo/Redo / Save/Reopen | implemented | RECHECK FINAL SHA |
+| GJ-01..04 | implemented/hardened | RECHECK FINAL SHA |
+| NG-01..10 | mapped/implemented | RECHECK FINAL SHA |
+| responsive phone/tablet/desktop | policy remediated | RECHECK FINAL SHA |
+| Linux/macOS/Windows semantic equality | implemented; historical gate green | RECHECK FINAL SHA |
+| Linux/Windows/macOS native builds | implemented; historical gates green | RECHECK FINAL SHA |
+| Android native build | implemented; historical compile green | RECHECK FINAL SHA |
+| iOS/iPadOS native build | implemented; historical compile green | RECHECK FINAL SHA |
+| repository format/analyze/full regression suite | self-contained prerequisite added | RECHECK FINAL SHA |
+| H exact-SHA audit | implemented | BLOCKED UNTIL ALL DEPENDENCIES PASS |
 
 ## Qualification anchors
 
-The review adds or extends these qualification surfaces:
-
 ```text
+qualification_test/p9_p913_domain_qualification_test.dart
+qualification_test/p9_p913_performance_qualification_test.dart
+qualification_test/p9_p913_golden_journey_test.dart
+qualification_test/p9_p913_additional_journeys_test.dart
+qualification_test/p9_p913_responsive_matrix_test.dart
+qualification_test/p9_p913_negative_journeys_test.dart
+
+test/p9_apartment_wizard_provider_test.dart
+test/p9_apartment_topology_catalog_test.dart
+test/p9_apartment_vector_renderer_test.dart
+test/p9_apartment_p8_preview_diff_integration_test.dart
+test/p9_apartment_wizard_ui_acceptance_test.dart
+test/p9_generation_provenance_test.dart
+
 test/p9_p96_apartment_wizard_engineering_pipeline_test.dart
-  Q91-Q96 frozen engineering lifecycle
-  Q102 stale canonical version rejection
-  Q103 candidate-set lineage tamper rejection
-
 test/p9_p96_applied_engineering_persistence_test.dart
-  Q97 exact frozen Apply snapshot
-  Q98 topology-only does not invent engineering state
-  Q99 schema-v13 persistence
-  Q100 schema-v12 compatibility
-  Q101 exact Apply -> Undo -> Redo snapshot
-
 test/p9_p96_production_persistence_owner_test.dart
-  Q104 production persistence-owner disk round trip
-
 test/p9_p96_apartment_engineering_preview_panel_test.dart
-  Q105 explicit topology-only safety state
-  Q106 frozen D8 presentation coverage
-```
 
-Existing P9 stage and Golden Journey tests remain part of the repository-wide Flutter test gate.
+tool/p9_semantic_parity.dart
+.github/workflows/p9-final-acceptance.yml
+```
 
 ## Invariants retained
 
@@ -189,28 +209,51 @@ Preview and Apply use the same reserved candidate/command
 Apply is atomic through ProjectMutationSession
 Undo/Redo operate on canonical state snapshots
 provenance survives persistence
+manual name/geometry changes become field-aware overrides
 engineering fingerprints participate in reserved intent
 no production electrical value is invented when authoritative input is absent
+responsive/input transitions do not alter semantic reservation or project state
 ```
 
-## Non-blocking forward dependency
+## Non-blocking forward dependencies
 
-The current Project Hub does not itself synthesize authoritative supply/load/PSCC data. Consequently the default runtime can legitimately operate in topology-only mode.
+The Project Hub does not yet synthesize authoritative supply/load/PSCC data, so default runtime may legitimately remain topology-only. Production engineering-enabled mode requires authoritative supply/load/protection/catalog/policy inputs; that is a P11/P12 composition dependency, not a reason to reject P9 topology generation.
 
-Enabling the additive D1-D8 engineering mode in a production project requires a real authoritative source for supply, load, protection/catalog and policy inputs. That is an engineering-input composition dependency, not a reason to disable or reject the completed P9 topology generator.
+Permanent production-native shells for all platforms remain P17 scope. P9.13 may generate missing shells ephemerally in CI only to prove source-level native target compilation.
+
+The P9.13 workflow currently selects Flutter via `channel: stable`; exact SDK pinning remains a reproducibility hardening item unless an authoritative repository SDK version is established. No arbitrary version should be invented merely to close the audit.
 
 ## Merge acceptance rule
 
-P9 may be marked `MERGE-READY` only when all of the following are true on the exact final branch HEAD:
+`P9 = ACCEPTED FOR MERGE` is allowed only when all of the following are true on one exact final branch HEAD:
 
 ```text
-Dart formatting                         PASS
-flutter analyze                         PASS
-P8 NFR reference environment           PASS
-P8 accessibility/i18n acceptance       PASS
-complete flutter test                   PASS
-branch behind main                      0
-no generated temporary artifacts       PASS
+Dart formatting                                      PASS
+flutter analyze                                      PASS
+P8 accessibility/i18n regressions                   PASS
+complete flutter test                               PASS
+A Domain qualification                              PASS
+A-C performance + RSS                               PASS
+B-C engineering + transactional                     PASS
+GJ-01..04                                           PASS
+NG-01..10                                           PASS
+D-F responsive phone/tablet/desktop                 PASS
+G Linux/macOS/Windows semantic equality             PASS
+Linux/Windows/macOS native target compilation       PASS
+Android native compile + responsive contract        PASS
+iOS/iPadOS native compile + responsive contract     PASS
+H exact-SHA final audit                             PASS
+branch behind main                                  0
+repository hygiene                                  PASS
 ```
 
-If any newer commit is added, C7/C8 must be re-evaluated for that new SHA.
+Any newer commit reopens exact-SHA acceptance.
+
+## Current disposition
+
+```text
+P9.1-P9.12 implementation          CLOSED
+P9.13 acceptance hardening         IMPLEMENTED
+P9.13 exact-final-SHA qualification OPEN
+P9 overall                         IMPLEMENTED, QUALIFICATION INCOMPLETE
+```
