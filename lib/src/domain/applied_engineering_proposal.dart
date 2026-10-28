@@ -218,8 +218,8 @@ final class AppliedEngineeringProposalRegistry {
         .toList(growable: false);
     if (manifests.isEmpty) {
       return AppliedEngineeringProposalLifecycle.invalidated(
-        reason: AppliedEngineeringProposalLifecycleReason
-            .generationManifestMissing,
+        reason:
+            AppliedEngineeringProposalLifecycleReason.generationManifestMissing,
       );
     }
     if (manifests.length != 1) {
@@ -230,7 +230,8 @@ final class AppliedEngineeringProposalRegistry {
     }
 
     final manifest = manifests.single;
-    if (manifest.selectedCandidateFingerprint != proposal.candidateFingerprint) {
+    if (manifest.selectedCandidateFingerprint !=
+        proposal.candidateFingerprint) {
       return AppliedEngineeringProposalLifecycle.invalidated(
         reason: AppliedEngineeringProposalLifecycleReason
             .candidateFingerprintMismatch,
