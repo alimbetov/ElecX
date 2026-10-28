@@ -197,7 +197,8 @@ _Fixture _fixture() {
     intentFingerprint: intentFingerprint,
     d1RequirementsFingerprint: _sha('5'),
     requirementsFingerprint: _sha('6'),
-    outputFingerprint: _sha('7'),
+    outputFingerprint:
+        '4c3e4bafc4bca4a0263bff85f726884206c4cebc6b2f7339a780e394dfb8bd94',
     proposalFingerprint: _sha('8'),
     loadScheduleRows: const <String>['load-row'],
     circuitScheduleRows: const <String>['circuit-row'],
@@ -277,8 +278,8 @@ _Fixture _fixture() {
 }
 
 AppliedEngineeringProposalLifecycle _lifecycle(ProjectAggregateRoot project) {
-  final proposal = project.engineeringMetadata.appliedEngineeringProposalRegistry
-      .byLevel.values.single;
+  final proposal = project.engineeringMetadata
+      .appliedEngineeringProposalRegistry.byLevel.values.single;
   return project.engineeringMetadata.appliedEngineeringProposalRegistry
       .lifecycleForLevel(
     levelId: proposal.levelId,
@@ -289,8 +290,8 @@ AppliedEngineeringProposalLifecycle _lifecycle(ProjectAggregateRoot project) {
 AppliedEngineeringProposalSnapshot? _currentProposal(
   ProjectAggregateRoot project,
 ) {
-  final proposal = project.engineeringMetadata.appliedEngineeringProposalRegistry
-      .byLevel.values.single;
+  final proposal = project.engineeringMetadata
+      .appliedEngineeringProposalRegistry.byLevel.values.single;
   return project.engineeringMetadata.appliedEngineeringProposalRegistry
       .currentForLevel(
     levelId: proposal.levelId,
@@ -357,8 +358,7 @@ final class _RemoveGeneratedSpaceCommand implements ProjectCommand {
       );
     final zones = Map<ZoneId, ProjectStructuralZoneEntity>.from(
       current.stores.zones,
-    )
-      ..[zoneId] = ProjectStructuralZoneEntity(
+    )..[zoneId] = ProjectStructuralZoneEntity(
         id: zone.id,
         levelId: zone.levelId,
         name: zone.name,
