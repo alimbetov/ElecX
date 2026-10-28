@@ -45,7 +45,12 @@ class _PlatformProjectHubScreenState extends State<PlatformProjectHubScreen> {
         canonicalRepository: await widget.canonicalRepositoryOpener(),
       );
 
-  void _retry() => setState(() => _storesFuture = _openStores());
+  void _retry() {
+    final next = _openStores();
+    setState(() {
+      _storesFuture = next;
+    });
+  }
 
   @override
   Widget build(BuildContext context) => FutureBuilder<_PlatformProjectStores>(
