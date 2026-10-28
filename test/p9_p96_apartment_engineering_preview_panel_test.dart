@@ -199,10 +199,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(
-      find.byKey(const ValueKey('apartment-engineering-preview')),
-      findsOneWidget,
-    );
+    final preview =
+        find.byKey(const ValueKey('apartment-engineering-preview'));
+    expect(preview, findsOneWidget);
     expect(
       find.byKey(const ValueKey('apartment-engineering-circuit-C1')),
       findsOneWidget,
@@ -211,19 +210,48 @@ void main() {
     expect(find.text('Overcurrent protection'), findsOneWidget);
     expect(find.text('RCD / residual protection'), findsOneWidget);
 
-    // Collapse the expanded circuit after qualifying its detail rows. This
-    // exposes the lower SLD/Why sections without coupling the test to
-    // ListView's internal Scrollable implementation or viewport lazy-loading.
+    // Collapse the expanded circuit after qualifying its detail rows. Then
+    // scroll the preview's ListView itself rather than matching internal
+    // Scrollable widgets owned by ListView/SelectableText implementations.
     await tester.tap(find.text('C1 · L1'));
     await tester.pumpAndSettle();
 
+    final previewListView = find.descendant(
+      of: preview,
+      matching: find.byType(ListView),
+    );
+    expect(previewListView, findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('Single-line diagram'),
+      300,
+      scrollable: previewListView,
+    );
     expect(find.text('Single-line diagram'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('apartment-engineering-sld-node-node.board')),
+      300,
+      scrollable: previewListView,
+    );
     expect(
       find.byKey(const ValueKey('apartment-engineering-sld-node-node.board')),
       findsOneWidget,
     );
+
+    await tester.scrollUntilVisible(
+      find.text('Why'),
+      300,
+      scrollable: previewListView,
+    );
     expect(find.text('Why'), findsOneWidget);
     expect(find.text('P9.WHY.CABLE_AMPACITY'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('apartment-engineering-fingerprints')),
+      300,
+      scrollable: previewListView,
+    );
     expect(
       find.byKey(const ValueKey('apartment-engineering-fingerprints')),
       findsOneWidget,
