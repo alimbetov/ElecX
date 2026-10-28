@@ -4,6 +4,7 @@ import 'package:elecx/src/application/project/canonical_project_persistence_owne
 import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/project_snapshot.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_candidate_set_service.dart';
+import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_output_integrity.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_output_projection.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_pipeline.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_requirements_adapter.dart';
@@ -130,32 +131,41 @@ final class _Pipeline implements ApartmentEngineeringPipeline {
   }) {
     callCount++;
     final requirements = selected.engineeringRequirements;
+    final panelSummary = ApartmentEngineeringPanelSummary(
+      boardPhaseSystem: 'singlePhase',
+      lineNeutralVoltageV: 230,
+      lineLineVoltageV: null,
+      maxPhaseCurrentA: 4,
+      phaseCurrentImbalanceRatio: 0,
+      branchCircuitCount: 0,
+      phaseLoads: const [],
+    );
+    final outputFingerprint = computeApartmentEngineeringOutputFingerprint(
+      outputProjectionVersion: apartmentEngineeringOutputProjectionVersion,
+      requirementsFingerprint: requirements.requirementsFingerprint,
+      loadScheduleRows: const [],
+      circuitScheduleRows: const [],
+      panelSummary: panelSummary.stableSerialization,
+      sldNodes: const [],
+      sldEdges: const [],
+      explanations: const [],
+    );
     return ApartmentEngineeringProposal.bind(
       candidateSetFingerprint: candidateSetFingerprint,
       selected: selected,
       output: ApartmentEngineeringOutputProjection(
         loadSchedule: const [],
         circuitSchedule: const [],
-        panelSummary: ApartmentEngineeringPanelSummary(
-          boardPhaseSystem: 'singlePhase',
-          lineNeutralVoltageV: 230,
-          lineLineVoltageV: null,
-          maxPhaseCurrentA: 0,
-          phaseCurrentImbalanceRatio: 0,
-          branchCircuitCount: 0,
-          phaseLoads: const [],
-        ),
+        panelSummary: panelSummary,
         sldNodes: const [],
         sldEdges: const [],
         explanations: const [],
         requirementsFingerprint: requirements.requirementsFingerprint,
-        outputFingerprint: _sha('4'),
+        outputFingerprint: outputFingerprint,
       ),
     );
   }
 }
-
-String _sha(String character) => List.filled(64, character).join();
 
 ApartmentRequestInput _request() => ApartmentRequestInput(
       habitableRoomCount: 3,
