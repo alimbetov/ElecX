@@ -2,7 +2,11 @@ import 'dart:math';
 
 import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/project_structure_authoring.dart';
+import 'package:elecx/src/application/project/wizard/apartment/apartment_candidate_set_service.dart';
+import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_pipeline.dart';
+import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_pipeline_runtime_registry.dart';
 import 'package:elecx/src/application/project/wizard/project_wizard_mutation_port.dart';
+import 'package:elecx/src/application/project/wizard/wizard_contracts.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/features/editor/canonical_editor_wizard_runtime_registry.dart';
@@ -83,11 +87,8 @@ void main() {
     );
 
     testWidgets(
-      'contextual Level Wizard uses exact production mutation port and publishes one apartment authoring result',
+      'production Apartment Wizard is unavailable without engineering pipeline',
       (tester) async {
-        await tester.binding.setSurfaceSize(const Size(1000, 1000));
-        addTearDown(() => tester.binding.setSurfaceSize(null));
-
         final project = _project();
         final mutations = ProjectMutationSession(project);
         final idFactory = SecureRandomEntityIdFactory(random: Random(41));
@@ -108,62 +109,63 @@ void main() {
           session: session,
           mutations: wizardMutations,
         );
-        final commits = <ProjectStructureAuthoringResult<EntityId>>[];
 
         await tester.pumpWidget(
           _host(
             session,
-            onAuthoringCommitted: (_, result) => commits.add(result),
+            onAuthoringCommitted: (_, __) {},
           ),
         );
         await tester.pumpAndSettle();
 
-        final start = find.byKey(const ValueKey('project-wizard-start'));
-        expect(start, findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('project-wizard-start')),
+          findsNothing,
+        );
+      },
+    );
+
+    testWidgets(
+      'production Apartment Wizard is advertised when engineering pipeline is bound',
+      (tester) async {
+        final project = _project();
+        final mutations = ProjectMutationSession(project);
+        final idFactory = SecureRandomEntityIdFactory(random: Random(42));
+        final session = ProjectStructureAuthoringSession(
+          mutations: mutations,
+          idFactory: idFactory,
+          navigation: ProjectNavigationState.restore(
+            project,
+            activeBuildingId: BuildingId('building-b'),
+            activeLevelId: LevelId('b-level-1'),
+          ),
+        );
+        final wizardMutations = SharedProjectWizardMutationPort(
+          mutations: mutations,
+          idFactory: idFactory,
+        );
+        CanonicalEditorWizardRuntimeRegistry.bind(
+          session: session,
+          mutations: wizardMutations,
+        );
+        ApartmentEngineeringPipelineRuntimeRegistry.bind(
+          session: session,
+          pipeline: _UnusedEngineeringPipeline(),
+        );
+
+        await tester.pumpWidget(
+          _host(
+            session,
+            onAuthoringCommitted: (_, __) {},
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const ValueKey('project-wizard-start')),
+          findsOneWidget,
+        );
         expect(find.text('Apartment Wizard'), findsOneWidget);
-        expect(tester.getSize(start).height, greaterThanOrEqualTo(48));
-
-        await tester.tap(start);
-        await tester.pumpAndSettle();
-        expect(
-          find.byKey(const ValueKey('apartment-rooms')),
-          findsOneWidget,
-        );
-
-        final generate =
-            find.byKey(const ValueKey('apartment-generate-candidates'));
-        await tester.dragUntilVisible(
-          generate,
-          find.byType(ListView).first,
-          const Offset(0, -300),
-        );
-        await tester.pumpAndSettle();
-        await tester.tap(generate);
-        await tester.pumpAndSettle();
-        expect(
-          find.byKey(const ValueKey('apartment-prepare-preview')),
-          findsOneWidget,
-        );
-
-        await tester.tap(
-          find.byKey(const ValueKey('apartment-prepare-preview')),
-        );
-        await tester.pumpAndSettle();
-        expect(find.byKey(const ValueKey('apartment-apply')), findsOneWidget);
-        await tester.tap(find.byKey(const ValueKey('apartment-apply')));
-        await tester.pumpAndSettle();
-
-        expect(commits, hasLength(1));
-        expect(commits.single.createdId, isA<ZoneId>());
-        expect(commits.single.changeSet, isNotNull);
-        expect(session.project.version, LocalProjectVersion(1));
-        final createdZoneId = commits.single.createdId as ZoneId;
-        final createdZone = session.project.stores.zones[createdZoneId];
-        expect(createdZone, isNotNull);
-        expect(createdZone!.levelId, LevelId('b-level-1'));
-        expect(createdZone.spaceIds, isNotEmpty);
-        expect(session.navigation.activeBuildingId, BuildingId('building-b'));
-        expect(session.navigation.activeLevelId, LevelId('b-level-1'));
       },
     );
 
@@ -202,7 +204,7 @@ void main() {
         );
         expect(
           session.project.stores.levels.keys,
-          isNot(contains(LevelId('level-generated'))),
+          isNot(contains(LevelId('level-generated')),
         );
       },
     );
@@ -317,4 +319,15 @@ ProjectAggregateRoot _project() {
       },
     ),
   );
+}
+
+final class _UnusedEngineeringPipeline implements ApartmentEngineeringPipeline {
+  @override
+  ApartmentEngineeringProposal generate({
+    required String candidateSetFingerprint,
+    required ApartmentCandidateCard selected,
+    required WizardGenerationContext context,
+  }) {
+    throw StateError('Pipeline must not run in capability wiring test.');
+  }
 }
