@@ -196,6 +196,7 @@ final class ProjectEngineeringMetadataDiff {
     this.boundaryWallProfileRegistryChanged = false,
     this.boundaryConstructionRegistryChanged = false,
     this.generationProvenanceRegistryChanged = false,
+    this.appliedEngineeringProposalRegistryChanged = false,
   });
 
   const ProjectEngineeringMetadataDiff.empty()
@@ -205,7 +206,8 @@ final class ProjectEngineeringMetadataDiff {
         boundaryHostedObjectRegistryChanged = false,
         boundaryWallProfileRegistryChanged = false,
         boundaryConstructionRegistryChanged = false,
-        generationProvenanceRegistryChanged = false;
+        generationProvenanceRegistryChanged = false,
+        appliedEngineeringProposalRegistryChanged = false;
 
   factory ProjectEngineeringMetadataDiff.between(
     ProjectEngineeringMetadata before,
@@ -228,6 +230,9 @@ final class ProjectEngineeringMetadataDiff {
         generationProvenanceRegistryChanged: !before
             .generationProvenanceRegistry
             .sameAs(after.generationProvenanceRegistry),
+        appliedEngineeringProposalRegistryChanged: !before
+            .appliedEngineeringProposalRegistry
+            .sameAs(after.appliedEngineeringProposalRegistry),
       );
 
   final ProjectEngineeringNorth? beforeProjectNorth;
@@ -237,6 +242,7 @@ final class ProjectEngineeringMetadataDiff {
   final bool boundaryWallProfileRegistryChanged;
   final bool boundaryConstructionRegistryChanged;
   final bool generationProvenanceRegistryChanged;
+  final bool appliedEngineeringProposalRegistryChanged;
 
   bool get projectNorthChanged => beforeProjectNorth != afterProjectNorth;
   bool get isEmpty =>
@@ -245,7 +251,8 @@ final class ProjectEngineeringMetadataDiff {
       !boundaryHostedObjectRegistryChanged &&
       !boundaryWallProfileRegistryChanged &&
       !boundaryConstructionRegistryChanged &&
-      !generationProvenanceRegistryChanged;
+      !generationProvenanceRegistryChanged &&
+      !appliedEngineeringProposalRegistryChanged;
   bool get isNotEmpty => !isEmpty;
 }
 
