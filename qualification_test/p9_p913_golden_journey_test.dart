@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:elecx/src/application/project/project_boundary_topology_editing.dart';
 import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/project_snapshot.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_candidate_set_service.dart';
@@ -164,6 +165,45 @@ void main() {
       contains(GenerationPropertyKey.name),
     );
 
+    final topologyBeforeGeometryEdit =
+        mutations.current.stores.boundaries[editedSpaceId]!;
+    final edgeIdsBefore = topologyBeforeGeometryEdit.orderedEdgeIds.toList();
+    final boundaryEditing = ProjectBoundaryTopologyEditingService(mutations);
+    final boundarySession = boundaryEditing.begin(
+      spaceId: editedSpaceId,
+      expectedVersion: mutations.current.version,
+    );
+    final editedEdgeId = edgeIdsBefore.first;
+    final geometryPreview = boundarySession.previewMoveEdgeNormal(
+      edgeId: editedEdgeId,
+      distanceMm: 50,
+    );
+    expect(geometryPreview.topology.orderedEdgeIds, edgeIdsBefore);
+    final geometryCommit = boundarySession.commit();
+    expect(geometryCommit, isNotNull);
+    expect(
+      mutations.current.stores.boundaries[editedSpaceId]!.orderedEdgeIds,
+      edgeIdsBefore,
+    );
+
+    final provenanceAfterGeometry = mutations
+        .current.engineeringMetadata.generationProvenanceRegistry
+        .provenanceFor(editedSpaceId)!;
+    expect(
+      provenanceAfterGeometry.overriddenProperties,
+      containsAll(<GenerationPropertyKey>{
+        GenerationPropertyKey.name,
+        GenerationPropertyKey.geometry,
+      }),
+    );
+    final edgeProvenance = mutations
+        .current.engineeringMetadata.generationProvenanceRegistry
+        .provenanceFor(editedEdgeId)!;
+    expect(
+      edgeProvenance.overriddenProperties,
+      contains(GenerationPropertyKey.geometry),
+    );
+
     final editedSaved = codec.encode(_snapshot(mutations.current));
     final editedReopened = codec.decode(editedSaved);
     final restoredProvenance = editedReopened
@@ -173,11 +213,28 @@ void main() {
     expect(restoredProvenance.generationKey, provenanceBefore.generationKey);
     expect(
       restoredProvenance.overriddenProperties,
-      contains(GenerationPropertyKey.name),
+      containsAll(<GenerationPropertyKey>{
+        GenerationPropertyKey.name,
+        GenerationPropertyKey.geometry,
+      }),
+    );
+    expect(
+      editedReopened.aggregate.engineeringMetadata.generationProvenanceRegistry
+          .provenanceFor(editedEdgeId)!
+          .overriddenProperties,
+      contains(GenerationPropertyKey.geometry),
     );
     expect(
       editedReopened.aggregate.stores.spaces[editedSpaceId]!.name,
       'Engineer override',
+    );
+    expect(
+      editedReopened.aggregate.stores.boundaries[editedSpaceId]!.orderedEdgeIds,
+      edgeIdsBefore,
+    );
+    expect(
+      _canonicalStateSignature(editedReopened.aggregate),
+      _canonicalStateSignature(mutations.current),
     );
   });
 }
