@@ -96,6 +96,37 @@ void main() {
     },
   );
 
+  testWidgets(
+    'PRE10-Q02b backspace cancels pending delayed unlock',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(390, 844);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        _startupApp(
+          presentation: const _StartupPresentationCase(
+            label: 'pending unlock cancellation',
+            size: Size(390, 844),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      for (final digit in ['1', '2', '3', '4']) {
+        await tester.tap(find.text(digit));
+        await tester.pump();
+      }
+      await tester.pump(const Duration(milliseconds: 60));
+      await tester.tap(find.text('⌫'));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.byType(PinUnlockScreen), findsOneWidget);
+      expect(find.byType(PlatformProjectHubScreen), findsNothing);
+    },
+  );
+
   testWidgets('PRE10-Q03 English locale has no hard-coded Russian startup copy',
       (tester) async {
     tester.view.devicePixelRatio = 1;
@@ -119,6 +150,7 @@ void main() {
       find.textContaining('локальная быстрая разблокировка'),
       findsNothing,
     );
+    expect(find.text('Engineer quick access'), findsOneWidget);
   });
 }
 
