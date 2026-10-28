@@ -35,7 +35,8 @@ void main() {
   });
 
   group('P9.6 Generate -> Preview/Diff -> Apply engineering lifecycle', () {
-    test('Q91 Generate runs engineering pipeline once and freezes proposal', () {
+    test('Q91 Generate runs engineering pipeline once and freezes proposal',
+        () {
       final pipeline = _CountingPipeline(payloadSeed: 'b');
       final session = _session(
         fixture: fixture,
@@ -140,7 +141,8 @@ void main() {
       expect(command.engineeringProposal, isNull);
     });
 
-    test('Q95 engineering output fingerprint participates in reserved intent', () {
+    test('Q95 engineering output fingerprint participates in reserved intent',
+        () {
       final card = candidateSet.candidates.first;
       final parameters = ApartmentWizardParameters(
         request: request,
