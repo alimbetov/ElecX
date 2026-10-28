@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:elecx/src/application/project/project_mutation.dart';
@@ -21,6 +22,7 @@ void main() {
         );
         final sentinel = StateError('publication-owner-failed');
         var callbackCount = 0;
+        var requestCount = 0;
         var operationErrorCount = 0;
 
         await tester.pumpWidget(
@@ -30,14 +32,19 @@ void main() {
                 width: 360,
                 child: CanonicalProjectNavigator(
                   session: session,
-                  requestBuilding: (_) async => const CreateBuildingRequest(
-                    name: 'Committed Building',
-                    displayOrder: 0,
-                  ),
+                  requestBuilding: (_) async {
+                    requestCount++;
+                    return CreateBuildingRequest(
+                      name: 'Committed Building $requestCount',
+                      displayOrder: requestCount - 1,
+                    );
+                  },
                   onAuthoringCommitted: (_, __) async {
                     callbackCount++;
                     await Future<void>.delayed(Duration.zero);
-                    throw sentinel;
+                    if (callbackCount == 1) {
+                      throw sentinel;
+                    }
                   },
                   onError: (_) => operationErrorCount++,
                 ),
@@ -47,12 +54,26 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        await tester.tap(find.text('+ Building'));
-        await tester.pump();
-        await tester.pump();
+        final escaped = Completer<Object>();
+        runZonedGuarded(
+          () {
+            final addBuilding = tester.widget<OutlinedButton>(
+              find.widgetWithText(OutlinedButton, '+ Building'),
+            );
+            addBuilding.onPressed!();
+          },
+          (error, _) {
+            if (!escaped.isCompleted) {
+              escaped.complete(error);
+            }
+          },
+        );
 
-        expect(tester.takeException(), same(sentinel));
+        await tester.pump();
+        await tester.pump();
+        expect(await escaped.future, same(sentinel));
         expect(callbackCount, 1);
+        expect(requestCount, 1);
         expect(operationErrorCount, 0);
 
         // Publication happens after the canonical transaction boundary. A host
@@ -61,14 +82,20 @@ void main() {
         expect(session.project.stores.buildings, hasLength(1));
         expect(
           session.project.stores.buildings.values.single.name,
-          'Committed Building',
+          'Committed Building 1',
         );
 
+        // The control owns only its busy lifecycle. The failed publication must
+        // not leave the authoring UI stuck after the error escapes its owner.
         await tester.pump();
-        final addBuilding = tester.widget<OutlinedButton>(
-          find.widgetWithText(OutlinedButton, '+ Building'),
-        );
-        expect(addBuilding.onPressed, isNotNull);
+        await tester.tap(find.text('+ Building'));
+        await tester.pumpAndSettle();
+
+        expect(requestCount, 2);
+        expect(callbackCount, 2);
+        expect(operationErrorCount, 0);
+        expect(session.project.version, LocalProjectVersion(2));
+        expect(session.project.stores.buildings, hasLength(2));
       },
     );
   });
