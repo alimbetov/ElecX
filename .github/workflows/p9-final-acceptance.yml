@@ -62,6 +62,22 @@ jobs:
           test/p9_apartment_p8_preview_diff_integration_test.dart
           test/p9_apartment_wizard_ui_acceptance_test.dart
 
+  responsive-qualification:
+    name: D-F Responsive phone tablet desktop qualification
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Viewport locale text-scale theme matrix
+        run: >-
+          flutter test --concurrency=1
+          qualification_test/p9_p913_responsive_matrix_test.dart
+
   semantic-parity:
     name: G Semantic parity (${{ matrix.os }})
     strategy:
@@ -163,7 +179,7 @@ jobs:
       - name: P9 compact/tablet semantic UI contract
         run: >-
           flutter test --concurrency=1
-          test/p9_apartment_wizard_ui_acceptance_test.dart
+          qualification_test/p9_p913_responsive_matrix_test.dart
 
   apple-mobile-native:
     name: E-F iOS + iPadOS native build
@@ -181,13 +197,14 @@ jobs:
       - name: P9 compact/tablet semantic UI contract
         run: >-
           flutter test --concurrency=1
-          test/p9_apartment_wizard_ui_acceptance_test.dart
+          qualification_test/p9_p913_responsive_matrix_test.dart
 
   exact-sha-final-audit:
     name: H exact-SHA final audit
     needs:
       - domain-qualification
       - engineering-transactional
+      - responsive-qualification
       - cross-platform-semantic-equality
       - desktop-native
       - android-native
@@ -209,6 +226,7 @@ jobs:
           - workflow run: ${GITHUB_RUN_ID}
           - domain qualification: PASS
           - engineering + transactional qualification: PASS
+          - responsive phone/tablet/desktop qualification: PASS
           - Linux/macOS/Windows semantic parity: PASS
           - Linux/Windows/macOS desktop native builds: PASS
           - Android phone/tablet native build gate: PASS
