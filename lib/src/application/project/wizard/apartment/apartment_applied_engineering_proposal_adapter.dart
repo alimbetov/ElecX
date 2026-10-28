@@ -27,7 +27,8 @@ abstract final class ApartmentAppliedEngineeringProposalAdapter {
       for (final explanation in output.explanations)
         explanation.stableSerialization,
     ];
-    final derivedOutputFingerprint = computeApartmentEngineeringOutputFingerprint(
+    final derivedOutputFingerprint =
+        computeApartmentEngineeringOutputFingerprint(
       outputProjectionVersion: apartmentEngineeringOutputProjectionVersion,
       requirementsFingerprint: output.requirementsFingerprint,
       loadScheduleRows: loadScheduleRows,
