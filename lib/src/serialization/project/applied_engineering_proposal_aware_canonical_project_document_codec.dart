@@ -1,6 +1,7 @@
 import '../../application/project/project_snapshot.dart';
 import '../../application/project/wizard/apartment/apartment_engineering_output_integrity.dart';
 import '../../domain/applied_engineering_proposal.dart';
+import '../../domain/applied_engineering_proposal_lineage.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import 'generation_provenance_aware_canonical_project_document_codec.dart';
@@ -25,14 +26,18 @@ final class AppliedEngineeringProposalAwareCanonicalProjectDocumentCodec
 
   @override
   ProjectDocument encode(ProjectSnapshot snapshot) {
+    final metadata = snapshot.aggregate.engineeringMetadata;
+    AppliedEngineeringProposalLineageValidator.validateOrThrow(
+      provenance: metadata.generationProvenanceRegistry,
+      proposals: metadata.appliedEngineeringProposalRegistry,
+    );
     final base = _base.encode(snapshot);
     return ProjectDocument(
       schemaVersion: schemaVersion,
       payload: <String, Object?>{
         ...base.payload,
         'appliedEngineeringProposals': _encodeRegistry(
-          snapshot
-              .aggregate.engineeringMetadata.appliedEngineeringProposalRegistry,
+          metadata.appliedEngineeringProposalRegistry,
         ),
       },
     );
@@ -67,6 +72,15 @@ final class AppliedEngineeringProposalAwareCanonicalProjectDocumentCodec
           'Applied engineering proposal references missing level $levelId.',
         );
       }
+    }
+    try {
+      AppliedEngineeringProposalLineageValidator.validateOrThrow(
+        provenance:
+            base.aggregate.engineeringMetadata.generationProvenanceRegistry,
+        proposals: registry,
+      );
+    } on AppliedEngineeringProposalLineageException catch (error) {
+      throw FormatException(error.toString());
     }
     final aggregate = ProjectAggregateRoot(
       id: base.id,
