@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math';
 
 import 'package:elecx/src/application/project/project_mutation.dart';
@@ -6,6 +5,7 @@ import 'package:elecx/src/application/project/project_structure_authoring.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/features/editor/canonical_project_navigator.dart';
+import 'package:elecx/src/features/editor/project_structure_authoring_controls.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -54,24 +54,19 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        final escaped = Completer<Object>();
-        runZonedGuarded(
-          () {
-            final addBuilding = tester.widget<OutlinedButton>(
-              find.widgetWithText(OutlinedButton, '+ Building'),
-            );
-            addBuilding.onPressed!();
-          },
-          (error, _) {
-            if (!escaped.isCompleted) {
-              escaped.complete(error);
-            }
-          },
+        // ProjectStructureAuthoringControls keeps the navigator's Future-aware
+        // action before adapting it to Flutter's VoidCallback button surface.
+        // Await that boundary directly so the qualification observes exactly
+        // the Future that the navigator returns to its host.
+        final controls = tester.widget<ProjectStructureAuthoringControls>(
+          find.byType(ProjectStructureAuthoringControls),
         );
+        await expectLater(
+          Future<void>.sync(controls.onAddBuilding!),
+          throwsA(same(sentinel)),
+        );
+        await tester.pump();
 
-        await tester.pump();
-        await tester.pump();
-        expect(await escaped.future, same(sentinel));
         expect(callbackCount, 1);
         expect(requestCount, 1);
         expect(operationErrorCount, 0);
@@ -85,9 +80,8 @@ void main() {
           'Committed Building 1',
         );
 
-        // The control owns only its busy lifecycle. The failed publication must
-        // not leave the authoring UI stuck after the error escapes its owner.
-        await tester.pump();
+        // A propagated owner failure does not poison subsequent navigator use.
+        // The second callback succeeds and the ordinary UI path can commit again.
         await tester.tap(find.text('+ Building'));
         await tester.pumpAndSettle();
 
