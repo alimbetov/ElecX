@@ -92,12 +92,13 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
     final currentPath = projection.currentPathIds(navigation);
     final availability = session.availability;
     final currentLeafId = projection.currentLeafId(navigation);
-    final wizardMutations = CanonicalEditorWizardRuntimeRegistry.resolve(session);
+    final wizardMutations =
+        CanonicalEditorWizardRuntimeRegistry.resolve(session);
     final activeLevelId = navigation.activeLevelId;
     final apartmentEngineeringPipeline =
         ApartmentEngineeringPipelineRuntimeRegistry.resolve(session);
-    final canStartApartment = activeLevelId == null ||
-        _isEmptyApartmentTarget(activeLevelId);
+    final canStartApartment =
+        activeLevelId == null || _isEmptyApartmentTarget(activeLevelId);
 
     if (_lastRenderedLeafId != currentLeafId) {
       _lastRenderedLeafId = currentLeafId;
