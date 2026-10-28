@@ -1,5 +1,10 @@
 import 'project_identity.dart';
 
+const String supportedApartmentEngineeringProposalVersion =
+    'p9.engineering-proposal.v1';
+const String supportedApartmentEngineeringOutputProjectionVersion =
+    'p9.engineering-output-projection.v1';
+
 /// Canonical, application-independent snapshot of the exact engineering
 /// proposal that was frozen in Wizard Preview and committed by Apply.
 ///
@@ -25,9 +30,16 @@ final class AppliedEngineeringProposalSnapshot {
     required Iterable<String> sldNodes,
     required Iterable<String> sldEdges,
     required Iterable<String> explanations,
-  })  : proposalVersion = _nonEmpty(proposalVersion, 'proposalVersion'),
-        outputProjectionVersion =
-            _nonEmpty(outputProjectionVersion, 'outputProjectionVersion'),
+  })  : proposalVersion = _supportedVersion(
+          proposalVersion,
+          'proposalVersion',
+          supportedApartmentEngineeringProposalVersion,
+        ),
+        outputProjectionVersion = _supportedVersion(
+          outputProjectionVersion,
+          'outputProjectionVersion',
+          supportedApartmentEngineeringOutputProjectionVersion,
+        ),
         candidateSetFingerprint =
             _fingerprint(candidateSetFingerprint, 'candidateSetFingerprint'),
         candidateFingerprint =
@@ -130,6 +142,22 @@ String _nonEmpty(String value, String name) {
   final normalized = value.trim();
   if (normalized.isEmpty) {
     throw ArgumentError.value(value, name, 'Must be non-empty.');
+  }
+  return normalized;
+}
+
+String _supportedVersion(
+  String value,
+  String name,
+  String supportedVersion,
+) {
+  final normalized = _nonEmpty(value, name);
+  if (normalized != supportedVersion) {
+    throw ArgumentError.value(
+      value,
+      name,
+      'Unsupported semantic version; expected $supportedVersion.',
+    );
   }
   return normalized;
 }
