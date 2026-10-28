@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../application/project/wizard/apartment/apartment_engineering_output_projection.dart';
 import '../../application/project/wizard/apartment/apartment_engineering_pipeline.dart';
+import 'project_wizard_localizations.dart';
 
 /// Human-facing view of the exact D8 proposal frozen by Apartment Wizard
 /// Preview. This widget is presentation-only: it never invokes the engineering
@@ -16,17 +17,15 @@ final class ApartmentEngineeringPreviewPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = ProjectWizardLocalizations.of(context);
     final proposal = this.proposal;
     if (proposal == null) {
       return Card(
         key: const ValueKey('apartment-engineering-topology-only'),
-        child: const ListTile(
-          leading: Icon(Icons.account_tree_outlined),
-          title: Text('Topology-only preview'),
-          subtitle: Text(
-            'No electrical values are assumed. Engineering output becomes '
-            'available only when authoritative electrical inputs are configured.',
-          ),
+        child: ListTile(
+          leading: const Icon(Icons.account_tree_outlined),
+          title: Text(l10n.apartmentTopologyOnlyPreview),
+          subtitle: Text(l10n.apartmentTopologyOnlyEngineeringHint),
         ),
       );
     }
@@ -44,40 +43,43 @@ final class ApartmentEngineeringPreviewPanel extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Frozen engineering output',
+                  l10n.apartmentFrozenEngineeringOutput,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
               Tooltip(
-                message: 'Exact D8 output used by Apply',
+                message: l10n.apartmentExactD8OutputTooltip,
                 child: const Icon(Icons.lock_outline, size: 18),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          _panelSummary(context, output.panelSummary),
+          _panelSummary(context, output.panelSummary, l10n),
           const SizedBox(height: 12),
           Text(
-            'Circuits (${output.circuitSchedule.length})',
+            l10n.apartmentEngineeringCircuits(output.circuitSchedule.length),
             style: Theme.of(context).textTheme.titleSmall,
           ),
           const SizedBox(height: 6),
           if (output.circuitSchedule.isEmpty)
-            const Text('No branch circuits in this engineering projection.'),
+            Text(l10n.apartmentEngineeringNoBranchCircuits),
           for (final circuit in output.circuitSchedule)
-            _circuitCard(context, circuit),
+            _circuitCard(context, circuit, l10n),
           const SizedBox(height: 12),
           Text(
-            'Single-line diagram',
+            l10n.apartmentEngineeringSingleLineDiagram,
             style: Theme.of(context).textTheme.titleSmall,
           ),
           const SizedBox(height: 6),
-          _sldSummary(context, output),
+          _sldSummary(context, output, l10n),
           const SizedBox(height: 12),
-          Text('Why', style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            l10n.apartmentEngineeringWhy,
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           const SizedBox(height: 6),
           if (output.explanations.isEmpty)
-            const Text('No additional engineering explanations.'),
+            Text(l10n.apartmentEngineeringNoExplanations),
           for (final explanation in output.explanations)
             ListTile(
               key: ValueKey(
@@ -95,9 +97,12 @@ final class ApartmentEngineeringPreviewPanel extends StatelessWidget {
             ),
           const Divider(),
           SelectableText(
-            'Proposal ${proposal.proposalFingerprint}\n'
-            'Output ${output.outputFingerprint}\n'
-            'Requirements ${output.requirementsFingerprint}',
+            '${l10n.apartmentEngineeringProposalFingerprint} '
+            '${proposal.proposalFingerprint}\n'
+            '${l10n.apartmentEngineeringOutputFingerprint} '
+            '${output.outputFingerprint}\n'
+            '${l10n.apartmentEngineeringRequirementsFingerprint} '
+            '${output.requirementsFingerprint}',
             key: const ValueKey('apartment-engineering-fingerprints'),
             style: Theme.of(context).textTheme.bodySmall,
           ),
@@ -109,30 +114,31 @@ final class ApartmentEngineeringPreviewPanel extends StatelessWidget {
   Widget _panelSummary(
     BuildContext context,
     ApartmentEngineeringPanelSummary summary,
+    ProjectWizardLocalizations l10n,
   ) =>
       Wrap(
         spacing: 8,
         runSpacing: 8,
         children: [
-          _fact(context, 'System', summary.boardPhaseSystem),
+          _fact(context, l10n.apartmentEngineeringSystem, summary.boardPhaseSystem),
           _fact(
             context,
-            'Voltage',
+            l10n.apartmentEngineeringVoltage,
             '${_number(summary.lineNeutralVoltageV)} V',
           ),
           _fact(
             context,
-            'Max phase current',
+            l10n.apartmentEngineeringMaxPhaseCurrent,
             '${_number(summary.maxPhaseCurrentA)} A',
           ),
           _fact(
             context,
-            'Circuits',
+            l10n.apartmentEngineeringCircuitsShort,
             summary.branchCircuitCount.toString(),
           ),
           _fact(
             context,
-            'Imbalance',
+            l10n.apartmentEngineeringImbalance,
             '${_number(summary.phaseCurrentImbalanceRatio * 100)} %',
           ),
         ],
@@ -160,6 +166,7 @@ final class ApartmentEngineeringPreviewPanel extends StatelessWidget {
   Widget _circuitCard(
     BuildContext context,
     ApartmentEngineeringCircuitScheduleRow circuit,
+    ProjectWizardLocalizations l10n,
   ) =>
       Card.outlined(
         key: ValueKey('apartment-engineering-circuit-${circuit.circuitId}'),
@@ -174,26 +181,26 @@ final class ApartmentEngineeringPreviewPanel extends StatelessWidget {
           ),
           children: [
             _detail(
-              'Load',
+              l10n.apartmentEngineeringLoad,
               '${circuit.loadIds.join(', ')} · '
                   '${_number(circuit.designPowerW)} W',
             ),
             _detail(
-              'Cable',
+              l10n.apartmentEngineeringCable,
               '${circuit.conductorMaterial}, ${circuit.conductorCount} × '
                   '${_number(circuit.conductorCrossSectionMm2)} mm² · '
                   '${_number(circuit.routeLengthMm / 1000)} m · '
                   'ΔU ${_number(circuit.voltageDropRatio * 100)} %',
             ),
             _detail(
-              'Overcurrent protection',
+              l10n.apartmentEngineeringOvercurrentProtection,
               '${circuit.overcurrentDeviceId} · '
                   '${_number(circuit.overcurrentRatedCurrentA)} A · '
                   '${_number(circuit.overcurrentBreakingCapacityKa)} kA · '
                   '${circuit.overcurrentPoleCount}P',
             ),
             _detail(
-              'RCD / residual protection',
+              l10n.apartmentEngineeringResidualProtection,
               circuit.residualDeviceId == null
                   ? circuit.residualApplicability
                   : '${circuit.residualDeviceId} · '
@@ -202,7 +209,7 @@ final class ApartmentEngineeringPreviewPanel extends StatelessWidget {
                       '${_number(circuit.residualOperatingCurrentMa ?? 0)} mA',
             ),
             _detail(
-              'Fault / disconnection',
+              l10n.apartmentEngineeringFaultDisconnection,
               'Ik ${_number(circuit.prospectiveShortCircuitCurrentA)} A · '
                   'Imin ${_number(circuit.minimumFaultCurrentA)} A · '
                   'Imax ${_number(circuit.maximumFaultCurrentA)} A · '
@@ -210,13 +217,13 @@ final class ApartmentEngineeringPreviewPanel extends StatelessWidget {
                   '≤ ${_number(circuit.requiredMaxDisconnectionTimeS)} s',
             ),
             _detail(
-              'Coordination',
+              l10n.apartmentEngineeringCoordination,
               'OCPD ${circuit.overcurrentCoordinationStatus} · '
                   'RCD ${circuit.residualCoordinationStatus}',
             ),
             for (final section in circuit.installationSections)
               _detail(
-                'Installation ${section.sectionId}',
+                l10n.apartmentEngineeringInstallation(section.sectionId),
                 '${section.installationMethodId} · '
                     '${section.ampacitySourceKey} · '
                     '${section.sourceId} @ ${section.sourceRevision}',
@@ -234,9 +241,10 @@ final class ApartmentEngineeringPreviewPanel extends StatelessWidget {
   Widget _sldSummary(
     BuildContext context,
     ApartmentEngineeringOutputProjection output,
+    ProjectWizardLocalizations l10n,
   ) {
     if (output.sldNodes.isEmpty && output.sldEdges.isEmpty) {
-      return const Text('No SLD nodes in this engineering projection.');
+      return Text(l10n.apartmentEngineeringNoSldNodes);
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -250,13 +258,13 @@ final class ApartmentEngineeringPreviewPanel extends StatelessWidget {
             title: Text('${node.kind.name} · ${node.referenceId}'),
             subtitle: node.circuitId == null
                 ? null
-                : Text('Circuit ${node.circuitId}'),
+                : Text(l10n.apartmentEngineeringCircuit(node.circuitId!)),
           ),
         if (output.sldEdges.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
-              '${output.sldEdges.length} SLD connections',
+              l10n.apartmentEngineeringSldConnections(output.sldEdges.length),
               key: const ValueKey('apartment-engineering-sld-edge-count'),
               style: Theme.of(context).textTheme.bodySmall,
             ),
