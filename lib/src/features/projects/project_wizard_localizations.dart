@@ -115,7 +115,7 @@ final class ProjectWizardLocalizations {
       );
   String selectedCandidate(int index, int count) => _pick(
         'Selected candidate $index of $count',
-        '$title. Вариант $index из $count',
+        'Выбран вариант $index из $count',
       );
   String get zoomIn => _pick('Zoom in', 'Увеличить');
   String get zoomOut => _pick('Zoom out', 'Уменьшить');
