@@ -1,8 +1,10 @@
 import 'package:elecx/src/application/project/project_snapshot.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_output_integrity.dart';
 import 'package:elecx/src/domain/applied_engineering_proposal.dart';
+import 'package:elecx/src/domain/generation_provenance.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
+import 'package:elecx/src/domain/project_orientation.dart';
 import 'package:elecx/src/serialization/project/applied_engineering_proposal_aware_canonical_project_document_codec.dart';
 import 'package:elecx/src/serialization/project/project_document_codec.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,7 +23,8 @@ void main() {
       expect(() => codec.decode(document), throwsFormatException);
     });
 
-    test('PRE10-CQ30 unknown outputProjectionVersion is rejected on decode', () {
+    test('PRE10-CQ30 unknown outputProjectionVersion is rejected on decode',
+        () {
       final document = _documentWithProposal(
         proposalVersion: supportedApartmentEngineeringProposalVersion,
         outputProjectionVersion: 'p9.engineering-output-projection.v999',
@@ -48,8 +51,8 @@ void main() {
       );
 
       final decoded = codec.decode(document);
-      final proposal = decoded.aggregate.engineeringMetadata
-          .appliedEngineeringProposalRegistry
+      final proposal = decoded
+          .aggregate.engineeringMetadata.appliedEngineeringProposalRegistry
           .forLevel(LevelId('pre10-level'));
 
       expect(proposal, isNotNull);
@@ -98,13 +101,53 @@ ProjectDocument _documentWithProposal({
 }) {
   const codec = AppliedEngineeringProposalAwareCanonicalProjectDocumentCodec();
   final now = DateTime.utc(2026, 10, 28);
+  final projectId = ProjectId('pre10-project');
   final levelId = LevelId('pre10-level');
   final siteId = SiteId('pre10-site');
   final buildingId = BuildingId('pre10-building');
+  final zoneId = ZoneId('pre10-zone');
+  final generationId = GenerationId('pre10-generation');
+  final provenance = GenerationProvenanceRegistry().addGeneration(
+    manifest: GenerationManifest(
+      provenanceSchemaVersion: 1,
+      generationId: generationId,
+      originType: GenerationOriginType.wizard,
+      providerTemplateId: TemplateId('p9-apartment-provider'),
+      providerTemplateVersion: 1,
+      catalogVersion: 1,
+      apartmentTemplateId: TemplateId('pre10-template'),
+      apartmentTemplateVersion: 1,
+      familyId: 'compact',
+      variantSeedId: 'seed-1',
+      generatorVersion: 'generator-v1',
+      scoringProfileVersion: 'score-v1',
+      allocatorVersion: 'allocator-v1',
+      geometryAlgorithmVersion: 'geometry-v1',
+      normalizedIntentFingerprint: _sha('3'),
+      selectedCandidateFingerprint: _sha('2'),
+      projectId: projectId,
+      buildingId: buildingId,
+      levelId: levelId,
+      apartmentZoneId: zoneId,
+      generatedEntityIds: {zoneId},
+    ),
+    provenances: [
+      EntityGenerationProvenance(
+        entityId: zoneId,
+        generationId: generationId,
+        generationKey: 'zone:apartment',
+        generatedProperties: const {GenerationPropertyKey.name},
+        generatedBaselineFingerprint: _sha('6'),
+      ),
+    ],
+  );
   final aggregate = ProjectAggregateRoot(
-    id: ProjectId('pre10-project'),
+    id: projectId,
     siteId: siteId,
     version: LocalProjectVersion(1),
+    engineeringMetadata: ProjectEngineeringMetadata(
+      generationProvenanceRegistry: provenance,
+    ),
     stores: ProjectEntityStores(
       sites: <SiteId, ProjectSiteEntity>{
         siteId: ProjectSiteEntity(
@@ -129,6 +172,16 @@ ProjectDocument _documentWithProposal({
           levelNumber: 1,
           elevationMm: 0,
           kind: ProjectLevelKind.residential,
+          zoneIds: <ZoneId>{zoneId},
+          spaceIds: const <SpaceId>{},
+        ),
+      },
+      zones: <ZoneId, ProjectStructuralZoneEntity>{
+        zoneId: ProjectStructuralZoneEntity(
+          id: zoneId,
+          levelId: levelId,
+          name: 'Apartment 1',
+          kind: ProjectStructuralZoneKind.apartment,
           spaceIds: const <SpaceId>{},
         ),
       },
@@ -187,9 +240,8 @@ ProjectDocument _documentWithProposal({
   ];
   payload['appliedEngineeringProposals'] = registry;
   return ProjectDocument(
-    schemaVersion:
-        AppliedEngineeringProposalAwareCanonicalProjectDocumentCodec
-            .schemaVersion,
+    schemaVersion: AppliedEngineeringProposalAwareCanonicalProjectDocumentCodec
+        .schemaVersion,
     payload: payload,
   );
 }
