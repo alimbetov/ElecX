@@ -211,36 +211,19 @@ void main() {
     expect(find.text('Overcurrent protection'), findsOneWidget);
     expect(find.text('RCD / residual protection'), findsOneWidget);
 
-    final previewScroll = find.descendant(
-      of: find.byKey(const ValueKey('apartment-engineering-preview')),
-      matching: find.byType(Scrollable),
-    );
-    expect(previewScroll, findsOneWidget);
+    // Collapse the expanded circuit after qualifying its detail rows. This
+    // exposes the lower SLD/Why sections without coupling the test to
+    // ListView's internal Scrollable implementation or viewport lazy-loading.
+    await tester.tap(find.text('C1 · L1'));
+    await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(
-      find.text('Single-line diagram'),
-      300,
-      scrollable: previewScroll,
-    );
     expect(find.text('Single-line diagram'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('apartment-engineering-sld-node-node.board')),
       findsOneWidget,
     );
-
-    await tester.scrollUntilVisible(
-      find.text('Why'),
-      300,
-      scrollable: previewScroll,
-    );
     expect(find.text('Why'), findsOneWidget);
     expect(find.text('P9.WHY.CABLE_AMPACITY'), findsOneWidget);
-
-    await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('apartment-engineering-fingerprints')),
-      300,
-      scrollable: previewScroll,
-    );
     expect(
       find.byKey(const ValueKey('apartment-engineering-fingerprints')),
       findsOneWidget,
