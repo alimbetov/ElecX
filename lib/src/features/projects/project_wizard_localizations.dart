@@ -115,7 +115,7 @@ final class ProjectWizardLocalizations {
       );
   String selectedCandidate(int index, int count) => _pick(
         'Selected candidate $index of $count',
-        'Выбран вариант $index из $count',
+        '$title. Вариант $index из $count',
       );
   String get zoomIn => _pick('Zoom in', 'Увеличить');
   String get zoomOut => _pick('Zoom out', 'Уменьшить');
@@ -145,8 +145,8 @@ final class ProjectWizardLocalizations {
         'No electrical values are assumed. Engineering output becomes available only when authoritative electrical inputs are configured.',
         'Электрические параметры не предполагаются. Инженерный результат доступен только после настройки авторитетных электротехнических исходных данных.',
       );
-  String get apartmentFrozenEngineeringOutput =>
-      _pick('Frozen engineering output', 'Зафиксированный инженерный результат');
+  String get apartmentFrozenEngineeringOutput => _pick(
+      'Frozen engineering output', 'Зафиксированный инженерный результат');
   String get apartmentExactD8OutputTooltip => _pick(
         'Exact D8 output used by Apply',
         'Точный результат D8, используемый при применении',
@@ -158,8 +158,7 @@ final class ProjectWizardLocalizations {
   String apartmentEngineeringCircuits(int count) =>
       _pick('Circuits ($count)', 'Цепи ($count)');
   String get apartmentEngineeringCircuitsShort => _pick('Circuits', 'Цепи');
-  String get apartmentEngineeringImbalance =>
-      _pick('Imbalance', 'Небаланс');
+  String get apartmentEngineeringImbalance => _pick('Imbalance', 'Небаланс');
   String get apartmentEngineeringNoBranchCircuits => _pick(
         'No branch circuits in this engineering projection.',
         'В инженерной проекции нет отходящих цепей.',
