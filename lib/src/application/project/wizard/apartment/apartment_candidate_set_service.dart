@@ -359,8 +359,9 @@ final class ApartmentCandidateSetService {
         final warningCodes = <String>[
           ...semanticWarnings,
           ...geometry.failures
-              .where((failure) =>
-                  failure.severity == P9FailureSeverity.warning)
+              .where(
+                (failure) => failure.severity == P9FailureSeverity.warning,
+              )
               .map((failure) => failure.code),
         ];
         terminalDiagnostics.add(
@@ -404,13 +405,15 @@ final class ApartmentCandidateSetService {
           areaFitFingerprint: candidate.areaFitFingerprint,
           warningCodes: [
             ...fit.failures
-                .where((failure) =>
-                    failure.severity == P9FailureSeverity.warning)
+                .where(
+                  (failure) => failure.severity == P9FailureSeverity.warning,
+                )
                 .map((failure) => failure.code),
             ...semanticWarnings,
             ...geometry.failures
-                .where((failure) =>
-                    failure.severity == P9FailureSeverity.warning)
+                .where(
+                  (failure) => failure.severity == P9FailureSeverity.warning,
+                )
                 .map((failure) => failure.code),
           ],
         ),
@@ -710,7 +713,7 @@ final class ApartmentCandidateSetService {
           blockerCodes: [
             ...evaluation.blockerCodes,
             ...?lateBlockersByGeometry[
-              evaluation.rankedCandidate.candidate.geometryFingerprint,
+              evaluation.rankedCandidate.candidate.geometryFingerprint
             ],
           ],
         ),
@@ -791,11 +794,21 @@ final class ApartmentCandidateSetService {
       );
     }
 
+    final originalPreviewGeometryFingerprints = <String>{
+      prequalificationSelection.selectedCandidate.candidate.geometryFingerprint,
+      for (final ranked in ranking.selectedCandidates)
+        ranked.candidate.geometryFingerprint,
+    };
+    final previewTargetCount = originalPreviewGeometryFingerprints.length <
+            profile.maximumCandidateCount
+        ? originalPreviewGeometryFingerprints.length
+        : profile.maximumCandidateCount;
+
     final cards = <ApartmentCandidateCard>[recommendedCard];
     final cardFingerprints = <String>{recommendedCard.candidateFingerprint};
 
     void addPreviewCard(RankedApartmentCandidate ranked) {
-      if (cards.length >= profile.maximumCandidateCount) {
+      if (cards.length >= previewTargetCount) {
         return;
       }
       final card = cardsByGeometry[ranked.candidate.geometryFingerprint];
