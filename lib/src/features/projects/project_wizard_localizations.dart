@@ -139,6 +139,64 @@ final class ProjectWizardLocalizations {
       _pick('Selected apartment variant', 'Выбранный вариант квартиры');
   String get apartmentCanonicalPreview =>
       _pick('Canonical preview', 'Канонический предпросмотр');
+  String get apartmentTopologyOnlyPreview =>
+      _pick('Topology-only preview', 'Предпросмотр только топологии');
+  String get apartmentTopologyOnlyEngineeringHint => _pick(
+        'No electrical values are assumed. Engineering output becomes available only when authoritative electrical inputs are configured.',
+        'Электрические параметры не предполагаются. Инженерный результат доступен только после настройки авторитетных электротехнических исходных данных.',
+      );
+  String get apartmentFrozenEngineeringOutput =>
+      _pick('Frozen engineering output', 'Зафиксированный инженерный результат');
+  String get apartmentExactD8OutputTooltip => _pick(
+        'Exact D8 output used by Apply',
+        'Точный результат D8, используемый при применении',
+      );
+  String get apartmentEngineeringSystem => _pick('System', 'Система');
+  String get apartmentEngineeringVoltage => _pick('Voltage', 'Напряжение');
+  String get apartmentEngineeringMaxPhaseCurrent =>
+      _pick('Max phase current', 'Макс. ток фазы');
+  String apartmentEngineeringCircuits(int count) =>
+      _pick('Circuits ($count)', 'Цепи ($count)');
+  String get apartmentEngineeringCircuitsShort => _pick('Circuits', 'Цепи');
+  String get apartmentEngineeringImbalance =>
+      _pick('Imbalance', 'Небаланс');
+  String get apartmentEngineeringNoBranchCircuits => _pick(
+        'No branch circuits in this engineering projection.',
+        'В инженерной проекции нет отходящих цепей.',
+      );
+  String get apartmentEngineeringSingleLineDiagram =>
+      _pick('Single-line diagram', 'Однолинейная схема');
+  String get apartmentEngineeringWhy => _pick('Why', 'Обоснование');
+  String get apartmentEngineeringNoExplanations => _pick(
+        'No additional engineering explanations.',
+        'Дополнительные инженерные обоснования отсутствуют.',
+      );
+  String get apartmentEngineeringLoad => _pick('Load', 'Нагрузка');
+  String get apartmentEngineeringCable => _pick('Cable', 'Кабель');
+  String get apartmentEngineeringOvercurrentProtection =>
+      _pick('Overcurrent protection', 'Защита от сверхтока');
+  String get apartmentEngineeringResidualProtection => _pick(
+        'RCD / residual protection',
+        'УЗО / дифференциальная защита',
+      );
+  String get apartmentEngineeringFaultDisconnection =>
+      _pick('Fault / disconnection', 'КЗ / отключение');
+  String get apartmentEngineeringCoordination =>
+      _pick('Coordination', 'Селективность / координация');
+  String apartmentEngineeringInstallation(String sectionId) =>
+      _pick('Installation $sectionId', 'Прокладка $sectionId');
+  String apartmentEngineeringCircuit(String circuitId) =>
+      _pick('Circuit $circuitId', 'Цепь $circuitId');
+  String apartmentEngineeringSldConnections(int count) => _pick(
+        '$count SLD connections',
+        'Соединений однолинейной схемы: $count',
+      );
+  String get apartmentEngineeringProposalFingerprint =>
+      _pick('Proposal', 'Предложение');
+  String get apartmentEngineeringOutputFingerprint =>
+      _pick('Output', 'Результат');
+  String get apartmentEngineeringRequirementsFingerprint =>
+      _pick('Requirements', 'Требования');
 
   String get site => _pick('Site', 'Участок');
   String get building => _pick('Building', 'Здание');
