@@ -120,7 +120,8 @@ final class ApartmentEngineeringPreviewPanel extends StatelessWidget {
         spacing: 8,
         runSpacing: 8,
         children: [
-          _fact(context, l10n.apartmentEngineeringSystem, summary.boardPhaseSystem),
+          _fact(context, l10n.apartmentEngineeringSystem,
+              summary.boardPhaseSystem),
           _fact(
             context,
             l10n.apartmentEngineeringVoltage,
@@ -183,21 +184,21 @@ final class ApartmentEngineeringPreviewPanel extends StatelessWidget {
             _detail(
               l10n.apartmentEngineeringLoad,
               '${circuit.loadIds.join(', ')} · '
-                  '${_number(circuit.designPowerW)} W',
+              '${_number(circuit.designPowerW)} W',
             ),
             _detail(
               l10n.apartmentEngineeringCable,
               '${circuit.conductorMaterial}, ${circuit.conductorCount} × '
-                  '${_number(circuit.conductorCrossSectionMm2)} mm² · '
-                  '${_number(circuit.routeLengthMm / 1000)} m · '
-                  'ΔU ${_number(circuit.voltageDropRatio * 100)} %',
+              '${_number(circuit.conductorCrossSectionMm2)} mm² · '
+              '${_number(circuit.routeLengthMm / 1000)} m · '
+              'ΔU ${_number(circuit.voltageDropRatio * 100)} %',
             ),
             _detail(
               l10n.apartmentEngineeringOvercurrentProtection,
               '${circuit.overcurrentDeviceId} · '
-                  '${_number(circuit.overcurrentRatedCurrentA)} A · '
-                  '${_number(circuit.overcurrentBreakingCapacityKa)} kA · '
-                  '${circuit.overcurrentPoleCount}P',
+              '${_number(circuit.overcurrentRatedCurrentA)} A · '
+              '${_number(circuit.overcurrentBreakingCapacityKa)} kA · '
+              '${circuit.overcurrentPoleCount}P',
             ),
             _detail(
               l10n.apartmentEngineeringResidualProtection,
@@ -211,22 +212,22 @@ final class ApartmentEngineeringPreviewPanel extends StatelessWidget {
             _detail(
               l10n.apartmentEngineeringFaultDisconnection,
               'Ik ${_number(circuit.prospectiveShortCircuitCurrentA)} A · '
-                  'Imin ${_number(circuit.minimumFaultCurrentA)} A · '
-                  'Imax ${_number(circuit.maximumFaultCurrentA)} A · '
-                  't ${_number(circuit.disconnectionOperatingTimeS)} s '
-                  '≤ ${_number(circuit.requiredMaxDisconnectionTimeS)} s',
+              'Imin ${_number(circuit.minimumFaultCurrentA)} A · '
+              'Imax ${_number(circuit.maximumFaultCurrentA)} A · '
+              't ${_number(circuit.disconnectionOperatingTimeS)} s '
+              '≤ ${_number(circuit.requiredMaxDisconnectionTimeS)} s',
             ),
             _detail(
               l10n.apartmentEngineeringCoordination,
               'OCPD ${circuit.overcurrentCoordinationStatus} · '
-                  'RCD ${circuit.residualCoordinationStatus}',
+              'RCD ${circuit.residualCoordinationStatus}',
             ),
             for (final section in circuit.installationSections)
               _detail(
                 l10n.apartmentEngineeringInstallation(section.sectionId),
                 '${section.installationMethodId} · '
-                    '${section.ampacitySourceKey} · '
-                    '${section.sourceId} @ ${section.sourceRevision}',
+                '${section.ampacitySourceKey} · '
+                '${section.sourceId} @ ${section.sourceRevision}',
               ),
           ],
         ),
