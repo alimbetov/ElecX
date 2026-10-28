@@ -5,9 +5,11 @@ import '../../domain/geometry.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/project_model.dart';
+import '../../domain/site_outdoor_model.dart';
 import 'canonical_editor_runtime_cutover.dart';
 import 'canonical_editor_workspace_adapter.dart';
 import 'canonical_legacy_identity_codec.dart';
+import 'editor_building_workspace.dart';
 
 /// Production compatibility projection for canonical structural Zones/Spaces
 /// created after the legacy editor document was opened.
@@ -422,7 +424,7 @@ final class _StructuralMaterializationPlan {
   });
 
   final ComposedBuilding building;
-  final dynamic site;
+  final ComposedProjectSite site;
   final ComposedBuildingLevel level;
   final int levelNumber;
   final Map<ZoneId, String> zoneBindings;
