@@ -13,6 +13,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  repository-quality:
+    name: H Repository quality prerequisite
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Reference environment
+        run: |
+          uname -a
+          lscpu
+          free -m
+          flutter --version
+      - name: Enforce repository and qualification formatting
+        run: dart format --output=none --set-exit-if-changed lib test qualification_test tool
+      - name: Static analysis
+        run: flutter analyze
+      - name: P8 NFR accessibility and i18n regression gate
+        run: >-
+          flutter test --concurrency=1
+          test/p8_wizard_nfr_a11y_i18n_qualification_test.dart
+          test/p8_wizard_r23_extended_qualification_test.dart
+      - name: Complete Flutter regression suite
+        run: flutter test
+      - name: Acceptance evidence structure exists
+        run: |
+          test -s docs/architecture/p9/p9.13-requirement-traceability-v1.md
+          test -s docs/architecture/p9/p9-acceptance-audit-v1-2026-10-28.md
+
   domain-qualification:
     name: A Domain qualification
     runs-on: ubuntu-latest
@@ -64,7 +97,7 @@ jobs:
   engineering-transactional:
     name: B-C Engineering + transactional qualification
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v5
       - uses: subosito/flutter-action@v2
@@ -80,10 +113,20 @@ jobs:
           test/p9_p96_applied_engineering_persistence_test.dart
           test/p9_p96_production_persistence_owner_test.dart
           test/p9_generation_provenance_test.dart
-      - name: Exact Golden Journey Preview Diff Apply Undo Redo Save Reopen
+      - name: GJ-01..04 Preview Diff Apply Undo Redo Save Reopen input continuity
         run: >-
           flutter test --concurrency=1
           qualification_test/p9_p913_golden_journey_test.dart
+          qualification_test/p9_p913_additional_journeys_test.dart
+          test/p9_apartment_p8_preview_diff_integration_test.dart
+          test/p9_apartment_wizard_ui_acceptance_test.dart
+      - name: NG-01..10 negative journey regression set
+        run: >-
+          flutter test --concurrency=1
+          qualification_test/p9_p913_negative_journeys_test.dart
+          test/p9_apartment_wizard_provider_test.dart
+          test/p9_apartment_topology_catalog_test.dart
+          test/p9_apartment_vector_renderer_test.dart
           test/p9_apartment_p8_preview_diff_integration_test.dart
           test/p9_apartment_wizard_ui_acceptance_test.dart
 
@@ -98,7 +141,7 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - name: Viewport locale text-scale theme matrix
+      - name: Viewport locale text-scale theme matrix and GJ-03
         run: >-
           flutter test --concurrency=1
           qualification_test/p9_p913_responsive_matrix_test.dart
@@ -236,6 +279,7 @@ jobs:
   exact-sha-final-audit:
     name: H exact-SHA final audit
     needs:
+      - repository-quality
       - domain-qualification
       - performance-qualification
       - engineering-transactional
@@ -259,15 +303,19 @@ jobs:
           - branch/ref: ${GITHUB_REF}
           - exact commit SHA: ${GITHUB_SHA}
           - workflow run: ${GITHUB_RUN_ID}
+          - repository format/analyze/full regression suite: PASS
+          - P8 accessibility/i18n regression gate: PASS
           - domain qualification: PASS
           - P9.13 performance + memory gates: PASS
           - engineering + transactional qualification: PASS
-          - exact P9.13 Golden Journey: PASS
+          - GJ-01..04: PASS
+          - NG-01..10 regression set: PASS
           - responsive phone/tablet/desktop qualification: PASS
           - Linux/macOS/Windows semantic parity: PASS
           - Linux/Windows/macOS native target compilation: PASS
           - Android phone/tablet native target compilation: PASS
           - iOS/iPadOS native target compilation: PASS
+          - traceability/evidence structure: PRESENT
           - native shell note: missing repository shells are generated ephemerally by Flutter for this P9.13 compile gate; permanent production shells remain P17 scope
           - disposition: P9.13 automated acceptance gates PASS for this exact SHA
           EOF
