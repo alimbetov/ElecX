@@ -2,6 +2,7 @@ import 'package:elecx/src/application/project/wizard/apartment/apartment_candida
 import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_output_projection.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_pipeline.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_requirements_adapter.dart';
+import 'package:elecx/src/application/project/wizard/apartment/apartment_wizard_parameters.dart';
 import 'package:elecx/src/application/project/wizard/wizard_contracts.dart';
 import 'package:elecx/src/domain/apartment_topology.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
@@ -11,7 +12,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('Q105 topology-only preview states that electrical values are absent',
+  testWidgets(
+      'Q105 topology-only preview states that electrical values are absent',
       (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
@@ -30,7 +32,8 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Topology-only preview'), findsOneWidget);
-    expect(find.textContaining('No electrical values are assumed'), findsOneWidget);
+    expect(find.textContaining('No electrical values are assumed'),
+        findsOneWidget);
   });
 
   testWidgets('Q106 frozen D8 preview exposes circuit protection SLD and Why',
@@ -172,7 +175,8 @@ void main() {
           ApartmentEngineeringExplanation(
             code: 'P9.WHY.CABLE_AMPACITY',
             circuitId: 'C1',
-            value: 'Cable satisfies governing ampacity and voltage-drop limits.',
+            value:
+                'Cable satisfies governing ampacity and voltage-drop limits.',
             sourceId: 'cable-policy',
             sourceRevision: '2026.10',
           ),
