@@ -723,8 +723,7 @@ final class _ApartmentWizardScreenState extends State<ApartmentWizardScreen> {
         elevation: 8,
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final textScale = MediaQuery.textScalerOf(context).scale(1);
-            final stacked = constraints.maxWidth < 520 || textScale > 1.3;
+            final stacked = constraints.maxWidth < 600;
             final padding = const EdgeInsets.symmetric(
               horizontal: 8,
               vertical: 10,
