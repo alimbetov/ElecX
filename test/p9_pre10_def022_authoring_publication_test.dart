@@ -41,7 +41,6 @@ void main() {
                   },
                   onAuthoringCommitted: (_, __) async {
                     callbackCount++;
-                    await Future<void>.delayed(Duration.zero);
                     if (callbackCount == 1) {
                       throw sentinel;
                     }
@@ -57,7 +56,8 @@ void main() {
         // ProjectStructureAuthoringControls keeps the navigator's Future-aware
         // action before adapting it to Flutter's VoidCallback button surface.
         // Await that boundary directly so the qualification observes exactly
-        // the Future that the navigator returns to its host.
+        // the Future that the navigator returns to its host. Do not introduce a
+        // fake-async Timer here: testWidgets only advances timers during pump().
         final controls = tester.widget<ProjectStructureAuthoringControls>(
           find.byType(ProjectStructureAuthoringControls),
         );
