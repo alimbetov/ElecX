@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 
+import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_candidate_set_service.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_canonical_materializer.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_topology_vector_renderer.dart';
@@ -124,20 +125,29 @@ void main() {
           reservation: reservation,
         );
         stopwatch.stop();
-        expect(candidate.candidate.version, fixture.project.version);
+        expect(candidate.stores.spaces, isNotEmpty);
+        expect(candidate.affectedEntityIds, isNotEmpty);
         materializationSamplesUs.add(stopwatch.elapsedMicroseconds);
 
         final previewStopwatch = Stopwatch()..start();
-        candidate.changeSet;
-        candidate.affectedEntityIds;
+        final state = candidate.resolveState(fixture.project);
+        final entityDiff = ProjectEntityDiff.between(
+          fixture.project.stores,
+          state.stores,
+        );
+        final metadataDiff = ProjectEngineeringMetadataDiff.between(
+          fixture.project.engineeringMetadata,
+          state.engineeringMetadata,
+        );
         previewStopwatch.stop();
+        expect(entityDiff.isNotEmpty || metadataDiff.isNotEmpty, isTrue);
         previewSamplesUs.add(
           stopwatch.elapsedMicroseconds + previewStopwatch.elapsedMicroseconds,
         );
       }
 
       _expectPercentiles(
-        label: 'preview candidate',
+        label: 'preview candidate + semantic diff',
         samplesUs: previewSamplesUs,
         p95LimitUs: 300000,
         p99LimitUs: 600000,
@@ -221,12 +231,18 @@ void _runAcceptanceCycle({
     factory: SecureRandomEntityIdFactory(random: Random(seed)),
     candidate: card.rankedCandidate.candidate,
   );
-  materializer.buildCandidate(
+  final candidate = materializer.buildCandidate(
     current: fixture.project,
     target: fixture.target,
     candidate: card.rankedCandidate.candidate,
     template: card.template,
     reservation: reservation,
+  );
+  final state = candidate.resolveState(fixture.project);
+  ProjectEntityDiff.between(fixture.project.stores, state.stores);
+  ProjectEngineeringMetadataDiff.between(
+    fixture.project.engineeringMetadata,
+    state.engineeringMetadata,
   );
 }
 
@@ -253,7 +269,8 @@ void _expectPercentiles({
 
 int _percentile(List<int> sorted, double percentile) {
   final index = ((sorted.length * percentile).ceil() - 1)
-      .clamp(0, sorted.length - 1);
+      .clamp(0, sorted.length - 1)
+      .toInt();
   return sorted[index];
 }
 
