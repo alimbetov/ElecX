@@ -35,10 +35,12 @@ void main() {
       (tester) async {
     final store = _FailOnceProjectStore();
 
-    await tester.pumpWidget(MaterialApp(home: ProjectHubScreen(projectStore: store)));
+    await tester
+        .pumpWidget(MaterialApp(home: ProjectHubScreen(projectStore: store)));
     await tester.pumpAndSettle();
 
-    expect(find.text('Не удалось прочитать сохранённые проекты'), findsOneWidget);
+    expect(
+        find.text('Не удалось прочитать сохранённые проекты'), findsOneWidget);
     expect(find.text('Повторить'), findsOneWidget);
     expect(store.listCalls, 1);
 
@@ -50,7 +52,8 @@ void main() {
     expect(find.text('Нет сохранённого проекта'), findsOneWidget);
   });
 
-  test('PRE10-Q05 corrupt primary falls back to valid canonical backup', () async {
+  test('PRE10-Q05 corrupt primary falls back to valid canonical backup',
+      () async {
     final root = await Directory.systemTemp.createTemp('elecx-pre10-recovery-');
     addTearDown(() async {
       if (await root.exists()) await root.delete(recursive: true);
@@ -146,6 +149,7 @@ ProjectSnapshot _snapshot(String projectId) {
 }
 
 String _targetPath(Directory root, ProjectId projectId) {
-  final encoded = base64Url.encode(utf8.encode(projectId.value)).replaceAll('=', '');
+  final encoded =
+      base64Url.encode(utf8.encode(projectId.value)).replaceAll('=', '');
   return '${root.path}${Platform.pathSeparator}$encoded.elecx.project.json';
 }
