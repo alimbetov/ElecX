@@ -40,8 +40,8 @@ void main() {
         final promoted = remediated.candidateSet!.recommendedCandidate;
         expect(promoted.candidateFingerprint, isNot(originalWinner));
         expect(
-          remediated.candidateSet!.engineeringProjection
-              .selectedCandidateFingerprint,
+          remediated
+              .candidateSet!.engineeringProjection.selectedCandidateFingerprint,
           promoted.candidateFingerprint,
         );
         expect(
@@ -63,7 +63,8 @@ void main() {
       },
     );
 
-    test('promotion is deterministic across repeated production generation', () {
+    test('promotion is deterministic across repeated production generation',
+        () {
       final fixture = _projectFixture();
       final baseline = const ApartmentCandidateSetService().generate(
         input: _request(),
