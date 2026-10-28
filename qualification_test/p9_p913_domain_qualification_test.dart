@@ -22,7 +22,8 @@ void main() {
   const service = ApartmentCandidateSetService();
 
   group('P9.13 A — Domain qualification', () {
-    test('A1 supported corpus >=250 reaches qualified canonical candidates', () {
+    test('A1 supported corpus >=250 reaches qualified canonical candidates',
+        () {
       final corpus = _supportedCorpusV1();
       expect(corpus, hasLength(_supportedCorpusSize));
 
@@ -99,8 +100,8 @@ void main() {
               .values[random.nextInt(ApartmentKitchenMode.values.length)],
           corridorMode: ApartmentCorridorMode
               .values[random.nextInt(ApartmentCorridorMode.values.length)],
-          exteriorExposurePreference: ApartmentExteriorExposurePreference
-              .values[random
+          exteriorExposurePreference:
+              ApartmentExteriorExposurePreference.values[random
                   .nextInt(ApartmentExteriorExposurePreference.values.length)],
           preferDayNightSeparation: random.nextBool(),
         );
@@ -114,8 +115,7 @@ void main() {
                 balconyKind: ApartmentBalconyKind.none,
                 kitchenMode: request.kitchenMode,
                 corridorMode: request.corridorMode,
-                exteriorExposurePreference:
-                    request.exteriorExposurePreference,
+                exteriorExposurePreference: request.exteriorExposurePreference,
                 preferDayNightSeparation: request.preferDayNightSeparation,
               )
             : request;
@@ -314,7 +314,8 @@ List<ApartmentRequestInput> _invalidCorpusV1() => <ApartmentRequestInput>[
         },
     ];
 
-ApartmentRequestInput _validInput({required int roomCount, required int areaDm2}) =>
+ApartmentRequestInput _validInput(
+        {required int roomCount, required int areaDm2}) =>
     ApartmentRequestInput(
       habitableRoomCount: roomCount,
       approximateAreaDm2: areaDm2,
