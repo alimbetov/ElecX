@@ -16,11 +16,6 @@ final class WizardCandidateCard {
   final WizardPreviewScene scene;
 }
 
-/// Presentation-only viewport state for Wizard preview scenes.
-///
-/// The matrix is deliberately outside all Wizard/domain contracts. Pan/zoom,
-/// responsive relayout and reset therefore cannot affect candidate identity,
-/// semantic Diff, reserved mutation identity or Apply payload.
 final class PreviewViewportState extends ChangeNotifier {
   PreviewViewportState() {
     transformationController.addListener(_onMatrixChanged);
@@ -36,21 +31,15 @@ final class PreviewViewportState extends ChangeNotifier {
   double get scale => transformationController.value.getMaxScaleOnAxis();
 
   void zoomIn() => _setScale(scale * zoomStep);
-
   void zoomOut() => _setScale(scale / zoomStep);
-
-  void resetView() {
-    transformationController.value = Matrix4.identity();
-  }
+  void resetView() => transformationController.value = Matrix4.identity();
 
   void _setScale(double requestedScale) {
     final next = requestedScale.clamp(minScale, maxScale).toDouble();
     transformationController.value = Matrix4.diagonal3Values(next, next, 1);
   }
 
-  void _onMatrixChanged() {
-    notifyListeners();
-  }
+  void _onMatrixChanged() => notifyListeners();
 
   @override
   void dispose() {
@@ -60,9 +49,6 @@ final class PreviewViewportState extends ChangeNotifier {
   }
 }
 
-/// Provider-neutral P8 candidate carousel. Candidate selection is presentation
-/// state only: browsing never reserves canonical identities or mutates project
-/// state. Providers with a single prepared candidate use the same surface.
 final class WizardCandidateCarousel extends StatefulWidget {
   const WizardCandidateCarousel({
     required this.candidates,
@@ -222,13 +208,19 @@ final class _WizardCandidateCarouselState
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  IconButton(
-                    key: const ValueKey('wizard-candidate-previous'),
-                    tooltip: materialL10n.previousPageTooltip,
-                    onPressed: _selectedIndex > 0
-                        ? () => _select(_selectedIndex - 1)
-                        : null,
-                    icon: const Icon(Icons.chevron_left),
+                  Semantics(
+                    label: materialL10n.previousPageTooltip,
+                    button: true,
+                    enabled: _selectedIndex > 0,
+                    child: ExcludeSemantics(
+                      child: IconButton(
+                        key: const ValueKey('wizard-candidate-previous'),
+                        onPressed: _selectedIndex > 0
+                            ? () => _select(_selectedIndex - 1)
+                            : null,
+                        icon: const Icon(Icons.chevron_left),
+                      ),
+                    ),
                   ),
                   ConstrainedBox(
                     constraints: const BoxConstraints(minWidth: 64),
@@ -238,13 +230,19 @@ final class _WizardCandidateCarouselState
                       style: Theme.of(context).textTheme.labelLarge,
                     ),
                   ),
-                  IconButton(
-                    key: const ValueKey('wizard-candidate-next'),
-                    tooltip: materialL10n.nextPageTooltip,
-                    onPressed: _selectedIndex < widget.candidates.length - 1
-                        ? () => _select(_selectedIndex + 1)
-                        : null,
-                    icon: const Icon(Icons.chevron_right),
+                  Semantics(
+                    label: materialL10n.nextPageTooltip,
+                    button: true,
+                    enabled: _selectedIndex < widget.candidates.length - 1,
+                    child: ExcludeSemantics(
+                      child: IconButton(
+                        key: const ValueKey('wizard-candidate-next'),
+                        onPressed: _selectedIndex < widget.candidates.length - 1
+                            ? () => _select(_selectedIndex + 1)
+                            : null,
+                        icon: const Icon(Icons.chevron_right),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -257,11 +255,7 @@ final class _WizardCandidateCarouselState
 }
 
 final class WizardPreviewCanvas extends StatefulWidget {
-  const WizardPreviewCanvas({
-    required this.scene,
-    this.viewportState,
-    super.key,
-  });
+  const WizardPreviewCanvas({required this.scene, this.viewportState, super.key});
 
   final WizardPreviewScene scene;
   final PreviewViewportState? viewportState;
@@ -379,12 +373,7 @@ final class _WizardPreviewPainter extends CustomPainter {
     for (final element in scene.elements) {
       if (element is WizardPreviewRect) {
         canvas.drawRect(
-          Rect.fromLTWH(
-            element.x,
-            element.y,
-            element.width,
-            element.height,
-          ),
+          Rect.fromLTWH(element.x, element.y, element.width, element.height),
           stroke,
         );
       } else if (element is WizardPreviewLine) {
