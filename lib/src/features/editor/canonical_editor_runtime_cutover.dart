@@ -24,9 +24,6 @@ final class CanonicalEditorMaterializationResult {
   final EntityId? entityId;
   final String? message;
 
-  /// Only an already-materialized target may be opened by the current
-  /// coordinator. `materializable` is intentionally not treated as openable:
-  /// no materialization mutation API exists in this P5C contract yet.
   bool get canOpen =>
       status == CanonicalEditorMaterializationStatus.alreadyMaterialized;
 
@@ -44,10 +41,25 @@ abstract interface class CanonicalEditorMaterializer {
   });
 }
 
+/// Opt-in runtime extension for production owners that can project canonical
+/// geometry into the transitional legacy workspace.
+///
+/// [materialize] is invoked only after a pure [inspect] result reports
+/// `materializable`. The canonical aggregate remains authoritative and must not
+/// be mutated by this compatibility projection.
+abstract interface class CanonicalEditorRuntimeMaterializer
+    implements CanonicalEditorMaterializer {
+  CanonicalEditorMaterializationResult materialize({
+    required ProjectAggregateRoot project,
+    required ProjectNavigationState navigation,
+    required CanonicalEditorWorkspaceAdapter adapter,
+  });
+}
+
 /// Conservative materializer for the transitional workspace. It never invents
 /// geometry. Existing explicit bindings are treated as materialized; a new
 /// canonical Space without an EngineeringSpace binding is blocked until a
-/// later geometry-owning stage can materialize it correctly.
+/// geometry-owning production materializer projects it correctly.
 final class ExistingBindingCanonicalEditorMaterializer
     implements CanonicalEditorMaterializer {
   const ExistingBindingCanonicalEditorMaterializer();
@@ -195,6 +207,33 @@ final class CanonicalEditorRuntimeCutoverCoordinator {
         navigation: session.navigation,
         binding: adapter.binding,
       );
+
+  /// Materializes the current canonical target only when the configured owner
+  /// explicitly implements [CanonicalEditorRuntimeMaterializer]. Inspect-only
+  /// materializers retain the historical fail-closed behavior.
+  CanonicalEditorMaterializationResult materializeCurrentTarget() {
+    if (_phase != CanonicalEditorCutoverPhase.idle) {
+      throw StateError('Canonical editor cutover is already synchronizing.');
+    }
+    final readiness = inspectCurrentTarget();
+    if (!readiness.canMaterialize) return readiness;
+
+    final materializer = _materializer;
+    if (materializer is! CanonicalEditorRuntimeMaterializer) {
+      return readiness;
+    }
+
+    _phase = CanonicalEditorCutoverPhase.applyingCanonical;
+    try {
+      return materializer.materialize(
+        project: session.project,
+        navigation: session.navigation,
+        adapter: adapter,
+      );
+    } finally {
+      _phase = CanonicalEditorCutoverPhase.idle;
+    }
+  }
 
   void pushCanonicalToEditor() {
     if (_phase != CanonicalEditorCutoverPhase.idle) return;
