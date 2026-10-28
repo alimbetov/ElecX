@@ -166,6 +166,10 @@ final class ProjectWizardLocalizations {
       );
   String get apartmentEngineeringSingleLineDiagram =>
       _pick('Single-line diagram', 'Однолинейная схема');
+  String get apartmentEngineeringNoSldNodes => _pick(
+        'No SLD nodes in this engineering projection.',
+        'В инженерной проекции нет узлов однолинейной схемы.',
+      );
   String get apartmentEngineeringWhy => _pick('Why', 'Обоснование');
   String get apartmentEngineeringNoExplanations => _pick(
         'No additional engineering explanations.',
