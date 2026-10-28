@@ -20,7 +20,35 @@ void main() {
       'P9.13 D-F viewport locale scale theme matrix preserves reserved semantics',
       (tester) async {
     final harness = _Harness.create(seed: 91301);
-    _prepareReservedPreview(harness);
+    _primeEditingParameters(harness);
+
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    const initialPresentation = _PresentationCase(
+      label: 'qualification bootstrap 1440x900',
+      size: Size(1440, 900),
+    );
+    tester.view.physicalSize = initialPresentation.size;
+    await tester.pumpWidget(
+      _app(harness: harness, presentation: initialPresentation),
+    );
+    await tester.pumpAndSettle();
+
+    final generateButton =
+        find.byKey(const ValueKey('apartment-generate-candidates'));
+    await tester.ensureVisible(generateButton);
+    await tester.tap(generateButton);
+    await tester.pumpAndSettle();
+
+    final preparePreviewButton =
+        find.byKey(const ValueKey('apartment-prepare-preview'));
+    expect(preparePreviewButton, findsOneWidget);
+    await tester.tap(preparePreviewButton);
+    await tester.pumpAndSettle();
+
+    expect(harness.session.preview, isNotNull);
     final preview = harness.session.preview!;
     final normalizedIntentKey = preview.normalizedIntentKey;
     final reservation = preview.reservation;
@@ -29,29 +57,10 @@ void main() {
         .toList(growable: false);
     final projectVersion = harness.mutations.current.version;
 
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetDevicePixelRatio);
-    addTearDown(tester.view.resetPhysicalSize);
-
     for (final presentation in _matrix) {
       tester.view.physicalSize = presentation.size;
       await tester.pumpWidget(
-        MaterialApp(
-          locale: presentation.locale,
-          supportedLocales: ProjectWizardLocalizations.supportedLocales,
-          localizationsDelegates:
-              ProjectWizardLocalizations.localizationsDelegates,
-          theme: ThemeData.light(),
-          darkTheme: ThemeData.dark(),
-          themeMode: presentation.dark ? ThemeMode.dark : ThemeMode.light,
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context).copyWith(
-              textScaler: TextScaler.linear(presentation.textScale),
-            ),
-            child: child!,
-          ),
-          home: ApartmentWizardScreen(session: harness.session),
-        ),
+        _app(harness: harness, presentation: presentation),
       );
       await tester.pumpAndSettle();
 
@@ -60,8 +69,11 @@ void main() {
         isNull,
         reason: presentation.label,
       );
-      expect(harness.session.preview, same(preview),
-          reason: presentation.label);
+      expect(
+        harness.session.preview,
+        same(preview),
+        reason: presentation.label,
+      );
       expect(
         harness.session.preview!.normalizedIntentKey,
         normalizedIntentKey,
@@ -93,6 +105,26 @@ void main() {
     }
   });
 }
+
+Widget _app({
+  required _Harness harness,
+  required _PresentationCase presentation,
+}) =>
+    MaterialApp(
+      locale: presentation.locale,
+      supportedLocales: ProjectWizardLocalizations.supportedLocales,
+      localizationsDelegates: ProjectWizardLocalizations.localizationsDelegates,
+      theme: ThemeData.light(),
+      darkTheme: ThemeData.dark(),
+      themeMode: presentation.dark ? ThemeMode.dark : ThemeMode.light,
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: TextScaler.linear(presentation.textScale),
+        ),
+        child: child!,
+      ),
+      home: ApartmentWizardScreen(session: harness.session),
+    );
 
 final class _PresentationCase {
   const _PresentationCase({
@@ -158,18 +190,13 @@ const _matrix = <_PresentationCase>[
   _PresentationCase(label: 'large desktop 1920x1080', size: Size(1920, 1080)),
 ];
 
-void _prepareReservedPreview(_Harness harness) {
+void _primeEditingParameters(_Harness harness) {
   expect(harness.session.begin(), isTrue);
   expect(
     harness.session.selectFamily(ApartmentWizardProvider.familyId),
     isTrue,
   );
   expect(harness.session.updateParameters(harness.parameters), isTrue);
-  expect(
-    harness.session.generatePreview(),
-    isTrue,
-    reason: '${harness.session.failure}',
-  );
 }
 
 final class _Harness {
