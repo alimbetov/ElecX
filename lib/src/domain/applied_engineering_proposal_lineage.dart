@@ -97,8 +97,8 @@ abstract final class AppliedEngineeringProposalLineageValidator {
       if (proposal.intentFingerprint != manifest.normalizedIntentFingerprint) {
         issues.add(
           AppliedEngineeringProposalLineageIssue(
-            code:
-                AppliedEngineeringProposalLineageIssueCode.intentFingerprintMismatch,
+            code: AppliedEngineeringProposalLineageIssueCode
+                .intentFingerprintMismatch,
             levelId: proposal.levelId,
             message: 'Applied engineering proposal intent fingerprint does not '
                 'match its generation manifest.',
