@@ -156,6 +156,8 @@ final class _WizardCandidateCarouselState
     if (widget.candidates.isEmpty) {
       return Center(child: Text(l10n.noCandidates));
     }
+    final frozenSingleCandidate =
+        widget.candidates.length == 1 && widget.viewportState != null;
     return Focus(
       autofocus: true,
       onKeyEvent: _onKeyEvent,
@@ -183,11 +185,13 @@ final class _WizardCandidateCarouselState
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text(
-                            candidate.title,
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 8),
+                          if (!frozenSingleCandidate) ...[
+                            Text(
+                              candidate.title,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 8),
+                          ],
                           Expanded(
                             child: WizardPreviewCanvas(
                               scene: candidate.scene,
