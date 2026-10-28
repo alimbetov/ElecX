@@ -3,6 +3,7 @@ import '../../domain/generation_provenance.dart';
 import '../../domain/generation_provenance_integrity.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
+import 'generation_provenance_schema_guard.dart';
 import 'project_document_codec.dart';
 import 'structural_semantics_aware_canonical_project_document_codec.dart';
 
@@ -51,7 +52,9 @@ final class GenerationProvenanceAwareCanonicalProjectDocumentCodec
       return _base.decode(document);
     }
 
-    final registry = _decodeRegistry(document.payload['generationProvenance']);
+    final rawProvenance = document.payload['generationProvenance'];
+    GenerationProvenanceSchemaGuard.validate(rawProvenance);
+    final registry = _decodeRegistry(rawProvenance);
     final base = _base.decode(
       ProjectDocument(
         schemaVersion:
