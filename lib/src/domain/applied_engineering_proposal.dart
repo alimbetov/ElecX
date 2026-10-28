@@ -1,9 +1,88 @@
+import 'generation_provenance.dart';
 import 'project_identity.dart';
 
 const String supportedApartmentEngineeringProposalVersion =
     'p9.engineering-proposal.v1';
 const String supportedApartmentEngineeringOutputProjectionVersion =
     'p9.engineering-output-projection.v1';
+
+/// Canonical lifecycle of one frozen engineering proposal relative to the
+/// current generation provenance.
+///
+/// The state is deliberately derived instead of stored. Generation provenance
+/// is already canonical, persisted and Undo/Redo-aware; duplicating a mutable
+/// stale bit would create a second source of truth that can drift from the
+/// canonical mutation history.
+enum AppliedEngineeringProposalLifecycleState { current, stale, invalidated }
+
+enum AppliedEngineeringProposalLifecycleReason {
+  generationManifestMissing,
+  generationManifestAmbiguous,
+  candidateFingerprintMismatch,
+  intentFingerprintMismatch,
+  generatedEntityRemoved,
+  generatedPropertyOverridden,
+}
+
+final class AppliedEngineeringProposalLifecycle {
+  AppliedEngineeringProposalLifecycle._({
+    required this.state,
+    this.reason,
+    Iterable<EntityId> affectedEntityIds = const <EntityId>[],
+    Iterable<String> removedGenerationKeys = const <String>[],
+  })  : affectedEntityIds = Set.unmodifiable(affectedEntityIds),
+        removedGenerationKeys = Set.unmodifiable(removedGenerationKeys) {
+    if (state == AppliedEngineeringProposalLifecycleState.current &&
+        (reason != null ||
+            this.affectedEntityIds.isNotEmpty ||
+            this.removedGenerationKeys.isNotEmpty)) {
+      throw ArgumentError('CURRENT proposal lifecycle cannot carry a reason.');
+    }
+    if (state != AppliedEngineeringProposalLifecycleState.current &&
+        reason == null) {
+      throw ArgumentError('Non-current proposal lifecycle requires a reason.');
+    }
+  }
+
+  factory AppliedEngineeringProposalLifecycle.current() =>
+      AppliedEngineeringProposalLifecycle._(
+        state: AppliedEngineeringProposalLifecycleState.current,
+      );
+
+  factory AppliedEngineeringProposalLifecycle.stale({
+    required AppliedEngineeringProposalLifecycleReason reason,
+    Iterable<EntityId> affectedEntityIds = const <EntityId>[],
+  }) =>
+      AppliedEngineeringProposalLifecycle._(
+        state: AppliedEngineeringProposalLifecycleState.stale,
+        reason: reason,
+        affectedEntityIds: affectedEntityIds,
+      );
+
+  factory AppliedEngineeringProposalLifecycle.invalidated({
+    required AppliedEngineeringProposalLifecycleReason reason,
+    Iterable<EntityId> affectedEntityIds = const <EntityId>[],
+    Iterable<String> removedGenerationKeys = const <String>[],
+  }) =>
+      AppliedEngineeringProposalLifecycle._(
+        state: AppliedEngineeringProposalLifecycleState.invalidated,
+        reason: reason,
+        affectedEntityIds: affectedEntityIds,
+        removedGenerationKeys: removedGenerationKeys,
+      );
+
+  final AppliedEngineeringProposalLifecycleState state;
+  final AppliedEngineeringProposalLifecycleReason? reason;
+  final Set<EntityId> affectedEntityIds;
+  final Set<String> removedGenerationKeys;
+
+  bool get isCurrent =>
+      state == AppliedEngineeringProposalLifecycleState.current;
+  bool get isStale => state == AppliedEngineeringProposalLifecycleState.stale;
+  bool get isInvalidated =>
+      state == AppliedEngineeringProposalLifecycleState.invalidated;
+  bool get canUseEngineeringOutput => isCurrent;
+}
 
 /// Canonical, application-independent snapshot of the exact engineering
 /// proposal that was frozen in Wizard Preview and committed by Apply.
@@ -119,6 +198,92 @@ final class AppliedEngineeringProposalRegistry {
 
   AppliedEngineeringProposalSnapshot? forLevel(LevelId levelId) =>
       byLevel[levelId];
+
+  /// Resolves whether the frozen proposal is still safe to consume against the
+  /// current canonical generation lineage.
+  ///
+  /// P9 provenance already records every generated property that was manually
+  /// changed as an override and every generated entity that was deleted as a
+  /// removed generation key. That canonical evidence is the authoritative
+  /// lifecycle source for the engineering proposal as well.
+  AppliedEngineeringProposalLifecycle? lifecycleForLevel({
+    required LevelId levelId,
+    required GenerationProvenanceRegistry provenance,
+  }) {
+    final proposal = byLevel[levelId];
+    if (proposal == null) return null;
+
+    final manifests = provenance.manifests.values
+        .where((manifest) => manifest.levelId == levelId)
+        .toList(growable: false);
+    if (manifests.isEmpty) {
+      return AppliedEngineeringProposalLifecycle.invalidated(
+        reason: AppliedEngineeringProposalLifecycleReason
+            .generationManifestMissing,
+      );
+    }
+    if (manifests.length != 1) {
+      return AppliedEngineeringProposalLifecycle.invalidated(
+        reason: AppliedEngineeringProposalLifecycleReason
+            .generationManifestAmbiguous,
+      );
+    }
+
+    final manifest = manifests.single;
+    if (manifest.selectedCandidateFingerprint != proposal.candidateFingerprint) {
+      return AppliedEngineeringProposalLifecycle.invalidated(
+        reason: AppliedEngineeringProposalLifecycleReason
+            .candidateFingerprintMismatch,
+      );
+    }
+    if (manifest.normalizedIntentFingerprint != proposal.intentFingerprint) {
+      return AppliedEngineeringProposalLifecycle.invalidated(
+        reason:
+            AppliedEngineeringProposalLifecycleReason.intentFingerprintMismatch,
+      );
+    }
+
+    if (manifest.removedGenerationKeys.isNotEmpty) {
+      return AppliedEngineeringProposalLifecycle.invalidated(
+        reason:
+            AppliedEngineeringProposalLifecycleReason.generatedEntityRemoved,
+        removedGenerationKeys: manifest.removedGenerationKeys,
+      );
+    }
+
+    final overriddenEntityIds = <EntityId>[];
+    for (final entity in provenance.entities.values) {
+      if (entity.generationId == manifest.generationId &&
+          entity.overriddenProperties.isNotEmpty) {
+        overriddenEntityIds.add(entity.entityId);
+      }
+    }
+    if (overriddenEntityIds.isNotEmpty) {
+      overriddenEntityIds.sort(
+        (left, right) => left.value.compareTo(right.value),
+      );
+      return AppliedEngineeringProposalLifecycle.stale(
+        reason: AppliedEngineeringProposalLifecycleReason
+            .generatedPropertyOverridden,
+        affectedEntityIds: overriddenEntityIds,
+      );
+    }
+
+    return AppliedEngineeringProposalLifecycle.current();
+  }
+
+  /// Returns a proposal only when its canonical lineage is still current.
+  /// Stale or invalidated D8 output must be regenerated before consumption.
+  AppliedEngineeringProposalSnapshot? currentForLevel({
+    required LevelId levelId,
+    required GenerationProvenanceRegistry provenance,
+  }) {
+    final lifecycle = lifecycleForLevel(
+      levelId: levelId,
+      provenance: provenance,
+    );
+    return lifecycle?.canUseEngineeringOutput == true ? byLevel[levelId] : null;
+  }
 
   AppliedEngineeringProposalRegistry replace(
     AppliedEngineeringProposalSnapshot snapshot,
