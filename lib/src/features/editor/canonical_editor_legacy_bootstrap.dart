@@ -120,16 +120,16 @@ abstract final class CanonicalEditorLegacyBootstrap {
                     );
             final zoneSpaceIds = <SpaceId>[];
             for (final legacySpaceId in legacyZone.spaceIds) {
-              final spaceId =
-                  CanonicalLegacyIdentityCodec.tryDecodeSpaceId(legacySpaceId) ??
-                      SpaceId(
-                        _id(
-                          'space',
-                          legacyBuilding.id,
-                          legacyLevel.id,
-                          legacySpaceId,
-                        ),
-                      );
+              final spaceId = CanonicalLegacyIdentityCodec.tryDecodeSpaceId(
+                      legacySpaceId) ??
+                  SpaceId(
+                    _id(
+                      'space',
+                      legacyBuilding.id,
+                      legacyLevel.id,
+                      legacySpaceId,
+                    ),
+                  );
               if (!spaces.containsKey(spaceId)) {
                 throw StateError(
                   'Legacy zone ${legacyZone.id} references missing space '
