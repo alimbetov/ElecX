@@ -60,7 +60,8 @@ void main() {
     final preview = session.preview!;
     expect(preview.observedVersion, versionBefore);
     expect(preview.hasChanges, isTrue);
-    expect(preview.normalizedIntentKey, contains(selected.candidateFingerprint));
+    expect(
+        preview.normalizedIntentKey, contains(selected.candidateFingerprint));
     expect(mutations.current.version, versionBefore);
     expect(mutations.undoDepth, undoBefore);
 
@@ -142,8 +143,8 @@ void main() {
     final spaceIds = zone.spaceIds.toList()
       ..sort((a, b) => a.value.compareTo(b.value));
     final editedSpaceId = spaceIds.first;
-    final provenanceBefore = mutations.current.engineeringMetadata
-        .generationProvenanceRegistry
+    final provenanceBefore = mutations
+        .current.engineeringMetadata.generationProvenanceRegistry
         .provenanceFor(editedSpaceId)!;
 
     final edit = mutations.commit(
@@ -153,8 +154,8 @@ void main() {
       ),
     );
     expect(edit, isNotNull);
-    final provenanceAfter = mutations.current.engineeringMetadata
-        .generationProvenanceRegistry
+    final provenanceAfter = mutations
+        .current.engineeringMetadata.generationProvenanceRegistry
         .provenanceFor(editedSpaceId)!;
     expect(provenanceAfter.generationId, provenanceBefore.generationId);
     expect(provenanceAfter.generationKey, provenanceBefore.generationKey);
@@ -165,8 +166,8 @@ void main() {
 
     final editedSaved = codec.encode(_snapshot(mutations.current));
     final editedReopened = codec.decode(editedSaved);
-    final restoredProvenance = editedReopened.aggregate.engineeringMetadata
-        .generationProvenanceRegistry
+    final restoredProvenance = editedReopened
+        .aggregate.engineeringMetadata.generationProvenanceRegistry
         .provenanceFor(editedSpaceId)!;
     expect(restoredProvenance.generationId, provenanceBefore.generationId);
     expect(restoredProvenance.generationKey, provenanceBefore.generationKey);
