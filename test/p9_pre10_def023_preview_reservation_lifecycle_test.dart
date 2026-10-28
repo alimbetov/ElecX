@@ -7,7 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('PRE10-CQ21 bounded preview/reservation lifecycle', () {
-    test('1000 cancel/apply cycles leave no strongly retained active preview', () {
+    test('1000 cancel/apply cycles leave no strongly retained active preview',
+        () {
       final projectId = ProjectId('project-cq21');
       final siteId = SiteId('site-cq21');
       final project = ProjectAggregateRoot(
