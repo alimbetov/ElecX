@@ -161,6 +161,7 @@ final class _WizardCandidateCarouselState
   @override
   Widget build(BuildContext context) {
     final l10n = ProjectWizardLocalizations.of(context);
+    final materialL10n = MaterialLocalizations.of(context);
     if (widget.candidates.isEmpty) {
       return Center(child: Text(l10n.noCandidates));
     }
@@ -218,9 +219,34 @@ final class _WizardCandidateCarouselState
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Text(
-                '${_selectedIndex + 1} / ${widget.candidates.length}',
-                style: Theme.of(context).textTheme.labelLarge,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    key: const ValueKey('wizard-candidate-previous'),
+                    tooltip: materialL10n.previousPageTooltip,
+                    onPressed: _selectedIndex > 0
+                        ? () => _select(_selectedIndex - 1)
+                        : null,
+                    icon: const Icon(Icons.chevron_left),
+                  ),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(minWidth: 64),
+                    child: Text(
+                      '${_selectedIndex + 1} / ${widget.candidates.length}',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                  ),
+                  IconButton(
+                    key: const ValueKey('wizard-candidate-next'),
+                    tooltip: materialL10n.nextPageTooltip,
+                    onPressed: _selectedIndex < widget.candidates.length - 1
+                        ? () => _select(_selectedIndex + 1)
+                        : null,
+                    icon: const Icon(Icons.chevron_right),
+                  ),
+                ],
               ),
             ),
           ),
