@@ -16,6 +16,7 @@ class PinUnlockScreen extends StatefulWidget {
 class _PinUnlockScreenState extends State<PinUnlockScreen> {
   String _pin = '';
   Timer? _unlockTimer;
+  late final FocusNode _keyboardFocusNode;
 
   static final _digitKeys = <LogicalKeyboardKey, String>{
     LogicalKeyboardKey.digit0: '0',
@@ -39,6 +40,15 @@ class _PinUnlockScreenState extends State<PinUnlockScreen> {
     LogicalKeyboardKey.numpad8: '8',
     LogicalKeyboardKey.numpad9: '9',
   };
+
+  @override
+  void initState() {
+    super.initState();
+    _keyboardFocusNode = FocusNode(debugLabel: 'pin-unlock-keyboard');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _keyboardFocusNode.requestFocus();
+    });
+  }
 
   void _press(String digit) {
     if (_pin.length == 4) return;
@@ -81,6 +91,7 @@ class _PinUnlockScreenState extends State<PinUnlockScreen> {
   @override
   void dispose() {
     _unlockTimer?.cancel();
+    _keyboardFocusNode.dispose();
     super.dispose();
   }
 
@@ -90,6 +101,7 @@ class _PinUnlockScreenState extends State<PinUnlockScreen> {
     return Scaffold(
       body: SafeArea(
         child: Focus(
+          focusNode: _keyboardFocusNode,
           autofocus: true,
           onKeyEvent: _onKeyEvent,
           child: LayoutBuilder(
