@@ -86,7 +86,13 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
       await tester.sendKeyEvent(LogicalKeyboardKey.digit3);
       await tester.sendKeyEvent(LogicalKeyboardKey.digit4);
+
+      // The production unlock intentionally waits 120 ms before replacing the
+      // route. Pump past that timer, then let the MaterialPageRoute transition
+      // finish before asserting the destination. This preserves the behavioral
+      // assertion while avoiding a timing race with the route animation.
       await tester.pump(const Duration(milliseconds: 150));
+      await tester.pumpAndSettle();
 
       expect(
         find.byType(PlatformProjectHubScreen),
