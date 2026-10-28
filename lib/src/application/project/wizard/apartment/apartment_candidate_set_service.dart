@@ -713,8 +713,7 @@ final class ApartmentCandidateSetService {
           blockerCodes: [
             ...evaluation.blockerCodes,
             ...?lateBlockersByGeometry[
-              evaluation.rankedCandidate.candidate.geometryFingerprint
-            ],
+                evaluation.rankedCandidate.candidate.geometryFingerprint],
           ],
         ),
     ];
