@@ -211,8 +211,8 @@ void main() {
     expect(find.text('RCD / residual protection'), findsOneWidget);
 
     // Collapse the expanded circuit after qualifying its detail rows. Then
-    // scroll the preview's ListView itself rather than matching internal
-    // Scrollable widgets owned by ListView/SelectableText implementations.
+    // drive the preview's ListView with user gestures instead of relying on
+    // Scrollable implementation details owned by ListView/SelectableText.
     await tester.tap(find.text('C1 · L1'));
     await tester.pumpAndSettle();
 
@@ -222,41 +222,42 @@ void main() {
     );
     expect(previewListView, findsOneWidget);
 
-    await tester.scrollUntilVisible(
-      find.text('Single-line diagram'),
-      300,
+    await _dragUntilVisible(
+      tester,
       scrollable: previewListView,
+      target: find.text('Single-line diagram'),
     );
-    expect(find.text('Single-line diagram'), findsOneWidget);
-
-    await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('apartment-engineering-sld-node-node.board')),
-      300,
+    await _dragUntilVisible(
+      tester,
       scrollable: previewListView,
+      target:
+          find.byKey(const ValueKey('apartment-engineering-sld-node-node.board')),
     );
-    expect(
-      find.byKey(const ValueKey('apartment-engineering-sld-node-node.board')),
-      findsOneWidget,
-    );
-
-    await tester.scrollUntilVisible(
-      find.text('Why'),
-      300,
+    await _dragUntilVisible(
+      tester,
       scrollable: previewListView,
+      target: find.text('Why'),
     );
-    expect(find.text('Why'), findsOneWidget);
     expect(find.text('P9.WHY.CABLE_AMPACITY'), findsOneWidget);
 
-    await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('apartment-engineering-fingerprints')),
-      300,
+    await _dragUntilVisible(
+      tester,
       scrollable: previewListView,
-    );
-    expect(
-      find.byKey(const ValueKey('apartment-engineering-fingerprints')),
-      findsOneWidget,
+      target: find.byKey(const ValueKey('apartment-engineering-fingerprints')),
     );
   });
+}
+
+Future<void> _dragUntilVisible(
+  WidgetTester tester, {
+  required Finder scrollable,
+  required Finder target,
+}) async {
+  for (var attempt = 0; attempt < 12 && target.evaluate().isEmpty; attempt++) {
+    await tester.drag(scrollable, const Offset(0, -320));
+    await tester.pumpAndSettle();
+  }
+  expect(target, findsOneWidget);
 }
 
 String _sha(String character) => List.filled(64, character).join();
