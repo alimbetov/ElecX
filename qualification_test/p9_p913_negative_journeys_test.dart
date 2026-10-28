@@ -56,10 +56,12 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
 
-    await tester.pumpWidget(_localizedApp(ApartmentWizardScreen(session: session)));
+    await tester
+        .pumpWidget(_localizedApp(ApartmentWizardScreen(session: session)));
     await tester.pumpAndSettle();
 
-    final generate = find.byKey(const ValueKey('apartment-generate-candidates'));
+    final generate =
+        find.byKey(const ValueKey('apartment-generate-candidates'));
     await tester.ensureVisible(generate);
     await tester.tap(generate);
     await tester.pumpAndSettle();
@@ -90,7 +92,8 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  test('NG-06 renderer failure cannot mutate candidate or canonical project', () {
+  test('NG-06 renderer failure cannot mutate candidate or canonical project',
+      () {
     final fixture = _fixture('ng06');
     const service = ApartmentCandidateSetService();
     final generated = service.generate(
@@ -100,7 +103,8 @@ void main() {
     );
     expect(generated.accepted, isTrue);
     final selected = generated.candidateSet!.recommendedCandidate;
-    final fingerprintBefore = selected.rankedCandidate.candidate.geometryFingerprint;
+    final fingerprintBefore =
+        selected.rankedCandidate.candidate.geometryFingerprint;
     final versionBefore = fixture.project.version;
     final storesBefore = fixture.project.stores;
 
@@ -190,8 +194,8 @@ void main() {
     expect(durable!.aggregate.version, baseline.aggregate.version);
     expect(durable.aggregate.stores, same(baseline.aggregate.stores));
     expect(
-      durable.aggregate.engineeringMetadata.generationProvenanceRegistry
-          .manifests,
+      durable
+          .aggregate.engineeringMetadata.generationProvenanceRegistry.manifests,
       isEmpty,
     );
     expect(repository.saveAttempts, 1);
