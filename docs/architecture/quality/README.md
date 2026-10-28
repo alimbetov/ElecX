@@ -1,6 +1,6 @@
 # PRE-P10 quality specification package
 
-This directory is the authoritative PRE-P10 cross-platform hardening specification package for `feat/pre-p10-cross-platform-hardening`.
+This directory is the authoritative PRE-P10 cross-platform hardening specification package. Discovery was established in `feat/pre-p10-cross-platform-hardening`; implementation and closure continue in `feat/pre-p10-defect-remediation`.
 
 ## Authoritative documents
 
@@ -27,7 +27,7 @@ This directory is the authoritative PRE-P10 cross-platform hardening specificati
 
 3. **PASS-1 second-search new-defect delta** — `pre-p10-pass1-second-search-findings-v1.md`
    - second independent repository/architecture/platform audit;
-   - contains **only new defects `PRE10-D013` through `PRE10-D020`**;
+   - contains only new defects `PRE10-D013` through `PRE10-D020`;
    - explicitly excludes `D001`–`D012` from the new-defect count;
    - records evidence, risk and closure gates for each new failure class;
    - includes checked-but-not-counted cases to prevent duplicate defect inflation.
@@ -38,6 +38,18 @@ This directory is the authoritative PRE-P10 cross-platform hardening specificati
    - native runtime gaps;
    - reused test families;
    - required PRE-P10 product journeys.
+
+5. **Implementation & closure specification** — `pre-p10-defect-remediation-spec-v1.md`
+   - remediation work packages and dependency order;
+   - common durability and integrity invariants;
+   - integration of `PRE10-D001..D020` and confirmed late P9 findings without duplicate renumbering;
+   - stable `PRE10-CQxx` closure qualification IDs;
+   - destructive/adversarial state-transition campaign;
+   - exact-SHA Definition of Done.
+
+6. **Defect closure matrix** — `pre-p10-defect-closure-matrix-v1.md`
+   - fix/test/CI/platform/SHA/evidence mapping;
+   - status is advanced to `CLOSED` only after executable qualification.
 
 ## Current defect disposition
 
@@ -51,7 +63,7 @@ pre-p10-pass1-second-search-findings-v1.md
   D013–D020 new-only delta
 ```
 
-The second-search document intentionally does not repeat baseline defects. This keeps the new-defect count auditable while preserving one authoritative package-level disposition.
+Confirmed late P9 audit findings remain under their original `P9-DEF-*` IDs and are closed through the remediation specification rather than duplicated under new PRE10 IDs.
 
 ## Historical documents
 
@@ -59,4 +71,4 @@ The second-search document intentionally does not repeat baseline defects. This 
 
 ## Governance
 
-A newly confirmed defect must be added to the current defect package before or together with its fix. A fix is not `CLOSED` until repeatable qualification evidence exists. The branch cannot unblock P10 until one exact final SHA satisfies the parent acceptance contract and every P0/P1/P2 defect has an allowed final disposition.
+A newly confirmed defect must be added to the current defect package before or together with its fix. A fix is not `CLOSED` until repeatable qualification evidence exists. The remediation branch cannot unblock P10 until one exact final SHA satisfies the parent acceptance contract and every P0/P1/P2 defect has an allowed final disposition.
