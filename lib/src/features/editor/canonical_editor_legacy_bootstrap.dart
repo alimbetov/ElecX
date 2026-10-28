@@ -74,14 +74,16 @@ abstract final class CanonicalEditorLegacyBootstrap {
 
         final canonicalSpaceIds = <SpaceId>[];
         for (final legacySpace in legacyLevel.spaces) {
-          final spaceId = SpaceId(
-            _id(
-              'space',
-              legacyBuilding.id,
-              legacyLevel.id,
-              legacySpace.id,
-            ),
-          );
+          final spaceId =
+              CanonicalLegacyIdentityCodec.tryDecodeSpaceId(legacySpace.id) ??
+                  SpaceId(
+                    _id(
+                      'space',
+                      legacyBuilding.id,
+                      legacyLevel.id,
+                      legacySpace.id,
+                    ),
+                  );
           canonicalSpaceIds.add(spaceId);
           spaces[spaceId] = ProjectSpaceEntity(
             id: spaceId,
@@ -106,24 +108,28 @@ abstract final class CanonicalEditorLegacyBootstrap {
             : null;
         if (composed != null) {
           for (final legacyZone in composed.zones) {
-            final zoneId = ZoneId(
-              _id(
-                'zone',
-                legacyBuilding.id,
-                legacyLevel.id,
-                legacyZone.id,
-              ),
-            );
+            final zoneId =
+                CanonicalLegacyIdentityCodec.tryDecodeZoneId(legacyZone.id) ??
+                    ZoneId(
+                      _id(
+                        'zone',
+                        legacyBuilding.id,
+                        legacyLevel.id,
+                        legacyZone.id,
+                      ),
+                    );
             final zoneSpaceIds = <SpaceId>[];
             for (final legacySpaceId in legacyZone.spaceIds) {
-              final spaceId = SpaceId(
-                _id(
-                  'space',
-                  legacyBuilding.id,
-                  legacyLevel.id,
-                  legacySpaceId,
-                ),
-              );
+              final spaceId =
+                  CanonicalLegacyIdentityCodec.tryDecodeSpaceId(legacySpaceId) ??
+                      SpaceId(
+                        _id(
+                          'space',
+                          legacyBuilding.id,
+                          legacyLevel.id,
+                          legacySpaceId,
+                        ),
+                      );
               if (!spaces.containsKey(spaceId)) {
                 throw StateError(
                   'Legacy zone ${legacyZone.id} references missing space '
