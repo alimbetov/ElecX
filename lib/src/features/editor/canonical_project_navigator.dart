@@ -92,14 +92,12 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
     final currentPath = projection.currentPathIds(navigation);
     final availability = session.availability;
     final currentLeafId = projection.currentLeafId(navigation);
-    final wizardMutations =
-        CanonicalEditorWizardRuntimeRegistry.resolve(session);
+    final wizardMutations = CanonicalEditorWizardRuntimeRegistry.resolve(session);
     final activeLevelId = navigation.activeLevelId;
     final apartmentEngineeringPipeline =
         ApartmentEngineeringPipelineRuntimeRegistry.resolve(session);
     final canStartApartment = activeLevelId == null ||
-        (_isEmptyApartmentTarget(activeLevelId) &&
-            apartmentEngineeringPipeline != null);
+        _isEmptyApartmentTarget(activeLevelId);
 
     if (_lastRenderedLeafId != currentLeafId) {
       _lastRenderedLeafId = currentLeafId;
@@ -148,8 +146,8 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
               wizardTooltip: activeLevelId == null
                   ? 'Create a building with Wizard'
                   : apartmentEngineeringPipeline == null
-                      ? 'Apartment engineering source is not configured'
-                      : 'Generate an apartment on the active empty level',
+                      ? 'Generate apartment topology; engineering output requires authoritative electrical inputs'
+                      : 'Generate apartment topology with frozen engineering output',
               onStartWizard: wizardMutations != null &&
                       widget.onAuthoringCommitted != null &&
                       canStartApartment
@@ -361,12 +359,11 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
         if (level == null || !_isEmptyApartmentTarget(activeLevelId)) return;
         final engineeringPipeline =
             ApartmentEngineeringPipelineRuntimeRegistry.resolve(session);
-        if (engineeringPipeline == null) {
-          throw StateError(
-            'Production Apartment Wizard requires an authoritative '
-            'engineering pipeline capability.',
-          );
-        }
+        final ApartmentWizardProvider provider = engineeringPipeline == null
+            ? const ApartmentWizardProvider.geometryOnly()
+            : ApartmentWizardProvider.production(
+                engineeringPipeline: engineeringPipeline,
+              );
         committed = await ApartmentWizardScreen.show(
           context: context,
           session: WizardSession(
@@ -377,11 +374,7 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
               buildingId: level.buildingId,
               levelId: level.id,
             ),
-            registry: WizardProviderRegistry([
-              ApartmentWizardProvider.production(
-                engineeringPipeline: engineeringPipeline,
-              ),
-            ]),
+            registry: WizardProviderRegistry([provider]),
             mutations: mutations,
           ),
         );
