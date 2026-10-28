@@ -61,14 +61,16 @@ void main() {
       proposal.output.requirementsFingerprint,
     );
     expect(
-        applied.panelSummary, proposal.output.panelSummary.stableSerialization);
+      applied.panelSummary,
+      proposal.output.panelSummary.stableSerialization,
+    );
     expect(pipeline.callCount, 1);
   });
 
   test('Q98 geometry-only Apply does not invent engineering persistence', () {
     final session = _session(
       fixture: fixture,
-      provider: const ApartmentWizardProvider(),
+      provider: const ApartmentWizardProvider.geometryOnly(),
     );
     _prepare(
       session: session,
@@ -147,6 +149,56 @@ void main() {
           .byLevel,
       isEmpty,
     );
+  });
+
+  test('Q101 Undo and Redo restore the exact frozen engineering snapshot', () {
+    final pipeline = _Pipeline(outputFingerprint: _sha('9'));
+    final mutations = ProjectMutationSession(fixture.project);
+    final session = WizardSession(
+      target: fixture.target,
+      registry: WizardProviderRegistry([
+        ApartmentWizardProvider.production(engineeringPipeline: pipeline),
+      ]),
+      mutations: SharedProjectWizardMutationPort(
+        mutations: mutations,
+        idFactory: SecureRandomEntityIdFactory(),
+      ),
+    );
+    _prepare(
+      session: session,
+      request: request,
+      selection: candidateSet.selectionFor(candidateSet.candidates.first),
+    );
+
+    expect(session.generatePreview(), isTrue);
+    final command = session.generatedCommand as ApartmentReservedProjectCommand;
+    final proposal = command.engineeringProposal!;
+    expect(session.confirm(), isTrue);
+    final applied = mutations.current.engineeringMetadata
+        .appliedEngineeringProposalRegistry
+        .forLevel(fixture.target.levelId);
+    expect(applied, isNotNull);
+    expect(applied!.proposalFingerprint, proposal.proposalFingerprint);
+    expect(applied.outputFingerprint, proposal.output.outputFingerprint);
+
+    final undo = mutations.undo(mutations.current.version);
+    expect(undo, isNotNull);
+    expect(
+      mutations.current.engineeringMetadata.appliedEngineeringProposalRegistry
+          .forLevel(fixture.target.levelId),
+      isNull,
+    );
+
+    final redo = mutations.redo(mutations.current.version);
+    expect(redo, isNotNull);
+    final restored = mutations.current.engineeringMetadata
+        .appliedEngineeringProposalRegistry
+        .forLevel(fixture.target.levelId);
+    expect(restored, isNotNull);
+    expect(restored!.sameAs(applied), isTrue);
+    expect(restored.proposalFingerprint, proposal.proposalFingerprint);
+    expect(restored.outputFingerprint, proposal.output.outputFingerprint);
+    expect(pipeline.callCount, 1);
   });
 }
 
