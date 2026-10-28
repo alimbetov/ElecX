@@ -1,0 +1,51 @@
+name: PRE-P10 PASS-1 Discovery
+
+on:
+  push:
+    branches:
+      - feat/pre-p10-cross-platform-hardening
+  pull_request:
+    paths:
+      - 'lib/**'
+      - 'test/**'
+      - 'qualification_test/**'
+      - 'integration_test/**'
+      - '.github/workflows/pre-p10-pass1.yml'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+  workflow_dispatch:
+
+concurrency:
+  group: pre-p10-pass1-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  startup-discovery:
+    name: PASS1-Q01-Q03 startup discovery
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Reference environment
+        run: flutter --version
+      - name: Execute startup responsive keyboard locale probes
+        id: startup-probes
+        run: |
+          set -o pipefail
+          mkdir -p build/pre-p10-pass1
+          flutter test --concurrency=1 \
+            qualification_test/pre_p10_startup_qualification_test.dart \
+            2>&1 | tee build/pre-p10-pass1/startup-probes.log
+      - name: Upload startup discovery diagnostics
+        if: failure() && steps.startup-probes.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pre-p10-pass1-startup-${{ github.sha }}
+          path: build/pre-p10-pass1/startup-probes.log
+          if-no-files-found: error
+          retention-days: 30
