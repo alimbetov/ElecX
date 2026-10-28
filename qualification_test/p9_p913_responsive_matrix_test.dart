@@ -11,13 +11,41 @@ import 'package:elecx/src/domain/apartment_topology.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/features/projects/apartment_wizard_screen.dart';
+import 'package:elecx/src/features/projects/elecx_presentation_policy.dart';
 import 'package:elecx/src/features/projects/project_wizard_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('P9.13 D-F authoritative width breakpoints are exact', () {
+    expect(
+      ElecXPresentationPolicy.widthClassFor(599),
+      ElecXWidthClass.compact,
+    );
+    expect(
+      ElecXPresentationPolicy.widthClassFor(600),
+      ElecXWidthClass.medium,
+    );
+    expect(
+      ElecXPresentationPolicy.widthClassFor(1023),
+      ElecXWidthClass.medium,
+    );
+    expect(
+      ElecXPresentationPolicy.widthClassFor(1024),
+      ElecXWidthClass.expanded,
+    );
+    expect(
+      ElecXPresentationPolicy.widthClassFor(1439),
+      ElecXWidthClass.expanded,
+    );
+    expect(
+      ElecXPresentationPolicy.widthClassFor(1440),
+      ElecXWidthClass.large,
+    );
+  });
+
   testWidgets(
-      'P9.13 D-F viewport locale scale theme matrix preserves reserved semantics',
+      'P9.13 GJ-03 viewport locale scale theme transitions preserve and apply exact reservation',
       (tester) async {
     final harness = _Harness.create(seed: 91301);
     _primeEditingParameters(harness);
@@ -56,6 +84,7 @@ void main() {
         .map((operation) => operation.semanticKey)
         .toList(growable: false);
     final projectVersion = harness.mutations.current.version;
+    final undoDepth = harness.mutations.undoDepth;
 
     for (final presentation in _matrix) {
       tester.view.physicalSize = presentation.size;
@@ -97,12 +126,61 @@ void main() {
         reason: '${presentation.label}: presentation must not mutate project',
       );
       expect(
+        harness.mutations.undoDepth,
+        undoDepth,
+        reason: '${presentation.label}: relayout must not create history',
+      );
+      expect(
         find.byKey(const ValueKey('apartment-apply')),
         findsOneWidget,
         reason:
             '${presentation.label}: primary Apply action must stay reachable',
       );
     }
+
+    const compactDiffPresentation = _PresentationCase(
+      label: 'GJ-03 compact Diff 390x844 EN',
+      size: Size(390, 844),
+    );
+    tester.view.physicalSize = compactDiffPresentation.size;
+    await tester.pumpWidget(
+      _app(harness: harness, presentation: compactDiffPresentation),
+    );
+    await tester.pumpAndSettle();
+    final changesDestination = find.descendant(
+      of: find.byType(NavigationBar),
+      matching: find.byIcon(Icons.difference_outlined),
+    );
+    expect(changesDestination, findsOneWidget);
+    await tester.tap(changesDestination);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('wizard-diff-list')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    const finalPresentation = _PresentationCase(
+      label: 'GJ-03 final desktop 1440x900',
+      size: Size(1440, 900),
+    );
+    tester.view.physicalSize = finalPresentation.size;
+    await tester.pumpWidget(
+      _app(harness: harness, presentation: finalPresentation),
+    );
+    await tester.pumpAndSettle();
+
+    expect(harness.session.preview, same(preview));
+    expect(harness.session.preview!.reservation, same(reservation));
+    expect(harness.session.preview!.normalizedIntentKey, normalizedIntentKey);
+    expect(tester.takeException(), isNull);
+
+    final apply = find.byKey(const ValueKey('apartment-apply'));
+    expect(apply, findsOneWidget);
+    await tester.tap(apply);
+    await tester.pumpAndSettle();
+
+    expect(harness.session.status, WizardSessionStatus.completed);
+    expect(harness.mutations.current.version.value, projectVersion.value + 1);
+    expect(harness.mutations.undoDepth, undoDepth + 1);
+    expect(tester.takeException(), isNull);
   });
 }
 
