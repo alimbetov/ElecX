@@ -169,8 +169,7 @@ _Pre10LineageFixture _fixture({
     outputProjectionVersion:
         supportedApartmentEngineeringOutputProjectionVersion,
     candidateSetFingerprint: _sha('1'),
-    candidateFingerprint:
-        proposalCandidateFingerprint ?? candidateFingerprint,
+    candidateFingerprint: proposalCandidateFingerprint ?? candidateFingerprint,
     intentFingerprint: proposalIntentFingerprint ?? intentFingerprint,
     d1RequirementsFingerprint: _sha('2'),
     requirementsFingerprint: requirementsFingerprint,
