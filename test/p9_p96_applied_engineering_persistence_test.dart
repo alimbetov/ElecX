@@ -174,8 +174,8 @@ void main() {
     final command = session.generatedCommand as ApartmentReservedProjectCommand;
     final proposal = command.engineeringProposal!;
     expect(session.confirm(), isTrue);
-    final applied = mutations.current.engineeringMetadata
-        .appliedEngineeringProposalRegistry
+    final applied = mutations
+        .current.engineeringMetadata.appliedEngineeringProposalRegistry
         .forLevel(fixture.target.levelId);
     expect(applied, isNotNull);
     expect(applied!.proposalFingerprint, proposal.proposalFingerprint);
@@ -191,8 +191,8 @@ void main() {
 
     final redo = mutations.redo(mutations.current.version);
     expect(redo, isNotNull);
-    final restored = mutations.current.engineeringMetadata
-        .appliedEngineeringProposalRegistry
+    final restored = mutations
+        .current.engineeringMetadata.appliedEngineeringProposalRegistry
         .forLevel(fixture.target.levelId);
     expect(restored, isNotNull);
     expect(restored!.sameAs(applied), isTrue);
