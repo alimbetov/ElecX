@@ -1,26 +1,17 @@
-enum ElecXWidthClass { compact, medium, expanded, large }
+import '../../application/project/wizard/apartment/apartment_preview_presentation.dart';
 
 enum ElecXLayoutMode { compact, medium, expanded }
 
 /// Authoritative viewport policy for adaptive ElecX authoring surfaces.
 ///
-/// Width classes follow the P9 cross-platform contract exactly and are based on
-/// logical viewport width only. Accessibility may reduce visual density via
-/// [layoutModeFor] without changing the authoritative width class or any domain
-/// semantics.
+/// Width classification delegates to the shared P9 presentation contract.
+/// Accessibility may reduce visual density via [layoutModeFor] without changing
+/// the authoritative width class or any domain semantics.
 final class ElecXPresentationPolicy {
   const ElecXPresentationPolicy._();
 
-  static const double mediumMinWidth = 600;
-  static const double expandedMinWidth = 1024;
-  static const double largeMinWidth = 1440;
-
-  static ElecXWidthClass widthClassFor(double logicalWidth) {
-    if (logicalWidth < mediumMinWidth) return ElecXWidthClass.compact;
-    if (logicalWidth < expandedMinWidth) return ElecXWidthClass.medium;
-    if (logicalWidth < largeMinWidth) return ElecXWidthClass.expanded;
-    return ElecXWidthClass.large;
-  }
+  static ElecXResponsiveWidthClass widthClassFor(double logicalWidth) =>
+      responsiveWidthClassFor(logicalWidth);
 
   /// Chooses a safe visual density while preserving the authoritative width
   /// class. Large text may collapse panes, but it never changes candidate
@@ -33,12 +24,12 @@ final class ElecXPresentationPolicy {
     final scale = textScaleFactor < 1 ? 1.0 : textScaleFactor;
 
     return switch (widthClass) {
-      ElecXWidthClass.compact => ElecXLayoutMode.compact,
-      ElecXWidthClass.medium =>
+      ElecXResponsiveWidthClass.compact => ElecXLayoutMode.compact,
+      ElecXResponsiveWidthClass.medium =>
         scale > 1.3 ? ElecXLayoutMode.compact : ElecXLayoutMode.medium,
-      ElecXWidthClass.expanded =>
+      ElecXResponsiveWidthClass.expanded =>
         scale >= 1.8 ? ElecXLayoutMode.medium : ElecXLayoutMode.expanded,
-      ElecXWidthClass.large =>
+      ElecXResponsiveWidthClass.large =>
         scale >= 1.8 ? ElecXLayoutMode.medium : ElecXLayoutMode.expanded,
     };
   }
