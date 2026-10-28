@@ -147,7 +147,7 @@ void main() {
 
       final changesDestination = find.descendant(
         of: find.byType(NavigationBar),
-        matching: find.text('Changes'),
+        matching: find.byIcon(Icons.difference_outlined),
       );
       expect(changesDestination, findsOneWidget);
       await tester.tap(changesDestination);
