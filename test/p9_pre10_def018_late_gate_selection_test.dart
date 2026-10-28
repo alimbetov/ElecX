@@ -3,61 +3,65 @@ import 'package:elecx/src/application/project/wizard/apartment/apartment_canonic
 import 'package:elecx/src/application/project/wizard/apartment/apartment_normative_evidence.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_wizard_parameters.dart';
 import 'package:elecx/src/application/project/wizard/apartment/p9_failure.dart';
+import 'package:elecx/src/application/project/wizard/wizard_contracts.dart';
+import 'package:elecx/src/domain/apartment_topology.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('PRE10-CQ18 late production eligibility selection', () {
-    test('promotes the next qualified candidate when the rank winner is blocked',
-        () {
-      final fixture = _projectFixture();
-      final baseline = const ApartmentCandidateSetService().generate(
-        input: _request(),
-        target: fixture.target,
-        project: fixture.project,
-      );
+    test(
+      'promotes the next qualified candidate when the rank winner is blocked',
+      () {
+        final fixture = _projectFixture();
+        final baseline = const ApartmentCandidateSetService().generate(
+          input: _request(),
+          target: fixture.target,
+          project: fixture.project,
+        );
 
-      expect(baseline.accepted, isTrue);
-      expect(baseline.candidateSet!.candidates.length, greaterThan(1));
-      final originalWinner =
-          baseline.candidateSet!.recommendedCandidate.candidateFingerprint;
+        expect(baseline.accepted, isTrue);
+        expect(baseline.candidateSet!.candidates.length, greaterThan(1));
+        final originalWinner =
+            baseline.candidateSet!.recommendedCandidate.candidateFingerprint;
 
-      final remediated = ApartmentCandidateSetService(
-        normativeEvaluator: _SelectiveBlockingNormativeEvaluator(
-          blockedCandidateFingerprint: originalWinner,
-        ),
-      ).generate(
-        input: _request(),
-        target: fixture.target,
-        project: fixture.project,
-      );
+        final remediated = ApartmentCandidateSetService(
+          normativeEvaluator: _SelectiveBlockingNormativeEvaluator(
+            blockedCandidateFingerprint: originalWinner,
+          ),
+        ).generate(
+          input: _request(),
+          target: fixture.target,
+          project: fixture.project,
+        );
 
-      expect(remediated.accepted, isTrue);
-      final promoted = remediated.candidateSet!.recommendedCandidate;
-      expect(promoted.candidateFingerprint, isNot(originalWinner));
-      expect(
-        remediated.candidateSet!.engineeringProjection
-            .selectedCandidateFingerprint,
-        promoted.candidateFingerprint,
-      );
-      expect(
-        remediated.diagnostics!.selectedEntries.single.candidateFingerprint,
-        promoted.candidateFingerprint,
-      );
+        expect(remediated.accepted, isTrue);
+        final promoted = remediated.candidateSet!.recommendedCandidate;
+        expect(promoted.candidateFingerprint, isNot(originalWinner));
+        expect(
+          remediated.candidateSet!.engineeringProjection
+              .selectedCandidateFingerprint,
+          promoted.candidateFingerprint,
+        );
+        expect(
+          remediated.diagnostics!.selectedEntries.single.candidateFingerprint,
+          promoted.candidateFingerprint,
+        );
 
-      final rejectedWinner = remediated.diagnostics!.entries.singleWhere(
-        (entry) => entry.candidateFingerprint == originalWinner,
-      );
-      expect(rejectedWinner.rejected, isTrue);
-      expect(rejectedWinner.blockerCodes, contains('NORMATIVE_BLOCKED'));
-      expect(
-        remediated.failures
-            .where((failure) => failure.code == 'NORMATIVE_BLOCKED')
-            .every((failure) => !failure.isBlocker),
-        isTrue,
-      );
-    });
+        final rejectedWinner = remediated.diagnostics!.entries.singleWhere(
+          (entry) => entry.candidateFingerprint == originalWinner,
+        );
+        expect(rejectedWinner.rejected, isTrue);
+        expect(rejectedWinner.blockerCodes, contains('NORMATIVE_BLOCKED'));
+        expect(
+          remediated.failures
+              .where((failure) => failure.code == 'NORMATIVE_BLOCKED')
+              .every((failure) => !failure.isBlocker),
+          isTrue,
+        );
+      },
+    );
 
     test('promotion is deterministic across repeated production generation', () {
       final fixture = _projectFixture();
@@ -102,24 +106,26 @@ void main() {
       );
     });
 
-    test('fails closed only when every selectable candidate fails late gates',
-        () {
-      final fixture = _projectFixture();
-      final result = const ApartmentCandidateSetService(
-        normativeEvaluator: _BlockingNormativeEvaluator(),
-      ).generate(
-        input: _request(),
-        target: fixture.target,
-        project: fixture.project,
-      );
+    test(
+      'fails closed only when every selectable candidate fails late gates',
+      () {
+        final fixture = _projectFixture();
+        final result = const ApartmentCandidateSetService(
+          normativeEvaluator: _BlockingNormativeEvaluator(),
+        ).generate(
+          input: _request(),
+          target: fixture.target,
+          project: fixture.project,
+        );
 
-      expect(result.accepted, isFalse);
-      expect(result.candidateSet, isNull);
-      final codes = result.failures.map((failure) => failure.code).toSet();
-      expect(codes, contains('NORMATIVE_BLOCKED'));
-      expect(codes, contains('NO_VALID_TOPOLOGY_CANDIDATE'));
-      expect(result.diagnostics!.selectedEntries, isEmpty);
-    });
+        expect(result.accepted, isFalse);
+        expect(result.candidateSet, isNull);
+        final codes = result.failures.map((failure) => failure.code).toSet();
+        expect(codes, contains('NORMATIVE_BLOCKED'));
+        expect(codes, contains('NO_VALID_TOPOLOGY_CANDIDATE'));
+        expect(result.diagnostics!.selectedEntries, isEmpty);
+      },
+    );
   });
 }
 
