@@ -53,7 +53,8 @@ void main() {
       );
     });
 
-    test('aggregate maps wrong-level and dangling hosts to canonical issues', () {
+    test('aggregate maps wrong-level and dangling hosts to canonical issues',
+        () {
       final fixture = _Fixture();
       final wrongLevelCore = fixture.core(
         usage: VerticalCoreUsage.serviceShaft,
@@ -113,8 +114,8 @@ void main() {
       expect(committed, isNotNull);
       expect(committed!.changeSet.updatedEntityIds, {fixture.coreId});
       expect(
-        committed.project.stores.verticalCores[fixture.coreId]!
-            .hostSpaceIdsByLevel,
+        committed
+            .project.stores.verticalCores[fixture.coreId]!.hostSpaceIdsByLevel,
         fixture.alternateHosts,
       );
 
@@ -212,7 +213,8 @@ void main() {
       expect(retained.id, fixture.coreId);
       expect(retained.levelIds, {fixture.level1Id, fixture.level2Id});
       expect(retained.hostSpaceIdsByLevel, fixture.primaryHosts);
-      expect(committed.project.stores.levels[fixture.level1Id]!.levelNumber, 101);
+      expect(
+          committed.project.stores.levels[fixture.level1Id]!.levelNumber, 101);
     });
 
     test('schema v16 preserves typed usage and LevelId to SpaceId hosts', () {
