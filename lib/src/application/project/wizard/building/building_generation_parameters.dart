@@ -44,10 +44,11 @@ final class BuildingSitePlacement {
   final ProjectEngineeringNorth orientation;
 
   Map<String, Object?> toCanonicalJson() => {
-    'xMm': xMm,
-    'yMm': yMm,
-    'orientationMilliDegrees': orientation.milliDegreesClockwiseFromPositiveY,
-  };
+        'xMm': xMm,
+        'yMm': yMm,
+        'orientationMilliDegrees':
+            orientation.milliDegreesClockwiseFromPositiveY,
+      };
 }
 
 /// One stable local generation slot, independent of numbering and display code.
@@ -60,8 +61,8 @@ final class BuildingLevelParameters {
     required String code,
     required this.kind,
     required this.floorToFloorHeightMm,
-  }) : generationKey = _key(generationKey, 'generationKey'),
-       code = _text(code, 'code') {
+  })  : generationKey = _key(generationKey, 'generationKey'),
+        code = _text(code, 'code') {
     if (ordinal < 0 || ordinal > 230) {
       throw RangeError.range(ordinal, 0, 230, 'ordinal');
     }
@@ -84,13 +85,13 @@ final class BuildingLevelParameters {
   final int floorToFloorHeightMm;
 
   Map<String, Object?> toCanonicalJson() => {
-    'generationKey': generationKey,
-    'ordinal': ordinal,
-    'levelNumber': levelNumber,
-    'code': code,
-    'kind': kind.name,
-    'floorToFloorHeightMm': floorToFloorHeightMm,
-  };
+        'generationKey': generationKey,
+        'ordinal': ordinal,
+        'levelNumber': levelNumber,
+        'code': code,
+        'kind': kind.name,
+        'floorToFloorHeightMm': floorToFloorHeightMm,
+      };
 }
 
 /// Physical order is explicit and never inferred from a display number/code.
@@ -100,9 +101,9 @@ final class LevelStackParameters {
     required Iterable<BuildingLevelParameters> levels,
     this.groundElevationMm = 0,
   }) : levels = List.unmodifiable(
-         List<BuildingLevelParameters>.of(levels)
-           ..sort((a, b) => a.ordinal.compareTo(b.ordinal)),
-       ) {
+          List<BuildingLevelParameters>.of(levels)
+            ..sort((a, b) => a.ordinal.compareTo(b.ordinal)),
+        ) {
     _coordinate(groundElevationMm, 'groundElevationMm');
     if (this.levels.isEmpty || this.levels.length > 231) {
       throw ArgumentError('A stack must contain between 1 and 231 levels.');
@@ -122,7 +123,8 @@ final class LevelStackParameters {
         );
       }
     }
-    final ground = this.levels
+    final ground = this
+        .levels
         .where((level) => level.kind == ProjectLevelKind.ground)
         .toList();
     if (ground.length != 1) {
@@ -160,19 +162,19 @@ final class LevelStackParameters {
   final int groundElevationMm;
 
   Map<String, Object?> toCanonicalJson() => {
-    'groundElevationMm': groundElevationMm,
-    'levels': [for (final level in levels) level.toCanonicalJson()],
-  };
+        'groundElevationMm': groundElevationMm,
+        'levels': [for (final level in levels) level.toCanonicalJson()],
+      };
 }
 
 final class TypicalFloorSelection {
   TypicalFloorSelection({
     required String definitionKey,
     required Iterable<String> levelGenerationKeys,
-  }) : definitionKey = _key(definitionKey, 'definitionKey'),
-       levelGenerationKeys = Set.unmodifiable(
-         levelGenerationKeys.map((key) => _key(key, 'levelGenerationKey')),
-       ) {
+  })  : definitionKey = _key(definitionKey, 'definitionKey'),
+        levelGenerationKeys = Set.unmodifiable(
+          levelGenerationKeys.map((key) => _key(key, 'levelGenerationKey')),
+        ) {
     if (this.levelGenerationKeys.isEmpty) {
       throw ArgumentError('A typical-floor selection must target a level.');
     }
@@ -182,9 +184,9 @@ final class TypicalFloorSelection {
   final Set<String> levelGenerationKeys;
 
   Map<String, Object?> toCanonicalJson() => {
-    'definitionKey': definitionKey,
-    'levelGenerationKeys': levelGenerationKeys.toList()..sort(),
-  };
+        'definitionKey': definitionKey,
+        'levelGenerationKeys': levelGenerationKeys.toList()..sort(),
+      };
 }
 
 final class CommonCoreParameters {
@@ -210,12 +212,12 @@ final class CommonCoreParameters {
   final bool includeTechnicalRoom;
 
   Map<String, Object?> toCanonicalJson() => {
-    'stairCount': stairCount,
-    'liftCount': liftCount,
-    'serviceShaftCount': serviceShaftCount,
-    'corridorWidthMm': corridorWidthMm,
-    'includeTechnicalRoom': includeTechnicalRoom,
-  };
+        'stairCount': stairCount,
+        'liftCount': liftCount,
+        'serviceShaftCount': serviceShaftCount,
+        'corridorWidthMm': corridorWidthMm,
+        'includeTechnicalRoom': includeTechnicalRoom,
+      };
 }
 
 final class ServiceAnchorParameters {
@@ -226,8 +228,8 @@ final class ServiceAnchorParameters {
   final Set<BuildingServiceAnchorKind> kinds;
 
   Map<String, Object?> toCanonicalJson() => {
-    'kinds': kinds.map((kind) => kind.name).toList()..sort(),
-  };
+        'kinds': kinds.map((kind) => kind.name).toList()..sort(),
+      };
 }
 
 final class BuildingTemplateRef {
@@ -248,10 +250,10 @@ final class BuildingTemplateRef {
   final int catalogVersion;
 
   Map<String, Object?> toCanonicalJson() => {
-    'id': id.value,
-    'templateVersion': templateVersion,
-    'catalogVersion': catalogVersion,
-  };
+        'id': id.value,
+        'templateVersion': templateVersion,
+        'catalogVersion': catalogVersion,
+      };
 }
 
 /// P10.1 validated immutable request. No canonical project mutation or identity
@@ -269,15 +271,14 @@ final class BuildingGenerationParameters {
     this.template,
     this.schemaVersion = supportedSchemaVersion,
     String generatorVersion = currentGeneratorVersion,
-  }) : displayName = _text(displayName, 'displayName'),
-       generatorVersion = _text(generatorVersion, 'generatorVersion') {
+  })  : displayName = _text(displayName, 'displayName'),
+        generatorVersion = _text(generatorVersion, 'generatorVersion') {
     if (schemaVersion != supportedSchemaVersion ||
         this.generatorVersion != currentGeneratorVersion) {
       throw ArgumentError('Unsupported P10 request/generator version.');
     }
-    final levelKeys = levelStack.levels
-        .map((level) => level.generationKey)
-        .toSet();
+    final levelKeys =
+        levelStack.levels.map((level) => level.generationKey).toSet();
     if (typicalFloor != null &&
         !levelKeys.containsAll(typicalFloor!.levelGenerationKeys)) {
       throw ArgumentError(
@@ -302,18 +303,18 @@ final class BuildingGenerationParameters {
   final String generatorVersion;
 
   Map<String, Object?> toCanonicalJson() => {
-    'schemaVersion': schemaVersion,
-    'generatorVersion': generatorVersion,
-    'kind': kind.name,
-    'siteId': siteId.value,
-    'displayName': displayName,
-    'placement': placement.toCanonicalJson(),
-    'levelStack': levelStack.toCanonicalJson(),
-    'typicalFloor': typicalFloor?.toCanonicalJson(),
-    'commonCore': commonCore.toCanonicalJson(),
-    'serviceAnchors': serviceAnchors.toCanonicalJson(),
-    'template': template?.toCanonicalJson(),
-  };
+        'schemaVersion': schemaVersion,
+        'generatorVersion': generatorVersion,
+        'kind': kind.name,
+        'siteId': siteId.value,
+        'displayName': displayName,
+        'placement': placement.toCanonicalJson(),
+        'levelStack': levelStack.toCanonicalJson(),
+        'typicalFloor': typicalFloor?.toCanonicalJson(),
+        'commonCore': commonCore.toCanonicalJson(),
+        'serviceAnchors': serviceAnchors.toCanonicalJson(),
+        'template': template?.toCanonicalJson(),
+      };
 
   String get canonicalSerialization => jsonEncode(toCanonicalJson());
   String get requestFingerprint => p9Sha256Hex(canonicalSerialization);

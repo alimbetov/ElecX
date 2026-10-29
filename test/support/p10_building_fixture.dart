@@ -10,25 +10,26 @@ BuildingLevelParameters p10Level({
   String code = 'G',
   ProjectLevelKind kind = ProjectLevelKind.ground,
   int height = 3000,
-}) => BuildingLevelParameters(
-  generationKey: key,
-  ordinal: ordinal,
-  levelNumber: number,
-  code: code,
-  kind: kind,
-  floorToFloorHeightMm: height,
-);
+}) =>
+    BuildingLevelParameters(
+      generationKey: key,
+      ordinal: ordinal,
+      levelNumber: number,
+      code: code,
+      kind: kind,
+      floorToFloorHeightMm: height,
+    );
 
 List<BuildingLevelParameters> p10Levels() => [
-  p10Level(),
-  p10Level(
-    key: 'residential.1',
-    ordinal: 1,
-    number: 1,
-    code: '01',
-    kind: ProjectLevelKind.residential,
-  ),
-];
+      p10Level(),
+      p10Level(
+        key: 'residential.1',
+        ordinal: 1,
+        number: 1,
+        code: '01',
+        kind: ProjectLevelKind.residential,
+      ),
+    ];
 
 CommonCoreParameters p10Core({int stairs = 1, int lifts = 1}) =>
     CommonCoreParameters(
@@ -51,32 +52,33 @@ BuildingGenerationParameters p10Request({
   int schemaVersion = 1,
   String generatorVersion =
       BuildingGenerationParameters.currentGeneratorVersion,
-}) => BuildingGenerationParameters(
-  kind: kind,
-  siteId: SiteId(site),
-  displayName: name,
-  placement:
-      placement ??
-      BuildingSitePlacement(
-        xMm: 0,
-        yMm: 0,
-        orientation: ProjectEngineeringNorth.fromDegrees(0),
-      ),
-  levelStack: stack ?? LevelStackParameters(levels: p10Levels()),
-  commonCore: core ?? p10Core(),
-  serviceAnchors: anchors ?? ServiceAnchorParameters(),
-  typicalFloor: typicalFloor,
-  template: template,
-  schemaVersion: schemaVersion,
-  generatorVersion: generatorVersion,
-);
+}) =>
+    BuildingGenerationParameters(
+      kind: kind,
+      siteId: SiteId(site),
+      displayName: name,
+      placement: placement ??
+          BuildingSitePlacement(
+            xMm: 0,
+            yMm: 0,
+            orientation: ProjectEngineeringNorth.fromDegrees(0),
+          ),
+      levelStack: stack ?? LevelStackParameters(levels: p10Levels()),
+      commonCore: core ?? p10Core(),
+      serviceAnchors: anchors ?? ServiceAnchorParameters(),
+      typicalFloor: typicalFloor,
+      template: template,
+      schemaVersion: schemaVersion,
+      generatorVersion: generatorVersion,
+    );
 
 BuildingTemplateRef p10TemplateRef({
   String id = 'p10.tower',
   int templateVersion = 1,
   int catalogVersion = 1,
-}) => BuildingTemplateRef(
-  id: TemplateId(id),
-  templateVersion: templateVersion,
-  catalogVersion: catalogVersion,
-);
+}) =>
+    BuildingTemplateRef(
+      id: TemplateId(id),
+      templateVersion: templateVersion,
+      catalogVersion: catalogVersion,
+    );

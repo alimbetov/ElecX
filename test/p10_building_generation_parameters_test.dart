@@ -11,37 +11,36 @@ void main() {
       'equivalent ordering, whitespace and wrapped angles normalize equally',
       () {
         BuildingGenerationParameters request(bool reverse) => p10Request(
-          name: reverse ? ' Tower A ' : 'Tower A',
-          stack: LevelStackParameters(
-            levels: reverse ? p10Levels().reversed : p10Levels(),
-          ),
-          placement: BuildingSitePlacement(
-            xMm: 100,
-            yMm: -200,
-            orientation: ProjectEngineeringNorth.fromDegrees(
-              reverse ? 450 : 90,
-            ),
-          ),
-          typicalFloor: TypicalFloorSelection(
-            definitionKey: reverse
-                ? ' residential.standard '
-                : 'residential.standard',
-            levelGenerationKeys: reverse
-                ? ['residential.1', 'ground']
-                : ['ground', 'residential.1'],
-          ),
-          anchors: ServiceAnchorParameters(
-            kinds: reverse
-                ? [
-                    BuildingServiceAnchorKind.telecomEntry,
-                    BuildingServiceAnchorKind.electricalEntry,
-                  ]
-                : [
-                    BuildingServiceAnchorKind.electricalEntry,
-                    BuildingServiceAnchorKind.telecomEntry,
-                  ],
-          ),
-        );
+              name: reverse ? ' Tower A ' : 'Tower A',
+              stack: LevelStackParameters(
+                levels: reverse ? p10Levels().reversed : p10Levels(),
+              ),
+              placement: BuildingSitePlacement(
+                xMm: 100,
+                yMm: -200,
+                orientation: ProjectEngineeringNorth.fromDegrees(
+                  reverse ? 450 : 90,
+                ),
+              ),
+              typicalFloor: TypicalFloorSelection(
+                definitionKey:
+                    reverse ? ' residential.standard ' : 'residential.standard',
+                levelGenerationKeys: reverse
+                    ? ['residential.1', 'ground']
+                    : ['ground', 'residential.1'],
+              ),
+              anchors: ServiceAnchorParameters(
+                kinds: reverse
+                    ? [
+                        BuildingServiceAnchorKind.telecomEntry,
+                        BuildingServiceAnchorKind.electricalEntry,
+                      ]
+                    : [
+                        BuildingServiceAnchorKind.electricalEntry,
+                        BuildingServiceAnchorKind.telecomEntry,
+                      ],
+              ),
+            );
 
         expect(
           request(true).canonicalSerialization,
@@ -177,7 +176,9 @@ void main() {
   });
 
   group('P10 level parameter validation', () {
-    test('duplicate identities, numbers, codes and ordinals fail before generation', () {
+    test(
+        'duplicate identities, numbers, codes and ordinals fail before generation',
+        () {
       for (final duplicate in [
         p10Level(
           key: 'ground',
