@@ -10,6 +10,12 @@ The detailed executable decomposition for P9..P17 is defined by:
 
 That execution roadmap is subordinate to this product principle and to the authoritative P0..P17 ordering.
 
+Until MVP-1 is accepted, product-delivery priority and the first paid-value boundary are additionally constrained by:
+
+`docs/architecture/elecx-mvp1-first-revenue-product-contract-v1.md`
+
+That MVP contract does not replace P0..P17 architecture ordering. It defines the mandatory Golden Vertical Slice, decision-evidence requirements, professional deliverables and scope-control rules required to reach first paid value without feature diffusion.
+
 ## 1. Core product invariant
 
 ```text
