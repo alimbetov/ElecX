@@ -135,7 +135,8 @@ void _validateProjectOwnershipAndHosts(
       verticalCore.id: verticalCore,
     },
     buildingExists: current.stores.buildings.containsKey,
-    levelBuildingResolver: (levelId) => current.stores.levels[levelId]?.buildingId,
+    levelBuildingResolver: (levelId) =>
+        current.stores.levels[levelId]?.buildingId,
     spaceLevelResolver: (spaceId) => current.stores.spaces[spaceId]?.levelId,
   );
   if (issues.isEmpty) return;
