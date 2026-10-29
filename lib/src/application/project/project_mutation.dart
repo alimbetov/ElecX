@@ -1012,11 +1012,16 @@ bool _sameSpaceAdjacencyRelations(
 }
 
 bool _entityExists(ProjectEntityStores stores, EntityId id) {
+  if (id is SiteId) return stores.sites.containsKey(id);
+  if (id is BuildingId) return stores.buildings.containsKey(id);
   if (id is LevelId) return stores.levels.containsKey(id);
+  if (id is SlabId) return stores.slabs.containsKey(id);
+  if (id is VerticalCoreId) return stores.verticalCores.containsKey(id);
   if (id is ZoneId) return stores.zones.containsKey(id);
   if (id is SpaceId) return stores.spaces.containsKey(id);
   if (id is OpeningId) return stores.openings.containsKey(id);
   if (id is SpaceAdjacencyId) return stores.adjacencies.containsKey(id);
+  if (id is OverlayClassificationId) return stores.overlays.containsKey(id);
   if (id is BoundaryEdgeId) return _boundaryEdge(stores, id) != null;
   return false;
 }
@@ -1141,8 +1146,10 @@ bool _sameVerticalCore(ProjectVerticalCore a, ProjectVerticalCore b) {
   if (a.id != b.id ||
       a.buildingId != b.buildingId ||
       a.kind != b.kind ||
+      a.usage != b.usage ||
       a.name != b.name ||
       !_sameSet(a.levelIds, b.levelIds) ||
+      !_sameMap(a.hostSpaceIdsByLevel, b.hostSpaceIdsByLevel) ||
       a.footprint.length != b.footprint.length) {
     return false;
   }
@@ -1224,5 +1231,13 @@ bool _sameBoundaryEdge(ProjectBoundaryEdge a, ProjectBoundaryEdge b) =>
 
 bool _sameSet<T>(Set<T> a, Set<T> b) =>
     a.length == b.length && a.containsAll(b);
+
+bool _sameMap<K, V>(Map<K, V> a, Map<K, V> b) {
+  if (a.length != b.length) return false;
+  for (final entry in a.entries) {
+    if (b[entry.key] != entry.value) return false;
+  }
+  return true;
+}
 
 bool _hasOverlap(Set<EntityId> a, Set<EntityId> b) => a.any(b.contains);

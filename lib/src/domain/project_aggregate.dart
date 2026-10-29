@@ -221,6 +221,9 @@ enum ProjectAggregateIssueCode {
   danglingVerticalCoreBuilding,
   danglingVerticalCoreLevel,
   verticalCoreLevelBuildingMismatch,
+  danglingVerticalCoreHostSpace,
+  verticalCoreHostSpaceLevelMismatch,
+  missingVerticalCoreHostSpace,
   danglingZone,
   zoneLevelMismatch,
   levelZoneBackReferenceMissing,
@@ -331,6 +334,7 @@ abstract final class ProjectAggregateValidator {
       verticalCores: stores.verticalCores,
       buildingExists: stores.buildings.containsKey,
       levelBuildingResolver: (levelId) => stores.levels[levelId]?.buildingId,
+      spaceLevelResolver: (spaceId) => stores.spaces[spaceId]?.levelId,
     )) {
       issues.add(
         ProjectAggregateValidationIssue(
@@ -341,6 +345,12 @@ abstract final class ProjectAggregateValidator {
               ProjectAggregateIssueCode.danglingVerticalCoreLevel,
             VerticalCoreProjectIssueCode.levelBuildingMismatch =>
               ProjectAggregateIssueCode.verticalCoreLevelBuildingMismatch,
+            VerticalCoreProjectIssueCode.danglingHostSpace =>
+              ProjectAggregateIssueCode.danglingVerticalCoreHostSpace,
+            VerticalCoreProjectIssueCode.hostSpaceLevelMismatch =>
+              ProjectAggregateIssueCode.verticalCoreHostSpaceLevelMismatch,
+            VerticalCoreProjectIssueCode.missingRequiredHostSpace =>
+              ProjectAggregateIssueCode.missingVerticalCoreHostSpace,
           },
           entityId: issue.verticalCoreId,
           relatedEntityId: issue.relatedEntityId,
