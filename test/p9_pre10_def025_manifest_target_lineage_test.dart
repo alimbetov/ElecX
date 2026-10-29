@@ -158,88 +158,94 @@ _Cq23Fixture _fixture({
     entities: {generatedId: provenance},
   );
 
+  final stores = ProjectEntityStores(
+    sites: {
+      siteId: ProjectSiteEntity(
+        id: siteId,
+        name: 'Site',
+        buildingIds: {buildingA, buildingB},
+      ),
+    },
+    buildings: {
+      buildingA: ProjectBuildingEntity(
+        id: buildingA,
+        siteId: siteId,
+        name: 'Building A',
+        levelIds: {levelA},
+      ),
+      buildingB: ProjectBuildingEntity(
+        id: buildingB,
+        siteId: siteId,
+        name: 'Building B',
+        levelIds: {levelB},
+      ),
+    },
+    levels: {
+      levelA: ProjectLevelEntity(
+        id: levelA,
+        buildingId: buildingA,
+        name: 'Level A',
+        levelNumber: 1,
+        elevationMm: 0,
+        kind: ProjectLevelKind.residential,
+        zoneIds: {zoneA},
+        spaceIds: {spaceA},
+      ),
+      levelB: ProjectLevelEntity(
+        id: levelB,
+        buildingId: buildingB,
+        name: 'Level B',
+        levelNumber: 1,
+        elevationMm: 0,
+        kind: ProjectLevelKind.residential,
+        zoneIds: {zoneB},
+        spaceIds: {spaceB},
+      ),
+    },
+    zones: {
+      zoneA: ProjectStructuralZoneEntity(
+        id: zoneA,
+        levelId: levelA,
+        name: 'Apartment A',
+        kind: ProjectStructuralZoneKind.apartment,
+        spaceIds: {spaceA},
+      ),
+      zoneB: ProjectStructuralZoneEntity(
+        id: zoneB,
+        levelId: levelB,
+        name: 'Apartment B',
+        kind: ProjectStructuralZoneKind.apartment,
+        spaceIds: {spaceB},
+      ),
+    },
+    spaces: {
+      spaceA: ProjectSpaceEntity(
+        id: spaceA,
+        levelId: levelA,
+        name: 'Room A',
+        type: ProjectSpaceType.room,
+      ),
+      spaceB: ProjectSpaceEntity(
+        id: spaceB,
+        levelId: levelB,
+        name: 'Room B',
+        type: ProjectSpaceType.room,
+      ),
+    },
+  );
+  final baseAggregate = ProjectAggregateRoot(
+    id: projectId,
+    siteId: siteId,
+    version: LocalProjectVersion(1),
+    stores: stores,
+  );
   final aggregate = ProjectAggregateRoot(
     id: projectId,
     siteId: siteId,
     version: LocalProjectVersion(1),
-    engineeringMetadata: ProjectEngineeringMetadata(
-      generationProvenanceRegistry: registry,
-    ),
-    stores: ProjectEntityStores(
-      sites: {
-        siteId: ProjectSiteEntity(
-          id: siteId,
-          name: 'Site',
-          buildingIds: {buildingA, buildingB},
-        ),
-      },
-      buildings: {
-        buildingA: ProjectBuildingEntity(
-          id: buildingA,
-          siteId: siteId,
-          name: 'Building A',
-          levelIds: {levelA},
-        ),
-        buildingB: ProjectBuildingEntity(
-          id: buildingB,
-          siteId: siteId,
-          name: 'Building B',
-          levelIds: {levelB},
-        ),
-      },
-      levels: {
-        levelA: ProjectLevelEntity(
-          id: levelA,
-          buildingId: buildingA,
-          name: 'Level A',
-          levelNumber: 1,
-          elevationMm: 0,
-          kind: ProjectLevelKind.residential,
-          zoneIds: {zoneA},
-          spaceIds: {spaceA},
-        ),
-        levelB: ProjectLevelEntity(
-          id: levelB,
-          buildingId: buildingB,
-          name: 'Level B',
-          levelNumber: 1,
-          elevationMm: 0,
-          kind: ProjectLevelKind.residential,
-          zoneIds: {zoneB},
-          spaceIds: {spaceB},
-        ),
-      },
-      zones: {
-        zoneA: ProjectStructuralZoneEntity(
-          id: zoneA,
-          levelId: levelA,
-          name: 'Apartment A',
-          kind: ProjectStructuralZoneKind.apartment,
-          spaceIds: {spaceA},
-        ),
-        zoneB: ProjectStructuralZoneEntity(
-          id: zoneB,
-          levelId: levelB,
-          name: 'Apartment B',
-          kind: ProjectStructuralZoneKind.apartment,
-          spaceIds: {spaceB},
-        ),
-      },
-      spaces: {
-        spaceA: ProjectSpaceEntity(
-          id: spaceA,
-          levelId: levelA,
-          name: 'Room A',
-          type: ProjectSpaceType.room,
-        ),
-        spaceB: ProjectSpaceEntity(
-          id: spaceB,
-          levelId: levelB,
-          name: 'Room B',
-          type: ProjectSpaceType.room,
-        ),
-      },
-    ),
+    engineeringMetadata: baseAggregate.engineeringMetadata
+        .withGenerationProvenanceRegistry(registry),
+    stores: stores,
   );
 
   final now = DateTime.utc(2026, 10, 28, 20);
