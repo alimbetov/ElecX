@@ -54,7 +54,8 @@ final class BuildingCompositionWizardPreviewProjector {
         before: before,
         preview: preview,
       ),
-      addedBuildings: added(before.stores.buildings, candidate.stores.buildings),
+      addedBuildings:
+          added(before.stores.buildings, candidate.stores.buildings),
       addedLevels: added(before.stores.levels, candidate.stores.levels),
       addedStructuralZones: added(before.stores.zones, candidate.stores.zones),
       addedSpaces: added(before.stores.spaces, candidate.stores.spaces),
