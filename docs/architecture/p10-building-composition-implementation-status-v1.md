@@ -14,6 +14,7 @@ Implementation contract: [P10 specification](p10-building-residential-compositio
 | P10.2 | Immutable versioned catalog and exact template binding | `test/p10_building_template_catalog_test.dart` |
 | P10.3 | Integer-mm level stacks and independent canonical identity reservations | `test/p10_building_level_stack_generator_test.dart` |
 | P10.4 | Immutable typical-floor definitions, instance lineage, detach, overrides, tombstones and persistence | Three `test/p10_typical_floor*_test.dart` suites |
+| P10.5 | P9 slot generation, rigid apartment placement, collision/access/shared-boundary checks, nested child lineage and v15 persistence | Three `test/p105_*_test.dart` suites |
 
 P10.1–P10.3 passed repository-wide GitHub verification/quality on
 `184bd8297489a5379257b72a2beb15b69c7b08ae`.
@@ -23,6 +24,12 @@ Local verification: 1658 tests passed in the full repository suite; the final
 targeted P10.4 run passed 17 scenarios. `flutter analyze`, formatting of all 773
 Dart files, and `git diff --check` passed. GitHub exact-SHA acceptance is separate
 from these local results.
+
+P10.5 implementation commit: `40ccf152e5d4bba43e8745acb7adb35b0846d026`.
+Local verification: 20 new P10.5 tests and all 1678 repository tests passed.
+`flutter analyze`, formatting of all 782 Dart files, and `git diff --check` passed.
+Both `verification` and `quality` passed on that exact implementation SHA:
+[GitHub Actions run 40840856854](https://github.com/alimbetov/ElecX/actions/runs/40840856854).
 
 ## P10.4 ownership and lifecycle
 
@@ -34,8 +41,8 @@ by `ProjectEntityStores`.
 
 `RegisterTypicalFloorCommand` binds already materialized canonical floors after
 checking complete slot coverage, matching patterns, typed ownership and identity
-independence. It does not generate or copy apartment geometry. Generation and
-placement are P10.5 work; the building Wizard/atomic generation pipeline remains
+independence. It does not generate or copy apartment geometry. Apartment generation
+and placement are supplied by P10.5; the building Wizard generation pipeline remains
 P10.11 work.
 
 Ordinary canonical commands record field overrides and deletion tombstones in
@@ -44,10 +51,36 @@ definition can be removed only after all its instances are detached. There is
 no implicit propagation between floors; full selective propagation belongs to
 P15.
 
-The canonical persistence codec advances to v14, preserving v1–v13 read support.
-The default native repository uses this codec. Older v12/v13 provenance codecs
-reject P10 lineage rather than silently dropping it. P9 child manifests and
-entity provenance remain intact.
+Typical-floor lineage uses the v14 codec layer. The current default native
+repository uses the v15 composition codec, preserving v1–v14 read support.
+Older codecs reject new lineage rather than silently dropping it. P9 child
+manifests and entity provenance remain intact.
+
+## P10.5 composition contract
+
+`LevelApartmentCompositionGenerator` consumes the existing P9 candidate service
+through an explicit composition entry point. P9 still owns normalization,
+catalog selection, room generation, geometry qualification and ranking. The
+ordinary P9 provider continues to reject a nonempty Level.
+
+Each immutable apartment slot binds an exact P9 selection to a stable semantic
+key, display name, integer-grid translation, clockwise quarter-turn and existing
+common corridor/hall SpaceId. The composition command rejects collisions,
+missing/ambiguous entry hosts, door-interval conflicts and occupied engineering
+targets. Shared boundaries and apartment access become explicit canonical
+adjacency; entry openings have canonical hosts on both sides.
+
+One parent reservation supplies independent P9 child reservations without
+allocating IDs during candidate generation. The existing shared preview/commit
+coordinator applies the whole composition as one Undo record. Cancel and stale
+confirmation leave canonical state unchanged. Parent composition manifests,
+P9 child generation IDs, placement transforms and the hash-checked frozen input
+are persisted in the existing provenance owner. Manual apartment edits preserve
+unrelated apartments, and removed parent relations retain tombstones.
+
+This stage supplies composition into an existing common-space layout. Common
+space/core generation remains P10.6. Materialization is additive; it does not
+silently replace already committed apartments. The new Wizard remains P10.11.
 
 ## Qualification scope
 
@@ -58,6 +91,12 @@ entity provenance remain intact.
 - Real P9 apartment generation retains child lineage, and a room edit records
   both its P9 field override and its P10 floor override.
 - Fingerprint utility extraction preserves existing P9 candidate identities.
+- P10-Q05: at least two real P9 apartments, all four quarter-turns, exact geometry,
+  independent identities, explicit shared/access topology and nested lineage.
+- P10-Q06: one-apartment edits, single composition Undo/Redo, cancellation, stale
+  confirmation and Save → Reopen → Edit → Save → Reopen through the production owner.
+- Strict v15 migration/round trips and rejection of unknown fields/versions,
+  tampered transforms, mismatched child lineage and lossy old-codec operations.
 
 These are local Linux qualification scenarios. Cross-platform P10 acceptance,
 the dedicated P10 CI gates and the final exact-SHA closure matrix remain P10.13
@@ -66,7 +105,7 @@ as qualified; this document does not substitute for exact-SHA CI evidence.
 
 ## Remaining work
 
-P10.5–P10.13 are not implemented: multi-apartment level composition, common/core
-composition, cottage/tower/site generators, service anchors, the full Wizard
-preview/apply pipeline, parent/child generation provenance and final qualification.
+P10.6–P10.13 are not implemented: common/core composition, cottage/tower/site
+generators, service anchors, the full building Wizard preview/apply pipeline,
+building/site-wide provenance integration and final qualification.
 P10 is not ready for merge or P11 handoff.
