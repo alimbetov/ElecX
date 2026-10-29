@@ -4,6 +4,7 @@ import '../wizard_contracts.dart';
 import 'building_common_core_composition.dart';
 import 'building_generation_parameters.dart';
 import 'building_level_stack_generator.dart';
+import 'building_shell_composition.dart';
 import 'cottage_composition.dart';
 import 'residential_tower_composition.dart';
 import 'site_composition.dart';
@@ -203,29 +204,49 @@ final class BuildingCompositionWizardProvider
       case BuildingCompositionWizardFamily.cottage:
         final building = parameters.buildingParameters;
         if (building == null || parameters.layout == null) {
-          blocker('p10.wizard.cottage.incomplete', 'Cottage input is incomplete.');
+          blocker(
+            'p10.wizard.cottage.incomplete',
+            'Cottage input is incomplete.',
+          );
         } else {
           if (building.siteId != target.siteId) {
-            blocker('p10.wizard.site-mismatch', 'Cottage belongs to another Site.');
+            blocker(
+              'p10.wizard.site-mismatch',
+              'Cottage belongs to another Site.',
+            );
           }
           if (building.kind != BuildingCompositionKind.detachedHouse) {
-            blocker('p10.wizard.cottage.kind', 'Cottage requires detached-house parameters.');
+            blocker(
+              'p10.wizard.cottage.kind',
+              'Cottage requires detached-house parameters.',
+            );
           }
         }
+        break;
       case BuildingCompositionWizardFamily.residentialTower:
         final building = parameters.buildingParameters;
         if (building == null ||
             parameters.layout == null ||
             parameters.towerApartments.isEmpty) {
-          blocker('p10.wizard.tower.incomplete', 'Tower input is incomplete.');
+          blocker(
+            'p10.wizard.tower.incomplete',
+            'Tower input is incomplete.',
+          );
         } else {
           if (building.siteId != target.siteId) {
-            blocker('p10.wizard.site-mismatch', 'Tower belongs to another Site.');
+            blocker(
+              'p10.wizard.site-mismatch',
+              'Tower belongs to another Site.',
+            );
           }
           if (building.kind != BuildingCompositionKind.residentialTower) {
-            blocker('p10.wizard.tower.kind', 'Tower requires residential-tower parameters.');
+            blocker(
+              'p10.wizard.tower.kind',
+              'Tower requires residential-tower parameters.',
+            );
           }
         }
+        break;
       case BuildingCompositionWizardFamily.residentialComplex:
         if (parameters.siteBuildings.isEmpty) {
           blocker(
@@ -242,6 +263,7 @@ final class BuildingCompositionWizardProvider
             break;
           }
         }
+        break;
     }
     return WizardParameterValidation(issues);
   }
