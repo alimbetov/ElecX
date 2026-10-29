@@ -15,7 +15,7 @@ Implementation contract: [P10 specification](p10-building-residential-compositio
 | P10.3 | Integer-mm level stacks and independent canonical identity reservations | `test/p10_building_level_stack_generator_test.dart` |
 | P10.4 | Immutable typical-floor definitions, instance lineage, detach, overrides, tombstones and persistence | Three `test/p10_typical_floor*_test.dart` suites |
 | P10.5 | P9 slot generation, rigid apartment placement, collision/access/shared-boundary checks, nested child lineage and v15 persistence | Three `test/p105_*_test.dart` suites |
-| P10.6 foundation — IN PROGRESS | Typed architectural VerticalCore usage, stable `LevelId -> SpaceId` host bindings, fail-closed ownership/continuity, mutation/Undo semantics and v16 persistence | `test/p106_vertical_core_hosts_test.dart` |
+| P10.6 — COMPLETE | Versioned common/core input, pure common/core generator, reserved canonical materialization, explicit horizontal/vertical access topology, typed VerticalCore hosts and v16 persistence | `test/p106_*_test.dart` suites |
 
 P10.1–P10.3 passed repository-wide GitHub verification/quality on
 `184bd8297489a5379257b72a2beb15b69c7b08ae`.
@@ -31,6 +31,18 @@ Local verification: 20 new P10.5 tests and all 1678 repository tests passed.
 `flutter analyze`, formatting of all 782 Dart files, and `git diff --check` passed.
 Both `verification` and `quality` passed on that exact implementation SHA:
 [GitHub Actions run 40840856854](https://github.com/alimbetov/ElecX/actions/runs/40840856854).
+
+P10.6 implementation lineage includes the versioned input contract
+`8eb552391bdf0f2cc36a4705de5295fd40939456`, common/core generator and reserved
+materialization `d9c920efaff5d5ebcf5101c10036eca6da09e075`, Q07/Q08 qualification
+`a7a768af145ae8b78c164f0c708c7566207ea4c1`, and the final purity-fixture
+qualification correction `09c13e6a46a7997603d3ab8d9956040ac7ade42c`.
+Both `verification` and `quality` passed on exact SHA
+`09c13e6a46a7997603d3ab8d9956040ac7ade42c` in
+[GitHub Actions run 40863815760](https://github.com/alimbetov/ElecX/actions/runs/40863815760).
+The repository-wide verification suite completed with 1696 tests passed; formatting,
+`flutter analyze`, the P8 NFR reference gate and P8 accessibility/i18n acceptance
+were also green.
 
 ## P10.4 ownership and lifecycle
 
@@ -85,33 +97,70 @@ This stage supplies composition into an existing common-space layout.
 Materialization is additive; it does not silently replace already committed
 apartments. The new Wizard remains P10.11.
 
-## P10.6 foundation and current boundary
+## P10.6 common/core composition contract
 
-The canonical `ProjectVerticalCore` now has additive architectural usage semantics
+The P10.6 input contract is explicitly versioned. Legacy `CommonCoreParameters`
+v1 preserves its existing canonical JSON and fingerprints. The v2 contract adds
+electrical/telecom riser counts plus typed common/service candidate-space policy,
+and the new semantics participate in the normalized building request fingerprint.
+The P10.6 production generator accepts the v2 contract and fails closed on an
+unsupported legacy request rather than silently applying new defaults.
+
+`BuildingCommonCoreCompositionGenerator` is a pure generator. It produces an
+immutable, ID-free common/core plan containing common/service/technical spaces,
+horizontal opening proposals, vertical adjacency proposals and typed vertical-core
+proposals. It does not mutate the input `ProjectAggregateRoot` and does not allocate
+persistent identities.
+
+One `BuildingCommonCoreCompositionCommand` implements the shared
+`ReservedProjectCommand` contract. Its `MutationIdentityReservation` allocates all
+`ZoneId`, `SpaceId`, `BoundaryEdgeId`, `OpeningId`, `SpaceAdjacencyId` and
+`VerticalCoreId` values before candidate materialization. The resulting candidate
+is committed through the existing canonical mutation timeline as one atomic Undo
+boundary; candidate generation itself remains side-effect free.
+
+The materialized architecture includes generated common corridor/common hall and
+elevator-hall spaces, stair/elevator/service core hosts, electrical and telecom
+riser spaces, and policy-controlled technical/electrical/telecom/fire-control/
+utility candidate rooms. These are architectural reservations only: P10.6 does
+not create panels, circuits, loads, devices or engineering routing.
+
+Horizontal connectivity is explicit canonical topology rather than geometric
+contact. P10-Q07 composes a real P9 apartment through P10.5 against a corridor
+created by P10.6 and proves the apartment entry reaches that generated common
+space through an actual opening/access relation. Core-host spaces on adjacent
+levels receive typed `SpaceAdjacencyKind.vertical` relationships.
+
+The canonical `ProjectVerticalCore` has additive architectural usage semantics
 and immutable `LevelId -> SpaceId` host bindings while retaining the established
 P7 physical core kind. Architectural cores require one distinct canonical host
 Space per served LevelId. Aggregate and authoring validation fail closed on
 missing buildings/levels/spaces, cross-building levels, wrong-level hosts and
-invalid physical continuity.
+invalid physical continuity. Physical continuity is evaluated from canonical
+LevelId/slab topology, never from display `levelNumber`.
 
 Host bindings and architectural usage participate in `ProjectEntityDiff`, so
 host-only or usage-only updates are real canonical mutations and are covered by
 Preview/Commit/Undo/Redo. Destructive Space removal explicitly reports a bound
-VerticalCore as a blocker. Level display renumbering preserves the stable
-VerticalCoreId, LevelIds and host bindings, covering the identity requirement of
-P10-Q08 without using `levelNumber` as a foreign key.
+VerticalCore as a blocker. P10-Q08 qualifies a generated core through schema-v16
+Save → Reopen → level display renumber → Undo → Redo while preserving the exact
+`VerticalCoreId`, `LevelId` set and host `SpaceId` bindings.
 
 Schema v16 persists only the additive P10 building-core semantics above the v15
 canonical payload. The v16 codec reconstructs a single canonical VerticalCore
 graph on load and validates it. Pre-v16 codecs reject snapshots containing P10.6
 core semantics, preventing silent downgrade/data loss.
 
-P10.6 is **not complete** yet. The branch still needs the production common/core
-composition command/generator that materializes common corridors/halls,
-stair/elevator/service/riser host Spaces, technical/service candidate Spaces,
-boundaries, openings and explicit access/vertical adjacency from one immutable
-reserved candidate. Consequently P10-Q07 is still open. The P10.11 building
-Wizard/UI remains deliberately out of P10.6.
+The failed Flutter #4760 run on `2151333afa3882c976b1f85dcf03ddcc7540cb3d`
+identified a qualification-fixture identity mistake: the purity test created a
+fresh `ProjectAggregateRoot` on each getter access and then compared stores with
+`same()`. No production mutation defect was present. The fixture was corrected
+to generate and verify against one aggregate instance in
+`09c13e6a46a7997603d3ab8d9956040ac7ade42c`; the subsequent exact-SHA run was
+fully green.
+
+P10.6 intentionally adds no building Wizard/UI. Building candidate Preview/Diff
+and Wizard orchestration remain P10.11 scope.
 
 ## Qualification scope
 
@@ -128,27 +177,36 @@ Wizard/UI remains deliberately out of P10.6.
   confirmation and Save → Reopen → Edit → Save → Reopen through the production owner.
 - Strict v15 migration/round trips and rejection of unknown fields/versions,
   tampered transforms, mismatched child lineage and lossy old-codec operations.
-- P10-Q08 targeted coverage: VerticalCore identity/LevelId/host binding survives
-  display level renumbering while aggregate continuity remains valid.
-- P10.6 hardening coverage: wrong-level/dangling hosts, host-only and usage-only
-  mutation diffs, Undo/Redo, destructive host blockers, v16 round-trip and
-  fail-closed pre-v16 persistence.
+- P10.6A: v1 byte-compatible canonical request plus v2 electrical/telecom riser and
+  candidate-space policy fingerprinting in `test/p106_common_core_parameters_test.dart`.
+- P10.6B-D: pure ID-free generation, one reserved complete materialization, one
+  Undo/Redo boundary and fail-closed physical continuity in
+  `test/p106_common_core_composition_test.dart`.
+- P10-Q07: real P10.6 generated corridor plus P10.5 apartment composition reaches
+  common access through explicit opening topology in
+  `test/p106_common_access_topology_test.dart`.
+- P10-Q08: VerticalCore identity/LevelId/host binding survives display renumbering,
+  schema-v16 Save/Reopen and Undo/Redo in `test/p106_vertical_core_hosts_test.dart`
+  and `test/p106_common_core_lifecycle_test.dart`.
+- P10.6 hardening: wrong-level/dangling hosts, host-only and usage-only mutation
+  diffs, destructive host blockers, v16 round-trip and fail-closed pre-v16
+  persistence.
 
-The P10.6 hardening tests are present in the branch; exact-SHA GitHub acceptance
-must be checked on the current HEAD before treating them as qualified. Cross-
-platform P10 acceptance, dedicated P10 CI gates and the final Q01–Q20 closure
+P10.6 exact-SHA qualification is accepted on
+`09c13e6a46a7997603d3ab8d9956040ac7ade42c` / GitHub Actions run `40863815760`.
+Cross-platform P10 acceptance, dedicated P10 CI gates and the final Q01–Q20 closure
 matrix remain P10.13 work.
 
 ## Remaining work
 
-1. Complete P10.6 common/core composition and close P10-Q07 end-to-end.
-2. P10.7 cottage composition.
-3. P10.8 residential tower composition.
-4. P10.9 multi-building site composition.
-5. P10.10 service/infrastructure anchors.
-6. P10.11 building candidate Preview/Diff plus atomic materialization and Wizard.
-7. P10.12 building/site generation provenance and lineage closure.
-8. P10.13 Q01–Q20, Golden Journeys, cross-platform and exact-SHA acceptance.
+1. P10.7 cottage composition.
+2. P10.8 residential tower composition.
+3. P10.9 multi-building site composition.
+4. P10.10 service/infrastructure anchors.
+5. P10.11 building candidate Preview/Diff plus atomic materialization and Wizard.
+6. P10.12 building/site generation provenance and lineage closure.
+7. P10.13 Q01–Q20, Golden Journeys, cross-platform and exact-SHA acceptance.
 
-P10 is not ready for merge or P11 handoff until those remaining contracts are
-closed and the final exact-SHA qualification is green.
+P10.1–P10.6 are complete. P10 is not ready for merge or P11 handoff until the
+remaining P10.7–P10.13 contracts are closed and final exact-SHA qualification is
+green.
