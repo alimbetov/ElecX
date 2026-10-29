@@ -265,6 +265,93 @@ void main() {
     expect(captured!.context.toString(), contains('PX-EDITOR-002'));
   });
 
+  test('PRE10-CQ13 D019 logical revision outranks wall-clock recovery time',
+      () async {
+    final root = await Directory.systemTemp.createTemp('elecx-pre10-cq13-');
+    addTearDown(() async {
+      if (await root.exists()) await root.delete(recursive: true);
+    });
+    const projectId = 'd019-revision-first';
+    final document = _legacyDocument(projectId);
+    final target = File(_recoveryTargetPath(root, projectId));
+    final backup = File('${target.path}.bak');
+    final temp = File('${target.path}.tmp');
+    await root.create(recursive: true);
+
+    final lowerRevisionNewerClock = EditorProjectRecoverySnapshot(
+      capturedAt: DateTime.utc(2036, 1, 1),
+      revision: 8,
+      document: document,
+    );
+    final higherRevisionOlderClock = EditorProjectRecoverySnapshot(
+      capturedAt: DateTime.utc(2020, 1, 1),
+      revision: 9,
+      document: document,
+    );
+    final oldestRevisionNewestClock = EditorProjectRecoverySnapshot(
+      capturedAt: DateTime.utc(2046, 1, 1),
+      revision: 7,
+      document: document,
+    );
+
+    await target.writeAsString(
+      jsonEncode(lowerRevisionNewerClock.toJson()),
+      flush: true,
+    );
+    await backup.writeAsString(
+      jsonEncode(higherRevisionOlderClock.toJson()),
+      flush: true,
+    );
+    await temp.writeAsString(
+      jsonEncode(oldestRevisionNewestClock.toJson()),
+      flush: true,
+    );
+
+    final store = JsonFileEditorProjectRecoveryStore(root);
+    final loaded = await store.load(projectId);
+    final listed = await store.list();
+
+    expect(loaded, isNotNull);
+    expect(loaded!.revision, 9);
+    expect(loaded.capturedAt, DateTime.utc(2020, 1, 1));
+    expect(listed, hasLength(1));
+    expect(listed.single.revision, 9);
+    expect(listed.single.capturedAt, DateTime.utc(2020, 1, 1));
+  });
+
+  test('PRE10-CQ13 D019 wall-clock is tie-breaker only for equal revision',
+      () async {
+    final root = await Directory.systemTemp.createTemp('elecx-pre10-cq13-tie-');
+    addTearDown(() async {
+      if (await root.exists()) await root.delete(recursive: true);
+    });
+    const projectId = 'd019-equal-revision';
+    final document = _legacyDocument(projectId);
+    final target = File(_recoveryTargetPath(root, projectId));
+    final backup = File('${target.path}.bak');
+    await root.create(recursive: true);
+
+    final olderClock = EditorProjectRecoverySnapshot(
+      capturedAt: DateTime.utc(2026, 10, 29, 1),
+      revision: 11,
+      document: document,
+    );
+    final newerClock = EditorProjectRecoverySnapshot(
+      capturedAt: DateTime.utc(2026, 10, 29, 2),
+      revision: 11,
+      document: document,
+    );
+
+    await target.writeAsString(jsonEncode(olderClock.toJson()), flush: true);
+    await backup.writeAsString(jsonEncode(newerClock.toJson()), flush: true);
+
+    final loaded = await JsonFileEditorProjectRecoveryStore(root).load(projectId);
+
+    expect(loaded, isNotNull);
+    expect(loaded!.revision, 11);
+    expect(loaded.capturedAt, DateTime.utc(2026, 10, 29, 2));
+  });
+
   test('PRE10-Q05 corrupt primary falls back to valid canonical backup',
       () async {
     final root = await Directory.systemTemp.createTemp('elecx-pre10-recovery-');
@@ -385,4 +472,9 @@ String _targetPath(Directory root, ProjectId projectId) {
   final encoded =
       base64Url.encode(utf8.encode(projectId.value)).replaceAll('=', '');
   return '${root.path}${Platform.pathSeparator}$encoded.elecx.project.json';
+}
+
+String _recoveryTargetPath(Directory root, String projectId) {
+  final encoded = base64Url.encode(utf8.encode(projectId)).replaceAll('=', '');
+  return '${root.path}${Platform.pathSeparator}$encoded.elecx.recovery.json';
 }
