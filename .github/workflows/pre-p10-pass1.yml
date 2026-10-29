@@ -122,3 +122,36 @@ jobs:
           path: build/pre-p10-pass1/storage-init-probe.log
           if-no-files-found: error
           retention-days: 30
+
+  destructive-lifecycle-qualification:
+    name: PRE10-CQ31 destructive full lifecycle
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: pubspec.yaml
+          cache: true
+      - name: Verify pinned Flutter toolchain
+        run: |
+          flutter --version
+          test "$(flutter --version --machine | python3 -c 'import json,sys; print(json.load(sys.stdin)["frameworkVersion"])')" = "3.47.7"
+      - run: flutter pub get
+      - name: Execute CQ31 destructive lifecycle qualification
+        id: cq31
+        run: |
+          set -o pipefail
+          mkdir -p build/pre-p10-pass1
+          flutter test --concurrency=1 \
+            qualification_test/pre_p10_cq31_destructive_lifecycle_qualification_test.dart \
+            2>&1 | tee build/pre-p10-pass1/cq31-destructive-lifecycle.log
+      - name: Upload CQ31 diagnostics
+        if: failure() && steps.cq31.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pre-p10-cq31-${{ github.sha }}
+          path: build/pre-p10-pass1/cq31-destructive-lifecycle.log
+          if-no-files-found: error
+          retention-days: 30
