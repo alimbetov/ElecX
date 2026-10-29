@@ -18,7 +18,7 @@ Implementation contract: [P10 specification](p10-building-residential-compositio
 | P10.6 — COMPLETE | Versioned common/core input, pure common/core generator, reserved canonical materialization, explicit horizontal/vertical access topology, typed VerticalCore hosts and v16 persistence | `test/p106_*_test.dart` suites |
 | P10.7 — COMPLETE | Reserved detached building, level stack, slabs, internal cores, physical common opening hosts and production persistence lifecycle | `test/p107_cottage*_test.dart` |
 | P10.8 — COMPLETE | Tower shell, multiple P9 apartments per repeated residential floor, independent typical-floor lineage and one parent Apply | `test/p108_*_test.dart` |
-| P10.9 — IMPLEMENTED, qualification in progress | Mixed cottage/tower Site composition, independent IDs, explicit Building-local → Site transforms, collision checks, shared typed anchors and v17 persistence | Four `test/p109_*_test.dart` suites |
+| P10.9 — COMPLETE | Mixed cottage/tower Site composition, independent IDs, explicit Building-local → Site transforms, collision checks, shared typed anchors and v17 persistence | Four `test/p109_*_test.dart` suites |
 
 P10.1–P10.3 passed repository-wide GitHub verification/quality on
 `184bd8297489a5379257b72a2beb15b69c7b08ae`.
@@ -281,10 +281,26 @@ buildings and existing P9/typical-floor lineage remain independent. Cancellation
 stale confirmation and a failure injected after all child candidates have been
 materialized leave live state/history unchanged.
 
-Local targeted qualification passed 45 scenarios, including 23 new P10.9 tests
-and the existing cottage/tower suites. All 1741 repository tests passed. Analyzer
-is clean; all 810 Dart files are formatted. Exact-SHA CI acceptance is pending
-for the P10.9 implementation commit.
+P10.9 implementation commit: `58a52d14fbf71390d63943b3a112b3497279026c`.
+The final precision fix is `036b4d7f1ca4863cdf47b2f1fda10811e90a2b8f`.
+P10.9 adds 24 tests; all 1742 repository tests passed after the precision fix,
+including the existing cottage/tower/P9 suites. Analyzer is clean; all 810 lib/test
+Dart files plus the standalone coordinate probe are formatted.
+
+Review of the canonical coordinate boundary exposed a JavaScript precision
+failure: absolute shoelace products near 1e9 mm could turn a 10×10 mm footprint
+into zero area. Area now uses coordinates relative to a polygon vertex before
+multiplication. Integer semantics and existing P9 identities are preserved.
+`qualification_test/p109_site_coordinate_smoke.dart` passed in the Dart VM and
+as optimized JavaScript executed by Node at both positive and negative coordinate
+limits. This is targeted numeric-kernel evidence; full cross-platform acceptance
+remains P10.13.
+
+Both `verification` and `quality` passed on exact SHA
+`036b4d7f1ca4863cdf47b2f1fda10811e90a2b8f` in
+[GitHub Actions run 40878600998](https://github.com/alimbetov/ElecX/actions/runs/40878600998),
+including formatting, analyzer, P8 reference/accessibility/i18n gates and the
+repository-wide test suite.
 
 ## Qualification scope
 
@@ -323,12 +339,11 @@ matrix remain P10.13 work.
 
 ## Remaining work
 
-1. P10.9 repository-wide and exact-SHA acceptance.
-2. P10.10 service/infrastructure anchors.
-3. P10.11 building candidate Preview/Diff plus atomic materialization and Wizard.
-4. P10.12 building/site generation provenance and lineage closure.
-5. P10.13 Q01–Q20, Golden Journeys, cross-platform and exact-SHA acceptance.
+1. P10.10 service/infrastructure anchors.
+2. P10.11 building candidate Preview/Diff plus atomic materialization and Wizard.
+3. P10.12 building/site generation provenance and lineage closure.
+4. P10.13 Q01–Q20, Golden Journeys, cross-platform and exact-SHA acceptance.
 
-P10.1–P10.8 are complete. P10 is not ready for merge or P11 handoff until the
-remaining P10.9–P10.13 contracts are closed and final exact-SHA qualification is
+P10.1–P10.9 are complete. P10 is not ready for merge or P11 handoff until the
+remaining P10.10–P10.13 contracts are closed and final exact-SHA qualification is
 green.
