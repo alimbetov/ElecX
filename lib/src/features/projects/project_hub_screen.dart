@@ -78,20 +78,9 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
       final store = await _storeFuture;
       final projects = await store.list();
       final recoveryStore = await _recoveryStoreFuture;
-      final allRecoveries = recoveryStore == null
+      final recoveries = recoveryStore == null
           ? const <EditorProjectRecoverySnapshot>[]
           : await recoveryStore.list();
-      final savedById = {
-        for (final document in projects) document.projectId: document,
-      };
-      final recoveries = [
-        for (final recovery in allRecoveries)
-          if (savedById[recovery.projectId] == null ||
-              recovery.capturedAt.isAfter(
-                savedById[recovery.projectId]!.updatedAt,
-              ))
-            recovery,
-      ];
       return _ProjectHubData(
         projects: projects,
         recoveries: List.unmodifiable(recoveries),
@@ -558,7 +547,8 @@ class _RecoveryProjectCard extends StatelessWidget {
           leading: const Icon(Icons.restore_page_outlined),
           title: Text(recovery.document.projectName),
           subtitle: Text(
-            'Автокопия · ${recovery.capturedAt.toLocal()} · '
+            'Автокопия · rev ${recovery.revision} · '
+            '${recovery.capturedAt.toLocal()} · '
             '${recovery.document.p2State.components.length} компонентов · '
             '${recovery.document.p2State.routes.length} трасс',
           ),
