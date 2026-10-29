@@ -1,3 +1,4 @@
+import '../../domain/boundary_host_migration.dart';
 import '../../domain/project_site_layout_integrity.dart';
 import '../../domain/boundary_edge_identity_registry.dart';
 import '../../domain/boundary_topology.dart';
@@ -431,6 +432,18 @@ abstract final class CandidateGraphValidator {
         siteId: current.siteId,
         stores: state.stores,
         layout: state.engineeringMetadata.siteLayout);
+    if (state.engineeringMetadata.siteLayout.serviceAnchors.isNotEmpty ||
+        state.engineeringMetadata.boundaryHostedObjectRegistry.references.values
+            .any(
+                (r) => r.objectKind == BoundaryHostedObjectKind.serviceEntry)) {
+      // Root construction validates the complete physical anchor/host join.
+      ProjectAggregateRoot(
+          id: current.id,
+          siteId: current.siteId,
+          version: current.version,
+          stores: state.stores,
+          engineeringMetadata: state.engineeringMetadata);
+    }
     final index = ProjectIndex.build(state.stores);
     if (!index.isConsistentWith(state.stores)) {
       throw StateError('Candidate ProjectIndex is inconsistent with stores.');

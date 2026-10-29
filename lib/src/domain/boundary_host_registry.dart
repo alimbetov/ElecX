@@ -103,6 +103,22 @@ final class BoundaryHostedObjectRegistry {
     return legacy;
   }
 
+  static String serviceEntryObjectKey(ServiceEntryId id) =>
+      'serviceEntry:${id.value}';
+
+  BoundaryHostedReference? serviceEntryHost(ServiceEntryId id) =>
+      references[serviceEntryObjectKey(id)];
+
+  BoundaryHostedObjectRegistry putServiceEntry(
+          {required ServiceEntryId id,
+          required BoundaryEdgeHostRef host,
+          required int offsetMm}) =>
+      put(BoundaryHostedReference.point(
+          objectKey: serviceEntryObjectKey(id),
+          objectKind: BoundaryHostedObjectKind.serviceEntry,
+          host: host,
+          offsetMm: offsetMm));
+
   BoundaryHostedReference? openingHost(OpeningId openingId, SpaceId spaceId) =>
       references[openingObjectKey(openingId, spaceId)];
 

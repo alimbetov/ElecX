@@ -18,6 +18,10 @@ final class SiteCompositionAwareCanonicalProjectDocumentCodec
   int get currentSchemaVersion => schemaVersion;
   @override
   ProjectDocument encode(ProjectSnapshot snapshot) {
+    if (snapshot
+        .aggregate.engineeringMetadata.siteLayout.serviceAnchors.isNotEmpty) {
+      throw const FormatException('Service anchors require schema v18.');
+    }
     final base =
         _base.encode(_withLayout(snapshot, const ProjectSiteLayout.empty()));
     return ProjectDocument(schemaVersion: schemaVersion, payload: {
@@ -29,6 +33,9 @@ final class SiteCompositionAwareCanonicalProjectDocumentCodec
 
   @override
   ProjectSnapshot decode(ProjectDocument document) {
+    if (document.payload.containsKey('serviceAnchors')) {
+      throw const FormatException('Service anchors require schema v18.');
+    }
     if (document.schemaVersion < 1 || document.schemaVersion > schemaVersion) {
       throw const FormatException(
           'Unsupported canonical Site composition schema.');

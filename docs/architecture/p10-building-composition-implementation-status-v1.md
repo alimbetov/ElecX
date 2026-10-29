@@ -19,6 +19,7 @@ Implementation contract: [P10 specification](p10-building-residential-compositio
 | P10.7 — COMPLETE | Reserved detached building, level stack, slabs, internal cores, physical common opening hosts and production persistence lifecycle | `test/p107_cottage*_test.dart` |
 | P10.8 — COMPLETE | Tower shell, multiple P9 apartments per repeated residential floor, independent typical-floor lineage and one parent Apply | `test/p108_*_test.dart` |
 | P10.9 — COMPLETE | Mixed cottage/tower Site composition, independent IDs, explicit Building-local → Site transforms, collision checks, shared typed anchors and v17 persistence | Four `test/p109_*_test.dart` suites |
+| P10.10 — IMPLEMENTED; CI pending | Ten typed service/infrastructure anchor purposes, explicit Site/Space/wall hosts, live P7 physical binding, atomic mutation and v18 persistence | Four `test/p1010_*_test.dart` suites |
 
 P10.1–P10.3 passed repository-wide GitHub verification/quality on
 `184bd8297489a5379257b72a2beb15b69c7b08ae`.
@@ -68,8 +69,8 @@ no implicit propagation between floors; full selective propagation belongs to
 P15.
 
 Typical-floor lineage uses the v14 codec layer. P10.5 composition lineage uses
-v15. The current default native repository uses the additive v16 common/core
-codec, preserving v1–v15 read support. Older codecs fail closed when a snapshot
+v15. P10.6 introduced the additive v16 common/core codec. The current default
+native repository uses v18, preserving v1–v17 read support. Older codecs fail closed when a snapshot
 contains P10.6 building-core semantics instead of silently dropping typed core
 usage or host-space bindings. P9 child manifests and entity provenance remain
 intact.
@@ -261,7 +262,8 @@ placements for all existing buildings; legacy coordinates are never guessed.
 a real metadata mutation with Undo/Redo. Shared Site anchors own stable
 `ServiceEntryId` values, explicit meaning, a Site-local point and at least two
 served `BuildingId` references. They reserve shared service/access locations;
-system-specific service entries/equipment remain P10.10 and later stages.
+system-specific service anchors are delivered by P10.10; engineering equipment
+belongs to later stages.
 Shared references block implicit Building deletion, and deleting an unreferenced
 empty Building removes its placement on the same canonical Undo boundary.
 
@@ -270,7 +272,7 @@ canonical graph. It strictly validates versions, coordinate-frame declaration,
 types, duplicate identities, ownership and spatial integrity. Read support for
 v1–v16 preserves existing state without inferred placements. Older codecs reject
 new placement metadata instead of silently dropping it. The default native
-repository now uses v17.
+repository used v17 at P10.9 acceptance; P10.10 advances it to v18.
 
 P10-Q11 uses one real P10.8 tower plus two P10.7 cottages, repeated floor number/code
 `1` / `01`, independent geometry/host identities, different Site rotations and
@@ -301,6 +303,61 @@ Both `verification` and `quality` passed on exact SHA
 [GitHub Actions run 40878600998](https://github.com/alimbetov/ElecX/actions/runs/40878600998),
 including formatting, analyzer, P8 reference/accessibility/i18n gates and the
 repository-wide test suite.
+
+## P10.10 service/infrastructure anchor contract
+
+`ServiceAnchorCompositionGenerator` materializes ten explicitly typed purposes:
+electrical, telecom/fiber, fire backbone and intercom/CCTV wall entries;
+generator, transformer/substation, PV/inverter, battery/UPS and EV areas; and
+external-lighting feeder anchors. These reserve architectural attachment
+locations without selected equipment, supply capacity, protection, circuits,
+transfer logic or engineering routes.
+
+Immutable anchors belong to the existing `ProjectEngineeringMetadata.siteLayout`
+and use stable `ServiceEntryId` identities. Site anchors carry explicit served
+`BuildingId` references and a Site-local point. Space anchors carry exact
+Building/Level/Space ownership, a Building-local point and height above the
+physical Level. The four entry purposes require a durable wall host. Their
+canonical entity stores ownership and height, while the existing P7
+`BoundaryHostedObjectRegistry` exclusively owns the `BoundaryEdgeId` and offset.
+There is no cached wall XY or parallel physical host store.
+
+`ProjectServiceAnchorResolver` provides live local/Site positions and physical
+elevation for subsequent P11/P12 attachment. P7 edge splits remap the same
+physical binding while preserving the exact ServiceEntryId and point. Building
+placement changes project local points through the existing Site transform;
+display level renumbering does not change physical ownership or elevation.
+
+The generator consumes P10.1's selected anchor intent only with complete explicit
+locations. It allocates no persistent identities, normalizes semantic keys and
+uses the existing reserved preview/session pipeline for one atomic Apply and
+one Undo record. Ordinary update/rebind/remove commands preserve identities and
+use the same session, dirty state and persistence owner. Destructive Space and
+Building removal reports anchor dependencies instead of silently cascading them.
+Appending another P10.9 building preserves existing anchors and wall hosts.
+
+Canonical validation rejects dangling/cross-owner references, missing or invalid
+wall bindings, out-of-room points, invalid height/offset, points inside opening
+voids or outside an explicit wall profile, duplicate physical anchors, orphan
+wall bindings and outdoor points inside placed buildings. Empty selection is a
+no-op; cancelled, stale and failed previews do not publish partial metadata.
+
+Schema v18 persists the typed anchors and restores wall references into the same
+P7 registry on load. Versions v1–v17 remain readable without inferred locations.
+Unknown/missing fields, unsupported versions/purposes, duplicate IDs (including
+collisions with P10.9 shared anchors) and invalid joins fail closed. Older codecs
+reject lossy writes and disguised v18 data. P9 and typical-floor lineage remain
+unchanged; generalized building/site provenance is still P10.12 work.
+
+P10-Q12 qualifies all ten purposes on a real three-building P10.9 Site through
+the production persistence owner: Apply → Save → Reopen → Edit → Undo → Redo →
+Save → Reopen, preserving exact typed ownership, physical hosts and sibling
+architecture. Additional qualification covers P7 split migration, explicit
+rebind, display renumbering, Site movement and append, and failure atomicity.
+All 25 new P10.10 tests passed, including the final explicit-rebind check.
+Analyzer, lib/test formatting and `git diff --check` are clean. Repository-wide
+local verification and exact implementation-SHA CI acceptance are still running;
+this implementation is not yet accepted by CI.
 
 ## Qualification scope
 
@@ -339,11 +396,10 @@ matrix remain P10.13 work.
 
 ## Remaining work
 
-1. P10.10 service/infrastructure anchors.
-2. P10.11 building candidate Preview/Diff plus atomic materialization and Wizard.
-3. P10.12 building/site generation provenance and lineage closure.
-4. P10.13 Q01–Q20, Golden Journeys, cross-platform and exact-SHA acceptance.
+1. P10.11 building candidate Preview/Diff plus atomic materialization and Wizard.
+2. P10.12 building/site generation provenance and lineage closure.
+3. P10.13 Q01–Q20, Golden Journeys, cross-platform and exact-SHA acceptance.
 
-P10.1–P10.9 are complete. P10 is not ready for merge or P11 handoff until the
-remaining P10.10–P10.13 contracts are closed and final exact-SHA qualification is
+P10.1–P10.9 are accepted; P10.10 implementation awaits exact-SHA CI. P10 is not ready for merge or P11 handoff until the
+remaining P10.11–P10.13 contracts are closed and final exact-SHA qualification is
 green.

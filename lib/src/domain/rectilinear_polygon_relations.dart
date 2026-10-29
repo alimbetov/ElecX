@@ -1,8 +1,36 @@
 import 'apartment_topology/apartment_geometry.dart';
+import 'boundary_topology.dart';
 
 /// Exact integer tests shared by P9 geometry qualification and P10 composition.
 /// Boundary contact is legal; a positive interior intersection is a collision.
 abstract final class RectilinearPolygonRelations {
+  static bool containsPoint(RectilinearPolygonMm polygon, BoundaryPointMm point,
+      {bool includeBoundary = true}) {
+    var inside = false;
+    for (final edge in polygon.segments) {
+      final minX =
+          edge.start.xMm < edge.end.xMm ? edge.start.xMm : edge.end.xMm;
+      final maxX =
+          edge.start.xMm > edge.end.xMm ? edge.start.xMm : edge.end.xMm;
+      final minY =
+          edge.start.yMm < edge.end.yMm ? edge.start.yMm : edge.end.yMm;
+      final maxY =
+          edge.start.yMm > edge.end.yMm ? edge.start.yMm : edge.end.yMm;
+      if (point.xMm >= minX &&
+          point.xMm <= maxX &&
+          point.yMm >= minY &&
+          point.yMm <= maxY) {
+        return includeBoundary;
+      }
+      if (edge.vertical &&
+          (edge.start.yMm > point.yMm) != (edge.end.yMm > point.yMm) &&
+          edge.start.xMm > point.xMm) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  }
+
   static bool overlapsInterior(
       RectilinearPolygonMm first, RectilinearPolygonMm second) {
     if (first.maxX <= second.minX ||

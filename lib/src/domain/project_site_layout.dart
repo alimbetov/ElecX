@@ -4,6 +4,7 @@ import 'apartment_topology/apartment_geometry.dart';
 import 'boundary_topology.dart';
 import 'project_identity.dart';
 import 'project_orientation.dart';
+import 'project_service_anchor.dart';
 
 final class SiteLayoutException implements Exception {
   const SiteLayoutException(this.code);
@@ -122,21 +123,28 @@ final class ProjectSharedSiteAnchor {
 final class ProjectSiteLayout {
   const ProjectSiteLayout.empty()
       : placements = const {},
-        sharedAnchors = const {};
+        sharedAnchors = const {},
+        serviceAnchors = const {};
   ProjectSiteLayout(
       {Map<BuildingId, ProjectBuildingSitePlacement> placements = const {},
-      Map<ServiceEntryId, ProjectSharedSiteAnchor> sharedAnchors = const {}})
+      Map<ServiceEntryId, ProjectSharedSiteAnchor> sharedAnchors = const {},
+      Map<ServiceEntryId, ProjectServiceAnchor> serviceAnchors = const {}})
       : placements = Map.unmodifiable(placements),
-        sharedAnchors = Map.unmodifiable(sharedAnchors);
+        sharedAnchors = Map.unmodifiable(sharedAnchors),
+        serviceAnchors = Map.unmodifiable(serviceAnchors);
   final Map<BuildingId, ProjectBuildingSitePlacement> placements;
   final Map<ServiceEntryId, ProjectSharedSiteAnchor> sharedAnchors;
-  bool get isEmpty => placements.isEmpty && sharedAnchors.isEmpty;
+  final Map<ServiceEntryId, ProjectServiceAnchor> serviceAnchors;
+  bool get isEmpty =>
+      placements.isEmpty && sharedAnchors.isEmpty && serviceAnchors.isEmpty;
   ProjectSiteLayout copyWith(
           {Map<BuildingId, ProjectBuildingSitePlacement>? placements,
-          Map<ServiceEntryId, ProjectSharedSiteAnchor>? sharedAnchors}) =>
+          Map<ServiceEntryId, ProjectSharedSiteAnchor>? sharedAnchors,
+          Map<ServiceEntryId, ProjectServiceAnchor>? serviceAnchors}) =>
       ProjectSiteLayout(
           placements: placements ?? this.placements,
-          sharedAnchors: sharedAnchors ?? this.sharedAnchors);
+          sharedAnchors: sharedAnchors ?? this.sharedAnchors,
+          serviceAnchors: serviceAnchors ?? this.serviceAnchors);
   Map<String, Object?> toCanonicalJson() => {
         'schemaVersion': 1,
         'coordinateFrame': 'building-local.v1',
@@ -146,6 +154,13 @@ final class ProjectSiteLayout {
                 ..sort((a, b) => a.value.compareTo(b.value)))
             {'buildingId': id.value, ...placements[id]!.toCanonicalJson()}
         ],
+        if (serviceAnchors.isNotEmpty)
+          'serviceAnchors': [
+            for (final id
+                in serviceAnchors.keys.toList()
+                  ..sort((a, b) => a.value.compareTo(b.value)))
+              serviceAnchors[id]!.toCanonicalJson()
+          ],
         'sharedAnchors': [
           for (final id
               in sharedAnchors.keys.toList()

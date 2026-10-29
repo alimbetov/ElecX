@@ -4,7 +4,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 import '../../application/project/project_repository.dart';
-import '../../serialization/project/site_composition_aware_canonical_project_document_codec.dart';
+import '../../serialization/project/service_anchor_aware_canonical_project_document_codec.dart';
 import 'json_project_repository.dart';
 
 Future<ProjectRepository> openDefaultCanonicalProjectRepository() async {
@@ -13,6 +13,6 @@ Future<ProjectRepository> openDefaultCanonicalProjectRepository() async {
     rootDirectory: Directory(
       path.join(documents.path, 'ElecX', 'canonical-projects'),
     ),
-    codec: const SiteCompositionAwareCanonicalProjectDocumentCodec(),
+    codec: const ServiceAnchorAwareCanonicalProjectDocumentCodec(),
   );
 }

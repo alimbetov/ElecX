@@ -2,6 +2,7 @@ import '../../domain/boundary_topology.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_entity_stores_copy.dart';
 import '../../domain/project_identity.dart';
+import '../../domain/project_service_anchor.dart';
 import 'project_authoring_error.dart';
 import 'project_mutation.dart';
 
@@ -44,6 +45,10 @@ final class RemoveSpaceCommand implements ProjectCommand {
       ...?current.index.overlaysBySpaceId[space.id],
       for (final core in current.stores.verticalCores.values)
         if (core.hostSpaceIdsByLevel.containsValue(space.id)) core.id,
+      for (final anchor
+          in current.engineeringMetadata.siteLayout.serviceAnchors.values)
+        if (anchor is ProjectSpaceServiceAnchor && anchor.spaceId == space.id)
+          anchor.id,
     };
     if (semanticBlockers.isNotEmpty) {
       throw ProjectAuthoringException(
@@ -304,6 +309,10 @@ final class RemoveBuildingCommand implements ProjectCommand {
         .where((anchor) => anchor.servedBuildingIds.contains(building.id))
         .map((anchor) => anchor.id)
         .toSet();
+    sharedAnchors.addAll(current
+        .engineeringMetadata.siteLayout.serviceAnchors.values
+        .where((anchor) => anchor.servedBuildingIds.contains(building.id))
+        .map((anchor) => anchor.id));
     if (sharedAnchors.isNotEmpty) {
       throw ProjectAuthoringException(
           code: ProjectAuthoringIssueCode.buildingHasSiteDependencies,

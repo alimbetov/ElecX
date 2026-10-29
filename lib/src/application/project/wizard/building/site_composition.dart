@@ -318,7 +318,9 @@ final class SiteCompositionCommand implements ReservedProjectCommand {
     for (final anchor in plan.anchors) {
       final id = anchors.entityId<ServiceEntryId>(anchor.key);
       if (current.engineeringMetadata.siteLayout.sharedAnchors
-          .containsKey(id)) {
+              .containsKey(id) ||
+          current.engineeringMetadata.siteLayout.serviceAnchors
+              .containsKey(id)) {
         throw const SiteLayoutException('p10.site.reservation-collision');
       }
     }
@@ -362,8 +364,8 @@ final class SiteCompositionCommand implements ReservedProjectCommand {
             for (final key in anchor.buildingKeys) ids[key]!
           });
     }
-    final layout =
-        ProjectSiteLayout(placements: placements, sharedAnchors: shared);
+    final layout = current.engineeringMetadata.siteLayout
+        .copyWith(placements: placements, sharedAnchors: shared);
     proposed = ProjectAggregateRoot(
         id: current.id,
         siteId: current.siteId,
