@@ -291,6 +291,8 @@ String spaceUsageLabel(SpaceUsage value) => switch (value) {
       SpaceUsage.elevatorHall => 'Elevator hall',
       SpaceUsage.elevatorShaft => 'Elevator shaft',
       SpaceUsage.serviceShaft => 'Service shaft',
+      SpaceUsage.electricalRiser => 'Electrical riser',
+      SpaceUsage.telecomRiser => 'Telecom riser',
       SpaceUsage.commercial => 'Commercial',
       SpaceUsage.commonArea => 'Common area',
     };
