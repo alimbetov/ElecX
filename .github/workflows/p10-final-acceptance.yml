@@ -1,0 +1,291 @@
+name: P10 Final Acceptance
+on:
+  push:
+    branches: [main, feat/p10-building-residential-composition]
+  pull_request:
+  workflow_dispatch:
+concurrency:
+  group: p10-final-acceptance-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  repository-quality:
+    name: Repository format analyze regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: pubspec.yaml
+          cache: true
+      - name: Verify pinned SDK
+        shell: bash
+        run: flutter --version | grep -q '^Flutter 3\.47\.7 '
+      - run: flutter pub get
+      - run: dart format --output=none --set-exit-if-changed lib test qualification_test tool integration_test test_driver
+      - run: flutter analyze
+      - run: flutter test
+      - run: flutter test --concurrency=1 test/p8_wizard_nfr_a11y_i18n_qualification_test.dart test/p8_wizard_r23_extended_qualification_test.dart
+  domain:
+    name: P10-A Domain and architecture
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: pubspec.yaml
+          cache: true
+      - name: Verify pinned SDK
+        shell: bash
+        run: flutter --version | grep -q '^Flutter 3\.47\.7 '
+      - run: flutter pub get
+      - run: flutter test --concurrency=2 test/p10_building*_test.dart test/p10_typical*_test.dart test/p105*_test.dart test/p106*_test.dart qualification_test/p10_p1013_architecture_qualification_test.dart
+  cottage:
+    name: P10-B Cottage
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: pubspec.yaml
+          cache: true
+      - name: Verify pinned SDK
+        shell: bash
+        run: flutter --version | grep -q '^Flutter 3\.47\.7 '
+      - run: flutter pub get
+      - run: flutter test --concurrency=2 test/p107*_test.dart
+      - run: flutter test --concurrency=1 qualification_test/p10_p1013_golden_journeys_test.dart --plain-name GJ-COTTAGE-01
+  tower:
+    name: P10-C Tower
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: pubspec.yaml
+          cache: true
+      - name: Verify pinned SDK
+        shell: bash
+        run: flutter --version | grep -q '^Flutter 3\.47\.7 '
+      - run: flutter pub get
+      - run: flutter test --concurrency=2 test/p108*_test.dart
+      - run: flutter test --concurrency=1 qualification_test/p10_p1013_golden_journeys_test.dart --plain-name GJ-TOWER-01
+  complex:
+    name: P10-D Multi-building
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: pubspec.yaml
+          cache: true
+      - name: Verify pinned SDK
+        shell: bash
+        run: flutter --version | grep -q '^Flutter 3\.47\.7 '
+      - run: flutter pub get
+      - run: flutter test --concurrency=2 test/p109*_test.dart
+      - run: flutter test --concurrency=1 qualification_test/p10_p1013_golden_journeys_test.dart --plain-name GJ-COMPLEX-01
+  persistence:
+    name: P10-E Persistence recovery provenance
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: pubspec.yaml
+          cache: true
+      - name: Verify pinned SDK
+        shell: bash
+        run: flutter --version | grep -q '^Flutter 3\.47\.7 '
+      - run: flutter pub get
+      - run: flutter test --concurrency=1 test/p1012_composition_provenance_test.dart test/p1010*_test.dart qualification_test/p10_p1013_recovery_qualification_test.dart
+  preview:
+    name: P10-F Production Wizard atomicity bootstrap
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: pubspec.yaml
+          cache: true
+      - name: Verify pinned SDK
+        shell: bash
+        run: flutter --version | grep -q '^Flutter 3\.47\.7 '
+      - run: flutter pub get
+      - run: flutter test --concurrency=2 test/p1011*_test.dart test/p8_project_hub_wizard_flow_test.dart test/wizard_session_test.dart
+  desktop:
+    name: P10-G native ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+          - os: macos-latest
+            platform: macos
+          - os: windows-latest
+            platform: windows
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: pubspec.yaml
+          cache: true
+      - name: Verify pinned SDK
+        shell: bash
+        run: flutter --version | grep -q '^Flutter 3\.47\.7 '
+      - run: flutter pub get
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+      - run: dart run tool/p10_semantic_parity.dart
+      - name: Native shell compile probe
+        run: flutter create --platforms=${{ matrix.platform }} --project-name elecx .
+      - run: flutter build ${{ matrix.platform }} --debug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p10-parity-${{ matrix.platform }}
+          path: build/p10-final-acceptance/p10-semantic-parity.json
+          if-no-files-found: error
+  android:
+    name: P10-G native Android ${{ matrix.form }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - form: phone
+            profile: pixel_6
+          - form: tablet
+            profile: pixel_c
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: pubspec.yaml
+          cache: true
+      - name: Verify pinned SDK
+        shell: bash
+        run: flutter --version | grep -q '^Flutter 3\.47\.7 '
+      - run: flutter pub get
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - run: flutter create --platforms=android --project-name elecx .
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: ${{ matrix.profile }}
+          disable-animations: true
+          script: flutter drive --driver=test_driver/p10_semantic_parity_driver.dart --target=integration_test/p10_native_semantic_parity_test.dart -d emulator-5554
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p10-parity-android-${{ matrix.form }}
+          path: build/p10-final-acceptance/p10-semantic-parity.json
+          if-no-files-found: error
+  apple-mobile:
+    name: P10-G native ${{ matrix.form }}
+    strategy:
+      fail-fast: false
+      matrix:
+        form: [iOS, iPadOS]
+    runs-on: macos-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: pubspec.yaml
+          cache: true
+      - name: Verify pinned SDK
+        shell: bash
+        run: flutter --version | grep -q '^Flutter 3\.47\.7 '
+      - run: flutter pub get
+      - run: flutter create --platforms=ios --project-name elecx .
+      - name: Choose native simulator
+        env:
+          P10_FORM: ${{ matrix.form }}
+        run: |
+          xcrun simctl list devices available --json > /tmp/p10-simulators.json
+          python3 - <<'PYCODE'
+          import json, os
+          devices=json.load(open('/tmp/p10-simulators.json'))['devices']
+          candidates=[d for runtime,ds in devices.items() if '.iOS-' in runtime for d in ds
+                      if ('iPad' in d['name'] if os.environ['P10_FORM']=='iPadOS' else 'iPhone' in d['name'])]
+          assert candidates, 'Required native simulator is unavailable'
+          with open(os.environ['GITHUB_ENV'],'a') as output:
+              output.write('P10_SIMULATOR_UDID='+candidates[0]['udid']+'\n')
+          PYCODE
+      - name: Boot simulator
+        run: |
+          xcrun simctl boot "$P10_SIMULATOR_UDID"
+          xcrun simctl bootstatus "$P10_SIMULATOR_UDID" -b
+      - name: Execute native semantic corpus
+        run: flutter drive --driver=test_driver/p10_semantic_parity_driver.dart --target=integration_test/p10_native_semantic_parity_test.dart -d "$P10_SIMULATOR_UDID"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p10-parity-${{ matrix.form }}
+          path: build/p10-final-acceptance/p10-semantic-parity.json
+          if-no-files-found: error
+  semantic-equality:
+    name: P10-G Cross-platform semantic equality
+    needs: [desktop, android, apple-mobile]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: p10-parity-*
+          path: parity
+      - name: Compare all native semantic outputs
+        run: |
+          python3 - <<'PYCODE'
+          import json, pathlib
+          root=pathlib.Path('parity')
+          names=['linux','macos','windows','android-phone','android-tablet','iOS','iPadOS']
+          values=[json.loads((root/('p10-parity-'+name)/'p10-semantic-parity.json').read_text()) for name in names]
+          assert all(v==values[0] for v in values), 'Native P10 semantic divergence'
+          print('PASS: Linux/macOS/Windows/Android phone+tablet/iOS/iPadOS')
+          PYCODE
+  exact-sha-final-audit:
+    name: P10-H Exact-SHA final acceptance
+    needs: [repository-quality, domain, cottage, tower, complex, persistence, preview, semantic-equality]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Record acceptance evidence
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -s docs/architecture/quality/p10-qualification-closure-matrix-v1.md
+          mkdir -p build/p10-final-acceptance
+          printf 'P10 acceptance SHA: %s\nrun: %s\nP10-A..H: PASS\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > build/p10-final-acceptance/acceptance.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p10-exact-sha-acceptance
+          path: build/p10-final-acceptance/acceptance.txt
+          if-no-files-found: error

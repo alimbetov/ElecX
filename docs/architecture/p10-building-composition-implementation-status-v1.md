@@ -440,11 +440,28 @@ P10.6 exact-SHA qualification is accepted on
 Cross-platform P10 acceptance, dedicated P10 CI gates and the final Q01–Q20 closure
 matrix remain P10.13 work.
 
-## Remaining work
+## P10.12 and P10.13 implementation
 
-1. P10.12 building/site generation provenance and lineage closure.
-2. P10.13 Q01–Q20, Golden Journeys, cross-platform and exact-SHA acceptance.
+P10.12 now records complete composition parent evidence in the existing registry
+and reserved mutation boundary. The native repository uses additive schema v19,
+retaining v1–v18 reads and rejecting lossy downgrades. Parent → P10.5 → P9 lineage,
+field overrides, physical host edits, tombstones and exact Undo/Redo are covered in
+`test/p1012_composition_provenance_test.dart`. See
+[the implementation note](quality/p1012-composition-provenance-implementation-v1.md).
 
-P10.1–P10.11 are complete. P10 is not ready for merge or P11 handoff until the
-remaining P10.12–P10.13 contracts are closed and final exact-SHA qualification is
-green.
+P10.13 adds the Q01–Q20 closure matrix, production lifecycle fixtures with 16 repeated
+tower floors and a mixed 408-Space Site, persistence failure/retry qualification,
+static ownership checks and a dedicated A–H native CI workflow. The workflow
+requires Linux/macOS/Windows plus native Android phone/tablet and iOS/iPadOS
+semantic artifacts. See [the closure matrix](quality/p10-qualification-closure-matrix-v1.md).
+
+## Remaining release checks
+
+Implementation exists for P10.1–P10.13. Final acceptance is determined by the
+P10-H artifact and repository `quality`/`verification` on the same exact SHA;
+this status document does not substitute for unfinished or failing CI jobs.
+
+A main-branch merge is separate from feature implementation. P11 formal handoff
+still requires a green post-merge exact-SHA acceptance run. CAD frame-time/FPS
+qualification is a separate measured performance gate; the large P10 fixtures
+establish composition/lifecycle coverage, not GPU timing guarantees.
