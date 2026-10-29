@@ -1,3 +1,4 @@
+import 'package:elecx/src/application/project/wizard/wizard_diff.dart';
 import 'dart:math';
 import 'package:elecx/src/application/project/project_destructive_commands.dart';
 import 'package:elecx/src/application/project/wizard/project_wizard_mutation_port.dart';
@@ -145,6 +146,12 @@ void main() {
               .composition;
       expect(evidence['requestFingerprint'], source.requestFingerprint);
       expect(evidence['candidateFingerprint'], source.candidateFingerprint);
+      final diff = const WizardDiffProjector()
+          .project(before: r.mutations.current, preview: r.wizard.preview!);
+      final origin = diff.entries.singleWhere((e) => e.entityId == parent.id);
+      expect(origin.category, WizardDiffEntityCategory.provenance);
+      expect(origin.title, 'Composition origin');
+      expect(origin.title.contains(parent.id.value), isFalse);
       expect(() => parent.entities.clear(), throwsUnsupportedError);
       expect(r.wizard.confirm(), isTrue);
       final building = p.stores.buildings.keys.first;

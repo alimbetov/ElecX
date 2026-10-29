@@ -1,3 +1,4 @@
+import '../../../domain/composition_generation_provenance.dart';
 import '../../../domain/boundary_topology.dart';
 import '../../../domain/boundary_host_migration.dart';
 import '../../../domain/project_service_anchor.dart';
@@ -249,6 +250,10 @@ final class WizardDiffProjector {
       return project.engineeringMetadata.siteLayout.serviceAnchors[id] ??
           project.engineeringMetadata.siteLayout.sharedAnchors[id];
     }
+    if (id is GenerationId) {
+      return project
+          .engineeringMetadata.generationProvenanceRegistry.compositions[id];
+    }
     if (id is TypicalFloorDefinitionId) {
       return project.engineeringMetadata.generationProvenanceRegistry
           .typicalFloorDefinitions[id];
@@ -257,6 +262,7 @@ final class WizardDiffProjector {
   }
 
   WizardDiffEntityCategory _category(EntityId id) {
+    if (id is GenerationId) return WizardDiffEntityCategory.provenance;
     if (id is SiteId) return WizardDiffEntityCategory.site;
     if (id is BuildingId) return WizardDiffEntityCategory.building;
     if (id is LevelId) return WizardDiffEntityCategory.level;
@@ -280,6 +286,7 @@ final class WizardDiffProjector {
     ProjectAggregateRoot before,
     ProjectAggregateRoot candidate,
   ) {
+    if (entity is CompositionGenerationManifest) return 'Composition origin';
     if (entity is ProjectSiteEntity) return 'Site “${entity.name}”';
     if (entity is ProjectBuildingEntity) return 'Building “${entity.name}”';
     if (entity is ProjectLevelEntity) {
