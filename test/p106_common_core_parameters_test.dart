@@ -74,7 +74,8 @@ void main() {
       );
     });
 
-    test('new v2 semantics participate in the building request fingerprint', () {
+    test('new v2 semantics participate in the building request fingerprint',
+        () {
       CommonCoreParameters core({
         int electrical = 1,
         int telecom = 1,
