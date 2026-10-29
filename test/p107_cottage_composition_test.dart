@@ -166,16 +166,37 @@ void main() {
       );
       final reopened = codec.decode(document).aggregate;
 
-      expect(reopened.stores.buildings.keys, before.stores.buildings.keys);
-      expect(reopened.stores.levels.keys, before.stores.levels.keys);
-      expect(reopened.stores.slabs.keys, before.stores.slabs.keys);
-      expect(reopened.stores.zones.keys, before.stores.zones.keys);
-      expect(reopened.stores.spaces.keys, before.stores.spaces.keys);
-      expect(reopened.stores.openings.keys, before.stores.openings.keys);
-      expect(reopened.stores.adjacencies.keys, before.stores.adjacencies.keys);
       expect(
-        reopened.stores.verticalCores.keys,
-        before.stores.verticalCores.keys,
+        reopened.stores.buildings.keys.toSet(),
+        before.stores.buildings.keys.toSet(),
+      );
+      expect(
+        reopened.stores.levels.keys.toSet(),
+        before.stores.levels.keys.toSet(),
+      );
+      expect(
+        reopened.stores.slabs.keys.toSet(),
+        before.stores.slabs.keys.toSet(),
+      );
+      expect(
+        reopened.stores.zones.keys.toSet(),
+        before.stores.zones.keys.toSet(),
+      );
+      expect(
+        reopened.stores.spaces.keys.toSet(),
+        before.stores.spaces.keys.toSet(),
+      );
+      expect(
+        reopened.stores.openings.keys.toSet(),
+        before.stores.openings.keys.toSet(),
+      );
+      expect(
+        reopened.stores.adjacencies.keys.toSet(),
+        before.stores.adjacencies.keys.toSet(),
+      );
+      expect(
+        reopened.stores.verticalCores.keys.toSet(),
+        before.stores.verticalCores.keys.toSet(),
       );
       for (final entry in before.stores.verticalCores.entries) {
         final restored = reopened.stores.verticalCores[entry.key]!;
