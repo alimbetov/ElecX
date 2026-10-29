@@ -1,7 +1,7 @@
 import 'boundary_topology.dart';
 import 'project_identity.dart';
 
-/// Physical role of one stable multi-level vertical routing volume.
+/// Physical routing role of one stable multi-level vertical volume.
 enum VerticalCoreKind {
   /// Dedicated cable/conduit riser.
   riser,
@@ -11,6 +11,26 @@ enum VerticalCoreKind {
 
   /// Service shaft reserved for engineering systems.
   serviceShaft,
+}
+
+/// P10 architectural meaning of a canonical vertical core.
+///
+/// This is intentionally additive to [VerticalCoreKind]. P7 engineering routing
+/// can keep using the physical role while P10 assigns building semantics without
+/// changing legacy routing behavior or identity.
+enum VerticalCoreUsage {
+  unspecified,
+  stairwell,
+  elevatorShaft,
+  serviceShaft,
+  electricalRiser,
+  telecomRiser,
+}
+
+extension VerticalCoreUsageRequirements on VerticalCoreUsage {
+  /// P10-generated architectural cores must be hosted by a canonical Space on
+  /// every served level. Legacy/unspecified P7 cores remain migration-safe.
+  bool get requiresHostSpacePerLevel => this != VerticalCoreUsage.unspecified;
 }
 
 /// Canonical physical vertical routing volume spanning two or more levels.
@@ -25,6 +45,10 @@ enum VerticalCoreKind {
 /// canonical levels on which the core is available; project-level validation
 /// is responsible for proving that all referenced levels belong to
 /// [buildingId].
+///
+/// P10 optionally binds each served [LevelId] to the canonical host [SpaceId]
+/// through [hostSpaceIdsByLevel]. Architectural usages require complete host
+/// coverage; the map never uses display level numbers as identity.
 final class ProjectVerticalCore {
   ProjectVerticalCore({
     required this.id,
@@ -33,8 +57,12 @@ final class ProjectVerticalCore {
     required Iterable<LevelId> levelIds,
     required Iterable<BoundaryPointMm> footprint,
     this.name,
+    this.usage = VerticalCoreUsage.unspecified,
+    Map<LevelId, SpaceId> hostSpaceIdsByLevel = const {},
   })  : levelIds = Set.unmodifiable(levelIds),
-        footprint = List.unmodifiable(footprint) {
+        footprint = List.unmodifiable(footprint),
+        hostSpaceIdsByLevel =
+            Map<LevelId, SpaceId>.unmodifiable(hostSpaceIdsByLevel) {
     if (name != null && name!.trim().isEmpty) {
       throw ArgumentError.value(
         name,
@@ -63,16 +91,46 @@ final class ProjectVerticalCore {
         'Vertical core footprint must have non-zero area.',
       );
     }
+    for (final levelId in this.hostSpaceIdsByLevel.keys) {
+      if (!this.levelIds.contains(levelId)) {
+        throw ArgumentError.value(
+          levelId,
+          'hostSpaceIdsByLevel',
+          'A vertical-core host must belong to a served LevelId.',
+        );
+      }
+    }
+    if (this.hostSpaceIdsByLevel.values.toSet().length !=
+        this.hostSpaceIdsByLevel.length) {
+      throw ArgumentError.value(
+        this.hostSpaceIdsByLevel,
+        'hostSpaceIdsByLevel',
+        'A canonical host SpaceId cannot be reused by multiple levels.',
+      );
+    }
+    if (usage.requiresHostSpacePerLevel &&
+        this.hostSpaceIdsByLevel.length != this.levelIds.length) {
+      throw ArgumentError.value(
+        this.hostSpaceIdsByLevel,
+        'hostSpaceIdsByLevel',
+        'Architectural vertical cores require one host SpaceId per served LevelId.',
+      );
+    }
   }
 
   final VerticalCoreId id;
   final BuildingId buildingId;
   final VerticalCoreKind kind;
+  final VerticalCoreUsage usage;
   final Set<LevelId> levelIds;
   final List<BoundaryPointMm> footprint;
+  final Map<LevelId, SpaceId> hostSpaceIdsByLevel;
   final String? name;
 
   bool servesLevel(LevelId levelId) => levelIds.contains(levelId);
+
+  SpaceId? hostSpaceIdForLevel(LevelId levelId) =>
+      hostSpaceIdsByLevel[levelId];
 }
 
 enum VerticalCoreTopologyIssueCode {

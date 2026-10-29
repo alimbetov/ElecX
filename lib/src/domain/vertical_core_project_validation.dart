@@ -5,11 +5,15 @@ typedef VerticalCoreBuildingExists = bool Function(BuildingId buildingId);
 typedef VerticalCoreLevelBuildingResolver = BuildingId? Function(
   LevelId levelId,
 );
+typedef VerticalCoreSpaceLevelResolver = LevelId? Function(SpaceId spaceId);
 
 enum VerticalCoreProjectIssueCode {
   danglingBuilding,
   danglingLevel,
   levelBuildingMismatch,
+  danglingHostSpace,
+  hostSpaceLevelMismatch,
+  missingRequiredHostSpace,
 }
 
 final class VerticalCoreProjectIssue {
@@ -32,13 +36,15 @@ final class VerticalCoreProjectIssue {
 /// Cross-reference validation for canonical vertical cores.
 ///
 /// Local geometry/identity invariants remain in [VerticalCoreTopologyValidator].
-/// This validator proves only project ownership: the building must exist and
-/// every level traversed by the core must exist in that same building.
+/// This validator proves project ownership: the building must exist, every
+/// traversed level must belong to that building, and every P10 host SpaceId must
+/// exist on the exact LevelId used as its map key.
 abstract final class VerticalCoreProjectValidator {
   static List<VerticalCoreProjectIssue> validate({
     required Map<VerticalCoreId, ProjectVerticalCore> verticalCores,
     required VerticalCoreBuildingExists buildingExists,
     required VerticalCoreLevelBuildingResolver levelBuildingResolver,
+    VerticalCoreSpaceLevelResolver? spaceLevelResolver,
   }) {
     final issues = <VerticalCoreProjectIssue>[];
 
@@ -82,6 +88,51 @@ abstract final class VerticalCoreProjectValidator {
           );
         }
       }
+
+      if (core.usage.requiresHostSpacePerLevel) {
+        for (final levelId in core.levelIds) {
+          if (!core.hostSpaceIdsByLevel.containsKey(levelId)) {
+            issues.add(
+              VerticalCoreProjectIssue(
+                code: VerticalCoreProjectIssueCode.missingRequiredHostSpace,
+                verticalCoreId: core.id,
+                relatedEntityId: levelId,
+                message: 'Architectural vertical core ${core.id} has no host '
+                    'SpaceId for served level $levelId.',
+              ),
+            );
+          }
+        }
+      }
+
+      for (final entry in core.hostSpaceIdsByLevel.entries) {
+        final levelId = entry.key;
+        final spaceId = entry.value;
+        final hostLevelId = spaceLevelResolver?.call(spaceId);
+        if (hostLevelId == null) {
+          issues.add(
+            VerticalCoreProjectIssue(
+              code: VerticalCoreProjectIssueCode.danglingHostSpace,
+              verticalCoreId: core.id,
+              relatedEntityId: spaceId,
+              message: 'Vertical core ${core.id} host $spaceId cannot be '
+                  'resolved to a canonical level.',
+            ),
+          );
+          continue;
+        }
+        if (hostLevelId != levelId) {
+          issues.add(
+            VerticalCoreProjectIssue(
+              code: VerticalCoreProjectIssueCode.hostSpaceLevelMismatch,
+              verticalCoreId: core.id,
+              relatedEntityId: spaceId,
+              message: 'Vertical core ${core.id} binds host $spaceId to level '
+                  '$levelId but the Space belongs to $hostLevelId.',
+            ),
+          );
+        }
+      }
     }
 
     return List.unmodifiable(issues);
@@ -91,6 +142,7 @@ abstract final class VerticalCoreProjectValidator {
     required Map<VerticalCoreId, ProjectVerticalCore> verticalCores,
     required VerticalCoreBuildingExists buildingExists,
     required VerticalCoreLevelBuildingResolver levelBuildingResolver,
+    VerticalCoreSpaceLevelResolver? spaceLevelResolver,
   }) {
     final topologyIssues =
         VerticalCoreTopologyValidator.validate(verticalCores);
@@ -101,6 +153,7 @@ abstract final class VerticalCoreProjectValidator {
       verticalCores: verticalCores,
       buildingExists: buildingExists,
       levelBuildingResolver: levelBuildingResolver,
+      spaceLevelResolver: spaceLevelResolver,
     );
     if (issues.isNotEmpty) {
       throw VerticalCoreProjectValidationException(issues);
