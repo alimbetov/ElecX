@@ -16,7 +16,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P10.7 production cottage composition', () {
-    test('pure plan is deterministic and retains deferred service-anchor intent',
+    test(
+        'pure plan is deterministic and retains deferred service-anchor intent',
         () {
       final fixture = _P107Fixture();
       final generator = const CottageCompositionGenerator();
@@ -285,8 +286,8 @@ final class _P107Fixture {
   final ProjectId projectId = ProjectId('project-p107');
   final SiteId siteId = SiteId('site-p107');
 
-  LevelStackParameters get levelStack => const BuildingLevelStackGenerator()
-      .residentialParameters(
+  LevelStackParameters get levelStack =>
+      const BuildingLevelStackGenerator().residentialParameters(
         basementLevels: 1,
         upperResidentialLevels: 1,
         includeRoof: true,
@@ -395,6 +396,7 @@ final class _P107Fixture {
             id: buildingId,
             siteId: siteId,
             name: 'Existing Building',
+            levelIds: const [],
           ),
         },
       ),
