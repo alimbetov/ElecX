@@ -88,6 +88,24 @@ final class MutationIdentityReservation {
   final Map<String, EntityId> _entityIds;
   final Map<String, BoundaryPenetrationId> _penetrationIds;
 
+  /// Selects the semantic scope created by combineEntityReservations. Slot
+  /// paths are JSON-framed; durable entity identities are never parsed.
+  MutationIdentityReservation selectEntityScope(String scope) {
+    final selected = <String, EntityId>{};
+    for (final entry in _entityIds.entries) {
+      final path = jsonDecode(entry.key);
+      if (path is! List ||
+          path.length != 2 ||
+          path[0] is! String ||
+          path[1] is! String) {
+        throw ArgumentError('Expected a combined semantic reservation path.');
+      }
+      if (path[0] == scope) selected[path[1] as String] = entry.value;
+    }
+    return MutationIdentityReservation._(
+        entityIds: selected, penetrationIds: {});
+  }
+
   /// Joins child allocations into one immutable parent reservation. It neither
   /// allocates identities nor creates a second preview/commit timeline.
   factory MutationIdentityReservation.combineEntityReservations(

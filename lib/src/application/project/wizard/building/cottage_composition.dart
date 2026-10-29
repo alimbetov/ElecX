@@ -208,8 +208,10 @@ final class CottageCompositionCommand implements ReservedProjectCommand {
     required BuildingGenerationParameters parameters,
     required CottageCompositionLayout layout,
     CottageCompositionGenerator generator = const CottageCompositionGenerator(),
+    bool allowExistingBuildings = false,
   }) {
-    _requireCottageSite(project, parameters.siteId);
+    _requireCottageSite(project, parameters.siteId,
+        allowExistingBuildings: allowExistingBuildings);
     CottageCompositionPlan generate() => generator.generate(
         compositionKey: compositionKey, parameters: parameters, layout: layout);
     return CottageCompositionCommand._(BuildingShellCompositionCommand(
@@ -218,13 +220,15 @@ final class CottageCompositionCommand implements ReservedProjectCommand {
         baseVersion: project.version,
         plan: generate(),
         revalidatePlan: () => generate().semanticFingerprint,
-        commandType: 'p10.cottage.compose'));
+        commandType: 'p10.cottage.compose',
+        allowExistingBuildings: allowExistingBuildings));
   }
   final BuildingShellCompositionCommand _delegate;
   ProjectId get projectId => _delegate.projectId;
   SiteId get siteId => _delegate.siteId;
   LocalProjectVersion get baseVersion => _delegate.baseVersion;
   CottageCompositionPlan get plan => _delegate.plan;
+  String get buildingSlot => _delegate.buildingSlot;
   @override
   String get commandType => _delegate.commandType;
   @override
@@ -251,7 +255,8 @@ final class CottageCompositionCommand implements ReservedProjectCommand {
           before: before, candidate: candidate, reservation: reservation);
 }
 
-void _requireCottageSite(ProjectAggregateRoot project, SiteId requestedSiteId) {
+void _requireCottageSite(ProjectAggregateRoot project, SiteId requestedSiteId,
+    {bool allowExistingBuildings = false}) {
   if (project.siteId != requestedSiteId) {
     throw const CottageCompositionException('p10.cottage.foreign-site');
   }
@@ -259,7 +264,7 @@ void _requireCottageSite(ProjectAggregateRoot project, SiteId requestedSiteId) {
   if (site == null) {
     throw const CottageCompositionException('p10.cottage.site-missing');
   }
-  if (site.buildingIds.isNotEmpty) {
+  if (!allowExistingBuildings && site.buildingIds.isNotEmpty) {
     throw const CottageCompositionException('p10.cottage.site-not-empty');
   }
 }

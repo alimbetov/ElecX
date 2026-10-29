@@ -4,6 +4,7 @@ enum ProjectAuthoringIssueCode {
   buildingAlreadyExists,
   buildingNotFound,
   buildingHasLevels,
+  buildingHasSiteDependencies,
   buildingHasPhysicalSlabs,
   levelAlreadyExists,
   levelNotFound,

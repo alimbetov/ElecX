@@ -220,6 +220,7 @@ final class BuildingShellCompositionCommand implements ReservedProjectCommand {
     required this.plan,
     required this.revalidatePlan,
     required this.commandType,
+    this.allowExistingBuildings = false,
   });
 
   final ProjectId projectId;
@@ -228,6 +229,7 @@ final class BuildingShellCompositionCommand implements ReservedProjectCommand {
   final BuildingShellCompositionPlan plan;
 
   final String Function() revalidatePlan;
+  final bool allowExistingBuildings;
   static const _coreGenerator = BuildingCommonCoreCompositionGenerator();
 
   @override
@@ -387,7 +389,8 @@ final class BuildingShellCompositionCommand implements ReservedProjectCommand {
       throw const BuildingShellCompositionException(
           'p10.building-shell.foreign-target');
     }
-    _requireEmptySite(current, plan.parameters.siteId);
+    _requireEmptySite(current, plan.parameters.siteId,
+        allowExistingBuildings: allowExistingBuildings);
   }
 
   BuildingStructuralStage _buildStructuralStage(
@@ -724,7 +727,8 @@ final class BuildingStructuralStage {
   final BuildingLevelMaterialization levels;
 }
 
-void _requireEmptySite(ProjectAggregateRoot project, SiteId requestedSiteId) {
+void _requireEmptySite(ProjectAggregateRoot project, SiteId requestedSiteId,
+    {bool allowExistingBuildings = false}) {
   if (project.siteId != requestedSiteId) {
     throw const BuildingShellCompositionException(
         'p10.building-shell.foreign-site');
@@ -734,7 +738,7 @@ void _requireEmptySite(ProjectAggregateRoot project, SiteId requestedSiteId) {
     throw const BuildingShellCompositionException(
         'p10.building-shell.site-missing');
   }
-  if (site.buildingIds.isNotEmpty) {
+  if (!allowExistingBuildings && site.buildingIds.isNotEmpty) {
     throw const BuildingShellCompositionException(
         'p10.building-shell.site-not-empty');
   }

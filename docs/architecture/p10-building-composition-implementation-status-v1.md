@@ -18,6 +18,7 @@ Implementation contract: [P10 specification](p10-building-residential-compositio
 | P10.6 — COMPLETE | Versioned common/core input, pure common/core generator, reserved canonical materialization, explicit horizontal/vertical access topology, typed VerticalCore hosts and v16 persistence | `test/p106_*_test.dart` suites |
 | P10.7 — COMPLETE | Reserved detached building, level stack, slabs, internal cores, physical common opening hosts and production persistence lifecycle | `test/p107_cottage*_test.dart` |
 | P10.8 — COMPLETE | Tower shell, multiple P9 apartments per repeated residential floor, independent typical-floor lineage and one parent Apply | `test/p108_*_test.dart` |
+| P10.9 — IMPLEMENTED, qualification in progress | Mixed cottage/tower Site composition, independent IDs, explicit Building-local → Site transforms, collision checks, shared typed anchors and v17 persistence | Four `test/p109_*_test.dart` suites |
 
 P10.1–P10.3 passed repository-wide GitHub verification/quality on
 `184bd8297489a5379257b72a2beb15b69c7b08ae`.
@@ -234,6 +235,57 @@ floors. Negative qualification covers stale/cancelled previews, unsupported
 versions, missing mandatory cores, invalid floor selections, reservation aliases,
 foreign/occupied Sites and overflowing apartment geometry.
 
+## P10.9 multi-building Site contract
+
+`SiteCompositionGenerator` combines the existing production cottage/tower
+commands into one immutable candidate. Building slots and shared-anchor requests
+are normalized by semantic key. The generator allocates no persistent IDs.
+One parent reservation combines independent child reservations; Apply uses the
+same canonical session, version, dirty state, persistence owner and Undo stack.
+Append is explicit and preserves existing buildings and their canonical IDs.
+Ordinary standalone cottage/tower entry points retain their empty-Site guard.
+
+`ProjectEngineeringMetadata.siteLayout` is the single owner of BuildingId-keyed
+physical placement values and shared architectural anchors. It does not duplicate
+the Building/Level/Space graph. Canonical room, boundary, slab and core geometry
+remains Building-local. `ProjectSiteLayoutProjection` applies explicit reversible
+integer-mm translation and quarter-turn orientation to the Site view. Orientation
+uses `ProjectEngineeringNorth`'s canonical clockwise-from-+Y convention; composing
+or moving a building does not reset Project North or modify P9 geometry/baselines.
+
+Positive-area footprint overlap, unsupported angles, invalid coordinate ranges,
+foreign ownership and geometry outside a declared local footprint fail closed.
+Boundary contact is legal. New composition into an existing Site requires known
+placements for all existing buildings; legacy coordinates are never guessed.
+`UpdateBuildingSitePlacementCommand` changes only the physical transform and is
+a real metadata mutation with Undo/Redo. Shared Site anchors own stable
+`ServiceEntryId` values, explicit meaning, a Site-local point and at least two
+served `BuildingId` references. They reserve shared service/access locations;
+system-specific service entries/equipment remain P10.10 and later stages.
+Shared references block implicit Building deletion, and deleting an unreferenced
+empty Building removes its placement on the same canonical Undo boundary.
+
+Schema v17 stores only additive placement/shared-anchor metadata above the v16
+canonical graph. It strictly validates versions, coordinate-frame declaration,
+types, duplicate identities, ownership and spatial integrity. Read support for
+v1–v16 preserves existing state without inferred placements. Older codecs reject
+new placement metadata instead of silently dropping it. The default native
+repository now uses v17.
+
+P10-Q11 uses one real P10.8 tower plus two P10.7 cottages, repeated floor number/code
+`1` / `01`, independent geometry/host identities, different Site rotations and
+shared anchors serving all three buildings. Navigator and editor context are
+qualified by typed identity. The production owner journey covers Generate →
+Preview → Apply → Save → Reopen → Edit → Undo → Redo → Save → Reopen; unrelated
+buildings and existing P9/typical-floor lineage remain independent. Cancellation,
+stale confirmation and a failure injected after all child candidates have been
+materialized leave live state/history unchanged.
+
+Local targeted qualification passed 45 scenarios, including 23 new P10.9 tests
+and the existing cottage/tower suites. All 1741 repository tests passed. Analyzer
+is clean; all 810 Dart files are formatted. Exact-SHA CI acceptance is pending
+for the P10.9 implementation commit.
+
 ## Qualification scope
 
 - P10-Q04: independent Level/Zone/Space/Boundary/Opening/adjacency identities;
@@ -271,7 +323,7 @@ matrix remain P10.13 work.
 
 ## Remaining work
 
-1. P10.9 multi-building site composition.
+1. P10.9 repository-wide and exact-SHA acceptance.
 2. P10.10 service/infrastructure anchors.
 3. P10.11 building candidate Preview/Diff plus atomic materialization and Wizard.
 4. P10.12 building/site generation provenance and lineage closure.

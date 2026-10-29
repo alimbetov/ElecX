@@ -97,7 +97,8 @@ final class ResidentialTowerCompositionGenerator {
       required String compositionKey,
       required BuildingGenerationParameters parameters,
       required BuildingCompositionLayout layout,
-      required Iterable<TowerApartmentRequest> requests}) {
+      required Iterable<TowerApartmentRequest> requests,
+      bool allowExistingBuildings = false}) {
     void require(bool value, String code) {
       if (!value) throw TowerCompositionException('p10.tower.$code');
     }
@@ -108,8 +109,9 @@ final class ResidentialTowerCompositionGenerator {
         'wrong-kind');
     require(
         project.siteId == parameters.siteId &&
-            project.stores.sites[parameters.siteId]?.buildingIds.isEmpty ==
-                true,
+            project.stores.sites.containsKey(parameters.siteId) &&
+            (allowExistingBuildings ||
+                project.stores.sites[parameters.siteId]!.buildingIds.isEmpty),
         'empty-site-required');
     require(
         parameters.placement.orientation.milliDegreesClockwiseFromPositiveY ==
@@ -279,20 +281,23 @@ final class ResidentialTowerCompositionGenerator {
 /// candidates are immutable views; neither is committed to a separate session.
 final class ResidentialTowerCompositionCommand
     implements ReservedProjectCommand {
-  ResidentialTowerCompositionCommand._(this._basis, this.plan)
+  ResidentialTowerCompositionCommand._(this._basis, this.plan,
+      {bool allowExistingBuildings = false})
       : _shell = BuildingShellCompositionCommand(
             projectId: _basis.id,
             siteId: _basis.siteId,
             baseVersion: _basis.version,
             plan: plan.shell,
             revalidatePlan: () => plan.shell.semanticFingerprint,
-            commandType: 'p10.tower.shell');
+            commandType: 'p10.tower.shell',
+            allowExistingBuildings: allowExistingBuildings);
   factory ResidentialTowerCompositionCommand.create(
           {required ProjectAggregateRoot project,
           required String compositionKey,
           required BuildingGenerationParameters parameters,
           required BuildingCompositionLayout layout,
           required Iterable<TowerApartmentRequest> requests,
+          bool allowExistingBuildings = false,
           ResidentialTowerCompositionGenerator generator =
               const ResidentialTowerCompositionGenerator()}) =>
       ResidentialTowerCompositionCommand._(
@@ -302,7 +307,10 @@ final class ResidentialTowerCompositionCommand
               compositionKey: compositionKey,
               parameters: parameters,
               layout: layout,
-              requests: requests));
+              requests: requests,
+              allowExistingBuildings: allowExistingBuildings),
+          allowExistingBuildings: allowExistingBuildings);
+  String get buildingSlot => jsonEncode(['shell', _shell.buildingSlot]);
   final ProjectAggregateRoot _basis;
   final ResidentialTowerCompositionPlan plan;
   final BuildingShellCompositionCommand _shell;

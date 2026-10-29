@@ -299,6 +299,19 @@ final class RemoveBuildingCommand implements ProjectCommand {
         message: 'Building $buildingId does not exist.',
       );
     }
+    final sharedAnchors = current
+        .engineeringMetadata.siteLayout.sharedAnchors.values
+        .where((anchor) => anchor.servedBuildingIds.contains(building.id))
+        .map((anchor) => anchor.id)
+        .toSet();
+    if (sharedAnchors.isNotEmpty) {
+      throw ProjectAuthoringException(
+          code: ProjectAuthoringIssueCode.buildingHasSiteDependencies,
+          entityId: building.id,
+          blockingEntityIds: sharedAnchors,
+          message:
+              'Shared Site anchors must be removed or explicitly rebound before Building deletion.');
+    }
     if (building.levelIds.isNotEmpty) {
       throw ProjectAuthoringException(
         code: ProjectAuthoringIssueCode.buildingHasLevels,
@@ -336,7 +349,11 @@ final class RemoveBuildingCommand implements ProjectCommand {
 
     return ProjectCommandCandidate.fromState(
       state: ProjectMutableState(
-        engineeringMetadata: current.engineeringMetadata,
+        engineeringMetadata: current.engineeringMetadata.copyWith(
+            siteLayout: current.engineeringMetadata.siteLayout.copyWith(
+                placements: {
+          ...current.engineeringMetadata.siteLayout.placements
+        }..remove(building.id))),
         stores: current.stores.copyWith(
           sites: sites,
           buildings: buildings,

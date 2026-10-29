@@ -1,3 +1,4 @@
+import '../../domain/project_site_layout_integrity.dart';
 import '../../domain/boundary_edge_identity_registry.dart';
 import '../../domain/boundary_topology.dart';
 import '../../domain/generation_provenance.dart';
@@ -199,6 +200,7 @@ final class ProjectEngineeringMetadataDiff {
     this.boundaryConstructionRegistryChanged = false,
     this.generationProvenanceRegistryChanged = false,
     this.appliedEngineeringProposalRegistryChanged = false,
+    this.siteLayoutChanged = false,
   });
 
   const ProjectEngineeringMetadataDiff.empty()
@@ -209,7 +211,8 @@ final class ProjectEngineeringMetadataDiff {
         boundaryWallProfileRegistryChanged = false,
         boundaryConstructionRegistryChanged = false,
         generationProvenanceRegistryChanged = false,
-        appliedEngineeringProposalRegistryChanged = false;
+        appliedEngineeringProposalRegistryChanged = false,
+        siteLayoutChanged = false;
 
   factory ProjectEngineeringMetadataDiff.between(
     ProjectEngineeringMetadata before,
@@ -217,6 +220,7 @@ final class ProjectEngineeringMetadataDiff {
   ) =>
       ProjectEngineeringMetadataDiff(
         beforeProjectNorth: before.projectNorth,
+        siteLayoutChanged: !before.siteLayout.sameAs(after.siteLayout),
         afterProjectNorth: after.projectNorth,
         boundaryEdgeIdentityRegistryChanged: !before
             .boundaryEdgeIdentityRegistry
@@ -245,10 +249,12 @@ final class ProjectEngineeringMetadataDiff {
   final bool boundaryConstructionRegistryChanged;
   final bool generationProvenanceRegistryChanged;
   final bool appliedEngineeringProposalRegistryChanged;
+  final bool siteLayoutChanged;
 
   bool get projectNorthChanged => beforeProjectNorth != afterProjectNorth;
   bool get isEmpty =>
       !projectNorthChanged &&
+      !siteLayoutChanged &&
       !boundaryEdgeIdentityRegistryChanged &&
       !boundaryHostedObjectRegistryChanged &&
       !boundaryWallProfileRegistryChanged &&
@@ -421,6 +427,10 @@ abstract final class CandidateGraphValidator {
         registry: state.engineeringMetadata.generationProvenanceRegistry,
         projectId: current.id,
         stores: state.stores);
+    ProjectSiteLayoutIntegrity.validateOrThrow(
+        siteId: current.siteId,
+        stores: state.stores,
+        layout: state.engineeringMetadata.siteLayout);
     final index = ProjectIndex.build(state.stores);
     if (!index.isConsistentWith(state.stores)) {
       throw StateError('Candidate ProjectIndex is inconsistent with stores.');

@@ -2,6 +2,7 @@ import 'boundary_topology.dart';
 import 'project_aggregate_legacy.dart' as legacy;
 import 'project_identity.dart';
 import 'project_orientation.dart';
+import 'project_site_layout_integrity.dart';
 import 'project_space_semantics.dart';
 import 'physical_level_order.dart';
 import 'slab_topology.dart';
@@ -663,6 +664,8 @@ final class ProjectAggregateRoot {
     engineeringMetadata.boundaryConstructionRegistry.validateAgainst(
       stores.boundaries,
     );
+    ProjectSiteLayoutIntegrity.validateOrThrow(
+        siteId: siteId, stores: stores, layout: engineeringMetadata.siteLayout);
     final index = ProjectIndex.build(stores);
     assert(index.isConsistentWith(stores));
     return ProjectAggregateRoot._(

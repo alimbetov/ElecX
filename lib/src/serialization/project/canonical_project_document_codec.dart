@@ -41,6 +41,10 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
 
   @override
   ProjectDocument encode(ProjectSnapshot snapshot) {
+    if (!snapshot.aggregate.engineeringMetadata.siteLayout.isEmpty) {
+      throw const FormatException(
+          'Site placement and shared anchors require schema v17.');
+    }
     final stores = snapshot.aggregate.stores;
     final identityRegistry = snapshot
         .aggregate.engineeringMetadata.boundaryEdgeIdentityRegistry
@@ -96,6 +100,10 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
 
   @override
   ProjectSnapshot decode(ProjectDocument document) {
+    if (document.payload.containsKey('siteLayout')) {
+      throw const FormatException(
+          'Site placement and shared anchors require schema v17.');
+    }
     final migrated = _migrateToCurrent(document);
 
     try {
