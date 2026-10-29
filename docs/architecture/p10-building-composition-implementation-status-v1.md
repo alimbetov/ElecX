@@ -19,7 +19,7 @@ Implementation contract: [P10 specification](p10-building-residential-compositio
 | P10.7 — COMPLETE | Reserved detached building, level stack, slabs, internal cores, physical common opening hosts and production persistence lifecycle | `test/p107_cottage*_test.dart` |
 | P10.8 — COMPLETE | Tower shell, multiple P9 apartments per repeated residential floor, independent typical-floor lineage and one parent Apply | `test/p108_*_test.dart` |
 | P10.9 — COMPLETE | Mixed cottage/tower Site composition, independent IDs, explicit Building-local → Site transforms, collision checks, shared typed anchors and v17 persistence | Four `test/p109_*_test.dart` suites |
-| P10.10 — IMPLEMENTED; CI pending | Ten typed service/infrastructure anchor purposes, explicit Site/Space/wall hosts, live P7 physical binding, atomic mutation and v18 persistence | Four `test/p1010_*_test.dart` suites |
+| P10.10 — COMPLETE | Ten typed service/infrastructure anchor purposes, explicit Site/Space/wall hosts, live P7 physical binding, atomic mutation and v18 persistence | Four `test/p1010_*_test.dart` suites |
 
 P10.1–P10.3 passed repository-wide GitHub verification/quality on
 `184bd8297489a5379257b72a2beb15b69c7b08ae`.
@@ -354,10 +354,14 @@ the production persistence owner: Apply → Save → Reopen → Edit → Undo �
 Save → Reopen, preserving exact typed ownership, physical hosts and sibling
 architecture. Additional qualification covers P7 split migration, explicit
 rebind, display renumbering, Site movement and append, and failure atomicity.
-All 25 new P10.10 tests passed, including the final explicit-rebind check.
-Analyzer, lib/test formatting and `git diff --check` are clean. Repository-wide
-local verification and exact implementation-SHA CI acceptance are still running;
-this implementation is not yet accepted by CI.
+P10.10 implementation commit: `e7c03c5f6700ef4099030b37a7db68e5f712f29d`.
+All 25 new P10.10 tests and all 1767 repository tests passed locally; the full
+local run used `flutter test --no-pub --concurrency=2`. Analyzer is clean,
+all 821 lib/test Dart files are formatted, and `git diff --check` passed.
+Both `verification` and `quality` passed on that exact implementation SHA in
+[GitHub Actions run 40889113252](https://github.com/alimbetov/ElecX/actions/runs/40889113252),
+including the default-concurrency repository test suites, formatting, analyzer
+and the P8 reference/accessibility/i18n gates.
 
 ## Qualification scope
 
@@ -400,6 +404,6 @@ matrix remain P10.13 work.
 2. P10.12 building/site generation provenance and lineage closure.
 3. P10.13 Q01–Q20, Golden Journeys, cross-platform and exact-SHA acceptance.
 
-P10.1–P10.9 are accepted; P10.10 implementation awaits exact-SHA CI. P10 is not ready for merge or P11 handoff until the
+P10.1–P10.10 are complete. P10 is not ready for merge or P11 handoff until the
 remaining P10.11–P10.13 contracts are closed and final exact-SHA qualification is
 green.
