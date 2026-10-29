@@ -50,7 +50,7 @@ void main() {
   );
 
   testWidgets(
-    'owned usage edit commits once and leaves legacy document saved',
+    'owned usage edit commits once and marks project modified',
     (tester) async {
       _useDesktopSurface(tester);
       final fixture = _fixture(projectId: 'p6f-owned');
@@ -98,7 +98,7 @@ void main() {
         fixture.session.project.index.space(fixture.spaceId)!.usage,
         SpaceUsage.bedroom,
       );
-      expect(find.text('Saved'), findsOneWidget);
+      expect(find.text('Modified'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
