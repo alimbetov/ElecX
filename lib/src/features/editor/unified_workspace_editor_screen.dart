@@ -962,7 +962,8 @@ class _UnifiedWorkspaceEditorScreenState
         error,
         stackTrace,
         code: ProductionDiagnosticCode.projectNorthPersistence,
-        safeSummary: 'Project North изменён, но не удалось подтвердить сохранение.',
+        safeSummary:
+            'Project North изменён, но не удалось подтвердить сохранение.',
         operation: 'while persisting a committed Project North mutation',
       );
       _showProjectMessage(failure.userMessage, isError: true);

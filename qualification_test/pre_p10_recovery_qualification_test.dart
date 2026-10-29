@@ -13,7 +13,6 @@ import 'package:elecx/src/features/projects/project_hub_screen.dart';
 import 'package:elecx/src/features/shared/production_error_boundary.dart';
 import 'package:elecx/src/infrastructure/project/json_project_repository.dart';
 import 'package:elecx/src/serialization/project/canonical_project_document_codec.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -64,7 +63,6 @@ final class _RecordingProjectStore implements EditorProjectStore {
 final class _RecordingRecoveryStore implements EditorProjectRecoveryStore {
   _RecordingRecoveryStore({
     this.listedSnapshot,
-    this.loadedSnapshot,
     List<String>? events,
   }) : events = events ?? <String>[];
 
@@ -119,8 +117,7 @@ void main() {
     expect(find.text('Нет сохранённого проекта'), findsOneWidget);
   });
 
-  testWidgets(
-      'PRE10-CQ06 D013 recovery discard requires explicit confirmation',
+  testWidgets('PRE10-CQ06 D013 recovery discard requires explicit confirmation',
       (tester) async {
     final document = _legacyDocument('d013-confirmation');
     final recoveryStore = _RecordingRecoveryStore(
@@ -179,8 +176,7 @@ void main() {
     expect(projectStore.events, isEmpty);
   });
 
-  testWidgets(
-      'PRE10-CQ06 D016 failed saved-version load preserves recovery',
+  testWidgets('PRE10-CQ06 D016 failed saved-version load preserves recovery',
       (tester) async {
     const sentinel = 'PRIVATE_LOAD_SENTINEL_DO_NOT_EXPOSE';
     final document = _legacyDocument('d016-load-failure');
@@ -243,8 +239,7 @@ void main() {
     expect(find.text('Проект открыт из сохранённой версии'), findsOneWidget);
   });
 
-  test('PRE10-CQ07 D018 safe boundary never leaks sentinel exception text',
-      () {
+  test('PRE10-CQ07 D018 safe boundary never leaks sentinel exception text', () {
     const sentinel = 'PRIVATE_SENTINEL_DO_NOT_EXPOSE';
     FlutterErrorDetails? captured;
 
@@ -345,7 +340,8 @@ void main() {
     await target.writeAsString(jsonEncode(olderClock.toJson()), flush: true);
     await backup.writeAsString(jsonEncode(newerClock.toJson()), flush: true);
 
-    final loaded = await JsonFileEditorProjectRecoveryStore(root).load(projectId);
+    final loaded =
+        await JsonFileEditorProjectRecoveryStore(root).load(projectId);
 
     expect(loaded, isNotNull);
     expect(loaded!.revision, 11);

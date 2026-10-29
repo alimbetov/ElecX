@@ -66,7 +66,8 @@ int compareEditorProjectRecoveryFreshness(
   EditorProjectRecoverySnapshot right,
 ) {
   if (left.projectId != right.projectId) {
-    throw ArgumentError('Recovery freshness requires the same project lineage.');
+    throw ArgumentError(
+        'Recovery freshness requires the same project lineage.');
   }
   final revisionOrder = left.revision.compareTo(right.revision);
   if (revisionOrder != 0) return revisionOrder;

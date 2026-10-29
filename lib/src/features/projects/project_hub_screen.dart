@@ -327,7 +327,8 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
           stackTrace,
           code: ProductionDiagnosticCode.canonicalProjection,
           safeSummary: 'Структура проекта требует восстановления.',
-          operation: 'while projecting canonical state into the editor document',
+          operation:
+              'while projecting canonical state into the editor document',
         );
         _showSafeError(failure);
         return;
