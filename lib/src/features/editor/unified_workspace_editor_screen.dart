@@ -257,6 +257,16 @@ class _UnifiedWorkspaceEditorScreenState
         operation: operation,
       );
 
+  void _markProjectDirty() {
+    _projectRevision++;
+    if (_saveStatus != EditorProjectSaveStatus.saving &&
+        _saveStatus != EditorProjectSaveStatus.saveFailed) {
+      _saveStatus = EditorProjectSaveStatus.modified;
+    }
+    _refresh();
+    _scheduleAutosave();
+  }
+
   void _onP2Changed() {
     final committed = controller.p2.history.mutationRevision;
     if (committed == _lastP2CommittedRevision) {
@@ -274,13 +284,11 @@ class _UnifiedWorkspaceEditorScreenState
       _refresh();
       return;
     }
-    _projectRevision++;
-    if (_saveStatus != EditorProjectSaveStatus.saving &&
-        _saveStatus != EditorProjectSaveStatus.saveFailed) {
-      _saveStatus = EditorProjectSaveStatus.modified;
-    }
-    _refresh();
-    _scheduleAutosave();
+    _markProjectDirty();
+  }
+
+  void _onCanonicalProjectChanged() {
+    _markProjectDirty();
   }
 
   void _installCanonicalRuntime({required bool pushInitialCanonicalState}) {
@@ -320,14 +328,14 @@ class _UnifiedWorkspaceEditorScreenState
             ? null
             : (result) {
                 canonicalOwner(resolved.session, result);
-                _refresh();
+                _onCanonicalProjectChanged();
               },
         onBoundaryTopologyCommitted: canonicalOwner == null
             ? null
             : (editing, result) {
                 canonicalOwner(resolved.session, result);
                 topologyHook?.call(editing, result);
-                _refresh();
+                _onCanonicalProjectChanged();
               },
         onBlocked: _handleCanonicalBlocked,
         onError: _reportCanonicalCutoverError,
@@ -419,7 +427,7 @@ class _UnifiedWorkspaceEditorScreenState
                 config.onCanonicalMutationCommitted!(resolved.session, result);
                 config.onSpaceSemanticsCommitted?.call(editing, result);
               } finally {
-                _refresh();
+                _onCanonicalProjectChanged();
               }
             } catch (error, stackTrace) {
               _reportCanonicalCutoverError(error, stackTrace);
@@ -485,7 +493,7 @@ class _UnifiedWorkspaceEditorScreenState
                 config.onAuthoringCommitted?.call(session, result.createdId);
               } finally {
                 _pushCanonicalToEditor();
-                _refresh();
+                _onCanonicalProjectChanged();
               }
             }
           : null,
@@ -566,17 +574,14 @@ class _UnifiedWorkspaceEditorScreenState
       if (store == null) return;
       final snapshot = await store.load(_projectMetadata.projectId);
       if (!mounted || snapshot == null) return;
-      if (!snapshot.capturedAt.isAfter(_projectMetadata.updatedAt)) {
-        await store.discard(snapshot.projectId);
-        return;
-      }
       final restore = await showDialog<bool>(
         context: context,
         builder: (dialogContext) => AlertDialog(
           key: const ValueKey('project-recovery-dialog'),
           title: const Text('Найдена аварийная копия'),
           content: Text(
-            'Есть более свежая автокопия от ${snapshot.capturedAt.toLocal()}. '
+            'Есть автокопия логической ревизии ${snapshot.revision} '
+            'от ${snapshot.capturedAt.toLocal()}. '
             'Восстановить несохранённые изменения?',
           ),
           actions: [
@@ -959,7 +964,7 @@ class _UnifiedWorkspaceEditorScreenState
       return;
     }
 
-    _refresh();
+    _onCanonicalProjectChanged();
   }
 
   void _openMiniMap() {
