@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+typedef ProductionDiagnosticSink = void Function(FlutterErrorDetails details);
+
 /// Stable production diagnostic identifiers exposed to support without
 /// exposing internal exception details to the user interface.
 enum ProductionDiagnosticCode {
@@ -19,7 +21,7 @@ enum ProductionDiagnosticCode {
   final String value;
 }
 
-/// User-safe result returned after an internal exception has been reported.
+/// User-safe result returned after an internal exception has been captured.
 final class ProductionSafeFailure {
   const ProductionSafeFailure({
     required this.code,
@@ -32,11 +34,12 @@ final class ProductionSafeFailure {
   String get userMessage => '$summary [${code.value}]';
 }
 
-/// Production boundary for unexpected internal failures.
+/// Production boundary for handled internal failures.
 ///
-/// The original exception and stack trace are retained in Flutter diagnostics,
-/// while callers receive only a stable code and an explicitly supplied safe
-/// summary. Internal exception text must never be interpolated into UI copy.
+/// The original exception and stack trace are retained in diagnostics, while
+/// callers receive only a stable code and an explicitly supplied safe summary.
+/// A handled failure is deliberately not sent through [FlutterError.reportError]
+/// because that channel represents uncaught framework/application failures.
 abstract final class ProductionErrorBoundary {
   static ProductionSafeFailure report({
     required Object error,
@@ -45,15 +48,19 @@ abstract final class ProductionErrorBoundary {
     required String safeSummary,
     required String library,
     required String operation,
+    ProductionDiagnosticSink? diagnosticSink,
   }) {
-    FlutterError.reportError(
-      FlutterErrorDetails(
-        exception: error,
-        stack: stackTrace,
-        library: library,
-        context: ErrorDescription('$operation [${code.value}]'),
-      ),
+    final details = FlutterErrorDetails(
+      exception: error,
+      stack: stackTrace,
+      library: library,
+      context: ErrorDescription('$operation [${code.value}]'),
     );
+    (diagnosticSink ?? _dumpDiagnostic)(details);
     return ProductionSafeFailure(code: code, summary: safeSummary);
+  }
+
+  static void _dumpDiagnostic(FlutterErrorDetails details) {
+    FlutterError.dumpErrorToConsole(details, forceReport: true);
   }
 }
