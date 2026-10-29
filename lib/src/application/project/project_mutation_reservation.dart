@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import 'project_mutation.dart';
@@ -85,6 +87,27 @@ final class MutationIdentityReservation {
 
   final Map<String, EntityId> _entityIds;
   final Map<String, BoundaryPenetrationId> _penetrationIds;
+
+  /// Joins child allocations into one immutable parent reservation. It neither
+  /// allocates identities nor creates a second preview/commit timeline.
+  factory MutationIdentityReservation.combineEntityReservations(
+      Map<String, MutationIdentityReservation> children) {
+    final ids = <String, EntityId>{};
+    final distinct = <EntityId>{};
+    for (final child in children.entries) {
+      if (child.value._penetrationIds.isNotEmpty) {
+        throw ArgumentError(
+            'Entity-only composition cannot drop penetrations.');
+      }
+      for (final entry in child.value._entityIds.entries) {
+        if (!distinct.add(entry.value)) {
+          throw ArgumentError('Child reservations cannot alias identities.');
+        }
+        ids[jsonEncode([child.key, entry.key])] = entry.value;
+      }
+    }
+    return MutationIdentityReservation._(entityIds: ids, penetrationIds: {});
+  }
 
   /// Immutable local view of identities already allocated by the parent plan.
   /// Selection never allocates IDs or creates a second reservation timeline.

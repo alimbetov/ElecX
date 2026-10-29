@@ -16,6 +16,8 @@ Implementation contract: [P10 specification](p10-building-residential-compositio
 | P10.4 | Immutable typical-floor definitions, instance lineage, detach, overrides, tombstones and persistence | Three `test/p10_typical_floor*_test.dart` suites |
 | P10.5 | P9 slot generation, rigid apartment placement, collision/access/shared-boundary checks, nested child lineage and v15 persistence | Three `test/p105_*_test.dart` suites |
 | P10.6 — COMPLETE | Versioned common/core input, pure common/core generator, reserved canonical materialization, explicit horizontal/vertical access topology, typed VerticalCore hosts and v16 persistence | `test/p106_*_test.dart` suites |
+| P10.7 — COMPLETE | Reserved detached building, level stack, slabs, internal cores, physical common opening hosts and production persistence lifecycle | `test/p107_cottage*_test.dart` |
+| P10.8 — IMPLEMENTED, qualification in progress | Tower shell, multiple P9 apartments per repeated residential floor, independent typical-floor lineage and one parent Apply | `test/p108_*_test.dart` |
 
 P10.1–P10.3 passed repository-wide GitHub verification/quality on
 `184bd8297489a5379257b72a2beb15b69c7b08ae`.
@@ -162,6 +164,64 @@ fully green.
 P10.6 intentionally adds no building Wizard/UI. Building candidate Preview/Diff
 and Wizard orchestration remain P10.11 scope.
 
+## P10.7 cottage acceptance
+
+The cottage implementation and boundary qualification are present on
+`6342155cefc1808ef8a85f1e6dcf5c6edd200594`; both repository CI jobs passed in
+[run 40869799821](https://github.com/alimbetov/ElecX/actions/runs/40869799821).
+A follow-up inspection identified missing durable hosts for generated common
+openings. The earlier Q07 fixture used a corridor without common openings, so
+it did not expose the integration failure when a real common/core layout was
+adopted by P10.5.
+
+`921f71ba2b6eaf6332661a38adfa8557bd3fdfaa` binds every common opening to the same
+physical interval on both canonical boundaries, strengthens Q07 with an actual
+common hall, and qualifies P10-Q09 through the production persistence owner:
+Generate → Preview → Apply → Save → Reopen → Edit → Undo → Redo → Save → Reopen.
+Both `verification` and `quality` passed on that exact SHA in
+[run 40872137194](https://github.com/alimbetov/ElecX/actions/runs/40872137194).
+
+The cottage's v2 common/core contract, single-building Site scope and supported
+level limits are explicit. Physical service/outdoor anchors remain P10.10;
+building-wide generation provenance remains P10.12. Pending anchor intent is
+retained in the immutable candidate and its semantic fingerprint. These stages
+are not claimed complete by cottage acceptance.
+
+## P10.8 residential tower contract
+
+`ResidentialTowerCompositionGenerator` binds an exact published tower template,
+uses the existing P10.3 level stack and shared building-shell materializer, and
+places accepted P9 apartments along a deterministic corridor. It supports a
+basement stack, ground, at least two repeated residential levels, optional
+technical level and roof. Stair, elevator, electrical riser and telecom riser
+cores are required; service shafts and candidate technical rooms use the P10.6
+policy. The current strategy uses an axis-aligned footprint and integer-grid
+placements; envelope overflow and unsupported rotation fail closed.
+
+P9 now has an explicit Site exploration entry point. Before new LevelIds exist,
+its transient projection uses the existing Site as its host. It does not invent
+placeholder LevelIds. Candidate generation, qualification, ranking and exact
+P9 identities use the same pipeline as ordinary apartment generation. Tower
+materialization copies architectural P9 output, not engineering equipment.
+
+Cottage and tower share `BuildingShellCompositionCommand`; tower does not fork
+the structural/core materialization implementation. Independent child identity
+reservations are combined into one immutable parent reservation without further
+allocation during Apply. The existing canonical session commits the complete
+building, floors, cores and apartments as one Undo record.
+
+Each residential floor retains its P10.5 parent → P9 child manifests and registers
+an independent P10.4 instance of one immutable typical-floor definition. Canonical
+entities own geometry exclusively. Field edits record both P9 and typical-floor
+overrides while preserving sibling floors. Existing schema v16 persists the
+result, including cores, hosts and apartment/floor lineage; no new codec or
+parallel persistence owner is introduced.
+
+Local targeted qualification passed 37 scenarios, including 15 new P10.8 tests,
+cottage regression and P9 identity/projection regression. Analyzer is clean and
+all 800 Dart files are formatted. Repository-wide and exact-SHA qualification
+are pending for the P10.8 implementation commit.
+
 ## Qualification scope
 
 - P10-Q04: independent Level/Zone/Space/Boundary/Opening/adjacency identities;
@@ -199,14 +259,13 @@ matrix remain P10.13 work.
 
 ## Remaining work
 
-1. P10.7 cottage composition.
-2. P10.8 residential tower composition.
-3. P10.9 multi-building site composition.
-4. P10.10 service/infrastructure anchors.
-5. P10.11 building candidate Preview/Diff plus atomic materialization and Wizard.
-6. P10.12 building/site generation provenance and lineage closure.
-7. P10.13 Q01–Q20, Golden Journeys, cross-platform and exact-SHA acceptance.
+1. P10.8 repository-wide and exact-SHA acceptance.
+2. P10.9 multi-building site composition.
+3. P10.10 service/infrastructure anchors.
+4. P10.11 building candidate Preview/Diff plus atomic materialization and Wizard.
+5. P10.12 building/site generation provenance and lineage closure.
+6. P10.13 Q01–Q20, Golden Journeys, cross-platform and exact-SHA acceptance.
 
-P10.1–P10.6 are complete. P10 is not ready for merge or P11 handoff until the
-remaining P10.7–P10.13 contracts are closed and final exact-SHA qualification is
+P10.1–P10.7 are complete; P10.8 implementation is undergoing final qualification. P10 is not ready for merge or P11 handoff until the
+remaining P10.8–P10.13 contracts are closed and final exact-SHA qualification is
 green.

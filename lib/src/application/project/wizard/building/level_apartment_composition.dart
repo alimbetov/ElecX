@@ -250,6 +250,10 @@ final class LevelApartmentCompositionCommand implements ReservedProjectCommand {
       });
   String get candidateFingerprint => semanticSha256Hex(normalizedIntentKey);
 
+  /// Read-only slot contract for enclosing building reservations.
+  Map<String, ReservedEntityIdKind> get reservationSlots =>
+      Map.unmodifiable(_slots);
+
   String _childSlot(String key, String local) =>
       jsonEncode(['p10', compositionKey, 'apartment', key, local]);
   String _relationSlot(_Contact contact) =>
