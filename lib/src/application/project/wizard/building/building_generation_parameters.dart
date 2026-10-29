@@ -189,35 +189,125 @@ final class TypicalFloorSelection {
       };
 }
 
+/// Architectural reservation policy for P10 common/service candidate spaces.
+///
+/// These switches reserve usable architectural space only. They must never be
+/// interpreted as requests to place engineering equipment, circuits or devices.
+final class CommonServiceSpacePolicy {
+  const CommonServiceSpacePolicy({
+    this.includeCommonHall = true,
+    this.includeElevatorHall = true,
+    this.includeElectricalRoomCandidate = true,
+    this.includeTelecomRoomCandidate = true,
+    this.includeFireControlRoomCandidate = false,
+    this.includeUtilityRoomCandidate = false,
+  });
+
+  const CommonServiceSpacePolicy.none()
+      : includeCommonHall = false,
+        includeElevatorHall = false,
+        includeElectricalRoomCandidate = false,
+        includeTelecomRoomCandidate = false,
+        includeFireControlRoomCandidate = false,
+        includeUtilityRoomCandidate = false;
+
+  final bool includeCommonHall;
+  final bool includeElevatorHall;
+  final bool includeElectricalRoomCandidate;
+  final bool includeTelecomRoomCandidate;
+  final bool includeFireControlRoomCandidate;
+  final bool includeUtilityRoomCandidate;
+
+  Map<String, Object?> toCanonicalJson() => {
+        'includeCommonHall': includeCommonHall,
+        'includeElevatorHall': includeElevatorHall,
+        'includeElectricalRoomCandidate': includeElectricalRoomCandidate,
+        'includeTelecomRoomCandidate': includeTelecomRoomCandidate,
+        'includeFireControlRoomCandidate': includeFireControlRoomCandidate,
+        'includeUtilityRoomCandidate': includeUtilityRoomCandidate,
+      };
+}
+
 final class CommonCoreParameters {
+  /// Frozen P10.1/P10.5 contract. Its canonical JSON shape is intentionally
+  /// unchanged so all previously qualified request fingerprints remain stable.
   CommonCoreParameters({
     required this.stairCount,
     required this.liftCount,
     required this.serviceShaftCount,
     required this.corridorWidthMm,
     this.includeTechnicalRoom = false,
-  }) {
-    for (final value in [stairCount, liftCount, serviceShaftCount]) {
-      if (value < 0 || value > 32) {
-        throw RangeError.range(value, 0, 32, 'coreCount');
-      }
-    }
-    _positiveDimension(corridorWidthMm, 'corridorWidthMm');
+  })  : contractVersion = legacyContractVersion,
+        electricalRiserCount = 0,
+        telecomRiserCount = 0,
+        serviceSpacePolicy = const CommonServiceSpacePolicy.none() {
+    _validateCommonCoreParameters(this);
   }
 
+  /// P10.6 common/core composition contract. New persisted semantics are
+  /// explicit and therefore fingerprinted without mutating the legacy shape.
+  CommonCoreParameters.v2({
+    required this.stairCount,
+    required this.liftCount,
+    required this.serviceShaftCount,
+    required this.electricalRiserCount,
+    required this.telecomRiserCount,
+    required this.corridorWidthMm,
+    this.includeTechnicalRoom = false,
+    this.serviceSpacePolicy = const CommonServiceSpacePolicy(),
+  }) : contractVersion = currentContractVersion {
+    _validateCommonCoreParameters(this);
+  }
+
+  static const int legacyContractVersion = 1;
+  static const int currentContractVersion = 2;
+
+  final int contractVersion;
   final int stairCount;
   final int liftCount;
   final int serviceShaftCount;
+  final int electricalRiserCount;
+  final int telecomRiserCount;
   final int corridorWidthMm;
   final bool includeTechnicalRoom;
+  final CommonServiceSpacePolicy serviceSpacePolicy;
 
-  Map<String, Object?> toCanonicalJson() => {
-        'stairCount': stairCount,
-        'liftCount': liftCount,
-        'serviceShaftCount': serviceShaftCount,
-        'corridorWidthMm': corridorWidthMm,
-        'includeTechnicalRoom': includeTechnicalRoom,
-      };
+  bool get isCurrentContract => contractVersion == currentContractVersion;
+
+  Map<String, Object?> toCanonicalJson() {
+    final legacy = <String, Object?>{
+      'stairCount': stairCount,
+      'liftCount': liftCount,
+      'serviceShaftCount': serviceShaftCount,
+      'corridorWidthMm': corridorWidthMm,
+      'includeTechnicalRoom': includeTechnicalRoom,
+    };
+    if (contractVersion == legacyContractVersion) {
+      return legacy;
+    }
+    return <String, Object?>{
+      'contractVersion': contractVersion,
+      ...legacy,
+      'electricalRiserCount': electricalRiserCount,
+      'telecomRiserCount': telecomRiserCount,
+      'serviceSpacePolicy': serviceSpacePolicy.toCanonicalJson(),
+    };
+  }
+}
+
+void _validateCommonCoreParameters(CommonCoreParameters parameters) {
+  for (final value in [
+    parameters.stairCount,
+    parameters.liftCount,
+    parameters.serviceShaftCount,
+    parameters.electricalRiserCount,
+    parameters.telecomRiserCount,
+  ]) {
+    if (value < 0 || value > 32) {
+      throw RangeError.range(value, 0, 32, 'coreCount');
+    }
+  }
+  _positiveDimension(parameters.corridorWidthMm, 'corridorWidthMm');
 }
 
 final class ServiceAnchorParameters {
