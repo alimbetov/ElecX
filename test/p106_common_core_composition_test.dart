@@ -17,16 +17,17 @@ void main() {
   group('P10.6B-D common/core composition', () {
     test('pure generator emits typed common, service and technical plan', () {
       final fixture = _P106CompositionFixture();
-      final beforeSpaces = fixture.project.stores.spaces;
+      final project = fixture.project;
+      final beforeSpaces = project.stores.spaces;
       final plan = const BuildingCommonCoreCompositionGenerator().generate(
-        project: fixture.project,
+        project: project,
         target: fixture.target,
         parameters: fixture.parameters,
         servedLevelIds: fixture.levelIds,
         layout: fixture.layout,
       );
 
-      expect(fixture.project.stores.spaces, same(beforeSpaces));
+      expect(project.stores.spaces, same(beforeSpaces));
       expect(plan.levelIds, fixture.levelIds);
       expect(
         plan.spaces.map((space) => space.usage),
