@@ -36,7 +36,7 @@ final class CottageCompositionLayout {
     required this.footprintDepthMm,
     required this.commonCore,
     this.slabThicknessMm = 200,
-    this.slabMaterialId = 'concrete',
+    String slabMaterialId = 'concrete',
   }) : slabMaterialId = slabMaterialId.trim() {
     if (footprintWidthMm <= 0 || footprintWidthMm > 1000000) {
       throw RangeError.range(
@@ -146,7 +146,8 @@ final class CottageCompositionPlan {
 
   int get servedLevelCount => commonCoreLevelGenerationKeys.length;
 
-  int get coreCount => parameters.commonCore.stairCount +
+  int get coreCount =>
+      parameters.commonCore.stairCount +
       parameters.commonCore.liftCount +
       parameters.commonCore.serviceShaftCount +
       parameters.commonCore.electricalRiserCount +
@@ -239,8 +240,7 @@ final class CottageCompositionGenerator {
         'p10.cottage.typical-floor-not-supported',
       );
     }
-    if (parameters.placement.orientation
-            .milliDegreesClockwiseFromPositiveY !=
+    if (parameters.placement.orientation.milliDegreesClockwiseFromPositiveY !=
         0) {
       throw const CottageCompositionException(
         'p10.cottage.rotated-site-placement-deferred',
@@ -250,8 +250,9 @@ final class CottageCompositionGenerator {
     final levels = parameters.levelStack.levels;
     final basementCount =
         levels.where((level) => level.kind == ProjectLevelKind.basement).length;
-    final technicalCount =
-        levels.where((level) => level.kind == ProjectLevelKind.technical).length;
+    final technicalCount = levels
+        .where((level) => level.kind == ProjectLevelKind.technical)
+        .length;
     final occupiableCount = levels
         .where(
           (level) =>
@@ -350,27 +351,24 @@ final class CottageCompositionGenerator {
             parameters.commonCore.serviceShaftCount +
             parameters.commonCore.electricalRiserCount +
             parameters.commonCore.telecomRiserCount;
-    final bottomSpaceCount =
-        (parameters.commonCore.includeTechnicalRoom ? 1 : 0) +
-            (parameters.commonCore.serviceSpacePolicy
-                    .includeElectricalRoomCandidate
-                ? 1
-                : 0) +
-            (parameters.commonCore.serviceSpacePolicy
-                    .includeTelecomRoomCandidate
-                ? 1
-                : 0) +
-            (parameters.commonCore.serviceSpacePolicy
-                    .includeFireControlRoomCandidate
-                ? 1
-                : 0) +
-            (parameters.commonCore.serviceSpacePolicy
-                    .includeUtilityRoomCandidate
-                ? 1
-                : 0);
+    final bottomSpaceCount = (parameters.commonCore.includeTechnicalRoom
+            ? 1
+            : 0) +
+        (parameters.commonCore.serviceSpacePolicy.includeElectricalRoomCandidate
+            ? 1
+            : 0) +
+        (parameters.commonCore.serviceSpacePolicy.includeTelecomRoomCandidate
+            ? 1
+            : 0) +
+        (parameters
+                .commonCore.serviceSpacePolicy.includeFireControlRoomCandidate
+            ? 1
+            : 0) +
+        (parameters.commonCore.serviceSpacePolicy.includeUtilityRoomCandidate
+            ? 1
+            : 0);
     if (topSpaceCount * core.coreModuleWidthMm > core.corridorLengthMm ||
-        bottomSpaceCount * core.candidateRoomWidthMm >
-            core.corridorLengthMm) {
+        bottomSpaceCount * core.candidateRoomWidthMm > core.corridorLengthMm) {
       throw const CottageCompositionException(
         'p10.cottage.common-core-layout-overflow',
       );
@@ -560,9 +558,8 @@ final class CottageCompositionCommand implements ReservedProjectCommand {
         LevelId() => candidate.stores.levels[id]!.buildingId,
         SlabId() => candidate.stores.slabs[id]!.buildingId,
         ZoneId() => candidate.stores.zones[id]!.levelId,
-        SpaceId() =>
-          candidate.index.structuralZoneBySpace[id] ??
-              candidate.stores.spaces[id]!.levelId,
+        SpaceId() => candidate.index.structuralZoneBySpace[id] ??
+            candidate.stores.spaces[id]!.levelId,
         BoundaryEdgeId() => candidate.index.boundaryEdges[id]!.spaceId,
         VerticalCoreId() => candidate.stores.verticalCores[id]!.buildingId,
         OpeningId() || SpaceAdjacencyId() => reservation.entityId<BuildingId>(
@@ -721,8 +718,8 @@ final class CottageCompositionCommand implements ReservedProjectCommand {
     final verticalCores = {...project.stores.verticalCores};
 
     final spaceIdsByKey = <String, SpaceId>{};
-    final spacesByZone = <({LevelId levelId, CommonCoreZoneRole role}),
-        Set<SpaceId>>{};
+    final spacesByZone =
+        <({LevelId levelId, CommonCoreZoneRole role}), Set<SpaceId>>{};
     var edgeCursor = 0;
     for (var spaceIndex = 0;
         spaceIndex < corePlan.spaces.length;
@@ -831,8 +828,7 @@ final class CottageCompositionCommand implements ReservedProjectCommand {
       final proposal = corePlan.openings[index];
       final a = spaceIdsByKey[proposal.spaceAKey]!;
       final b = spaceIdsByKey[proposal.spaceBKey]!;
-      final openingId =
-          reservation.entityId<OpeningId>(_openingSlot(index));
+      final openingId = reservation.entityId<OpeningId>(_openingSlot(index));
       openings[openingId] = ProjectOpeningEntity(
         id: openingId,
         levelId: proposal.levelId,
@@ -872,8 +868,7 @@ final class CottageCompositionCommand implements ReservedProjectCommand {
 
     for (var index = 0; index < corePlan.verticalCores.length; index++) {
       final proposal = corePlan.verticalCores[index];
-      final coreId =
-          reservation.entityId<VerticalCoreId>(_coreSlot(index));
+      final coreId = reservation.entityId<VerticalCoreId>(_coreSlot(index));
       verticalCores[coreId] = ProjectVerticalCore(
         id: coreId,
         buildingId: structural.buildingId,
@@ -898,7 +893,8 @@ final class CottageCompositionCommand implements ReservedProjectCommand {
       adjacencies: adjacencies,
       verticalCores: verticalCores,
     );
-    final edgeRegistry = project.engineeringMetadata.boundaryEdgeIdentityRegistry
+    final edgeRegistry = project
+        .engineeringMetadata.boundaryEdgeIdentityRegistry
         .registerActiveBoundaries(boundaries);
     return ProjectAggregateRoot(
       id: project.id,
