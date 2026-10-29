@@ -17,7 +17,7 @@ Implementation contract: [P10 specification](p10-building-residential-compositio
 | P10.5 | P9 slot generation, rigid apartment placement, collision/access/shared-boundary checks, nested child lineage and v15 persistence | Three `test/p105_*_test.dart` suites |
 | P10.6 — COMPLETE | Versioned common/core input, pure common/core generator, reserved canonical materialization, explicit horizontal/vertical access topology, typed VerticalCore hosts and v16 persistence | `test/p106_*_test.dart` suites |
 | P10.7 — COMPLETE | Reserved detached building, level stack, slabs, internal cores, physical common opening hosts and production persistence lifecycle | `test/p107_cottage*_test.dart` |
-| P10.8 — IMPLEMENTED, qualification in progress | Tower shell, multiple P9 apartments per repeated residential floor, independent typical-floor lineage and one parent Apply | `test/p108_*_test.dart` |
+| P10.8 — COMPLETE | Tower shell, multiple P9 apartments per repeated residential floor, independent typical-floor lineage and one parent Apply | `test/p108_*_test.dart` |
 
 P10.1–P10.3 passed repository-wide GitHub verification/quality on
 `184bd8297489a5379257b72a2beb15b69c7b08ae`.
@@ -217,10 +217,22 @@ overrides while preserving sibling floors. Existing schema v16 persists the
 result, including cores, hosts and apartment/floor lineage; no new codec or
 parallel persistence owner is introduced.
 
+P10.8 implementation commit: `7ed194c3ea2cadc7e2b4364eb703db1f928c79ff`.
 Local targeted qualification passed 37 scenarios, including 15 new P10.8 tests,
-cottage regression and P9 identity/projection regression. Analyzer is clean and
-all 800 Dart files are formatted. Repository-wide and exact-SHA qualification
-are pending for the P10.8 implementation commit.
+cottage regression and P9 identity/projection regression. All 1718 repository
+tests passed; analyzer is clean and all 800 Dart files are formatted.
+Both `verification` and `quality` passed on that exact implementation SHA in
+[GitHub Actions run 40873583159](https://github.com/alimbetov/ElecX/actions/runs/40873583159),
+including formatting, analyzer, P8 reference/accessibility/i18n gates and the
+repository-wide test suite.
+
+P10-Q10 qualifies the actual production chain through the persistence owner:
+Generate → Preview → Apply → Save → Reopen → Edit → Undo → Redo → Save → Reopen.
+Level display renumbering preserves typed core coverage and hosts. Independent
+P9 and typical-floor overrides survive re-save/reopen without changing sibling
+floors. Negative qualification covers stale/cancelled previews, unsupported
+versions, missing mandatory cores, invalid floor selections, reservation aliases,
+foreign/occupied Sites and overflowing apartment geometry.
 
 ## Qualification scope
 
@@ -259,13 +271,12 @@ matrix remain P10.13 work.
 
 ## Remaining work
 
-1. P10.8 repository-wide and exact-SHA acceptance.
-2. P10.9 multi-building site composition.
-3. P10.10 service/infrastructure anchors.
-4. P10.11 building candidate Preview/Diff plus atomic materialization and Wizard.
-5. P10.12 building/site generation provenance and lineage closure.
-6. P10.13 Q01–Q20, Golden Journeys, cross-platform and exact-SHA acceptance.
+1. P10.9 multi-building site composition.
+2. P10.10 service/infrastructure anchors.
+3. P10.11 building candidate Preview/Diff plus atomic materialization and Wizard.
+4. P10.12 building/site generation provenance and lineage closure.
+5. P10.13 Q01–Q20, Golden Journeys, cross-platform and exact-SHA acceptance.
 
-P10.1–P10.7 are complete; P10.8 implementation is undergoing final qualification. P10 is not ready for merge or P11 handoff until the
-remaining P10.8–P10.13 contracts are closed and final exact-SHA qualification is
+P10.1–P10.8 are complete. P10 is not ready for merge or P11 handoff until the
+remaining P10.9–P10.13 contracts are closed and final exact-SHA qualification is
 green.
