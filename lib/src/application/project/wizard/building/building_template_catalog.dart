@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import '../../../../domain/project_aggregate.dart';
 import '../../../../domain/project_identity.dart';
-import '../apartment/p9_sha256.dart';
+import '../../../../domain/semantic_sha256.dart';
 import 'building_generation_parameters.dart';
 
 /// Published architectural constraints/defaults, never live project entities.
@@ -97,7 +97,7 @@ final class BuildingTemplateDefinition {
           ..sort(),
       };
 
-  String get fingerprint => p9Sha256Hex(jsonEncode(toCanonicalJson()));
+  String get fingerprint => semanticSha256Hex(jsonEncode(toCanonicalJson()));
 }
 
 /// Exact immutable template evidence to carry into a P10 candidate/provenance.
@@ -145,7 +145,7 @@ final class BuildingTemplateCatalog {
   final int version;
   final List<BuildingTemplateDefinition> templates;
 
-  String get fingerprint => p9Sha256Hex(
+  String get fingerprint => semanticSha256Hex(
         jsonEncode({
           'schema': 'p10.building-template-catalog.v1',
           'version': version,
