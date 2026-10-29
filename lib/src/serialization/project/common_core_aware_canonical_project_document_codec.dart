@@ -48,8 +48,9 @@ final class CommonCoreAwareCanonicalProjectDocumentCodec
                 'verticalCoreId': core.id.value,
                 'usage': core.usage.name,
                 'hosts': <String, Object?>{
-                  for (final entry in (core.hostSpaceIdsByLevel.entries.toList()
-                    ..sort((a, b) => a.key.value.compareTo(b.key.value))))
+                  for (final entry
+                      in (core.hostSpaceIdsByLevel.entries.toList()
+                        ..sort((a, b) => a.key.value.compareTo(b.key.value))))
                     entry.key.value: entry.value.value,
                 },
               },
@@ -82,7 +83,8 @@ final class CommonCoreAwareCanonicalProjectDocumentCodec
         document.payload['buildingCoreSemantics'],
         const {'schemaVersion', 'cores'},
       );
-      if (_int(semantics['schemaVersion'], 'buildingCoreSemantics.schemaVersion') !=
+      if (_int(semantics['schemaVersion'],
+              'buildingCoreSemantics.schemaVersion') !=
           1) {
         throw const FormatException(
           'Unsupported building core semantics schema version.',
@@ -99,16 +101,19 @@ final class CommonCoreAwareCanonicalProjectDocumentCodec
       );
 
       final overrides = <VerticalCoreId, _CoreSemantics>{};
-      for (final raw in _list(semantics['cores'], 'buildingCoreSemantics.cores')) {
+      for (final raw
+          in _list(semantics['cores'], 'buildingCoreSemantics.cores')) {
         final json = _map(
           raw,
           const {'verticalCoreId', 'usage', 'hosts'},
         );
         final coreId = VerticalCoreId(
-          _string(json['verticalCoreId'], 'buildingCoreSemantics.verticalCoreId'),
+          _string(
+              json['verticalCoreId'], 'buildingCoreSemantics.verticalCoreId'),
         );
         if (overrides.containsKey(coreId)) {
-          throw FormatException('Duplicate building core semantics for $coreId.');
+          throw FormatException(
+              'Duplicate building core semantics for $coreId.');
         }
         if (!base.aggregate.stores.verticalCores.containsKey(coreId)) {
           throw FormatException(
@@ -118,12 +123,13 @@ final class CommonCoreAwareCanonicalProjectDocumentCodec
         final hostsJson = _map(json['hosts']);
         final hosts = <LevelId, SpaceId>{};
         for (final entry in hostsJson.entries) {
-          final levelId = LevelId(_string(entry.key, 'buildingCoreSemantics.host.levelId'));
+          final levelId =
+              LevelId(_string(entry.key, 'buildingCoreSemantics.host.levelId'));
           if (hosts.containsKey(levelId)) {
             throw FormatException('Duplicate host LevelId $levelId.');
           }
-          hosts[levelId] =
-              SpaceId(_string(entry.value, 'buildingCoreSemantics.host.spaceId'));
+          hosts[levelId] = SpaceId(
+              _string(entry.value, 'buildingCoreSemantics.host.spaceId'));
         }
         overrides[coreId] = _CoreSemantics(
           usage: _enumByName(
