@@ -73,7 +73,8 @@ void main() {
       );
       expect(result.accepted, isTrue);
       final candidateSet = result.candidateSet!;
-      final source = candidateSet.recommendedCandidate.rankedCandidate.candidate;
+      final source =
+          candidateSet.recommendedCandidate.rankedCandidate.candidate;
       final primary = source.openingIntents.singleWhere(
         (intent) => intent.kind == GeometryOpeningKind.primaryEntry,
       );
@@ -115,7 +116,8 @@ void main() {
           break;
         }
       }
-      expect(found, isTrue, reason: 'P9 entry must support a top-edge placement');
+      expect(found, isTrue,
+          reason: 'P9 entry must support a top-edge placement');
 
       final session = ProjectMutationSession(empty);
       final port = SharedProjectWizardMutationPort(
