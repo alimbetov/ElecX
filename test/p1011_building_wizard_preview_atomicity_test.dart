@@ -111,8 +111,10 @@ void main() {
 
       final committedBuildingIds =
           runtime.mutations.current.stores.buildings.keys.toSet();
-      final committedLevelIds = runtime.mutations.current.stores.levels.keys.toSet();
-      final committedSpaceIds = runtime.mutations.current.stores.spaces.keys.toSet();
+      final committedLevelIds =
+          runtime.mutations.current.stores.levels.keys.toSet();
+      final committedSpaceIds =
+          runtime.mutations.current.stores.spaces.keys.toSet();
       final committedCoreIds =
           runtime.mutations.current.stores.verticalCores.keys.toSet();
       expect(committedBuildingIds, hasLength(1));
@@ -130,8 +132,10 @@ void main() {
         runtime.mutations.current.stores.buildings.keys.toSet(),
         committedBuildingIds,
       );
-      expect(runtime.mutations.current.stores.levels.keys.toSet(), committedLevelIds);
-      expect(runtime.mutations.current.stores.spaces.keys.toSet(), committedSpaceIds);
+      expect(runtime.mutations.current.stores.levels.keys.toSet(),
+          committedLevelIds);
+      expect(runtime.mutations.current.stores.spaces.keys.toSet(),
+          committedSpaceIds);
       expect(
         runtime.mutations.current.stores.verticalCores.keys.toSet(),
         committedCoreIds,
