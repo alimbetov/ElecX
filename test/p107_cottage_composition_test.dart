@@ -1,0 +1,403 @@
+import 'dart:math';
+
+import 'package:elecx/src/application/project/project_mutation.dart';
+import 'package:elecx/src/application/project/project_snapshot.dart';
+import 'package:elecx/src/application/project/wizard/building/building_common_core_composition.dart';
+import 'package:elecx/src/application/project/wizard/building/building_generation_parameters.dart';
+import 'package:elecx/src/application/project/wizard/building/building_level_stack_generator.dart';
+import 'package:elecx/src/application/project/wizard/building/cottage_composition.dart';
+import 'package:elecx/src/application/project/wizard/project_wizard_mutation_port.dart';
+import 'package:elecx/src/domain/project_aggregate.dart';
+import 'package:elecx/src/domain/project_identity.dart';
+import 'package:elecx/src/domain/project_orientation.dart';
+import 'package:elecx/src/domain/vertical_core.dart';
+import 'package:elecx/src/serialization/project/common_core_aware_canonical_project_document_codec.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  group('P10.7 production cottage composition', () {
+    test('pure plan is deterministic and retains deferred service-anchor intent',
+        () {
+      final fixture = _P107Fixture();
+      final generator = const CottageCompositionGenerator();
+      final first = generator.generate(
+        compositionKey: 'cottage.main',
+        parameters: fixture.parameters,
+        layout: fixture.layout,
+      );
+      final second = generator.generate(
+        compositionKey: 'cottage.main',
+        parameters: fixture.parameters,
+        layout: fixture.layout,
+      );
+
+      expect(first.semanticFingerprint, second.semanticFingerprint);
+      expect(first.levelStack.levels, hasLength(4));
+      expect(first.slabs, hasLength(3));
+      expect(first.servedLevelCount, 3);
+      expect(first.coreCount, 3);
+      expect(
+        first.pendingServiceAnchorKinds,
+        {
+          BuildingServiceAnchorKind.electricalEntry,
+          BuildingServiceAnchorKind.telecomEntry,
+        },
+      );
+      expect(first.hasDeferredServiceAnchors, isTrue);
+      expect(first.zoneCount, greaterThan(0));
+      expect(first.spaceCount, greaterThan(0));
+    });
+
+    test('one reserved command materializes cottage and exact Undo Redo IDs',
+        () {
+      final fixture = _P107Fixture();
+      final session = ProjectMutationSession(fixture.project);
+      final port = SharedProjectWizardMutationPort(
+        mutations: session,
+        idFactory: SecureRandomEntityIdFactory(random: Random(10701)),
+      );
+      final command = fixture.command(session.current);
+      final preview = port.preview(command);
+
+      expect(session.current.stores.buildings, isEmpty);
+      expect(session.current.stores.levels, isEmpty);
+      expect(session.current.stores.slabs, isEmpty);
+      expect(session.current.stores.verticalCores, isEmpty);
+      expect(preview.preview.candidate.stores.buildings, hasLength(1));
+      expect(preview.preview.candidate.stores.levels, hasLength(4));
+      expect(preview.preview.candidate.stores.slabs, hasLength(3));
+
+      final committed = port.commitPreview(preview);
+      expect(committed, isNotNull);
+      expect(session.undoDepth, 1);
+      expect(session.current.stores.buildings, hasLength(1));
+      expect(session.current.stores.levels, hasLength(4));
+      expect(session.current.stores.slabs, hasLength(3));
+      expect(session.current.stores.verticalCores, hasLength(3));
+
+      final building = session.current.stores.buildings.values.single;
+      expect(building.siteId, fixture.siteId);
+      expect(building.levelIds, hasLength(4));
+      expect(
+        session.current.stores.sites[fixture.siteId]!.buildingIds,
+        {building.id},
+      );
+
+      final usages = session.current.stores.verticalCores.values
+          .map((core) => core.usage)
+          .toSet();
+      expect(
+        usages,
+        {
+          VerticalCoreUsage.stairwell,
+          VerticalCoreUsage.electricalRiser,
+          VerticalCoreUsage.telecomRiser,
+        },
+      );
+      for (final core in session.current.stores.verticalCores.values) {
+        expect(core.buildingId, building.id);
+        expect(core.levelIds, hasLength(3));
+        expect(core.hostSpaceIdsByLevel, hasLength(3));
+      }
+
+      final roof = session.current.stores.levels.values.singleWhere(
+        (level) => level.kind == ProjectLevelKind.roof,
+      );
+      expect(roof.spaceIds, isEmpty);
+      expect(roof.zoneIds, isEmpty);
+
+      final buildingIds = session.current.stores.buildings.keys.toSet();
+      final levelIds = session.current.stores.levels.keys.toSet();
+      final slabIds = session.current.stores.slabs.keys.toSet();
+      final zoneIds = session.current.stores.zones.keys.toSet();
+      final spaceIds = session.current.stores.spaces.keys.toSet();
+      final openingIds = session.current.stores.openings.keys.toSet();
+      final adjacencyIds = session.current.stores.adjacencies.keys.toSet();
+      final coreIds = session.current.stores.verticalCores.keys.toSet();
+
+      final undo = session.undo(session.current.version);
+      expect(undo, isNotNull);
+      expect(session.current.stores.buildings, isEmpty);
+      expect(session.current.stores.levels, isEmpty);
+      expect(session.current.stores.slabs, isEmpty);
+      expect(session.current.stores.zones, isEmpty);
+      expect(session.current.stores.spaces, isEmpty);
+      expect(session.current.stores.openings, isEmpty);
+      expect(session.current.stores.adjacencies, isEmpty);
+      expect(session.current.stores.verticalCores, isEmpty);
+
+      final redo = session.redo(session.current.version);
+      expect(redo, isNotNull);
+      expect(session.current.stores.buildings.keys.toSet(), buildingIds);
+      expect(session.current.stores.levels.keys.toSet(), levelIds);
+      expect(session.current.stores.slabs.keys.toSet(), slabIds);
+      expect(session.current.stores.zones.keys.toSet(), zoneIds);
+      expect(session.current.stores.spaces.keys.toSet(), spaceIds);
+      expect(session.current.stores.openings.keys.toSet(), openingIds);
+      expect(session.current.stores.adjacencies.keys.toSet(), adjacencyIds);
+      expect(session.current.stores.verticalCores.keys.toSet(), coreIds);
+    });
+
+    test('schema v16 save reopen preserves the exact cottage canonical graph',
+        () {
+      final fixture = _P107Fixture();
+      final session = ProjectMutationSession(fixture.project);
+      final port = SharedProjectWizardMutationPort(
+        mutations: session,
+        idFactory: SecureRandomEntityIdFactory(random: Random(10702)),
+      );
+      port.commitPreview(port.preview(fixture.command(session.current)));
+
+      final before = session.current;
+      const codec = CommonCoreAwareCanonicalProjectDocumentCodec();
+      final timestamp = DateTime.utc(2026, 10, 29, 12);
+      final document = codec.encode(
+        ProjectSnapshot(
+          aggregate: before,
+          name: 'P10.7 Cottage',
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        ),
+      );
+      expect(
+        document.schemaVersion,
+        CommonCoreAwareCanonicalProjectDocumentCodec.schemaVersion,
+      );
+      final reopened = codec.decode(document).aggregate;
+
+      expect(reopened.stores.buildings.keys, before.stores.buildings.keys);
+      expect(reopened.stores.levels.keys, before.stores.levels.keys);
+      expect(reopened.stores.slabs.keys, before.stores.slabs.keys);
+      expect(reopened.stores.zones.keys, before.stores.zones.keys);
+      expect(reopened.stores.spaces.keys, before.stores.spaces.keys);
+      expect(reopened.stores.openings.keys, before.stores.openings.keys);
+      expect(reopened.stores.adjacencies.keys, before.stores.adjacencies.keys);
+      expect(
+        reopened.stores.verticalCores.keys,
+        before.stores.verticalCores.keys,
+      );
+      for (final entry in before.stores.verticalCores.entries) {
+        final restored = reopened.stores.verticalCores[entry.key]!;
+        expect(restored.levelIds, entry.value.levelIds);
+        expect(restored.usage, entry.value.usage);
+        expect(
+          restored.hostSpaceIdsByLevel,
+          entry.value.hostSpaceIdsByLevel,
+        );
+      }
+    });
+
+    test('invalid cottage topology and deferred site rotation fail closed', () {
+      final fixture = _P107Fixture();
+      final generator = const CottageCompositionGenerator();
+
+      expect(
+        () => generator.generate(
+          compositionKey: 'cottage.main',
+          parameters: fixture.parametersWith(
+            kind: BuildingCompositionKind.residentialTower,
+          ),
+          layout: fixture.layout,
+        ),
+        throwsA(
+          isA<CottageCompositionException>().having(
+            (error) => error.code,
+            'code',
+            'p10.cottage.kind-not-detached',
+          ),
+        ),
+      );
+      expect(
+        () => generator.generate(
+          compositionKey: 'cottage.main',
+          parameters: fixture.parametersWith(
+            commonCore: fixture.commonCore(stairCount: 0),
+          ),
+          layout: fixture.layout,
+        ),
+        throwsA(
+          isA<CottageCompositionException>().having(
+            (error) => error.code,
+            'code',
+            'p10.cottage.internal-stair-required',
+          ),
+        ),
+      );
+      expect(
+        () => generator.generate(
+          compositionKey: 'cottage.main',
+          parameters: fixture.parametersWith(
+            placement: BuildingSitePlacement(
+              xMm: 0,
+              yMm: 0,
+              orientation: ProjectEngineeringNorth.fromDegrees(90),
+            ),
+          ),
+          layout: fixture.layout,
+        ),
+        throwsA(
+          isA<CottageCompositionException>().having(
+            (error) => error.code,
+            'code',
+            'p10.cottage.rotated-site-placement-deferred',
+          ),
+        ),
+      );
+      expect(
+        () => generator.generate(
+          compositionKey: 'cottage.main',
+          parameters: fixture.parametersWith(
+            levelStack: const BuildingLevelStackGenerator()
+                .residentialParameters(upperResidentialLevels: 4),
+          ),
+          layout: fixture.layout,
+        ),
+        throwsA(
+          isA<CottageCompositionException>().having(
+            (error) => error.code,
+            'code',
+            'p10.cottage.occupiable-level-count-out-of-range',
+          ),
+        ),
+      );
+
+      final occupied = fixture.projectWithExistingBuilding;
+      expect(
+        () => CottageCompositionCommand.create(
+          project: occupied,
+          compositionKey: 'cottage.main',
+          parameters: fixture.parameters,
+          layout: fixture.layout,
+        ),
+        throwsA(
+          isA<CottageCompositionException>().having(
+            (error) => error.code,
+            'code',
+            'p10.cottage.site-not-empty',
+          ),
+        ),
+      );
+    });
+  });
+}
+
+final class _P107Fixture {
+  final ProjectId projectId = ProjectId('project-p107');
+  final SiteId siteId = SiteId('site-p107');
+
+  LevelStackParameters get levelStack => const BuildingLevelStackGenerator()
+      .residentialParameters(
+        basementLevels: 1,
+        upperResidentialLevels: 1,
+        includeRoof: true,
+        basementHeightMm: 3000,
+        groundHeightMm: 3200,
+        residentialHeightMm: 3200,
+        roofHeightMm: 2800,
+      );
+
+  CommonCoreParameters commonCore({int stairCount = 1}) =>
+      CommonCoreParameters.v2(
+        stairCount: stairCount,
+        liftCount: 0,
+        serviceShaftCount: 0,
+        electricalRiserCount: 1,
+        telecomRiserCount: 1,
+        corridorWidthMm: 1800,
+        includeTechnicalRoom: true,
+        serviceSpacePolicy: const CommonServiceSpacePolicy(
+          includeCommonHall: true,
+          includeElevatorHall: false,
+          includeElectricalRoomCandidate: true,
+          includeTelecomRoomCandidate: true,
+          includeFireControlRoomCandidate: false,
+          includeUtilityRoomCandidate: true,
+        ),
+      );
+
+  BuildingGenerationParameters get parameters => parametersWith();
+
+  BuildingGenerationParameters parametersWith({
+    BuildingCompositionKind kind = BuildingCompositionKind.detachedHouse,
+    BuildingSitePlacement? placement,
+    LevelStackParameters? levelStack,
+    CommonCoreParameters? commonCore,
+  }) =>
+      BuildingGenerationParameters(
+        kind: kind,
+        siteId: siteId,
+        displayName: 'P10.7 Cottage',
+        placement: placement ??
+            BuildingSitePlacement(
+              xMm: 0,
+              yMm: 0,
+              orientation: ProjectEngineeringNorth.fromDegrees(0),
+            ),
+        levelStack: levelStack ?? this.levelStack,
+        commonCore: commonCore ?? this.commonCore(),
+        serviceAnchors: ServiceAnchorParameters(
+          kinds: const {
+            BuildingServiceAnchorKind.electricalEntry,
+            BuildingServiceAnchorKind.telecomEntry,
+          },
+        ),
+      );
+
+  CottageCompositionLayout get layout => CottageCompositionLayout(
+        footprintWidthMm: 18000,
+        footprintDepthMm: 12000,
+        commonCore: CommonCoreLayoutParameters(
+          originXmm: 1000,
+          originYmm: 3500,
+          corridorLengthMm: 16000,
+        ),
+      );
+
+  CottageCompositionCommand command(ProjectAggregateRoot project) =>
+      CottageCompositionCommand.create(
+        project: project,
+        compositionKey: 'cottage.main',
+        parameters: parameters,
+        layout: layout,
+      );
+
+  ProjectAggregateRoot get project => ProjectAggregateRoot(
+        id: projectId,
+        siteId: siteId,
+        version: LocalProjectVersion(0),
+        stores: ProjectEntityStores(
+          sites: {
+            siteId: ProjectSiteEntity(
+              id: siteId,
+              name: 'P10.7 Site',
+              buildingIds: const [],
+            ),
+          },
+        ),
+      );
+
+  ProjectAggregateRoot get projectWithExistingBuilding {
+    final buildingId = BuildingId('existing-p107-building');
+    return ProjectAggregateRoot(
+      id: projectId,
+      siteId: siteId,
+      version: LocalProjectVersion(0),
+      stores: ProjectEntityStores(
+        sites: {
+          siteId: ProjectSiteEntity(
+            id: siteId,
+            name: 'P10.7 Site',
+            buildingIds: [buildingId],
+          ),
+        },
+        buildings: {
+          buildingId: ProjectBuildingEntity(
+            id: buildingId,
+            siteId: siteId,
+            name: 'Existing Building',
+          ),
+        },
+      ),
+    );
+  }
+}
