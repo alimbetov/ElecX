@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/project_orientation.dart';
 import '../../domain/route_host.dart';
+import '../shared/production_error_boundary.dart';
 import 'canonical_editor_production_runtime.dart';
 import 'canonical_editor_runtime_cutover.dart';
 import 'canonical_editor_screen_cutover_binding.dart';
@@ -239,6 +240,22 @@ class _UnifiedWorkspaceEditorScreenState
       setState(() {});
     }
   }
+
+  ProductionSafeFailure _reportProductionFailure(
+    Object error,
+    StackTrace stackTrace, {
+    required ProductionDiagnosticCode code,
+    required String safeSummary,
+    required String operation,
+  }) =>
+      ProductionErrorBoundary.report(
+        error: error,
+        stackTrace: stackTrace,
+        code: code,
+        safeSummary: safeSummary,
+        library: 'elecx.workspace',
+        operation: operation,
+      );
 
   void _onP2Changed() {
     final committed = controller.p2.history.mutationRevision;
@@ -679,14 +696,18 @@ class _UnifiedWorkspaceEditorScreenState
         title: error.issue.title,
         detail: error.issue.detail,
       );
-    } catch (error) {
+    } catch (error, stackTrace) {
       if (!mounted) return;
-      final detail = EditorProjectSaveDiagnostics.unexpectedPersistenceMessage(
+      final failure = _reportProductionFailure(
         error,
+        stackTrace,
+        code: ProductionDiagnosticCode.projectSave,
+        safeSummary: 'Не удалось сохранить проект.',
+        operation: 'while saving the workspace project',
       );
       await _showSaveFailure(
         title: 'Не удалось сохранить проект',
-        detail: detail,
+        detail: failure.userMessage,
       );
     } finally {
       if (mounted) {
@@ -704,7 +725,6 @@ class _UnifiedWorkspaceEditorScreenState
         )) {
       return;
     }
-    await _discardRecoveryBestEffort();
     setState(() => _projectIoBusy = true);
     try {
       final projectId = _projectMetadata.projectId;
@@ -717,10 +737,19 @@ class _UnifiedWorkspaceEditorScreenState
       }
       final restored = document.restore();
       _replaceProject(restored, document.metadata);
-      _showProjectMessage('Проект открыт из сохранённой версии');
-    } catch (error) {
+      await _discardRecoveryBestEffort();
       if (!mounted) return;
-      _showProjectMessage('Не удалось открыть проект: $error', isError: true);
+      _showProjectMessage('Проект открыт из сохранённой версии');
+    } catch (error, stackTrace) {
+      if (!mounted) return;
+      final failure = _reportProductionFailure(
+        error,
+        stackTrace,
+        code: ProductionDiagnosticCode.savedProjectOpen,
+        safeSummary: 'Не удалось открыть сохранённую версию проекта.',
+        operation: 'while loading or restoring a saved project version',
+      );
+      _showProjectMessage(failure.userMessage, isError: true);
     } finally {
       if (mounted) setState(() => _projectIoBusy = false);
     }
@@ -871,11 +900,15 @@ class _UnifiedWorkspaceEditorScreenState
         value,
         expectedVersion: capturedVersion,
       );
-    } catch (error) {
-      _showProjectMessage(
-        'Не удалось изменить Project North: $error',
-        isError: true,
+    } catch (error, stackTrace) {
+      final failure = _reportProductionFailure(
+        error,
+        stackTrace,
+        code: ProductionDiagnosticCode.projectNorthMutation,
+        safeSummary: 'Не удалось изменить Project North.',
+        operation: 'while committing a Project North mutation',
       );
+      _showProjectMessage(failure.userMessage, isError: true);
       return;
     }
 
@@ -913,11 +946,15 @@ class _UnifiedWorkspaceEditorScreenState
     try {
       canonicalOwner(resolved.session, result);
       featureCallback(currentEditing, result);
-    } catch (error) {
-      _showProjectMessage(
-        'Project North committed, но persistence owner не подтвердил владение: $error',
-        isError: true,
+    } catch (error, stackTrace) {
+      final failure = _reportProductionFailure(
+        error,
+        stackTrace,
+        code: ProductionDiagnosticCode.projectNorthPersistence,
+        safeSummary: 'Project North изменён, но не удалось подтвердить сохранение.',
+        operation: 'while persisting a committed Project North mutation',
       );
+      _showProjectMessage(failure.userMessage, isError: true);
       _refresh();
       return;
     }
