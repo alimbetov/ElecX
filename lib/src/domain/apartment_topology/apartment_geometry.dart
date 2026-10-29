@@ -390,10 +390,15 @@ bool _collinear(
 
 int _twiceSignedArea(List<BoundaryPointMm> points) {
   var area = 0;
+  // Translate before multiplying: Site coordinates can approach 1e9 mm while
+  // building extents remain small. Absolute cross-products lose integer bits
+  // on Dart/JS even though the final area is well inside the exact range.
+  final origin = points.first;
   for (var index = 0; index < points.length; index++) {
     final current = points[index];
     final next = points[(index + 1) % points.length];
-    area += current.xMm * next.yMm - next.xMm * current.yMm;
+    area += (current.xMm - origin.xMm) * (next.yMm - origin.yMm) -
+        (next.xMm - origin.xMm) * (current.yMm - origin.yMm);
   }
   return area;
 }

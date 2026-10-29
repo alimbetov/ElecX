@@ -45,4 +45,20 @@ void main() {
     expect(placement(360).sameAs(placement(0)), isTrue);
     expect(placement(450).sameAs(placement(90)), isTrue);
   });
+  test(
+      'small footprints retain exact area at the positive and negative Site coordinate limits',
+      () {
+    for (final origin in [-999999980, 999999980]) {
+      for (var turns = 0; turns < 4; turns++) {
+        final placement = ProjectBuildingSitePlacement(
+            xMm: origin,
+            yMm: origin,
+            orientation: ProjectEngineeringNorth.fromDegrees(turns * 90.0),
+            widthMm: 10,
+            depthMm: 10);
+        expect(placement.siteFootprint.areaMm2, 100);
+        expect(placement.siteFootprint.vertices.length, 4);
+      }
+    }
+  });
 }
