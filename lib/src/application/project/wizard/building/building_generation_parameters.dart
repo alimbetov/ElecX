@@ -3,7 +3,7 @@ import 'dart:convert';
 import '../../../../domain/project_aggregate.dart';
 import '../../../../domain/project_identity.dart';
 import '../../../../domain/project_orientation.dart';
-import '../apartment/p9_sha256.dart';
+import '../../../../domain/semantic_sha256.dart';
 
 enum BuildingCompositionKind {
   detachedHouse,
@@ -317,7 +317,7 @@ final class BuildingGenerationParameters {
       };
 
   String get canonicalSerialization => jsonEncode(toCanonicalJson());
-  String get requestFingerprint => p9Sha256Hex(canonicalSerialization);
+  String get requestFingerprint => semanticSha256Hex(canonicalSerialization);
 }
 
 String _text(String value, String field) {
