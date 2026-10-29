@@ -49,28 +49,59 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
     _projectsFuture = _loadProjects();
   }
 
-  Future<_ProjectHubData> _loadProjects() async {
-    final store = await _storeFuture;
-    final projects = await store.list();
-    final recoveryStore = await _recoveryStoreFuture;
-    final allRecoveries = recoveryStore == null
-        ? const <EditorProjectRecoverySnapshot>[]
-        : await recoveryStore.list();
-    final savedById = {
-      for (final document in projects) document.projectId: document,
-    };
-    final recoveries = [
-      for (final recovery in allRecoveries)
-        if (savedById[recovery.projectId] == null ||
-            recovery.capturedAt.isAfter(
-              savedById[recovery.projectId]!.updatedAt,
-            ))
-          recovery,
-    ];
-    return _ProjectHubData(
-      projects: projects,
-      recoveries: List.unmodifiable(recoveries),
+  void _reportProjectHubError(
+    Object error,
+    StackTrace stackTrace, {
+    required String operation,
+  }) {
+    FlutterError.reportError(
+      FlutterErrorDetails(
+        exception: error,
+        stack: stackTrace,
+        library: 'elecx.project_hub',
+        context: ErrorDescription(operation),
+      ),
     );
+  }
+
+  void _showSafeError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Future<_ProjectHubData> _loadProjects() async {
+    try {
+      final store = await _storeFuture;
+      final projects = await store.list();
+      final recoveryStore = await _recoveryStoreFuture;
+      final allRecoveries = recoveryStore == null
+          ? const <EditorProjectRecoverySnapshot>[]
+          : await recoveryStore.list();
+      final savedById = {
+        for (final document in projects) document.projectId: document,
+      };
+      final recoveries = [
+        for (final recovery in allRecoveries)
+          if (savedById[recovery.projectId] == null ||
+              recovery.capturedAt.isAfter(
+                savedById[recovery.projectId]!.updatedAt,
+              ))
+            recovery,
+      ];
+      return _ProjectHubData(
+        projects: projects,
+        recoveries: List.unmodifiable(recoveries),
+      );
+    } catch (error, stackTrace) {
+      _reportProjectHubError(
+        error,
+        stackTrace,
+        operation: 'while loading projects and recovery snapshots',
+      );
+      rethrow;
+    }
   }
 
   void _reloadProjects() {
@@ -159,13 +190,13 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
     final store = await _storeFuture;
     try {
       await store.save(initialDocument);
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Не удалось создать проект на диске: $error'),
-        ),
+    } catch (error, stackTrace) {
+      _reportProjectHubError(
+        error,
+        stackTrace,
+        operation: 'while creating the initial project document',
       );
+      _showSafeError('Не удалось создать проект на диске.');
       return;
     }
     if (!mounted) return;
@@ -182,11 +213,13 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
           document: prepared.document,
           preparedCanonicalHandle: prepared.canonicalHandle,
         );
-      } catch (error) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Wizard не смог применить проект: $error')),
+      } catch (error, stackTrace) {
+        _reportProjectHubError(
+          error,
+          stackTrace,
+          operation: 'while configuring a project through the wizard',
         );
+        _showSafeError('Wizard не смог применить проект.');
         _reloadProjects();
       }
       return;
@@ -259,15 +292,13 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
           legacyDocument: effectiveDocument,
           repository: canonicalRepository,
         );
-      } catch (error) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Canonical project state could not be opened safely: $error',
-            ),
-          ),
+      } catch (error, stackTrace) {
+        _reportProjectHubError(
+          error,
+          stackTrace,
+          operation: 'while opening canonical project state',
         );
+        _showSafeError('Canonical project state could not be opened safely.');
         return;
       }
     }
@@ -291,13 +322,13 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
           canonicalHandle = canonicalHandle.rebindToLegacy(projected);
           effectiveDocument = projected;
         }
-      } catch (error) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Структура проекта требует восстановления: $error'),
-          ),
+      } catch (error, stackTrace) {
+        _reportProjectHubError(
+          error,
+          stackTrace,
+          operation: 'while projecting canonical state into the editor document',
         );
+        _showSafeError('Структура проекта требует восстановления.');
         return;
       }
     }
@@ -326,9 +357,45 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
 
   Future<void> _discardRecovery(EditorProjectRecoverySnapshot recovery) async {
     final store = await _recoveryStoreFuture;
-    if (store == null) return;
-    await store.discard(recovery.projectId);
-    _reloadProjects();
+    if (store == null || !mounted) return;
+
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            key: const ValueKey('discard-recovery-confirmation-dialog'),
+            title: const Text('Удалить аварийную копию?'),
+            content: const Text(
+              'Несохранённые данные из этой аварийной копии будут удалены '
+              'без возможности восстановления.',
+            ),
+            actions: [
+              TextButton(
+                key: const ValueKey('cancel-discard-recovery'),
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Отмена'),
+              ),
+              FilledButton(
+                key: const ValueKey('confirm-discard-recovery'),
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Удалить копию'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed || !mounted) return;
+
+    try {
+      await store.discard(recovery.projectId);
+      _reloadProjects();
+    } catch (error, stackTrace) {
+      _reportProjectHubError(
+        error,
+        stackTrace,
+        operation: 'while discarding a recovery snapshot',
+      );
+      _showSafeError('Не удалось удалить аварийную копию.');
+    }
   }
 
   @override
@@ -357,10 +424,7 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return _ProjectLoadFailure(
-              error: snapshot.error!,
-              onRetry: _reloadProjects,
-            );
+            return _ProjectLoadFailure(onRetry: _reloadProjects);
           }
           final data = snapshot.data ?? const _ProjectHubData();
           final projects = data.projects;
@@ -527,9 +591,8 @@ class _ProjectCard extends StatelessWidget {
 }
 
 class _ProjectLoadFailure extends StatelessWidget {
-  const _ProjectLoadFailure({required this.error, required this.onRetry});
+  const _ProjectLoadFailure({required this.onRetry});
 
-  final Object error;
   final VoidCallback onRetry;
 
   @override
@@ -546,7 +609,10 @@ class _ProjectLoadFailure extends StatelessWidget {
                   const SizedBox(height: 12),
                   const Text('Не удалось прочитать сохранённые проекты'),
                   const SizedBox(height: 8),
-                  Text(error.toString(), textAlign: TextAlign.center),
+                  const Text(
+                    'Повторите попытку. Подробности ошибки сохранены в диагностике.',
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 12),
                   FilledButton.icon(
                     onPressed: onRetry,
