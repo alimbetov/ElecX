@@ -128,14 +128,16 @@ final class SiteCompositionGenerator {
       {required ProjectAggregateRoot project,
       required String compositionKey,
       required Iterable<SiteBuildingSlot> slots,
-      Iterable<SharedSiteAnchorRequest> anchors = const []}) {
+      Iterable<SharedSiteAnchorRequest> anchors = const [],
+      bool allowSingleBuilding = false}) {
     _key(compositionKey);
     final site = project.stores.sites[project.siteId]!;
     final ordered = slots.toList()..sort((a, b) => a.key.compareTo(b.key));
     final shared = anchors.toList()..sort((a, b) => a.key.compareTo(b.key));
     if (ordered.isEmpty ||
         ordered.length > 64 ||
-        ordered.length + site.buildingIds.length < 2 ||
+        ordered.length + site.buildingIds.length <
+            (allowSingleBuilding ? 1 : 2) ||
         ordered.map((slot) => slot.key).toSet().length != ordered.length ||
         shared.map((anchor) => anchor.key).toSet().length != shared.length) {
       throw const SiteLayoutException('p10.site.invalid-slots');
@@ -263,13 +265,15 @@ final class SiteCompositionCommand implements ReservedProjectCommand {
           required String compositionKey,
           required Iterable<SiteBuildingSlot> slots,
           Iterable<SharedSiteAnchorRequest> anchors = const [],
+          bool allowSingleBuilding = false,
           SiteCompositionGenerator generator =
               const SiteCompositionGenerator()}) =>
       SiteCompositionCommand._(generator.generate(
           project: project,
           compositionKey: compositionKey,
           slots: slots,
-          anchors: anchors));
+          anchors: anchors,
+          allowSingleBuilding: allowSingleBuilding));
   final SiteCompositionPlan plan;
   @override
   String get commandType => 'p10.site.compose';

@@ -1,4 +1,5 @@
 import '../../../../domain/project_identity.dart';
+import '../../../../domain/project_site_layout.dart';
 import '../../../../domain/project_orientation.dart';
 import '../../project_mutation_reservation.dart';
 import '../wizard_contracts.dart';
@@ -7,6 +8,7 @@ import 'building_generation_parameters.dart';
 import 'building_level_stack_generator.dart';
 import 'building_shell_composition.dart';
 import 'cottage_composition.dart';
+import 'building_composition_wizard_command.dart';
 import 'residential_tower_composition.dart';
 import 'site_composition.dart';
 
@@ -28,10 +30,14 @@ final class BuildingCompositionWizardParameters extends WizardParameters {
     required this.compositionKey,
     this.buildingParameters,
     this.layout,
+    Iterable<BuildingWizardServiceAnchorInput> serviceAnchors = const [],
+    Map<BuildingId, ProjectBuildingSitePlacement> existingPlacements = const {},
     Iterable<TowerApartmentRequest> towerApartments = const [],
     Iterable<SiteBuildingSlot> siteBuildings = const [],
     Iterable<SharedSiteAnchorRequest> sharedSiteAnchors = const [],
-  })  : towerApartments = List.unmodifiable(towerApartments),
+  })  : serviceAnchors = List.unmodifiable(serviceAnchors),
+        existingPlacements = Map.unmodifiable(existingPlacements),
+        towerApartments = List.unmodifiable(towerApartments),
         siteBuildings = List.unmodifiable(siteBuildings),
         sharedSiteAnchors = List.unmodifiable(sharedSiteAnchors);
 
@@ -39,10 +45,14 @@ final class BuildingCompositionWizardParameters extends WizardParameters {
     required String compositionKey,
     required BuildingGenerationParameters parameters,
     required CottageCompositionLayout layout,
+    Iterable<BuildingWizardServiceAnchorInput> serviceAnchors = const [],
+    Map<BuildingId, ProjectBuildingSitePlacement> existingPlacements = const {},
   }) =>
       BuildingCompositionWizardParameters._(
         family: BuildingCompositionWizardFamily.cottage,
         compositionKey: compositionKey,
+        serviceAnchors: serviceAnchors,
+        existingPlacements: existingPlacements,
         buildingParameters: parameters,
         layout: layout,
       );
@@ -52,10 +62,14 @@ final class BuildingCompositionWizardParameters extends WizardParameters {
     required BuildingGenerationParameters parameters,
     required BuildingCompositionLayout layout,
     required Iterable<TowerApartmentRequest> apartments,
+    Iterable<BuildingWizardServiceAnchorInput> serviceAnchors = const [],
+    Map<BuildingId, ProjectBuildingSitePlacement> existingPlacements = const {},
   }) =>
       BuildingCompositionWizardParameters._(
         family: BuildingCompositionWizardFamily.residentialTower,
         compositionKey: compositionKey,
+        serviceAnchors: serviceAnchors,
+        existingPlacements: existingPlacements,
         buildingParameters: parameters,
         layout: layout,
         towerApartments: apartments,
@@ -64,15 +78,21 @@ final class BuildingCompositionWizardParameters extends WizardParameters {
   factory BuildingCompositionWizardParameters.residentialComplex({
     required String compositionKey,
     required Iterable<SiteBuildingSlot> buildings,
+    Iterable<BuildingWizardServiceAnchorInput> serviceAnchors = const [],
+    Map<BuildingId, ProjectBuildingSitePlacement> existingPlacements = const {},
     Iterable<SharedSiteAnchorRequest> sharedSiteAnchors = const [],
   }) =>
       BuildingCompositionWizardParameters._(
         family: BuildingCompositionWizardFamily.residentialComplex,
         compositionKey: compositionKey,
+        serviceAnchors: serviceAnchors,
+        existingPlacements: existingPlacements,
         siteBuildings: buildings,
         sharedSiteAnchors: sharedSiteAnchors,
       );
 
+  final List<BuildingWizardServiceAnchorInput> serviceAnchors;
+  final Map<BuildingId, ProjectBuildingSitePlacement> existingPlacements;
   final BuildingCompositionWizardFamily family;
   final String compositionKey;
   final BuildingGenerationParameters? buildingParameters;
@@ -108,7 +128,7 @@ final class BuildingCompositionWizardProvider
   WizardProviderDescriptor get descriptor => WizardProviderDescriptor(
         templateId: TemplateId('p10-building-composition'),
         templateVersion: 1,
-        generatorVersion: 'p10.11.v1',
+        generatorVersion: BuildingCompositionCandidate.generatorVersion,
         familyId: familyId,
         displayName: 'Residential building composition',
         supportedScopes: const {WizardTargetScope.site},
@@ -117,7 +137,10 @@ final class BuildingCompositionWizardProvider
   @override
   BuildingCompositionWizardParameters typedDefaultsFor(
     WizardTargetContext target,
-  ) {
+  ) =>
+      defaultsForSite(target.siteId);
+
+  BuildingCompositionWizardParameters defaultsForSite(SiteId siteId) {
     final levels = const BuildingLevelStackGenerator().residentialParameters(
       upperResidentialLevels: 1,
       includeRoof: true,
@@ -129,8 +152,12 @@ final class BuildingCompositionWizardProvider
       compositionKey: 'cottage.main',
       parameters: BuildingGenerationParameters(
         kind: BuildingCompositionKind.detachedHouse,
-        siteId: target.siteId,
+        siteId: siteId,
         displayName: 'Cottage',
+        template: BuildingTemplateRef(
+            id: TemplateId('p10.cottage'),
+            templateVersion: 1,
+            catalogVersion: 1),
         placement: BuildingSitePlacement(
           xMm: 0,
           yMm: 0,
@@ -153,12 +180,7 @@ final class BuildingCompositionWizardProvider
             includeUtilityRoomCandidate: true,
           ),
         ),
-        serviceAnchors: ServiceAnchorParameters(
-          kinds: const {
-            BuildingServiceAnchorKind.electricalEntry,
-            BuildingServiceAnchorKind.telecomEntry,
-          },
-        ),
+        serviceAnchors: ServiceAnchorParameters(),
       ),
       layout: CottageCompositionLayout(
         footprintWidthMm: 18000,
@@ -286,29 +308,36 @@ final class BuildingCompositionWizardProvider
       );
     }
 
-    return switch (parameters.family) {
-      BuildingCompositionWizardFamily.cottage =>
-        CottageCompositionCommand.create(
-          project: context.project,
-          compositionKey: parameters.compositionKey,
-          parameters: parameters.buildingParameters!,
-          layout: parameters.layout!,
-        ),
-      BuildingCompositionWizardFamily.residentialTower =>
-        ResidentialTowerCompositionCommand.create(
-          project: context.project,
-          compositionKey: parameters.compositionKey,
-          parameters: parameters.buildingParameters!,
-          layout: parameters.layout!,
-          requests: parameters.towerApartments,
-        ),
-      BuildingCompositionWizardFamily.residentialComplex =>
-        SiteCompositionCommand.create(
-          project: context.project,
-          compositionKey: parameters.compositionKey,
-          slots: parameters.siteBuildings,
-          anchors: parameters.sharedSiteAnchors,
-        ),
-    };
+    if (context.project.id != context.target.projectId ||
+        context.project.siteId != context.target.siteId ||
+        context.project.version != context.target.baseVersion) {
+      throw const BuildingCompositionWizardProviderException(
+          'p10.wizard.target.changed');
+    }
+    final slots =
+        parameters.family == BuildingCompositionWizardFamily.residentialComplex
+            ? parameters.siteBuildings
+            : [
+                SiteBuildingSlot(
+                    key: parameters.compositionKey,
+                    parameters: parameters.buildingParameters!,
+                    layout: parameters.layout!,
+                    apartments: parameters.towerApartments)
+              ];
+    final basis = withExplicitWizardPlacements(
+        context.project, parameters.existingPlacements);
+    final architecture = SiteCompositionCommand.create(
+        project: basis,
+        compositionKey: parameters.compositionKey,
+        slots: slots,
+        anchors: parameters.sharedSiteAnchors,
+        allowSingleBuilding: parameters.family !=
+            BuildingCompositionWizardFamily.residentialComplex);
+    return BuildingCompositionWizardCommand(
+        basis: context.project,
+        composition: BuildingCompositionCandidate(
+            architecture: architecture,
+            serviceAnchors: parameters.serviceAnchors,
+            existingPlacements: parameters.existingPlacements));
   }
 }

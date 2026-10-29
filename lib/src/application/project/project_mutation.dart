@@ -500,14 +500,22 @@ final class _ProjectMutableStateDiff {
   bool get isEmpty => entityDiff.isEmpty && engineeringMetadataDiff.isEmpty;
 }
 
+/// Synchronous host validation/fault-injection boundary after full canonical
+/// validation and change-set construction, before state/history publication.
+/// Throwing rejects the command without publishing its candidate. The callback
+/// must not perform mutations or external side effects; Preview never calls it.
+typedef ProjectCommitGuard = void Function(ProjectAggregateRoot before,
+    ProjectAggregateRoot candidate, ProjectChangeSet changeSet);
+
 final class ProjectMutationSession {
-  ProjectMutationSession(ProjectAggregateRoot initial)
+  ProjectMutationSession(ProjectAggregateRoot initial, {this.commitGuard})
       : _current = initial,
         _boundaryIdentityRegistry = initial
             .engineeringMetadata.boundaryEdgeIdentityRegistry
             .registerActiveBoundaries(initial.stores.boundaries);
 
   ProjectAggregateRoot _current;
+  final ProjectCommitGuard? commitGuard;
   BoundaryEdgeIdentityRegistry _boundaryIdentityRegistry;
   final List<UndoRecord> _undoStack = <UndoRecord>[];
   final List<UndoRecord> _redoStack = <UndoRecord>[];
@@ -602,6 +610,8 @@ final class ProjectMutationSession {
       entityDiff: stateDiff.entityDiff,
       engineeringMetadataDiff: stateDiff.engineeringMetadataDiff,
     );
+    commitGuard?.call(before, committed, changeSet);
+    _requireVersion(request.expectedVersion);
     _current = committed;
     _boundaryIdentityRegistry =
         committed.engineeringMetadata.boundaryEdgeIdentityRegistry;

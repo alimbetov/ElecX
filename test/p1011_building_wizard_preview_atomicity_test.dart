@@ -70,7 +70,7 @@ void main() {
       );
     });
 
-    test('P10-Q15 candidate materialization failure is atomic', () {
+    test('additional pre-Preview materialization failure is atomic', () {
       final project = _emptyProject();
       final mutations = ProjectMutationSession(project);
       final port = SharedProjectWizardMutationPort(

@@ -20,6 +20,7 @@ Implementation contract: [P10 specification](p10-building-residential-compositio
 | P10.8 — COMPLETE | Tower shell, multiple P9 apartments per repeated residential floor, independent typical-floor lineage and one parent Apply | `test/p108_*_test.dart` |
 | P10.9 — COMPLETE | Mixed cottage/tower Site composition, independent IDs, explicit Building-local → Site transforms, collision checks, shared typed anchors and v17 persistence | Four `test/p109_*_test.dart` suites |
 | P10.10 — COMPLETE | Ten typed service/infrastructure anchor purposes, explicit Site/Space/wall hosts, live P7 physical binding, atomic mutation and v18 persistence | Four `test/p1010_*_test.dart` suites |
+| P10.11 — IMPLEMENTED, CI pending | Site-level production Wizard, immutable composition candidate, canonical Preview/Diff, architecture plus explicit anchors in one reserved Apply, shared owner and strengthened Q13–Q16 | Four `test/p1011_*_test.dart` suites plus P8 bootstrap regression |
 
 P10.1–P10.3 passed repository-wide GitHub verification/quality on
 `184bd8297489a5379257b72a2beb15b69c7b08ae`.
@@ -362,6 +363,40 @@ Both `verification` and `quality` passed on that exact implementation SHA in
 [GitHub Actions run 40889113252](https://github.com/alimbetov/ElecX/actions/runs/40889113252),
 including the default-concurrency repository test suites, formatting, analyzer
 and the P8 reference/accessibility/i18n gates.
+
+## P10.11 production Wizard and atomic Preview/Diff
+
+Site-level Building Wizard now opens the P10 provider through the existing shared
+runtime port. The Site node action remains available when a Level is active;
+apartment generation retains its own engineering capability guard. New Project
+startup remains on the P8 Basic Building Wizard and preserves its compatibility
+seed/binding.
+
+The P10 screen exposes cottage, tower and mixed complex input, exact published
+templates, physical level stacks, apartment mix, common/core layout, explicit
+Site placement and service/shared anchors. Existing unplaced buildings need
+explicit coordinates and footprint dimensions. P10.9 owns placement/collision
+rules and P10.10 owns physical service-anchor validation/binding.
+
+One ID-free composition proposal freezes request/candidate fingerprints,
+versions, exact templates and P9 selection evidence. A combined reservation
+materializes the existing P10 architecture and explicitly selected anchors into
+one canonical candidate. The screen renders Site/floor views and semantic counts
+from that frozen candidate; canonical Diff supports typed cores, slabs, anchors,
+physical wall hosts and placement fields. Apply uses the shared mutation session,
+version, persistence owner and Undo stack. Parameter edits, Back, Cancel, stale
+and failed Apply discard prepared reservations.
+
+The strengthened Q13–Q16 suites cover all three composition families, including a
+fault injected in the shared canonical commit after validation/change-set
+construction but before state/history publication. The production-handle UI test
+qualifies owner identity, explicit legacy placement, one Apply, Undo/Redo and
+save/reopen. P8 startup and responsive/error-privacy regressions are covered.
+
+Audit findings and gate evidence are recorded in
+[the P10.11 production wiring audit](quality/p1011-production-wiring-audit-v1.md).
+The focused qualification passed 41 tests. Repository-wide checks and final
+exact-SHA CI are pending; P10.11 is not yet accepted.
 
 ## Qualification scope
 
