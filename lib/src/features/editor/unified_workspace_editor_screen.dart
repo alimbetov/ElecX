@@ -327,15 +327,21 @@ class _UnifiedWorkspaceEditorScreenState
         onCanonicalMutationReplayed: canonicalOwner == null
             ? null
             : (result) {
-                canonicalOwner(resolved.session, result);
-                _onCanonicalProjectChanged();
+                try {
+                  canonicalOwner(resolved.session, result);
+                } finally {
+                  _onCanonicalProjectChanged();
+                }
               },
         onBoundaryTopologyCommitted: canonicalOwner == null
             ? null
             : (editing, result) {
-                canonicalOwner(resolved.session, result);
-                topologyHook?.call(editing, result);
-                _onCanonicalProjectChanged();
+                try {
+                  canonicalOwner(resolved.session, result);
+                  topologyHook?.call(editing, result);
+                } finally {
+                  _onCanonicalProjectChanged();
+                }
               },
         onBlocked: _handleCanonicalBlocked,
         onError: _reportCanonicalCutoverError,
@@ -962,9 +968,9 @@ class _UnifiedWorkspaceEditorScreenState
       _showProjectMessage(failure.userMessage, isError: true);
       _refresh();
       return;
+    } finally {
+      _onCanonicalProjectChanged();
     }
-
-    _onCanonicalProjectChanged();
   }
 
   void _openMiniMap() {
