@@ -20,7 +20,7 @@ Implementation contract: [P10 specification](p10-building-residential-compositio
 | P10.8 — COMPLETE | Tower shell, multiple P9 apartments per repeated residential floor, independent typical-floor lineage and one parent Apply | `test/p108_*_test.dart` |
 | P10.9 — COMPLETE | Mixed cottage/tower Site composition, independent IDs, explicit Building-local → Site transforms, collision checks, shared typed anchors and v17 persistence | Four `test/p109_*_test.dart` suites |
 | P10.10 — COMPLETE | Ten typed service/infrastructure anchor purposes, explicit Site/Space/wall hosts, live P7 physical binding, atomic mutation and v18 persistence | Four `test/p1010_*_test.dart` suites |
-| P10.11 — IMPLEMENTED, CI pending | Site-level production Wizard, immutable composition candidate, canonical Preview/Diff, architecture plus explicit anchors in one reserved Apply, shared owner and strengthened Q13–Q16 | Four `test/p1011_*_test.dart` suites plus P8 bootstrap regression |
+| P10.11 — COMPLETE | Site-level production Wizard, immutable composition candidate, canonical Preview/Diff, architecture plus explicit anchors in one reserved Apply, shared owner and strengthened Q13–Q16 | Four `test/p1011_*_test.dart` suites plus P8 bootstrap regression |
 
 P10.1–P10.3 passed repository-wide GitHub verification/quality on
 `184bd8297489a5379257b72a2beb15b69c7b08ae`.
@@ -395,8 +395,15 @@ save/reopen. P8 startup and responsive/error-privacy regressions are covered.
 
 Audit findings and gate evidence are recorded in
 [the P10.11 production wiring audit](quality/p1011-production-wiring-audit-v1.md).
-The focused qualification passed 41 tests. Repository-wide checks and final
-exact-SHA CI are pending; P10.11 is not yet accepted.
+The focused qualification passed 41 tests, including 32 new scenarios. All 1803
+repository tests passed locally; analyzer, formatting of all 832 lib/test Dart
+files and `git diff --check` are clean.
+
+P10.11 implementation acceptance SHA: `b38b76d35d3dcb70a2caf157233684bfb030a2e1`.
+Both `quality` and `verification` passed on that exact SHA in
+[GitHub Actions run 40928831209](https://github.com/alimbetov/ElecX/actions/runs/40928831209),
+including full repository tests and P8 reference/accessibility/i18n gates.
+The earlier `ca5739af` baseline is not used as acceptance evidence.
 
 ## Qualification scope
 
@@ -435,10 +442,9 @@ matrix remain P10.13 work.
 
 ## Remaining work
 
-1. P10.11 building candidate Preview/Diff plus atomic materialization and Wizard.
-2. P10.12 building/site generation provenance and lineage closure.
-3. P10.13 Q01–Q20, Golden Journeys, cross-platform and exact-SHA acceptance.
+1. P10.12 building/site generation provenance and lineage closure.
+2. P10.13 Q01–Q20, Golden Journeys, cross-platform and exact-SHA acceptance.
 
-P10.1–P10.10 are complete. P10 is not ready for merge or P11 handoff until the
-remaining P10.11–P10.13 contracts are closed and final exact-SHA qualification is
+P10.1–P10.11 are complete. P10 is not ready for merge or P11 handoff until the
+remaining P10.12–P10.13 contracts are closed and final exact-SHA qualification is
 green.

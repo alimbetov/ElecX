@@ -4,7 +4,12 @@ Date: 2026-10-29
 Branch: `feat/p10-building-residential-composition`
 Audited baseline: `ca5739afbcb058503cff39fa9f57da68ced7ffaf`
 
-**P10.11 ACCEPTED: NO — final implementation-SHA CI is pending.**
+**P10.11 ACCEPTED: YES — implementation `b38b76d35d3dcb70a2caf157233684bfb030a2e1`.**
+
+Both `quality` and `verification` passed on that exact implementation SHA in
+[run 40928831209](https://github.com/alimbetov/ElecX/actions/runs/40928831209).
+The accepted source includes all production wiring and strengthened gates below;
+`ca5739af` is the audited baseline, not the acceptance SHA.
 
 The baseline contained the TemplateId import and shared WizardSession failed-Apply
 cleanup fixes. Its `verification` job passed, but `quality` failed at formatting
@@ -79,8 +84,12 @@ asynchronous Save continues to use the existing persistence/recovery contract.
 | Presentation | UI and provider-contract suites | Parameter edits invalidate reservations; private exception text is not rendered; typed Diff and canonical Site/floor scenes use the frozen candidate; 360/900/1440px and 100%/200% text scale are covered |
 
 The focused P10.11/runtime/bootstrap run passed 41 tests, including 32 new tests.
-Repository-wide local results and exact implementation-SHA CI acceptance will be
-recorded after their completion. No earlier SHA is treated as final acceptance.
+All 1803 repository tests passed locally with `flutter test --no-pub --concurrency=2`.
+Analyzer is clean, all 832 lib/test Dart files are formatted and `git diff --check`
+passed. The exact-SHA GitHub run above passed the default-concurrency full test
+suites in both jobs, formatting, analyzer and P8 NFR/accessibility/i18n gates.
+The branch's documentation closure is also subject to its own HEAD CI check;
+no green check from an earlier implementation is substituted for a changed source.
 
 P10.12 building/site parent provenance and the full P10.13 platform/qualification
 matrix are outside this remediation. Existing P9 and typical-floor lineage are
