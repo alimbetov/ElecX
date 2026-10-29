@@ -25,6 +25,10 @@ final class TypicalFloorAwareCanonicalProjectDocumentCodec
   ProjectDocument encode(ProjectSnapshot snapshot) {
     final registry =
         snapshot.aggregate.engineeringMetadata.generationProvenanceRegistry;
+    if (registry.levelCompositions.isNotEmpty) {
+      throw const FormatException(
+          'Level apartment composition requires project schema v15.');
+    }
     _validate(registry, snapshot.aggregate.stores);
     final base = _base.encode(_withRegistry(snapshot,
         registry.copyWith(typicalFloorDefinitions: {}, floorInstances: {})));
@@ -48,6 +52,10 @@ final class TypicalFloorAwareCanonicalProjectDocumentCodec
 
   @override
   ProjectSnapshot decode(ProjectDocument document) {
+    if (document.payload.containsKey('levelApartmentCompositions')) {
+      throw const FormatException(
+          'Level apartment composition requires project schema v15.');
+    }
     if (document.schemaVersion < 1 || document.schemaVersion > schemaVersion) {
       throw FormatException(
           'Unsupported canonical project schema ${document.schemaVersion}.');

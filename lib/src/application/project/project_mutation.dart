@@ -1,6 +1,7 @@
 import '../../domain/boundary_edge_identity_registry.dart';
 import '../../domain/boundary_topology.dart';
 import '../../domain/generation_provenance.dart';
+import '../../domain/level_apartment_composition.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_entity_stores_copy.dart';
 import '../../domain/project_identity.dart';
@@ -416,6 +417,10 @@ abstract final class CandidateGraphValidator {
           state.engineeringMetadata.generationProvenanceRegistry.floorInstances,
       stores: state.stores,
     );
+    LevelApartmentCompositionIntegrity.validateOrThrow(
+        registry: state.engineeringMetadata.generationProvenanceRegistry,
+        projectId: current.id,
+        stores: state.stores);
     final index = ProjectIndex.build(state.stores);
     if (!index.isConsistentWith(state.stores)) {
       throw StateError('Candidate ProjectIndex is inconsistent with stores.');
@@ -756,6 +761,10 @@ final class ProjectMutationSession {
     }
     registry = registry.copyWith(
       floorInstances: nextInstances,
+      levelCompositions: {
+        for (final entry in registry.levelCompositions.entries)
+          entry.key: entry.value.reconcileRelations(candidateState.stores)
+      },
       typicalFloorDefinitions: {
         for (final entry in registry.typicalFloorDefinitions.entries)
           if (candidateState.stores.buildings
@@ -795,6 +804,10 @@ final class ProjectMutationSession {
   }
 
   void _validateProvenance(ProjectId projectId, ProjectMutableState state) {
+    LevelApartmentCompositionIntegrity.validateOrThrow(
+        registry: state.engineeringMetadata.generationProvenanceRegistry,
+        projectId: projectId,
+        stores: state.stores);
     state.engineeringMetadata.generationProvenanceRegistry.validateOrThrow(
       projectId: projectId,
       entityExists: (id) => _entityExists(state.stores, id),

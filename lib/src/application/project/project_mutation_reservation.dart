@@ -86,6 +86,25 @@ final class MutationIdentityReservation {
   final Map<String, EntityId> _entityIds;
   final Map<String, BoundaryPenetrationId> _penetrationIds;
 
+  /// Immutable local view of identities already allocated by the parent plan.
+  /// Selection never allocates IDs or creates a second reservation timeline.
+  MutationIdentityReservation selectEntitySlots(
+      Map<String, String> localToParent) {
+    if (localToParent.values.toSet().length != localToParent.length) {
+      throw ArgumentError(
+          'Distinct local slots must select distinct parent slots.');
+    }
+    final selected = <String, EntityId>{};
+    for (final entry in localToParent.entries) {
+      if (_validatedSlot(entry.key) != entry.key) {
+        throw ArgumentError('Local slots must be normalized.');
+      }
+      selected[entry.key] = entityId<EntityId>(entry.value);
+    }
+    return MutationIdentityReservation._(
+        entityIds: selected, penetrationIds: {});
+  }
+
   Set<String> get slots =>
       Set.unmodifiable({..._entityIds.keys, ..._penetrationIds.keys});
 

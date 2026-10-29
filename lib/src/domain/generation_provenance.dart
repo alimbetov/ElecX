@@ -1,4 +1,5 @@
 import 'project_identity.dart';
+import 'level_apartment_composition.dart';
 import 'typical_floor.dart';
 
 enum GenerationOriginType { wizard }
@@ -217,7 +218,8 @@ final class GenerationProvenanceRegistry {
       : manifests = const {},
         entities = const {},
         typicalFloorDefinitions = const {},
-        floorInstances = const {};
+        floorInstances = const {},
+        levelCompositions = const {};
 
   GenerationProvenanceRegistry({
     Map<GenerationId, GenerationManifest> manifests = const {},
@@ -225,16 +227,20 @@ final class GenerationProvenanceRegistry {
     Map<TypicalFloorDefinitionId, TypicalFloorDefinition>
         typicalFloorDefinitions = const {},
     Map<LevelId, TypicalFloorInstance> floorInstances = const {},
+    Map<GenerationId, LevelApartmentCompositionManifest> levelCompositions =
+        const {},
   })  : manifests = Map.unmodifiable(manifests),
         entities = Map.unmodifiable(entities),
         typicalFloorDefinitions = Map.unmodifiable(typicalFloorDefinitions),
-        floorInstances = Map.unmodifiable(floorInstances);
+        floorInstances = Map.unmodifiable(floorInstances),
+        levelCompositions = Map.unmodifiable(levelCompositions);
 
   final Map<GenerationId, GenerationManifest> manifests;
   final Map<EntityId, EntityGenerationProvenance> entities;
   final Map<TypicalFloorDefinitionId, TypicalFloorDefinition>
       typicalFloorDefinitions;
   final Map<LevelId, TypicalFloorInstance> floorInstances;
+  final Map<GenerationId, LevelApartmentCompositionManifest> levelCompositions;
 
   GenerationProvenanceRegistry copyWith({
     Map<GenerationId, GenerationManifest>? manifests,
@@ -242,6 +248,7 @@ final class GenerationProvenanceRegistry {
     Map<TypicalFloorDefinitionId, TypicalFloorDefinition>?
         typicalFloorDefinitions,
     Map<LevelId, TypicalFloorInstance>? floorInstances,
+    Map<GenerationId, LevelApartmentCompositionManifest>? levelCompositions,
   }) =>
       GenerationProvenanceRegistry(
         manifests: manifests ?? this.manifests,
@@ -249,6 +256,7 @@ final class GenerationProvenanceRegistry {
         typicalFloorDefinitions:
             typicalFloorDefinitions ?? this.typicalFloorDefinitions,
         floorInstances: floorInstances ?? this.floorInstances,
+        levelCompositions: levelCompositions ?? this.levelCompositions,
       );
 
   bool get hasTypicalFloorLineage =>
@@ -323,7 +331,8 @@ final class GenerationProvenanceRegistry {
     required GenerationManifest manifest,
     required Iterable<EntityGenerationProvenance> provenances,
   }) {
-    if (manifests.containsKey(manifest.generationId)) {
+    if (manifests.containsKey(manifest.generationId) ||
+        levelCompositions.containsKey(manifest.generationId)) {
       throw ArgumentError(
         'Generation ${manifest.generationId} already exists.',
       );
@@ -564,8 +573,13 @@ final class GenerationProvenanceRegistry {
         entities.length != other.entities.length ||
         typicalFloorDefinitions.length !=
             other.typicalFloorDefinitions.length ||
-        floorInstances.length != other.floorInstances.length) {
+        floorInstances.length != other.floorInstances.length ||
+        levelCompositions.length != other.levelCompositions.length) {
       return false;
+    }
+    for (final entry in levelCompositions.entries) {
+      final right = other.levelCompositions[entry.key];
+      if (right == null || !entry.value.sameAs(right)) return false;
     }
     for (final entry in typicalFloorDefinitions.entries) {
       final right = other.typicalFloorDefinitions[entry.key];

@@ -195,9 +195,41 @@ final class ApartmentCandidateSetService {
     required LevelWizardTarget target,
     required ProjectAggregateRoot project,
     ApartmentScoringProfile? scoringProfile,
+  }) =>
+      _generate(
+          input: input,
+          target: target,
+          project: project,
+          scoringProfile: scoringProfile,
+          requireEmptyLevel: true);
+
+  /// Pure P9 exploration for a P10 slot. P9 qualification and typed ownership
+  /// stay mandatory; P10 validates the occupied level's placement and access.
+  ApartmentCandidateSetGenerationResult generateForComposition({
+    required ApartmentRequestInput input,
+    required LevelWizardTarget target,
+    required ProjectAggregateRoot project,
+    ApartmentScoringProfile? scoringProfile,
+  }) =>
+      _generate(
+          input: input,
+          target: target,
+          project: project,
+          scoringProfile: scoringProfile,
+          requireEmptyLevel: false);
+
+  ApartmentCandidateSetGenerationResult _generate({
+    required ApartmentRequestInput input,
+    required LevelWizardTarget target,
+    required ProjectAggregateRoot project,
+    required bool requireEmptyLevel,
+    ApartmentScoringProfile? scoringProfile,
   }) {
     final failures = <P9Failure>[];
-    failures.addAll(validateTarget(target: target, project: project));
+    failures.addAll(validateTarget(
+        target: target,
+        project: project,
+        requireEmptyLevel: requireEmptyLevel));
     if (_hasBlockers(failures)) {
       return ApartmentCandidateSetGenerationResult(
         candidateSet: null,
@@ -879,6 +911,7 @@ final class ApartmentCandidateSetService {
   List<P9Failure> validateTarget({
     required LevelWizardTarget target,
     required ProjectAggregateRoot project,
+    bool requireEmptyLevel = true,
   }) {
     final failures = <P9Failure>[];
     if (project.id != target.projectId || project.siteId != target.siteId) {
@@ -914,7 +947,7 @@ final class ApartmentCandidateSetService {
     final hasZones = level.zoneIds.isNotEmpty ||
         project.stores.zones.values
             .any((zone) => zone.levelId == target.levelId);
-    if (hasSpaces || hasZones) {
+    if (requireEmptyLevel && (hasSpaces || hasZones)) {
       failures.add(
         _providerFailure(
           'p9.provider.target-not-empty',

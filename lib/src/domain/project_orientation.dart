@@ -307,6 +307,12 @@ final class ProjectEngineeringMetadata {
     for (final entry in floorInstances) {
       result = Object.hash(result, jsonEncode(entry.value.toCanonicalJson()));
     }
+    final compositions = generationProvenanceRegistry.levelCompositions.entries
+        .toList()
+      ..sort((a, b) => a.key.value.compareTo(b.key.value));
+    for (final entry in compositions) {
+      result = Object.hash(result, jsonEncode(entry.value.toCanonicalJson()));
+    }
     final applied = appliedEngineeringProposalRegistry.byLevel.entries.toList()
       ..sort((a, b) => a.key.value.compareTo(b.key.value));
     for (final entry in applied) {
