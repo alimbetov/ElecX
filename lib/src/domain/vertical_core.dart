@@ -129,8 +129,7 @@ final class ProjectVerticalCore {
 
   bool servesLevel(LevelId levelId) => levelIds.contains(levelId);
 
-  SpaceId? hostSpaceIdForLevel(LevelId levelId) =>
-      hostSpaceIdsByLevel[levelId];
+  SpaceId? hostSpaceIdForLevel(LevelId levelId) => hostSpaceIdsByLevel[levelId];
 }
 
 enum VerticalCoreTopologyIssueCode {
