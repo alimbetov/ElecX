@@ -12,6 +12,7 @@ import '../editor/editor_project_recovery.dart';
 import '../editor/initial_editor_project_document.dart';
 import '../editor/project_persistence_metadata.dart';
 import '../editor/unified_workspace_editor_screen.dart';
+import '../shared/production_error_boundary.dart';
 import 'project_wizard_screen.dart';
 
 class ProjectHubScreen extends StatefulWidget {
@@ -49,25 +50,26 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
     _projectsFuture = _loadProjects();
   }
 
-  void _reportProjectHubError(
+  ProductionSafeFailure _reportProjectHubError(
     Object error,
     StackTrace stackTrace, {
+    required ProductionDiagnosticCode code,
+    required String safeSummary,
     required String operation,
-  }) {
-    FlutterError.reportError(
-      FlutterErrorDetails(
-        exception: error,
-        stack: stackTrace,
+  }) =>
+      ProductionErrorBoundary.report(
+        error: error,
+        stackTrace: stackTrace,
+        code: code,
+        safeSummary: safeSummary,
         library: 'elecx.project_hub',
-        context: ErrorDescription(operation),
-      ),
-    );
-  }
+        operation: operation,
+      );
 
-  void _showSafeError(String message) {
+  void _showSafeError(ProductionSafeFailure failure) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(content: Text(failure.userMessage)),
     );
   }
 
@@ -98,6 +100,8 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
       _reportProjectHubError(
         error,
         stackTrace,
+        code: ProductionDiagnosticCode.projectHubLoad,
+        safeSummary: 'Не удалось прочитать сохранённые проекты.',
         operation: 'while loading projects and recovery snapshots',
       );
       rethrow;
@@ -191,12 +195,14 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
     try {
       await store.save(initialDocument);
     } catch (error, stackTrace) {
-      _reportProjectHubError(
+      final failure = _reportProjectHubError(
         error,
         stackTrace,
+        code: ProductionDiagnosticCode.projectCreate,
+        safeSummary: 'Не удалось создать проект на диске.',
         operation: 'while creating the initial project document',
       );
-      _showSafeError('Не удалось создать проект на диске.');
+      _showSafeError(failure);
       return;
     }
     if (!mounted) return;
@@ -214,12 +220,14 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
           preparedCanonicalHandle: prepared.canonicalHandle,
         );
       } catch (error, stackTrace) {
-        _reportProjectHubError(
+        final failure = _reportProjectHubError(
           error,
           stackTrace,
+          code: ProductionDiagnosticCode.projectWizardApply,
+          safeSummary: 'Wizard не смог применить проект.',
           operation: 'while configuring a project through the wizard',
         );
-        _showSafeError('Wizard не смог применить проект.');
+        _showSafeError(failure);
         _reloadProjects();
       }
       return;
@@ -293,12 +301,14 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
           repository: canonicalRepository,
         );
       } catch (error, stackTrace) {
-        _reportProjectHubError(
+        final failure = _reportProjectHubError(
           error,
           stackTrace,
+          code: ProductionDiagnosticCode.canonicalProjectOpen,
+          safeSummary: 'Canonical project state could not be opened safely.',
           operation: 'while opening canonical project state',
         );
-        _showSafeError('Canonical project state could not be opened safely.');
+        _showSafeError(failure);
         return;
       }
     }
@@ -323,12 +333,14 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
           effectiveDocument = projected;
         }
       } catch (error, stackTrace) {
-        _reportProjectHubError(
+        final failure = _reportProjectHubError(
           error,
           stackTrace,
+          code: ProductionDiagnosticCode.canonicalProjection,
+          safeSummary: 'Структура проекта требует восстановления.',
           operation: 'while projecting canonical state into the editor document',
         );
-        _showSafeError('Структура проекта требует восстановления.');
+        _showSafeError(failure);
         return;
       }
     }
@@ -389,12 +401,14 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
       await store.discard(recovery.projectId);
       _reloadProjects();
     } catch (error, stackTrace) {
-      _reportProjectHubError(
+      final failure = _reportProjectHubError(
         error,
         stackTrace,
+        code: ProductionDiagnosticCode.recoveryDiscard,
+        safeSummary: 'Не удалось удалить аварийную копию.',
         operation: 'while discarding a recovery snapshot',
       );
-      _showSafeError('Не удалось удалить аварийную копию.');
+      _showSafeError(failure);
     }
   }
 
@@ -610,7 +624,8 @@ class _ProjectLoadFailure extends StatelessWidget {
                   const Text('Не удалось прочитать сохранённые проекты'),
                   const SizedBox(height: 8),
                   const Text(
-                    'Повторите попытку. Подробности ошибки сохранены в диагностике.',
+                    'Повторите попытку. Подробности ошибки сохранены в диагностике. '
+                    '[PX-HUB-001]',
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
