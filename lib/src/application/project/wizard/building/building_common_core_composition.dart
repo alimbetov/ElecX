@@ -84,7 +84,8 @@ final class CommonCoreRectMm {
     required this.heightMm,
   }) {
     if (widthMm <= 0 || heightMm <= 0) {
-      throw ArgumentError('Common/core rectangles require positive dimensions.');
+      throw ArgumentError(
+          'Common/core rectangles require positive dimensions.');
     }
   }
 
@@ -303,7 +304,8 @@ final class BuildingCommonCoreCompositionGenerator {
         );
       }
     }
-    final levels = buildingLevels.where((level) => requested.contains(level.id)).toList();
+    final levels =
+        buildingLevels.where((level) => requested.contains(level.id)).toList();
     final selectedIndices = [
       for (var index = 0; index < buildingLevels.length; index++)
         if (requested.contains(buildingLevels[index].id)) index,
@@ -326,7 +328,8 @@ final class BuildingCommonCoreCompositionGenerator {
     }
     if (coreCount > 0) {
       for (var index = 0; index < levels.length - 1; index++) {
-        if (!_hasInterLevelSlab(project, levels[index].id, levels[index + 1].id)) {
+        if (!_hasInterLevelSlab(
+            project, levels[index].id, levels[index + 1].id)) {
           throw const BuildingCommonCoreCompositionException(
             'p10.common-core.physical-continuity-missing',
           );
@@ -352,7 +355,8 @@ final class BuildingCommonCoreCompositionGenerator {
     final vertical = <CommonCoreVerticalAdjacencyProposal>[];
     final coreHosts = <String, Map<LevelId, String>>{};
     final coreRects = <String, CommonCoreRectMm>{};
-    final coreDescriptors = <String, ({String name, VerticalCoreKind kind, VerticalCoreUsage usage})>{};
+    final coreDescriptors = <String,
+        ({String name, VerticalCoreKind kind, VerticalCoreUsage usage})>{};
 
     for (final level in levels) {
       final corridorKey = 'level:${level.id.value}:corridor';
@@ -721,7 +725,8 @@ final class BuildingCommonCoreCompositionCommand
         _spaceSlot(space.semanticKey): ReservedEntityIdKind.space,
       for (final space in plan.spaces)
         for (var index = 0; index < 4; index++)
-          _edgeSlot(space.semanticKey, index): ReservedEntityIdKind.boundaryEdge,
+          _edgeSlot(space.semanticKey, index):
+              ReservedEntityIdKind.boundaryEdge,
       for (final opening in plan.openings)
         _openingSlot(opening.semanticKey): ReservedEntityIdKind.opening,
       for (final opening in plan.openings)
@@ -737,7 +742,8 @@ final class BuildingCommonCoreCompositionCommand
 
   @override
   MutationIdentityReservation reserveIdentities(EntityIdFactory factory) =>
-      MutationIdentityReservation.allocate(factory: factory, entitySlots: _slots);
+      MutationIdentityReservation.allocate(
+          factory: factory, entitySlots: _slots);
 
   @override
   void validateReservation({
@@ -800,7 +806,8 @@ final class BuildingCommonCoreCompositionCommand
     final spacesByZone = <String, Set<SpaceId>>{};
 
     for (final proposal in plan.spaces) {
-      final id = reservation.entityId<SpaceId>(_spaceSlot(proposal.semanticKey));
+      final id =
+          reservation.entityId<SpaceId>(_spaceSlot(proposal.semanticKey));
       spaceIdsByKey[proposal.semanticKey] = id;
       spaces[id] = ProjectSpaceEntity(
         id: id,
