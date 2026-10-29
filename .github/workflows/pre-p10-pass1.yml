@@ -72,13 +72,14 @@ jobs:
           flutter --version
           test "$(flutter --version --machine | python3 -c 'import json,sys; print(json.load(sys.stdin)["frameworkVersion"])')" = "3.47.7"
       - run: flutter pub get
-      - name: Execute Hub retry and canonical backup probes
+      - name: Execute Hub retry, canonical backup, and D020 replay recovery probes
         id: recovery-probes
         run: |
           set -o pipefail
           mkdir -p build/pre-p10-pass1
           flutter test --concurrency=1 \
             qualification_test/pre_p10_recovery_qualification_test.dart \
+            qualification_test/pre_p10_cq14_d020_qualification_test.dart \
             2>&1 | tee build/pre-p10-pass1/recovery-probes.log
       - name: Upload recovery discovery diagnostics
         if: failure() && steps.recovery-probes.outcome == 'failure'
