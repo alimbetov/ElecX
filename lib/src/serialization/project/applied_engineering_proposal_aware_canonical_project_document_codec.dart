@@ -1,5 +1,7 @@
 import '../../application/project/project_snapshot.dart';
+import '../../application/project/wizard/apartment/apartment_engineering_output_integrity.dart';
 import '../../domain/applied_engineering_proposal.dart';
+import '../../domain/applied_engineering_proposal_lineage.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import 'generation_provenance_aware_canonical_project_document_codec.dart';
@@ -24,14 +26,18 @@ final class AppliedEngineeringProposalAwareCanonicalProjectDocumentCodec
 
   @override
   ProjectDocument encode(ProjectSnapshot snapshot) {
+    final metadata = snapshot.aggregate.engineeringMetadata;
+    AppliedEngineeringProposalLineageValidator.validateOrThrow(
+      provenance: metadata.generationProvenanceRegistry,
+      proposals: metadata.appliedEngineeringProposalRegistry,
+    );
     final base = _base.encode(snapshot);
     return ProjectDocument(
       schemaVersion: schemaVersion,
       payload: <String, Object?>{
         ...base.payload,
         'appliedEngineeringProposals': _encodeRegistry(
-          snapshot
-              .aggregate.engineeringMetadata.appliedEngineeringProposalRegistry,
+          metadata.appliedEngineeringProposalRegistry,
         ),
       },
     );
@@ -66,6 +72,15 @@ final class AppliedEngineeringProposalAwareCanonicalProjectDocumentCodec
           'Applied engineering proposal references missing level $levelId.',
         );
       }
+    }
+    try {
+      AppliedEngineeringProposalLineageValidator.validateOrThrow(
+        provenance:
+            base.aggregate.engineeringMetadata.generationProvenanceRegistry,
+        proposals: registry,
+      );
+    } on AppliedEngineeringProposalLineageException catch (error) {
+      throw FormatException(error.toString());
     }
     final aggregate = ProjectAggregateRoot(
       id: base.id,
@@ -134,16 +149,66 @@ final class AppliedEngineeringProposalAwareCanonicalProjectDocumentCodec
           'Duplicate applied engineering proposal for $levelId.',
         );
       }
+
+      final proposalVersion = _supportedVersion(
+        value['proposalVersion'],
+        'appliedEngineeringProposal.proposalVersion',
+        supportedApartmentEngineeringProposalVersion,
+      );
+      final outputProjectionVersion = _supportedVersion(
+        value['outputProjectionVersion'],
+        'appliedEngineeringProposal.outputProjectionVersion',
+        supportedApartmentEngineeringOutputProjectionVersion,
+      );
+      final requirementsFingerprint = _string(
+        value['requirementsFingerprint'],
+        'appliedEngineeringProposal.requirementsFingerprint',
+      );
+      final outputFingerprint = _string(
+        value['outputFingerprint'],
+        'appliedEngineeringProposal.outputFingerprint',
+      );
+      final loadScheduleRows = _stringList(
+        value['loadScheduleRows'],
+        'appliedEngineeringProposal.loadScheduleRows',
+      );
+      final circuitScheduleRows = _stringList(
+        value['circuitScheduleRows'],
+        'appliedEngineeringProposal.circuitScheduleRows',
+      );
+      final panelSummary = _string(
+        value['panelSummary'],
+        'appliedEngineeringProposal.panelSummary',
+      );
+      final sldNodes = _stringList(
+        value['sldNodes'],
+        'appliedEngineeringProposal.sldNodes',
+      );
+      final sldEdges = _stringList(
+        value['sldEdges'],
+        'appliedEngineeringProposal.sldEdges',
+      );
+      final explanations = _stringList(
+        value['explanations'],
+        'appliedEngineeringProposal.explanations',
+      );
+
+      requireApartmentEngineeringOutputFingerprint(
+        persistedFingerprint: outputFingerprint,
+        outputProjectionVersion: outputProjectionVersion,
+        requirementsFingerprint: requirementsFingerprint,
+        loadScheduleRows: loadScheduleRows,
+        circuitScheduleRows: circuitScheduleRows,
+        panelSummary: panelSummary,
+        sldNodes: sldNodes,
+        sldEdges: sldEdges,
+        explanations: explanations,
+      );
+
       byLevel[levelId] = AppliedEngineeringProposalSnapshot(
         levelId: levelId,
-        proposalVersion: _string(
-          value['proposalVersion'],
-          'appliedEngineeringProposal.proposalVersion',
-        ),
-        outputProjectionVersion: _string(
-          value['outputProjectionVersion'],
-          'appliedEngineeringProposal.outputProjectionVersion',
-        ),
+        proposalVersion: proposalVersion,
+        outputProjectionVersion: outputProjectionVersion,
         candidateSetFingerprint: _string(
           value['candidateSetFingerprint'],
           'appliedEngineeringProposal.candidateSetFingerprint',
@@ -160,42 +225,18 @@ final class AppliedEngineeringProposalAwareCanonicalProjectDocumentCodec
           value['d1RequirementsFingerprint'],
           'appliedEngineeringProposal.d1RequirementsFingerprint',
         ),
-        requirementsFingerprint: _string(
-          value['requirementsFingerprint'],
-          'appliedEngineeringProposal.requirementsFingerprint',
-        ),
-        outputFingerprint: _string(
-          value['outputFingerprint'],
-          'appliedEngineeringProposal.outputFingerprint',
-        ),
+        requirementsFingerprint: requirementsFingerprint,
+        outputFingerprint: outputFingerprint,
         proposalFingerprint: _string(
           value['proposalFingerprint'],
           'appliedEngineeringProposal.proposalFingerprint',
         ),
-        loadScheduleRows: _stringList(
-          value['loadScheduleRows'],
-          'appliedEngineeringProposal.loadScheduleRows',
-        ),
-        circuitScheduleRows: _stringList(
-          value['circuitScheduleRows'],
-          'appliedEngineeringProposal.circuitScheduleRows',
-        ),
-        panelSummary: _string(
-          value['panelSummary'],
-          'appliedEngineeringProposal.panelSummary',
-        ),
-        sldNodes: _stringList(
-          value['sldNodes'],
-          'appliedEngineeringProposal.sldNodes',
-        ),
-        sldEdges: _stringList(
-          value['sldEdges'],
-          'appliedEngineeringProposal.sldEdges',
-        ),
-        explanations: _stringList(
-          value['explanations'],
-          'appliedEngineeringProposal.explanations',
-        ),
+        loadScheduleRows: loadScheduleRows,
+        circuitScheduleRows: circuitScheduleRows,
+        panelSummary: panelSummary,
+        sldNodes: sldNodes,
+        sldEdges: sldEdges,
+        explanations: explanations,
       );
     }
     return AppliedEngineeringProposalRegistry(byLevel: byLevel);
@@ -225,6 +266,20 @@ final class AppliedEngineeringProposalAwareCanonicalProjectDocumentCodec
       throw FormatException('$path must be a non-empty string.');
     }
     return value;
+  }
+
+  static String _supportedVersion(
+    Object? value,
+    String path,
+    String supportedVersion,
+  ) {
+    final version = _string(value, path);
+    if (version != supportedVersion) {
+      throw FormatException(
+        'Unsupported $path $version; expected $supportedVersion.',
+      );
+    }
+    return version;
   }
 
   static List<String> _stringList(Object? value, String path) =>

@@ -134,6 +134,14 @@ void main() {
       find.byKey(ValueKey('discard-recovery-${recovery.projectId}')),
     );
     await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('discard-recovery-confirmation-dialog')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('confirm-discard-recovery')),
+    );
+    await tester.pumpAndSettle();
     expect(recoveryStore.snapshots, isEmpty);
     expect(find.text('Аварийное восстановление'), findsNothing);
     expect(projects.documents, isEmpty);

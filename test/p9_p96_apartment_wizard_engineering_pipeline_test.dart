@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_candidate_set_service.dart';
+import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_output_integrity.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_output_projection.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_pipeline.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_requirements_adapter.dart';
@@ -36,7 +37,7 @@ void main() {
   group('P9.6 Generate -> Preview/Diff -> Apply engineering lifecycle', () {
     test('Q91 Generate runs engineering pipeline once and freezes proposal',
         () {
-      final pipeline = _CountingPipeline(outputFingerprint: _sha('b'));
+      final pipeline = _CountingPipeline(payloadSeed: 'b');
       final session = _session(
         fixture: fixture,
         provider: ApartmentWizardProvider(engineeringPipeline: pipeline),
@@ -64,12 +65,12 @@ void main() {
       );
       expect(
         command.engineeringProposal!.output.outputFingerprint,
-        _sha('b'),
+        pipeline.generatedOutputFingerprint,
       );
     });
 
     test('Q92 Preview exposes exact frozen D8 projection', () {
-      final pipeline = _CountingPipeline(outputFingerprint: _sha('c'));
+      final pipeline = _CountingPipeline(payloadSeed: 'c');
       final session = _session(
         fixture: fixture,
         provider: ApartmentWizardProvider(engineeringPipeline: pipeline),
@@ -88,13 +89,16 @@ void main() {
       final proposal = command.engineeringProposal!;
       expect(session.preview, isNotNull);
       expect(session.preview!.normalizedIntentKey, command.normalizedIntentKey);
-      expect(proposal.output.outputFingerprint, _sha('c'));
+      expect(
+        proposal.output.outputFingerprint,
+        pipeline.generatedOutputFingerprint,
+      );
       expect(proposal.output.requirementsFingerprint, isNotEmpty);
       expect(proposal.proposalFingerprint, hasLength(64));
     });
 
     test('Q93 Apply commits frozen preview without rerunning engineering', () {
-      final pipeline = _CountingPipeline(outputFingerprint: _sha('d'));
+      final pipeline = _CountingPipeline(payloadSeed: 'd');
       final session = _session(
         fixture: fixture,
         provider: ApartmentWizardProvider(engineeringPipeline: pipeline),
@@ -149,10 +153,10 @@ void main() {
         project: fixture.project,
       );
       final first = ApartmentWizardProvider(
-        engineeringPipeline: _CountingPipeline(outputFingerprint: _sha('e')),
+        engineeringPipeline: _CountingPipeline(payloadSeed: 'e'),
       ).generateTyped(parameters, context) as ApartmentReservedProjectCommand;
       final second = ApartmentWizardProvider(
-        engineeringPipeline: _CountingPipeline(outputFingerprint: _sha('f')),
+        engineeringPipeline: _CountingPipeline(payloadSeed: 'f'),
       ).generateTyped(parameters, context) as ApartmentReservedProjectCommand;
 
       final firstIntent = jsonDecode(first.normalizedIntentKey) as Map;
@@ -171,7 +175,7 @@ void main() {
       final session = _session(
         fixture: fixture,
         provider: ApartmentWizardProvider(
-          engineeringPipeline: _CountingPipeline(outputFingerprint: _sha('a')),
+          engineeringPipeline: _CountingPipeline(payloadSeed: 'a'),
         ),
       );
 
@@ -191,7 +195,7 @@ void main() {
     });
 
     test('Q102 stale canonical version blocks frozen preview commit', () {
-      final pipeline = _CountingPipeline(outputFingerprint: _sha('1'));
+      final pipeline = _CountingPipeline(payloadSeed: '1');
       final mutations = ProjectMutationSession(fixture.project);
       final session = WizardSession(
         target: fixture.target,
@@ -250,16 +254,19 @@ void main() {
       expect(session.preview, isNull);
       expect(session.failure, isNotNull);
       expect(
-          session.failure.toString(), contains('engineering-pipeline-invalid'));
+        session.failure.toString(),
+        contains('engineering-pipeline-invalid'),
+      );
     });
   });
 }
 
 final class _CountingPipeline implements ApartmentEngineeringPipeline {
-  _CountingPipeline({required this.outputFingerprint});
+  _CountingPipeline({required this.payloadSeed});
 
-  final String outputFingerprint;
+  final String payloadSeed;
   int callCount = 0;
+  String? generatedOutputFingerprint;
 
   @override
   ApartmentEngineeringProposal generate({
@@ -268,11 +275,13 @@ final class _CountingPipeline implements ApartmentEngineeringPipeline {
     required WizardGenerationContext context,
   }) {
     callCount++;
-    return _proposal(
+    final proposal = _proposal(
       candidateSetFingerprint: candidateSetFingerprint,
       selected: selected,
-      outputFingerprint: outputFingerprint,
+      payloadSeed: payloadSeed,
     );
+    generatedOutputFingerprint = proposal.output.outputFingerprint;
+    return proposal;
   }
 }
 
@@ -286,28 +295,39 @@ final class _WrongLineagePipeline implements ApartmentEngineeringPipeline {
       _proposal(
         candidateSetFingerprint: _sha('0'),
         selected: selected,
-        outputFingerprint: _sha('2'),
+        payloadSeed: '2',
       );
 }
 
 ApartmentEngineeringProposal _proposal({
   required String candidateSetFingerprint,
   required ApartmentCandidateCard selected,
-  required String outputFingerprint,
+  required String payloadSeed,
 }) {
   final requirements = selected.engineeringRequirements;
+  final panelSummary = ApartmentEngineeringPanelSummary(
+    boardPhaseSystem: 'singlePhase',
+    lineNeutralVoltageV: 230,
+    lineLineVoltageV: null,
+    maxPhaseCurrentA: payloadSeed.codeUnitAt(0).toDouble(),
+    phaseCurrentImbalanceRatio: 0,
+    branchCircuitCount: 0,
+    phaseLoads: const [],
+  );
+  final outputFingerprint = computeApartmentEngineeringOutputFingerprint(
+    outputProjectionVersion: apartmentEngineeringOutputProjectionVersion,
+    requirementsFingerprint: requirements.requirementsFingerprint,
+    loadScheduleRows: const [],
+    circuitScheduleRows: const [],
+    panelSummary: panelSummary.stableSerialization,
+    sldNodes: const [],
+    sldEdges: const [],
+    explanations: const [],
+  );
   final output = ApartmentEngineeringOutputProjection(
     loadSchedule: const [],
     circuitSchedule: const [],
-    panelSummary: ApartmentEngineeringPanelSummary(
-      boardPhaseSystem: 'singlePhase',
-      lineNeutralVoltageV: 230,
-      lineLineVoltageV: null,
-      maxPhaseCurrentA: 0,
-      phaseCurrentImbalanceRatio: 0,
-      branchCircuitCount: 0,
-      phaseLoads: const [],
-    ),
+    panelSummary: panelSummary,
     sldNodes: const [],
     sldEdges: const [],
     explanations: const [],

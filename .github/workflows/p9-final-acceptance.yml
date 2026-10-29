@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - "feat/p9-apartment-topology-generator"
+      - "feat/pre-p10-defect-remediation"
   pull_request:
   workflow_dispatch:
 
@@ -22,7 +23,12 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version-file: pubspec.yaml
           cache: true
+      - name: Verify pinned Flutter toolchain
+        run: |
+          flutter --version
+          flutter --version | grep -q '^Flutter 3\.47\.7 '
       - run: flutter pub get
       - name: Reference environment
         run: |
@@ -102,7 +108,12 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version-file: pubspec.yaml
           cache: true
+      - name: Verify pinned Flutter toolchain
+        run: |
+          flutter --version
+          flutter --version | grep -q '^Flutter 3\.47\.7 '
       - run: flutter pub get
       - name: Reference environment
         run: |
@@ -149,7 +160,12 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version-file: pubspec.yaml
           cache: true
+      - name: Verify pinned Flutter toolchain
+        run: |
+          flutter --version
+          flutter --version | grep -q '^Flutter 3\.47\.7 '
       - run: flutter pub get
       - name: Reference environment
         run: |
@@ -171,7 +187,12 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version-file: pubspec.yaml
           cache: true
+      - name: Verify pinned Flutter toolchain
+        run: |
+          flutter --version
+          flutter --version | grep -q '^Flutter 3\.47\.7 '
       - run: flutter pub get
       - name: Engineering-enabled / frozen proposal / provenance
         run: >-
@@ -231,7 +252,12 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version-file: pubspec.yaml
           cache: true
+      - name: Verify pinned Flutter toolchain
+        run: |
+          flutter --version
+          flutter --version | grep -q '^Flutter 3\.47\.7 '
       - run: flutter pub get
       - name: Viewport locale text-scale theme matrix and GJ-03
         id: responsive-matrix
@@ -266,7 +292,13 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version-file: pubspec.yaml
           cache: true
+      - name: Verify pinned Flutter toolchain
+        shell: bash
+        run: |
+          flutter --version
+          flutter --version | grep -q '^Flutter 3\.47\.7 '
       - run: flutter pub get
       - name: Emit semantic parity artifact
         run: dart run tool/p9_semantic_parity.dart build/p9-final-acceptance/p9-semantic-parity.json
@@ -321,7 +353,13 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version-file: pubspec.yaml
           cache: true
+      - name: Verify pinned Flutter toolchain
+        shell: bash
+        run: |
+          flutter --version
+          flutter --version | grep -q '^Flutter 3\.47\.7 '
       - name: Install Linux desktop dependencies
         if: runner.os == 'Linux'
         run: >-
@@ -349,7 +387,12 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version-file: pubspec.yaml
           cache: true
+      - name: Verify pinned Flutter toolchain
+        run: |
+          flutter --version
+          flutter --version | grep -q '^Flutter 3\.47\.7 '
       - name: Scaffold Android shell for acceptance only
         run: flutter create --platforms=android --project-name elecx .
       - run: flutter pub get
@@ -381,7 +424,13 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version-file: pubspec.yaml
           cache: true
+      - name: Verify pinned Flutter toolchain
+        shell: bash
+        run: |
+          flutter --version
+          flutter --version | grep -q '^Flutter 3\.47\.7 '
       - name: Scaffold iOS/iPadOS shell for acceptance only
         run: flutter create --platforms=ios --project-name elecx .
       - run: flutter pub get
@@ -444,7 +493,7 @@ jobs:
           - Android phone/tablet native target compilation: PASS
           - iOS/iPadOS native target compilation: PASS
           - traceability/evidence structure: PRESENT
-          - native shell note: missing repository shells are generated ephemerally by Flutter for this P9.13 compile gate; permanent production shells remain P17 scope
+          - native shell note: missing repository shells are generated ephemerally by Flutter for this P9.13 compile gate; permanent production shells remain PRE-P10 D001 scope
           - disposition: P9.13 automated acceptance gates PASS for this exact SHA
           EOF
           cat build/p9-final-acceptance/p9.13-final-audit.md

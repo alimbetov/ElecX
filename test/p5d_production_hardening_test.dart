@@ -69,14 +69,18 @@ void main() {
       );
       expect(fixture.mutations.undoDepth, 1);
       expect(
-        find.textContaining('persistence owner не подтвердил владение'),
+        find.textContaining(
+          'Project North изменён, но не удалось подтвердить сохранение. '
+          '[PX-EDITOR-004]',
+        ),
         findsOneWidget,
       );
+      expect(find.textContaining('simulated owner failure'), findsNothing);
       expect(
-        find.text('Saved'),
+        find.text('Modified'),
         findsOneWidget,
         reason:
-            'canonical publication failure must not dirty legacy persistence',
+            'committed canonical mutation must remain dirty after owner failure',
       );
 
       final undone = fixture.mutations.undo(fixture.session.project.version);

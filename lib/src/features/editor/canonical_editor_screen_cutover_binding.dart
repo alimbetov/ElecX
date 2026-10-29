@@ -79,17 +79,24 @@ final class CanonicalEditorScreenCutoverBinding {
   ///
   /// Canonical projection is suppressed from the legacy architecture journal:
   /// the authoritative P3 mutation is the history entry, not the materialized
-  /// compatibility copy in EditorController.
+  /// compatibility copy in EditorController. Production runtime materializers
+  /// may extend that compatibility copy inside the same suppressed projection.
   CanonicalEditorMaterializationResult pushCanonicalToEditor() {
     _requireNotDisposed();
-    final readiness = coordinator.inspectCurrentTarget();
-    if (!readiness.canOpen) {
+    var readiness = coordinator.inspectCurrentTarget();
+    if (!readiness.canOpen && !readiness.canMaterialize) {
       onBlocked?.call(readiness);
       return readiness;
     }
 
     try {
       workspace.editor.documentHistory.runCanonicalProjection(() {
+        if (readiness.canMaterialize) {
+          readiness = coordinator.materializeCurrentTarget();
+        }
+        if (!readiness.canOpen) {
+          throw CanonicalEditorCutoverBlockedException(readiness);
+        }
         coordinator.pushCanonicalToEditor();
         _lastLegacySelectionFingerprint = _legacySelectionFingerprint();
         _lastRejectedLegacySelectionFingerprint = null;

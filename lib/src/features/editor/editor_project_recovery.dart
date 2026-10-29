@@ -55,6 +55,25 @@ final class EditorProjectRecoverySnapshot {
   }
 }
 
+/// Compares recovery freshness without allowing wall-clock time to outrank a
+/// logical project revision. A positive result means [left] is fresher.
+///
+/// [capturedAt] is deliberately only a tie-breaker for equal revisions and is
+/// otherwise display metadata. Callers must compare snapshots from the same
+/// project lineage.
+int compareEditorProjectRecoveryFreshness(
+  EditorProjectRecoverySnapshot left,
+  EditorProjectRecoverySnapshot right,
+) {
+  if (left.projectId != right.projectId) {
+    throw ArgumentError(
+        'Recovery freshness requires the same project lineage.');
+  }
+  final revisionOrder = left.revision.compareTo(right.revision);
+  if (revisionOrder != 0) return revisionOrder;
+  return left.capturedAt.compareTo(right.capturedAt);
+}
+
 abstract interface class EditorProjectRecoveryStore {
   Future<void> save(EditorProjectRecoverySnapshot snapshot);
   Future<EditorProjectRecoverySnapshot?> load(String projectId);
@@ -119,7 +138,8 @@ final class JsonFileEditorProjectRecoveryStore
     for (final file in candidates) {
       final snapshot = await _tryRead(file, expectedProjectId: projectId);
       if (snapshot != null &&
-          (best == null || snapshot.capturedAt.isAfter(best.capturedAt))) {
+          (best == null ||
+              compareEditorProjectRecoveryFreshness(snapshot, best) > 0)) {
         best = snapshot;
       }
     }
@@ -144,13 +164,19 @@ final class JsonFileEditorProjectRecoveryStore
       );
       if (existingIndex == -1) {
         result.add(snapshot);
-      } else if (snapshot.capturedAt.isAfter(
-        result[existingIndex].capturedAt,
-      )) {
+      } else if (compareEditorProjectRecoveryFreshness(
+            snapshot,
+            result[existingIndex],
+          ) >
+          0) {
         result[existingIndex] = snapshot;
       }
     }
-    result.sort((a, b) => b.capturedAt.compareTo(a.capturedAt));
+    result.sort((a, b) {
+      final revisionOrder = b.revision.compareTo(a.revision);
+      if (revisionOrder != 0) return revisionOrder;
+      return b.capturedAt.compareTo(a.capturedAt);
+    });
     return List.unmodifiable(result);
   }
 

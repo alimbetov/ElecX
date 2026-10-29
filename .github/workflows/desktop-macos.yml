@@ -5,12 +5,14 @@ on:
     branches:
       - main
       - fix/desktop-path-provider-packaging
+      - feat/pre-p10-defect-remediation
     paths:
       - 'macos/**'
       - 'integration_test/**'
       - 'lib/**'
       - 'pubspec.yaml'
       - 'pubspec.lock'
+      - '.github/workflows/desktop-macos.yml'
   pull_request:
     paths:
       - 'macos/**'
@@ -18,6 +20,7 @@ on:
       - 'lib/**'
       - 'pubspec.yaml'
       - 'pubspec.lock'
+      - '.github/workflows/desktop-macos.yml'
 
 jobs:
   macos-desktop:
@@ -27,7 +30,13 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version-file: pubspec.yaml
           cache: true
+      - name: Verify pinned Flutter toolchain
+        shell: bash
+        run: |
+          flutter --version
+          test "$(flutter --version --machine | python3 -c 'import json,sys; print(json.load(sys.stdin)["frameworkVersion"])')" = "3.47.7"
       - run: flutter config --enable-macos-desktop
       - run: flutter pub get
       - name: Analyze

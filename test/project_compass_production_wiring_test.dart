@@ -92,9 +92,9 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.text('Saved'),
+        find.text('Modified'),
         findsOneWidget,
-        reason: 'canonical Project North must not dirty legacy editor state',
+        reason: 'accepted canonical Project North must dirty project state',
       );
       expect(tester.takeException(), isNull);
     },

@@ -19,7 +19,23 @@ final class ApartmentEngineeringPipelineRuntimeRegistry {
     required ProjectStructureAuthoringSession session,
     required ApartmentEngineeringPipeline pipeline,
   }) {
+    replace(session: session, pipeline: pipeline);
+  }
+
+  /// Replaces the runtime binding for [session].
+  ///
+  /// Passing `null` explicitly clears an earlier binding. Production runtime
+  /// resolution must invoke this method on every resolve so a session cannot
+  /// retain stale engineering capability after composition changes.
+  static void replace({
+    required ProjectStructureAuthoringSession session,
+    required ApartmentEngineeringPipeline? pipeline,
+  }) {
     _pipelines[session] = pipeline;
+  }
+
+  static void unbind(ProjectStructureAuthoringSession session) {
+    replace(session: session, pipeline: null);
   }
 
   static ApartmentEngineeringPipeline? resolve(

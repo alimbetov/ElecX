@@ -1,6 +1,7 @@
 import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/project_snapshot.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_candidate_set_service.dart';
+import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_output_integrity.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_output_projection.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_pipeline.dart';
 import 'package:elecx/src/application/project/wizard/apartment/apartment_engineering_requirements_adapter.dart';
@@ -205,6 +206,8 @@ void main() {
 final class _Pipeline implements ApartmentEngineeringPipeline {
   _Pipeline({required this.outputFingerprint});
 
+  /// Historical fixture seed. The production-facing D8 fingerprint is derived
+  /// from the semantic payload below rather than trusting this value.
   final String outputFingerprint;
   int callCount = 0;
 
@@ -216,26 +219,38 @@ final class _Pipeline implements ApartmentEngineeringPipeline {
   }) {
     callCount++;
     final requirements = selected.engineeringRequirements;
+    final panelSummary = ApartmentEngineeringPanelSummary(
+      boardPhaseSystem: 'singlePhase',
+      lineNeutralVoltageV: 230,
+      lineLineVoltageV: null,
+      maxPhaseCurrentA: 0,
+      phaseCurrentImbalanceRatio: 0,
+      branchCircuitCount: int.parse(outputFingerprint[0], radix: 16),
+      phaseLoads: const [],
+    );
+    final derivedOutputFingerprint =
+        computeApartmentEngineeringOutputFingerprint(
+      outputProjectionVersion: apartmentEngineeringOutputProjectionVersion,
+      requirementsFingerprint: requirements.requirementsFingerprint,
+      loadScheduleRows: const [],
+      circuitScheduleRows: const [],
+      panelSummary: panelSummary.stableSerialization,
+      sldNodes: const [],
+      sldEdges: const [],
+      explanations: const [],
+    );
     return ApartmentEngineeringProposal.bind(
       candidateSetFingerprint: candidateSetFingerprint,
       selected: selected,
       output: ApartmentEngineeringOutputProjection(
         loadSchedule: const [],
         circuitSchedule: const [],
-        panelSummary: ApartmentEngineeringPanelSummary(
-          boardPhaseSystem: 'singlePhase',
-          lineNeutralVoltageV: 230,
-          lineLineVoltageV: null,
-          maxPhaseCurrentA: 0,
-          phaseCurrentImbalanceRatio: 0,
-          branchCircuitCount: 0,
-          phaseLoads: const [],
-        ),
+        panelSummary: panelSummary,
         sldNodes: const [],
         sldEdges: const [],
         explanations: const [],
         requirementsFingerprint: requirements.requirementsFingerprint,
-        outputFingerprint: outputFingerprint,
+        outputFingerprint: derivedOutputFingerprint,
       ),
     );
   }

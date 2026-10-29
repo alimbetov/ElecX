@@ -187,6 +187,11 @@ final class WizardSession {
         return false;
       }
       _commitResult = result;
+      // The commit result retains the lightweight reservation/effects evidence
+      // needed by downstream ownership, but the completed Wizard must not keep
+      // the full frozen preview candidate or provider command alive.
+      _preview = null;
+      _generatedCommand = null;
       _status = WizardSessionStatus.completed;
       return true;
     } on StaleProjectMutationException {

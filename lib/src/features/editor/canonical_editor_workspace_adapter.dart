@@ -50,39 +50,34 @@ final class CanonicalEditorWorkspaceBinding {
     required Map<LevelId, String> legacyLevelIds,
     Map<ZoneId, String> legacyZoneIds = const {},
     Map<SpaceId, String> legacySpaceIds = const {},
-  })  : legacyLevelIds = Map.unmodifiable(legacyLevelIds),
-        legacyZoneIds = Map.unmodifiable(legacyZoneIds),
-        legacySpaceIds = Map.unmodifiable(legacySpaceIds) {
+  })  : _legacyLevelIds = Map<LevelId, String>.of(legacyLevelIds),
+        _legacyZoneIds = Map<ZoneId, String>.of(legacyZoneIds),
+        _legacySpaceIds = Map<SpaceId, String>.of(legacySpaceIds) {
     if (legacyBuildingId.isEmpty) {
       throw const CanonicalEditorWorkspaceException(
         code: CanonicalEditorWorkspaceIssueCode.invalidLegacyBinding,
         message: 'Legacy Building id must be non-empty.',
       );
     }
-    _requireValidBindings(this.legacyLevelIds, 'level');
-    _requireValidBindings(this.legacyZoneIds, 'zone');
-    _requireValidBindings(this.legacySpaceIds, 'space');
-
-    _canonicalLevelIdsByLegacy = Map.unmodifiable({
-      for (final entry in this.legacyLevelIds.entries) entry.value: entry.key,
-    });
-    _canonicalZoneIdsByLegacy = Map.unmodifiable({
-      for (final entry in this.legacyZoneIds.entries) entry.value: entry.key,
-    });
-    _canonicalSpaceIdsByLegacy = Map.unmodifiable({
-      for (final entry in this.legacySpaceIds.entries) entry.value: entry.key,
-    });
+    _requireValidBindings(_legacyLevelIds, 'level');
+    _requireValidBindings(_legacyZoneIds, 'zone');
+    _requireValidBindings(_legacySpaceIds, 'space');
+    _rebuildReverseBindings();
   }
 
   final BuildingId buildingId;
   final String legacyBuildingId;
-  final Map<LevelId, String> legacyLevelIds;
-  final Map<ZoneId, String> legacyZoneIds;
-  final Map<SpaceId, String> legacySpaceIds;
+  final Map<LevelId, String> _legacyLevelIds;
+  final Map<ZoneId, String> _legacyZoneIds;
+  final Map<SpaceId, String> _legacySpaceIds;
 
-  late final Map<String, LevelId> _canonicalLevelIdsByLegacy;
-  late final Map<String, ZoneId> _canonicalZoneIdsByLegacy;
-  late final Map<String, SpaceId> _canonicalSpaceIdsByLegacy;
+  Map<LevelId, String> get legacyLevelIds => Map.unmodifiable(_legacyLevelIds);
+  Map<ZoneId, String> get legacyZoneIds => Map.unmodifiable(_legacyZoneIds);
+  Map<SpaceId, String> get legacySpaceIds => Map.unmodifiable(_legacySpaceIds);
+
+  late Map<String, LevelId> _canonicalLevelIdsByLegacy;
+  late Map<String, ZoneId> _canonicalZoneIdsByLegacy;
+  late Map<String, SpaceId> _canonicalSpaceIdsByLegacy;
 
   LevelId? canonicalLevelIdForLegacy(String legacyId) =>
       _canonicalLevelIdsByLegacy[legacyId];
@@ -92,6 +87,63 @@ final class CanonicalEditorWorkspaceBinding {
 
   SpaceId? canonicalSpaceIdForLegacy(String legacyId) =>
       _canonicalSpaceIdsByLegacy[legacyId];
+
+  /// Extends only child bindings materialized on an already-bound Level.
+  ///
+  /// Validation is performed against complete candidate maps before any live
+  /// binding is changed, so a collision cannot leave a partial Zone/Space
+  /// rebind. Existing canonical ids may be repeated idempotently but can never
+  /// be rebound to another legacy id.
+  void extendMaterializedChildren({
+    Map<ZoneId, String> legacyZoneIds = const {},
+    Map<SpaceId, String> legacySpaceIds = const {},
+  }) {
+    _requireNoCanonicalRebind(
+      current: _legacyZoneIds,
+      additions: legacyZoneIds,
+      kind: 'zone',
+    );
+    _requireNoCanonicalRebind(
+      current: _legacySpaceIds,
+      additions: legacySpaceIds,
+      kind: 'space',
+    );
+
+    final nextZones = Map<ZoneId, String>.of(_legacyZoneIds)
+      ..addAll(legacyZoneIds);
+    final nextSpaces = Map<SpaceId, String>.of(_legacySpaceIds)
+      ..addAll(legacySpaceIds);
+    _requireValidBindings(nextZones, 'zone');
+    _requireValidBindings(nextSpaces, 'space');
+
+    final reverseZones = <String, ZoneId>{
+      for (final entry in nextZones.entries) entry.value: entry.key,
+    };
+    final reverseSpaces = <String, SpaceId>{
+      for (final entry in nextSpaces.entries) entry.value: entry.key,
+    };
+
+    _legacyZoneIds
+      ..clear()
+      ..addAll(nextZones);
+    _legacySpaceIds
+      ..clear()
+      ..addAll(nextSpaces);
+    _canonicalZoneIdsByLegacy = Map.unmodifiable(reverseZones);
+    _canonicalSpaceIdsByLegacy = Map.unmodifiable(reverseSpaces);
+  }
+
+  void _rebuildReverseBindings() {
+    _canonicalLevelIdsByLegacy = Map.unmodifiable({
+      for (final entry in _legacyLevelIds.entries) entry.value: entry.key,
+    });
+    _canonicalZoneIdsByLegacy = Map.unmodifiable({
+      for (final entry in _legacyZoneIds.entries) entry.value: entry.key,
+    });
+    _canonicalSpaceIdsByLegacy = Map.unmodifiable({
+      for (final entry in _legacySpaceIds.entries) entry.value: entry.key,
+    });
+  }
 }
 
 /// Transitional P5C cutover adapter.
@@ -437,6 +489,24 @@ void _requireValidBindings<T extends EntityId>(
       throw CanonicalEditorWorkspaceException(
         code: CanonicalEditorWorkspaceIssueCode.ambiguousLegacyBinding,
         message: 'Multiple canonical $kind ids map to legacy id $legacyId.',
+      );
+    }
+  }
+}
+
+void _requireNoCanonicalRebind<T extends EntityId>({
+  required Map<T, String> current,
+  required Map<T, String> additions,
+  required String kind,
+}) {
+  for (final entry in additions.entries) {
+    final existing = current[entry.key];
+    if (existing != null && existing != entry.value) {
+      throw CanonicalEditorWorkspaceException(
+        code: CanonicalEditorWorkspaceIssueCode.invalidLegacyBinding,
+        entityId: entry.key,
+        message: 'Canonical $kind ${entry.key} is already bound to legacy id '
+            '$existing and cannot be rebound to ${entry.value}.',
       );
     }
   }

@@ -97,8 +97,9 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
     final activeLevelId = navigation.activeLevelId;
     final apartmentEngineeringPipeline =
         ApartmentEngineeringPipelineRuntimeRegistry.resolve(session);
-    final canStartApartment =
-        activeLevelId == null || _isEmptyApartmentTarget(activeLevelId);
+    final canStartApartment = activeLevelId == null ||
+        (_isEmptyApartmentTarget(activeLevelId) &&
+            apartmentEngineeringPipeline != null);
 
     if (_lastRenderedLeafId != currentLeafId) {
       _lastRenderedLeafId = currentLeafId;
@@ -147,7 +148,7 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
               wizardTooltip: activeLevelId == null
                   ? 'Create a building with Wizard'
                   : apartmentEngineeringPipeline == null
-                      ? 'Generate apartment topology; engineering output requires authoritative electrical inputs'
+                      ? 'Apartment Wizard unavailable: authoritative electrical inputs are required'
                       : 'Generate apartment topology with frozen engineering output',
               onStartWizard: wizardMutations != null &&
                       widget.onAuthoringCommitted != null &&
@@ -351,6 +352,7 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
     if (mutations == null || widget.onAuthoringCommitted == null) return;
 
     final before = session.project;
+    late final ProjectStructureAuthoringResult<EntityId> result;
     try {
       final activeLevelId = session.navigation.activeLevelId;
       final ReservedProjectMutationCommitResult? committed;
@@ -360,11 +362,14 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
         if (level == null || !_isEmptyApartmentTarget(activeLevelId)) return;
         final engineeringPipeline =
             ApartmentEngineeringPipelineRuntimeRegistry.resolve(session);
-        final ApartmentWizardProvider provider = engineeringPipeline == null
-            ? const ApartmentWizardProvider.geometryOnly()
-            : ApartmentWizardProvider.production(
-                engineeringPipeline: engineeringPipeline,
-              );
+        if (engineeringPipeline == null) {
+          throw StateError(
+            'Production Apartment Wizard requires an authoritative engineering pipeline.',
+          );
+        }
+        final provider = ApartmentWizardProvider.production(
+          engineeringPipeline: engineeringPipeline,
+        );
         committed = await ApartmentWizardScreen.show(
           context: context,
           session: WizardSession(
@@ -419,20 +424,25 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
         session.selectZone(createdId);
       }
 
-      await _notifyAuthoringCommitted(
-        ProjectStructureAuthoringResult<EntityId>(
-          createdId: createdId,
-          project: after,
-          navigation: session.navigation,
-          changeSet: committed.mutation.changeSet,
-        ),
+      result = ProjectStructureAuthoringResult<EntityId>(
+        createdId: createdId,
+        project: after,
+        navigation: session.navigation,
+        changeSet: committed.mutation.changeSet,
       );
-      if (!mounted) return;
-      setState(() {});
-      _notifyNavigationChanged();
-      _scheduleRevealCurrent();
     } catch (error, stackTrace) {
       _reportOperationError(error, stackTrace);
+      return;
+    }
+
+    try {
+      await _notifyAuthoringCommitted(result);
+    } finally {
+      if (mounted) {
+        setState(() {});
+        _notifyNavigationChanged();
+        _scheduleRevealCurrent();
+      }
     }
   }
 
@@ -453,8 +463,11 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
     if (!mounted) return;
     setState(() {});
     _notifyNavigationChanged();
-    await _notifyAuthoringCommitted(result);
-    _scheduleRevealCurrent();
+    try {
+      await _notifyAuthoringCommitted(result);
+    } finally {
+      _scheduleRevealCurrent();
+    }
   }
 
   Future<void> _addLevel() async {
@@ -478,8 +491,11 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
     if (!mounted) return;
     setState(() {});
     _notifyNavigationChanged();
-    await _notifyAuthoringCommitted(result);
-    _scheduleRevealCurrent();
+    try {
+      await _notifyAuthoringCommitted(result);
+    } finally {
+      _scheduleRevealCurrent();
+    }
   }
 
   Future<void> _addRoom() async {
@@ -503,8 +519,11 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
     if (!mounted) return;
     setState(() {});
     _notifyNavigationChanged();
-    await _notifyAuthoringCommitted(result);
-    _scheduleRevealCurrent();
+    try {
+      await _notifyAuthoringCommitted(result);
+    } finally {
+      _scheduleRevealCurrent();
+    }
   }
 
   void _notifyNavigationChanged() {
@@ -522,11 +541,12 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
   ) async {
     final callback = widget.onAuthoringCommitted;
     if (callback == null) return;
-    try {
-      await callback(session, result);
-    } catch (error, stackTrace) {
-      _reportCallbackError('onAuthoringCommitted', error, stackTrace);
-    }
+
+    // The canonical mutation has already committed before this publication
+    // boundary. The host owns publication/persistence failures and must be able
+    // to observe them; reporting-and-swallowing here would falsely convert a
+    // failed handoff into a successful authoring action.
+    await callback(session, result);
   }
 
   void _reportOperationError(Object error, StackTrace stackTrace) {

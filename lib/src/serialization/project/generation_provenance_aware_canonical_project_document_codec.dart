@@ -1,7 +1,9 @@
 import '../../application/project/project_snapshot.dart';
 import '../../domain/generation_provenance.dart';
+import '../../domain/generation_provenance_integrity.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
+import 'generation_provenance_schema_guard.dart';
 import 'project_document_codec.dart';
 import 'structural_semantics_aware_canonical_project_document_codec.dart';
 
@@ -24,9 +26,13 @@ final class GenerationProvenanceAwareCanonicalProjectDocumentCodec
 
   @override
   ProjectDocument encode(ProjectSnapshot snapshot) {
-    final base = _base.encode(snapshot);
     final registry =
         snapshot.aggregate.engineeringMetadata.generationProvenanceRegistry;
+    GenerationProvenanceIntegrityValidator.validateOrThrow(
+      registry,
+      project: snapshot.aggregate,
+    );
+    final base = _base.encode(snapshot);
     return ProjectDocument(
       schemaVersion: schemaVersion,
       payload: <String, Object?>{
@@ -49,7 +55,9 @@ final class GenerationProvenanceAwareCanonicalProjectDocumentCodec
       return _base.decode(document);
     }
 
-    final registry = _decodeRegistry(document.payload['generationProvenance']);
+    final rawProvenance = document.payload['generationProvenance'];
+    GenerationProvenanceSchemaGuard.validate(rawProvenance);
+    final registry = _decodeRegistry(rawProvenance);
     final base = _base.decode(
       ProjectDocument(
         schemaVersion:
@@ -61,6 +69,10 @@ final class GenerationProvenanceAwareCanonicalProjectDocumentCodec
     registry.validateOrThrow(
       projectId: base.id,
       entityExists: (id) => _entityExists(stores, id),
+    );
+    GenerationProvenanceIntegrityValidator.validateOrThrow(
+      registry,
+      project: base.aggregate,
     );
     final aggregate = ProjectAggregateRoot(
       id: base.id,
