@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import '../../../../domain/project_aggregate.dart';
 import '../../../../domain/project_identity.dart';
+import '../../../../domain/semantic_sha256.dart';
 import '../../project_mutation_reservation.dart';
-import '../apartment/p9_sha256.dart';
 import 'building_generation_parameters.dart';
 
 final class BuildingLevelDraft {
@@ -33,7 +33,7 @@ final class BuildingLevelStackDraft {
           level.reservationSlot: ReservedEntityIdKind.level,
       });
 
-  String get semanticFingerprint => p9Sha256Hex(
+  String get semanticFingerprint => semanticSha256Hex(
         jsonEncode({
           'schema': 'p10.level-stack.v1',
           'buildingGenerationKey': buildingGenerationKey,
