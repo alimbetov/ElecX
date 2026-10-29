@@ -7,6 +7,7 @@ import '../../domain/project_identity.dart';
 import '../../domain/project_orientation.dart';
 import '../../domain/project_space_semantics.dart';
 import '../../domain/slab_topology.dart';
+import '../../domain/typical_floor.dart';
 import '../../domain/vertical_core.dart';
 
 abstract interface class ProjectCommand {
@@ -408,6 +409,13 @@ abstract final class CandidateGraphValidator {
       projectId: current.id,
       entityExists: (id) => _entityExists(state.stores, id),
     );
+    TypicalFloorLineageIntegrity.validateOrThrow(
+      definitions: state.engineeringMetadata.generationProvenanceRegistry
+          .typicalFloorDefinitions,
+      instances:
+          state.engineeringMetadata.generationProvenanceRegistry.floorInstances,
+      stores: state.stores,
+    );
     final index = ProjectIndex.build(state.stores);
     if (!index.isConsistentWith(state.stores)) {
       throw StateError('Candidate ProjectIndex is inconsistent with stores.');
@@ -682,10 +690,20 @@ final class ProjectMutationSession {
   }) {
     final beforeRegistry =
         before.engineeringMetadata.generationProvenanceRegistry;
-    if (beforeRegistry.entities.isEmpty) return candidateState;
+    if (beforeRegistry.entities.isEmpty &&
+        !beforeRegistry.hasTypicalFloorLineage) {
+      return candidateState;
+    }
 
     var registry =
         candidateState.engineeringMetadata.generationProvenanceRegistry;
+    for (final entry in beforeRegistry.typicalFloorDefinitions.entries) {
+      final next = registry.typicalFloorDefinitions[entry.key];
+      if (next != null && !entry.value.sameAs(next)) {
+        throw const TypicalFloorLineageException(
+            'p10.typical-floor.definition-immutable');
+      }
+    }
     for (final entry in beforeRegistry.entities.entries) {
       final entityId = entry.key;
       final provenance = entry.value;
@@ -702,6 +720,49 @@ final class ProjectMutationSession {
         registry = registry.markOverridden(entityId, changed);
       }
     }
+    final nextInstances = {...registry.floorInstances};
+    for (final beforeInstance in beforeRegistry.floorInstances.values) {
+      final instance = nextInstances[beforeInstance.levelId];
+      if (instance == null) continue;
+      if (!candidateState.stores.levels.containsKey(instance.levelId)) {
+        nextInstances.remove(instance.levelId);
+        continue;
+      }
+      final entities = {...instance.entities};
+      final overridden = {...instance.overriddenProperties};
+      final removed = {...instance.removedGenerationKeys};
+      for (final entry in beforeInstance.entities.entries) {
+        if (!entities.containsKey(entry.key)) continue;
+        if (!_entityExists(candidateState.stores, entry.value)) {
+          entities.remove(entry.key);
+          overridden.remove(entry.key);
+          removed.add(entry.key);
+          continue;
+        }
+        final changed = _changedGeneratedProperties(
+          entityId: entry.value,
+          before: before,
+          afterStores: candidateState.stores,
+        );
+        if (changed.isNotEmpty) {
+          overridden[entry.key] = {...?overridden[entry.key], ...changed};
+        }
+      }
+      nextInstances[instance.levelId] = instance.copyWith(
+        entities: entities,
+        overriddenProperties: overridden,
+        removedGenerationKeys: removed,
+      );
+    }
+    registry = registry.copyWith(
+      floorInstances: nextInstances,
+      typicalFloorDefinitions: {
+        for (final entry in registry.typicalFloorDefinitions.entries)
+          if (candidateState.stores.buildings
+              .containsKey(entry.value.buildingId))
+            entry.key: entry.value,
+      },
+    );
     if (registry.sameAs(
       candidateState.engineeringMetadata.generationProvenanceRegistry,
     )) {
@@ -738,6 +799,13 @@ final class ProjectMutationSession {
       projectId: projectId,
       entityExists: (id) => _entityExists(state.stores, id),
     );
+    TypicalFloorLineageIntegrity.validateOrThrow(
+      definitions: state.engineeringMetadata.generationProvenanceRegistry
+          .typicalFloorDefinitions,
+      instances:
+          state.engineeringMetadata.generationProvenanceRegistry.floorInstances,
+      stores: state.stores,
+    );
   }
 
   String _requireCommandType(ProjectCommand command) {
@@ -769,6 +837,25 @@ Set<GenerationPropertyKey> _changedGeneratedProperties({
 }) {
   final changed = <GenerationPropertyKey>{};
   final beforeStores = before.stores;
+
+  if (entityId is LevelId) {
+    final left = beforeStores.levels[entityId];
+    final right = afterStores.levels[entityId];
+    if (left == null || right == null) return changed;
+    if (left.name != right.name) changed.add(GenerationPropertyKey.name);
+    if (left.levelNumber != right.levelNumber ||
+        left.kind != right.kind ||
+        left.elevationMm != right.elevationMm ||
+        left.displayOrder != right.displayOrder ||
+        left.floorToFloorHeightMm != right.floorToFloorHeightMm) {
+      changed.add(GenerationPropertyKey.levelStructure);
+    }
+    if (!_sameSet(left.spaceIds, right.spaceIds) ||
+        !_sameSet(left.zoneIds, right.zoneIds)) {
+      changed.add(GenerationPropertyKey.zoneMembership);
+    }
+    return changed;
+  }
 
   if (entityId is ZoneId) {
     final left = beforeStores.zones[entityId];
@@ -912,6 +999,7 @@ bool _sameSpaceAdjacencyRelations(
 }
 
 bool _entityExists(ProjectEntityStores stores, EntityId id) {
+  if (id is LevelId) return stores.levels.containsKey(id);
   if (id is ZoneId) return stores.zones.containsKey(id);
   if (id is SpaceId) return stores.spaces.containsKey(id);
   if (id is OpeningId) return stores.openings.containsKey(id);

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'applied_engineering_proposal.dart';
 import 'boundary_construction_registry.dart';
 import 'boundary_edge_identity_registry.dart';
@@ -292,6 +294,18 @@ final class ProjectEngineeringMetadata {
       for (final key in overridden) {
         result = Object.hash(result, key);
       }
+    }
+    final definitions =
+        generationProvenanceRegistry.typicalFloorDefinitions.entries.toList()
+          ..sort((a, b) => a.key.value.compareTo(b.key.value));
+    for (final entry in definitions) {
+      result = Object.hash(result, jsonEncode(entry.value.toCanonicalJson()));
+    }
+    final floorInstances = generationProvenanceRegistry.floorInstances.entries
+        .toList()
+      ..sort((a, b) => a.key.value.compareTo(b.key.value));
+    for (final entry in floorInstances) {
+      result = Object.hash(result, jsonEncode(entry.value.toCanonicalJson()));
     }
     final applied = appliedEngineeringProposalRegistry.byLevel.entries.toList()
       ..sort((a, b) => a.key.value.compareTo(b.key.value));

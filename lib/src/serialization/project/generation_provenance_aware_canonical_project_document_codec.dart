@@ -28,6 +28,10 @@ final class GenerationProvenanceAwareCanonicalProjectDocumentCodec
   ProjectDocument encode(ProjectSnapshot snapshot) {
     final registry =
         snapshot.aggregate.engineeringMetadata.generationProvenanceRegistry;
+    if (registry.hasTypicalFloorLineage) {
+      throw const FormatException(
+          'Typical-floor lineage requires project schema v14.');
+    }
     GenerationProvenanceIntegrityValidator.validateOrThrow(
       registry,
       project: snapshot.aggregate,
@@ -44,6 +48,10 @@ final class GenerationProvenanceAwareCanonicalProjectDocumentCodec
 
   @override
   ProjectSnapshot decode(ProjectDocument document) {
+    if (document.payload.containsKey('typicalFloorLineage')) {
+      throw const FormatException(
+          'Typical-floor lineage requires project schema v14.');
+    }
     if (document.schemaVersion < 1 || document.schemaVersion > schemaVersion) {
       throw FormatException(
         'Unsupported canonical ElecX project schema '

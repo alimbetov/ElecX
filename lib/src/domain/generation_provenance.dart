@@ -1,4 +1,5 @@
 import 'project_identity.dart';
+import 'typical_floor.dart';
 
 enum GenerationOriginType { wizard }
 
@@ -10,6 +11,7 @@ enum GenerationPropertyKey {
   zoneMembership,
   openingRelations,
   adjacencyRelations,
+  levelStructure,
 }
 
 final class GenerationManifest {
@@ -213,16 +215,103 @@ final class GenerationProvenanceValidationException implements Exception {
 final class GenerationProvenanceRegistry {
   const GenerationProvenanceRegistry.empty()
       : manifests = const {},
-        entities = const {};
+        entities = const {},
+        typicalFloorDefinitions = const {},
+        floorInstances = const {};
 
   GenerationProvenanceRegistry({
     Map<GenerationId, GenerationManifest> manifests = const {},
     Map<EntityId, EntityGenerationProvenance> entities = const {},
+    Map<TypicalFloorDefinitionId, TypicalFloorDefinition>
+        typicalFloorDefinitions = const {},
+    Map<LevelId, TypicalFloorInstance> floorInstances = const {},
   })  : manifests = Map.unmodifiable(manifests),
-        entities = Map.unmodifiable(entities);
+        entities = Map.unmodifiable(entities),
+        typicalFloorDefinitions = Map.unmodifiable(typicalFloorDefinitions),
+        floorInstances = Map.unmodifiable(floorInstances);
 
   final Map<GenerationId, GenerationManifest> manifests;
   final Map<EntityId, EntityGenerationProvenance> entities;
+  final Map<TypicalFloorDefinitionId, TypicalFloorDefinition>
+      typicalFloorDefinitions;
+  final Map<LevelId, TypicalFloorInstance> floorInstances;
+
+  GenerationProvenanceRegistry copyWith({
+    Map<GenerationId, GenerationManifest>? manifests,
+    Map<EntityId, EntityGenerationProvenance>? entities,
+    Map<TypicalFloorDefinitionId, TypicalFloorDefinition>?
+        typicalFloorDefinitions,
+    Map<LevelId, TypicalFloorInstance>? floorInstances,
+  }) =>
+      GenerationProvenanceRegistry(
+        manifests: manifests ?? this.manifests,
+        entities: entities ?? this.entities,
+        typicalFloorDefinitions:
+            typicalFloorDefinitions ?? this.typicalFloorDefinitions,
+        floorInstances: floorInstances ?? this.floorInstances,
+      );
+
+  bool get hasTypicalFloorLineage =>
+      typicalFloorDefinitions.isNotEmpty || floorInstances.isNotEmpty;
+
+  GenerationProvenanceRegistry registerTypicalFloor({
+    required TypicalFloorDefinition definition,
+    required Iterable<TypicalFloorInstance> instances,
+  }) {
+    final existing = typicalFloorDefinitions[definition.id];
+    if ((existing != null && !existing.sameAs(definition)) ||
+        (existing == null &&
+            floorInstances.values
+                .any((instance) => instance.definitionId == definition.id))) {
+      throw const TypicalFloorLineageException(
+          'p10.typical-floor.definition-immutable');
+    }
+    final next = {...floorInstances};
+    for (final instance in instances) {
+      if (instance.definitionId != definition.id ||
+          next.containsKey(instance.levelId) ||
+          instance.detached ||
+          instance.overriddenProperties.isNotEmpty ||
+          instance.removedGenerationKeys.isNotEmpty) {
+        throw const TypicalFloorLineageException(
+            'p10.typical-floor.invalid-new-instance');
+      }
+      next[instance.levelId] = instance;
+    }
+    return copyWith(typicalFloorDefinitions: {
+      ...typicalFloorDefinitions,
+      definition.id: definition
+    }, floorInstances: next);
+  }
+
+  GenerationProvenanceRegistry detachTypicalFloor(LevelId levelId) {
+    final instance = floorInstances[levelId];
+    if (instance == null) {
+      throw const TypicalFloorLineageException(
+          'p10.typical-floor.instance-missing');
+    }
+    return instance.detached
+        ? this
+        : copyWith(floorInstances: {
+            ...floorInstances,
+            levelId: instance.copyWith(detached: true)
+          });
+  }
+
+  GenerationProvenanceRegistry removeTypicalFloorDefinition(
+      TypicalFloorDefinitionId id) {
+    if (!typicalFloorDefinitions.containsKey(id)) {
+      throw const TypicalFloorLineageException(
+          'p10.typical-floor.definition-missing');
+    }
+    if (floorInstances.values
+        .any((instance) => instance.definitionId == id && !instance.detached)) {
+      throw const TypicalFloorLineageException(
+          'p10.typical-floor.definition-in-use');
+    }
+    return copyWith(
+        typicalFloorDefinitions: {...typicalFloorDefinitions}..remove(id));
+  }
 
   EntityGenerationProvenance? provenanceFor(EntityId entityId) =>
       entities[entityId];
@@ -270,7 +359,7 @@ final class GenerationProvenanceRegistry {
         'Every manifest generated entity requires provenance.',
       );
     }
-    return GenerationProvenanceRegistry(
+    return copyWith(
       manifests: {...manifests, manifest.generationId: manifest},
       entities: nextEntities,
     );
@@ -294,7 +383,7 @@ final class GenerationProvenanceRegistry {
         current.overriddenProperties.containsAll(next)) {
       return this;
     }
-    return GenerationProvenanceRegistry(
+    return copyWith(
       manifests: manifests,
       entities: {
         ...entities,
@@ -311,7 +400,7 @@ final class GenerationProvenanceRegistry {
     if (current == null || current.lockedFromRegeneration == locked) {
       return this;
     }
-    return GenerationProvenanceRegistry(
+    return copyWith(
       manifests: manifests,
       entities: {
         ...entities,
@@ -337,7 +426,7 @@ final class GenerationProvenanceRegistry {
     final nextEntities =
         Map<EntityId, EntityGenerationProvenance>.from(entities)
           ..remove(entityId);
-    return GenerationProvenanceRegistry(
+    return copyWith(
       manifests: {
         ...manifests,
         current.generationId: manifest.copyWith(
@@ -472,8 +561,19 @@ final class GenerationProvenanceRegistry {
   bool sameAs(GenerationProvenanceRegistry other) {
     if (identical(this, other)) return true;
     if (manifests.length != other.manifests.length ||
-        entities.length != other.entities.length) {
+        entities.length != other.entities.length ||
+        typicalFloorDefinitions.length !=
+            other.typicalFloorDefinitions.length ||
+        floorInstances.length != other.floorInstances.length) {
       return false;
+    }
+    for (final entry in typicalFloorDefinitions.entries) {
+      final right = other.typicalFloorDefinitions[entry.key];
+      if (right == null || !entry.value.sameAs(right)) return false;
+    }
+    for (final entry in floorInstances.entries) {
+      final right = other.floorInstances[entry.key];
+      if (right == null || !entry.value.sameAs(right)) return false;
     }
     for (final entry in manifests.entries) {
       final right = other.manifests[entry.key];
