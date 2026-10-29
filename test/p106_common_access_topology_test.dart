@@ -141,7 +141,14 @@ void main() {
           electricalRiserCount: 0,
           telecomRiserCount: 0,
           corridorWidthMm: 1800,
-          serviceSpacePolicy: const CommonServiceSpacePolicy.none(),
+          serviceSpacePolicy: const CommonServiceSpacePolicy(
+            includeCommonHall: true,
+            includeElevatorHall: false,
+            includeElectricalRoomCandidate: false,
+            includeTelecomRoomCandidate: false,
+            includeFireControlRoomCandidate: false,
+            includeUtilityRoomCandidate: false,
+          ),
         ),
         layout: CommonCoreLayoutParameters(
           originXmm: minX - 1000,

@@ -1,4 +1,10 @@
 import 'dart:math';
+import 'dart:io';
+
+import 'package:elecx/src/application/project/canonical_project_persistence_owner.dart';
+import 'package:elecx/src/application/project/project_space_commands.dart';
+import 'package:elecx/src/domain/boundary_opening_profile_validation.dart';
+import 'package:elecx/src/infrastructure/project/json_project_repository.dart';
 
 import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/project_snapshot.dart';
@@ -206,6 +212,79 @@ void main() {
           restored.hostSpaceIdsByLevel,
           entry.value.hostSpaceIdsByLevel,
         );
+      }
+    });
+
+    test(
+        'P10-Q09 production Save Reopen Edit Undo Redo Save Reopen keeps hosts and IDs',
+        () async {
+      final fixture = _P107Fixture();
+      final session = ProjectMutationSession(fixture.project);
+      final port = SharedProjectWizardMutationPort(
+          mutations: session,
+          idFactory: SecureRandomEntityIdFactory(random: Random(10709)));
+      port.commitPreview(port.preview(fixture.command(session.current)));
+      for (final opening in session.current.stores.openings.values) {
+        for (final spaceId in opening.connectedSpaceIds) {
+          expect(
+              session.current.engineeringMetadata.boundaryHostedObjectRegistry
+                  .openingHost(opening.id, spaceId),
+              isNotNull);
+        }
+      }
+      final directory = await Directory.systemTemp.createTemp('p107-golden-');
+      addTearDown(() => directory.delete(recursive: true));
+      final repository = JsonProjectRepository(
+          rootDirectory: directory,
+          codec: const CommonCoreAwareCanonicalProjectDocumentCodec());
+      final timestamp = DateTime.utc(2026, 10, 29, 12);
+      final owner = CanonicalProjectPersistenceOwner(
+          repository: repository,
+          snapshot: ProjectSnapshot(
+              aggregate: session.current,
+              name: 'Cottage',
+              createdAt: timestamp,
+              updatedAt: timestamp));
+      await owner.save();
+      final loaded = (await CanonicalProjectPersistenceOwner.load(
+          repository: repository, projectId: fixture.projectId))!;
+      final edits = ProjectMutationSession(loaded.project);
+      final core = edits.current.stores.verticalCores.values.first;
+      final spaceId = core.hostSpaceIdsByLevel.values.first;
+      final originalName = edits.current.stores.spaces[spaceId]!.name;
+      final edit = edits.commit(ProjectMutationRequest(
+          expectedVersion: edits.current.version,
+          command: RenameSpaceCommand(
+              spaceId: spaceId, name: 'Custom stair host')))!;
+      loaded.acceptMutation(
+          sessionProject: edits.current, result: edit, now: timestamp);
+      final undo = edits.undo(edits.current.version)!;
+      loaded.acceptMutation(
+          sessionProject: edits.current, result: undo, now: timestamp);
+      expect(edits.current.stores.spaces[spaceId]!.name, originalName);
+      final redo = edits.redo(edits.current.version)!;
+      loaded.acceptMutation(
+          sessionProject: edits.current,
+          result: redo,
+          now: timestamp.add(const Duration(minutes: 1)));
+      await loaded.save();
+      final reopened = (await CanonicalProjectPersistenceOwner.load(
+          repository: repository, projectId: fixture.projectId))!;
+      expect(
+          reopened.project.stores.spaces[spaceId]!.name, 'Custom stair host');
+      expect(reopened.project.stores.spaces.keys.toSet(),
+          session.current.stores.spaces.keys.toSet());
+      expect(
+          reopened.project.stores.verticalCores[core.id]!.hostSpaceIdsByLevel,
+          core.hostSpaceIdsByLevel);
+      for (final id in reopened.project.stores.spaces.keys) {
+        BoundaryOpeningProfileValidator.validateSpace(
+            spaceId: id,
+            openings: reopened.project.stores.openings.values,
+            hostedObjects: reopened
+                .project.engineeringMetadata.boundaryHostedObjectRegistry,
+            wallProfiles: reopened
+                .project.engineeringMetadata.boundaryWallProfileRegistry);
       }
     });
 

@@ -13,6 +13,7 @@ import '../../project_mutation_reservation.dart';
 import '../wizard_contracts.dart';
 import 'building_common_core_composition.dart';
 import 'building_generation_parameters.dart';
+import 'common_core_opening_hosts.dart';
 import 'building_level_stack_generator.dart';
 
 final class CottageCompositionException implements Exception {
@@ -901,7 +902,13 @@ final class CottageCompositionCommand implements ReservedProjectCommand {
       siteId: project.siteId,
       version: project.version,
       engineeringMetadata: project.engineeringMetadata
-          .withBoundaryEdgeIdentityRegistry(edgeRegistry),
+          .withBoundaryEdgeIdentityRegistry(edgeRegistry)
+          .withBoundaryHostedObjectRegistry(bindCommonCoreOpeningHosts(
+            registry: project.engineeringMetadata.boundaryHostedObjectRegistry,
+            openings: openings.values.where(
+                (opening) => !project.stores.openings.containsKey(opening.id)),
+            boundaries: boundaries,
+          )),
       stores: stores,
     );
   }

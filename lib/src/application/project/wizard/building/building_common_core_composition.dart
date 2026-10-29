@@ -12,6 +12,7 @@ import '../../project_mutation.dart';
 import '../../project_mutation_reservation.dart';
 import '../wizard_contracts.dart';
 import 'building_generation_parameters.dart';
+import 'common_core_opening_hosts.dart';
 
 final class BuildingCommonCoreCompositionException implements Exception {
   const BuildingCommonCoreCompositionException(this.code);
@@ -958,7 +959,13 @@ final class BuildingCommonCoreCompositionCommand
       siteId: current.siteId,
       version: current.version,
       engineeringMetadata: current.engineeringMetadata
-          .withBoundaryEdgeIdentityRegistry(edgeRegistry),
+          .withBoundaryEdgeIdentityRegistry(edgeRegistry)
+          .withBoundaryHostedObjectRegistry(bindCommonCoreOpeningHosts(
+            registry: current.engineeringMetadata.boundaryHostedObjectRegistry,
+            openings: openings.values.where(
+                (opening) => !current.stores.openings.containsKey(opening.id)),
+            boundaries: boundaries,
+          )),
       stores: stores,
     );
     return ProjectCommandCandidate.fromState(
