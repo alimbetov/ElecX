@@ -1,3 +1,4 @@
+import 'package:elecx/src/serialization/project/composition_provenance_aware_canonical_project_document_codec.dart';
 import 'dart:convert';
 import 'dart:math';
 
@@ -13,7 +14,6 @@ import 'package:elecx/src/domain/boundary_topology.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_service_anchor.dart';
-import 'package:elecx/src/serialization/project/service_anchor_aware_canonical_project_document_codec.dart';
 
 import 'p108_tower_fixture.dart';
 import 'p109_site_fixture.dart';
@@ -136,7 +136,7 @@ final class P1011WizardRuntime {
 
 String p1011Bytes(ProjectAggregateRoot project, {bool includeVersion = true}) {
   final payload = jsonDecode(jsonEncode(
-      const ServiceAnchorAwareCanonicalProjectDocumentCodec()
+      const CompositionProvenanceAwareCanonicalProjectDocumentCodec()
           .encode(p109Snapshot(project))
           .payload)) as Map<String, dynamic>;
   if (!includeVersion) (payload['metadata'] as Map).remove('localVersion');

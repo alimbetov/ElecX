@@ -1,3 +1,5 @@
+import '../../composition_provenance_command.dart';
+import 'p10_generation_evidence.dart';
 import '../../../../domain/project_aggregate.dart';
 import '../../../../domain/project_identity.dart';
 import '../../project_mutation.dart';
@@ -200,7 +202,13 @@ final class CottageCompositionGenerator {
   }
 }
 
-final class CottageCompositionCommand implements ReservedProjectCommand {
+final class CottageCompositionCommand implements CompositionProvenanceSource {
+  @override
+  CompositionGenerationEvidence get generationEvidence => p10GenerationEvidence(
+      plan.generatorVersion,
+      plan.semanticFingerprint,
+      {plan.compositionKey: plan.parameters});
+
   CottageCompositionCommand._(this._delegate);
   factory CottageCompositionCommand.create({
     required ProjectAggregateRoot project,

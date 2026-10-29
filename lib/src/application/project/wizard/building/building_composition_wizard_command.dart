@@ -1,3 +1,5 @@
+import '../../composition_provenance_command.dart';
+import 'p10_generation_evidence.dart';
 import 'dart:convert';
 
 import '../../../../domain/boundary_host_migration.dart';
@@ -198,7 +200,8 @@ final class BuildingCompositionCandidate {
         message: 'Architectural reservations without engineering sizing.',
         severity: WizardIssueSeverity.info)
   ];
-  String get requestFingerprint => semanticSha256Hex(jsonEncode({
+  String get requestFingerprint => semanticSha256Hex(canonicalRequest);
+  String get canonicalRequest => jsonEncode({
         'schema': generatorVersion,
         'projectId': architecture.plan.projectId.value,
         'siteId': architecture.plan.siteId.value,
@@ -237,7 +240,7 @@ final class BuildingCompositionCandidate {
               ...existingPlacements[id]!.toCanonicalJson()
             }
         ]
-      }));
+      });
   String get candidateFingerprint => semanticSha256Hex(jsonEncode({
         'request': requestFingerprint,
         'architecture': architecture.plan.semanticFingerprint,
@@ -258,7 +261,18 @@ final class BuildingCompositionCandidate {
 
 /// One reserved architecture + service command; no feature-local mutation,
 /// history, ID factory or persistence owner.
-final class BuildingCompositionWizardCommand implements ReservedProjectCommand {
+final class BuildingCompositionWizardCommand
+    implements CompositionProvenanceSource {
+  @override
+  CompositionGenerationEvidence get generationEvidence => p10GenerationEvidence(
+      BuildingCompositionCandidate.generatorVersion,
+      composition.candidateFingerprint,
+      {
+        for (final b in composition.architecture.plan.buildings)
+          b.slot.key: b.slot.parameters
+      },
+      canonicalRequest: composition.canonicalRequest);
+
   BuildingCompositionWizardCommand(
       {required this.basis, required this.composition});
   final ProjectAggregateRoot basis;

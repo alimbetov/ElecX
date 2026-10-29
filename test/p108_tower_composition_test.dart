@@ -1,3 +1,4 @@
+import 'package:elecx/src/serialization/project/composition_provenance_aware_canonical_project_document_codec.dart';
 import 'dart:convert';
 import 'dart:math';
 
@@ -11,7 +12,6 @@ import 'package:elecx/src/domain/generation_provenance.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/vertical_core.dart';
-import 'package:elecx/src/serialization/project/common_core_aware_canonical_project_document_codec.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/p108_tower_fixture.dart';
@@ -79,7 +79,7 @@ void main() {
             .spaceIds,
         isEmpty);
     final ids = preview.reservation.entityIds;
-    expect(ids.whereType<GenerationId>(), hasLength(6));
+    expect(ids.whereType<GenerationId>(), hasLength(7));
     expect(ids.whereType<TypicalFloorDefinitionId>(), hasLength(1));
   });
 
@@ -156,7 +156,7 @@ void main() {
     expect(other.plan.semanticFingerprint, command.plan.semanticFingerprint);
     final a = port(session()).preview(command).candidate;
     final b = port(session()).preview(other).candidate;
-    const codec = CommonCoreAwareCanonicalProjectDocumentCodec();
+    const codec = CompositionProvenanceAwareCanonicalProjectDocumentCodec();
     expect(jsonEncode(codec.encode(p108Snapshot(a)).payload),
         jsonEncode(codec.encode(p108Snapshot(b)).payload));
   });

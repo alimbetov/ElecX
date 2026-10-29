@@ -1,3 +1,4 @@
+import 'package:elecx/src/serialization/project/composition_provenance_aware_canonical_project_document_codec.dart';
 import 'dart:convert';
 import 'dart:math';
 
@@ -12,7 +13,6 @@ import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_service_anchor.dart';
 import 'package:elecx/src/domain/project_service_anchor_integrity.dart';
 import 'package:elecx/src/domain/project_site_layout.dart';
-import 'package:elecx/src/serialization/project/service_anchor_aware_canonical_project_document_codec.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/p1010_service_anchor_fixture.dart';
@@ -43,8 +43,10 @@ void main() {
                 .appliedEngineeringProposalRegistry),
         isTrue);
     expect(
-        after.engineeringMetadata.generationProvenanceRegistry.sameAs(
-            fixture.project.engineeringMetadata.generationProvenanceRegistry),
+        after.engineeringMetadata.generationProvenanceRegistry
+            .copyWith(compositions: {}).sameAs(fixture
+                .project.engineeringMetadata.generationProvenanceRegistry
+                .copyWith(compositions: {})),
         isTrue);
     for (final anchor
         in after.engineeringMetadata.siteLayout.serviceAnchors.values) {
@@ -94,9 +96,12 @@ void main() {
     final x = preview(a);
     final y = preview(b);
     expect(x.reservation.entityIds.whereType<ServiceEntryId>(), hasLength(10));
-    expect(x.semanticChangeSet.operations.whereType<CreateEntityOperation>(),
+    expect(
+        x.semanticChangeSet.operations
+            .whereType<CreateEntityOperation>()
+            .where((o) => o.entityId is ServiceEntryId),
         hasLength(10));
-    const codec = ServiceAnchorAwareCanonicalProjectDocumentCodec();
+    const codec = CompositionProvenanceAwareCanonicalProjectDocumentCodec();
     expect(jsonEncode(codec.encode(p109Snapshot(x.candidate)).payload),
         jsonEncode(codec.encode(p109Snapshot(y.candidate)).payload));
   });

@@ -127,3 +127,19 @@ ProjectSnapshot p109Snapshot(ProjectAggregateRoot project) => ProjectSnapshot(
     name: 'P10.9 Site',
     createdAt: DateTime.utc(2026, 10, 29),
     updatedAt: DateTime.utc(2026, 10, 29));
+
+/// Historical v17/v18 state has no P10.12 parent evidence. Never use this
+/// projection for production writes; current-state downgrade is tested to fail.
+ProjectSnapshot p10HistoricalSnapshot(ProjectSnapshot snapshot) {
+  final p = snapshot.aggregate;
+  return snapshot.copyWith(
+      aggregate: ProjectAggregateRoot(
+          id: p.id,
+          siteId: p.siteId,
+          version: p.version,
+          stores: p.stores,
+          engineeringMetadata: p.engineeringMetadata
+              .withGenerationProvenanceRegistry(p
+                  .engineeringMetadata.generationProvenanceRegistry
+                  .copyWith(compositions: {}))));
+}

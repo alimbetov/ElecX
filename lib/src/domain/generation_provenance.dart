@@ -1,4 +1,5 @@
 import 'project_identity.dart';
+import 'composition_generation_provenance.dart';
 import 'level_apartment_composition.dart';
 import 'typical_floor.dart';
 
@@ -219,7 +220,8 @@ final class GenerationProvenanceRegistry {
         entities = const {},
         typicalFloorDefinitions = const {},
         floorInstances = const {},
-        levelCompositions = const {};
+        levelCompositions = const {},
+        compositions = const {};
 
   GenerationProvenanceRegistry({
     Map<GenerationId, GenerationManifest> manifests = const {},
@@ -229,12 +231,15 @@ final class GenerationProvenanceRegistry {
     Map<LevelId, TypicalFloorInstance> floorInstances = const {},
     Map<GenerationId, LevelApartmentCompositionManifest> levelCompositions =
         const {},
-  })  : manifests = Map.unmodifiable(manifests),
+    Map<GenerationId, CompositionGenerationManifest> compositions = const {},
+  })  : compositions = Map.unmodifiable(compositions),
+        manifests = Map.unmodifiable(manifests),
         entities = Map.unmodifiable(entities),
         typicalFloorDefinitions = Map.unmodifiable(typicalFloorDefinitions),
         floorInstances = Map.unmodifiable(floorInstances),
         levelCompositions = Map.unmodifiable(levelCompositions);
 
+  final Map<GenerationId, CompositionGenerationManifest> compositions;
   final Map<GenerationId, GenerationManifest> manifests;
   final Map<EntityId, EntityGenerationProvenance> entities;
   final Map<TypicalFloorDefinitionId, TypicalFloorDefinition>
@@ -243,6 +248,7 @@ final class GenerationProvenanceRegistry {
   final Map<GenerationId, LevelApartmentCompositionManifest> levelCompositions;
 
   GenerationProvenanceRegistry copyWith({
+    Map<GenerationId, CompositionGenerationManifest>? compositions,
     Map<GenerationId, GenerationManifest>? manifests,
     Map<EntityId, EntityGenerationProvenance>? entities,
     Map<TypicalFloorDefinitionId, TypicalFloorDefinition>?
@@ -251,6 +257,7 @@ final class GenerationProvenanceRegistry {
     Map<GenerationId, LevelApartmentCompositionManifest>? levelCompositions,
   }) =>
       GenerationProvenanceRegistry(
+        compositions: compositions ?? this.compositions,
         manifests: manifests ?? this.manifests,
         entities: entities ?? this.entities,
         typicalFloorDefinitions:
@@ -576,6 +583,13 @@ final class GenerationProvenanceRegistry {
         floorInstances.length != other.floorInstances.length ||
         levelCompositions.length != other.levelCompositions.length) {
       return false;
+    }
+    if (compositions.length != other.compositions.length) return false;
+    for (final e in compositions.entries) {
+      if (other.compositions[e.key] == null ||
+          !e.value.sameAs(other.compositions[e.key]!)) {
+        return false;
+      }
     }
     for (final entry in levelCompositions.entries) {
       final right = other.levelCompositions[entry.key];

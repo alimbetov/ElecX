@@ -46,6 +46,11 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
       throw const FormatException(
           'Site placement and shared anchors require schema v17.');
     }
+    if (snapshot.aggregate.engineeringMetadata.generationProvenanceRegistry
+        .compositions.isNotEmpty) {
+      throw const FormatException(
+          'Composition provenance requires schema v19.');
+    }
     final stores = snapshot.aggregate.stores;
     final identityRegistry = snapshot
         .aggregate.engineeringMetadata.boundaryEdgeIdentityRegistry
@@ -101,6 +106,10 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
 
   @override
   ProjectSnapshot decode(ProjectDocument document) {
+    if (document.payload.containsKey('compositionProvenance')) {
+      throw const FormatException(
+          'Composition provenance requires schema v19.');
+    }
     if (document.payload.containsKey('serviceAnchors')) {
       throw const FormatException('Service anchors require schema v18.');
     }

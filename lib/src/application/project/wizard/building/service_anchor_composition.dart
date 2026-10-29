@@ -1,3 +1,5 @@
+import '../../composition_provenance_command.dart';
+import 'p10_generation_evidence.dart';
 import 'dart:convert';
 
 import '../../../../domain/boundary_topology.dart';
@@ -262,7 +264,12 @@ final class ServiceAnchorCompositionGenerator {
   }
 }
 
-final class ServiceAnchorCompositionCommand implements ReservedProjectCommand {
+final class ServiceAnchorCompositionCommand
+    implements CompositionProvenanceSource {
+  @override
+  CompositionGenerationEvidence get generationEvidence => p10GenerationEvidence(
+      'p10.service-anchors.v1', plan.semanticFingerprint, {});
+
   const ServiceAnchorCompositionCommand(this.plan);
   factory ServiceAnchorCompositionCommand.create(
           {required ProjectAggregateRoot project,

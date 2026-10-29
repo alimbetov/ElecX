@@ -1,3 +1,5 @@
+import '../../composition_provenance_command.dart';
+import 'p10_generation_evidence.dart';
 import 'dart:convert';
 import 'dart:math' as math;
 
@@ -280,7 +282,13 @@ final class ResidentialTowerCompositionGenerator {
 /// One parent reservation and one canonical Apply. Structural staging and child
 /// candidates are immutable views; neither is committed to a separate session.
 final class ResidentialTowerCompositionCommand
-    implements ReservedProjectCommand {
+    implements CompositionProvenanceSource {
+  @override
+  CompositionGenerationEvidence get generationEvidence => p10GenerationEvidence(
+      'p10.tower.v1',
+      plan.semanticFingerprint,
+      {plan.shell.compositionKey: plan.shell.parameters});
+
   ResidentialTowerCompositionCommand._(this._basis, this.plan,
       {bool allowExistingBuildings = false})
       : _shell = BuildingShellCompositionCommand(

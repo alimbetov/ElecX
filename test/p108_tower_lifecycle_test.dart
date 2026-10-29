@@ -1,3 +1,4 @@
+import 'package:elecx/src/serialization/project/composition_provenance_aware_canonical_project_document_codec.dart';
 import 'dart:io';
 import 'dart:math';
 
@@ -9,7 +10,6 @@ import 'package:elecx/src/application/project/wizard/project_wizard_mutation_por
 import 'package:elecx/src/domain/generation_provenance.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/infrastructure/project/json_project_repository.dart';
-import 'package:elecx/src/serialization/project/common_core_aware_canonical_project_document_codec.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/p108_tower_fixture.dart';
@@ -42,7 +42,7 @@ void main() {
     addTearDown(() => directory.delete(recursive: true));
     final repository = JsonProjectRepository(
         rootDirectory: directory,
-        codec: const CommonCoreAwareCanonicalProjectDocumentCodec());
+        codec: const CompositionProvenanceAwareCanonicalProjectDocumentCodec());
     final owner = CanonicalProjectPersistenceOwner(
         repository: repository, snapshot: p108Snapshot(mutations.current));
     await owner.save();

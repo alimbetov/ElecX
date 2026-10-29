@@ -1,3 +1,4 @@
+import 'package:elecx/src/serialization/project/composition_provenance_aware_canonical_project_document_codec.dart';
 import 'dart:io';
 
 import 'package:elecx/src/application/project/canonical_project_persistence_owner.dart';
@@ -11,7 +12,6 @@ import 'package:elecx/src/application/project/wizard/wizard_diff.dart';
 import 'package:elecx/src/application/project/wizard/project_wizard_mutation_port.dart';
 import 'package:elecx/src/domain/project_service_anchor.dart';
 import 'package:elecx/src/infrastructure/project/json_project_repository.dart';
-import 'package:elecx/src/serialization/project/service_anchor_aware_canonical_project_document_codec.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/p1011_wizard_fixture.dart';
@@ -130,7 +130,8 @@ void main() {
       addTearDown(() => directory.delete(recursive: true));
       final repository = JsonProjectRepository(
           rootDirectory: directory,
-          codec: const ServiceAnchorAwareCanonicalProjectDocumentCodec());
+          codec:
+              const CompositionProvenanceAwareCanonicalProjectDocumentCodec());
       final runtime = P1011WizardRuntime(family: family);
       final owner = CanonicalProjectPersistenceOwner(
           repository: repository,

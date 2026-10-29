@@ -1,3 +1,4 @@
+import 'package:elecx/src/serialization/project/composition_provenance_aware_canonical_project_document_codec.dart';
 import 'package:elecx/src/application/project/project_authoring_error.dart';
 import 'package:elecx/src/application/project/project_boundary_topology_migration.dart';
 import 'package:elecx/src/application/project/project_destructive_commands.dart';
@@ -8,7 +9,6 @@ import 'package:elecx/src/domain/boundary_host_registry.dart';
 import 'package:elecx/src/domain/boundary_topology.dart';
 import 'package:elecx/src/domain/project_service_anchor.dart';
 import 'package:elecx/src/domain/project_service_anchor_integrity.dart';
-import 'package:elecx/src/serialization/project/service_anchor_aware_canonical_project_document_codec.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/p1010_boundary_fixture.dart';
@@ -57,7 +57,7 @@ void main() {
         const BoundaryPointMm(xMm: 1500, yMm: 0));
   });
   test(
-      'P7 split remaps the sole wall host, preserving entry identity, position and v18 round trip',
+      'P7 split remaps the sole wall host, preserving entry identity, position and v19 round trip',
       () {
     final fixture = P1010BoundaryFixture();
     final session = fixture.compose();
@@ -87,7 +87,7 @@ void main() {
     expect(
         session.current.engineeringMetadata.siteLayout.serviceAnchors[entry.id],
         same(entry));
-    const codec = ServiceAnchorAwareCanonicalProjectDocumentCodec();
+    const codec = CompositionProvenanceAwareCanonicalProjectDocumentCodec();
     final loaded =
         codec.decode(codec.encode(p109Snapshot(session.current))).aggregate;
     expect(ProjectServiceAnchorResolver.position(loaded, entry.id).point,

@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import 'project_mutation.dart';
+import 'composition_provenance_command.dart';
 
 /// Durable entity identity kinds that may be allocated once for one preview/apply
 /// lifecycle. BoundaryPenetrationId is represented separately because its
@@ -512,6 +513,9 @@ final class ReservedProjectMutationCoordinator {
       <MutationIdentityReservation>{};
 
   ReservedProjectMutationPreview preview(ReservedProjectCommand command) {
+    if (command is CompositionProvenanceSource) {
+      command = ProvenanceReservedProjectCommand(command);
+    }
     final normalizedIntentKey = command.normalizedIntentKey.trim();
     if (normalizedIntentKey.isEmpty) {
       throw ArgumentError.value(

@@ -1,3 +1,4 @@
+import 'package:elecx/src/serialization/project/composition_provenance_aware_canonical_project_document_codec.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -8,7 +9,6 @@ import 'package:elecx/src/domain/project_service_anchor.dart';
 import 'package:elecx/src/domain/project_service_anchor_integrity.dart';
 import 'package:elecx/src/infrastructure/project/json_project_repository.dart';
 import 'package:elecx/src/serialization/project/project_document_codec.dart';
-import 'package:elecx/src/serialization/project/service_anchor_aware_canonical_project_document_codec.dart';
 import 'package:elecx/src/serialization/project/site_composition_aware_canonical_project_document_codec.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -17,15 +17,15 @@ import 'support/p109_site_fixture.dart';
 
 void main() {
   late P1010ServiceAnchorFixture fixture;
-  const codec = ServiceAnchorAwareCanonicalProjectDocumentCodec();
+  const codec = CompositionProvenanceAwareCanonicalProjectDocumentCodec();
   setUpAll(() => fixture = P1010ServiceAnchorFixture());
   test(
-      'v18 canonical bytes retain all purposes, bindings, shared anchors and P9 lineage',
+      'v19 canonical bytes retain all purposes, bindings, shared anchors and P9 lineage',
       () {
     final project = fixture.compose().current;
     final document = codec.encode(p109Snapshot(project));
     final reopened = codec.decode(document);
-    expect(document.schemaVersion, 18);
+    expect(document.schemaVersion, 19);
     expect(jsonEncode(codec.encode(reopened).payload),
         jsonEncode(document.payload));
     expect(reopened.aggregate.engineeringMetadata, project.engineeringMetadata);
@@ -36,9 +36,16 @@ void main() {
       'v17 migration preserves existing data and rejects lossy writes or disguised v18 data',
       () {
     const old = SiteCompositionAwareCanonicalProjectDocumentCodec();
-    final migrated = codec.decode(old.encode(p109Snapshot(fixture.project)));
-    expect(migrated.aggregate.engineeringMetadata,
-        fixture.project.engineeringMetadata);
+    final migrated = codec.decode(
+        old.encode(p10HistoricalSnapshot(p109Snapshot(fixture.project))));
+    expect(
+        migrated.aggregate.engineeringMetadata.generationProvenanceRegistry
+            .compositions,
+        isEmpty);
+    expect(
+        migrated.aggregate.engineeringMetadata.siteLayout
+            .sameAs(fixture.project.engineeringMetadata.siteLayout),
+        isTrue);
     expect(migrated.aggregate.engineeringMetadata.siteLayout.serviceAnchors,
         isEmpty);
     final snapshot = p109Snapshot(fixture.compose().current);
@@ -49,7 +56,7 @@ void main() {
     expect(() => old.decode(disguised), throwsFormatException);
   });
   test(
-      'strict v18 rejects malformed purpose, owner, geometry, identity and wall joins',
+      'strict v19 rejects malformed purpose, owner, geometry, identity and wall joins',
       () {
     final document = codec.encode(p109Snapshot(fixture.compose().current));
     void rejects(void Function(Map<String, dynamic>) edit) {
@@ -58,7 +65,7 @@ void main() {
       edit(payload['serviceAnchors'] as Map<String, dynamic>);
       expect(
           () => codec
-              .decode(ProjectDocument(schemaVersion: 18, payload: payload)),
+              .decode(ProjectDocument(schemaVersion: 19, payload: payload)),
           throwsFormatException);
     }
 
@@ -103,7 +110,7 @@ void main() {
     });
     expect(
         () => codec.decode(
-            ProjectDocument(schemaVersion: 19, payload: document.payload)),
+            ProjectDocument(schemaVersion: 20, payload: document.payload)),
         throwsFormatException);
   });
   test(
@@ -165,7 +172,9 @@ void main() {
         isTrue);
     expect(
         reopened.project.engineeringMetadata.generationProvenanceRegistry
-            .sameAs(generated.engineeringMetadata.generationProvenanceRegistry),
+            .copyWith(compositions: {}).sameAs(generated
+                .engineeringMetadata.generationProvenanceRegistry
+                .copyWith(compositions: {})),
         isTrue);
     expect(
         reopened.project.engineeringMetadata.siteLayout.serviceAnchors.keys

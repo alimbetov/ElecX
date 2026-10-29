@@ -1,3 +1,4 @@
+import 'package:elecx/src/serialization/project/composition_provenance_aware_canonical_project_document_codec.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -9,21 +10,20 @@ import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/infrastructure/project/json_project_repository.dart';
 import 'package:elecx/src/serialization/project/common_core_aware_canonical_project_document_codec.dart';
 import 'package:elecx/src/serialization/project/project_document_codec.dart';
-import 'package:elecx/src/serialization/project/site_composition_aware_canonical_project_document_codec.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/p109_site_fixture.dart';
 
 void main() {
   final fixture = P109SiteFixture();
-  const codec = SiteCompositionAwareCanonicalProjectDocumentCodec();
+  const codec = CompositionProvenanceAwareCanonicalProjectDocumentCodec();
   late ProjectAggregateRoot composed;
   setUpAll(() => composed = fixture.compose().current);
   test(
-      'v17 byte round trip preserves all typed IDs, local geometry, transforms, shared anchors and lineage',
+      'v19 byte round trip preserves all typed IDs, local geometry, transforms, shared anchors and lineage',
       () {
     final document = codec.encode(p109Snapshot(composed));
-    expect(document.schemaVersion, 17);
+    expect(document.schemaVersion, 19);
     final reopened = codec.decode(document);
     expect(jsonEncode(codec.encode(reopened).payload),
         jsonEncode(document.payload));
@@ -42,7 +42,8 @@ void main() {
       'old documents migrate without guessed placements; older codecs reject lossy writes and disguised new data',
       () {
     const old = CommonCoreAwareCanonicalProjectDocumentCodec();
-    final legacy = codec.decode(old.encode(p109Snapshot(fixture.project)));
+    final legacy = codec.decode(
+        old.encode(p10HistoricalSnapshot(p109Snapshot(fixture.project))));
     expect(legacy.aggregate.engineeringMetadata.siteLayout.isEmpty, isTrue);
     expect(() => old.encode(p109Snapshot(composed)), throwsFormatException);
     final document = codec.encode(p109Snapshot(composed));
@@ -62,7 +63,7 @@ void main() {
       edit(payload['siteLayout'] as Map<String, dynamic>);
       expect(
           () => codec
-              .decode(ProjectDocument(schemaVersion: 17, payload: payload)),
+              .decode(ProjectDocument(schemaVersion: 19, payload: payload)),
           throwsFormatException);
     }
 

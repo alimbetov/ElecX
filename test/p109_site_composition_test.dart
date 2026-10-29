@@ -1,3 +1,4 @@
+import 'package:elecx/src/serialization/project/composition_provenance_aware_canonical_project_document_codec.dart';
 import 'dart:convert';
 import 'dart:math';
 
@@ -11,7 +12,6 @@ import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_orientation.dart';
 import 'package:elecx/src/domain/project_site_layout.dart';
 import 'package:elecx/src/domain/project_site_layout_integrity.dart';
-import 'package:elecx/src/serialization/project/site_composition_aware_canonical_project_document_codec.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/p109_site_fixture.dart';
@@ -96,7 +96,7 @@ void main() {
             idFactory: SecureRandomEntityIdFactory(random: Random(10901)))
         .preview(command)
         .candidate;
-    const codec = SiteCompositionAwareCanonicalProjectDocumentCodec();
+    const codec = CompositionProvenanceAwareCanonicalProjectDocumentCodec();
     expect(jsonEncode(codec.encode(p109Snapshot(preview(a))).payload),
         jsonEncode(codec.encode(p109Snapshot(preview(b))).payload));
     expect(basis.stores.buildings, isEmpty);
@@ -146,8 +146,15 @@ void main() {
     expect(session.current.stores, same(before.stores));
     expect(
         session.current.engineeringMetadata.generationProvenanceRegistry
-            .sameAs(before.engineeringMetadata.generationProvenanceRegistry),
+            .copyWith(compositions: {}).sameAs(before
+                .engineeringMetadata.generationProvenanceRegistry
+                .copyWith(compositions: {})),
         isTrue);
+    final parent = session.current.engineeringMetadata
+        .generationProvenanceRegistry.compositions.values.single;
+    expect(
+        parent.entities.values.singleWhere((e) => e.id == entry.key).overrides,
+        {'placement'});
     final space = session.current.stores.spaces.values.firstWhere((s) =>
         session.current.stores.levels[s.levelId]!.buildingId == entry.key);
     final projection = ProjectSiteLayoutProjection(session.current);

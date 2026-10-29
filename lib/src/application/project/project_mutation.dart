@@ -5,6 +5,7 @@ import '../../domain/boundary_topology.dart';
 import '../../domain/generation_provenance.dart';
 import '../../domain/level_apartment_composition.dart';
 import '../../domain/project_aggregate.dart';
+import '../../domain/composition_generation_provenance.dart';
 import '../../domain/project_entity_stores_copy.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/project_orientation.dart';
@@ -404,6 +405,15 @@ abstract final class CandidateGraphValidator {
     if (issues.isNotEmpty) {
       throw ProjectCandidateValidationException(issues);
     }
+    if (state.engineeringMetadata.generationProvenanceRegistry.compositions
+        .isNotEmpty) {
+      CompositionProvenanceIntegrity.validate(ProjectAggregateRoot(
+          id: current.id,
+          siteId: current.siteId,
+          version: current.version,
+          stores: state.stores,
+          engineeringMetadata: state.engineeringMetadata));
+    }
     state.engineeringMetadata.boundaryHostedObjectRegistry.validateAgainst(
       state.stores.boundaries,
     );
@@ -729,12 +739,27 @@ final class ProjectMutationSession {
     final beforeRegistry =
         before.engineeringMetadata.generationProvenanceRegistry;
     if (beforeRegistry.entities.isEmpty &&
-        !beforeRegistry.hasTypicalFloorLineage) {
+        !beforeRegistry.hasTypicalFloorLineage &&
+        beforeRegistry.compositions.isEmpty) {
       return candidateState;
     }
 
     var registry =
         candidateState.engineeringMetadata.generationProvenanceRegistry;
+    for (final e in beforeRegistry.compositions.entries) {
+      final next = registry.compositions[e.key];
+      final proposed = ProjectAggregateRoot(
+          id: before.id,
+          siteId: before.siteId,
+          version: before.version,
+          stores: candidateState.stores,
+          engineeringMetadata: candidateState.engineeringMetadata);
+      if (next == null ||
+          (!e.value.sameAs(next) &&
+              !e.value.reconcile(proposed).sameAs(next))) {
+        throw StateError('p10.provenance.immutable-evidence');
+      }
+    }
     for (final entry in beforeRegistry.typicalFloorDefinitions.entries) {
       final next = registry.typicalFloorDefinitions[entry.key];
       if (next != null && !entry.value.sameAs(next)) {
@@ -805,6 +830,21 @@ final class ProjectMutationSession {
             entry.key: entry.value,
       },
     );
+    if (registry.compositions.isNotEmpty) {
+      final proposed = ProjectAggregateRoot(
+          id: before.id,
+          siteId: before.siteId,
+          version: before.version,
+          stores: candidateState.stores,
+          engineeringMetadata: candidateState.engineeringMetadata
+              .withGenerationProvenanceRegistry(registry));
+      registry = registry.copyWith(compositions: {
+        for (final e in registry.compositions.entries)
+          e.key: beforeRegistry.compositions.containsKey(e.key)
+              ? e.value.reconcile(proposed)
+              : e.value
+      });
+    }
     if (registry.sameAs(
       candidateState.engineeringMetadata.generationProvenanceRegistry,
     )) {
@@ -837,6 +877,12 @@ final class ProjectMutationSession {
   }
 
   void _validateProvenance(ProjectId projectId, ProjectMutableState state) {
+    CompositionProvenanceIntegrity.validate(ProjectAggregateRoot(
+        id: projectId,
+        siteId: _current.siteId,
+        version: _current.version,
+        stores: state.stores,
+        engineeringMetadata: state.engineeringMetadata));
     LevelApartmentCompositionIntegrity.validateOrThrow(
         registry: state.engineeringMetadata.generationProvenanceRegistry,
         projectId: projectId,

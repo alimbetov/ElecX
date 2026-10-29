@@ -1,3 +1,4 @@
+import 'package:elecx/src/serialization/project/composition_provenance_aware_canonical_project_document_codec.dart';
 import 'dart:math';
 import 'dart:io';
 
@@ -17,7 +18,6 @@ import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_orientation.dart';
 import 'package:elecx/src/domain/vertical_core.dart';
-import 'package:elecx/src/serialization/project/common_core_aware_canonical_project_document_codec.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -145,7 +145,7 @@ void main() {
       expect(session.current.stores.verticalCores.keys.toSet(), coreIds);
     });
 
-    test('schema v16 save reopen preserves the exact cottage canonical graph',
+    test('schema v19 save reopen preserves the exact cottage canonical graph',
         () {
       final fixture = _P107Fixture();
       final session = ProjectMutationSession(fixture.project);
@@ -156,7 +156,7 @@ void main() {
       port.commitPreview(port.preview(fixture.command(session.current)));
 
       final before = session.current;
-      const codec = CommonCoreAwareCanonicalProjectDocumentCodec();
+      const codec = CompositionProvenanceAwareCanonicalProjectDocumentCodec();
       final timestamp = DateTime.utc(2026, 10, 29, 12);
       final document = codec.encode(
         ProjectSnapshot(
@@ -168,7 +168,7 @@ void main() {
       );
       expect(
         document.schemaVersion,
-        CommonCoreAwareCanonicalProjectDocumentCodec.schemaVersion,
+        CompositionProvenanceAwareCanonicalProjectDocumentCodec.schemaVersion,
       );
       final reopened = codec.decode(document).aggregate;
 
@@ -236,7 +236,8 @@ void main() {
       addTearDown(() => directory.delete(recursive: true));
       final repository = JsonProjectRepository(
           rootDirectory: directory,
-          codec: const CommonCoreAwareCanonicalProjectDocumentCodec());
+          codec:
+              const CompositionProvenanceAwareCanonicalProjectDocumentCodec());
       final timestamp = DateTime.utc(2026, 10, 29, 12);
       final owner = CanonicalProjectPersistenceOwner(
           repository: repository,

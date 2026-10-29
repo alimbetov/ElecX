@@ -1,3 +1,5 @@
+import '../../composition_provenance_command.dart';
+import 'p10_generation_evidence.dart';
 import 'dart:convert';
 
 import '../../../../domain/boundary_topology.dart';
@@ -258,7 +260,13 @@ final class SiteCompositionGenerator {
   }
 }
 
-final class SiteCompositionCommand implements ReservedProjectCommand {
+final class SiteCompositionCommand implements CompositionProvenanceSource {
+  @override
+  CompositionGenerationEvidence get generationEvidence => p10GenerationEvidence(
+      'p10.site.v1',
+      plan.semanticFingerprint,
+      {for (final b in plan.buildings) b.slot.key: b.slot.parameters});
+
   const SiteCompositionCommand._(this.plan);
   factory SiteCompositionCommand.create(
           {required ProjectAggregateRoot project,
