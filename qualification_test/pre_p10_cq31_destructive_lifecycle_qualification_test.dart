@@ -61,7 +61,8 @@ void main() {
       final preview = wizard.preview!;
       expect(preview.hasChanges, isTrue);
       expect(preview.observedVersion, initialVersion);
-      expect(preview.normalizedIntentKey, contains(selected.candidateFingerprint));
+      expect(
+          preview.normalizedIntentKey, contains(selected.candidateFingerprint));
       expect(
         const WizardDiffProjector()
             .project(before: mutations.current, preview: preview)
@@ -79,7 +80,8 @@ void main() {
           mutations.current.engineeringMetadata.generationProvenanceRegistry;
       expect(appliedRegistry.manifests, hasLength(1));
       final manifest = appliedRegistry.manifests.values.single;
-      final generatedZone = mutations.current.stores.zones[manifest.apartmentZoneId];
+      final generatedZone =
+          mutations.current.stores.zones[manifest.apartmentZoneId];
       expect(generatedZone, isNotNull);
       expect(generatedZone!.spaceIds, isNotEmpty);
 
@@ -137,7 +139,8 @@ void main() {
       expect(reopenedMutations.current.stores.spaces[spaceId]!.usage,
           SpaceUsage.office);
       expect(
-        reopenedMutations.current.engineeringMetadata.generationProvenanceRegistry
+        reopenedMutations
+            .current.engineeringMetadata.generationProvenanceRegistry
             .provenanceFor(spaceId)!
             .overriddenProperties,
         contains(GenerationPropertyKey.spaceUsage),
@@ -148,7 +151,8 @@ void main() {
       // Delete one generated semantic adjacency through the production command.
       // ProjectMutationSession must move its generation key into the manifest
       // tombstone set in the same canonical commit.
-      final preDeleteFingerprint = _semanticFingerprint(reopenedMutations.current);
+      final preDeleteFingerprint =
+          _semanticFingerprint(reopenedMutations.current);
       final versionBeforeDelete = reopenedMutations.current.version;
       final deletion = reopenedMutations.commit(
         ProjectMutationRequest(
@@ -161,7 +165,8 @@ void main() {
         reopenedMutations.current.version.value,
         versionBeforeDelete.value + 1,
       );
-      expect(reopenedMutations.current.stores.adjacencies, isNot(contains(adjacencyId)));
+      expect(reopenedMutations.current.stores.adjacencies,
+          isNot(contains(adjacencyId)));
       final deletedRegistry = reopenedMutations
           .current.engineeringMetadata.generationProvenanceRegistry;
       expect(deletedRegistry.provenanceFor(adjacencyId), isNull);
@@ -189,8 +194,10 @@ void main() {
         reopenedMutations.current.version.value,
         versionBeforeUndo.value + 1,
       );
-      expect(_semanticFingerprint(reopenedMutations.current), preDeleteFingerprint);
-      expect(reopenedMutations.current.stores.adjacencies, contains(adjacencyId));
+      expect(_semanticFingerprint(reopenedMutations.current),
+          preDeleteFingerprint);
+      expect(
+          reopenedMutations.current.stores.adjacencies, contains(adjacencyId));
       final undoRegistry = reopenedMutations
           .current.engineeringMetadata.generationProvenanceRegistry;
       expect(undoRegistry.provenanceFor(adjacencyId), isNotNull);
@@ -386,9 +393,10 @@ String _semanticFingerprint(ProjectAggregateRoot project) {
           'generationId': manifest.generationId.value,
           'candidate': manifest.selectedCandidateFingerprint,
           'generatedEntityIds':
-              (manifest.generatedEntityIds.map((id) => id.value).toList()..sort()),
-          'removedGenerationKeys':
-              (manifest.removedGenerationKeys.toList()..sort()),
+              (manifest.generatedEntityIds.map((id) => id.value).toList()
+                ..sort()),
+          'removedGenerationKeys': (manifest.removedGenerationKeys.toList()
+            ..sort()),
         },
     ],
     'entities': [
@@ -404,10 +412,10 @@ String _semanticFingerprint(ProjectAggregateRoot project) {
         },
     ],
     'proposalLevels': (project
-            .engineeringMetadata.appliedEngineeringProposalRegistry.byLevel.keys
-            .map((id) => id.value)
-            .toList()
-          ..sort()),
+        .engineeringMetadata.appliedEngineeringProposalRegistry.byLevel.keys
+        .map((id) => id.value)
+        .toList()
+      ..sort()),
   });
 }
 
