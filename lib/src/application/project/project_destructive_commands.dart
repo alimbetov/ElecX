@@ -11,6 +11,10 @@ import 'project_mutation.dart';
 /// adjacencies and overlay classifications must be edited explicitly first so
 /// one destructive action cannot silently erase engineering meaning.
 ///
+/// P10 vertical-core host bindings are also canonical semantic/topology
+/// dependencies. A host Space must be detached from its core explicitly before
+/// the Space can be removed.
+///
 /// P7A boundary topology is owned state of the space itself, but any canonical
 /// hosted object/profile/construction attached to those edges is an explicit
 /// engineering dependency and must be removed or migrated before the owning
@@ -38,6 +42,8 @@ final class RemoveSpaceCommand implements ProjectCommand {
       ...?current.index.openingsBySpaceId[space.id],
       ...?current.index.adjacenciesBySpaceId[space.id],
       ...?current.index.overlaysBySpaceId[space.id],
+      for (final core in current.stores.verticalCores.values)
+        if (core.hostSpaceIdsByLevel.containsValue(space.id)) core.id,
     };
     if (semanticBlockers.isNotEmpty) {
       throw ProjectAuthoringException(
@@ -46,8 +52,8 @@ final class RemoveSpaceCommand implements ProjectCommand {
         relatedEntityId: semanticBlockers.first,
         blockingEntityIds: Set<EntityId>.unmodifiable(semanticBlockers),
         message: 'Space ${space.id} cannot be removed while '
-            '${semanticBlockers.length} P6 semantic dependency/dependencies '
-            'still reference it.',
+            '${semanticBlockers.length} canonical semantic/topology '
+            'dependency/dependencies still reference it.',
       );
     }
 
