@@ -7,8 +7,8 @@ import '../../application/project/wizard/apartment/apartment_engineering_pipelin
 import '../../application/project/wizard/apartment/apartment_engineering_pipeline_runtime_registry.dart';
 import '../../application/project/wizard/project_wizard_mutation_port.dart';
 import '../../domain/project_identity.dart';
+import 'canonical_editor_production_materializer.dart';
 import 'canonical_editor_runtime_cutover.dart';
-import 'canonical_editor_structural_materializer.dart';
 import 'canonical_editor_wizard_runtime_registry.dart';
 import 'canonical_editor_workspace_adapter.dart';
 import 'canonical_project_navigator.dart';
@@ -76,7 +76,7 @@ final class CanonicalEditorResolvedRuntime {
   }) : materializer = materializer ??
             (persistenceOwnerProjectId == null
                 ? const ExistingBindingCanonicalEditorMaterializer()
-                : const CanonicalEditorStructuralMaterializer());
+                : const CanonicalEditorProductionMaterializer());
 
   final ProjectStructureAuthoringSession session;
 
