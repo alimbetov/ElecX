@@ -1,8 +1,6 @@
 import 'dart:collection';
 
 import 'project_identity.dart';
-import 'engineering_circuit_topology.dart';
-import 'engineering_supply_topology.dart';
 
 enum ImpactEntityKind {
   component,

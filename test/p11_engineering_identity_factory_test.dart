@@ -4,7 +4,8 @@ import 'package:elecx/src/domain/project_identity.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('P11.8 production id factory allocates all P11 aggregate identities', () {
+  test('P11.8 production id factory allocates all P11 aggregate identities',
+      () {
     final EntityIdFactory factory = SecureRandomEntityIdFactory(
       random: Random(11),
     );
