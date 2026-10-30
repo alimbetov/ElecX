@@ -277,11 +277,14 @@ Set<EngineeringConnectionId> _reachableSupplyConnections(
   while (queue.isNotEmpty) {
     final current = queue.removeFirst();
     for (final edge in graph.outgoingConnections(current)) {
-      if (current == start && edge.fromPortId != source.endpoint.portId)
+      if (current == start && edge.fromPortId != source.endpoint.portId) {
         continue;
+      }
       if (edge.systemKey != source.systemKey ||
           edge.systemClass != source.systemClass ||
-          (medium != null && edge.media != medium)) continue;
+          (medium != null && edge.media != medium)) {
+        continue;
+      }
       reachable.add(edge.id);
       if (visited.add(edge.toComponentId)) queue.add(edge.toComponentId);
     }
