@@ -5,8 +5,12 @@ import 'boundary_construction_registry.dart';
 import 'boundary_edge_identity_registry.dart';
 import 'boundary_host_registry.dart';
 import 'boundary_wall_profile_registry.dart';
+import 'engineering_project_state.dart';
 import 'generation_provenance.dart';
 import 'project_site_layout.dart';
+
+final EngineeringProjectState _emptyEngineeringProjectState =
+    EngineeringProjectState.empty();
 
 /// Canonical engineering orientation for ElecX project-space coordinates.
 ///
@@ -109,6 +113,10 @@ final class ProjectEngineeringNorth {
 /// [appliedEngineeringProposalRegistry] stores the exact frozen P9 engineering
 /// proposal committed by Apply. It is deliberately independent from wizard
 /// application classes while retaining canonical D8 output serializations.
+///
+/// [engineeringState] is the single project-owned P11 logical engineering
+/// aggregate. Topology, supply and impact objects are derived views and must not
+/// be persisted as parallel canonical stores.
 final class ProjectEngineeringMetadata {
   const ProjectEngineeringMetadata({
     this.projectNorth,
@@ -125,7 +133,8 @@ final class ProjectEngineeringMetadata {
         const GenerationProvenanceRegistry.empty(),
     this.appliedEngineeringProposalRegistry =
         const AppliedEngineeringProposalRegistry.empty(),
-  });
+    EngineeringProjectState? engineeringState,
+  }) : _engineeringState = engineeringState;
 
   final ProjectEngineeringNorth? projectNorth;
   final ProjectSiteLayout siteLayout;
@@ -135,6 +144,10 @@ final class ProjectEngineeringMetadata {
   final BoundaryConstructionRegistry boundaryConstructionRegistry;
   final GenerationProvenanceRegistry generationProvenanceRegistry;
   final AppliedEngineeringProposalRegistry appliedEngineeringProposalRegistry;
+  final EngineeringProjectState? _engineeringState;
+
+  EngineeringProjectState get engineeringState =>
+      _engineeringState ?? _emptyEngineeringProjectState;
 
   ProjectEngineeringMetadata copyWith({
     ProjectEngineeringNorth? projectNorth,
@@ -146,6 +159,7 @@ final class ProjectEngineeringMetadata {
     BoundaryConstructionRegistry? boundaryConstructionRegistry,
     GenerationProvenanceRegistry? generationProvenanceRegistry,
     AppliedEngineeringProposalRegistry? appliedEngineeringProposalRegistry,
+    EngineeringProjectState? engineeringState,
   }) {
     if (clearProjectNorth && projectNorth != null) {
       throw ArgumentError(
@@ -168,6 +182,7 @@ final class ProjectEngineeringMetadata {
           generationProvenanceRegistry ?? this.generationProvenanceRegistry,
       appliedEngineeringProposalRegistry: appliedEngineeringProposalRegistry ??
           this.appliedEngineeringProposalRegistry,
+      engineeringState: engineeringState ?? _engineeringState,
     );
   }
 
@@ -207,6 +222,10 @@ final class ProjectEngineeringMetadata {
   ) =>
       copyWith(appliedEngineeringProposalRegistry: registry);
 
+  ProjectEngineeringMetadata withEngineeringState(
+          EngineeringProjectState state) =>
+      copyWith(engineeringState: state);
+
   @override
   bool operator ==(Object other) =>
       other is ProjectEngineeringMetadata &&
@@ -218,12 +237,16 @@ final class ProjectEngineeringMetadata {
       other.boundaryConstructionRegistry.sameAs(boundaryConstructionRegistry) &&
       other.generationProvenanceRegistry.sameAs(generationProvenanceRegistry) &&
       other.appliedEngineeringProposalRegistry
-          .sameAs(appliedEngineeringProposalRegistry);
+          .sameAs(appliedEngineeringProposalRegistry) &&
+      other.engineeringState.sameAs(engineeringState);
 
   @override
   int get hashCode {
-    var result =
-        Object.hash(projectNorth, jsonEncode(siteLayout.toCanonicalJson()));
+    var result = Object.hash(
+      projectNorth,
+      jsonEncode(siteLayout.toCanonicalJson()),
+      engineeringState.fingerprint,
+    );
     final entries = boundaryEdgeIdentityRegistry.owners.entries.toList()
       ..sort((a, b) => a.key.value.compareTo(b.key.value));
     for (final entry in entries) {

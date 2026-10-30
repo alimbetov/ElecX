@@ -147,6 +147,10 @@ final class DriftComponentCatalogRepository
 
   @override
   Future<void> replaceAll(Iterable<ComponentCatalogEntryV2> entries) async {
+    final snapshot = List<ComponentCatalogEntryV2>.of(entries);
+    for (final entry in snapshot) {
+      _requireLegacyPorts(entry);
+    }
     await ensureSchema();
     await _db.transaction(() async {
       await _db.customStatement('DELETE FROM component_port_connection_type');
@@ -157,13 +161,26 @@ final class DriftComponentCatalogRepository
       await _db.customStatement('DELETE FROM component_type_allowed_surface');
       await _db.customStatement('DELETE FROM component_type');
 
-      for (final entry in entries) {
+      for (final entry in snapshot) {
         await _insertEntry(entry);
       }
     });
   }
 
+  // The current catalog schema cannot round-trip P11 port evidence. Until the
+  // P11.9 migration, reject it before touching storage rather than losing it.
+  static void _requireLegacyPorts(ComponentCatalogEntryV2 entry) {
+    for (final port in entry.ports) {
+      if (port.media.isNotEmpty || port.capabilities.isNotEmpty) {
+        throw UnsupportedError(
+          'Catalog ${entry.id} port ${port.id} requires P11 media/capability storage.',
+        );
+      }
+    }
+  }
+
   Future<void> _insertEntry(ComponentCatalogEntryV2 entry) async {
+    _requireLegacyPorts(entry);
     final env = entry.environment;
     final load = entry.loadDefaults;
     await _db.customStatement(
@@ -212,6 +229,11 @@ final class DriftComponentCatalogRepository
       );
     }
     for (final port in entry.ports) {
+      if (port.media.isNotEmpty || port.capabilities.isNotEmpty) {
+        throw UnsupportedError(
+          'Catalog port changed to unsupported P11 evidence.',
+        );
+      }
       final portRowId = '${entry.id}:${port.id}';
       await _db.customStatement(
         'INSERT INTO component_type_port (id, component_type_id, code, direction) VALUES (?, ?, ?, ?)',

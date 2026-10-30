@@ -216,10 +216,21 @@ final class _GuardedEntityIdFactory implements EntityIdFactory {
       _delegate.newEngineeringConnectionId();
 
   @override
+  EngineeringGroupId newEngineeringGroupId() =>
+      _delegate.newEngineeringGroupId();
+
+  @override
+  EngineeringSupplySourceId newEngineeringSupplySourceId() =>
+      _delegate.newEngineeringSupplySourceId();
+
+  @override
   GenerationId newGenerationId() => _delegate.newGenerationId();
 
   @override
   LevelId newLevelId() => _delegate.newLevelId();
+
+  @override
+  LoopId newLoopId() => _delegate.newLoopId();
 
   @override
   OpeningId newOpeningId() => _delegate.newOpeningId();

@@ -160,8 +160,8 @@ final class ApartmentCanonicalProjectionService {
             .toList();
         final ports = <EngineeringPortSpec>[
           for (final relation in incidentRelations)
-            EngineeringPortSpec(
-              id: _portId(draft, relation, space.semanticKey).value,
+            EngineeringPortSpec.identified(
+              portId: _portId(draft, relation, space.semanticKey),
               direction: EngineeringPortDirection.bidirectional,
               allowedConnections: const {
                 EngineeringConnectionType.custom,
