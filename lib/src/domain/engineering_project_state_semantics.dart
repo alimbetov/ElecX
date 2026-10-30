@@ -73,9 +73,8 @@ final class EngineeringProjectStateDiff {
         beforeJson['compatibilityProfile'],
         afterJson['compatibilityProfile'],
       ),
-      classificationVocabularyChanged:
-          before.classificationVocabularyVersion !=
-              after.classificationVocabularyVersion,
+      classificationVocabularyChanged: before.classificationVocabularyVersion !=
+          after.classificationVocabularyVersion,
     );
   }
 }
@@ -102,10 +101,14 @@ EngineeringSemanticEntityDiff _entities(
 ) {
   final beforeById = _byId(before[collectionKey], idKey);
   final afterById = _byId(after[collectionKey], idKey);
-  final added = afterById.keys.where((id) => !beforeById.containsKey(id)).toList()
+  final added = afterById.keys
+      .where((id) => !beforeById.containsKey(id))
+      .toList()
     ..sort();
-  final removed =
-      beforeById.keys.where((id) => !afterById.containsKey(id)).toList()..sort();
+  final removed = beforeById.keys
+      .where((id) => !afterById.containsKey(id))
+      .toList()
+    ..sort();
   final changed = beforeById.keys
       .where(afterById.containsKey)
       .where((id) => !_sameCanonical(beforeById[id], afterById[id]))

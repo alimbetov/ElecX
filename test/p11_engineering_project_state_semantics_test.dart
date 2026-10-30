@@ -136,7 +136,8 @@ void main() {
     expect(diff.classificationVocabularyChanged, isTrue);
   });
 
-  test('P11.8 dependency relation semantics participate in fingerprint and diff',
+  test(
+      'P11.8 dependency relation semantics participate in fingerprint and diff',
       () {
     const semanticTypeId = 'vendor.interlocks';
     final relationKey = ImpactDependencyRelationKey('vendor.interlocks');
