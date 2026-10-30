@@ -5,8 +5,6 @@ import '../../domain/geometry.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/project_model.dart';
-import '../../domain/project_space_semantics.dart';
-import '../../domain/site_outdoor_model.dart';
 import 'canonical_editor_runtime_cutover.dart';
 import 'canonical_editor_structural_materializer.dart';
 import 'canonical_editor_workspace_adapter.dart';
@@ -204,7 +202,8 @@ final class CanonicalEditorProductionMaterializer
         status: CanonicalEditorMaterializationStatus
             .blockedMissingRuntimeRepresentation,
         entityId: levelId,
-        message: 'Active editor Level diverged from the canonical Level binding '
+        message:
+            'Active editor Level diverged from the canonical Level binding '
             'before standalone Room materialization.',
       );
     }
