@@ -152,7 +152,8 @@ final class EngineeringImpactDependencyProjector {
     final supply = supplyTopology;
     if (supply != null) {
       for (final source in supply.sources) {
-        final sourceRef = ImpactEntityRef.component(source.endpoint.componentId);
+        final sourceRef =
+            ImpactEntityRef.component(source.endpoint.componentId);
         for (final circuit in supply.circuitsForSource(source.id)) {
           dependencies.add(
             ImpactDependency.typed(
