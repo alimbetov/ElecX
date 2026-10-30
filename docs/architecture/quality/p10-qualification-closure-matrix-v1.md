@@ -104,6 +104,11 @@ and a screenshot, within bounded diagnostic steps. A probe failure remains a
 failed gate; diagnostics or retries never substitute for a semantic artifact.
 Python qualification tests verify selection and failed/timed-out subprocesses.
 
+Desktop native setup passes Flutter 3.47.7 explicitly to the SDK action, matching
+the existing pubspec/SDK guard. Windows therefore needs no Chocolatey/yq lookup
+to parse pubspec. The inherited P9 desktop/parity probes use the same pin. An
+unavailable package feed cannot replace or bypass an actual native result.
+
 ## Hard gates and release boundary
 
 | Hard gate | Evidence |

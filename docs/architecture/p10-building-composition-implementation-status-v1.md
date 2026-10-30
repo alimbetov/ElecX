@@ -1,6 +1,6 @@
 # P10 implementation status
 
-Date: 2026-10-29
+Date: 2026-10-30
 
 Branch: `feat/p10-building-residential-composition`
 
@@ -21,6 +21,8 @@ Implementation contract: [P10 specification](p10-building-residential-compositio
 | P10.9 — COMPLETE | Mixed cottage/tower Site composition, independent IDs, explicit Building-local → Site transforms, collision checks, shared typed anchors and v17 persistence | Four `test/p109_*_test.dart` suites |
 | P10.10 — COMPLETE | Ten typed service/infrastructure anchor purposes, explicit Site/Space/wall hosts, live P7 physical binding, atomic mutation and v18 persistence | Four `test/p1010_*_test.dart` suites |
 | P10.11 — COMPLETE | Site-level production Wizard, immutable composition candidate, canonical Preview/Diff, architecture plus explicit anchors in one reserved Apply, shared owner and strengthened Q13–Q16 | Four `test/p1011_*_test.dart` suites plus P8 bootstrap regression |
+| P10.12 — COMPLETE | Parent → floor → P9 evidence, field overrides, deletion tombstones, local reconciliation and additive v19 persistence | `test/p1012*_test.dart` suites |
+| P10.13 — IMPLEMENTED | Q01–Q20 traceability, large Golden Journeys, recovery, seven native semantic artifacts and exact-SHA A–H acceptance | `qualification_test/p10_p1013*_test.dart`, `.github/workflows/p10-final-acceptance.yml`; acceptance remains bound to each run's SHA |
 
 P10.1–P10.3 passed repository-wide GitHub verification/quality on
 `184bd8297489a5379257b72a2beb15b69c7b08ae`.
@@ -479,6 +481,12 @@ Apple qualification now has separate boot/Drive timeouts, process-group cleanup,
 deterministic selection with recorded runtime/model, retained verbose logs and
 bounded failure diagnostics. These remediation changes require their own green
 exact-SHA acceptance; the older green SHA cannot qualify newer source.
+
+Windows setup also uses the existing exact Flutter 3.47.7 pin directly in native
+P10 and inherited P9 desktop/parity jobs. This removes the YAML-parser install
+dependency that failed with Chocolatey HTTP 503/504 before compilation. SDK
+version guards and all build, semantic equality and final acceptance gates remain
+mandatory.
 
 Implementation exists for P10.1–P10.13. Final acceptance is determined by the
 P10-H artifact and repository `quality`/`verification` on the same exact SHA;
