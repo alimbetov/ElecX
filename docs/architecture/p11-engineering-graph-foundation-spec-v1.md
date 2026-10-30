@@ -18,12 +18,14 @@ This foundation introduces no additional project store or persistence boundary.
 | Component-local port | `PortId` |
 | Complete endpoint | `EngineeringPortRef(ComponentId, PortId)` |
 | Logical edge | `EngineeringConnectionId` |
+| Logical circuit | `CircuitId` |
 | Optional physical route reference | Existing `RouteId` |
 
 Existing nonblank opaque values are retained verbatim. A catalog key such as
 `link` may occur on multiple components. Its owner is always part of endpoint
 equality; concatenation, delimiters, display text, coordinates and list indexes
-are not identity formats. New allocation uses the existing `EntityIdFactory`.
+are not identity formats. New allocation uses the existing application/domain
+identity boundary.
 
 `EngineeringPortSpec.identified` accepts `PortId`. The string constructor and
 `id` getter preserve the existing catalog/serialization interface. Blank port
@@ -50,7 +52,7 @@ graph/identity suites, P9 projection/fingerprint regressions and full repository
 `quality`/`verification` are green on exact implementation SHA
 `7d6e39c1da0a45c63d5533fc53317b744191fd09` (Flutter run `40997724850`).
 
-## P11.2 implementation scope
+## P11.2 delivered scope
 
 P11.2 separates the extensible medium/capability contract from the existing
 closed `EngineeringConnectionType` enum without breaking P9/P10 callers.
@@ -75,16 +77,48 @@ closed `EngineeringConnectionType` enum without breaking P9/P10 callers.
 - Logical medium remains independent from optional `RouteId`; P11.2 does not
   introduce physical routing ownership.
 
-Qualification target: `test/p11_media_capability_foundation_test.dart`, P11.1
+Qualification: `test/p11_media_capability_foundation_test.dart`, P11.1
 regressions, existing graph/P9/P10 suites and full repository
-`quality`/`verification` on the P11.2 exact SHA. Implementation is not accepted
-until those checks are green.
+`quality`/`verification` are green on exact SHA
+`11c74296ce4f013a6887b84ab1a1bad27df70275` (Flutter run `41000369674`).
+
+## P11.3 implementation scope
+
+P11.3 introduces canonical logical circuit, loop and group abstractions without
+replacing the existing graph, cable registry or electrical synthesis models.
+
+- `EngineeringCircuit` uses stable `CircuitId` and owns an immutable set of
+  canonical `EngineeringConnectionId` members. A circuit may branch; ordering is
+  therefore not part of circuit identity or membership.
+- `EngineeringLoop` uses stable `LoopId` and owns an ordered immutable list of
+  connection ids. Loop validation requires directed continuity and closure.
+- `EngineeringGroup` uses stable `EngineeringGroupId` plus an extensible opaque
+  `semanticTypeId`. A group can reference components, connections, circuits and
+  loops and may intentionally span disciplines.
+- `CanonicalEngineeringTopology` is an immutable validated/indexed view layered
+  over the authoritative `CanonicalEngineeringGraph`; it is not a second project
+  store and owns no persistence or mutation lifecycle.
+- Connections cannot be members of two different circuits in one topology.
+  Circuit system class and optional explicit medium must match every member edge.
+- Existing per-edge `circuitId` evidence is respected: conflicting circuit
+  membership fails closed, while a null legacy value remains compatible with
+  explicit P11.3 circuit membership until P11.8 migration/persistence work.
+- A loop may optionally bind to one circuit. When bound, every loop edge must be
+  a member of that circuit.
+- Group references are referentially validated against the graph/topology and
+  dangling references fail closed.
+- P11.3 does not perform load calculation, cable sizing, protection selection,
+  routing, source/supply inference or project persistence.
+
+Qualification target: `test/p11_circuit_loop_group_foundation_test.dart`, P11.1
+and P11.2 regressions, existing electrical/cable/P9/P10 suites and full
+repository `quality`/`verification` on the P11.3 exact SHA. Implementation is not
+accepted until those checks are green.
 
 ## Remaining P11 packages
 
 | Package | Planned result |
 | --- | --- |
-| P11.3 | Circuit/loop/group abstractions |
 | P11.4 | Generalized graph invariants and compatibility validation |
 | P11.5 | Cross-discipline extension contract |
 | P11.6 | Multiple source/supply topology |
@@ -93,7 +127,7 @@ until those checks are green.
 | P11.9 | Equipment Catalog adapters |
 | P11.10 | Qualification corpus and full hard-gate closure |
 
-The P10 v19 project document schema remains unchanged in P11.1/P11.2. Graph
+The P10 v19 project document schema remains unchanged in P11.1–P11.3. Graph
 persistence and production mutation integration remain explicit P11.8 work. This
 foundation does not constitute acceptance of all P11 and does not generate P12
 engineering content.
