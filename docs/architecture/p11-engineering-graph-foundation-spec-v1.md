@@ -21,6 +21,8 @@ This foundation introduces no additional project store or persistence boundary.
 | Logical circuit | `CircuitId` |
 | Logical loop | `LoopId` |
 | Semantic group | `EngineeringGroupId` |
+| Logical supply source | `EngineeringSupplySourceId` |
+| Optional architectural supply provenance | Existing `ServiceEntryId` |
 | Optional physical route reference | Existing `RouteId` |
 
 Existing nonblank opaque values are retained verbatim. Display text, coordinates,
@@ -81,7 +83,7 @@ Qualification: `test/p11_graph_invariant_validation_test.dart`, P11.1–P11.3
 regressions and full repository gates are green on exact SHA
 `d897df2433cda33da9645f484dd8971ea3030276` (Flutter run `41002831586`).
 
-## P11.5 implementation scope
+## P11.5 delivered scope
 
 P11.5 makes discipline and system classification extensible while preserving the
 legacy enum families required by existing P9/P10 and catalog APIs.
@@ -107,22 +109,50 @@ legacy enum families required by existing P9/P10 and catalog APIs.
 - Legacy graph adapters preserve their prior API and default to built-in keys.
 - No project document schema change is introduced; persistence remains P11.8.
 
-Qualification target: `test/p11_cross_discipline_extension_test.dart`, existing
-P11.1–P11.4 suites, graph/circuit regressions and full repository
-`quality`/`verification` on the exact P11.5 SHA. P11.5 is not accepted until all
-of those checks are green.
+Qualification: `test/p11_cross_discipline_extension_test.dart`, P11.1–P11.4
+regressions and full repository gates are green on exact SHA
+`279edbb29ce7ffd11053f45e0263bea1e1a28c45` (Flutter run `41004212214`).
+
+## P11.6 implementation scope
+
+P11.6 adds multiple-source topology without introducing a second graph owner or
+premature electrical calculations.
+
+- `EngineeringSupplySourceId` is a stable opaque identity for a logical source.
+- `EngineeringSupplyRoleKey` is extensible; built-in primary/alternate/emergency/
+  storage roles are semantic metadata, not automatic transfer policy.
+- `EngineeringSupplySource` binds a source to an existing canonical
+  `EngineeringPortRef`, legacy/extensible system classification and optional
+  explicit medium.
+- Optional `ServiceEntryId` links a source to the existing P10 architectural
+  service-anchor identity without taking ownership of that anchor.
+- `EngineeringCircuitSupply` supports one or more candidate sources per circuit.
+- `CanonicalEngineeringSupplyTopology` is an immutable validated/indexed view over
+  `CanonicalEngineeringTopology`, never a new project store.
+- Duplicate/dangling sources, circuits and service-entry links fail closed.
+- A source endpoint must be output/bidirectional, have a compatible outgoing edge
+  and match the source system/media evidence.
+- Every assigned source must match the target circuit system and be able to reach
+  every circuit edge through directed connections of the same extensible system.
+- One source may serve multiple circuits and one circuit may have multiple sources.
+- Source selection, transfer switching, load flow, protection, cable sizing and
+  equipment sizing remain outside P11.6 and are not inferred by this topology.
+- No project document schema change is introduced; persistence remains P11.8.
+
+Qualification target: `test/p11_multiple_supply_topology_test.dart`, all prior P11
+suites and full repository `quality`/`verification` on the exact P11.6 SHA. P11.6
+is not accepted until all of those checks are green.
 
 ## Remaining P11 packages
 
 | Package | Planned result |
 | --- | --- |
-| P11.6 | Multiple source/supply topology |
 | P11.7 | Typed dependency relations for P15 impact traversal |
 | P11.8 | Graph diff/fingerprint/persistence and shared-owner lifecycle |
 | P11.9 | Equipment Catalog adapters |
 | P11.10 | Qualification corpus and full hard-gate closure |
 
-The P10 v19 project document schema remains unchanged in P11.1–P11.5. Graph
+The P10 v19 project document schema remains unchanged in P11.1–P11.6. Graph
 persistence and production mutation integration remain explicit P11.8 work. This
 foundation does not constitute acceptance of all P11 and does not generate P12
 engineering content.
