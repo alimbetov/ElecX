@@ -165,8 +165,9 @@ final class CanonicalEngineeringSupplyTopology {
 
   List<EngineeringCircuit> circuitsForSource(EngineeringSupplySourceId id) =>
       List.unmodifiable(
-        (_circuitIdsBySource[id] ?? const <CircuitId>[])
-            .map((circuitId) => topology.circuit(circuitId)!),
+        (_circuitIdsBySource[id] ?? const <CircuitId>[]).map(
+          (circuitId) => topology.circuit(circuitId)!,
+        ),
       );
 
   void _validateSource(
@@ -201,10 +202,12 @@ final class CanonicalEngineeringSupplyTopology {
     final usableOutgoing = graph
         .outgoingConnections(source.endpoint.componentId)
         .where((edge) => edge.fromPortId == source.endpoint.portId)
-        .where((edge) => edge.systemKey == source.systemKey)
         .where(
-          (edge) => source.media == null || edge.media == source.media,
-        );
+          (edge) =>
+              edge.systemKey == source.systemKey &&
+              edge.systemClass == source.systemClass,
+        )
+        .where((edge) => source.media == null || edge.media == source.media);
     if (usableOutgoing.isEmpty) {
       throw ArgumentError(
         'Supply source ${source.id} endpoint has no compatible outgoing edge.',
@@ -239,43 +242,51 @@ final class CanonicalEngineeringSupplyTopology {
       );
     }
 
+    final reachableByMedia =
+        <EngineeringMedia?, Set<EngineeringConnectionId>>{};
     for (final connectionId in circuit.connectionIds) {
       final connection = topology.graph.connection(connectionId)!;
-      if (!_hasSystemPath(
-        topology.graph,
-        source.endpoint.componentId,
-        connection.fromComponentId,
-        source.systemKey,
-      )) {
+      final medium = source.media ?? circuit.media ?? connection.media;
+      final reachable = reachableByMedia.putIfAbsent(
+        medium,
+        () => _reachableSupplyConnections(topology.graph, source, medium),
+      );
+      if (!reachable.contains(connectionId)) {
         throw ArgumentError(
           'Supply source ${source.id} cannot reach circuit ${circuit.id} '
-          'connection $connectionId through system ${source.systemKey}.',
+          'connection $connectionId from endpoint ${source.endpoint} through '
+          'system ${source.systemKey} and medium $medium.',
         );
       }
     }
   }
 }
 
-bool _hasSystemPath(
+// Only the declared source port injects supply. Intermediate components retain
+// the existing logical through-component model; no physical transfer or load
+// flow is inferred. Explicit media cannot be crossed or replaced with null.
+Set<EngineeringConnectionId> _reachableSupplyConnections(
   CanonicalEngineeringGraph graph,
-  ComponentId start,
-  ComponentId target,
-  EngineeringSystemKey systemKey,
+  EngineeringSupplySource source,
+  EngineeringMedia? medium,
 ) {
-  if (start == target) return true;
+  final start = source.endpoint.componentId;
   final visited = <ComponentId>{start};
   final queue = ListQueue<ComponentId>()..add(start);
+  final reachable = <EngineeringConnectionId>{};
   while (queue.isNotEmpty) {
     final current = queue.removeFirst();
     for (final edge in graph.outgoingConnections(current)) {
-      if (edge.systemKey != systemKey) continue;
-      final next = edge.toComponentId;
-      if (!visited.add(next)) continue;
-      if (next == target) return true;
-      queue.add(next);
+      if (current == start && edge.fromPortId != source.endpoint.portId)
+        continue;
+      if (edge.systemKey != source.systemKey ||
+          edge.systemClass != source.systemClass ||
+          (medium != null && edge.media != medium)) continue;
+      reachable.add(edge.id);
+      if (visited.add(edge.toComponentId)) queue.add(edge.toComponentId);
     }
   }
-  return false;
+  return reachable;
 }
 
 Set<EngineeringSupplySourceId> _uniqueSourceIds(

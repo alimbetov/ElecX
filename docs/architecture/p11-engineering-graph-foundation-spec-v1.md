@@ -143,7 +143,7 @@ Qualification: `test/p11_multiple_supply_topology_test.dart`, prior P11 suites a
 full repository gates are green on exact SHA
 `4d1f9c74079bad73c22f7b734dd328ff23dc52d7` (Flutter run `41006313598`, #4814).
 
-## P11.7 implementation scope
+## P11.7 delivered scope
 
 P11.7 extends the existing `ImpactGraph` into the dependency traversal contract
 required by P15. It does not introduce a second impact engine or a persistence
@@ -173,10 +173,35 @@ boundary.
 - P11.7 defines impact semantics only. Diffing, persistence and lifecycle
   ownership remain P11.8; selective regeneration policy remains P15.
 
-Qualification target: `test/p11_dependency_relation_semantics_test.dart`, existing
-`impact_graph_test.dart`, all prior P11 suites and full repository
-`quality`/`verification` on the exact P11.7 SHA. P11.7 is not accepted until all
-of those checks are green.
+Initial qualification: `test/p11_dependency_relation_semantics_test.dart`,
+`impact_graph_test.dart`, prior P11 suites and full repository gates are green on
+exact SHA `626a9a07ee4976f9026da7a6a206e16819203c6d` (Flutter run
+`41011272078`, #4820). This records the historical P11.7 qualification, not full
+P11 acceptance.
+
+The subsequent [P11 audit](p11-foundation-audit-2026-10-30.md) extends regression
+coverage: changed connections invalidate downstream endpoints, semantic links
+between different ports of one component do not produce impact self-edges, and
+loop/group/source identities participate in dependency traversal. Membership
+projects member -> aggregate; source metadata projects source identity -> circuit.
+These remain derived edges over existing canonical identities. Edge removal must
+use the before-snapshot impact graph as well as the after-snapshot graph in P15.
+
+## P11.8 partial implementation — not accepted
+
+SHA `bc487a9b44ca4a3a67afd6981a1b14e8acf727f8` (Flutter run `41017095372`)
+adds deterministic component/port/connection JSON projection, SHA-256 fingerprint
+and sorted graph entity diffs. This is a graph-only primitive, not yet the full
+engineering aggregate contract. Circuits, ordered loops, groups, source roles,
+assignments, service-entry references and versioned extension/compatibility
+contracts must be incorporated into aggregate fingerprint/diff/persistence.
+
+The production repository still selects the v19 codec. Aggregate ownership,
+allocation/reservation, mutation/history integration, schema v20, migration,
+production Save/Reopen and Undo/Redo qualification remain one incomplete P11.8
+acceptance boundary. A green graph-only round-trip/test cannot close P11.8.
+Legacy catalog storage now refuses explicit P11 media/capabilities before writes;
+lossless catalog storage/adapters remain P11.9 work.
 
 ## Remaining P11 packages
 

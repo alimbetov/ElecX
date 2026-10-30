@@ -1,6 +1,8 @@
 import 'dart:collection';
 
 import 'project_identity.dart';
+import 'engineering_circuit_topology.dart';
+import 'engineering_supply_topology.dart';
 
 enum ImpactEntityKind {
   component,
@@ -11,6 +13,9 @@ enum ImpactEntityKind {
   slab,
   opening,
   generation,
+  loop,
+  engineeringGroup,
+  supplySource,
 }
 
 /// Typed reference used by dependency/impact analysis.
@@ -33,6 +38,13 @@ final class ImpactEntityRef {
       ImpactEntityRef._(ImpactEntityKind.opening, id);
   factory ImpactEntityRef.generation(GenerationId id) =>
       ImpactEntityRef._(ImpactEntityKind.generation, id);
+
+  factory ImpactEntityRef.loop(LoopId id) =>
+      ImpactEntityRef._(ImpactEntityKind.loop, id);
+  factory ImpactEntityRef.engineeringGroup(EngineeringGroupId id) =>
+      ImpactEntityRef._(ImpactEntityKind.engineeringGroup, id);
+  factory ImpactEntityRef.supplySource(EngineeringSupplySourceId id) =>
+      ImpactEntityRef._(ImpactEntityKind.supplySource, id);
 
   final ImpactEntityKind kind;
   final EntityId id;

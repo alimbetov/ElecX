@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'canonical_engineering_graph.dart';
 import 'engineering_circuit_topology.dart';
 import 'engineering_classification.dart';
@@ -77,7 +79,7 @@ final class EngineeringConnectionCompatibilityRule {
 
   /// Signature for explicit-media matching. `allowUnspecifiedMedia` is not part
   /// of this key because it does not change matching of an explicit medium.
-  String get compatibilityKey => <String>[
+  String get compatibilityKey => jsonEncode(<String?>[
         fromSystemClass.name,
         fromSystemKey.id,
         toSystemClass.name,
@@ -85,13 +87,13 @@ final class EngineeringConnectionCompatibilityRule {
         connectionSystemClass.name,
         connectionSystemKey.id,
         connectionType.name,
-        media?.id ?? '<unspecified>',
-      ].join('\u0000');
+        media?.id,
+      ]);
 
   bool get matchesUnspecifiedMedia => media == null || allowUnspecifiedMedia;
 
   /// Signature for rules that can match a legacy connection with null media.
-  String get unspecifiedMediaCompatibilityKey => <String>[
+  String get unspecifiedMediaCompatibilityKey => jsonEncode(<String>[
         fromSystemClass.name,
         fromSystemKey.id,
         toSystemClass.name,
@@ -99,7 +101,7 @@ final class EngineeringConnectionCompatibilityRule {
         connectionSystemClass.name,
         connectionSystemKey.id,
         connectionType.name,
-      ].join('\u0000');
+      ]);
 }
 
 /// Versioned explicit compatibility policy supplied by project/catalog/profile
@@ -114,7 +116,8 @@ final class EngineeringCompatibilityProfile {
         ) {
     if (id.trim().isEmpty || revision.trim().isEmpty) {
       throw ArgumentError(
-          'Compatibility profile id/revision must be non-empty.');
+        'Compatibility profile id/revision must be non-empty.',
+      );
     }
 
     final ids = <String>{};

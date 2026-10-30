@@ -79,8 +79,9 @@ final class EngineeringImpactDependencyProjector {
     final graph = topology.graph;
 
     for (final connection in graph.connections) {
-      final connectionRef =
-          ImpactEntityRef.engineeringConnection(connection.id);
+      final connectionRef = ImpactEntityRef.engineeringConnection(
+        connection.id,
+      );
       final fromRef = ImpactEntityRef.component(connection.fromComponentId);
       final toRef = ImpactEntityRef.component(connection.toComponentId);
 
@@ -95,6 +96,16 @@ final class EngineeringImpactDependencyProjector {
         ImpactDependency.typed(
           dependency: toRef,
           dependent: connectionRef,
+          relationKey: ImpactDependencyRelationKey.connectivity,
+        ),
+      );
+
+      // A changed link invalidates its downstream endpoint, including plain
+      // supply feeder links that carry no optional semantic subtype.
+      dependencies.add(
+        ImpactDependency.typed(
+          dependency: connectionRef,
+          dependent: toRef,
           relationKey: ImpactDependencyRelationKey.connectivity,
         ),
       );
@@ -130,31 +141,105 @@ final class EngineeringImpactDependencyProjector {
             'dependency semantic $semanticTypeId.',
           );
         }
+        // The relation itself is editable canonical state. Changing/removing
+        // it must invalidate its dependent, even when neither endpoint changed.
         dependencies.add(
           ImpactDependency.typed(
-            dependency: fromRef,
+            dependency: connectionRef,
             dependent: toRef,
             relationKey: definition.relationKey,
           ),
         );
-        if (definition.symmetric) {
+        if (fromRef != toRef) {
           dependencies.add(
             ImpactDependency.typed(
-              dependency: toRef,
-              dependent: fromRef,
+              dependency: fromRef,
+              dependent: toRef,
               relationKey: definition.relationKey,
             ),
           );
         }
+        if (definition.symmetric) {
+          dependencies.add(
+            ImpactDependency.typed(
+              dependency: connectionRef,
+              dependent: fromRef,
+              relationKey: definition.relationKey,
+            ),
+          );
+          if (fromRef != toRef) {
+            dependencies.add(
+              ImpactDependency.typed(
+                dependency: toRef,
+                dependent: fromRef,
+                relationKey: definition.relationKey,
+              ),
+            );
+          }
+        }
+      }
+    }
+
+    for (final loop in topology.loops) {
+      final loopRef = ImpactEntityRef.loop(loop.id);
+      for (final id in loop.connectionIds) {
+        dependencies.add(
+          ImpactDependency.typed(
+            dependency: ImpactEntityRef.engineeringConnection(id),
+            dependent: loopRef,
+            relationKey: ImpactDependencyRelationKey.memberOf,
+          ),
+        );
+      }
+      if (loop.circuitId != null) {
+        dependencies.add(
+          ImpactDependency.typed(
+            dependency: loopRef,
+            dependent: ImpactEntityRef.circuit(loop.circuitId!),
+            relationKey: ImpactDependencyRelationKey.memberOf,
+          ),
+        );
+      }
+    }
+    for (final group in topology.groups) {
+      for (final member in [
+        ...group.componentIds.map(ImpactEntityRef.component),
+        ...group.connectionIds.map(ImpactEntityRef.engineeringConnection),
+        ...group.circuitIds.map(ImpactEntityRef.circuit),
+        ...group.loopIds.map(ImpactEntityRef.loop),
+      ]) {
+        dependencies.add(
+          ImpactDependency.typed(
+            dependency: member,
+            dependent: ImpactEntityRef.engineeringGroup(group.id),
+            relationKey: ImpactDependencyRelationKey.memberOf,
+          ),
+        );
       }
     }
 
     final supply = supplyTopology;
     if (supply != null) {
       for (final source in supply.sources) {
-        final sourceRef =
-            ImpactEntityRef.component(source.endpoint.componentId);
+        final sourceRef = ImpactEntityRef.component(
+          source.endpoint.componentId,
+        );
+        final supplyRef = ImpactEntityRef.supplySource(source.id);
+        dependencies.add(
+          ImpactDependency.typed(
+            dependency: sourceRef,
+            dependent: supplyRef,
+            relationKey: ImpactDependencyRelationKey.connectivity,
+          ),
+        );
         for (final circuit in supply.circuitsForSource(source.id)) {
+          dependencies.add(
+            ImpactDependency.typed(
+              dependency: supplyRef,
+              dependent: ImpactEntityRef.circuit(circuit.id),
+              relationKey: ImpactDependencyRelationKey.suppliedBy,
+            ),
+          );
           dependencies.add(
             ImpactDependency.typed(
               dependency: sourceRef,
