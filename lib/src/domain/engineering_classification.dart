@@ -116,7 +116,8 @@ final class EngineeringSystemKey {
   bool get isBuiltIn => legacyValue(this) != null;
 
   @override
-  bool operator ==(Object other) => other is EngineeringSystemKey && other.id == id;
+  bool operator ==(Object other) =>
+      other is EngineeringSystemKey && other.id == id;
 
   @override
   int get hashCode => id.hashCode;

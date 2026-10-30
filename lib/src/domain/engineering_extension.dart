@@ -8,7 +8,8 @@ final class EngineeringExtensionDisciplineDefinition {
     required this.legacyFamily,
   }) {
     if (key.isBuiltIn) {
-      throw ArgumentError('Extension cannot redeclare built-in discipline $key.');
+      throw ArgumentError(
+          'Extension cannot redeclare built-in discipline $key.');
     }
   }
 
@@ -55,7 +56,8 @@ final class EngineeringExtensionContract {
     final systemKeys = <EngineeringSystemKey>{};
     for (final discipline in this.disciplines) {
       if (!disciplineKeys.add(discipline.key)) {
-        throw ArgumentError('Duplicate extension discipline ${discipline.key}.');
+        throw ArgumentError(
+            'Duplicate extension discipline ${discipline.key}.');
       }
     }
     for (final system in this.systems) {
@@ -123,7 +125,8 @@ final class EngineeringExtensionValidationReport {
 
 /// Resolves extension metadata while leaving graph ownership unchanged.
 final class EngineeringExtensionRegistry {
-  EngineeringExtensionRegistry(Iterable<EngineeringExtensionContract> contracts) {
+  EngineeringExtensionRegistry(
+      Iterable<EngineeringExtensionContract> contracts) {
     final contractMap = <String, EngineeringExtensionContract>{};
     final disciplineMap =
         <EngineeringDisciplineKey, EngineeringExtensionDisciplineDefinition>{};
@@ -271,7 +274,8 @@ final class EngineeringExtensionRegistry {
           issues.add(
             EngineeringExtensionIssue(
               code: EngineeringExtensionIssueCode.unsupportedSystemMedia,
-              message: 'Component ${component.id} system ${component.systemKey} '
+              message:
+                  'Component ${component.id} system ${component.systemKey} '
                   'does not declare medium $medium.',
             ),
           );
@@ -282,7 +286,8 @@ final class EngineeringExtensionRegistry {
           issues.add(
             EngineeringExtensionIssue(
               code: EngineeringExtensionIssueCode.unsupportedSystemCapability,
-              message: 'Component ${component.id} system ${component.systemKey} '
+              message:
+                  'Component ${component.id} system ${component.systemKey} '
                   'does not declare capability $capability.',
             ),
           );

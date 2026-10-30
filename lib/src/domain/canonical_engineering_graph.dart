@@ -5,7 +5,6 @@ import 'engineering_graph.dart';
 import 'engineering_port_ref.dart';
 import 'project_identity.dart';
 
-export 'engineering_classification.dart';
 export 'engineering_port_ref.dart';
 
 /// Logical engineering component identity and capabilities.

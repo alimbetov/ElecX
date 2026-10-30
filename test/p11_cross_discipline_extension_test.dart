@@ -32,7 +32,8 @@ EngineeringExtensionContract _hvacContract() => EngineeringExtensionContract(
       ],
     );
 
-EngineeringGraphComponent _hvacComponent(String id) => EngineeringGraphComponent(
+EngineeringGraphComponent _hvacComponent(String id) =>
+    EngineeringGraphComponent(
       id: ComponentId(id),
       componentTypeId: 'hvac.$id',
       discipline: EngineeringDiscipline.automation,
@@ -191,7 +192,8 @@ void main() {
         ),
       ],
     );
-    final report = EngineeringExtensionRegistry([_hvacContract()]).validateGraph(
+    final report =
+        EngineeringExtensionRegistry([_hvacContract()]).validateGraph(
       CanonicalEngineeringGraph(components: [component]),
     );
 
