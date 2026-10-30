@@ -2,19 +2,21 @@ import 'dart:convert';
 
 import 'canonical_engineering_graph.dart';
 import 'engineering_circuit_topology.dart';
+import 'engineering_dependency_projection.dart';
 import 'engineering_extension.dart';
 import 'engineering_graph_semantics.dart';
 import 'engineering_graph_validation.dart';
 import 'engineering_supply_topology.dart';
+import 'impact_graph.dart';
 import 'project_identity.dart';
 import 'semantic_sha256.dart';
 
 /// One project-owned authoritative P11 engineering state.
 ///
-/// The state owns canonical graph entities plus the logical circuit/loop/group
-/// and supply declarations that cannot be reconstructed from the graph alone.
-/// [CanonicalEngineeringTopology] and [CanonicalEngineeringSupplyTopology] are
-/// validated views over this state and never become parallel project stores.
+/// The state owns canonical graph entities plus the logical circuit/loop/group,
+/// supply and dependency-relation declarations that cannot be reconstructed
+/// from the graph alone. Topology, supply and impact graphs are validated views
+/// over this state and never become parallel project stores.
 final class EngineeringProjectState {
   EngineeringProjectState({
     required this.graph,
@@ -24,6 +26,8 @@ final class EngineeringProjectState {
     Iterable<EngineeringSupplySource> sources = const [],
     Iterable<EngineeringCircuitSupply> circuitSupplies = const [],
     Iterable<EngineeringExtensionContract> extensionContracts = const [],
+    Iterable<EngineeringDependencyRelationDefinition> dependencyRelations =
+        const [],
     this.compatibilityProfile,
     this.classificationVocabularyVersion = 'p11.v1',
     Iterable<ServiceEntryId>? knownServiceEntryIds,
@@ -56,6 +60,15 @@ final class EngineeringProjectState {
               final byId = left.id.compareTo(right.id);
               if (byId != 0) return byId;
               return left.version.compareTo(right.version);
+            }),
+        ),
+        dependencyRelations = List.unmodifiable(
+          dependencyRelations.toList()
+            ..sort((left, right) {
+              final bySemantic =
+                  left.semanticTypeId.compareTo(right.semanticTypeId);
+              if (bySemantic != 0) return bySemantic;
+              return left.relationKey.id.compareTo(right.relationKey.id);
             }),
         ) {
     if (classificationVocabularyVersion.trim().isEmpty) {
@@ -99,6 +112,12 @@ final class EngineeringProjectState {
       circuitSupplies: this.circuitSupplies,
       knownServiceEntryIds: internalKnownEntries,
     );
+
+    impactGraph = EngineeringImpactDependencyProjector(
+      topology: topology,
+      supplyTopology: supplyTopology,
+      extensionRelations: this.dependencyRelations,
+    ).project();
   }
 
   factory EngineeringProjectState.empty() => EngineeringProjectState(
@@ -112,11 +131,13 @@ final class EngineeringProjectState {
   final List<EngineeringSupplySource> sources;
   final List<EngineeringCircuitSupply> circuitSupplies;
   final List<EngineeringExtensionContract> extensionContracts;
+  final List<EngineeringDependencyRelationDefinition> dependencyRelations;
   final EngineeringCompatibilityProfile? compatibilityProfile;
   final String classificationVocabularyVersion;
 
   late final CanonicalEngineeringTopology topology;
   late final CanonicalEngineeringSupplyTopology supplyTopology;
+  late final ImpactGraph impactGraph;
 
   bool get isEmpty =>
       graph.components.isEmpty &&
@@ -127,6 +148,7 @@ final class EngineeringProjectState {
       sources.isEmpty &&
       circuitSupplies.isEmpty &&
       extensionContracts.isEmpty &&
+      dependencyRelations.isEmpty &&
       compatibilityProfile == null;
 
   /// Validates non-owning links from P11 supply sources to P10 service entries.
@@ -134,7 +156,8 @@ final class EngineeringProjectState {
   /// The project aggregate supplies the authoritative P10 ids. They are never
   /// copied into this state as owned entities.
   void requireKnownServiceEntries(
-      Iterable<ServiceEntryId> knownServiceEntryIds) {
+    Iterable<ServiceEntryId> knownServiceEntryIds,
+  ) {
     final known = knownServiceEntryIds.toSet();
     for (final source in sources) {
       final serviceEntryId = source.serviceEntryId;
@@ -160,6 +183,10 @@ final class EngineeringProjectState {
         ],
         'extensionContracts': [
           for (final contract in extensionContracts) _extensionJson(contract),
+        ],
+        'dependencyRelations': [
+          for (final relation in dependencyRelations)
+            _dependencyRelationJson(relation),
         ],
         'compatibilityProfile': compatibilityProfile == null
             ? null
@@ -243,6 +270,15 @@ Map<String, Object?> _extensionJson(EngineeringExtensionContract contract) => {
                   ..sort(),
           },
       ],
+    };
+
+Map<String, Object?> _dependencyRelationJson(
+  EngineeringDependencyRelationDefinition definition,
+) =>
+    {
+      'semanticTypeId': definition.semanticTypeId,
+      'relationKey': definition.relationKey.id,
+      'symmetric': definition.symmetric,
     };
 
 Map<String, Object?> _compatibilityJson(
