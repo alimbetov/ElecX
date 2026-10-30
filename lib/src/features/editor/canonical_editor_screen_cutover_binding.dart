@@ -1,5 +1,9 @@
+import '../../application/project/project_room_rectangle_authoring.dart';
 import '../../application/project/project_structure_authoring.dart';
+import '../../domain/boundary_topology.dart';
+import '../../domain/project_model.dart';
 import 'canonical_editor_runtime_cutover.dart';
+import 'canonical_editor_wizard_runtime_registry.dart';
 import 'canonical_room_surface_runtime_registry.dart';
 import 'editor_building_workspace.dart';
 import 'editor_document_history.dart';
@@ -37,6 +41,7 @@ final class CanonicalEditorScreenCutoverBinding {
 
   bool _started = false;
   bool _disposed = false;
+  bool _canonicalizingLegacyRoomRectangle = false;
   _LegacyNavigationFingerprint? _lastLegacySelectionFingerprint;
   _LegacyNavigationFingerprint? _lastRejectedLegacySelectionFingerprint;
 
@@ -121,6 +126,7 @@ final class CanonicalEditorScreenCutoverBinding {
   void _onLegacyRuntimeChanged() {
     if (_disposed ||
         !_started ||
+        _canonicalizingLegacyRoomRectangle ||
         coordinator.isSynchronizing ||
         workspace.context != EditorWorkspaceContext.buildingLevel) {
       return;
@@ -133,14 +139,143 @@ final class CanonicalEditorScreenCutoverBinding {
     }
 
     try {
+      if (_canonicalizeLegacyRoomRectangleIfNeeded()) {
+        return;
+      }
       final navigation = coordinator.pullLegacyToCanonical();
       if (navigation == null) return;
       _lastLegacySelectionFingerprint = fingerprint;
       _lastRejectedLegacySelectionFingerprint = null;
       onCanonicalNavigationChanged?.call(navigation);
     } catch (error, stackTrace) {
-      _lastRejectedLegacySelectionFingerprint = fingerprint;
+      _lastRejectedLegacySelectionFingerprint = _legacySelectionFingerprint();
       onError?.call(error, stackTrace);
+    }
+  }
+
+  /// Transitional PRE-P12 bridge for the legacy two-click rectangle tool.
+  ///
+  /// The legacy controller still produces the tentative EngineeringSpace, but
+  /// production never accepts it as authoritative state. Its architecture
+  /// history entry is synchronously undone, then the exact rectangle is
+  /// committed as one canonical Space + BoundaryTopology mutation on the same
+  /// shared timeline used by Wizard authoring. Recording the canonical entry
+  /// clears the temporary legacy redo entry, leaving one production Undo.
+  bool _canonicalizeLegacyRoomRectangleIfNeeded() {
+    final editor = workspace.editor;
+    final legacySpaceId = editor.selectedSpaceId;
+    if (legacySpaceId == null ||
+        coordinator.adapter.binding.canonicalSpaceIdForLegacy(legacySpaceId) !=
+            null) {
+      return false;
+    }
+
+    final candidate = editor.selectedSpace;
+    if (candidate == null ||
+        candidate.type != SpaceType.room ||
+        !_isAxisAlignedRectangle(candidate)) {
+      return false;
+    }
+
+    final history = editor.documentHistory;
+    if (history.undoLabel != 'Edit architecture') {
+      return false;
+    }
+
+    _canonicalizingLegacyRoomRectangle = true;
+    var rolledBack = false;
+    var canonicalCommitted = false;
+    try {
+      if (!history.undo()) {
+        throw StateError(
+          'Production room cutover could not roll back the tentative legacy '
+          'architecture mutation.',
+        );
+      }
+      rolledBack = true;
+      if (editor.level.spaces.any((space) => space.id == legacySpaceId)) {
+        throw StateError(
+          'Tentative legacy Room survived production rollback.',
+        );
+      }
+
+      final session = coordinator.session;
+      final levelId = session.navigation.activeLevelId;
+      if (levelId == null ||
+          coordinator.adapter.binding.legacyLevelIds[levelId] !=
+              editor.level.id) {
+        throw StateError(
+          'Production room rectangle requires the active canonical Level to '
+          'match the visible legacy Level.',
+        );
+      }
+      final owner = onCanonicalMutationReplayed;
+      if (owner == null) {
+        throw StateError(
+          'Production room rectangle requires canonical persistence ownership.',
+        );
+      }
+      final mutations = CanonicalEditorWizardRuntimeRegistry.resolve(session);
+      if (mutations == null) {
+        throw StateError(
+          'Production room rectangle requires the shared canonical mutation '
+          'port.',
+        );
+      }
+
+      final canonicalLevel = session.project.index.level(levelId);
+      if (canonicalLevel == null) {
+        throw StateError('Active canonical Level disappeared before room commit.');
+      }
+      final bounds = candidate.boundary.bounds;
+      final result = RoomRectangleAuthoringService(
+        session: session,
+        mutations: mutations,
+      ).commit(
+        RoomRectangleAuthoringIntent(
+          levelId: levelId,
+          first: BoundaryPointMm(xMm: bounds.left, yMm: bounds.bottom),
+          second: BoundaryPointMm(xMm: bounds.right, yMm: bounds.top),
+          name: 'Комната ${canonicalLevel.spaceIds.length + 1}',
+        ),
+      );
+      canonicalCommitted = true;
+
+      history.recordCanonicalCommit(
+        session: session,
+        label: result.commit.mutation.changeSet.commandType,
+        rematerialize: pushCanonicalToEditor,
+      );
+      try {
+        owner(result.commit.mutation);
+      } catch (_) {
+        history.invalidateAfterUnownedCanonicalCommit(session);
+        rethrow;
+      }
+
+      final readiness = pushCanonicalToEditor();
+      if (!readiness.canOpen) {
+        history.invalidateAfterCommittedCanonicalDivergence(session);
+        throw StateError(
+          'Canonical Room committed but production materialization did not '
+          'produce an openable editor representation.',
+        );
+      }
+      _lastLegacySelectionFingerprint = _legacySelectionFingerprint();
+      _lastRejectedLegacySelectionFingerprint = null;
+      onCanonicalNavigationChanged?.call(session.navigation);
+      return true;
+    } catch (_) {
+      if (rolledBack && !canonicalCommitted) {
+        history.invalidateAfterCommittedCanonicalDivergence(
+          coordinator.session,
+        );
+        _lastLegacySelectionFingerprint = _legacySelectionFingerprint();
+        _lastRejectedLegacySelectionFingerprint = null;
+      }
+      rethrow;
+    } finally {
+      _canonicalizingLegacyRoomRectangle = false;
     }
   }
 
@@ -167,6 +302,23 @@ final class CanonicalEditorScreenCutoverBinding {
       throw StateError('Canonical editor screen cutover binding is disposed.');
     }
   }
+}
+
+bool _isAxisAlignedRectangle(EngineeringSpace space) {
+  final vertices = space.boundary.vertices;
+  if (vertices.length != 4) return false;
+  final bounds = space.boundary.bounds;
+  if (bounds.width < 300 || bounds.height < 300) return false;
+  final expected = <String>{
+    '${bounds.left}:${bounds.bottom}',
+    '${bounds.right}:${bounds.bottom}',
+    '${bounds.right}:${bounds.top}',
+    '${bounds.left}:${bounds.top}',
+  };
+  final actual = <String>{
+    for (final point in vertices) '${point.x}:${point.y}',
+  };
+  return actual.length == 4 && actual.difference(expected).isEmpty;
 }
 
 final class _LegacyNavigationFingerprint {
