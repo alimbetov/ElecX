@@ -39,6 +39,8 @@ enum SpaceUsage {
   elevatorHall,
   elevatorShaft,
   serviceShaft,
+  electricalRiser,
+  telecomRiser,
   commercial,
   commonArea,
 }

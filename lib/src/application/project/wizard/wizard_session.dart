@@ -182,6 +182,7 @@ final class WizardSession {
     try {
       final result = mutations.commitPreview(planned);
       if (result == null) {
+        _discardPreparedPreview();
         _blockReason = WizardPreviewBlockReason.noChanges;
         _status = WizardSessionStatus.previewBlocked;
         return false;
@@ -195,10 +196,12 @@ final class WizardSession {
       _status = WizardSessionStatus.completed;
       return true;
     } on StaleProjectMutationException {
+      _discardPreparedPreview();
       _blockReason = WizardPreviewBlockReason.staleBaseVersion;
       _status = WizardSessionStatus.previewBlocked;
       return false;
     } catch (error) {
+      _discardPreparedPreview();
       _failure = error;
       _status = WizardSessionStatus.failed;
       return false;

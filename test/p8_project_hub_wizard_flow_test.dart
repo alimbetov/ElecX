@@ -5,6 +5,8 @@ import 'package:elecx/src/features/editor/editor_project_document.dart';
 import 'package:elecx/src/features/editor/unified_workspace_editor_screen.dart';
 import 'package:elecx/src/features/projects/project_hub_screen.dart';
 import 'package:elecx/src/features/projects/project_wizard_screen.dart';
+import 'package:elecx/src/features/projects/building_composition_wizard_screen.dart';
+import 'package:elecx/src/application/project/wizard/basic_building_wizard_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -43,6 +45,13 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(ProjectWizardScreen), findsOneWidget);
+      expect(find.byType(BuildingCompositionWizardScreen), findsNothing);
+      expect(
+          tester
+              .widget<ProjectWizardScreen>(find.byType(ProjectWizardScreen))
+              .session
+              .provider,
+          isA<BasicBuildingWizardProvider>());
       expect(
         find.byKey(const ValueKey('wizard-building-name')),
         findsOneWidget,

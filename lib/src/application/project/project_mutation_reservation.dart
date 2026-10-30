@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
 import 'project_mutation.dart';
+import 'composition_provenance_command.dart';
 
 /// Durable entity identity kinds that may be allocated once for one preview/apply
 /// lifecycle. BoundaryPenetrationId is represented separately because its
@@ -85,6 +88,64 @@ final class MutationIdentityReservation {
 
   final Map<String, EntityId> _entityIds;
   final Map<String, BoundaryPenetrationId> _penetrationIds;
+
+  /// Selects the semantic scope created by combineEntityReservations. Slot
+  /// paths are JSON-framed; durable entity identities are never parsed.
+  MutationIdentityReservation selectEntityScope(String scope) {
+    final selected = <String, EntityId>{};
+    for (final entry in _entityIds.entries) {
+      final path = jsonDecode(entry.key);
+      if (path is! List ||
+          path.length != 2 ||
+          path[0] is! String ||
+          path[1] is! String) {
+        throw ArgumentError('Expected a combined semantic reservation path.');
+      }
+      if (path[0] == scope) selected[path[1] as String] = entry.value;
+    }
+    return MutationIdentityReservation._(
+        entityIds: selected, penetrationIds: {});
+  }
+
+  /// Joins child allocations into one immutable parent reservation. It neither
+  /// allocates identities nor creates a second preview/commit timeline.
+  factory MutationIdentityReservation.combineEntityReservations(
+      Map<String, MutationIdentityReservation> children) {
+    final ids = <String, EntityId>{};
+    final distinct = <EntityId>{};
+    for (final child in children.entries) {
+      if (child.value._penetrationIds.isNotEmpty) {
+        throw ArgumentError(
+            'Entity-only composition cannot drop penetrations.');
+      }
+      for (final entry in child.value._entityIds.entries) {
+        if (!distinct.add(entry.value)) {
+          throw ArgumentError('Child reservations cannot alias identities.');
+        }
+        ids[jsonEncode([child.key, entry.key])] = entry.value;
+      }
+    }
+    return MutationIdentityReservation._(entityIds: ids, penetrationIds: {});
+  }
+
+  /// Immutable local view of identities already allocated by the parent plan.
+  /// Selection never allocates IDs or creates a second reservation timeline.
+  MutationIdentityReservation selectEntitySlots(
+      Map<String, String> localToParent) {
+    if (localToParent.values.toSet().length != localToParent.length) {
+      throw ArgumentError(
+          'Distinct local slots must select distinct parent slots.');
+    }
+    final selected = <String, EntityId>{};
+    for (final entry in localToParent.entries) {
+      if (_validatedSlot(entry.key) != entry.key) {
+        throw ArgumentError('Local slots must be normalized.');
+      }
+      selected[entry.key] = entityId<EntityId>(entry.value);
+    }
+    return MutationIdentityReservation._(
+        entityIds: selected, penetrationIds: {});
+  }
 
   Set<String> get slots =>
       Set.unmodifiable({..._entityIds.keys, ..._penetrationIds.keys});
@@ -452,6 +513,9 @@ final class ReservedProjectMutationCoordinator {
       <MutationIdentityReservation>{};
 
   ReservedProjectMutationPreview preview(ReservedProjectCommand command) {
+    if (command is CompositionProvenanceSource) {
+      command = ProvenanceReservedProjectCommand(command);
+    }
     final normalizedIntentKey = command.normalizedIntentKey.trim();
     if (normalizedIntentKey.isEmpty) {
       throw ArgumentError.value(

@@ -30,6 +30,18 @@ final class VerticalCoreAwareCanonicalProjectDocumentCodec
 
   @override
   ProjectDocument encode(ProjectSnapshot snapshot) {
+    final hasP10CoreSemantics =
+        snapshot.aggregate.stores.verticalCores.values.any(
+      (core) =>
+          core.usage != VerticalCoreUsage.unspecified ||
+          core.hostSpaceIdsByLevel.isNotEmpty,
+    );
+    if (hasP10CoreSemantics) {
+      throw const FormatException(
+        'Building core semantics require canonical project schema v16.',
+      );
+    }
+
     final slabDocument = _slabs.encode(snapshot);
     return ProjectDocument(
       schemaVersion: schemaVersion,

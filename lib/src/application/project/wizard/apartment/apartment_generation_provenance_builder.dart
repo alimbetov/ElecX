@@ -70,7 +70,8 @@ final class ApartmentGenerationProvenanceBuilder {
         GenerationPropertyKey.name,
         GenerationPropertyKey.zoneMembership,
       },
-      baseline: 'name=Apartment 1\nkind=apartment',
+      baseline:
+          'name=${materializedProject.stores.zones[zoneId]!.name}\nkind=apartment',
     );
 
     final spaces = <GeneratedSpaceGeometry>[

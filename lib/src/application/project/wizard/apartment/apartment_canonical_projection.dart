@@ -88,8 +88,13 @@ final class ApartmentCanonicalProjectionService {
     required ApartmentTopologyDraft draft,
     required AreaFittedTopologyDraft fittedDraft,
     required ApartmentGeometryCandidate geometry,
-    required LevelId targetLevelId,
+    LevelId? targetLevelId,
+    SiteId? targetSiteId,
   }) {
+    if ((targetLevelId == null) == (targetSiteId == null)) {
+      throw ArgumentError(
+          'Exactly one canonical Level or Site proposal host is required.');
+    }
     final mismatch = _lineageMismatch(
       selectedCandidateFingerprint: selectedCandidateFingerprint,
       draft: draft,
@@ -196,7 +201,9 @@ final class ApartmentCanonicalProjectionService {
         for (final space in spaces)
           _placement(
             componentId: componentIds[space.semanticKey]!,
-            levelId: targetLevelId,
+            host: targetLevelId != null
+                ? LevelComponentHost(targetLevelId)
+                : SiteComponentHost(targetSiteId!),
             geometry: geometryBySpace[space.semanticKey]!,
           ),
       ]..sort(
@@ -360,7 +367,7 @@ EngineeringConnectionId _connectionId(
 
 ComponentPlacement _placement({
   required ComponentId componentId,
-  required LevelId levelId,
+  required ComponentHostRef host,
   required GeneratedSpaceGeometry geometry,
 }) {
   final footprint = [
@@ -369,7 +376,7 @@ ComponentPlacement _placement({
   ];
   return ComponentPlacement(
     componentId: componentId,
-    host: LevelComponentHost(levelId),
+    host: host,
     position: footprint.first,
     footprint: footprint,
   );

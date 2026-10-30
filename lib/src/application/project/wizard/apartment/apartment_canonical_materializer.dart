@@ -7,6 +7,7 @@ import '../../../../domain/project_aggregate.dart';
 import '../../../../domain/project_entity_stores_copy.dart';
 import '../../../../domain/project_identity.dart';
 import '../../../../domain/project_space_semantics.dart';
+import '../../../../domain/rectilinear_polygon_relations.dart';
 import '../../project_mutation.dart';
 import '../../project_mutation_reservation.dart';
 import '../wizard_contracts.dart';
@@ -20,6 +21,8 @@ final class ApartmentMaterializationException implements Exception {
   @override
   String toString() => code;
 }
+
+enum ApartmentInsertionMode { emptyLevel, additionalApartment }
 
 /// Pure P9.11A materialization kernel used by P9.10 reserved Preview/Diff.
 ///
@@ -35,6 +38,10 @@ final class ApartmentCanonicalMaterializer {
   static const int openPassageWidthMm = 1200;
   static const int defaultOpeningHeightMm = 2100;
 
+  Map<String, ReservedEntityIdKind> reservationSlotsFor(
+          ApartmentGeometryCandidate candidate) =>
+      Map.unmodifiable(_reservationSlots(candidate));
+
   MutationIdentityReservation reserveIdentities({
     required EntityIdFactory factory,
     required ApartmentGeometryCandidate candidate,
@@ -49,11 +56,19 @@ final class ApartmentCanonicalMaterializer {
     required LevelWizardTarget target,
     required ApartmentGeometryCandidate candidate,
     required MutationIdentityReservation reservation,
+    ApartmentInsertionMode insertionMode = ApartmentInsertionMode.emptyLevel,
   }) {
-    _validateTarget(current, target);
+    _validateTarget(current, target, insertionMode);
     _validateCandidate(candidate);
+    if (insertionMode == ApartmentInsertionMode.additionalApartment) {
+      _validateAdditionalGeometry(current, target, candidate);
+    }
 
     final expected = _reservationSlots(candidate);
+    if (reservation.entityIds.length != expected.length) {
+      throw const ApartmentMaterializationException(
+          'p9.materialize.reservation-collision');
+    }
     if (!_sameStrings(reservation.slots, expected.keys.toSet())) {
       throw ApartmentMaterializationException(
         'p9.materialize.missing-reservation-slot',
@@ -87,12 +102,18 @@ final class ApartmentCanonicalMaterializer {
     required ApartmentGeometryCandidate candidate,
     required ApartmentTopologyTemplate template,
     required MutationIdentityReservation reservation,
+    ApartmentInsertionMode insertionMode = ApartmentInsertionMode.emptyLevel,
+    String apartmentName = 'Apartment 1',
   }) {
+    if (apartmentName.trim().isEmpty) {
+      throw ArgumentError('Apartment name must be non-empty.');
+    }
     validateReservation(
       current: current,
       target: target,
       candidate: candidate,
       reservation: reservation,
+      insertionMode: insertionMode,
     );
 
     final generatedSpaces = _generatedSpaces(candidate);
@@ -157,7 +178,7 @@ final class ApartmentCanonicalMaterializer {
           ..[zoneId] = ProjectStructuralZoneEntity(
             id: zoneId,
             levelId: target.levelId,
-            name: 'Apartment 1',
+            name: apartmentName.trim(),
             kind: ProjectStructuralZoneKind.apartment,
             spaceIds: spaceIds.values,
           );
@@ -407,7 +428,8 @@ final class ApartmentCanonicalMaterializer {
     return slots;
   }
 
-  void _validateTarget(ProjectAggregateRoot current, LevelWizardTarget target) {
+  void _validateTarget(ProjectAggregateRoot current, LevelWizardTarget target,
+      ApartmentInsertionMode insertionMode) {
     if (current.id != target.projectId || current.siteId != target.siteId) {
       throw const ApartmentMaterializationException(
         'p9.materialize.target-missing',
@@ -430,10 +452,42 @@ final class ApartmentCanonicalMaterializer {
     final hasZones = level.zoneIds.isNotEmpty ||
         current.stores.zones.values
             .any((zone) => zone.levelId == target.levelId);
-    if (hasSpaces || hasZones) {
+    if (insertionMode == ApartmentInsertionMode.additionalApartment &&
+        current.engineeringMetadata.appliedEngineeringProposalRegistry
+                .forLevel(target.levelId) !=
+            null) {
+      throw const ApartmentMaterializationException(
+          'p9.materialize.engineering-level-occupied');
+    }
+    if (insertionMode == ApartmentInsertionMode.emptyLevel &&
+        (hasSpaces || hasZones)) {
       throw const ApartmentMaterializationException(
         'p9.materialize.target-not-empty',
       );
+    }
+  }
+
+  void _validateAdditionalGeometry(ProjectAggregateRoot current,
+      LevelWizardTarget target, ApartmentGeometryCandidate candidate) {
+    final generated = _generatedSpaces(candidate);
+    for (final space in current.stores.spaces.values
+        .where((space) => space.levelId == target.levelId)) {
+      final boundary = current.stores.boundaries[space.id];
+      if (boundary == null) {
+        throw const ApartmentMaterializationException(
+            'p9.materialize.existing-geometry-missing');
+      }
+      final polygon = RectilinearPolygonMm.normalized([
+        for (final edgeId in boundary.orderedEdgeIds)
+          boundary.edges[edgeId]!.start
+      ], gridMm: 1);
+      for (final proposed in generated) {
+        if (RectilinearPolygonRelations.overlapsInterior(
+            polygon, proposed.polygon)) {
+          throw const ApartmentMaterializationException(
+              'p9.materialize.space-overlap');
+        }
+      }
     }
   }
 

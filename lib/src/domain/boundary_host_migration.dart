@@ -30,6 +30,7 @@ enum BoundaryHostedObjectKind {
   component,
   cableEndpoint,
   routeAnchor,
+  serviceEntry,
 }
 
 enum BoundaryHostGeometryKind { point, interval, wholeEdge }

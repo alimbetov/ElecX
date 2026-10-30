@@ -8,6 +8,7 @@ import '../../domain/boundary_topology.dart';
 import '../../domain/boundary_wall_profile_registry.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_identity.dart';
+import '../../domain/project_service_anchor.dart';
 import '../../domain/project_orientation.dart';
 import '../../domain/project_space_semantics.dart';
 import '../../domain/wall_profile.dart';
@@ -41,6 +42,15 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
 
   @override
   ProjectDocument encode(ProjectSnapshot snapshot) {
+    if (!snapshot.aggregate.engineeringMetadata.siteLayout.isEmpty) {
+      throw const FormatException(
+          'Site placement and shared anchors require schema v17.');
+    }
+    if (snapshot.aggregate.engineeringMetadata.generationProvenanceRegistry
+        .compositions.isNotEmpty) {
+      throw const FormatException(
+          'Composition provenance requires schema v19.');
+    }
     final stores = snapshot.aggregate.stores;
     final identityRegistry = snapshot
         .aggregate.engineeringMetadata.boundaryEdgeIdentityRegistry
@@ -96,6 +106,17 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
 
   @override
   ProjectSnapshot decode(ProjectDocument document) {
+    if (document.payload.containsKey('compositionProvenance')) {
+      throw const FormatException(
+          'Composition provenance requires schema v19.');
+    }
+    if (document.payload.containsKey('serviceAnchors')) {
+      throw const FormatException('Service anchors require schema v18.');
+    }
+    if (document.payload.containsKey('siteLayout')) {
+      throw const FormatException(
+          'Site placement and shared anchors require schema v17.');
+    }
     final migrated = _migrateToCurrent(document);
 
     try {
@@ -363,6 +384,8 @@ final class CanonicalProjectDocumentCodec implements ProjectDocumentCodec {
       throw FormatException('Invalid canonical ElecX project value: $error');
     } on ProjectAggregateValidationException catch (error) {
       throw FormatException('Invalid canonical ElecX project graph: $error');
+    } on ServiceAnchorException catch (error) {
+      throw FormatException('Invalid service-entry ownership: $error');
     }
   }
 

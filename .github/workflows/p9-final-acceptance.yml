@@ -292,7 +292,8 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version-file: pubspec.yaml
+          # Same pin as pubspec/SDK guard; Windows needs no Chocolatey/yq.
+          flutter-version: '3.47.7'
           cache: true
       - name: Verify pinned Flutter toolchain
         shell: bash
@@ -353,7 +354,8 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version-file: pubspec.yaml
+          # Same pin as pubspec/SDK guard; Windows needs no Chocolatey/yq.
+          flutter-version: '3.47.7'
           cache: true
       - name: Verify pinned Flutter toolchain
         shell: bash

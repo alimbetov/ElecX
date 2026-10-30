@@ -1,4 +1,11 @@
+import '../../../domain/composition_generation_provenance.dart';
 import '../../../domain/boundary_topology.dart';
+import '../../../domain/boundary_host_migration.dart';
+import '../../../domain/project_service_anchor.dart';
+import '../../../domain/project_site_layout.dart';
+import '../../../domain/slab_topology.dart';
+import '../../../domain/vertical_core.dart';
+import '../../../domain/typical_floor.dart';
 import '../../../domain/project_aggregate.dart';
 import '../../../domain/project_identity.dart';
 import '../../../domain/project_space_semantics.dart';
@@ -16,6 +23,9 @@ enum WizardDiffEntityCategory {
   adjacency,
   boundaryTopology,
   provenance,
+  slab,
+  verticalCore,
+  serviceAnchor,
   other,
 }
 
@@ -208,7 +218,18 @@ final class WizardDiffProjector {
       title: _title(id, displayEntity, before, candidate),
       context: _context(id, displayEntity, before, candidate),
       groupKey: _groupKey(id, displayEntity),
-      fields: fields,
+      fields: [
+        ...fields,
+        if (id is BuildingId)
+          ..._fieldChanges(before.engineeringMetadata.siteLayout.placements[id],
+              candidate.engineeringMetadata.siteLayout.placements[id]),
+        if (id is ServiceEntryId)
+          ..._fieldChanges(
+              before.engineeringMetadata.boundaryHostedObjectRegistry
+                  .serviceEntryHost(id),
+              candidate.engineeringMetadata.boundaryHostedObjectRegistry
+                  .serviceEntryHost(id)),
+      ],
       semanticKey: semanticKey,
       sortKey: _sortKey(id, displayEntity, before, candidate),
     );
@@ -223,10 +244,25 @@ final class WizardDiffProjector {
     if (id is OpeningId) return project.stores.openings[id];
     if (id is SpaceAdjacencyId) return project.stores.adjacencies[id];
     if (id is BoundaryEdgeId) return project.index.boundaryEdges[id];
+    if (id is SlabId) return project.stores.slabs[id];
+    if (id is VerticalCoreId) return project.stores.verticalCores[id];
+    if (id is ServiceEntryId) {
+      return project.engineeringMetadata.siteLayout.serviceAnchors[id] ??
+          project.engineeringMetadata.siteLayout.sharedAnchors[id];
+    }
+    if (id is GenerationId) {
+      return project
+          .engineeringMetadata.generationProvenanceRegistry.compositions[id];
+    }
+    if (id is TypicalFloorDefinitionId) {
+      return project.engineeringMetadata.generationProvenanceRegistry
+          .typicalFloorDefinitions[id];
+    }
     return null;
   }
 
   WizardDiffEntityCategory _category(EntityId id) {
+    if (id is GenerationId) return WizardDiffEntityCategory.provenance;
     if (id is SiteId) return WizardDiffEntityCategory.site;
     if (id is BuildingId) return WizardDiffEntityCategory.building;
     if (id is LevelId) return WizardDiffEntityCategory.level;
@@ -235,6 +271,12 @@ final class WizardDiffProjector {
     if (id is OpeningId) return WizardDiffEntityCategory.opening;
     if (id is SpaceAdjacencyId) return WizardDiffEntityCategory.adjacency;
     if (id is BoundaryEdgeId) return WizardDiffEntityCategory.boundaryTopology;
+    if (id is SlabId) return WizardDiffEntityCategory.slab;
+    if (id is VerticalCoreId) return WizardDiffEntityCategory.verticalCore;
+    if (id is ServiceEntryId) return WizardDiffEntityCategory.serviceAnchor;
+    if (id is TypicalFloorDefinitionId) {
+      return WizardDiffEntityCategory.provenance;
+    }
     return WizardDiffEntityCategory.other;
   }
 
@@ -244,6 +286,7 @@ final class WizardDiffProjector {
     ProjectAggregateRoot before,
     ProjectAggregateRoot candidate,
   ) {
+    if (entity is CompositionGenerationManifest) return 'Composition origin';
     if (entity is ProjectSiteEntity) return 'Site “${entity.name}”';
     if (entity is ProjectBuildingEntity) return 'Building “${entity.name}”';
     if (entity is ProjectLevelEntity) {
@@ -255,6 +298,19 @@ final class WizardDiffProjector {
           : 'Structural zone “${entity.name}”';
     }
     if (entity is ProjectSpaceEntity) return 'Space “${entity.name}”';
+    if (entity is ProjectSlab) return 'Slab';
+    if (entity is ProjectVerticalCore) {
+      return 'Vertical core “${entity.name ?? entity.usage.name}”';
+    }
+    if (entity is ProjectServiceAnchor) {
+      return 'Service anchor “${entity.name}”';
+    }
+    if (entity is ProjectSharedSiteAnchor) {
+      return 'Shared anchor “${entity.name}”';
+    }
+    if (entity is TypicalFloorDefinition) {
+      return 'Typical floor “${entity.definitionKey}”';
+    }
     if (entity is ProjectOpeningEntity) {
       final names = entity.connectedSpaceIds
           .map((spaceId) => _spaceName(candidate, before, spaceId))
@@ -342,6 +398,53 @@ final class WizardDiffProjector {
   }
 
   Map<String, String> _fields(Object? entity) {
+    if (entity is ProjectBuildingSitePlacement) {
+      return {
+        for (final e in entity.toCanonicalJson().entries)
+          e.key: e.value.toString()
+      };
+    }
+    if (entity is ProjectServiceAnchor) {
+      return {
+        for (final e in entity.toCanonicalJson().entries)
+          e.key: e.value.toString()
+      };
+    }
+    if (entity is ProjectSharedSiteAnchor) {
+      return {
+        for (final e in entity.toCanonicalJson().entries)
+          e.key: e.value.toString()
+      };
+    }
+    if (entity is BoundaryHostedReference) {
+      return {
+        'Wall space': entity.host.spaceId.value,
+        'Boundary edge': entity.host.edgeId.value,
+        'Offset': '${entity.startOffsetMm} mm'
+      };
+    }
+    if (entity is ProjectVerticalCore) {
+      return {
+        'Name': entity.name ?? '',
+        'Usage': entity.usage.name,
+        'Levels': entity.levelIds.length.toString(),
+        'Hosts': entity.hostSpaceIdsByLevel.length.toString()
+      };
+    }
+    if (entity is ProjectSlab) {
+      return {
+        'Kind': entity.kind.name,
+        'Elevation': '${entity.bottomElevationMm} mm',
+        'Thickness': '${entity.thicknessMm} mm'
+      };
+    }
+    if (entity is TypicalFloorDefinition) {
+      return {
+        'Definition': entity.definitionKey,
+        'Template': entity.templateId.value,
+        'Version': entity.templateVersion.toString()
+      };
+    }
     if (entity is ProjectSiteEntity) {
       return {
         'Name': entity.name,

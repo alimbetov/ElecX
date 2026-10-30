@@ -7,6 +7,7 @@ import '../../../../domain/apartment_topology/apartment_topology_generation_runt
 import '../../../../domain/apartment_topology/apartment_topology_models.dart';
 import '../../../../domain/apartment_topology/apartment_vector_scene.dart';
 import '../../../../domain/project_aggregate.dart';
+import '../../../../domain/project_identity.dart';
 import '../wizard_contracts.dart';
 import 'apartment_area_fitter.dart';
 import 'apartment_candidate_identity.dart';
@@ -195,9 +196,41 @@ final class ApartmentCandidateSetService {
     required LevelWizardTarget target,
     required ProjectAggregateRoot project,
     ApartmentScoringProfile? scoringProfile,
+  }) =>
+      _generate(
+          input: input,
+          target: target,
+          project: project,
+          scoringProfile: scoringProfile,
+          requireEmptyLevel: true);
+
+  /// Pure P9 exploration for a P10 slot. P9 qualification and typed ownership
+  /// stay mandatory; P10 validates the occupied level's placement and access.
+  ApartmentCandidateSetGenerationResult generateForComposition({
+    required ApartmentRequestInput input,
+    required LevelWizardTarget target,
+    required ProjectAggregateRoot project,
+    ApartmentScoringProfile? scoringProfile,
+  }) =>
+      _generate(
+          input: input,
+          target: target,
+          project: project,
+          scoringProfile: scoringProfile,
+          requireEmptyLevel: false);
+
+  ApartmentCandidateSetGenerationResult _generate({
+    required ApartmentRequestInput input,
+    required LevelWizardTarget target,
+    required ProjectAggregateRoot project,
+    required bool requireEmptyLevel,
+    ApartmentScoringProfile? scoringProfile,
   }) {
     final failures = <P9Failure>[];
-    failures.addAll(validateTarget(target: target, project: project));
+    failures.addAll(validateTarget(
+        target: target,
+        project: project,
+        requireEmptyLevel: requireEmptyLevel));
     if (_hasBlockers(failures)) {
       return ApartmentCandidateSetGenerationResult(
         candidateSet: null,
@@ -205,6 +238,41 @@ final class ApartmentCandidateSetService {
       );
     }
 
+    return _generateOnHost(
+        input: input,
+        targetLevelId: target.levelId,
+        scoringProfile: scoringProfile);
+  }
+
+  /// P10 building exploration before a LevelId exists. The existing Site is
+  /// the proposal host; Apply still allocates every canonical apartment ID.
+  ApartmentCandidateSetGenerationResult generateForSite({
+    required ApartmentRequestInput input,
+    required SiteWizardTarget target,
+    required ProjectAggregateRoot project,
+    ApartmentScoringProfile? scoringProfile,
+  }) {
+    if (project.id != target.projectId ||
+        project.siteId != target.siteId ||
+        project.version != target.baseVersion ||
+        !project.stores.sites.containsKey(target.siteId)) {
+      return ApartmentCandidateSetGenerationResult(
+          candidateSet: null,
+          failures: [_providerFailure('p9.provider.target-missing')]);
+    }
+    return _generateOnHost(
+        input: input,
+        targetSiteId: target.siteId,
+        scoringProfile: scoringProfile);
+  }
+
+  ApartmentCandidateSetGenerationResult _generateOnHost({
+    required ApartmentRequestInput input,
+    LevelId? targetLevelId,
+    SiteId? targetSiteId,
+    ApartmentScoringProfile? scoringProfile,
+  }) {
+    final failures = <P9Failure>[];
     final normalization = const ApartmentRequestNormalizer().normalize(input);
     failures.addAll(normalization.failures);
     final request = normalization.request;
@@ -667,7 +735,8 @@ final class ApartmentCandidateSetService {
         draft: lineage.draft,
         fittedDraft: lineage.fittedDraft,
         geometry: lineage.geometry,
-        targetLevelId: target.levelId,
+        targetLevelId: targetLevelId,
+        targetSiteId: targetSiteId,
       );
       final engineeringProjection = projectionResult.projection;
       if (engineeringProjection == null || !projectionResult.accepted) {
@@ -879,6 +948,7 @@ final class ApartmentCandidateSetService {
   List<P9Failure> validateTarget({
     required LevelWizardTarget target,
     required ProjectAggregateRoot project,
+    bool requireEmptyLevel = true,
   }) {
     final failures = <P9Failure>[];
     if (project.id != target.projectId || project.siteId != target.siteId) {
@@ -914,7 +984,7 @@ final class ApartmentCandidateSetService {
     final hasZones = level.zoneIds.isNotEmpty ||
         project.stores.zones.values
             .any((zone) => zone.levelId == target.levelId);
-    if (hasSpaces || hasZones) {
+    if (requireEmptyLevel && (hasSpaces || hasZones)) {
       failures.add(
         _providerFailure(
           'p9.provider.target-not-empty',

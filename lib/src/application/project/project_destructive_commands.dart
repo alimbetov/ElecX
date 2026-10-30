@@ -2,6 +2,7 @@ import '../../domain/boundary_topology.dart';
 import '../../domain/project_aggregate.dart';
 import '../../domain/project_entity_stores_copy.dart';
 import '../../domain/project_identity.dart';
+import '../../domain/project_service_anchor.dart';
 import 'project_authoring_error.dart';
 import 'project_mutation.dart';
 
@@ -10,6 +11,10 @@ import 'project_mutation.dart';
 /// P6 semantic dependencies are never cascaded implicitly. Openings,
 /// adjacencies and overlay classifications must be edited explicitly first so
 /// one destructive action cannot silently erase engineering meaning.
+///
+/// P10 vertical-core host bindings are also canonical semantic/topology
+/// dependencies. A host Space must be detached from its core explicitly before
+/// the Space can be removed.
 ///
 /// P7A boundary topology is owned state of the space itself, but any canonical
 /// hosted object/profile/construction attached to those edges is an explicit
@@ -38,6 +43,12 @@ final class RemoveSpaceCommand implements ProjectCommand {
       ...?current.index.openingsBySpaceId[space.id],
       ...?current.index.adjacenciesBySpaceId[space.id],
       ...?current.index.overlaysBySpaceId[space.id],
+      for (final core in current.stores.verticalCores.values)
+        if (core.hostSpaceIdsByLevel.containsValue(space.id)) core.id,
+      for (final anchor
+          in current.engineeringMetadata.siteLayout.serviceAnchors.values)
+        if (anchor is ProjectSpaceServiceAnchor && anchor.spaceId == space.id)
+          anchor.id,
     };
     if (semanticBlockers.isNotEmpty) {
       throw ProjectAuthoringException(
@@ -46,8 +57,8 @@ final class RemoveSpaceCommand implements ProjectCommand {
         relatedEntityId: semanticBlockers.first,
         blockingEntityIds: Set<EntityId>.unmodifiable(semanticBlockers),
         message: 'Space ${space.id} cannot be removed while '
-            '${semanticBlockers.length} P6 semantic dependency/dependencies '
-            'still reference it.',
+            '${semanticBlockers.length} canonical semantic/topology '
+            'dependency/dependencies still reference it.',
       );
     }
 
@@ -293,6 +304,23 @@ final class RemoveBuildingCommand implements ProjectCommand {
         message: 'Building $buildingId does not exist.',
       );
     }
+    final sharedAnchors = current
+        .engineeringMetadata.siteLayout.sharedAnchors.values
+        .where((anchor) => anchor.servedBuildingIds.contains(building.id))
+        .map((anchor) => anchor.id)
+        .toSet();
+    sharedAnchors.addAll(current
+        .engineeringMetadata.siteLayout.serviceAnchors.values
+        .where((anchor) => anchor.servedBuildingIds.contains(building.id))
+        .map((anchor) => anchor.id));
+    if (sharedAnchors.isNotEmpty) {
+      throw ProjectAuthoringException(
+          code: ProjectAuthoringIssueCode.buildingHasSiteDependencies,
+          entityId: building.id,
+          blockingEntityIds: sharedAnchors,
+          message:
+              'Shared Site anchors must be removed or explicitly rebound before Building deletion.');
+    }
     if (building.levelIds.isNotEmpty) {
       throw ProjectAuthoringException(
         code: ProjectAuthoringIssueCode.buildingHasLevels,
@@ -330,7 +358,11 @@ final class RemoveBuildingCommand implements ProjectCommand {
 
     return ProjectCommandCandidate.fromState(
       state: ProjectMutableState(
-        engineeringMetadata: current.engineeringMetadata,
+        engineeringMetadata: current.engineeringMetadata.copyWith(
+            siteLayout: current.engineeringMetadata.siteLayout.copyWith(
+                placements: {
+          ...current.engineeringMetadata.siteLayout.placements
+        }..remove(building.id))),
         stores: current.stores.copyWith(
           sites: sites,
           buildings: buildings,

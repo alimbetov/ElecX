@@ -5,6 +5,7 @@ import '../../domain/project_identity.dart';
 import '../../domain/slab_topology.dart';
 import '../../domain/vertical_core.dart';
 import '../../domain/vertical_core_continuity_validation.dart';
+import '../../domain/vertical_core_project_validation.dart';
 import 'project_authoring_error.dart';
 import 'project_mutation.dart';
 
@@ -26,6 +27,7 @@ final class CreateVerticalCoreCommand implements ProjectCommand {
         message: 'Vertical core ${verticalCore.id} already exists.',
       );
     }
+    _validateProjectOwnershipAndHosts(current, verticalCore);
     _validatePhysicalContinuity(current, verticalCore);
     final verticalCores = Map<VerticalCoreId, ProjectVerticalCore>.from(
         current.stores.verticalCores)
@@ -39,6 +41,7 @@ final class CreateVerticalCoreCommand implements ProjectCommand {
         verticalCore.id,
         verticalCore.buildingId,
         ...verticalCore.levelIds,
+        ...verticalCore.hostSpaceIdsByLevel.values,
       },
     );
   }
@@ -63,6 +66,7 @@ final class UpdateVerticalCoreCommand implements ProjectCommand {
         message: 'Vertical core ${verticalCore.id} does not exist.',
       );
     }
+    _validateProjectOwnershipAndHosts(current, verticalCore);
     _validatePhysicalContinuity(current, verticalCore);
     final verticalCores = Map<VerticalCoreId, ProjectVerticalCore>.from(
         current.stores.verticalCores)
@@ -78,6 +82,8 @@ final class UpdateVerticalCoreCommand implements ProjectCommand {
         verticalCore.buildingId,
         ...before.levelIds,
         ...verticalCore.levelIds,
+        ...before.hostSpaceIdsByLevel.values,
+        ...verticalCore.hostSpaceIdsByLevel.values,
       },
     );
   }
@@ -114,9 +120,37 @@ final class RemoveVerticalCoreCommand implements ProjectCommand {
         core.id,
         core.buildingId,
         ...core.levelIds,
+        ...core.hostSpaceIdsByLevel.values,
       },
     );
   }
+}
+
+void _validateProjectOwnershipAndHosts(
+  ProjectAggregateRoot current,
+  ProjectVerticalCore verticalCore,
+) {
+  final issues = VerticalCoreProjectValidator.validate(
+    verticalCores: <VerticalCoreId, ProjectVerticalCore>{
+      verticalCore.id: verticalCore,
+    },
+    buildingExists: current.stores.buildings.containsKey,
+    levelBuildingResolver: (levelId) =>
+        current.stores.levels[levelId]?.buildingId,
+    spaceLevelResolver: (spaceId) => current.stores.spaces[spaceId]?.levelId,
+  );
+  if (issues.isEmpty) return;
+
+  final issue = issues.first;
+  throw ProjectAuthoringException(
+    code: ProjectAuthoringIssueCode.verticalCoreUnresolvedPhysicalTopology,
+    entityId: verticalCore.id,
+    relatedEntityId: issue.relatedEntityId,
+    blockingEntityIds: {
+      if (issue.relatedEntityId case final EntityId id) id,
+    },
+    message: issue.message,
+  );
 }
 
 void _validatePhysicalContinuity(

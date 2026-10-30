@@ -7,12 +7,12 @@ import '../../application/project/project_navigator_projection.dart';
 import '../../application/project/project_structure_authoring.dart';
 import '../../application/project/wizard/apartment/apartment_engineering_pipeline_runtime_registry.dart';
 import '../../application/project/wizard/apartment/apartment_wizard_provider.dart';
-import '../../application/project/wizard/basic_building_wizard_provider.dart';
+import '../../application/project/wizard/building/building_composition_wizard_provider.dart';
 import '../../application/project/wizard/wizard_contracts.dart';
 import '../../application/project/wizard/wizard_session.dart';
 import '../../domain/project_identity.dart';
 import '../projects/apartment_wizard_screen.dart';
-import '../projects/project_wizard_screen.dart';
+import '../projects/building_composition_wizard_screen.dart';
 import 'canonical_editor_wizard_runtime_registry.dart';
 import 'project_structure_authoring_controls.dart';
 
@@ -70,6 +70,7 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
   final Map<EntityId, GlobalKey> _nodeKeys = <EntityId, GlobalKey>{};
   ProjectNavigatorProjection? _projection;
   EntityId? _lastRenderedLeafId;
+  bool _wizardInProgress = false;
 
   ProjectStructureAuthoringSession get session => widget.session;
 
@@ -290,13 +291,24 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            trailing: selected
-                ? const Icon(Icons.check_circle_outline, size: 16)
-                : active
-                    ? const Icon(Icons.my_location, size: 15)
-                    : inCurrentPath
-                        ? const Icon(Icons.more_horiz, size: 15)
-                        : null,
+            trailing: node.kind == ProjectNavigatorNodeKind.site &&
+                    CanonicalEditorWizardRuntimeRegistry.resolve(session) !=
+                        null &&
+                    widget.onAuthoringCommitted != null
+                ? IconButton(
+                    key: const ValueKey('site-building-wizard'),
+                    tooltip: 'Building Wizard',
+                    onPressed: _wizardInProgress
+                        ? null
+                        : () => _startWizard(siteComposition: true),
+                    icon: const Icon(Icons.auto_awesome_outlined))
+                : selected
+                    ? const Icon(Icons.check_circle_outline, size: 16)
+                    : active
+                        ? const Icon(Icons.my_location, size: 15)
+                        : inCurrentPath
+                            ? const Icon(Icons.more_horiz, size: 15)
+                            : null,
             onTap: node.kind == ProjectNavigatorNodeKind.site
                 ? null
                 : () => _activateNode(node),
@@ -347,7 +359,17 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
     _scheduleRevealCurrent();
   }
 
-  Future<void> _startWizard() async {
+  Future<void> _startWizard({bool siteComposition = false}) async {
+    if (_wizardInProgress) return;
+    setState(() => _wizardInProgress = true);
+    try {
+      await _runWizard(siteComposition: siteComposition);
+    } finally {
+      if (mounted) setState(() => _wizardInProgress = false);
+    }
+  }
+
+  Future<void> _runWizard({required bool siteComposition}) async {
     final mutations = CanonicalEditorWizardRuntimeRegistry.resolve(session);
     if (mutations == null || widget.onAuthoringCommitted == null) return;
 
@@ -357,7 +379,7 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
       final activeLevelId = session.navigation.activeLevelId;
       final ReservedProjectMutationCommitResult? committed;
       EntityId fallbackCreatedId;
-      if (activeLevelId != null) {
+      if (activeLevelId != null && !siteComposition) {
         final level = before.stores.levels[activeLevelId];
         if (level == null || !_isEmptyApartmentTarget(activeLevelId)) return;
         final engineeringPipeline =
@@ -386,7 +408,7 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
         );
         fallbackCreatedId = activeLevelId;
       } else {
-        committed = await ProjectWizardScreen.show(
+        committed = await BuildingCompositionWizardScreen.show(
           context: context,
           session: WizardSession(
             target: SiteWizardTarget(
@@ -394,7 +416,8 @@ class _CanonicalProjectNavigatorState extends State<CanonicalProjectNavigator> {
               siteId: before.siteId,
               baseVersion: before.version,
             ),
-            registry: WizardProviderRegistry([BasicBuildingWizardProvider()]),
+            registry: WizardProviderRegistry(
+                const [BuildingCompositionWizardProvider()]),
             mutations: mutations,
           ),
         );

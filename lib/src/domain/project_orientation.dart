@@ -1,9 +1,12 @@
+import 'dart:convert';
+
 import 'applied_engineering_proposal.dart';
 import 'boundary_construction_registry.dart';
 import 'boundary_edge_identity_registry.dart';
 import 'boundary_host_registry.dart';
 import 'boundary_wall_profile_registry.dart';
 import 'generation_provenance.dart';
+import 'project_site_layout.dart';
 
 /// Canonical engineering orientation for ElecX project-space coordinates.
 ///
@@ -109,6 +112,7 @@ final class ProjectEngineeringNorth {
 final class ProjectEngineeringMetadata {
   const ProjectEngineeringMetadata({
     this.projectNorth,
+    this.siteLayout = const ProjectSiteLayout.empty(),
     this.boundaryEdgeIdentityRegistry =
         const BoundaryEdgeIdentityRegistry.empty(),
     this.boundaryHostedObjectRegistry =
@@ -124,6 +128,7 @@ final class ProjectEngineeringMetadata {
   });
 
   final ProjectEngineeringNorth? projectNorth;
+  final ProjectSiteLayout siteLayout;
   final BoundaryEdgeIdentityRegistry boundaryEdgeIdentityRegistry;
   final BoundaryHostedObjectRegistry boundaryHostedObjectRegistry;
   final BoundaryWallProfileRegistry boundaryWallProfileRegistry;
@@ -134,6 +139,7 @@ final class ProjectEngineeringMetadata {
   ProjectEngineeringMetadata copyWith({
     ProjectEngineeringNorth? projectNorth,
     bool clearProjectNorth = false,
+    ProjectSiteLayout? siteLayout,
     BoundaryEdgeIdentityRegistry? boundaryEdgeIdentityRegistry,
     BoundaryHostedObjectRegistry? boundaryHostedObjectRegistry,
     BoundaryWallProfileRegistry? boundaryWallProfileRegistry,
@@ -147,6 +153,7 @@ final class ProjectEngineeringMetadata {
       );
     }
     return ProjectEngineeringMetadata(
+      siteLayout: siteLayout ?? this.siteLayout,
       projectNorth:
           clearProjectNorth ? null : projectNorth ?? this.projectNorth,
       boundaryEdgeIdentityRegistry:
@@ -204,6 +211,7 @@ final class ProjectEngineeringMetadata {
   bool operator ==(Object other) =>
       other is ProjectEngineeringMetadata &&
       other.projectNorth == projectNorth &&
+      other.siteLayout.sameAs(siteLayout) &&
       other.boundaryEdgeIdentityRegistry.sameAs(boundaryEdgeIdentityRegistry) &&
       other.boundaryHostedObjectRegistry.sameAs(boundaryHostedObjectRegistry) &&
       other.boundaryWallProfileRegistry.sameAs(boundaryWallProfileRegistry) &&
@@ -214,7 +222,8 @@ final class ProjectEngineeringMetadata {
 
   @override
   int get hashCode {
-    var result = projectNorth.hashCode;
+    var result =
+        Object.hash(projectNorth, jsonEncode(siteLayout.toCanonicalJson()));
     final entries = boundaryEdgeIdentityRegistry.owners.entries.toList()
       ..sort((a, b) => a.key.value.compareTo(b.key.value));
     for (final entry in entries) {
@@ -292,6 +301,24 @@ final class ProjectEngineeringMetadata {
       for (final key in overridden) {
         result = Object.hash(result, key);
       }
+    }
+    final definitions =
+        generationProvenanceRegistry.typicalFloorDefinitions.entries.toList()
+          ..sort((a, b) => a.key.value.compareTo(b.key.value));
+    for (final entry in definitions) {
+      result = Object.hash(result, jsonEncode(entry.value.toCanonicalJson()));
+    }
+    final floorInstances = generationProvenanceRegistry.floorInstances.entries
+        .toList()
+      ..sort((a, b) => a.key.value.compareTo(b.key.value));
+    for (final entry in floorInstances) {
+      result = Object.hash(result, jsonEncode(entry.value.toCanonicalJson()));
+    }
+    final compositions = generationProvenanceRegistry.levelCompositions.entries
+        .toList()
+      ..sort((a, b) => a.key.value.compareTo(b.key.value));
+    for (final entry in compositions) {
+      result = Object.hash(result, jsonEncode(entry.value.toCanonicalJson()));
     }
     final applied = appliedEngineeringProposalRegistry.byLevel.entries.toList()
       ..sort((a, b) => a.key.value.compareTo(b.key.value));

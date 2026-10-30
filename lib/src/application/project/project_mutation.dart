@@ -1,12 +1,17 @@
+import '../../domain/boundary_host_migration.dart';
+import '../../domain/project_site_layout_integrity.dart';
 import '../../domain/boundary_edge_identity_registry.dart';
 import '../../domain/boundary_topology.dart';
 import '../../domain/generation_provenance.dart';
+import '../../domain/level_apartment_composition.dart';
 import '../../domain/project_aggregate.dart';
+import '../../domain/composition_generation_provenance.dart';
 import '../../domain/project_entity_stores_copy.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/project_orientation.dart';
 import '../../domain/project_space_semantics.dart';
 import '../../domain/slab_topology.dart';
+import '../../domain/typical_floor.dart';
 import '../../domain/vertical_core.dart';
 
 abstract interface class ProjectCommand {
@@ -197,6 +202,7 @@ final class ProjectEngineeringMetadataDiff {
     this.boundaryConstructionRegistryChanged = false,
     this.generationProvenanceRegistryChanged = false,
     this.appliedEngineeringProposalRegistryChanged = false,
+    this.siteLayoutChanged = false,
   });
 
   const ProjectEngineeringMetadataDiff.empty()
@@ -207,7 +213,8 @@ final class ProjectEngineeringMetadataDiff {
         boundaryWallProfileRegistryChanged = false,
         boundaryConstructionRegistryChanged = false,
         generationProvenanceRegistryChanged = false,
-        appliedEngineeringProposalRegistryChanged = false;
+        appliedEngineeringProposalRegistryChanged = false,
+        siteLayoutChanged = false;
 
   factory ProjectEngineeringMetadataDiff.between(
     ProjectEngineeringMetadata before,
@@ -215,6 +222,7 @@ final class ProjectEngineeringMetadataDiff {
   ) =>
       ProjectEngineeringMetadataDiff(
         beforeProjectNorth: before.projectNorth,
+        siteLayoutChanged: !before.siteLayout.sameAs(after.siteLayout),
         afterProjectNorth: after.projectNorth,
         boundaryEdgeIdentityRegistryChanged: !before
             .boundaryEdgeIdentityRegistry
@@ -243,10 +251,12 @@ final class ProjectEngineeringMetadataDiff {
   final bool boundaryConstructionRegistryChanged;
   final bool generationProvenanceRegistryChanged;
   final bool appliedEngineeringProposalRegistryChanged;
+  final bool siteLayoutChanged;
 
   bool get projectNorthChanged => beforeProjectNorth != afterProjectNorth;
   bool get isEmpty =>
       !projectNorthChanged &&
+      !siteLayoutChanged &&
       !boundaryEdgeIdentityRegistryChanged &&
       !boundaryHostedObjectRegistryChanged &&
       !boundaryWallProfileRegistryChanged &&
@@ -395,6 +405,15 @@ abstract final class CandidateGraphValidator {
     if (issues.isNotEmpty) {
       throw ProjectCandidateValidationException(issues);
     }
+    if (state.engineeringMetadata.generationProvenanceRegistry.compositions
+        .isNotEmpty) {
+      CompositionProvenanceIntegrity.validate(ProjectAggregateRoot(
+          id: current.id,
+          siteId: current.siteId,
+          version: current.version,
+          stores: state.stores,
+          engineeringMetadata: state.engineeringMetadata));
+    }
     state.engineeringMetadata.boundaryHostedObjectRegistry.validateAgainst(
       state.stores.boundaries,
     );
@@ -408,6 +427,33 @@ abstract final class CandidateGraphValidator {
       projectId: current.id,
       entityExists: (id) => _entityExists(state.stores, id),
     );
+    TypicalFloorLineageIntegrity.validateOrThrow(
+      definitions: state.engineeringMetadata.generationProvenanceRegistry
+          .typicalFloorDefinitions,
+      instances:
+          state.engineeringMetadata.generationProvenanceRegistry.floorInstances,
+      stores: state.stores,
+    );
+    LevelApartmentCompositionIntegrity.validateOrThrow(
+        registry: state.engineeringMetadata.generationProvenanceRegistry,
+        projectId: current.id,
+        stores: state.stores);
+    ProjectSiteLayoutIntegrity.validateOrThrow(
+        siteId: current.siteId,
+        stores: state.stores,
+        layout: state.engineeringMetadata.siteLayout);
+    if (state.engineeringMetadata.siteLayout.serviceAnchors.isNotEmpty ||
+        state.engineeringMetadata.boundaryHostedObjectRegistry.references.values
+            .any(
+                (r) => r.objectKind == BoundaryHostedObjectKind.serviceEntry)) {
+      // Root construction validates the complete physical anchor/host join.
+      ProjectAggregateRoot(
+          id: current.id,
+          siteId: current.siteId,
+          version: current.version,
+          stores: state.stores,
+          engineeringMetadata: state.engineeringMetadata);
+    }
     final index = ProjectIndex.build(state.stores);
     if (!index.isConsistentWith(state.stores)) {
       throw StateError('Candidate ProjectIndex is inconsistent with stores.');
@@ -448,10 +494,12 @@ final class _ProjectMutableStateDiff {
 
   factory _ProjectMutableStateDiff.between(
     ProjectMutableState before,
-    ProjectMutableState after,
-  ) =>
+    ProjectMutableState after, {
+    ProjectEntityDiff? entityDiff,
+  }) =>
       _ProjectMutableStateDiff(
-        entityDiff: ProjectEntityDiff.between(before.stores, after.stores),
+        entityDiff: entityDiff ??
+            ProjectEntityDiff.between(before.stores, after.stores),
         engineeringMetadataDiff: ProjectEngineeringMetadataDiff.between(
           before.engineeringMetadata,
           after.engineeringMetadata,
@@ -464,14 +512,22 @@ final class _ProjectMutableStateDiff {
   bool get isEmpty => entityDiff.isEmpty && engineeringMetadataDiff.isEmpty;
 }
 
+/// Synchronous host validation/fault-injection boundary after full canonical
+/// validation and change-set construction, before state/history publication.
+/// Throwing rejects the command without publishing its candidate. The callback
+/// must not perform mutations or external side effects; Preview never calls it.
+typedef ProjectCommitGuard = void Function(ProjectAggregateRoot before,
+    ProjectAggregateRoot candidate, ProjectChangeSet changeSet);
+
 final class ProjectMutationSession {
-  ProjectMutationSession(ProjectAggregateRoot initial)
+  ProjectMutationSession(ProjectAggregateRoot initial, {this.commitGuard})
       : _current = initial,
         _boundaryIdentityRegistry = initial
             .engineeringMetadata.boundaryEdgeIdentityRegistry
             .registerActiveBoundaries(initial.stores.boundaries);
 
   ProjectAggregateRoot _current;
+  final ProjectCommitGuard? commitGuard;
   BoundaryEdgeIdentityRegistry _boundaryIdentityRegistry;
   final List<UndoRecord> _undoStack = <UndoRecord>[];
   final List<UndoRecord> _redoStack = <UndoRecord>[];
@@ -488,9 +544,12 @@ final class ProjectMutationSession {
     final before = _current;
     final candidate = request.command.buildCandidate(before);
     var candidateState = candidate.resolveState(before);
+    final entityDiff =
+        ProjectEntityDiff.between(before.stores, candidateState.stores);
     candidateState = _withTrackedGenerationProvenance(
       before: before,
       candidateState: candidateState,
+      entityDiff: entityDiff,
     );
     final trackedCandidate = ProjectCommandCandidate.fromState(
       state: candidateState,
@@ -505,6 +564,7 @@ final class ProjectMutationSession {
     final stateDiff = _ProjectMutableStateDiff.between(
       ProjectMutableState.fromProject(before),
       candidateState,
+      entityDiff: entityDiff,
     );
     _requireVersion(request.expectedVersion);
     final previewRoot = ProjectAggregateRoot(
@@ -530,9 +590,12 @@ final class ProjectMutationSession {
     final beforeState = ProjectMutableState.fromProject(before);
     final candidate = request.command.buildCandidate(before);
     var candidateState = candidate.resolveState(before);
+    final entityDiff =
+        ProjectEntityDiff.between(before.stores, candidateState.stores);
     candidateState = _withTrackedGenerationProvenance(
       before: before,
       candidateState: candidateState,
+      entityDiff: entityDiff,
     );
     final trackedCandidate = ProjectCommandCandidate.fromState(
       state: candidateState,
@@ -547,6 +610,7 @@ final class ProjectMutationSession {
     final stateDiff = _ProjectMutableStateDiff.between(
       beforeState,
       candidateState,
+      entityDiff: entityDiff,
     );
     _requireVersion(request.expectedVersion);
     if (stateDiff.isEmpty) return null;
@@ -566,6 +630,8 @@ final class ProjectMutationSession {
       entityDiff: stateDiff.entityDiff,
       engineeringMetadataDiff: stateDiff.engineeringMetadataDiff,
     );
+    commitGuard?.call(before, committed, changeSet);
+    _requireVersion(request.expectedVersion);
     _current = committed;
     _boundaryIdentityRegistry =
         committed.engineeringMetadata.boundaryEdgeIdentityRegistry;
@@ -679,13 +745,30 @@ final class ProjectMutationSession {
   ProjectMutableState _withTrackedGenerationProvenance({
     required ProjectAggregateRoot before,
     required ProjectMutableState candidateState,
+    required ProjectEntityDiff entityDiff,
   }) {
     final beforeRegistry =
         before.engineeringMetadata.generationProvenanceRegistry;
-    if (beforeRegistry.entities.isEmpty) return candidateState;
+    if (beforeRegistry.entities.isEmpty &&
+        !beforeRegistry.hasTypicalFloorLineage &&
+        beforeRegistry.compositions.isEmpty) {
+      return candidateState;
+    }
 
     var registry =
         candidateState.engineeringMetadata.generationProvenanceRegistry;
+    for (final id in beforeRegistry.compositions.keys) {
+      if (!registry.compositions.containsKey(id)) {
+        throw StateError('p10.provenance.immutable-evidence');
+      }
+    }
+    for (final entry in beforeRegistry.typicalFloorDefinitions.entries) {
+      final next = registry.typicalFloorDefinitions[entry.key];
+      if (next != null && !entry.value.sameAs(next)) {
+        throw const TypicalFloorLineageException(
+            'p10.typical-floor.definition-immutable');
+      }
+    }
     for (final entry in beforeRegistry.entities.entries) {
       final entityId = entry.key;
       final provenance = entry.value;
@@ -701,6 +784,80 @@ final class ProjectMutationSession {
       if (changed.isNotEmpty) {
         registry = registry.markOverridden(entityId, changed);
       }
+    }
+    final nextInstances = {...registry.floorInstances};
+    for (final beforeInstance in beforeRegistry.floorInstances.values) {
+      final instance = nextInstances[beforeInstance.levelId];
+      if (instance == null) continue;
+      if (!candidateState.stores.levels.containsKey(instance.levelId)) {
+        nextInstances.remove(instance.levelId);
+        continue;
+      }
+      final entities = {...instance.entities};
+      final overridden = {...instance.overriddenProperties};
+      final removed = {...instance.removedGenerationKeys};
+      for (final entry in beforeInstance.entities.entries) {
+        if (!entities.containsKey(entry.key)) continue;
+        if (!_entityExists(candidateState.stores, entry.value)) {
+          entities.remove(entry.key);
+          overridden.remove(entry.key);
+          removed.add(entry.key);
+          continue;
+        }
+        final changed = _changedGeneratedProperties(
+          entityId: entry.value,
+          before: before,
+          afterStores: candidateState.stores,
+        );
+        if (changed.isNotEmpty) {
+          overridden[entry.key] = {...?overridden[entry.key], ...changed};
+        }
+      }
+      nextInstances[instance.levelId] = instance.copyWith(
+        entities: entities,
+        overriddenProperties: overridden,
+        removedGenerationKeys: removed,
+      );
+    }
+    registry = registry.copyWith(
+      floorInstances: nextInstances,
+      levelCompositions: {
+        for (final entry in registry.levelCompositions.entries)
+          entry.key: entry.value.reconcileRelations(candidateState.stores)
+      },
+      typicalFloorDefinitions: {
+        for (final entry in registry.typicalFloorDefinitions.entries)
+          if (candidateState.stores.buildings
+              .containsKey(entry.value.buildingId))
+            entry.key: entry.value,
+      },
+    );
+    if (registry.compositions.isNotEmpty) {
+      final affected = _compositionAffectedEntityIds(
+          before: before,
+          after: candidateState,
+          registry: registry,
+          entityDiff: entityDiff);
+      final proposed = ProjectAggregateRoot(
+          id: before.id,
+          siteId: before.siteId,
+          version: before.version,
+          stores: candidateState.stores,
+          engineeringMetadata: candidateState.engineeringMetadata
+              .withGenerationProvenanceRegistry(registry));
+      final compositions = {...registry.compositions};
+      for (final e in beforeRegistry.compositions.entries) {
+        final next = compositions[e.key]!;
+        final expected =
+            e.value.reconcile(proposed, affectedEntityIds: affected);
+        // Frozen Preview may already contain the owner-derived overrides.
+        // Arbitrary evidence/override edits still fail closed.
+        if (!e.value.sameAs(next) && !expected.sameAs(next)) {
+          throw StateError('p10.provenance.immutable-evidence');
+        }
+        compositions[e.key] = expected;
+      }
+      registry = registry.copyWith(compositions: compositions);
     }
     if (registry.sameAs(
       candidateState.engineeringMetadata.generationProvenanceRegistry,
@@ -734,9 +891,26 @@ final class ProjectMutationSession {
   }
 
   void _validateProvenance(ProjectId projectId, ProjectMutableState state) {
+    CompositionProvenanceIntegrity.validate(ProjectAggregateRoot(
+        id: projectId,
+        siteId: _current.siteId,
+        version: _current.version,
+        stores: state.stores,
+        engineeringMetadata: state.engineeringMetadata));
+    LevelApartmentCompositionIntegrity.validateOrThrow(
+        registry: state.engineeringMetadata.generationProvenanceRegistry,
+        projectId: projectId,
+        stores: state.stores);
     state.engineeringMetadata.generationProvenanceRegistry.validateOrThrow(
       projectId: projectId,
       entityExists: (id) => _entityExists(state.stores, id),
+    );
+    TypicalFloorLineageIntegrity.validateOrThrow(
+      definitions: state.engineeringMetadata.generationProvenanceRegistry
+          .typicalFloorDefinitions,
+      instances:
+          state.engineeringMetadata.generationProvenanceRegistry.floorInstances,
+      stores: state.stores,
     );
   }
 
@@ -762,6 +936,45 @@ final class ProjectMutationSession {
   }
 }
 
+/// Metadata-only changes do not appear in ProjectEntityDiff. Include their
+/// typed owners, including physical P7 bindings, without parsing registry keys
+/// or trusting a command's advisory affectedEntityIds.
+Set<EntityId> _compositionAffectedEntityIds({
+  required ProjectAggregateRoot before,
+  required ProjectMutableState after,
+  required GenerationProvenanceRegistry registry,
+  required ProjectEntityDiff entityDiff,
+}) {
+  final affected = {...entityDiff.affectedEntityIds};
+  final left = before.engineeringMetadata;
+  final right = after.engineeringMetadata;
+  void addReplaced<K extends EntityId, V>(Map<K, V> a, Map<K, V> b) {
+    if (identical(a, b)) return;
+    for (final id in {...a.keys, ...b.keys}) {
+      if (!identical(a[id], b[id])) affected.add(id);
+    }
+  }
+
+  addReplaced(left.siteLayout.placements, right.siteLayout.placements);
+  addReplaced(left.siteLayout.serviceAnchors, right.siteLayout.serviceAnchors);
+  addReplaced(left.siteLayout.sharedAnchors, right.siteLayout.sharedAnchors);
+  addReplaced(left.generationProvenanceRegistry.typicalFloorDefinitions,
+      registry.typicalFloorDefinitions);
+  if (!identical(
+      left.boundaryHostedObjectRegistry, right.boundaryHostedObjectRegistry)) {
+    for (final id in {
+      ...left.siteLayout.serviceAnchors.keys,
+      ...right.siteLayout.serviceAnchors.keys,
+    }) {
+      if (!identical(left.boundaryHostedObjectRegistry.serviceEntryHost(id),
+          right.boundaryHostedObjectRegistry.serviceEntryHost(id))) {
+        affected.add(id);
+      }
+    }
+  }
+  return affected;
+}
+
 Set<GenerationPropertyKey> _changedGeneratedProperties({
   required EntityId entityId,
   required ProjectAggregateRoot before,
@@ -769,6 +982,25 @@ Set<GenerationPropertyKey> _changedGeneratedProperties({
 }) {
   final changed = <GenerationPropertyKey>{};
   final beforeStores = before.stores;
+
+  if (entityId is LevelId) {
+    final left = beforeStores.levels[entityId];
+    final right = afterStores.levels[entityId];
+    if (left == null || right == null) return changed;
+    if (left.name != right.name) changed.add(GenerationPropertyKey.name);
+    if (left.levelNumber != right.levelNumber ||
+        left.kind != right.kind ||
+        left.elevationMm != right.elevationMm ||
+        left.displayOrder != right.displayOrder ||
+        left.floorToFloorHeightMm != right.floorToFloorHeightMm) {
+      changed.add(GenerationPropertyKey.levelStructure);
+    }
+    if (!_sameSet(left.spaceIds, right.spaceIds) ||
+        !_sameSet(left.zoneIds, right.zoneIds)) {
+      changed.add(GenerationPropertyKey.zoneMembership);
+    }
+    return changed;
+  }
 
   if (entityId is ZoneId) {
     final left = beforeStores.zones[entityId];
@@ -912,10 +1144,16 @@ bool _sameSpaceAdjacencyRelations(
 }
 
 bool _entityExists(ProjectEntityStores stores, EntityId id) {
+  if (id is SiteId) return stores.sites.containsKey(id);
+  if (id is BuildingId) return stores.buildings.containsKey(id);
+  if (id is LevelId) return stores.levels.containsKey(id);
+  if (id is SlabId) return stores.slabs.containsKey(id);
+  if (id is VerticalCoreId) return stores.verticalCores.containsKey(id);
   if (id is ZoneId) return stores.zones.containsKey(id);
   if (id is SpaceId) return stores.spaces.containsKey(id);
   if (id is OpeningId) return stores.openings.containsKey(id);
   if (id is SpaceAdjacencyId) return stores.adjacencies.containsKey(id);
+  if (id is OverlayClassificationId) return stores.overlays.containsKey(id);
   if (id is BoundaryEdgeId) return _boundaryEdge(stores, id) != null;
   return false;
 }
@@ -1040,8 +1278,10 @@ bool _sameVerticalCore(ProjectVerticalCore a, ProjectVerticalCore b) {
   if (a.id != b.id ||
       a.buildingId != b.buildingId ||
       a.kind != b.kind ||
+      a.usage != b.usage ||
       a.name != b.name ||
       !_sameSet(a.levelIds, b.levelIds) ||
+      !_sameMap(a.hostSpaceIdsByLevel, b.hostSpaceIdsByLevel) ||
       a.footprint.length != b.footprint.length) {
     return false;
   }
@@ -1123,5 +1363,13 @@ bool _sameBoundaryEdge(ProjectBoundaryEdge a, ProjectBoundaryEdge b) =>
 
 bool _sameSet<T>(Set<T> a, Set<T> b) =>
     a.length == b.length && a.containsAll(b);
+
+bool _sameMap<K, V>(Map<K, V> a, Map<K, V> b) {
+  if (a.length != b.length) return false;
+  for (final entry in a.entries) {
+    if (b[entry.key] != entry.value) return false;
+  }
+  return true;
+}
 
 bool _hasOverlap(Set<EntityId> a, Set<EntityId> b) => a.any(b.contains);

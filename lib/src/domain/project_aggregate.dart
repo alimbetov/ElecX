@@ -2,6 +2,8 @@ import 'boundary_topology.dart';
 import 'project_aggregate_legacy.dart' as legacy;
 import 'project_identity.dart';
 import 'project_orientation.dart';
+import 'project_site_layout_integrity.dart';
+import 'project_service_anchor_integrity.dart';
 import 'project_space_semantics.dart';
 import 'physical_level_order.dart';
 import 'slab_topology.dart';
@@ -221,6 +223,9 @@ enum ProjectAggregateIssueCode {
   danglingVerticalCoreBuilding,
   danglingVerticalCoreLevel,
   verticalCoreLevelBuildingMismatch,
+  danglingVerticalCoreHostSpace,
+  verticalCoreHostSpaceLevelMismatch,
+  missingVerticalCoreHostSpace,
   danglingZone,
   zoneLevelMismatch,
   levelZoneBackReferenceMissing,
@@ -331,6 +336,7 @@ abstract final class ProjectAggregateValidator {
       verticalCores: stores.verticalCores,
       buildingExists: stores.buildings.containsKey,
       levelBuildingResolver: (levelId) => stores.levels[levelId]?.buildingId,
+      spaceLevelResolver: (spaceId) => stores.spaces[spaceId]?.levelId,
     )) {
       issues.add(
         ProjectAggregateValidationIssue(
@@ -341,6 +347,12 @@ abstract final class ProjectAggregateValidator {
               ProjectAggregateIssueCode.danglingVerticalCoreLevel,
             VerticalCoreProjectIssueCode.levelBuildingMismatch =>
               ProjectAggregateIssueCode.verticalCoreLevelBuildingMismatch,
+            VerticalCoreProjectIssueCode.danglingHostSpace =>
+              ProjectAggregateIssueCode.danglingVerticalCoreHostSpace,
+            VerticalCoreProjectIssueCode.hostSpaceLevelMismatch =>
+              ProjectAggregateIssueCode.verticalCoreHostSpaceLevelMismatch,
+            VerticalCoreProjectIssueCode.missingRequiredHostSpace =>
+              ProjectAggregateIssueCode.missingVerticalCoreHostSpace,
           },
           entityId: issue.verticalCoreId,
           relatedEntityId: issue.relatedEntityId,
@@ -653,9 +665,11 @@ final class ProjectAggregateRoot {
     engineeringMetadata.boundaryConstructionRegistry.validateAgainst(
       stores.boundaries,
     );
+    ProjectSiteLayoutIntegrity.validateOrThrow(
+        siteId: siteId, stores: stores, layout: engineeringMetadata.siteLayout);
     final index = ProjectIndex.build(stores);
     assert(index.isConsistentWith(stores));
-    return ProjectAggregateRoot._(
+    final result = ProjectAggregateRoot._(
       id: id,
       siteId: siteId,
       version: version,
@@ -663,6 +677,8 @@ final class ProjectAggregateRoot {
       stores: stores,
       index: index,
     );
+    ProjectServiceAnchorIntegrity.validateOrThrow(result);
+    return result;
   }
 
   final ProjectId id;
