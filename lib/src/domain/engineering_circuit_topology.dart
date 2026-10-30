@@ -3,19 +3,7 @@ import 'engineering_classification.dart';
 import 'engineering_graph.dart';
 import 'project_identity.dart';
 
-/// Stable identity for one canonical logical engineering loop.
-///
-/// Allocation is intentionally still owned by the application boundary. P11.3
-/// only defines the typed identity; production persistence/allocation integration
-/// remains P11.8 work.
-final class LoopId extends EntityId {
-  LoopId(super.value);
-}
-
-/// Stable identity for one semantic grouping of engineering graph entities.
-final class EngineeringGroupId extends EntityId {
-  EngineeringGroupId(super.value);
-}
+export 'project_identity.dart' show EngineeringGroupId, LoopId;
 
 /// Canonical logical circuit membership over existing graph connections.
 ///

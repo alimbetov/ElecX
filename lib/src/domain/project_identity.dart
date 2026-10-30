@@ -147,6 +147,21 @@ final class EngineeringConnectionId extends EntityId {
   EngineeringConnectionId(super.value);
 }
 
+/// Stable identity for one canonical logical engineering loop.
+final class LoopId extends EntityId {
+  LoopId(super.value);
+}
+
+/// Stable identity for one semantic grouping of engineering graph entities.
+final class EngineeringGroupId extends EntityId {
+  EngineeringGroupId(super.value);
+}
+
+/// Stable identity for one logical engineering supply source.
+final class EngineeringSupplySourceId extends EntityId {
+  EngineeringSupplySourceId(super.value);
+}
+
 /// Allocates stable persistent identities at the application/domain boundary.
 abstract interface class EntityIdFactory {
   ProjectId newProjectId();
@@ -172,6 +187,9 @@ abstract interface class EntityIdFactory {
   TemplateId newTemplateId();
   TypicalFloorDefinitionId newTypicalFloorDefinitionId();
   EngineeringConnectionId newEngineeringConnectionId();
+  LoopId newLoopId();
+  EngineeringGroupId newEngineeringGroupId();
+  EngineeringSupplySourceId newEngineeringSupplySourceId();
 }
 
 /// Native-safe default identity allocator using RFC 4122 variant UUID v4.
@@ -253,6 +271,17 @@ final class SecureRandomEntityIdFactory implements EntityIdFactory {
   @override
   EngineeringConnectionId newEngineeringConnectionId() =>
       EngineeringConnectionId(_nextUuidV4());
+
+  @override
+  LoopId newLoopId() => LoopId(_nextUuidV4());
+
+  @override
+  EngineeringGroupId newEngineeringGroupId() =>
+      EngineeringGroupId(_nextUuidV4());
+
+  @override
+  EngineeringSupplySourceId newEngineeringSupplySourceId() =>
+      EngineeringSupplySourceId(_nextUuidV4());
 
   String _nextUuidV4() {
     final bytes = List<int>.generate(16, (_) => _random.nextInt(256));

@@ -6,14 +6,7 @@ import 'engineering_classification.dart';
 import 'engineering_graph.dart';
 import 'project_identity.dart';
 
-/// Stable identity for one logical engineering supply source.
-///
-/// Allocation/persistence integration remains owned by P11.8. The identity is
-/// intentionally opaque and must never be derived from display order or graph
-/// coordinates.
-final class EngineeringSupplySourceId extends EntityId {
-  EngineeringSupplySourceId(super.value);
-}
+export 'project_identity.dart' show EngineeringSupplySourceId;
 
 /// Extensible semantic role of a supply source.
 ///
