@@ -19,6 +19,8 @@ This foundation introduces no additional project store or persistence boundary.
 | Complete endpoint | `EngineeringPortRef(ComponentId, PortId)` |
 | Logical edge | `EngineeringConnectionId` |
 | Logical circuit | `CircuitId` |
+| Logical loop | `LoopId` |
+| Semantic group | `EngineeringGroupId` |
 | Optional physical route reference | Existing `RouteId` |
 
 Existing nonblank opaque values are retained verbatim. A catalog key such as
@@ -63,63 +65,71 @@ closed `EngineeringConnectionType` enum without breaking P9/P10 callers.
 - Custom media identifiers are valid when nonblank; adding a medium does not
   require changing an enum.
 - `EngineeringPortCapability` provides extensible semantic capability tags.
-  Quantitative parameters remain typed catalog/engineering data rather than
-  being encoded into capability strings.
-- `EngineeringPortSpec` owns immutable explicit media/capability sets in
-  addition to its legacy allowed-connection set.
-- `EngineeringGraphConnection` and the transitional legacy edge can carry an
-  optional explicit medium.
-- When a connection declares a medium, both endpoint ports must explicitly
-  support it; absence or mismatch fails closed. The graph never infers or
-  silently substitutes a medium.
-- A null connection medium preserves the existing P9/P10 graph contract until
-  the persistence/migration lifecycle is intentionally extended in P11.8.
-- Logical medium remains independent from optional `RouteId`; P11.2 does not
-  introduce physical routing ownership.
+- `EngineeringPortSpec` owns immutable explicit media/capability sets.
+- Connections can carry an optional explicit medium.
+- Explicit media must be supported by both endpoints; mismatch fails closed.
+- Null media preserves the legacy P9/P10 contract until P11.8.
+- Logical medium remains independent from optional `RouteId`.
 
 Qualification: `test/p11_media_capability_foundation_test.dart`, P11.1
-regressions, existing graph/P9/P10 suites and full repository
-`quality`/`verification` are green on exact SHA
+regressions and full repository gates are green on exact SHA
 `11c74296ce4f013a6887b84ab1a1bad27df70275` (Flutter run `41000369674`).
 
-## P11.3 implementation scope
+## P11.3 delivered scope
 
-P11.3 introduces canonical logical circuit, loop and group abstractions without
-replacing the existing graph, cable registry or electrical synthesis models.
+P11.3 adds canonical logical circuit, loop and group abstractions without
+replacing the graph, cable registry or electrical synthesis models.
 
-- `EngineeringCircuit` uses stable `CircuitId` and owns an immutable set of
-  canonical `EngineeringConnectionId` members. A circuit may branch; ordering is
-  therefore not part of circuit identity or membership.
-- `EngineeringLoop` uses stable `LoopId` and owns an ordered immutable list of
-  connection ids. Loop validation requires directed continuity and closure.
-- `EngineeringGroup` uses stable `EngineeringGroupId` plus an extensible opaque
-  `semanticTypeId`. A group can reference components, connections, circuits and
-  loops and may intentionally span disciplines.
-- `CanonicalEngineeringTopology` is an immutable validated/indexed view layered
-  over the authoritative `CanonicalEngineeringGraph`; it is not a second project
-  store and owns no persistence or mutation lifecycle.
-- Connections cannot be members of two different circuits in one topology.
-  Circuit system class and optional explicit medium must match every member edge.
-- Existing per-edge `circuitId` evidence is respected: conflicting circuit
-  membership fails closed, while a null legacy value remains compatible with
-  explicit P11.3 circuit membership until P11.8 migration/persistence work.
-- A loop may optionally bind to one circuit. When bound, every loop edge must be
-  a member of that circuit.
-- Group references are referentially validated against the graph/topology and
-  dangling references fail closed.
-- P11.3 does not perform load calculation, cable sizing, protection selection,
-  routing, source/supply inference or project persistence.
+- `EngineeringCircuit` uses `CircuitId` and immutable edge membership.
+- `EngineeringLoop` uses `LoopId` and ordered closed traversal membership.
+- `EngineeringGroup` uses `EngineeringGroupId` and extensible `semanticTypeId`.
+- `CanonicalEngineeringTopology` is an immutable validated/indexed view over the
+  authoritative graph, not a second project store.
+- One connection cannot belong to two circuits in one topology.
+- Circuit system class and optional explicit medium must match member edges.
+- Existing per-edge `circuitId` evidence is respected and conflicts fail closed.
+- Bound loops must be continuous, closed and fully contained by their circuit.
+- Group references are referentially validated and dangling members fail closed.
+- P11.3 owns no load calculation, protection, routing or persistence.
 
-Qualification target: `test/p11_circuit_loop_group_foundation_test.dart`, P11.1
-and P11.2 regressions, existing electrical/cable/P9/P10 suites and full
-repository `quality`/`verification` on the P11.3 exact SHA. Implementation is not
-accepted until those checks are green.
+Qualification: `test/p11_circuit_loop_group_foundation_test.dart`, P11.1/P11.2
+regressions and full repository gates are green on exact SHA
+`87591b24068826a03aa1276930ca928822ff7f75` (Flutter run `41001655240`).
+
+## P11.4 implementation scope
+
+P11.4 adds explicit, versioned compatibility and invariant validation without
+turning product preferences into hidden engineering rules.
+
+- `EngineeringConnectionCompatibilityRule` describes one exact directed contract
+  across source system class, target system class, edge system class, legacy
+  connection type and optional extensible medium.
+- `EngineeringCompatibilityProfile` is explicit and versioned. Rule ids and
+  compatibility signatures must be unique; ambiguous duplicate contracts fail
+  closed.
+- Custom media are validated through `EngineeringMedia` and require no enum fork.
+- `EngineeringGraphValidationOptions` controls migration strictness. Legacy
+  projects remain readable by default, while production flows may require an
+  explicit compatibility rule, explicit media and resolved circuit membership.
+- `EngineeringGraphInvariantValidator` returns an immutable validation report and
+  can fail closed through `requireValid()`.
+- Strict circuit resolution requires canonical P11.3 topology evidence for any
+  persisted per-edge `circuitId`.
+- A topology supplied to validation must reference the exact authoritative graph
+  instance; a foreign/stale topology view is rejected.
+- Base endpoint existence, direction and port-media compatibility remain enforced
+  by `CanonicalEngineeringGraph`; P11.4 does not duplicate graph ownership.
+- P11.4 does not infer normative compliance, calculate engineering values, select
+  equipment or introduce persistence changes.
+
+Qualification target: `test/p11_graph_invariant_validation_test.dart`, P11.1–P11.3
+regressions and full repository `quality`/`verification` on the exact P11.4 SHA.
+P11.4 is not accepted until those checks are green.
 
 ## Remaining P11 packages
 
 | Package | Planned result |
 | --- | --- |
-| P11.4 | Generalized graph invariants and compatibility validation |
 | P11.5 | Cross-discipline extension contract |
 | P11.6 | Multiple source/supply topology |
 | P11.7 | Typed dependency relations for P15 impact traversal |
@@ -127,7 +137,7 @@ accepted until those checks are green.
 | P11.9 | Equipment Catalog adapters |
 | P11.10 | Qualification corpus and full hard-gate closure |
 
-The P10 v19 project document schema remains unchanged in P11.1–P11.3. Graph
+The P10 v19 project document schema remains unchanged in P11.1–P11.4. Graph
 persistence and production mutation integration remain explicit P11.8 work. This
 foundation does not constitute acceptance of all P11 and does not generate P12
 engineering content.
