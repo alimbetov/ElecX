@@ -27,10 +27,11 @@ are not identity formats. New allocation uses the existing `EntityIdFactory`.
 
 `EngineeringPortSpec.identified` accepts `PortId`. The string constructor and
 `id` getter preserve the existing catalog/serialization interface. Blank port
-values fail closed. Port capability sets and capability/component port lists
-are immutable snapshots, so external edits cannot invalidate a validated graph.
-P9 canonical projection uses the typed constructor with its existing allocated
-port identities; the exact string values and fingerprint representation remain.
+values fail closed. Port collections, allowed connection sets, explicit media
+sets and capability sets are immutable snapshots, so external edits cannot
+invalidate a validated graph. P9 canonical projection uses the typed constructor
+with its existing allocated port identities; existing string values and legacy
+fingerprint representation remain unchanged.
 
 ## P11.1 delivered scope
 
@@ -46,14 +47,43 @@ port identities; the exact string values and fingerprint representation remain.
 
 Qualification: `test/p11_graph_identity_foundation_test.dart`, existing canonical
 graph/identity suites, P9 projection/fingerprint regressions and full repository
-`quality`/`verification` on the implementation SHA. A local analyzer/probe pass
-does not replace CI acceptance.
+`quality`/`verification` are green on exact implementation SHA
+`7d6e39c1da0a45c63d5533fc53317b744191fd09` (Flutter run `40997724850`).
+
+## P11.2 implementation scope
+
+P11.2 separates the extensible medium/capability contract from the existing
+closed `EngineeringConnectionType` enum without breaking P9/P10 callers.
+
+- `EngineeringMedia` is an opaque, case-sensitive value object with initial
+  built-ins for AC/DC power, lighting control, dry contact, Ethernet, PoE,
+  optical fibre, coax, RS-485, fire loop and security/access bus.
+- Custom media identifiers are valid when nonblank; adding a medium does not
+  require changing an enum.
+- `EngineeringPortCapability` provides extensible semantic capability tags.
+  Quantitative parameters remain typed catalog/engineering data rather than
+  being encoded into capability strings.
+- `EngineeringPortSpec` owns immutable explicit media/capability sets in
+  addition to its legacy allowed-connection set.
+- `EngineeringGraphConnection` and the transitional legacy edge can carry an
+  optional explicit medium.
+- When a connection declares a medium, both endpoint ports must explicitly
+  support it; absence or mismatch fails closed. The graph never infers or
+  silently substitutes a medium.
+- A null connection medium preserves the existing P9/P10 graph contract until
+  the persistence/migration lifecycle is intentionally extended in P11.8.
+- Logical medium remains independent from optional `RouteId`; P11.2 does not
+  introduce physical routing ownership.
+
+Qualification target: `test/p11_media_capability_foundation_test.dart`, P11.1
+regressions, existing graph/P9/P10 suites and full repository
+`quality`/`verification` on the P11.2 exact SHA. Implementation is not accepted
+until those checks are green.
 
 ## Remaining P11 packages
 
 | Package | Planned result |
 | --- | --- |
-| P11.2 | Extensible media and capability model |
 | P11.3 | Circuit/loop/group abstractions |
 | P11.4 | Generalized graph invariants and compatibility validation |
 | P11.5 | Cross-discipline extension contract |
@@ -63,6 +93,7 @@ does not replace CI acceptance.
 | P11.9 | Equipment Catalog adapters |
 | P11.10 | Qualification corpus and full hard-gate closure |
 
-The P10 v19 project document schema is unchanged in P11.1. Graph persistence and
-production mutation integration remain explicit P11.8 work. This foundation
-does not constitute acceptance of all P11 or generate P12 engineering content.
+The P10 v19 project document schema remains unchanged in P11.1/P11.2. Graph
+persistence and production mutation integration remain explicit P11.8 work. This
+foundation does not constitute acceptance of all P11 and does not generate P12
+engineering content.

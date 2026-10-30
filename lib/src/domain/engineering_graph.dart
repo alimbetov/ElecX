@@ -1,5 +1,8 @@
+import 'engineering_media.dart';
 import 'surfaces.dart';
 import 'project_identity.dart';
+
+export 'engineering_media.dart';
 
 enum EngineeringDiscipline {
   architecture,
@@ -41,6 +44,11 @@ enum EngineeringCalculationKind {
 
 enum EngineeringPortDirection { input, output, bidirectional }
 
+/// Legacy closed transport classification retained for P9/P10 compatibility.
+///
+/// P11.2 uses [EngineeringMedia] for extensible physical/logical media. New
+/// media do not require adding values here; [custom] remains available while
+/// existing persisted/catalog contracts continue to use this enum unchanged.
 enum EngineeringConnectionType {
   acSinglePhase,
   acThreePhase,
@@ -60,16 +68,25 @@ final class EngineeringPortSpec {
     required String id,
     required EngineeringPortDirection direction,
     required Set<EngineeringConnectionType> allowedConnections,
+    Set<EngineeringMedia> media = const {},
+    Set<EngineeringPortCapability> capabilities = const {},
   }) : this.identified(
-            portId: PortId(id),
-            direction: direction,
-            allowedConnections: allowedConnections);
+          portId: PortId(id),
+          direction: direction,
+          allowedConnections: allowedConnections,
+          media: media,
+          capabilities: capabilities,
+        );
 
   EngineeringPortSpec.identified({
     required this.portId,
     required this.direction,
     required Set<EngineeringConnectionType> allowedConnections,
-  }) : allowedConnections = Set.unmodifiable(allowedConnections) {
+    Set<EngineeringMedia> media = const {},
+    Set<EngineeringPortCapability> capabilities = const {},
+  })  : allowedConnections = Set.unmodifiable(allowedConnections),
+        media = Set.unmodifiable(media),
+        capabilities = Set.unmodifiable(capabilities) {
     if (this.allowedConnections.isEmpty) {
       throw ArgumentError('A port must allow at least one connection type.');
     }
@@ -84,8 +101,20 @@ final class EngineeringPortSpec {
   final EngineeringPortDirection direction;
   final Set<EngineeringConnectionType> allowedConnections;
 
+  /// Extensible media supported by this port. An empty set means that the
+  /// legacy connection contract has not yet supplied explicit media evidence.
+  final Set<EngineeringMedia> media;
+
+  /// Extensible catalog/domain capability tags for this port.
+  final Set<EngineeringPortCapability> capabilities;
+
   bool accepts(EngineeringConnectionType type) =>
       allowedConnections.contains(type);
+
+  bool supportsMedia(EngineeringMedia value) => media.contains(value);
+
+  bool hasCapability(EngineeringPortCapability value) =>
+      capabilities.contains(value);
 }
 
 final class EngineeringComponentCapability {
@@ -164,6 +193,7 @@ final class EngineeringEdge {
     required this.toPortId,
     required this.connectionType,
     required this.systemClass,
+    this.media,
     this.routeId,
     this.circuitId,
   }) {
@@ -179,6 +209,7 @@ final class EngineeringEdge {
   final String toPortId;
   final EngineeringConnectionType connectionType;
   final EngineeringSystemClass systemClass;
+  final EngineeringMedia? media;
   final String? routeId;
   final String? circuitId;
 }
@@ -190,11 +221,16 @@ abstract final class EngineeringGraphValidator {
     required EngineeringNode to,
     required String toPortId,
     required EngineeringConnectionType type,
+    EngineeringMedia? media,
   }) {
     final fromPort = from.port(fromPortId);
     final toPort = to.port(toPortId);
     if (fromPort == null || toPort == null) return false;
     if (!fromPort.accepts(type) || !toPort.accepts(type)) return false;
+    if (media != null &&
+        (!fromPort.supportsMedia(media) || !toPort.supportsMedia(media))) {
+      return false;
+    }
     if (fromPort.direction == EngineeringPortDirection.input) return false;
     if (toPort.direction == EngineeringPortDirection.output) return false;
     return true;

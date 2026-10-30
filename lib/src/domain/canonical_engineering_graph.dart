@@ -74,6 +74,7 @@ final class EngineeringGraphConnection {
     required this.toPortId,
     required this.connectionType,
     required this.systemClass,
+    this.media,
     this.semanticTypeId,
     this.routeId,
     this.circuitId,
@@ -94,6 +95,12 @@ final class EngineeringGraphConnection {
   final PortId toPortId;
   final EngineeringConnectionType connectionType;
   final EngineeringSystemClass systemClass;
+
+  /// Optional explicit medium selected for this logical connection.
+  ///
+  /// `null` preserves the pre-P11.2 legacy contract. Once supplied, both
+  /// endpoint ports must declare the same medium; the graph never guesses it.
+  final EngineeringMedia? media;
 
   /// Optional domain-semantic subtype when the generic engineering transport
   /// enum is intentionally broader than the canonical relationship semantics.
@@ -127,7 +134,9 @@ final class CanonicalEngineeringGraph {
       componentMap[component.id] = component;
       for (final port in component.ports) {
         portMap[EngineeringPortRef(
-            componentId: component.id, portId: port.portId)] = port;
+          componentId: component.id,
+          portId: port.portId,
+        )] = port;
       }
     }
 
@@ -159,6 +168,7 @@ final class CanonicalEngineeringGraph {
         to: to,
         toPortId: connection.toPortId,
         type: connection.connectionType,
+        media: connection.media,
       )) {
         throw ArgumentError(
           'Connection ${connection.id} is incompatible with its endpoint ports.',
@@ -272,11 +282,16 @@ abstract final class CanonicalEngineeringGraphValidator {
     required EngineeringGraphComponent to,
     required PortId toPortId,
     required EngineeringConnectionType type,
+    EngineeringMedia? media,
   }) {
     final fromPort = from.port(fromPortId);
     final toPort = to.port(toPortId);
     if (fromPort == null || toPort == null) return false;
     if (!fromPort.accepts(type) || !toPort.accepts(type)) return false;
+    if (media != null &&
+        (!fromPort.supportsMedia(media) || !toPort.supportsMedia(media))) {
+      return false;
+    }
     if (fromPort.direction == EngineeringPortDirection.input) return false;
     if (toPort.direction == EngineeringPortDirection.output) return false;
     return true;
@@ -309,6 +324,7 @@ extension LegacyEngineeringEdgeCanonicalAdapter on EngineeringEdge {
         toPortId: PortId(toPortId),
         connectionType: connectionType,
         systemClass: systemClass,
+        media: media,
         routeId: routeId == null ? null : RouteId(routeId!),
         circuitId: circuitId == null ? null : CircuitId(circuitId!),
       );
