@@ -100,8 +100,7 @@ final class CanonicalEngineeringSupplyTopology {
     }
 
     final supplyByCircuit = <CircuitId, EngineeringCircuitSupply>{};
-    final circuitIdsBySource =
-        <EngineeringSupplySourceId, List<CircuitId>>{};
+    final circuitIdsBySource = <EngineeringSupplySourceId, List<CircuitId>>{};
     for (final supply in circuitSupplies) {
       if (supplyByCircuit.containsKey(supply.circuitId)) {
         throw ArgumentError(
@@ -140,7 +139,8 @@ final class CanonicalEngineeringSupplyTopology {
 
   late final Map<EngineeringSupplySourceId, EngineeringSupplySource> _sources;
   late final Map<CircuitId, EngineeringCircuitSupply> _supplyByCircuit;
-  late final Map<EngineeringSupplySourceId, List<CircuitId>> _circuitIdsBySource;
+  late final Map<EngineeringSupplySourceId, List<CircuitId>>
+      _circuitIdsBySource;
 
   List<EngineeringSupplySource> get sources {
     final values = _sources.values.toList()
@@ -156,7 +156,9 @@ final class CanonicalEngineeringSupplyTopology {
   List<EngineeringSupplySource> sourcesForCircuit(CircuitId id) {
     final supply = _supplyByCircuit[id];
     if (supply == null) return const [];
-    final values = supply.sourceIds.map((sourceId) => _sources[sourceId]!).toList()
+    final values = supply.sourceIds
+        .map((sourceId) => _sources[sourceId]!)
+        .toList()
       ..sort((left, right) => left.id.value.compareTo(right.id.value));
     return List.unmodifiable(values);
   }
