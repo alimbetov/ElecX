@@ -1,5 +1,6 @@
 import 'canonical_engineering_graph.dart';
 import 'engineering_circuit_topology.dart';
+import 'engineering_classification.dart';
 import 'engineering_graph.dart';
 import 'project_identity.dart';
 
@@ -7,8 +8,8 @@ import 'project_identity.dart';
 ///
 /// Rules are exact and deterministic. They do not infer compatibility from
 /// display names, discipline labels, preferred-connection hints or physical
-/// routing. Extensible [EngineeringMedia] keeps vendor/project media outside a
-/// closed enum.
+/// routing. Extensible classification/media keep custom systems outside closed
+/// enums while legacy families remain part of the compatibility bridge.
 final class EngineeringConnectionCompatibilityRule {
   EngineeringConnectionCompatibilityRule({
     required this.id,
@@ -16,9 +17,17 @@ final class EngineeringConnectionCompatibilityRule {
     required this.toSystemClass,
     required this.connectionSystemClass,
     required this.connectionType,
+    EngineeringSystemKey? fromSystemKey,
+    EngineeringSystemKey? toSystemKey,
+    EngineeringSystemKey? connectionSystemKey,
     this.media,
     this.allowUnspecifiedMedia = false,
-  }) {
+  })  : fromSystemKey =
+            fromSystemKey ?? EngineeringSystemKey.fromLegacy(fromSystemClass),
+        toSystemKey =
+            toSystemKey ?? EngineeringSystemKey.fromLegacy(toSystemClass),
+        connectionSystemKey = connectionSystemKey ??
+            EngineeringSystemKey.fromLegacy(connectionSystemClass) {
     if (id.trim().isEmpty) {
       throw ArgumentError.value(id, 'id', 'Must be non-empty.');
     }
@@ -31,8 +40,11 @@ final class EngineeringConnectionCompatibilityRule {
 
   final String id;
   final EngineeringSystemClass fromSystemClass;
+  final EngineeringSystemKey fromSystemKey;
   final EngineeringSystemClass toSystemClass;
+  final EngineeringSystemKey toSystemKey;
   final EngineeringSystemClass connectionSystemClass;
+  final EngineeringSystemKey connectionSystemKey;
   final EngineeringConnectionType connectionType;
   final EngineeringMedia? media;
 
@@ -46,8 +58,11 @@ final class EngineeringConnectionCompatibilityRule {
     required EngineeringGraphConnection connection,
   }) {
     if (from.systemClass != fromSystemClass ||
+        from.systemKey != fromSystemKey ||
         to.systemClass != toSystemClass ||
+        to.systemKey != toSystemKey ||
         connection.systemClass != connectionSystemClass ||
+        connection.systemKey != connectionSystemKey ||
         connection.connectionType != connectionType) {
       return false;
     }
@@ -64,8 +79,11 @@ final class EngineeringConnectionCompatibilityRule {
   /// of this key because it does not change matching of an explicit medium.
   String get compatibilityKey => <String>[
         fromSystemClass.name,
+        fromSystemKey.id,
         toSystemClass.name,
+        toSystemKey.id,
         connectionSystemClass.name,
+        connectionSystemKey.id,
         connectionType.name,
         media?.id ?? '<unspecified>',
       ].join('\u0000');
@@ -75,8 +93,11 @@ final class EngineeringConnectionCompatibilityRule {
   /// Signature for rules that can match a legacy connection with null media.
   String get unspecifiedMediaCompatibilityKey => <String>[
         fromSystemClass.name,
+        fromSystemKey.id,
         toSystemClass.name,
+        toSystemKey.id,
         connectionSystemClass.name,
+        connectionSystemKey.id,
         connectionType.name,
       ].join('\u0000');
 }

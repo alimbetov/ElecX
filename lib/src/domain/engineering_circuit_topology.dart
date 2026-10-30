@@ -1,4 +1,5 @@
 import 'canonical_engineering_graph.dart';
+import 'engineering_classification.dart';
 import 'engineering_graph.dart';
 import 'project_identity.dart';
 
@@ -25,8 +26,10 @@ final class EngineeringCircuit {
     required this.id,
     required this.systemClass,
     required Iterable<EngineeringConnectionId> connectionIds,
+    EngineeringSystemKey? systemKey,
     this.media,
-  }) : connectionIds = _uniqueIds(
+  })  : systemKey = systemKey ?? EngineeringSystemKey.fromLegacy(systemClass),
+        connectionIds = _uniqueIds(
           connectionIds,
           label: 'circuit connection id',
           allowEmpty: false,
@@ -34,6 +37,7 @@ final class EngineeringCircuit {
 
   final CircuitId id;
   final EngineeringSystemClass systemClass;
+  final EngineeringSystemKey systemKey;
   final EngineeringMedia? media;
   final Set<EngineeringConnectionId> connectionIds;
 }
@@ -47,9 +51,11 @@ final class EngineeringLoop {
     required this.id,
     required this.systemClass,
     required Iterable<EngineeringConnectionId> connectionIds,
+    EngineeringSystemKey? systemKey,
     this.media,
     this.circuitId,
-  }) : connectionIds = List.unmodifiable(connectionIds) {
+  })  : systemKey = systemKey ?? EngineeringSystemKey.fromLegacy(systemClass),
+        connectionIds = List.unmodifiable(connectionIds) {
     if (this.connectionIds.length < 2) {
       throw ArgumentError(
           'Engineering loop requires at least two connections.');
@@ -62,6 +68,7 @@ final class EngineeringLoop {
 
   final LoopId id;
   final EngineeringSystemClass systemClass;
+  final EngineeringSystemKey systemKey;
   final EngineeringMedia? media;
   final CircuitId? circuitId;
   final List<EngineeringConnectionId> connectionIds;
@@ -234,9 +241,10 @@ final class CanonicalEngineeringTopology {
           '$existingOwner and ${circuit.id}.',
         );
       }
-      if (connection.systemClass != circuit.systemClass) {
+      if (connection.systemClass != circuit.systemClass ||
+          connection.systemKey != circuit.systemKey) {
         throw ArgumentError(
-          'Circuit ${circuit.id} system class does not match connection '
+          'Circuit ${circuit.id} system does not match connection '
           '$connectionId.',
         );
       }
@@ -263,10 +271,10 @@ final class CanonicalEngineeringTopology {
     final resolved = <EngineeringGraphConnection>[];
     for (final connectionId in loop.connectionIds) {
       final connection = _requireConnection(connectionId);
-      if (connection.systemClass != loop.systemClass) {
+      if (connection.systemClass != loop.systemClass ||
+          connection.systemKey != loop.systemKey) {
         throw ArgumentError(
-          'Loop ${loop.id} system class does not match connection '
-          '$connectionId.',
+          'Loop ${loop.id} system does not match connection $connectionId.',
         );
       }
       if (loop.media != null && connection.media != loop.media) {
@@ -294,6 +302,12 @@ final class CanonicalEngineeringTopology {
       if (circuit == null) {
         throw ArgumentError(
           'Loop ${loop.id} references unknown circuit $circuitId.',
+        );
+      }
+      if (circuit.systemClass != loop.systemClass ||
+          circuit.systemKey != loop.systemKey) {
+        throw ArgumentError(
+          'Loop ${loop.id} system does not match circuit $circuitId.',
         );
       }
       for (final connectionId in loop.connectionIds) {

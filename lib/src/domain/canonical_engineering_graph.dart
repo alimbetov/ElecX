@@ -1,9 +1,11 @@
 import 'dart:collection';
 
+import 'engineering_classification.dart';
 import 'engineering_graph.dart';
 import 'engineering_port_ref.dart';
 import 'project_identity.dart';
 
+export 'engineering_classification.dart';
 export 'engineering_port_ref.dart';
 
 /// Logical engineering component identity and capabilities.
@@ -19,10 +21,15 @@ final class EngineeringGraphComponent {
     required this.discipline,
     required this.systemClass,
     required Iterable<EngineeringPortSpec> ports,
+    EngineeringDisciplineKey? disciplineKey,
+    EngineeringSystemKey? systemKey,
     this.ratedPowerW,
     this.voltageV,
     this.quantity = 1,
-  }) : ports = List.unmodifiable(ports) {
+  })  : disciplineKey =
+            disciplineKey ?? EngineeringDisciplineKey.fromLegacy(discipline),
+        systemKey = systemKey ?? EngineeringSystemKey.fromLegacy(systemClass),
+        ports = List.unmodifiable(ports) {
     if (componentTypeId.trim().isEmpty) {
       throw ArgumentError.value(
         componentTypeId,
@@ -47,8 +54,20 @@ final class EngineeringGraphComponent {
 
   final ComponentId id;
   final String componentTypeId;
+
+  /// Legacy compatibility family retained for P9/P10 and existing catalog APIs.
   final EngineeringDiscipline discipline;
+
+  /// Extensible P11 classification. Built-in data default from [discipline].
+  final EngineeringDisciplineKey disciplineKey;
+
+  /// Legacy compatibility family retained for existing persisted/catalog data.
   final EngineeringSystemClass systemClass;
+
+  /// Extensible P11 system classification. Built-in data default from
+  /// [systemClass].
+  final EngineeringSystemKey systemKey;
+
   final List<EngineeringPortSpec> ports;
   final int? ratedPowerW;
   final int? voltageV;
@@ -74,11 +93,12 @@ final class EngineeringGraphConnection {
     required this.toPortId,
     required this.connectionType,
     required this.systemClass,
+    EngineeringSystemKey? systemKey,
     this.media,
     this.semanticTypeId,
     this.routeId,
     this.circuitId,
-  }) {
+  }) : systemKey = systemKey ?? EngineeringSystemKey.fromLegacy(systemClass) {
     if (semanticTypeId != null && semanticTypeId!.trim().isEmpty) {
       throw ArgumentError.value(
         semanticTypeId,
@@ -94,7 +114,12 @@ final class EngineeringGraphConnection {
   final ComponentId toComponentId;
   final PortId toPortId;
   final EngineeringConnectionType connectionType;
+
+  /// Legacy compatibility family retained for existing persisted/catalog data.
   final EngineeringSystemClass systemClass;
+
+  /// Extensible P11 system classification for this logical edge.
+  final EngineeringSystemKey systemKey;
 
   /// Optional explicit medium selected for this logical connection.
   ///
