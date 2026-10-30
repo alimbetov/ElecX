@@ -163,7 +163,9 @@ void main() {
     );
 
     expect(
-      supply.sourcesForCircuit(fixture.circuit.id).map((value) => value.id.value),
+      supply
+          .sourcesForCircuit(fixture.circuit.id)
+          .map((value) => value.id.value),
       ['source-a-id', 'source-b-id'],
     );
     expect(supply.circuitsForSource(sourceA.id).single.id, fixture.circuit.id);
@@ -209,7 +211,8 @@ void main() {
     );
   });
 
-  test('P11.6 dangling circuit/source/service-entry references fail closed', () {
+  test('P11.6 dangling circuit/source/service-entry references fail closed',
+      () {
     final fixture = _fixture();
     final source = _source(
       'source-id',
