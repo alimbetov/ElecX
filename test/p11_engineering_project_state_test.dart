@@ -88,7 +88,8 @@ EngineeringProjectState _state({
 }
 
 void main() {
-  test('P11.8 metadata owns one semantic empty engineering state by default', () {
+  test('P11.8 metadata owns one semantic empty engineering state by default',
+      () {
     const metadata = ProjectEngineeringMetadata();
 
     expect(metadata.engineeringState.isEmpty, isTrue);
@@ -113,7 +114,8 @@ void main() {
     expect(primary.sameAs(emergency), isFalse);
   });
 
-  test('P11.8 service-entry references are checked against project ownership', () {
+  test('P11.8 service-entry references are checked against project ownership',
+      () {
     final entryId = ServiceEntryId('entry-a');
     final state = _state(serviceEntryId: entryId);
 

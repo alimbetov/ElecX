@@ -222,7 +222,8 @@ final class ProjectEngineeringMetadata {
   ) =>
       copyWith(appliedEngineeringProposalRegistry: registry);
 
-  ProjectEngineeringMetadata withEngineeringState(EngineeringProjectState state) =>
+  ProjectEngineeringMetadata withEngineeringState(
+          EngineeringProjectState state) =>
       copyWith(engineeringState: state);
 
   @override

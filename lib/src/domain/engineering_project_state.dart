@@ -133,7 +133,8 @@ final class EngineeringProjectState {
   ///
   /// The project aggregate supplies the authoritative P10 ids. They are never
   /// copied into this state as owned entities.
-  void requireKnownServiceEntries(Iterable<ServiceEntryId> knownServiceEntryIds) {
+  void requireKnownServiceEntries(
+      Iterable<ServiceEntryId> knownServiceEntryIds) {
     final known = knownServiceEntryIds.toSet();
     for (final source in sources) {
       final serviceEntryId = source.serviceEntryId;
@@ -167,7 +168,8 @@ final class EngineeringProjectState {
 
   String get fingerprint => semanticSha256Hex(jsonEncode(toCanonicalJson()));
 
-  bool sameAs(EngineeringProjectState other) => fingerprint == other.fingerprint;
+  bool sameAs(EngineeringProjectState other) =>
+      fingerprint == other.fingerprint;
 }
 
 Map<String, Object?> _circuitJson(EngineeringCircuit circuit) => {
@@ -219,16 +221,18 @@ Map<String, Object?> _extensionJson(EngineeringExtensionContract contract) => {
       'id': contract.id,
       'version': contract.version,
       'disciplines': [
-        for (final definition in contract.disciplines.toList()
-          ..sort((left, right) => left.key.id.compareTo(right.key.id)))
+        for (final definition
+            in contract.disciplines.toList()
+              ..sort((left, right) => left.key.id.compareTo(right.key.id)))
           {
             'key': definition.key.id,
             'legacyFamily': definition.legacyFamily.name,
           },
       ],
       'systems': [
-        for (final definition in contract.systems.toList()
-          ..sort((left, right) => left.key.id.compareTo(right.key.id)))
+        for (final definition
+            in contract.systems.toList()
+              ..sort((left, right) => left.key.id.compareTo(right.key.id)))
           {
             'key': definition.key.id,
             'disciplineKey': definition.disciplineKey.id,
