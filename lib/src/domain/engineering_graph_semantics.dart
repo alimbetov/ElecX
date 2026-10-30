@@ -112,11 +112,10 @@ Map<String, Object?> _componentJson(EngineeringGraphComponent component) {
         <String, Object?>{
           'id': port.portId.value,
           'direction': port.direction.name,
-          'allowedConnections': (port.allowedConnections.map((e) => e.name).toList()
-            ..sort()),
+          'allowedConnections':
+              (port.allowedConnections.map((e) => e.name).toList()..sort()),
           'media': (port.media.map((e) => e.id).toList()..sort()),
-          'capabilities':
-              (port.capabilities.map((e) => e.id).toList()..sort()),
+          'capabilities': (port.capabilities.map((e) => e.id).toList()..sort()),
         },
     ],
     'ratedPowerW': component.ratedPowerW,
@@ -162,6 +161,6 @@ List<T> _changedIds<T extends Object>(
 }
 
 String _idValue(Object id) => switch (id) {
-      EntityId value => value.value,
+      final EntityId value => value.value,
       _ => throw StateError('Unsupported engineering graph identity: $id'),
     };

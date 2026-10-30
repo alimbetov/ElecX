@@ -1,7 +1,6 @@
 import 'package:elecx/src/domain/canonical_engineering_graph.dart';
 import 'package:elecx/src/domain/engineering_graph.dart';
 import 'package:elecx/src/domain/engineering_graph_semantics.dart';
-import 'package:elecx/src/domain/engineering_media.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -66,7 +65,8 @@ void main() {
       connections: [ab, bc],
     );
 
-    expect(engineeringGraphFingerprint(first), engineeringGraphFingerprint(reordered));
+    expect(engineeringGraphFingerprint(first),
+        engineeringGraphFingerprint(reordered));
     expect(EngineeringGraphDiff.between(first, reordered).isEmpty, isTrue);
   });
 
@@ -86,23 +86,38 @@ void main() {
         );
 
     final first = CanonicalEngineeringGraph(components: [
-      _component('a', ports: [port('z', ['b', 'a']), port('a', ['d', 'c'])]),
+      _component('a', ports: [
+        port('z', ['b', 'a']),
+        port('a', ['d', 'c'])
+      ]),
     ]);
     final reordered = CanonicalEngineeringGraph(components: [
-      _component('a', ports: [port('a', ['c', 'd']), port('z', ['a', 'b'])]),
+      _component('a', ports: [
+        port('a', ['c', 'd']),
+        port('z', ['a', 'b'])
+      ]),
     ]);
 
-    expect(engineeringGraphFingerprint(first), engineeringGraphFingerprint(reordered));
+    expect(engineeringGraphFingerprint(first),
+        engineeringGraphFingerprint(reordered));
     expect(EngineeringGraphDiff.between(first, reordered).isEmpty, isTrue);
   });
 
   test('P11.8 diff reports deterministic sorted add remove and change ids', () {
     final before = CanonicalEngineeringGraph(
-      components: [_component('z-remove'), _component('b-change'), _component('a-stable')],
+      components: [
+        _component('z-remove'),
+        _component('b-change'),
+        _component('a-stable')
+      ],
       connections: [_edge('z-remove-edge', 'a-stable', 'z-remove')],
     );
     final after = CanonicalEngineeringGraph(
-      components: [_component('c-add'), _component('a-stable'), _component('b-change', quantity: 2)],
+      components: [
+        _component('c-add'),
+        _component('a-stable'),
+        _component('b-change', quantity: 2)
+      ],
       connections: [_edge('a-add-edge', 'a-stable', 'c-add')],
     );
 
@@ -118,9 +133,11 @@ void main() {
 
   test('P11.8 semantic graph mutation changes the fingerprint', () {
     final before = CanonicalEngineeringGraph(components: [_component('a')]);
-    final after = CanonicalEngineeringGraph(components: [_component('a', quantity: 2)]);
+    final after =
+        CanonicalEngineeringGraph(components: [_component('a', quantity: 2)]);
 
-    expect(engineeringGraphFingerprint(before), isNot(engineeringGraphFingerprint(after)));
+    expect(engineeringGraphFingerprint(before),
+        isNot(engineeringGraphFingerprint(after)));
     expect(
       EngineeringGraphDiff.between(before, after).changedComponents,
       [ComponentId('a')],
