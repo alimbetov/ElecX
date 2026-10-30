@@ -455,13 +455,36 @@ static ownership checks and a dedicated A–H native CI workflow. The workflow
 requires Linux/macOS/Windows plus native Android phone/tablet and iOS/iPadOS
 semantic artifacts. See [the closure matrix](quality/p10-qualification-closure-matrix-v1.md).
 
-## Remaining release checks
+## Final audit and acceptance evidence
+
+The original P10.12/P10.13 implementation passed all A–H gates, including seven
+native artifacts and their semantic equality, on
+`cc76ba4aa197bda7b33f58737338cb844ac98248` in
+[P10 run 40937863491, attempt 2](https://github.com/alimbetov/ElecX/actions/runs/40937863491/attempts/2).
+The regular repository `quality` and `verification` jobs passed that same SHA in
+[run 40937863289](https://github.com/alimbetov/ElecX/actions/runs/40937863289).
+The first iPadOS attempt timed out after the Xcode build without reaching the
+test; the second completed the actual native test. It is not evidence of a
+reproducible generator defect.
+
+The follow-up audit fixes parent provenance allocation on local edits: one room
+rename now replaces 1 of 598 records and 0 baseline maps, instead of all 598.
+Actual store and metadata diffs drive indexed reconciliation; immutable evidence,
+unaffected records/manifests and exact history remain preserved. New regressions
+cover metadata-only placement/anchor/P7 host edits, independent compositions,
+advisory-ID omission, repeated overrides, frozen Apply and fail-closed tampering.
+One projected root replaces root construction inside each manifest iteration.
+
+Apple qualification now has separate boot/Drive timeouts, process-group cleanup,
+deterministic selection with recorded runtime/model, retained verbose logs and
+bounded failure diagnostics. These remediation changes require their own green
+exact-SHA acceptance; the older green SHA cannot qualify newer source.
 
 Implementation exists for P10.1–P10.13. Final acceptance is determined by the
 P10-H artifact and repository `quality`/`verification` on the same exact SHA;
 this status document does not substitute for unfinished or failing CI jobs.
 
 A main-branch merge is separate from feature implementation. P11 formal handoff
-still requires a green post-merge exact-SHA acceptance run. CAD frame-time/FPS
+requires a green post-merge exact-SHA acceptance run. CAD frame-time/FPS
 qualification is a separate measured performance gate; the large P10 fixtures
 establish composition/lifecycle coverage, not GPU timing guarantees.

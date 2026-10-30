@@ -1,6 +1,6 @@
 # P10 qualification closure matrix
 
-Date: 2026-10-29
+Date: 2026-10-30
 Branch: `feat/p10-building-residential-composition`
 Contract: `../p10-building-residential-composition-spec-v1.md`
 Workflow: `.github/workflows/p10-final-acceptance.yml`
@@ -31,7 +31,7 @@ Existing Flutter `quality` and `verification` jobs remain mandatory on that SHA.
 | Q14 concurrent mutation rejects stale Apply | same suite, all families | F |
 | Q15 successful Preview then commit-time rejection | same suite, all families; shared commit guard before publication | F |
 | Q16 one Undo and exact-ID Redo | same suite, all families; large GJs | B, C, D, F |
-| Q17 nested parent/P9 evidence and overrides | `test/p1012_composition_provenance_test.dart`, current owner round trips and large GJs | B, C, D, E |
+| Q17 nested parent/P9 evidence and overrides | `test/p1012*_test.dart`, current owner round trips and large GJs | B, C, D, E |
 | Q18 generated entity deletion/tombstones/Undo/Redo | `test/p1012_composition_provenance_test.dart` | E |
 | Q19 cross-platform semantics | `tool/p10_semantic_parity.dart`, `integration_test/p10_native_semantic_parity_test.dart`, `test_driver/p10_semantic_parity_driver.dart` | G |
 | Q20 no transitional ownership or feature-local IO | `qualification_test/p10_p1013_architecture_qualification_test.dart`, production owner UI tests | A, F |
@@ -61,6 +61,20 @@ This exercises the specification's hundreds-of-Spaces scalability requirement.
 It does not establish a renderer FPS/GPU budget. A separately measured CAD frame
 performance gate requires a controlled reference environment.
 
+The local-edit audit found that a single room rename recreated all 598 parent
+provenance members/baseline maps in a two-floor tower. Reconciliation now uses
+the actual canonical diff plus placement, shared/service anchor, P7 host and
+typical-definition metadata changes. It never trusts advisory command IDs.
+Only affected members are reconciled; unchanged records/manifests, immutable
+baselines, child bindings and derived ownership lookup/fingerprint are retained.
+The same audit probe now replaces 1 member and 0 baseline maps. The projected
+aggregate is constructed once per tracking operation, outside manifest loops.
+`test/p1012_provenance_locality_test.dart` covers all three families, independent
+compositions, metadata-only changes, repeated overrides, tombstones, frozen
+candidate Apply, forged evidence rejection and exact Undo/Redo. Full aggregate
+integrity validation remains mandatory; this is not a constant-time mutation or
+frame-time claim.
+
 ## Native scope and CI
 
 A–F run domain/application, production Wizard, persistence and lifecycle tests.
@@ -80,6 +94,16 @@ H runs only after repository regression, A–F and all G targets/equality succee
 Its artifact records `GITHUB_SHA` and `GITHUB_RUN_ID`. No failed/cancelled/missing
 prerequisite may be treated as an accepted platform or accepted P10 stage.
 
+Apple probes use `tool/p10_apple_simulator.py`: simulator choice is independent
+of inventory ordering (newest installed available iOS runtime, then model/UDID),
+with the exact selection retained in `selected.json`. Boot and Flutter Drive
+have separate bounded timeouts; timeout terminates the probe's process group.
+Verbose Drive/boot logs are retained on success and failure. Failure additionally
+collects simulator inventory, Xcode version, Runner/debugserver/SpringBoard logs
+and a screenshot, within bounded diagnostic steps. A probe failure remains a
+failed gate; diagnostics or retries never substitute for a semantic artifact.
+Python qualification tests verify selection and failed/timed-out subprocesses.
+
 ## Hard gates and release boundary
 
 | Hard gate | Evidence |
@@ -98,4 +122,4 @@ prerequisite may be treated as an accepted platform or accepted P10 stage.
 P10 is accepted for merge only after H plus repository `quality`/`verification`
 are green on the same SHA and no known P10 blocker remains. Merge to `main` and a
 new green post-merge exact-SHA run are separate requirements before formal P11
-handoff. This work does not authorize or perform that merge.
+handoff. Each acceptance artifact identifies the source it actually qualifies.

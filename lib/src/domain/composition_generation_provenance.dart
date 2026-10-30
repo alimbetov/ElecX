@@ -25,20 +25,34 @@ final class CompositionGeneratedEntity {
   final Map<String, String> baseline;
   final Set<String> overrides;
   final bool removed;
+
+  // Reconciliation cannot change identity or generation baselines. Share the
+  // already immutable evidence instead of copying it on every manual edit.
+  CompositionGeneratedEntity._reconciled(
+      CompositionGeneratedEntity source, this.overrides, this.removed)
+      : id = source.id,
+        baseline = source.baseline;
+
   CompositionGeneratedEntity reconcile(Map<String, Object?>? fields) {
     if (removed && fields != null) {
       throw StateError('p10.provenance.tombstone-reused');
     }
-    return CompositionGeneratedEntity(
-        id: id,
-        baseline: baseline,
-        removed: fields == null,
-        overrides: {
-          ...overrides,
-          if (fields != null)
-            for (final e in baseline.entries)
-              if (compositionHash(fields[e.key]) != e.value) e.key
-        });
+    if (fields == null) {
+      return removed
+          ? this
+          : CompositionGeneratedEntity._reconciled(this, overrides, true);
+    }
+    Set<String>? changed;
+    for (final e in baseline.entries) {
+      if (!overrides.contains(e.key) &&
+          compositionHash(fields[e.key]) != e.value) {
+        (changed ??= {...overrides}).add(e.key);
+      }
+    }
+    return changed == null
+        ? this
+        : CompositionGeneratedEntity._reconciled(
+            this, Set.unmodifiable(changed), false);
   }
 
   Map<String, Object?> toJson() => {
@@ -106,20 +120,49 @@ final class CompositionGenerationManifest {
 
   /// Existing P10.5 parent IDs (which retain the original P9 child manifests).
   final Map<GenerationId, String> children;
-  CompositionGenerationManifest reconcile(ProjectAggregateRoot project) =>
-      CompositionGenerationManifest(
-          id: id,
-          projectId: projectId,
-          siteId: siteId,
-          commandType: commandType,
-          canonicalEvidence: canonicalEvidence,
-          children: children,
-          entities: {
-            for (final e in entities.entries)
-              e.key: e.value
-                  .reconcile(compositionEntityFields(project, e.value.id))
-          });
-  String get immutableFingerprint => compositionHash({
+
+  // A derived lookup only: serialized ownership remains the semantic slot map.
+  Map<EntityId, String>? _slots;
+  Map<EntityId, String> get _slotsById =>
+      _slots ??= {for (final e in entities.entries) e.value.id: e.key};
+  String? _immutableFingerprint;
+
+  CompositionGenerationManifest._reconciled(
+      CompositionGenerationManifest source,
+      Map<String, CompositionGeneratedEntity> entities)
+      : id = source.id,
+        projectId = source.projectId,
+        siteId = source.siteId,
+        commandType = source.commandType,
+        canonicalEvidence = source.canonicalEvidence,
+        children = source.children,
+        entities = Map.unmodifiable(entities),
+        _slots = source._slotsById,
+        _immutableFingerprint = source.immutableFingerprint;
+
+  /// The mutation owner supplies actual store/metadata changes, never a
+  /// command's advisory affected IDs. Omitted IDs retain full reconciliation
+  /// for callers that do not have a canonical diff.
+  CompositionGenerationManifest reconcile(ProjectAggregateRoot project,
+      {Set<EntityId>? affectedEntityIds}) {
+    Map<String, CompositionGeneratedEntity>? changed;
+    final slots = affectedEntityIds == null
+        ? entities.keys
+        : affectedEntityIds.map((id) => _slotsById[id]).whereType<String>();
+    for (final key in slots) {
+      final before = entities[key]!;
+      final after =
+          before.reconcile(compositionEntityFields(project, before.id));
+      if (!identical(before, after)) {
+        (changed ??= {...entities})[key] = after;
+      }
+    }
+    return changed == null
+        ? this
+        : CompositionGenerationManifest._reconciled(this, changed);
+  }
+
+  String get immutableFingerprint => _immutableFingerprint ??= compositionHash({
         'projectId': projectId.value,
         'siteId': siteId.value,
         'commandType': commandType,
@@ -160,6 +203,7 @@ final class CompositionGenerationManifest {
         },
       };
   bool sameAs(CompositionGenerationManifest other) =>
+      identical(this, other) ||
       jsonEncode(toJson()) == jsonEncode(other.toJson());
 }
 

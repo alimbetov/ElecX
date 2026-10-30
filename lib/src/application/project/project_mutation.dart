@@ -494,10 +494,12 @@ final class _ProjectMutableStateDiff {
 
   factory _ProjectMutableStateDiff.between(
     ProjectMutableState before,
-    ProjectMutableState after,
-  ) =>
+    ProjectMutableState after, {
+    ProjectEntityDiff? entityDiff,
+  }) =>
       _ProjectMutableStateDiff(
-        entityDiff: ProjectEntityDiff.between(before.stores, after.stores),
+        entityDiff: entityDiff ??
+            ProjectEntityDiff.between(before.stores, after.stores),
         engineeringMetadataDiff: ProjectEngineeringMetadataDiff.between(
           before.engineeringMetadata,
           after.engineeringMetadata,
@@ -542,9 +544,12 @@ final class ProjectMutationSession {
     final before = _current;
     final candidate = request.command.buildCandidate(before);
     var candidateState = candidate.resolveState(before);
+    final entityDiff =
+        ProjectEntityDiff.between(before.stores, candidateState.stores);
     candidateState = _withTrackedGenerationProvenance(
       before: before,
       candidateState: candidateState,
+      entityDiff: entityDiff,
     );
     final trackedCandidate = ProjectCommandCandidate.fromState(
       state: candidateState,
@@ -559,6 +564,7 @@ final class ProjectMutationSession {
     final stateDiff = _ProjectMutableStateDiff.between(
       ProjectMutableState.fromProject(before),
       candidateState,
+      entityDiff: entityDiff,
     );
     _requireVersion(request.expectedVersion);
     final previewRoot = ProjectAggregateRoot(
@@ -584,9 +590,12 @@ final class ProjectMutationSession {
     final beforeState = ProjectMutableState.fromProject(before);
     final candidate = request.command.buildCandidate(before);
     var candidateState = candidate.resolveState(before);
+    final entityDiff =
+        ProjectEntityDiff.between(before.stores, candidateState.stores);
     candidateState = _withTrackedGenerationProvenance(
       before: before,
       candidateState: candidateState,
+      entityDiff: entityDiff,
     );
     final trackedCandidate = ProjectCommandCandidate.fromState(
       state: candidateState,
@@ -601,6 +610,7 @@ final class ProjectMutationSession {
     final stateDiff = _ProjectMutableStateDiff.between(
       beforeState,
       candidateState,
+      entityDiff: entityDiff,
     );
     _requireVersion(request.expectedVersion);
     if (stateDiff.isEmpty) return null;
@@ -735,6 +745,7 @@ final class ProjectMutationSession {
   ProjectMutableState _withTrackedGenerationProvenance({
     required ProjectAggregateRoot before,
     required ProjectMutableState candidateState,
+    required ProjectEntityDiff entityDiff,
   }) {
     final beforeRegistry =
         before.engineeringMetadata.generationProvenanceRegistry;
@@ -746,17 +757,8 @@ final class ProjectMutationSession {
 
     var registry =
         candidateState.engineeringMetadata.generationProvenanceRegistry;
-    for (final e in beforeRegistry.compositions.entries) {
-      final next = registry.compositions[e.key];
-      final proposed = ProjectAggregateRoot(
-          id: before.id,
-          siteId: before.siteId,
-          version: before.version,
-          stores: candidateState.stores,
-          engineeringMetadata: candidateState.engineeringMetadata);
-      if (next == null ||
-          (!e.value.sameAs(next) &&
-              !e.value.reconcile(proposed).sameAs(next))) {
+    for (final id in beforeRegistry.compositions.keys) {
+      if (!registry.compositions.containsKey(id)) {
         throw StateError('p10.provenance.immutable-evidence');
       }
     }
@@ -831,6 +833,11 @@ final class ProjectMutationSession {
       },
     );
     if (registry.compositions.isNotEmpty) {
+      final affected = _compositionAffectedEntityIds(
+          before: before,
+          after: candidateState,
+          registry: registry,
+          entityDiff: entityDiff);
       final proposed = ProjectAggregateRoot(
           id: before.id,
           siteId: before.siteId,
@@ -838,12 +845,19 @@ final class ProjectMutationSession {
           stores: candidateState.stores,
           engineeringMetadata: candidateState.engineeringMetadata
               .withGenerationProvenanceRegistry(registry));
-      registry = registry.copyWith(compositions: {
-        for (final e in registry.compositions.entries)
-          e.key: beforeRegistry.compositions.containsKey(e.key)
-              ? e.value.reconcile(proposed)
-              : e.value
-      });
+      final compositions = {...registry.compositions};
+      for (final e in beforeRegistry.compositions.entries) {
+        final next = compositions[e.key]!;
+        final expected =
+            e.value.reconcile(proposed, affectedEntityIds: affected);
+        // Frozen Preview may already contain the owner-derived overrides.
+        // Arbitrary evidence/override edits still fail closed.
+        if (!e.value.sameAs(next) && !expected.sameAs(next)) {
+          throw StateError('p10.provenance.immutable-evidence');
+        }
+        compositions[e.key] = expected;
+      }
+      registry = registry.copyWith(compositions: compositions);
     }
     if (registry.sameAs(
       candidateState.engineeringMetadata.generationProvenanceRegistry,
@@ -920,6 +934,45 @@ final class ProjectMutationSession {
       );
     }
   }
+}
+
+/// Metadata-only changes do not appear in ProjectEntityDiff. Include their
+/// typed owners, including physical P7 bindings, without parsing registry keys
+/// or trusting a command's advisory affectedEntityIds.
+Set<EntityId> _compositionAffectedEntityIds({
+  required ProjectAggregateRoot before,
+  required ProjectMutableState after,
+  required GenerationProvenanceRegistry registry,
+  required ProjectEntityDiff entityDiff,
+}) {
+  final affected = {...entityDiff.affectedEntityIds};
+  final left = before.engineeringMetadata;
+  final right = after.engineeringMetadata;
+  void addReplaced<K extends EntityId, V>(Map<K, V> a, Map<K, V> b) {
+    if (identical(a, b)) return;
+    for (final id in {...a.keys, ...b.keys}) {
+      if (!identical(a[id], b[id])) affected.add(id);
+    }
+  }
+
+  addReplaced(left.siteLayout.placements, right.siteLayout.placements);
+  addReplaced(left.siteLayout.serviceAnchors, right.siteLayout.serviceAnchors);
+  addReplaced(left.siteLayout.sharedAnchors, right.siteLayout.sharedAnchors);
+  addReplaced(left.generationProvenanceRegistry.typicalFloorDefinitions,
+      registry.typicalFloorDefinitions);
+  if (!identical(
+      left.boundaryHostedObjectRegistry, right.boundaryHostedObjectRegistry)) {
+    for (final id in {
+      ...left.siteLayout.serviceAnchors.keys,
+      ...right.siteLayout.serviceAnchors.keys,
+    }) {
+      if (!identical(left.boundaryHostedObjectRegistry.serviceEntryHost(id),
+          right.boundaryHostedObjectRegistry.serviceEntryHost(id))) {
+        affected.add(id);
+      }
+    }
+  }
+  return affected;
 }
 
 Set<GenerationPropertyKey> _changedGeneratedProperties({

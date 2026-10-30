@@ -12,3 +12,4 @@ coverage/
 .DS_Store
 /test.log
 /analyze.log
+__pycache__/
