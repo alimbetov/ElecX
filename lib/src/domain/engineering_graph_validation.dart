@@ -92,7 +92,8 @@ final class EngineeringCompatibilityProfile {
           rules.toList()..sort((left, right) => left.id.compareTo(right.id)),
         ) {
     if (id.trim().isEmpty || revision.trim().isEmpty) {
-      throw ArgumentError('Compatibility profile id/revision must be non-empty.');
+      throw ArgumentError(
+          'Compatibility profile id/revision must be non-empty.');
     }
 
     final ids = <String>{};
@@ -208,7 +209,8 @@ abstract final class EngineeringGraphInvariantValidator {
       issues.add(
         const EngineeringGraphValidationIssue(
           code: EngineeringGraphValidationIssueCode.topologyGraphMismatch,
-          message: 'Topology must be validated against its authoritative graph.',
+          message:
+              'Topology must be validated against its authoritative graph.',
         ),
       );
     }
@@ -236,7 +238,8 @@ abstract final class EngineeringGraphInvariantValidator {
         if (rule == null) {
           issues.add(
             EngineeringGraphValidationIssue(
-              code: EngineeringGraphValidationIssueCode.compatibilityRuleMissing,
+              code:
+                  EngineeringGraphValidationIssueCode.compatibilityRuleMissing,
               connectionId: connection.id,
               message: 'Connection ${connection.id} is not allowed by the '
                   'active compatibility profile.',
@@ -247,7 +250,8 @@ abstract final class EngineeringGraphInvariantValidator {
 
       if (options.requireResolvedCircuitIds && connection.circuitId != null) {
         final resolved = topology?.circuit(connection.circuitId!);
-        if (resolved == null || !resolved.connectionIds.contains(connection.id)) {
+        if (resolved == null ||
+            !resolved.connectionIds.contains(connection.id)) {
           issues.add(
             EngineeringGraphValidationIssue(
               code: EngineeringGraphValidationIssueCode.unresolvedCircuit,

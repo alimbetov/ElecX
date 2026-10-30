@@ -255,7 +255,8 @@ void main() {
     );
   });
 
-  test('P11.4 legacy null media can be explicitly allowed by a profile rule', () {
+  test('P11.4 legacy null media can be explicitly allowed by a profile rule',
+      () {
     final source = _component(
       'source',
       systemClass: EngineeringSystemClass.custom,
@@ -366,8 +367,7 @@ void main() {
   });
 
   test('P11.4 validator rejects topology from another graph instance', () {
-    CanonicalEngineeringGraph graph(String suffix) =>
-        CanonicalEngineeringGraph(
+    CanonicalEngineeringGraph graph(String suffix) => CanonicalEngineeringGraph(
           components: [
             _component(
               'source-$suffix',
