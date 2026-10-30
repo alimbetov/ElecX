@@ -1,4 +1,5 @@
 import 'surfaces.dart';
+import 'project_identity.dart';
 
 enum EngineeringDiscipline {
   architecture,
@@ -56,17 +57,30 @@ enum EngineeringConnectionType {
 
 final class EngineeringPortSpec {
   EngineeringPortSpec({
-    required this.id,
+    required String id,
+    required EngineeringPortDirection direction,
+    required Set<EngineeringConnectionType> allowedConnections,
+  }) : this.identified(
+            portId: PortId(id),
+            direction: direction,
+            allowedConnections: allowedConnections);
+
+  EngineeringPortSpec.identified({
+    required this.portId,
     required this.direction,
-    required this.allowedConnections,
-  }) {
-    if (id.isEmpty) throw ArgumentError('Port id must be non-empty.');
-    if (allowedConnections.isEmpty) {
+    required Set<EngineeringConnectionType> allowedConnections,
+  }) : allowedConnections = Set.unmodifiable(allowedConnections) {
+    if (this.allowedConnections.isEmpty) {
       throw ArgumentError('A port must allow at least one connection type.');
     }
   }
 
-  final String id;
+  /// Port identity is local to its owning component. Repeated catalog keys on
+  /// different components are valid; EngineeringPortRef identifies an endpoint.
+  final PortId portId;
+
+  /// Lossless compatibility view for existing catalogs and persisted strings.
+  String get id => portId.value;
   final EngineeringPortDirection direction;
   final Set<EngineeringConnectionType> allowedConnections;
 
@@ -80,8 +94,8 @@ final class EngineeringComponentCapability {
     required this.discipline,
     required this.systemClass,
     required this.calculationKind,
-    required this.ports,
-  }) {
+    required List<EngineeringPortSpec> ports,
+  }) : ports = List.unmodifiable(ports) {
     if (componentTypeId.isEmpty) {
       throw ArgumentError('componentTypeId must be non-empty.');
     }
