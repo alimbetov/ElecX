@@ -113,7 +113,7 @@ Qualification: `test/p11_cross_discipline_extension_test.dart`, P11.1–P11.4
 regressions and full repository gates are green on exact SHA
 `279edbb29ce7ffd11053f45e0263bea1e1a28c45` (Flutter run `41004212214`).
 
-## P11.6 implementation scope
+## P11.6 delivered scope
 
 P11.6 adds multiple-source topology without introducing a second graph owner or
 premature electrical calculations.
@@ -139,20 +139,54 @@ premature electrical calculations.
   equipment sizing remain outside P11.6 and are not inferred by this topology.
 - No project document schema change is introduced; persistence remains P11.8.
 
-Qualification target: `test/p11_multiple_supply_topology_test.dart`, all prior P11
-suites and full repository `quality`/`verification` on the exact P11.6 SHA. P11.6
-is not accepted until all of those checks are green.
+Qualification: `test/p11_multiple_supply_topology_test.dart`, prior P11 suites and
+full repository gates are green on exact SHA
+`4d1f9c74079bad73c22f7b734dd328ff23dc52d7` (Flutter run `41006313598`, #4814).
+
+## P11.7 implementation scope
+
+P11.7 extends the existing `ImpactGraph` into the dependency traversal contract
+required by P15. It does not introduce a second impact engine or a persistence
+boundary.
+
+- `ImpactDependencyRelationKey` provides stable extensible semantic relation ids.
+- Built-in engineering relations cover `controls`, `suppliedBy`, `memberOf`,
+  `communicatesWith` and `protects` in addition to existing connectivity,
+  hosting, routing, calculation, generation and constraint relations.
+- Existing `ImpactDependencyKind` callers remain supported; typed/custom
+  relations carry an explicit semantic relation key and conflicting declarations
+  fail closed.
+- `ImpactGraph` keeps one cycle-safe traversal engine and adds relation-filtered
+  direct/transitive queries for future selective recalculation.
+- `EngineeringImpactDependencyProjector` derives impact dependencies from the
+  same `CanonicalEngineeringGraph`, `CanonicalEngineeringTopology` and optional
+  `CanonicalEngineeringSupplyTopology`; it owns no canonical state.
+- Endpoint participation projects component -> connection connectivity.
+- Canonical circuit membership projects connection -> circuit `memberOf`.
+- Existing physical route references project connection -> route `routedBy`
+  without making physical routing part of logical identity.
+- Supply assignments project source component -> circuit `suppliedBy`.
+- Directed semantic graph connections project `controls`, `suppliedBy` and
+  `protects`; `communicatesWith` is explicitly symmetric.
+- Unknown custom dependency semantic ids fail closed until an extension registers
+  an explicit relation definition. Built-in semantic ids cannot be overridden.
+- P11.7 defines impact semantics only. Diffing, persistence and lifecycle
+  ownership remain P11.8; selective regeneration policy remains P15.
+
+Qualification target: `test/p11_dependency_relation_semantics_test.dart`, existing
+`impact_graph_test.dart`, all prior P11 suites and full repository
+`quality`/`verification` on the exact P11.7 SHA. P11.7 is not accepted until all
+of those checks are green.
 
 ## Remaining P11 packages
 
 | Package | Planned result |
 | --- | --- |
-| P11.7 | Typed dependency relations for P15 impact traversal |
 | P11.8 | Graph diff/fingerprint/persistence and shared-owner lifecycle |
 | P11.9 | Equipment Catalog adapters |
 | P11.10 | Qualification corpus and full hard-gate closure |
 
-The P10 v19 project document schema remains unchanged in P11.1–P11.6. Graph
+The P10 v19 project document schema remains unchanged in P11.1–P11.7. Graph
 persistence and production mutation integration remain explicit P11.8 work. This
 foundation does not constitute acceptance of all P11 and does not generate P12
 engineering content.
