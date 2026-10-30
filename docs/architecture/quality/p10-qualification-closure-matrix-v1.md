@@ -94,15 +94,21 @@ H runs only after repository regression, A–F and all G targets/equality succee
 Its artifact records `GITHUB_SHA` and `GITHUB_RUN_ID`. No failed/cancelled/missing
 prerequisite may be treated as an accepted platform or accepted P10 stage.
 
-Apple probes use `tool/p10_apple_simulator.py`: simulator choice is independent
-of inventory ordering (newest installed available iOS runtime, then model/UDID),
-with the exact selection retained in `selected.json`. Boot and Flutter Drive
-have separate bounded timeouts; timeout terminates the probe's process group.
+Apple probes use `tool/p10_apple_simulator.py`: the reference profile is iOS 26.4,
+iPhone 17 Pro / iPad Pro 13-inch (M5). Missing/unavailable profiles fail closed;
+inventory ordering or a newer installed OS cannot silently change the target.
+The exact selection is retained in `selected.json`. Boot and Flutter Drive
+have separate bounded timeouts. First-boot migration was observed completing at
+5 minutes, so bootstatus has a 10-minute bound, within a 12-minute boot step.
+Drive remains bounded at 20 minutes. Timeout signals the probe's process group;
+a permission/exit race falls back to the owned child and retains the original
+timeout. Cleanup never adds an unbounded subprocess context-manager wait.
 Verbose Drive/boot logs are retained on success and failure. Failure additionally
 collects simulator inventory, Xcode version, Runner/debugserver/SpringBoard logs
 and a screenshot, within bounded diagnostic steps. A probe failure remains a
 failed gate; diagnostics or retries never substitute for a semantic artifact.
-Python qualification tests verify selection and failed/timed-out subprocesses.
+Python qualification tests verify strict profile selection, failed/timed-out
+subprocesses and the observed cleanup permission race.
 
 Desktop native setup passes Flutter 3.47.7 explicitly to the SDK action, matching
 the existing pubspec/SDK guard. Windows therefore needs no Chocolatey/yq lookup

@@ -477,8 +477,9 @@ cover metadata-only placement/anchor/P7 host edits, independent compositions,
 advisory-ID omission, repeated overrides, frozen Apply and fail-closed tampering.
 One projected root replaces root construction inside each manifest iteration.
 
-Apple qualification now has separate boot/Drive timeouts, process-group cleanup,
-deterministic selection with recorded runtime/model, retained verbose logs and
+Apple qualification now has separate boot/Drive timeouts, bounded process-group
+cleanup with permission-race handling, pinned iOS 26.4 reference profiles
+(iPhone 17 Pro / iPad Pro 13-inch M5), retained verbose logs and
 bounded failure diagnostics. These remediation changes require their own green
 exact-SHA acceptance; the older green SHA cannot qualify newer source.
 

@@ -215,7 +215,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        form: [iOS, iPadOS]
+        include:
+          - form: iOS
+            model: iPhone 17 Pro
+          - form: iPadOS
+            model: iPad Pro 13-inch (M5)
     runs-on: macos-latest
     timeout-minutes: 55
     steps:
@@ -234,9 +238,11 @@ jobs:
         timeout-minutes: 2
         env:
           P10_FORM: ${{ matrix.form }}
+          P10_SIMULATOR_MODEL: ${{ matrix.model }}
+          P10_SIMULATOR_RUNTIME: com.apple.CoreSimulator.SimRuntime.iOS-26-4
         run: python3 tool/p10_apple_simulator.py select
       - name: Boot simulator
-        timeout-minutes: 7
+        timeout-minutes: 12
         run: python3 tool/p10_apple_simulator.py boot
       - name: Execute native semantic corpus
         timeout-minutes: 22
