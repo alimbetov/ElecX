@@ -38,7 +38,8 @@ void main() {
       addTearDown(saved.dispose);
 
       final envelope = await _readEnvelope(saved.projectFile);
-      final graph = _engineeringState(envelope)['graph'] as Map<String, dynamic>;
+      final graph =
+          _engineeringState(envelope)['graph'] as Map<String, dynamic>;
       final connections = graph['connections'] as List<dynamic>;
       final connection = connections.single as Map<String, dynamic>;
       connection['toComponentId'] = 'missing-component';
@@ -55,7 +56,8 @@ void main() {
       addTearDown(saved.dispose);
 
       final envelope = await _readEnvelope(saved.projectFile);
-      final graph = _engineeringState(envelope)['graph'] as Map<String, dynamic>;
+      final graph =
+          _engineeringState(envelope)['graph'] as Map<String, dynamic>;
       final components = graph['components'] as List<dynamic>;
       components.add(_cloneMap(components.first as Map<String, dynamic>));
       await _writeEnvelope(saved.projectFile, envelope);
@@ -118,7 +120,8 @@ void main() {
           saved.snapshot.aggregate.engineeringMetadata.engineeringState;
 
       final envelope = await _readEnvelope(saved.projectFile);
-      final graph = _engineeringState(envelope)['graph'] as Map<String, dynamic>;
+      final graph =
+          _engineeringState(envelope)['graph'] as Map<String, dynamic>;
       final components = graph['components'] as List<dynamic>;
       graph['components'] = components.reversed.toList();
       await _writeEnvelope(saved.projectFile, envelope);
@@ -128,7 +131,8 @@ void main() {
       expect(reopened, isNotNull);
       final after = reopened!.aggregate.engineeringMetadata.engineeringState;
       expect(after.fingerprint, before.fingerprint);
-      expect(EngineeringProjectStateDiff.between(before, after).isEmpty, isTrue);
+      expect(
+          EngineeringProjectStateDiff.between(before, after).isEmpty, isTrue);
 
       await _repository(saved.root).save(reopened);
       expect(await saved.projectFile.readAsString(), canonicalBytes);
@@ -192,11 +196,13 @@ Future<_SavedFixture> _saveFixture() async {
   final projectFile = await root
       .list()
       .where(
-        (entity) => entity is File && entity.path.endsWith('.elecx.project.json'),
+        (entity) =>
+            entity is File && entity.path.endsWith('.elecx.project.json'),
       )
       .cast<File>()
       .single;
-  return _SavedFixture(root: root, snapshot: snapshot, projectFile: projectFile);
+  return _SavedFixture(
+      root: root, snapshot: snapshot, projectFile: projectFile);
 }
 
 Future<Map<String, dynamic>> _readEnvelope(File file) async =>
