@@ -51,7 +51,8 @@ final class EngineeringLoop {
     this.circuitId,
   }) : connectionIds = List.unmodifiable(connectionIds) {
     if (this.connectionIds.length < 2) {
-      throw ArgumentError('Engineering loop requires at least two connections.');
+      throw ArgumentError(
+          'Engineering loop requires at least two connections.');
     }
     final unique = this.connectionIds.toSet();
     if (unique.length != this.connectionIds.length) {
@@ -110,7 +111,8 @@ final class EngineeringGroup {
         this.connectionIds.isEmpty &&
         this.circuitIds.isEmpty &&
         this.loopIds.isEmpty) {
-      throw ArgumentError('Engineering group must contain at least one member.');
+      throw ArgumentError(
+          'Engineering group must contain at least one member.');
     }
   }
 
