@@ -1,10 +1,12 @@
 import contextlib
+from http.server import BaseHTTPRequestHandler, HTTPServer
 import io
 import json
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 
@@ -84,6 +86,34 @@ class AppleSimulatorTest(unittest.TestCase):
                                          "import time;print('booting');time.sleep(10)"],
                                         "permission-race", 0.2)
                 self.assertIn("booting", (Path(directory) / "permission-race.log").read_text())
+
+    def test_readiness_requires_actual_vm_response_not_merely_an_open_port(self):
+        class Handler(BaseHTTPRequestHandler):
+            payload = {"result": {"type": "unrelated"}}
+
+            def do_GET(self):
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(json.dumps(self.payload).encode())
+
+            def log_message(self, *args):
+                pass
+
+        server = HTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            port = server.server_port
+            with self.assertRaises(TimeoutError):
+                subject.wait_for_vm_service(port, timeout=0.1)
+            Handler.payload = {"jsonrpc": "2.0", "result": {"type": "VM"}}
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(subject.wait_for_vm_service(port),
+                                 f"http://127.0.0.1:{port}/")
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
 
 
 if __name__ == "__main__":

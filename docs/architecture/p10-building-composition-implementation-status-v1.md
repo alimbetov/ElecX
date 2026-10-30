@@ -483,6 +483,12 @@ cleanup with permission-race handling, pinned iOS 26.4 reference profiles
 bounded failure diagnostics. These remediation changes require their own green
 exact-SHA acceptance; the older green SHA cannot qualify newer source.
 
+The final iPad trace localized the long stall to Flutter's live-log VM URI
+discovery after successful native build/install/launch. Apple probes now use
+explicit, separately bounded build/install/launch phases and attach the existing
+Driver to the actual simulator app through a verified loopback VM service. The
+same integration target and its native `reportData` remain the parity authority.
+
 Windows setup also uses the existing exact Flutter 3.47.7 pin directly in native
 P10 and inherited P9 desktop/parity jobs. This removes the YAML-parser install
 dependency that failed with Chocolatey HTTP 503/504 before compilation. SDK

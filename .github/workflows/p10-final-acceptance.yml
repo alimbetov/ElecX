@@ -235,7 +235,7 @@ jobs:
       - run: flutter pub get
       - run: flutter create --platforms=ios --project-name elecx .
       - name: Choose native simulator
-        timeout-minutes: 2
+        timeout-minutes: 4
         env:
           P10_FORM: ${{ matrix.form }}
           P10_SIMULATOR_MODEL: ${{ matrix.model }}

@@ -100,15 +100,29 @@ inventory ordering or a newer installed OS cannot silently change the target.
 The exact selection is retained in `selected.json`. Boot and Flutter Drive
 have separate bounded timeouts. First-boot migration was observed completing at
 5 minutes, so bootstatus has a 10-minute bound, within a 12-minute boot step.
-Drive remains bounded at 20 minutes. Timeout signals the probe's process group;
+Build/install/launch/Driver each have separate bounds (10/3/1/5 minutes), within
+the 22-minute integration step. Timeout signals the probe's process group;
 a permission/exit race falls back to the owned child and retains the original
 timeout. Cleanup never adds an unbounded subprocess context-manager wait.
 Verbose Drive/boot logs are retained on success and failure. Failure additionally
 collects simulator inventory, Xcode version, Runner/debugserver/SpringBoard logs
 and a screenshot, within bounded diagnostic steps. A probe failure remains a
 failed gate; diagnostics or retries never substitute for a semantic artifact.
+Flutter 3.47's iPad launch was observed succeeding through build, install and
+launch, then waiting indefinitely for VM URI discovery in its live log stream.
+Apple qualification therefore builds the same integration target, installs and
+launches that actual simulator app with an explicit loopback VM port, verifies a
+real `getVM` response, then attaches the existing Flutter Driver via the SDK's
+`--use-existing-app` path. The native binding's original `reportData` and host
+driver still produce the required artifact. A host computation is never used
+as the mobile result. The temporary debug VM has no Bonjour publication or
+non-loopback binding. App history diagnostics cover the launch's full 30-minute
+window, including info/debug events. Inventory has a 3-minute cold-start bound.
+
 Python qualification tests verify strict profile selection, failed/timed-out
-subprocesses and the observed cleanup permission race.
+subprocesses, the observed cleanup permission race and VM readiness rejection
+for unrelated endpoints. The loopback handshake was also smoke-tested against
+the pinned local Dart SDK's actual VM service.
 
 Desktop native setup passes Flutter 3.47.7 explicitly to the SDK action, matching
 the existing pubspec/SDK guard. Windows therefore needs no Chocolatey/yq lookup
