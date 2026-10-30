@@ -130,7 +130,8 @@ final class ImpactDependencyRelationKey {
         'engineering.controls' => ImpactDependencyKind.controls,
         'engineering.supplied-by' => ImpactDependencyKind.suppliedBy,
         'engineering.member-of' => ImpactDependencyKind.memberOf,
-        'engineering.communicates-with' => ImpactDependencyKind.communicatesWith,
+        'engineering.communicates-with' =>
+          ImpactDependencyKind.communicatesWith,
         'engineering.protects' => ImpactDependencyKind.protects,
         _ => null,
       };
