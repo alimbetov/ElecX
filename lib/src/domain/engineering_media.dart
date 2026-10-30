@@ -29,8 +29,7 @@ final class EngineeringMedia {
       EngineeringMedia._('security.access-control-bus');
 
   @override
-  bool operator ==(Object other) =>
-      other is EngineeringMedia && other.id == id;
+  bool operator ==(Object other) => other is EngineeringMedia && other.id == id;
 
   @override
   int get hashCode => id.hashCode;
