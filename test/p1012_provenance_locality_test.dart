@@ -5,7 +5,7 @@ import 'package:elecx/src/application/project/project_site_layout_commands.dart'
 import 'package:elecx/src/application/project/project_space_commands.dart';
 import 'package:elecx/src/application/project/wizard/building/building_composition_wizard_provider.dart';
 import 'package:elecx/src/application/project/wizard/building/building_generation_parameters.dart';
-import 'package:elecx/src/application/project/wizard/building/cottage_composition.dart';
+import 'package:elecx/src/application/project/wizard/building/site_composition.dart';
 import 'package:elecx/src/domain/composition_generation_provenance.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
@@ -132,23 +132,27 @@ void main() {
     final original = r.mutations.current;
     final source = p1011Parameters(BuildingCompositionWizardFamily.cottage);
     final p = source.buildingParameters!;
-    final command = CottageCompositionCommand.create(
+    final command = SiteCompositionCommand.create(
         project: original,
         compositionKey: 'independent.cottage',
-        allowExistingBuildings: true,
-        parameters: BuildingGenerationParameters(
-            kind: p.kind,
-            siteId: p.siteId,
-            displayName: 'Independent cottage',
-            placement: BuildingSitePlacement(
-                xMm: 200000,
-                yMm: 0,
-                orientation: ProjectEngineeringNorth.fromDegrees(0)),
-            levelStack: p.levelStack,
-            commonCore: p.commonCore,
-            serviceAnchors: ServiceAnchorParameters(),
-            template: p.template),
-        layout: source.layout!);
+        allowSingleBuilding: true,
+        slots: [
+          SiteBuildingSlot(
+              key: 'second.cottage',
+              parameters: BuildingGenerationParameters(
+                  kind: p.kind,
+                  siteId: p.siteId,
+                  displayName: 'Independent cottage',
+                  placement: BuildingSitePlacement(
+                      xMm: 200000,
+                      yMm: 0,
+                      orientation: ProjectEngineeringNorth.fromDegrees(0)),
+                  levelStack: p.levelStack,
+                  commonCore: p.commonCore,
+                  serviceAnchors: ServiceAnchorParameters(),
+                  template: p.template),
+              layout: source.layout!)
+        ]);
     r.port.commitPreview(r.port.preview(command));
     final before = r.mutations.current;
     expect(before.engineeringMetadata.generationProvenanceRegistry.compositions,
