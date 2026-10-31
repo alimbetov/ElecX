@@ -61,7 +61,9 @@ extension PortDrivenCableAuthoring on EditorController {
         break;
       }
     }
-    if (port == null) return false;
+    if (port == null || !_legacyCommitCanResolveExactly(component, port)) {
+      return false;
+    }
 
     if (!SurfaceTransitionNavigator.navigate(this, component.surface)) {
       return false;
@@ -96,6 +98,18 @@ extension PortDrivenCableAuthoring on EditorController {
   }
 }
 
+bool _legacyCommitCanResolveExactly(
+  ElectricalComponentPlacement component,
+  ElectricalPortDefinition port,
+) {
+  final role = _roleFor(port.kind);
+  if (role == PortDrivenCableEndpointRole.source) {
+    return component.ports.where(_isSourcePort).length == 1;
+  }
+  return component.ports.where((candidate) => candidate.kind == port.kind).length ==
+      1;
+}
+
 bool _isConnectablePort(ElectricalPortDefinition port) => switch (port.kind) {
       ElectricalPortKind.powerIn ||
       ElectricalPortKind.powerOut ||
@@ -103,6 +117,11 @@ bool _isConnectablePort(ElectricalPortDefinition port) => switch (port.kind) {
       ElectricalPortKind.controlOut =>
         true,
       ElectricalPortKind.neutral || ElectricalPortKind.earth => false,
+    };
+
+bool _isSourcePort(ElectricalPortDefinition port) => switch (port.kind) {
+      ElectricalPortKind.powerOut || ElectricalPortKind.controlOut => true,
+      _ => false,
     };
 
 PortDrivenCableEndpointRole _roleFor(ElectricalPortKind kind) => switch (kind) {
