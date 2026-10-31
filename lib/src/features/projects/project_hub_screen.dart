@@ -4,6 +4,7 @@ import '../../application/project/project_repository.dart';
 import '../../application/project/wizard/basic_building_wizard_provider.dart';
 import '../../application/project/wizard/wizard_contracts.dart';
 import '../../application/project/wizard/wizard_session.dart';
+import '../editor/canonical_editor_demo_generation.dart';
 import '../editor/canonical_editor_production_bootstrap.dart';
 import '../editor/canonical_legacy_structure_projector.dart';
 import '../editor/canonical_owning_editor_project_store.dart';
@@ -154,6 +155,23 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
               },
               child: const Text('Пустой проект'),
             ),
+          if (canonicalAvailable)
+            TextButton.icon(
+              key: const ValueKey('create-project-demo'),
+              onPressed: () {
+                final normalized = draftName.trim();
+                if (normalized.isNotEmpty) {
+                  Navigator.of(dialogContext).pop(
+                    _NewProjectRequest(
+                      name: normalized,
+                      mode: _NewProjectMode.demo,
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.auto_awesome_outlined),
+              label: const Text('Демо'),
+            ),
           FilledButton(
             key: const ValueKey('create-project-confirm'),
             onPressed: () {
@@ -196,6 +214,32 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
     }
     if (!mounted) return;
 
+    if (request.mode == _NewProjectMode.demo) {
+      try {
+        final prepared = await _configureNewDemoProject(initialDocument);
+        if (!mounted) return;
+        if (prepared == null) {
+          _reloadProjects();
+          return;
+        }
+        await _openEditor(
+          document: prepared.document,
+          preparedCanonicalHandle: prepared.canonicalHandle,
+        );
+      } catch (error, stackTrace) {
+        final failure = _reportProjectHubError(
+          error,
+          stackTrace,
+          code: ProductionDiagnosticCode.projectCreate,
+          safeSummary: 'Не удалось создать демонстрационный проект.',
+          operation: 'while generating the canonical demo project',
+        );
+        _showSafeError(failure);
+        _reloadProjects();
+      }
+      return;
+    }
+
     if (request.mode == _NewProjectMode.wizard) {
       try {
         final prepared = await _configureNewProjectWithWizard(initialDocument);
@@ -223,6 +267,27 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
     }
 
     await _openEditor(document: initialDocument);
+  }
+
+  Future<_PreparedCanonicalProject?> _configureNewDemoProject(
+    EditorProjectDocument initialDocument,
+  ) async {
+    final repository = widget.canonicalProjectRepository;
+    if (repository == null) return null;
+    final handle = await CanonicalEditorProductionHandle.loadOrBootstrap(
+      legacyDocument: initialDocument,
+      repository: repository,
+    );
+    final generated = await const CanonicalEditorDemoGenerator().generate(
+      initialDocument: initialDocument,
+      handle: handle,
+    );
+    final store = await _storeFuture;
+    await store.save(generated.document);
+    return _PreparedCanonicalProject(
+      document: generated.document,
+      canonicalHandle: generated.canonicalHandle,
+    );
   }
 
   Future<_PreparedCanonicalProject?> _configureNewProjectWithWizard(
@@ -504,7 +569,7 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
   }
 }
 
-enum _NewProjectMode { wizard, blank }
+enum _NewProjectMode { wizard, blank, demo }
 
 final class _NewProjectRequest {
   const _NewProjectRequest({required this.name, required this.mode});
