@@ -276,8 +276,7 @@ void main() {
       late EditorProjectDocument legacy;
       late CanonicalEditorProductionHandle handle;
       await tester.runAsync(() async {
-        root =
-            await Directory.systemTemp.createTemp('elecx-pre-p12-ui-smoke-');
+        root = await Directory.systemTemp.createTemp('elecx-pre-p12-ui-smoke-');
         legacy = _blankDocument('pre-p12-ui-smoke', 'PRE-P12 UI smoke');
         handle = await CanonicalEditorProductionHandle.loadOrBootstrap(
           legacyDocument: legacy,
