@@ -85,7 +85,8 @@ class CableAuthoringDraftBar extends StatelessWidget {
                       : hasDraft
                           ? '$points точек. Для Wall↔Ceiling доведите кабель до '
                               'верхнего ребра стены и затем выберите «Потолок».'
-                          : selectedComponent != null && selectedPorts.isNotEmpty
+                          : selectedComponent != null &&
+                                  selectedPorts.isNotEmpty
                               ? 'Выбран ${selectedComponent.label}. Укажите '
                                   'физический порт — первая точка будет создана '
                                   'точно в позиции компонента.'
