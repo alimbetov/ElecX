@@ -30,9 +30,9 @@ class CableAuthoringDraftBar extends StatelessWidget {
       (sum, segment) => sum + segment.points.length,
     );
     final hasDraft = controller.routeSegments.isNotEmpty;
-    final transitionDisconnected =
-        hasDraft && controller.activeSurface != null &&
-            controller.activeRouteSegment == null;
+    final transitionDisconnected = hasDraft &&
+        controller.activeSurface != null &&
+        controller.activeRouteSegment == null;
     final canCommit = controller.routeSegments.any(
       (segment) => segment.points.length >= 2,
     );
@@ -91,8 +91,8 @@ class CableAuthoringDraftBar extends StatelessWidget {
                 _wallHostMenu(context),
                 ChoiceChip(
                   key: const ValueKey('cable-host-ceiling'),
-                  selected:
-                      controller.activeSurface?.type == SurfacePlaneType.ceiling,
+                  selected: controller.activeSurface?.type ==
+                      SurfacePlaneType.ceiling,
                   onSelected: controller.selectedSpace == null
                       ? null
                       : (_) => controller.showCeiling(),
@@ -138,7 +138,8 @@ class CableAuthoringDraftBar extends StatelessWidget {
     final wallCount = space?.boundary.vertices.length ?? 0;
     final active = controller.activeSurface;
     final activeWall = active?.type == SurfacePlaneType.wall;
-    final label = activeWall ? 'Стена ${(active?.wallIndex ?? 0) + 1}' : 'Стена';
+    final label =
+        activeWall ? 'Стена ${(active?.wallIndex ?? 0) + 1}' : 'Стена';
 
     return PopupMenuButton<int>(
       key: const ValueKey('cable-host-wall-menu'),
@@ -156,9 +157,8 @@ class CableAuthoringDraftBar extends StatelessWidget {
       child: Chip(
         avatar: const Icon(Icons.crop_landscape, size: 16),
         label: Text(label),
-        backgroundColor: activeWall
-            ? Theme.of(context).colorScheme.primaryContainer
-            : null,
+        backgroundColor:
+            activeWall ? Theme.of(context).colorScheme.primaryContainer : null,
       ),
     );
   }
