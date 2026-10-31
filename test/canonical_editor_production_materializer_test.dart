@@ -17,7 +17,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('PRE-P12 standalone Room production materializer', () {
-    test('materializes exact canonical topology once and establishes binding', () {
+    test('materializes exact canonical topology once and establishes binding',
+        () {
       final project = _project();
       final navigation = _navigation(project);
       final workspace = _workspace();
@@ -34,7 +35,8 @@ void main() {
         navigation: navigation,
         binding: binding,
       );
-      expect(before.status, CanonicalEditorMaterializationStatus.materializable);
+      expect(
+          before.status, CanonicalEditorMaterializationStatus.materializable);
       expect(before.canOpen, isFalse);
 
       final after = materializer.materialize(
@@ -109,7 +111,8 @@ void main() {
       );
       expect(
         result.status,
-        CanonicalEditorMaterializationStatus.blockedMissingRuntimeRepresentation,
+        CanonicalEditorMaterializationStatus
+            .blockedMissingRuntimeRepresentation,
       );
       expect(binding.legacySpaceIds, isEmpty);
       expect(workspace.editor.level.spaces, hasLength(1));
