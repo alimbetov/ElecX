@@ -13,14 +13,15 @@ import 'editor_project_document.dart';
 /// The generator deliberately does not inject entities into stores and does not
 /// write persistence JSON directly. Every room is committed through
 /// [RoomRectangleAuthoringService], acknowledged by the production persistence
-/// owner and materialized through [CanonicalEditorProductionMaterializer].
+/// owner, materialized through [CanonicalEditorProductionMaterializer], and
+/// saved through the ordinary canonical repository owner.
 final class CanonicalEditorDemoGenerator {
   const CanonicalEditorDemoGenerator();
 
-  CanonicalEditorDemoGenerationResult generate({
+  Future<CanonicalEditorDemoGenerationResult> generate({
     required EditorProjectDocument initialDocument,
     required CanonicalEditorProductionHandle handle,
-  }) {
+  }) async {
     if (handle.session.project.stores.spaces.isNotEmpty ||
         handle.session.project.stores.boundaries.isNotEmpty) {
       throw StateError(
@@ -81,6 +82,7 @@ final class CanonicalEditorDemoGenerator {
         workspace,
         metadata: initialDocument.metadata,
       );
+      await handle.saveCanonical();
       return CanonicalEditorDemoGenerationResult(
         document: document,
         canonicalHandle: handle.rebindToLegacy(document),
