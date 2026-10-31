@@ -1,4 +1,5 @@
 import '../../domain/boundary_construction_transition_resolver.dart';
+import '../../domain/cable_penetration_authoring.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/electrical_routing.dart';
 import '../../domain/project_model.dart';
