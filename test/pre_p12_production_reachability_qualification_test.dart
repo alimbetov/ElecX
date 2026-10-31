@@ -267,6 +267,7 @@ void main() {
     testWidgets(
         'real production runtime is reachable from toolbar and survives UI Undo/Redo',
         (tester) async {
+      debugPrint('PQ12-UI checkpoint 0: test start');
       tester.view.physicalSize = const Size(1440, 900);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
@@ -282,6 +283,7 @@ void main() {
         legacyDocument: legacy,
         repository: _repository(root),
       );
+      debugPrint('PQ12-UI checkpoint 1: production handle ready');
 
       await tester.pumpWidget(
         MaterialApp(
@@ -292,7 +294,9 @@ void main() {
           ),
         ),
       );
+      debugPrint('PQ12-UI checkpoint 2: pumpWidget complete');
       await _boundedPump(tester);
+      debugPrint('PQ12-UI checkpoint 3: initial bounded pump complete');
 
       expect(find.byType(CanonicalProjectNavigator), findsOneWidget);
       expect(find.byTooltip('Комната (R)'), findsOneWidget);
@@ -306,15 +310,19 @@ void main() {
       );
 
       await tester.tap(find.byTooltip('Комната (R)'));
+      debugPrint('PQ12-UI checkpoint 4: room tool tapped');
       await _boundedPump(tester);
       final canvas = find.byType(SpatialCanvas);
       expect(canvas, findsOneWidget);
       final rect = tester.getRect(canvas);
       await tester.tapAt(rect.center + const Offset(-120, -80));
+      debugPrint('PQ12-UI checkpoint 5: first canvas tap complete');
       await _boundedPump(tester);
       expect(handle.session.project.stores.spaces, isEmpty);
       await tester.tapAt(rect.center + const Offset(120, 80));
+      debugPrint('PQ12-UI checkpoint 6: second canvas tap complete');
       await _boundedPump(tester);
+      debugPrint('PQ12-UI checkpoint 7: room commit pump complete');
 
       expect(handle.session.project.stores.spaces, hasLength(1));
       final roomId = handle.session.project.stores.spaces.keys.single;
@@ -327,7 +335,9 @@ void main() {
       await tester.tap(
         find.byTooltip('Отменить: project.space.create-room-rectangle'),
       );
+      debugPrint('PQ12-UI checkpoint 8: undo tapped');
       await _boundedPump(tester);
+      debugPrint('PQ12-UI checkpoint 9: undo pump complete');
       expect(handle.session.project.stores.spaces, isEmpty);
       expect(
         find.byTooltip('Повторить: project.space.create-room-rectangle'),
@@ -337,26 +347,32 @@ void main() {
       await tester.tap(
         find.byTooltip('Повторить: project.space.create-room-rectangle'),
       );
+      debugPrint('PQ12-UI checkpoint 10: redo tapped');
       await _boundedPump(tester);
+      debugPrint('PQ12-UI checkpoint 11: redo pump complete');
       expect(handle.session.project.stores.spaces.keys.single, roomId);
       expect(
         find.byKey(const ValueKey('canonical-cutover-blocked')),
         findsNothing,
       );
 
-      // Explicitly dispose the production screen while the widget test binding
-      // is still active. This cancels screen-owned listeners/timers before the
-      // async temp-directory teardown and prevents the qualification process
-      // from retaining a live Flutter frame after all assertions have passed.
       await tester.pumpWidget(const SizedBox.shrink());
+      debugPrint('PQ12-UI checkpoint 12: screen unmounted');
       await tester.pump();
+      debugPrint('PQ12-UI checkpoint 13: test body complete');
     });
   });
 }
 
+int _boundedPumpSequence = 0;
+
 Future<void> _boundedPump(WidgetTester tester) async {
+  final sequence = ++_boundedPumpSequence;
+  debugPrint('PQ12-UI bounded pump $sequence: start');
   await tester.pump();
+  debugPrint('PQ12-UI bounded pump $sequence: frame');
   await tester.pump(const Duration(milliseconds: 100));
+  debugPrint('PQ12-UI bounded pump $sequence: complete');
 }
 
 JsonProjectRepository _repository(Directory root) => JsonProjectRepository(
