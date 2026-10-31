@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:elecx/src/domain/project_model.dart';
+import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/features/editor/canonical_editor_demo_generation.dart';
 import 'package:elecx/src/features/editor/canonical_editor_production_bootstrap.dart';
 import 'package:elecx/src/features/editor/editor_project_document.dart';
@@ -14,7 +14,8 @@ void main() {
   group('production demo generation', () {
     test('creates four canonical rooms, materializes them and survives reopen',
         () async {
-      final root = await Directory.systemTemp.createTemp('elecx-demo-generation-');
+      final root =
+          await Directory.systemTemp.createTemp('elecx-demo-generation-');
       addTearDown(() async {
         if (await root.exists()) await root.delete(recursive: true);
       });
@@ -40,7 +41,8 @@ void main() {
         isTrue,
       );
       for (final roomId in generated.roomIds) {
-        expect(handle.owner.project.index.boundary(roomId)!.validate(), isEmpty);
+        expect(
+            handle.owner.project.index.boundary(roomId)!.validate(), isEmpty);
       }
 
       final activeLevel = generated.document.building
@@ -58,7 +60,8 @@ void main() {
       expect(reopened.owner.project.stores.spaces.keys.toSet(),
           handle.owner.project.stores.spaces.keys.toSet());
       for (final roomId in generated.roomIds) {
-        expect(reopened.owner.project.index.boundary(roomId)!.validate(), isEmpty);
+        expect(
+            reopened.owner.project.index.boundary(roomId)!.validate(), isEmpty);
       }
     });
 
