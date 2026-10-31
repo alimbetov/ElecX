@@ -343,6 +343,13 @@ void main() {
         find.byKey(const ValueKey('canonical-cutover-blocked')),
         findsNothing,
       );
+
+      // Explicitly dispose the production screen while the widget test binding
+      // is still active. This cancels screen-owned listeners/timers before the
+      // async temp-directory teardown and prevents the qualification process
+      // from retaining a live Flutter frame after all assertions have passed.
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
     });
   });
 }
