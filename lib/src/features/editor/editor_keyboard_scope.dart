@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import '../../domain/geometry.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/editor_layers.dart';
+import 'cable_authoring_draft_bar.dart';
 import 'cable_edit_access.dart';
 import 'canonical_boundary_topology_migration_runtime.dart';
 import 'component_transform_session.dart';
@@ -103,7 +104,7 @@ class EditorKeyboardScope extends StatelessWidget {
       controller.placementCursor.cancel();
     } else if (controller.tool == EditorTool.cableRoute &&
         controller.routeSegments.isNotEmpty) {
-      controller.cancelManualCableDraft();
+      controller.cancelManualCableDraft(exitTool: true);
     } else {
       controller.setTool(EditorTool.select);
     }
@@ -123,6 +124,14 @@ class EditorKeyboardScope extends StatelessWidget {
         controller.routeSegments.isNotEmpty) {
       controller.finishManualCableDraft();
     }
+  }
+
+  void _startManualCableRoute() {
+    if (_persistentEditActive || controller.selectedSpace == null) return;
+    if (controller.activeSurface == null) {
+      controller.showWall(0);
+    }
+    controller.setTool(EditorTool.cableRoute);
   }
 
   void _adoptStableWallHosts() {
@@ -224,8 +233,7 @@ class EditorKeyboardScope extends StatelessWidget {
         },
         const SingleActivator(LogicalKeyboardKey.keyG): () =>
             controller.setTool(EditorTool.guide),
-        const SingleActivator(LogicalKeyboardKey.keyC): () =>
-            controller.setTool(EditorTool.cableRoute),
+        const SingleActivator(LogicalKeyboardKey.keyC): _startManualCableRoute,
         const SingleActivator(LogicalKeyboardKey.keyA, alt: true):
             _adoptStableWallHosts,
         const SingleActivator(LogicalKeyboardKey.keyS, alt: true):
@@ -302,7 +310,24 @@ class EditorKeyboardScope extends StatelessWidget {
         const SingleActivator(LogicalKeyboardKey.numpad0): () =>
             controller.requestViewportCommand(EditorViewportCommand.reset),
       },
-      child: Focus(autofocus: true, child: child),
+      child: Focus(
+        autofocus: true,
+        child: Stack(
+          children: [
+            child,
+            if (controller.tool == EditorTool.cableRoute)
+              Positioned(
+                left: 12,
+                right: 12,
+                bottom: 12,
+                child: SafeArea(
+                  top: false,
+                  child: CableAuthoringDraftBar(controller: controller),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
