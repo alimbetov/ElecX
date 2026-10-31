@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../domain/electrical_placement.dart';
 import '../../domain/surfaces.dart';
 import 'editor_controller.dart';
+import 'editor_p2_session.dart';
 import 'manual_cable_draft_persistence.dart';
+import 'port_driven_cable_authoring.dart';
 
 /// User-visible lifecycle/status surface for manual cable authoring.
 ///
@@ -30,6 +33,11 @@ class CableAuthoringDraftBar extends StatelessWidget {
       (sum, segment) => sum + segment.points.length,
     );
     final hasDraft = controller.routeSegments.isNotEmpty;
+    final binding = controller.portDrivenCableStartBinding;
+    final selectedComponent = controller.p2.selectedComponent;
+    final selectedPorts = selectedComponent == null
+        ? const <ElectricalPortDefinition>[]
+        : controller.cableAuthoringPortsFor(selectedComponent);
     final transitionDisconnected = hasDraft &&
         controller.activeSurface != null &&
         controller.activeRouteSegment == null;
@@ -70,18 +78,46 @@ class CableAuthoringDraftBar extends StatelessWidget {
                   ? 'Переход на эту поверхность не подтверждён физическим '
                       'примыканием. Вернитесь к предыдущей поверхности и '
                       'доведите точку до общего ребра.'
-                  : hasDraft
-                      ? '$points точек. Для Wall↔Ceiling доведите кабель до '
-                          'верхнего ребра стены и затем выберите «Потолок».'
-                      : 'Выберите поверхность и начните у порта компонента. '
-                          'Каждый клик добавляет точку маршрута.',
+                  : binding != null
+                      ? 'Старт закреплён за ${binding.componentId}:'
+                          '${binding.portId}. Первая точка совпадает с '
+                          'физической позицией порта; продолжайте маршрут.'
+                      : hasDraft
+                          ? '$points точек. Для Wall↔Ceiling доведите кабель до '
+                              'верхнего ребра стены и затем выберите «Потолок».'
+                          : selectedComponent != null && selectedPorts.isNotEmpty
+                              ? 'Выбран ${selectedComponent.label}. Укажите '
+                                  'физический порт — первая точка будет создана '
+                                  'точно в позиции компонента.'
+                              : 'Выберите компонент или поверхность. Клик '
+                                  'добавляет точку маршрута.',
               key: transitionDisconnected
                   ? const ValueKey('cable-host-transition-warning')
-                  : null,
+                  : binding != null
+                      ? const ValueKey('cable-port-start-bound')
+                      : null,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall,
             ),
+            if (!hasDraft &&
+                selectedComponent != null &&
+                selectedPorts.isNotEmpty) ...[
+              const SizedBox(height: 7),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final port in selectedPorts)
+                    FilledButton.tonalIcon(
+                      key: ValueKey('cable-start-port-${port.id}'),
+                      onPressed: () => _startFromPort(context, port),
+                      icon: const Icon(Icons.cable_outlined, size: 18),
+                      label: Text('${port.id} · ${port.kind.name}'),
+                    ),
+                ],
+              ),
+            ],
             const SizedBox(height: 7),
             Wrap(
               spacing: 6,
@@ -159,6 +195,18 @@ class CableAuthoringDraftBar extends StatelessWidget {
         label: Text(label),
         backgroundColor:
             activeWall ? Theme.of(context).colorScheme.primaryContainer : null,
+      ),
+    );
+  }
+
+  void _startFromPort(BuildContext context, ElectricalPortDefinition port) {
+    if (controller.beginPortDrivenCableFromSelectedPort(port.id)) return;
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Не удалось начать трассу от выбранного порта: проверьте слой, '
+          'выбор компонента и отсутствие другого активного черновика.',
+        ),
       ),
     );
   }
