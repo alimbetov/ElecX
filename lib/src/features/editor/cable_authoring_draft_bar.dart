@@ -69,7 +69,8 @@ class CableAuthoringDraftBar extends StatelessWidget {
             const SizedBox(width: 8),
             TextButton.icon(
               key: const ValueKey('cable-draft-cancel'),
-              onPressed: () => controller.cancelManualCableDraft(exitTool: true),
+              onPressed: () =>
+                  controller.cancelManualCableDraft(exitTool: true),
               icon: const Icon(Icons.close, size: 18),
               label: const Text('Отмена · Esc'),
             ),
