@@ -3,6 +3,8 @@ import '../../application/project/project_structure_authoring.dart';
 import '../../domain/boundary_topology.dart';
 import '../../domain/building_composition.dart';
 import '../../domain/geometry.dart';
+import '../../domain/project_aggregate.dart';
+import '../../domain/project_identity.dart';
 import '../../domain/project_model.dart';
 import 'canonical_editor_runtime_cutover.dart';
 import 'canonical_editor_wizard_runtime_registry.dart';
