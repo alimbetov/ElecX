@@ -222,6 +222,7 @@ ProjectAggregateRoot _project({bool includeBoundary = true}) {
           id: roomId,
           levelId: levelId,
           name: 'Canonical room',
+          type: ProjectSpaceType.room,
         ),
       },
       boundaries: includeBoundary
