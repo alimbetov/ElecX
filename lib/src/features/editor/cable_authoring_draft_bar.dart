@@ -30,59 +30,135 @@ class CableAuthoringDraftBar extends StatelessWidget {
       (sum, segment) => sum + segment.points.length,
     );
     final hasDraft = controller.routeSegments.isNotEmpty;
+    final transitionDisconnected =
+        hasDraft && controller.activeSurface != null &&
+            controller.activeRouteSegment == null;
     final canCommit = controller.routeSegments.any(
       (segment) => segment.points.length >= 2,
     );
 
     return Material(
       key: const ValueKey('cable-authoring-draft-bar'),
+      elevation: 4,
       color: Theme.of(context).colorScheme.secondaryContainer,
+      borderRadius: BorderRadius.circular(10),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        child: Row(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.alt_route, size: 18),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
+            Row(
+              children: [
+                const Icon(Icons.alt_route, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
                     'Прокладка кабеля · $host',
                     style: Theme.of(context).textTheme.labelLarge,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    hasDraft
-                        ? '$points точек · ${controller.routeLengthMm.round()} мм. '
-                            'Для перехода на стену/потолок выберите соседнюю '
-                            'поверхность в точке их физического примыкания.'
-                        : 'Начните у порта компонента. Клик добавляет точку; '
-                            'Стена/Потолок/Пол выше меняют физическую поверхность.',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
+                ),
+                Text(
+                  '${controller.routeLengthMm.round()} мм',
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            TextButton.icon(
-              key: const ValueKey('cable-draft-cancel'),
-              onPressed: () =>
-                  controller.cancelManualCableDraft(exitTool: true),
-              icon: const Icon(Icons.close, size: 18),
-              label: const Text('Отмена · Esc'),
+            const SizedBox(height: 5),
+            Text(
+              transitionDisconnected
+                  ? 'Переход на эту поверхность не подтверждён физическим '
+                      'примыканием. Вернитесь к предыдущей поверхности и '
+                      'доведите точку до общего ребра.'
+                  : hasDraft
+                      ? '$points точек. Для Wall↔Ceiling доведите кабель до '
+                          'верхнего ребра стены и затем выберите «Потолок».'
+                      : 'Выберите поверхность и начните у порта компонента. '
+                          'Каждый клик добавляет точку маршрута.',
+              key: transitionDisconnected
+                  ? const ValueKey('cable-host-transition-warning')
+                  : null,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall,
             ),
-            const SizedBox(width: 4),
-            FilledButton.icon(
-              key: const ValueKey('cable-draft-commit'),
-              onPressed: canCommit ? () => _commit(context) : null,
-              icon: const Icon(Icons.check, size: 18),
-              label: const Text('Сохранить · Enter'),
+            const SizedBox(height: 7),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                _wallHostMenu(context),
+                ChoiceChip(
+                  key: const ValueKey('cable-host-ceiling'),
+                  selected:
+                      controller.activeSurface?.type == SurfacePlaneType.ceiling,
+                  onSelected: controller.selectedSpace == null
+                      ? null
+                      : (_) => controller.showCeiling(),
+                  avatar: const Icon(Icons.view_in_ar_outlined, size: 16),
+                  label: const Text('Потолок'),
+                ),
+                ChoiceChip(
+                  key: const ValueKey('cable-host-floor'),
+                  selected:
+                      controller.activeSurface?.type == SurfacePlaneType.floor,
+                  onSelected: controller.selectedSpace == null
+                      ? null
+                      : (_) => controller.showFloor(),
+                  avatar: const Icon(Icons.grid_on, size: 16),
+                  label: const Text('Пол'),
+                ),
+                const SizedBox(width: 6),
+                TextButton.icon(
+                  key: const ValueKey('cable-draft-cancel'),
+                  onPressed: () =>
+                      controller.cancelManualCableDraft(exitTool: true),
+                  icon: const Icon(Icons.close, size: 18),
+                  label: const Text('Отмена · Esc'),
+                ),
+                FilledButton.icon(
+                  key: const ValueKey('cable-draft-commit'),
+                  onPressed: canCommit && !transitionDisconnected
+                      ? () => _commit(context)
+                      : null,
+                  icon: const Icon(Icons.check, size: 18),
+                  label: const Text('Сохранить · Enter'),
+                ),
+              ],
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _wallHostMenu(BuildContext context) {
+    final space = controller.selectedSpace;
+    final wallCount = space?.boundary.vertices.length ?? 0;
+    final active = controller.activeSurface;
+    final activeWall = active?.type == SurfacePlaneType.wall;
+    final label = activeWall ? 'Стена ${(active?.wallIndex ?? 0) + 1}' : 'Стена';
+
+    return PopupMenuButton<int>(
+      key: const ValueKey('cable-host-wall-menu'),
+      enabled: wallCount > 0,
+      tooltip: 'Выбрать стену для прокладки',
+      onSelected: controller.showWall,
+      itemBuilder: (context) => [
+        for (var index = 0; index < wallCount; index++)
+          PopupMenuItem<int>(
+            key: ValueKey('cable-host-wall-$index'),
+            value: index,
+            child: Text('Стена ${index + 1}'),
+          ),
+      ],
+      child: Chip(
+        avatar: const Icon(Icons.crop_landscape, size: 16),
+        label: Text(label),
+        backgroundColor: activeWall
+            ? Theme.of(context).colorScheme.primaryContainer
+            : null,
       ),
     );
   }
@@ -102,7 +178,7 @@ class CableAuthoringDraftBar extends StatelessWidget {
   }
 
   static String _hostLabel(RoomSurfaceRef? surface) {
-    if (surface == null) return 'поверхность не выбрана';
+    if (surface == null) return 'выберите поверхность';
     return switch (surface.type) {
       SurfacePlaneType.wall => 'Стена ${(surface.wallIndex ?? 0) + 1}',
       SurfacePlaneType.ceiling => 'Потолок',
