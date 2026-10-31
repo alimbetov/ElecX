@@ -151,7 +151,8 @@ void main() {
       );
 
       expect(find.byKey(const ValueKey('cable-start-port-power-in')), findsOne);
-      expect(find.byKey(const ValueKey('cable-start-port-earth')), findsNothing);
+      expect(
+          find.byKey(const ValueKey('cable-start-port-earth')), findsNothing);
 
       await tester.tap(find.byKey(const ValueKey('cable-start-port-power-in')));
       await tester.pump();
