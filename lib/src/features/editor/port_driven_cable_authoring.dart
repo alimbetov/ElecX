@@ -106,7 +106,9 @@ bool _legacyCommitCanResolveExactly(
   if (role == PortDrivenCableEndpointRole.source) {
     return component.ports.where(_isSourcePort).length == 1;
   }
-  return component.ports.where((candidate) => candidate.kind == port.kind).length ==
+  return component.ports
+          .where((candidate) => candidate.kind == port.kind)
+          .length ==
       1;
 }
 
@@ -125,10 +127,13 @@ bool _isSourcePort(ElectricalPortDefinition port) => switch (port.kind) {
     };
 
 PortDrivenCableEndpointRole _roleFor(ElectricalPortKind kind) => switch (kind) {
-      ElectricalPortKind.powerOut || ElectricalPortKind.controlOut =>
+      ElectricalPortKind.powerOut ||
+      ElectricalPortKind.controlOut =>
         PortDrivenCableEndpointRole.source,
-      ElectricalPortKind.powerIn || ElectricalPortKind.controlIn =>
+      ElectricalPortKind.powerIn ||
+      ElectricalPortKind.controlIn =>
         PortDrivenCableEndpointRole.target,
-      ElectricalPortKind.neutral || ElectricalPortKind.earth =>
+      ElectricalPortKind.neutral ||
+      ElectricalPortKind.earth =>
         throw ArgumentError.value(kind, 'kind', 'Port is not routable.'),
     };
