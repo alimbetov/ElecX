@@ -1,6 +1,8 @@
 import '../../application/project/project_room_rectangle_authoring.dart';
 import '../../application/project/project_structure_authoring.dart';
 import '../../domain/boundary_topology.dart';
+import '../../domain/building_composition.dart';
+import '../../domain/geometry.dart';
 import '../../domain/project_model.dart';
 import 'canonical_editor_runtime_cutover.dart';
 import 'canonical_editor_wizard_runtime_registry.dart';
@@ -226,7 +228,8 @@ final class CanonicalEditorScreenCutoverBinding {
       final canonicalLevel = session.project.index.level(levelId);
       if (canonicalLevel == null) {
         throw StateError(
-            'Active canonical Level disappeared before room commit.');
+          'Active canonical Level disappeared before room commit.',
+        );
       }
       final bounds = candidate.boundary.bounds;
       final result = RoomRectangleAuthoringService(
@@ -245,7 +248,13 @@ final class CanonicalEditorScreenCutoverBinding {
       history.recordCanonicalCommit(
         session: session,
         label: result.commit.mutation.changeSet.commandType,
-        rematerialize: pushCanonicalToEditor,
+        rematerialize: () {
+          _reconcileRoomRectangleProjection(
+            levelId: levelId,
+            spaceId: result.spaceId,
+          );
+          pushCanonicalToEditor();
+        },
       );
       try {
         owner(result.commit.mutation);
@@ -277,6 +286,135 @@ final class CanonicalEditorScreenCutoverBinding {
       rethrow;
     } finally {
       _canonicalizingLegacyRoomRectangle = false;
+    }
+  }
+
+  /// Keeps the transitional legacy projection symmetric with canonical history.
+  ///
+  /// A create-room Undo removes the materialized legacy room before ordinary
+  /// canonical navigation is projected. Redo rebuilds the exact same legacy
+  /// identity from the restored canonical topology. The stable binding is kept
+  /// across the in-memory Undo/Redo interval deliberately so Redo cannot drift
+  /// to another legacy identity.
+  void _reconcileRoomRectangleProjection({
+    required LevelId levelId,
+    required SpaceId spaceId,
+  }) {
+    final binding = coordinator.adapter.binding;
+    final legacyLevelId = binding.legacyLevelIds[levelId];
+    final legacySpaceId = binding.legacySpaceIds[spaceId];
+    if (legacyLevelId == null || legacySpaceId == null) {
+      throw StateError(
+        'Canonical room history lost its production legacy binding.',
+      );
+    }
+
+    ComposedBuildingLevel? legacyLevel;
+    for (final candidate in workspace.building.levels) {
+      if (candidate.level.id == legacyLevelId) {
+        legacyLevel = candidate;
+        break;
+      }
+    }
+    if (legacyLevel == null) {
+      throw StateError(
+        'Canonical room history lost legacy Level $legacyLevelId.',
+      );
+    }
+
+    final canonicalSpace = coordinator.session.project.index.space(spaceId);
+    EngineeringSpace? projectedRoom;
+    if (canonicalSpace != null) {
+      if (canonicalSpace.levelId != levelId ||
+          canonicalSpace.type != ProjectSpaceType.room) {
+        throw StateError(
+          'Canonical room history restored an incompatible Space $spaceId.',
+        );
+      }
+      final topology = coordinator.session.project.index.boundary(spaceId);
+      if (topology == null) {
+        throw StateError(
+          'Canonical room history restored Space $spaceId without topology.',
+        );
+      }
+      topology.validateOrThrow();
+      final boundary = MmPolygon(<MmPoint>[
+        for (final edgeId in topology.orderedEdgeIds)
+          MmPoint(
+            topology.edges[edgeId]!.start.xMm,
+            topology.edges[edgeId]!.start.yMm,
+          ),
+      ]);
+      projectedRoom = EngineeringSpace(
+        id: legacySpaceId,
+        name: canonicalSpace.name,
+        type: SpaceType.room,
+        boundary: boundary,
+        referenceFrame: RoomReferenceFrame(origin: boundary.bounds.center),
+      );
+    }
+
+    final nextGeometry = legacyLevel.level.copyWith(
+      spaces: <EngineeringSpace>[
+        for (final candidate in legacyLevel.level.spaces)
+          if (candidate.id != legacySpaceId) candidate,
+        if (projectedRoom != null) projectedRoom,
+      ],
+    );
+    final nextLevel = ComposedBuildingLevel(
+      level: nextGeometry,
+      levelNumber: legacyLevel.levelNumber,
+      kind: legacyLevel.kind,
+      floorToFloorHeightMm: legacyLevel.floorToFloorHeightMm,
+      zones: legacyLevel.zones,
+    );
+    final nextLevels = <ComposedBuildingLevel>[
+      for (final candidate in workspace.building.levels)
+        if (candidate.level.id == legacyLevelId) nextLevel else candidate,
+    ];
+    final nextBuildingGeometry = Building(
+      id: workspace.building.building.id,
+      name: workspace.building.building.name,
+      levels: <BuildingLevel>[for (final item in nextLevels) item.level],
+    );
+    final nextBuilding = ComposedBuilding(
+      building: nextBuildingGeometry,
+      levels: nextLevels,
+      verticalCores: workspace.building.verticalCores,
+    );
+    if (!workspace.site.site.buildings
+        .any((candidate) => candidate.id == nextBuildingGeometry.id)) {
+      throw StateError(
+        'Canonical room history lost the bound legacy Building in Site.',
+      );
+    }
+    final nextSite = workspace.site.copyWith(
+      site: workspace.site.site.copyWith(
+        buildings: <Building>[
+          for (final candidate in workspace.site.site.buildings)
+            if (candidate.id == nextBuildingGeometry.id)
+              nextBuildingGeometry
+            else
+              candidate,
+        ],
+      ),
+    );
+
+    final suppressing = _canonicalizingLegacyRoomRectangle;
+    _canonicalizingLegacyRoomRectangle = true;
+    try {
+      workspace.building = nextBuilding;
+      workspace.site = nextSite;
+      if (workspace.context == EditorWorkspaceContext.buildingLevel &&
+          workspace.activeLevelNumber == nextLevel.levelNumber) {
+        workspace.editor.level = nextGeometry;
+        if (projectedRoom == null &&
+            workspace.editor.selectedSpaceId == legacySpaceId) {
+          workspace.editor.selectSpace(null);
+        }
+      }
+    } finally {
+      _canonicalizingLegacyRoomRectangle = suppressing;
     }
   }
 
