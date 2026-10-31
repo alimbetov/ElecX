@@ -292,7 +292,7 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await _boundedPump(tester);
 
       expect(find.byType(CanonicalProjectNavigator), findsOneWidget);
       expect(find.byTooltip('Комната (R)'), findsOneWidget);
@@ -306,15 +306,15 @@ void main() {
       );
 
       await tester.tap(find.byTooltip('Комната (R)'));
-      await tester.pump();
+      await _boundedPump(tester);
       final canvas = find.byType(SpatialCanvas);
       expect(canvas, findsOneWidget);
       final rect = tester.getRect(canvas);
       await tester.tapAt(rect.center + const Offset(-120, -80));
-      await tester.pump();
+      await _boundedPump(tester);
       expect(handle.session.project.stores.spaces, isEmpty);
       await tester.tapAt(rect.center + const Offset(120, 80));
-      await tester.pumpAndSettle();
+      await _boundedPump(tester);
 
       expect(handle.session.project.stores.spaces, hasLength(1));
       final roomId = handle.session.project.stores.spaces.keys.single;
@@ -327,7 +327,7 @@ void main() {
       await tester.tap(
         find.byTooltip('Отменить: project.space.create-room-rectangle'),
       );
-      await tester.pumpAndSettle();
+      await _boundedPump(tester);
       expect(handle.session.project.stores.spaces, isEmpty);
       expect(
         find.byTooltip('Повторить: project.space.create-room-rectangle'),
@@ -337,7 +337,7 @@ void main() {
       await tester.tap(
         find.byTooltip('Повторить: project.space.create-room-rectangle'),
       );
-      await tester.pumpAndSettle();
+      await _boundedPump(tester);
       expect(handle.session.project.stores.spaces.keys.single, roomId);
       expect(
         find.byKey(const ValueKey('canonical-cutover-blocked')),
@@ -345,6 +345,11 @@ void main() {
       );
     });
   });
+}
+
+Future<void> _boundedPump(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 100));
 }
 
 JsonProjectRepository _repository(Directory root) => JsonProjectRepository(
