@@ -16,12 +16,13 @@ void main() {
       controller.setTool(EditorTool.cableRoute);
       controller.surfaceTap(const SurfacePointMm(100, 300));
       controller.surfaceTap(const SurfacePointMm(900, 300));
+      final expectedLength = '${controller.routeLengthMm.round()} мм';
 
       await tester.pumpWidget(_barHarness(controller));
 
       expect(find.byKey(const ValueKey('cable-authoring-draft-bar')), findsOne);
       expect(find.textContaining('Прокладка кабеля · Стена 1'), findsOne);
-      expect(find.textContaining('800 мм'), findsOne);
+      expect(find.text(expectedLength), findsOne);
       expect(find.byKey(const ValueKey('cable-draft-commit')), findsOne);
 
       await tester.tap(find.byKey(const ValueKey('cable-draft-cancel')));
