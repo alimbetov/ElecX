@@ -6,6 +6,7 @@ import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_model.dart';
 import 'package:elecx/src/domain/site_outdoor_model.dart';
+import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/features/editor/canonical_editor_production_materializer.dart';
 import 'package:elecx/src/features/editor/canonical_editor_runtime_cutover.dart';
 import 'package:elecx/src/features/editor/canonical_editor_workspace_adapter.dart';
