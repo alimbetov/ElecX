@@ -23,12 +23,33 @@ jobs:
       - run: flutter pub get
       - name: Analyze PRE-P12 production authoring surface
         run: flutter analyze
-      - name: PRE-P12 focused production acceptance
+      - name: PQ atomic Space + Boundary command
+        timeout-minutes: 3
         run: >-
           flutter test --concurrency=1 --reporter=expanded
           test/project_space_boundary_commands_test.dart
+      - name: PQ shared rectangle authoring timeline
+        timeout-minutes: 3
+        run: >-
+          flutter test --concurrency=1 --reporter=expanded
           test/project_room_rectangle_authoring_test.dart
+      - name: PQ production room materializer
+        timeout-minutes: 3
+        run: >-
+          flutter test --concurrency=1 --reporter=expanded
           test/canonical_editor_production_materializer_test.dart
+      - name: PQ screen cutover regression
+        timeout-minutes: 3
+        run: >-
+          flutter test --concurrency=1 --reporter=expanded
           test/canonical_editor_screen_cutover_binding_test.dart
+      - name: PQ09/PQ10 physical persistence
+        timeout-minutes: 3
+        run: >-
+          flutter test --concurrency=1 --reporter=expanded
           test/pre_p12_room_persistence_qualification_test.dart
+      - name: PQ11/PQ12 adversarial and UI reachability
+        timeout-minutes: 3
+        run: >-
+          flutter test --concurrency=1 --reporter=expanded
           test/pre_p12_production_reachability_qualification_test.dart
