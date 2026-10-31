@@ -51,7 +51,8 @@ void main() {
       expect(find.textContaining('Прокладка кабеля · Стена 1'), findsOne);
     });
 
-    testWidgets('unproven wall to ceiling switch is visible and not committable',
+    testWidgets(
+        'unproven wall to ceiling switch is visible and not committable',
         (tester) async {
       final controller = EditorController.demo();
       addTearDown(controller.dispose);
