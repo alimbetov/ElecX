@@ -64,7 +64,8 @@ void main() {
           legacyDocument: legacy,
           repository: _repository(root),
         );
-        final reopenedRoom = reopened.owner.project.index.space(authored.spaceId);
+        final reopenedRoom =
+            reopened.owner.project.index.space(authored.spaceId);
         final reopenedTopology =
             reopened.owner.project.index.boundary(authored.spaceId);
 
@@ -121,8 +122,9 @@ void main() {
         final baselineBoundaryCount =
             handle.owner.project.stores.boundaries.length;
         final baselineBytes = await _projectFile(root).readAsString();
-        final baselineEdgeIds = handle.owner.project
-            .index.boundary(authored.spaceId)!.orderedEdgeIds
+        final baselineEdgeIds = handle.owner.project.index
+            .boundary(authored.spaceId)!
+            .orderedEdgeIds
             .map((id) => id.value)
             .toList(growable: false);
 
@@ -184,9 +186,10 @@ EditorProjectDocument _initial(String projectId, String projectName) =>
       ),
     );
 
-File _projectFile(Directory root) => root.listSync().whereType<File>().singleWhere(
-      (file) => file.path.endsWith('.elecx.project.json'),
-    );
+File _projectFile(Directory root) =>
+    root.listSync().whereType<File>().singleWhere(
+          (file) => file.path.endsWith('.elecx.project.json'),
+        );
 
 String _fingerprint(ProjectAggregateRoot project) {
   final sites = project.stores.sites.values.toList()
@@ -218,9 +221,9 @@ String _fingerprint(ProjectAggregateRoot project) {
       'T|${entry.key.value}|'
           '${entry.value.orderedEdgeIds.map((id) => id.value).join(',')}|'
           '${entry.value.orderedEdgeIds.map((id) {
-            final edge = entry.value.edges[id]!;
-            return '${edge.start.xMm},${edge.start.yMm}>'
-                '${edge.end.xMm},${edge.end.yMm}';
-          }).join(';')}',
+        final edge = entry.value.edges[id]!;
+        return '${edge.start.xMm},${edge.start.yMm}>'
+            '${edge.end.xMm},${edge.end.yMm}';
+      }).join(';')}',
   ].join('\n');
 }

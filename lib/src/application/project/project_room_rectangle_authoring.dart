@@ -50,7 +50,8 @@ final class RoomRectangleAuthoringIntent {
 
 /// Reserved form of [CreateSpaceWithBoundaryCommand]. Preview and commit reuse
 /// exactly the same Space/BoundaryEdge identities on the shared mutation port.
-final class ReservedCreateRoomRectangleCommand implements ReservedProjectCommand {
+final class ReservedCreateRoomRectangleCommand
+    implements ReservedProjectCommand {
   ReservedCreateRoomRectangleCommand(this.intent)
       : _boundary = intent.normalizedBoundary() {
     if (intent.name.trim().isEmpty) {
@@ -78,7 +79,8 @@ final class ReservedCreateRoomRectangleCommand implements ReservedProjectCommand
         factory: factory,
         entitySlots: <String, ReservedEntityIdKind>{
           _spaceSlot: ReservedEntityIdKind.space,
-          for (final slot in _edgeSlots) slot: ReservedEntityIdKind.boundaryEdge,
+          for (final slot in _edgeSlots)
+            slot: ReservedEntityIdKind.boundaryEdge,
         },
       );
 
@@ -108,8 +110,7 @@ final class ReservedCreateRoomRectangleCommand implements ReservedProjectCommand
       throw StateError('Reserved room identity already exists: $roomId.');
     }
     final edgeIds = <BoundaryEdgeId>{
-      for (final slot in _edgeSlots)
-        reservation.entityId<BoundaryEdgeId>(slot),
+      for (final slot in _edgeSlots) reservation.entityId<BoundaryEdgeId>(slot),
     };
     if (edgeIds.length != _edgeSlots.length) {
       throw StateError('Reserved boundary edge identities must be distinct.');
@@ -117,7 +118,8 @@ final class ReservedCreateRoomRectangleCommand implements ReservedProjectCommand
     for (final topology in current.stores.boundaries.values) {
       for (final edgeId in edgeIds) {
         if (topology.edges.containsKey(edgeId)) {
-          throw StateError('Reserved boundary identity already exists: $edgeId.');
+          throw StateError(
+              'Reserved boundary identity already exists: $edgeId.');
         }
       }
     }
@@ -173,7 +175,8 @@ final class RoomRectangleAuthoringService {
       );
     }
 
-    final preview = mutations.preview(ReservedCreateRoomRectangleCommand(intent));
+    final preview =
+        mutations.preview(ReservedCreateRoomRectangleCommand(intent));
     final result = mutations.commitPreview(preview);
     if (result == null) {
       mutations.discardPreview(preview);

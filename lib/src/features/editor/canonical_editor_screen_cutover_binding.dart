@@ -225,7 +225,8 @@ final class CanonicalEditorScreenCutoverBinding {
 
       final canonicalLevel = session.project.index.level(levelId);
       if (canonicalLevel == null) {
-        throw StateError('Active canonical Level disappeared before room commit.');
+        throw StateError(
+            'Active canonical Level disappeared before room commit.');
       }
       final bounds = candidate.boundary.bounds;
       final result = RoomRectangleAuthoringService(
