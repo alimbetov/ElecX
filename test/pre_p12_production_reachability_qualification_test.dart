@@ -267,23 +267,23 @@ void main() {
     testWidgets(
         'real production runtime is reachable from toolbar and survives UI Undo/Redo',
         (tester) async {
-      debugPrint('PQ12-UI checkpoint 0: test start');
       tester.view.physicalSize = const Size(1440, 900);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      final root =
-          await Directory.systemTemp.createTemp('elecx-pre-p12-ui-smoke-');
-      addTearDown(() async {
-        if (await root.exists()) await root.delete(recursive: true);
+      late Directory root;
+      late EditorProjectDocument legacy;
+      late CanonicalEditorProductionHandle handle;
+      await tester.runAsync(() async {
+        root =
+            await Directory.systemTemp.createTemp('elecx-pre-p12-ui-smoke-');
+        legacy = _blankDocument('pre-p12-ui-smoke', 'PRE-P12 UI smoke');
+        handle = await CanonicalEditorProductionHandle.loadOrBootstrap(
+          legacyDocument: legacy,
+          repository: _repository(root),
+        );
       });
-      final legacy = _blankDocument('pre-p12-ui-smoke', 'PRE-P12 UI smoke');
-      final handle = await CanonicalEditorProductionHandle.loadOrBootstrap(
-        legacyDocument: legacy,
-        repository: _repository(root),
-      );
-      debugPrint('PQ12-UI checkpoint 1: production handle ready');
 
       await tester.pumpWidget(
         MaterialApp(
@@ -294,9 +294,7 @@ void main() {
           ),
         ),
       );
-      debugPrint('PQ12-UI checkpoint 2: pumpWidget complete');
       await _boundedPump(tester);
-      debugPrint('PQ12-UI checkpoint 3: initial bounded pump complete');
 
       expect(find.byType(CanonicalProjectNavigator), findsOneWidget);
       expect(find.byTooltip('Комната (R)'), findsOneWidget);
@@ -310,19 +308,15 @@ void main() {
       );
 
       await tester.tap(find.byTooltip('Комната (R)'));
-      debugPrint('PQ12-UI checkpoint 4: room tool tapped');
       await _boundedPump(tester);
       final canvas = find.byType(SpatialCanvas);
       expect(canvas, findsOneWidget);
       final rect = tester.getRect(canvas);
       await tester.tapAt(rect.center + const Offset(-120, -80));
-      debugPrint('PQ12-UI checkpoint 5: first canvas tap complete');
       await _boundedPump(tester);
       expect(handle.session.project.stores.spaces, isEmpty);
       await tester.tapAt(rect.center + const Offset(120, 80));
-      debugPrint('PQ12-UI checkpoint 6: second canvas tap complete');
       await _boundedPump(tester);
-      debugPrint('PQ12-UI checkpoint 7: room commit pump complete');
 
       expect(handle.session.project.stores.spaces, hasLength(1));
       final roomId = handle.session.project.stores.spaces.keys.single;
@@ -335,9 +329,7 @@ void main() {
       await tester.tap(
         find.byTooltip('Отменить: project.space.create-room-rectangle'),
       );
-      debugPrint('PQ12-UI checkpoint 8: undo tapped');
       await _boundedPump(tester);
-      debugPrint('PQ12-UI checkpoint 9: undo pump complete');
       expect(handle.session.project.stores.spaces, isEmpty);
       expect(
         find.byTooltip('Повторить: project.space.create-room-rectangle'),
@@ -347,9 +339,7 @@ void main() {
       await tester.tap(
         find.byTooltip('Повторить: project.space.create-room-rectangle'),
       );
-      debugPrint('PQ12-UI checkpoint 10: redo tapped');
       await _boundedPump(tester);
-      debugPrint('PQ12-UI checkpoint 11: redo pump complete');
       expect(handle.session.project.stores.spaces.keys.single, roomId);
       expect(
         find.byKey(const ValueKey('canonical-cutover-blocked')),
@@ -357,22 +347,17 @@ void main() {
       );
 
       await tester.pumpWidget(const SizedBox.shrink());
-      debugPrint('PQ12-UI checkpoint 12: screen unmounted');
       await tester.pump();
-      debugPrint('PQ12-UI checkpoint 13: test body complete');
+      await tester.runAsync(() async {
+        if (await root.exists()) await root.delete(recursive: true);
+      });
     });
   });
 }
 
-int _boundedPumpSequence = 0;
-
 Future<void> _boundedPump(WidgetTester tester) async {
-  final sequence = ++_boundedPumpSequence;
-  debugPrint('PQ12-UI bounded pump $sequence: start');
   await tester.pump();
-  debugPrint('PQ12-UI bounded pump $sequence: frame');
   await tester.pump(const Duration(milliseconds: 100));
-  debugPrint('PQ12-UI bounded pump $sequence: complete');
 }
 
 JsonProjectRepository _repository(Directory root) => JsonProjectRepository(
