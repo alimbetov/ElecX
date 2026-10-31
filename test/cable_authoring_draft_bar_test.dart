@@ -17,13 +17,7 @@ void main() {
       controller.surfaceTap(const SurfacePointMm(100, 300));
       controller.surfaceTap(const SurfacePointMm(900, 300));
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: CableAuthoringDraftBar(controller: controller),
-          ),
-        ),
-      );
+      await tester.pumpWidget(_barHarness(controller));
 
       expect(find.byKey(const ValueKey('cable-authoring-draft-bar')), findsOne);
       expect(find.textContaining('Прокладка кабеля · Стена 1'), findsOne);
@@ -37,6 +31,50 @@ void main() {
       expect(controller.tool, EditorTool.select);
     });
 
+    testWidgets('surface-less cable entry exposes explicit wall host selection',
+        (tester) async {
+      final controller = EditorController.demo();
+      addTearDown(controller.dispose);
+      controller.setTool(EditorTool.cableRoute);
+
+      await tester.pumpWidget(_barHarness(controller));
+
+      expect(controller.activeSurface, isNull);
+      expect(find.textContaining('выберите поверхность'), findsOne);
+      await tester.tap(find.byKey(const ValueKey('cable-host-wall-menu')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('cable-host-wall-0')));
+      await tester.pumpAndSettle();
+
+      expect(controller.activeSurface?.type, SurfacePlaneType.wall);
+      expect(controller.activeSurface?.wallIndex, 0);
+      expect(find.textContaining('Прокладка кабеля · Стена 1'), findsOne);
+    });
+
+    testWidgets('unproven wall to ceiling switch is visible and not committable',
+        (tester) async {
+      final controller = EditorController.demo();
+      addTearDown(controller.dispose);
+      controller.showWall(0);
+      controller.setTool(EditorTool.cableRoute);
+      controller.surfaceTap(const SurfacePointMm(100, 300));
+      controller.surfaceTap(const SurfacePointMm(900, 300));
+
+      await tester.pumpWidget(_barHarness(controller));
+      await tester.tap(find.byKey(const ValueKey('cable-host-ceiling')));
+      await tester.pump();
+
+      expect(controller.activeSurface?.type, SurfacePlaneType.ceiling);
+      expect(
+        find.byKey(const ValueKey('cable-host-transition-warning')),
+        findsOne,
+      );
+      final commit = tester.widget<FilledButton>(
+        find.byKey(const ValueKey('cable-draft-commit')),
+      );
+      expect(commit.onPressed, isNull);
+    });
+
     testWidgets('C enters cable mode on a concrete wall host and Esc exits it',
         (tester) async {
       final controller = EditorController.demo();
@@ -44,9 +82,12 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: EditorKeyboardScope(
-            controller: controller,
-            child: const Scaffold(body: SizedBox.expand()),
+          home: ListenableBuilder(
+            listenable: controller,
+            builder: (context, _) => EditorKeyboardScope(
+              controller: controller,
+              child: const Scaffold(body: SizedBox.expand()),
+            ),
           ),
         ),
       );
@@ -70,3 +111,15 @@ void main() {
     });
   });
 }
+
+Widget _barHarness(EditorController controller) => MaterialApp(
+      home: Scaffold(
+        body: ListenableBuilder(
+          listenable: controller,
+          builder: (context, _) => Align(
+            alignment: Alignment.bottomCenter,
+            child: CableAuthoringDraftBar(controller: controller),
+          ),
+        ),
+      ),
+    );
