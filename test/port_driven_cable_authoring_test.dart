@@ -3,6 +3,7 @@ import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/features/editor/cable_authoring_draft_bar.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
 import 'package:elecx/src/features/editor/editor_p2_session.dart';
+import 'package:elecx/src/features/editor/engineering_selection_inspector.dart';
 import 'package:elecx/src/features/editor/manual_cable_draft_persistence.dart';
 import 'package:elecx/src/features/editor/port_driven_cable_authoring.dart';
 import 'package:flutter/material.dart';
@@ -71,7 +72,10 @@ void main() {
       expect(controller.routeSegments.single.points.first, socket.position);
       expect(controller.routeSegments.single.points.last, board.position);
 
-      expect(controller.finishManualCableDraft(endpointSnapRadiusMm: 40), isTrue);
+      expect(
+        controller.finishManualCableDraft(endpointSnapRadiusMm: 40),
+        isTrue,
+      );
       expect(controller.portDrivenCableStartBinding, isNull);
       expect(controller.routeSegments, isEmpty);
       expect(controller.p2.routes, hasLength(1));
@@ -117,7 +121,8 @@ void main() {
       expect(controller.portDrivenCableStartBinding, isNotNull);
     });
 
-    testWidgets('selected socket exposes its physical input port in authoring UI',
+    testWidgets(
+        'selected socket exposes its physical input port in authoring UI',
         (tester) async {
       final controller = EditorController.demo();
       addTearDown(() {
@@ -154,6 +159,47 @@ void main() {
       expect(controller.routeSegments, hasLength(1));
       expect(controller.routeSegments.single.points, [socket.position]);
       expect(find.byKey(const ValueKey('cable-port-start-bound')), findsOne);
+    });
+
+    testWidgets(
+        'component inspector starts cable authoring without preselecting C tool',
+        (tester) async {
+      final controller = EditorController.demo();
+      addTearDown(() {
+        controller.disposeP2State();
+        controller.dispose();
+      });
+      controller.showWall(0);
+      final socket = controller.p2.placeComponent(
+        type: ElectricalComponentType.socketOutlet,
+        surface: RoomSurfaceRef.wall('room-101', 0),
+        position: const SurfacePointMm(1500, 1200),
+      );
+
+      expect(controller.tool, isNot(EditorTool.cableRoute));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 360,
+              child: EngineeringSelectionInspector(controller: controller),
+            ),
+          ),
+        ),
+      );
+
+      final startButton = find.byKey(const ValueKey('component-route-cable'));
+      expect(startButton, findsOne);
+      expect(find.text('Проложить кабель'), findsOne);
+
+      await tester.tap(startButton);
+      await tester.pump();
+
+      expect(controller.tool, EditorTool.cableRoute);
+      expect(controller.portDrivenCableStartBinding?.componentId, socket.id);
+      expect(controller.portDrivenCableStartBinding?.portId, 'power-in');
+      expect(controller.routeSegments, hasLength(1));
+      expect(controller.routeSegments.single.points, [socket.position]);
     });
   });
 }
