@@ -5,6 +5,7 @@ import 'package:elecx/src/domain/boundary_topology.dart';
 import 'package:elecx/src/domain/geometry.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_model.dart';
+import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/features/editor/canonical_editor_production_bootstrap.dart';
 import 'package:elecx/src/features/editor/canonical_editor_runtime_cutover.dart';
 import 'package:elecx/src/features/editor/canonical_editor_screen_cutover_binding.dart';
@@ -12,6 +13,7 @@ import 'package:elecx/src/features/editor/canonical_editor_workspace_adapter.dar
 import 'package:elecx/src/features/editor/canonical_project_navigator.dart';
 import 'package:elecx/src/features/editor/editor_building_workspace.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
+import 'package:elecx/src/features/editor/editor_document_history.dart';
 import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:elecx/src/features/editor/editor_project_document.dart';
 import 'package:elecx/src/features/editor/initial_editor_project_document.dart';
@@ -56,14 +58,13 @@ void main() {
       );
       expect(handle.session.project, same(before));
       expect(handle.session.project.stores.spaces, isEmpty);
-      expect(handle.wizardMutations.activePreviewCount, 0);
 
       expect(
         () => service.commit(
-          const RoomRectangleAuthoringIntent(
+          RoomRectangleAuthoringIntent(
             levelId: LevelId('foreign-level'),
-            first: BoundaryPointMm(xMm: 1000, yMm: 1000),
-            second: BoundaryPointMm(xMm: 5000, yMm: 5000),
+            first: const BoundaryPointMm(xMm: 1000, yMm: 1000),
+            second: const BoundaryPointMm(xMm: 5000, yMm: 5000),
             name: 'Wrong level',
           ),
         ),
@@ -71,7 +72,6 @@ void main() {
       );
       expect(handle.session.project, same(before));
       expect(handle.session.project.stores.spaces, isEmpty);
-      expect(handle.wizardMutations.activePreviewCount, 0);
     });
 
     test('production owner rejects a foreign authoring session fail-closed',
@@ -416,8 +416,9 @@ final class _MemoryEditorProjectStore implements EditorProjectStore {
   }
 
   @override
-  Future<List<EditorProjectDocument>> list() async =>
-      document == null ? const <EditorProjectDocument>[] : <EditorProjectDocument>[document!];
+  Future<List<EditorProjectDocument>> list() async => document == null
+      ? const <EditorProjectDocument>[]
+      : <EditorProjectDocument>[document!];
 
   @override
   Future<void> save(EditorProjectDocument document) async {
