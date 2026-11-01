@@ -96,7 +96,7 @@ void main() {
     expect(controller.p2.routes.single.target.componentId, load.id);
   });
 
-  testWidgets('F11 first Escape clears manual draft, second exits tool', (
+  testWidgets('F11 Escape clears manual draft and exits cable tool atomically', (
     tester,
   ) async {
     final controller = EditorController.demo();
@@ -120,11 +120,9 @@ void main() {
 
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
-    expect(controller.routeSegments, isEmpty);
-    expect(controller.tool, EditorTool.cableRoute);
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
-    await tester.pump();
+    expect(controller.routeSegments, isEmpty);
+    expect(controller.p2.routes, isEmpty);
     expect(controller.tool, EditorTool.select);
   });
 
