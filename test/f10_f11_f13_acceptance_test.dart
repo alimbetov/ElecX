@@ -96,7 +96,8 @@ void main() {
     expect(controller.p2.routes.single.target.componentId, load.id);
   });
 
-  testWidgets('F11 Escape clears manual draft and exits cable tool atomically', (
+  testWidgets('F11 Escape clears manual draft and exits cable tool atomically',
+      (
     tester,
   ) async {
     final controller = EditorController.demo();
