@@ -34,6 +34,12 @@ class CableAuthoringDraftBar extends StatelessWidget {
     );
     final hasDraft = controller.routeSegments.isNotEmpty;
     final binding = controller.portDrivenCableStartBinding;
+    final completion = controller.portDrivenCableCompletionBinding;
+    final completionTargets = binding == null
+        ? const <PortDrivenCableCompletionTarget>[]
+        : controller.compatiblePortDrivenCableTargets;
+    final readyToFinish =
+        binding != null && controller.portDrivenCableReadyToFinish;
     final selectedComponent = controller.p2.selectedComponent;
     final selectedPorts = selectedComponent == null
         ? const <ElectricalPortDefinition>[]
@@ -41,9 +47,11 @@ class CableAuthoringDraftBar extends StatelessWidget {
     final transitionDisconnected = hasDraft &&
         controller.activeSurface != null &&
         controller.activeRouteSegment == null;
-    final canCommit = controller.routeSegments.any(
-      (segment) => segment.points.length >= 2,
-    );
+    final canCommit = binding != null
+        ? readyToFinish
+        : controller.routeSegments.any(
+            (segment) => segment.points.length >= 2,
+          );
 
     return Material(
       key: const ValueKey('cable-authoring-draft-bar'),
@@ -78,25 +86,37 @@ class CableAuthoringDraftBar extends StatelessWidget {
                   ? 'Переход на эту поверхность не подтверждён физическим '
                       'примыканием. Вернитесь к предыдущей поверхности и '
                       'доведите точку до общего ребра.'
-                  : binding != null
-                      ? 'Старт закреплён за ${binding.componentId}:'
-                          '${binding.portId}. Первая точка совпадает с '
-                          'физической позицией порта; продолжайте маршрут.'
-                      : hasDraft
-                          ? '$points точек. Для Wall↔Ceiling доведите кабель до '
-                              'верхнего ребра стены и затем выберите «Потолок».'
-                          : selectedComponent != null &&
-                                  selectedPorts.isNotEmpty
-                              ? 'Выбран ${selectedComponent.label}. Укажите '
-                                  'физический порт — первая точка будет создана '
-                                  'точно в позиции компонента.'
-                              : 'Выберите компонент или поверхность. Клик '
-                                  'добавляет точку маршрута.',
+                  : readyToFinish && completion != null
+                      ? 'READY TO FINISH · ${completion.componentLabel} · '
+                          '${completion.portId}. Конечный порт привязан точно; '
+                          'Enter завершит маршрут.'
+                      : binding != null
+                          ? completionTargets.isEmpty
+                              ? 'Старт закреплён за ${binding.componentId}:'
+                                  '${binding.portId}. На текущей поверхности '
+                                  'нет совместимого порта завершения.'
+                              : 'Старт закреплён за ${binding.componentId}:'
+                                  '${binding.portId}. Выберите совместимый порт '
+                                  'ниже — конец маршрута будет семантически '
+                                  'привязан точно к нему.'
+                          : hasDraft
+                              ? '$points точек. Для Wall↔Ceiling доведите '
+                                  'кабель до верхнего ребра стены и затем '
+                                  'выберите «Потолок».'
+                              : selectedComponent != null &&
+                                      selectedPorts.isNotEmpty
+                                  ? 'Выбран ${selectedComponent.label}. Укажите '
+                                      'физический порт — первая точка будет '
+                                      'создана точно в позиции компонента.'
+                                  : 'Выберите компонент или поверхность. Клик '
+                                      'добавляет точку маршрута.',
               key: transitionDisconnected
                   ? const ValueKey('cable-host-transition-warning')
-                  : binding != null
-                      ? const ValueKey('cable-port-start-bound')
-                      : null,
+                  : readyToFinish
+                      ? const ValueKey('cable-ready-to-finish')
+                      : binding != null
+                          ? const ValueKey('cable-port-start-bound')
+                          : null,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall,
@@ -118,6 +138,49 @@ class CableAuthoringDraftBar extends StatelessWidget {
                     ),
                 ],
               ),
+            ],
+            if (binding != null) ...[
+              const SizedBox(height: 7),
+              Text(
+                'Совместимые порты завершения',
+                key: const ValueKey('cable-compatible-targets'),
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+              const SizedBox(height: 5),
+              if (completionTargets.isEmpty)
+                Text(
+                  'Нет совместимых портов на $host',
+                  key: const ValueKey('cable-compatible-targets-empty'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                )
+              else
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final target in completionTargets)
+                      ActionChip(
+                        key: ValueKey(
+                          'cable-completion-target-'
+                          '${target.componentId}-${target.portId}',
+                        ),
+                        avatar: Icon(
+                          readyToFinish &&
+                                  completion?.componentId == target.componentId &&
+                                  completion?.portId == target.portId
+                              ? Icons.check_circle
+                              : Icons.adjust,
+                          size: 16,
+                        ),
+                        label: Text(
+                          '${target.componentLabel} · ${target.portId}',
+                        ),
+                        onPressed: transitionDisconnected
+                            ? null
+                            : () => _snapCompletionTarget(context, target),
+                      ),
+                  ],
+                ),
             ],
             const SizedBox(height: 7),
             Wrap(
@@ -159,8 +222,12 @@ class CableAuthoringDraftBar extends StatelessWidget {
                   onPressed: canCommit && !transitionDisconnected
                       ? () => _commit(context)
                       : null,
-                  icon: const Icon(Icons.check, size: 18),
-                  label: const Text('Сохранить · Enter'),
+                  icon: Icon(readyToFinish ? Icons.task_alt : Icons.check),
+                  label: Text(
+                    readyToFinish
+                        ? 'Завершить · Enter'
+                        : 'Сохранить · Enter',
+                  ),
                 ),
               ],
             ),
@@ -207,6 +274,26 @@ class CableAuthoringDraftBar extends StatelessWidget {
         content: Text(
           'Не удалось начать трассу от выбранного порта: проверьте слой, '
           'выбор компонента и отсутствие другого активного черновика.',
+        ),
+      ),
+    );
+  }
+
+  void _snapCompletionTarget(
+    BuildContext context,
+    PortDrivenCableCompletionTarget target,
+  ) {
+    if (controller.snapPortDrivenCableCompletionTarget(
+      componentId: target.componentId,
+      portId: target.portId,
+    )) {
+      return;
+    }
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Порт завершения не привязан: цель устарела, несовместима или '
+          'текущая поверхность не продолжает физический маршрут.',
         ),
       ),
     );

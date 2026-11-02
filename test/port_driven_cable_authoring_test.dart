@@ -73,10 +73,19 @@ void main() {
       expect(controller.routeSegments.single.points.last, board.position);
 
       expect(
+        controller.snapPortDrivenCableCompletionTarget(
+          componentId: board.id,
+          portId: 'power-out',
+        ),
+        isTrue,
+      );
+      expect(controller.portDrivenCableReadyToFinish, isTrue);
+      expect(
         controller.finishManualCableDraft(endpointSnapRadiusMm: 40),
         isTrue,
       );
       expect(controller.portDrivenCableStartBinding, isNull);
+      expect(controller.portDrivenCableCompletionBinding, isNull);
       expect(controller.routeSegments, isEmpty);
       expect(controller.p2.routes, hasLength(1));
 
@@ -201,6 +210,214 @@ void main() {
       expect(controller.portDrivenCableStartBinding?.portId, 'power-in');
       expect(controller.routeSegments, hasLength(1));
       expect(controller.routeSegments.single.points, [socket.position]);
+    });
+  });
+
+  group('P12A.2 guided cable completion', () {
+    test('compatible completion targets expose only electrically valid ports', () {
+      final controller = EditorController.demo();
+      addTearDown(() {
+        controller.disposeP2State();
+        controller.dispose();
+      });
+      controller.showWall(0);
+      final wall = RoomSurfaceRef.wall('room-101', 0);
+      final board = controller.p2.placeComponent(
+        type: ElectricalComponentType.distributionBoard,
+        surface: wall,
+        position: const SurfacePointMm(500, 1200),
+      );
+      final socket = controller.p2.placeComponent(
+        type: ElectricalComponentType.socketOutlet,
+        surface: wall,
+        position: const SurfacePointMm(2200, 1200),
+      );
+      final switchControl = controller.p2.placeComponent(
+        type: ElectricalComponentType.switchControl,
+        surface: wall,
+        position: const SurfacePointMm(3000, 1200),
+      );
+      controller.p2.select(board.id);
+
+      expect(
+        controller.beginPortDrivenCableFromSelectedPort('power-out'),
+        isTrue,
+      );
+
+      final targets = controller.compatiblePortDrivenCableTargets;
+      expect(
+        targets.any(
+          (target) =>
+              target.componentId == socket.id && target.portId == 'power-in',
+        ),
+        isTrue,
+      );
+      expect(
+        targets.any(
+          (target) =>
+              target.componentId == switchControl.id &&
+              target.portId == 'power-in',
+        ),
+        isTrue,
+      );
+      expect(targets.any((target) => target.portId == 'control-out'), isFalse);
+      expect(targets.any((target) => target.portId == 'earth'), isFalse);
+      expect(
+        targets.every(
+          (target) => target.role == PortDrivenCableEndpointRole.target,
+        ),
+        isTrue,
+      );
+    });
+
+    test('semantic target snap binds exact port and enters ready state', () {
+      final controller = EditorController.demo();
+      addTearDown(() {
+        controller.disposeP2State();
+        controller.dispose();
+      });
+      controller.showWall(0);
+      final wall = RoomSurfaceRef.wall('room-101', 0);
+      final board = controller.p2.placeComponent(
+        type: ElectricalComponentType.distributionBoard,
+        surface: wall,
+        position: const SurfacePointMm(500, 1200),
+      );
+      final socket = controller.p2.placeComponent(
+        type: ElectricalComponentType.socketOutlet,
+        surface: wall,
+        position: const SurfacePointMm(2200, 1200),
+      );
+      controller.p2.select(board.id);
+      expect(
+        controller.beginPortDrivenCableFromSelectedPort('power-out'),
+        isTrue,
+      );
+      controller.surfaceTap(const SurfacePointMm(1400, 1200));
+
+      expect(
+        controller.snapPortDrivenCableCompletionTarget(
+          componentId: socket.id,
+          portId: 'power-in',
+        ),
+        isTrue,
+      );
+
+      final completion = controller.portDrivenCableCompletionBinding;
+      expect(completion, isNotNull);
+      expect(completion!.componentId, socket.id);
+      expect(completion.portId, 'power-in');
+      expect(completion.position, socket.position);
+      expect(controller.routeSegments.last.points.last, socket.position);
+      expect(controller.portDrivenCableReadyToFinish, isTrue);
+
+      expect(
+        controller.finishManualCableDraft(endpointSnapRadiusMm: 180),
+        isTrue,
+      );
+      expect(controller.p2.routes.single.source.componentId, board.id);
+      expect(controller.p2.routes.single.target.componentId, socket.id);
+      expect(controller.p2.routes.single.target.portId, 'power-in');
+    });
+
+    test('exact completion binding fails closed on co-located ambiguity', () {
+      final controller = EditorController.demo();
+      addTearDown(() {
+        controller.disposeP2State();
+        controller.dispose();
+      });
+      controller.showWall(0);
+      final wall = RoomSurfaceRef.wall('room-101', 0);
+      final board = controller.p2.placeComponent(
+        type: ElectricalComponentType.distributionBoard,
+        surface: wall,
+        position: const SurfacePointMm(500, 1200),
+      );
+      controller.p2.placeComponent(
+        type: ElectricalComponentType.socketOutlet,
+        surface: wall,
+        position: const SurfacePointMm(2200, 1200),
+      );
+      final requested = controller.p2.placeComponent(
+        type: ElectricalComponentType.socketOutlet,
+        surface: wall,
+        position: const SurfacePointMm(2200, 1200),
+      );
+      controller.p2.select(board.id);
+      expect(
+        controller.beginPortDrivenCableFromSelectedPort('power-out'),
+        isTrue,
+      );
+      controller.surfaceTap(const SurfacePointMm(1400, 1200));
+      expect(
+        controller.snapPortDrivenCableCompletionTarget(
+          componentId: requested.id,
+          portId: 'power-in',
+        ),
+        isTrue,
+      );
+      expect(controller.portDrivenCableReadyToFinish, isTrue);
+
+      expect(controller.finishManualCableDraft(), isFalse);
+      expect(controller.p2.routes, isEmpty);
+      expect(controller.routeSegments, isNotEmpty);
+      expect(controller.portDrivenCableCompletionBinding?.componentId,
+          requested.id);
+    });
+
+    testWidgets('compatible target action exposes explicit ready-to-finish UI',
+        (tester) async {
+      final controller = EditorController.demo();
+      addTearDown(() {
+        controller.disposeP2State();
+        controller.dispose();
+      });
+      controller.showWall(0);
+      final wall = RoomSurfaceRef.wall('room-101', 0);
+      final board = controller.p2.placeComponent(
+        type: ElectricalComponentType.distributionBoard,
+        surface: wall,
+        position: const SurfacePointMm(500, 1200),
+      );
+      final socket = controller.p2.placeComponent(
+        type: ElectricalComponentType.socketOutlet,
+        surface: wall,
+        position: const SurfacePointMm(2200, 1200),
+      );
+      controller.p2.select(board.id);
+      expect(
+        controller.beginPortDrivenCableFromSelectedPort('power-out'),
+        isTrue,
+      );
+      controller.surfaceTap(const SurfacePointMm(1400, 1200));
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ListenableBuilder(
+              listenable: controller,
+              builder: (context, _) => CableAuthoringDraftBar(
+                controller: controller,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final target = find.byKey(
+        ValueKey('cable-completion-target-${socket.id}-power-in'),
+      );
+      expect(target, findsOneWidget);
+      await tester.tap(target);
+      await tester.pump();
+
+      expect(controller.portDrivenCableReadyToFinish, isTrue);
+      expect(find.byKey(const ValueKey('cable-ready-to-finish')), findsOne);
+      expect(find.textContaining('READY TO FINISH'), findsOneWidget);
+      final finish = tester.widget<FilledButton>(
+        find.byKey(const ValueKey('cable-draft-commit')),
+      );
+      expect(finish.onPressed, isNotNull);
     });
   });
 }

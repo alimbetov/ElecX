@@ -108,8 +108,12 @@ bool _finishPortDrivenCableDraft({
   required int endpointSnapRadiusMm,
   required RouteTransitionResolver resolveTransition,
 }) {
+  final completion = controller.portDrivenCableCompletionBinding;
   if (endpointSnapRadiusMm <= 0 ||
+      completion == null ||
+      !controller.portDrivenCableReadyToFinish ||
       controller.p2.history.mutationRevision != binding.p2MutationRevision ||
+      completion.p2MutationRevision != binding.p2MutationRevision ||
       controller.routeSegments.isEmpty) {
     return false;
   }
@@ -120,21 +124,34 @@ bool _finishPortDrivenCableDraft({
   if (port == null || port.kind != binding.portKind) return false;
 
   final first = controller.routeSegments.first;
+  final last = controller.routeSegments.last;
   if (first.points.isEmpty ||
+      last.points.isEmpty ||
       first.surface != component.surface ||
       first.points.first != component.position) {
     return false;
   }
 
   if (binding.role == PortDrivenCableEndpointRole.source) {
-    final resolved = _nearestDraftEndpoint(
+    final resolvedSource = _nearestDraftEndpoint(
       components: controller.p2.components,
       surface: first.surface,
       point: first.points.first,
       role: PortDrivenCableEndpointRole.source,
       radiusMm: endpointSnapRadiusMm,
     );
-    if (!_matchesBinding(resolved, binding)) return false;
+    if (!_matchesBinding(resolvedSource, binding)) return false;
+
+    final resolvedTarget = _nearestDraftEndpoint(
+      components: controller.p2.components,
+      surface: last.surface,
+      point: last.points.last,
+      role: PortDrivenCableEndpointRole.target,
+      radiusMm: endpointSnapRadiusMm,
+      excludeComponentId: component.id,
+      counterpartKind: port.kind,
+    );
+    if (!_matchesCompletionBinding(resolvedTarget, completion)) return false;
 
     final committed = controller.finishPhysicalManualCableDraft(
       endpointSnapRadiusMm: endpointSnapRadiusMm,
@@ -144,8 +161,6 @@ bool _finishPortDrivenCableDraft({
     return committed;
   }
 
-  final last = controller.routeSegments.last;
-  if (last.points.isEmpty) return false;
   final remoteSource = _nearestDraftEndpoint(
     components: controller.p2.components,
     surface: last.surface,
@@ -155,7 +170,7 @@ bool _finishPortDrivenCableDraft({
     excludeComponentId: component.id,
     counterpartKind: port.kind,
   );
-  if (remoteSource == null) return false;
+  if (!_matchesCompletionBinding(remoteSource, completion)) return false;
 
   final resolvedTarget = _nearestDraftEndpoint(
     components: controller.p2.components,
@@ -163,7 +178,7 @@ bool _finishPortDrivenCableDraft({
     point: first.points.first,
     role: PortDrivenCableEndpointRole.target,
     radiusMm: endpointSnapRadiusMm,
-    counterpartKind: remoteSource.port.kind,
+    counterpartKind: remoteSource!.port.kind,
   );
   if (!_matchesBinding(resolvedTarget, binding)) return false;
 
@@ -266,6 +281,17 @@ bool _matchesBinding(
     endpoint.component.id == binding.componentId &&
     endpoint.port.id == binding.portId &&
     endpoint.port.kind == binding.portKind;
+
+bool _matchesCompletionBinding(
+  _DraftEndpoint? endpoint,
+  PortDrivenCableCompletionBinding binding,
+) =>
+    endpoint != null &&
+    endpoint.component.id == binding.componentId &&
+    endpoint.port.id == binding.portId &&
+    endpoint.port.kind == binding.portKind &&
+    endpoint.component.surface == binding.surface &&
+    endpoint.component.position == binding.position;
 
 ElectricalComponentPlacement? _componentById(
   EditorController controller,
