@@ -166,7 +166,8 @@ class CableAuthoringDraftBar extends StatelessWidget {
                         ),
                         avatar: Icon(
                           readyToFinish &&
-                                  completion?.componentId == target.componentId &&
+                                  completion?.componentId ==
+                                      target.componentId &&
                                   completion?.portId == target.portId
                               ? Icons.check_circle
                               : Icons.adjust,
@@ -224,9 +225,7 @@ class CableAuthoringDraftBar extends StatelessWidget {
                       : null,
                   icon: Icon(readyToFinish ? Icons.task_alt : Icons.check),
                   label: Text(
-                    readyToFinish
-                        ? 'Завершить · Enter'
-                        : 'Сохранить · Enter',
+                    readyToFinish ? 'Завершить · Enter' : 'Сохранить · Enter',
                   ),
                 ),
               ],

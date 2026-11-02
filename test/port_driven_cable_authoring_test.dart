@@ -214,7 +214,8 @@ void main() {
   });
 
   group('P12A.2 guided cable completion', () {
-    test('compatible completion targets expose only electrically valid ports', () {
+    test('compatible completion targets expose only electrically valid ports',
+        () {
       final controller = EditorController.demo();
       addTearDown(() {
         controller.disposeP2State();

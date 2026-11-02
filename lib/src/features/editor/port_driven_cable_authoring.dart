@@ -71,8 +71,8 @@ final Expando<PortDrivenCableStartBinding> _portDrivenCableBindings =
     Expando<PortDrivenCableStartBinding>('ElecX port-driven cable start');
 final Expando<PortDrivenCableCompletionBinding> _portDrivenCompletionBindings =
     Expando<PortDrivenCableCompletionBinding>(
-      'ElecX port-driven cable completion',
-    );
+  'ElecX port-driven cable completion',
+);
 
 extension PortDrivenCableAuthoring on EditorController {
   PortDrivenCableStartBinding? get portDrivenCableStartBinding =>
@@ -223,9 +223,8 @@ extension PortDrivenCableAuthoring on EditorController {
     }
 
     final startComponent = _componentById(p2.components, start.componentId);
-    final startPort = startComponent == null
-        ? null
-        : _portById(startComponent, start.portId);
+    final startPort =
+        startComponent == null ? null : _portById(startComponent, start.portId);
     final completionComponent =
         _componentById(p2.components, completion.componentId);
     final completionPort = completionComponent == null
