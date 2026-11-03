@@ -30,6 +30,7 @@ import 'boundary_bottom_editor.dart';
 import 'boundary_edit_panel.dart';
 import 'boundary_edit_session.dart';
 import 'cable_canvas_hit_testing.dart';
+import 'cable_canvas_port_acquisition.dart';
 import 'cable_edit_access.dart';
 import 'cable_editor_ui_session.dart';
 import 'cable_route_controls.dart';
@@ -43,6 +44,7 @@ import 'editor_p2_session.dart';
 import 'editor_viewport_commands.dart';
 import 'hosted_route_session.dart';
 import 'manual_cable_draft_persistence.dart';
+import 'port_driven_cable_authoring.dart';
 import 'route_selection_session.dart';
 import 'surface_transition_navigator.dart';
 import 'viewport_zoom_policy.dart';
@@ -75,6 +77,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
   String? _dragComponentId;
   SurfacePointMm? _dragStartPosition;
   CableCanvasHit? _cableDragHit;
+  PortDrivenCableCompletionTarget? _hoveredCablePort;
   final Set<int> _activePointers = <int>{};
   Offset? _marqueeStart;
   Offset? _marqueeCurrent;
@@ -133,6 +136,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
       );
       oldWidget.controller.cableUi.removeListener(_onInteractionChanged);
       _cancelActiveInteractions(oldWidget.controller);
+      _hoveredCablePort = null;
       _lastViewportRevision = controller.viewportCommandRevision;
       controller.viewportCommandListenable.addListener(_onViewportCommand);
       controller.editCancellationListenable.addListener(
@@ -208,6 +212,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
   }
 
   void _onP2Changed() {
+    _hoveredCablePort = null;
     controller.routeSelection.normalize();
     _syncRouteFlowAnimation();
     if (mounted) setState(() {});
@@ -456,6 +461,55 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
     final point = projection.viewportToSurface(viewportPoint);
     final opening = point == null ? null : _openingAt(point);
     session.hoverOpening(opening?.id);
+  }
+
+  PortDrivenCableCompletionTarget? _canvasPortAt(
+    SurfacePointMm raw,
+    _SurfaceProjection projection,
+  ) {
+    final surface = controller.activeSurface;
+    if (controller.tool != EditorTool.cableRoute ||
+        controller.portDrivenCableStartBinding == null ||
+        surface == null ||
+        controller.activeRouteSegment == null ||
+        controller.boundaryEditing.active ||
+        controller.p2.placementType != null ||
+        !controller.p2.layers.isVisible(EditorLayerId.electrical) ||
+        !controller.p2.layers.isVisible(EditorLayerId.cableRoutes) ||
+        controller.p2.layers.isLocked(EditorLayerId.cableRoutes)) {
+      return null;
+    }
+    return CableCanvasPortAcquisition.resolve(
+      targets: controller.compatiblePortDrivenCableTargetsOn(surface),
+      surface: surface,
+      rawPoint: raw,
+      acquisitionRadiusMm: math.max(
+        70.0,
+        projection.camera.mmPerPixel * 14,
+      ),
+    );
+  }
+
+  void _updateCablePortHover(
+    Offset viewportPoint,
+    _SurfaceProjection projection,
+  ) {
+    final raw = projection.viewportToSurface(viewportPoint);
+    final next = raw == null ? null : _canvasPortAt(raw, projection);
+    final previous = _hoveredCablePort;
+    if (next?.componentId == previous?.componentId &&
+        next?.portId == previous?.portId &&
+        next?.surface == previous?.surface &&
+        next?.position == previous?.position) {
+      return;
+    }
+    if (mounted) setState(() => _hoveredCablePort = next);
+  }
+
+  void _clearCablePortHover() {
+    if (_hoveredCablePort != null && mounted) {
+      setState(() => _hoveredCablePort = null);
+    }
   }
 
   ElectricalComponentPlacement? _componentAt(
@@ -791,6 +845,23 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
   ) {
     final raw = projection.viewportToSurface(details.localPosition);
     if (raw == null) return;
+    if (controller.tool == EditorTool.cableRoute &&
+        controller.portDrivenCableStartBinding != null &&
+        !controller.boundaryEditing.active &&
+        controller.p2.placementType == null) {
+      final target = _canvasPortAt(raw, projection);
+      if (target != null &&
+          controller.snapPortDrivenCableCompletionTarget(
+            componentId: target.componentId,
+            portId: target.portId,
+          )) {
+        _clearCablePortHover();
+        return;
+      }
+      // Any additional waypoint invalidates the previous exact completion.
+      // Never retain READY TO FINISH for a route modified on canvas.
+      controller.clearPortDrivenCableCompletionBinding();
+    }
     final point = _snapSurfacePoint(raw, projection);
     if (!_pointIsUsable(point, projection)) return;
 
@@ -1028,6 +1099,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                     lod,
                     scheme,
                     flowAnimation: _routeFlow,
+                    hoveredCablePort: _hoveredCablePort,
                   ),
                 ),
               ),
@@ -1035,8 +1107,10 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
             Positioned.fill(
               child: Listener(
                 behavior: HitTestBehavior.opaque,
-                onPointerHover: (event) =>
-                    _updateBoundaryHover(event.localPosition, projection),
+                onPointerHover: (event) {
+                  _updateBoundaryHover(event.localPosition, projection);
+                  _updateCablePortHover(event.localPosition, projection);
+                },
                 onPointerSignal: (event) {
                   if (event is! PointerScrollEvent) return;
                   final factor = ViewportZoomPolicy.factorForScrollDelta(
@@ -1117,6 +1191,10 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                             _policy(event.kind).pointerPreviewOffsetPx,
                           )
                       : event.localPosition;
+                  if (event.buttons == 0 &&
+                      event.kind != PointerDeviceKind.touch) {
+                    _updateCablePortHover(previewPosition, projection);
+                  }
                   if (_cableDragHit != null && event.buttons != 0) {
                     final raw = projection.viewportToSurface(previewPosition);
                     if (raw == null) return;
@@ -1559,6 +1637,7 @@ class _SurfacePainter extends CustomPainter {
     this.lod,
     this.scheme, {
     required Animation<double> flowAnimation,
+    required this.hoveredCablePort,
   })  : flowAnimation = flowAnimation,
         activeSurfaceId = controller.activeSurface?.id,
         selectedSpaceId = controller.selectedSpaceId,
@@ -1576,6 +1655,15 @@ class _SurfacePainter extends CustomPainter {
         hoveredOpeningId = controller.boundaryEditing.hoveredOpeningId,
         selectedOpeningId = controller.selectedOpeningId,
         selectedRouteId = controller.routeSelection.selectedRouteId,
+        canvasPortFingerprint = Object.hash(
+          hoveredCablePort?.componentId,
+          hoveredCablePort?.portId,
+          controller.portDrivenCableStartBinding?.componentId,
+          controller.portDrivenCableStartBinding?.portId,
+          controller.portDrivenCableCompletionBinding?.componentId,
+          controller.portDrivenCableCompletionBinding?.portId,
+          controller.portDrivenCableReadyToFinish,
+        ),
         draftFingerprint = Object.hash(
           controller.boundaryEditing.openingDraft?.openingId,
           controller.boundaryEditing.openingDraft?.type,
@@ -1690,6 +1778,8 @@ class _SurfacePainter extends CustomPainter {
   final RenderLod lod;
   final ColorScheme scheme;
   final Animation<double> flowAnimation;
+  final PortDrivenCableCompletionTarget? hoveredCablePort;
+  final int canvasPortFingerprint;
   final String? activeSurfaceId;
   final String? selectedSpaceId;
   final bool dimensionsVisible;
@@ -2227,6 +2317,20 @@ class _SurfacePainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round;
     final draft = controller.activeRouteSegment;
     if (draft != null) _drawRoutePoints(canvas, draft.points, baseDraft);
+    final hovered = hoveredCablePort;
+    if (hovered != null &&
+        draft != null &&
+        draft.points.isNotEmpty &&
+        draft.surface == hovered.surface) {
+      canvas.drawLine(
+        projection.surfaceToViewport(draft.points.last),
+        projection.surfaceToViewport(hovered.position),
+        Paint()
+          ..color = scheme.primary.withValues(alpha: 0.65)
+          ..strokeWidth = 2
+          ..style = PaintingStyle.stroke,
+      );
+    }
 
     final activeSurface = controller.activeSurface;
     if (activeSurface == null) return;
@@ -2475,6 +2579,7 @@ class _SurfacePainter extends CustomPainter {
       final selected = controller.p2.selection.contains(component.id);
       _drawComponentSymbol(canvas, component.type, center, selected);
     }
+    _drawCablePortAcquisitionOverlay(canvas, surface);
     final transformPreview = controller.componentTransform.previewState;
     if (transformPreview != null &&
         !transformPreview.isValid &&
@@ -2516,6 +2621,52 @@ class _SurfacePainter extends CustomPainter {
         center + const Offset(9, -16),
         small: true,
       );
+    }
+  }
+
+  void _drawCablePortAcquisitionOverlay(
+    Canvas canvas,
+    RoomSurfaceRef? surface,
+  ) {
+    if (surface == null ||
+        !cableRoutesVisible ||
+        controller.tool != EditorTool.cableRoute ||
+        controller.portDrivenCableStartBinding == null ||
+        controller.activeRouteSegment == null) {
+      return;
+    }
+    final completion = controller.portDrivenCableCompletionBinding;
+    for (final target in controller.compatiblePortDrivenCableTargetsOn(surface)) {
+      final highlighted = hoveredCablePort?.componentId == target.componentId &&
+          hoveredCablePort?.portId == target.portId;
+      final completed = completion?.componentId == target.componentId &&
+          completion?.portId == target.portId &&
+          controller.portDrivenCableReadyToFinish;
+      final center = projection.surfaceToViewport(target.position);
+      final color = completed ? scheme.tertiary : scheme.primary;
+      final radius = highlighted ? 17.0 : 13.0;
+      canvas.drawCircle(
+        center,
+        radius,
+        Paint()..color = color.withValues(alpha: highlighted ? 0.20 : 0.10),
+      );
+      canvas.drawCircle(
+        center,
+        radius,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = highlighted || completed ? 2.5 : 1.2
+          ..color = color,
+      );
+      if (highlighted) {
+        canvas.drawCircle(center, 4, Paint()..color = color);
+        _label(
+          canvas,
+          'SNAP · ' + target.componentLabel + ':' + target.portId,
+          center + const Offset(19, -20),
+          small: true,
+        );
+      }
     }
   }
 
@@ -2725,5 +2876,6 @@ class _SurfacePainter extends CustomPainter {
       oldDelegate.selectionFingerprint != selectionFingerprint ||
       oldDelegate.transformPreviewFingerprint != transformPreviewFingerprint ||
       oldDelegate.snapFingerprint != snapFingerprint ||
+      oldDelegate.canvasPortFingerprint != canvasPortFingerprint ||
       oldDelegate.profileFingerprint != profileFingerprint;
 }
