@@ -206,5 +206,4 @@ void main() {
     expect(controller.portDrivenCableStartBinding, isNull);
     expect(controller.portDrivenCableCompletionBinding, isNull);
   });
-
 }
