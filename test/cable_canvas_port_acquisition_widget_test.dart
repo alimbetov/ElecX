@@ -4,6 +4,7 @@ import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/engine/world_camera.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
 import 'package:elecx/src/features/editor/editor_p2_session.dart';
+import 'package:elecx/src/features/editor/manual_cable_draft_persistence.dart';
 import 'package:elecx/src/features/editor/port_driven_cable_authoring.dart';
 import 'package:elecx/src/features/editor/surface_canvas.dart';
 import 'package:flutter/gestures.dart';
@@ -152,4 +153,55 @@ void main() {
     expect(controller.portDrivenCableReadyToFinish, isFalse);
     expect(controller.p2.routes, isEmpty);
   });
+
+  testWidgets('P12A.3 socket-first canvas click commits source-to-target',
+      (tester) async {
+    final controller = EditorController.demo();
+    addTearDown(() {
+      controller.disposeP2State();
+      controller.dispose();
+    });
+    controller.showWall(0);
+    final surface = RoomSurfaceRef.wall('room-101', 0);
+    final board = controller.p2.placeComponent(
+      type: ElectricalComponentType.distributionBoard,
+      surface: surface,
+      position: const SurfacePointMm(500, 1200),
+    );
+    final socket = controller.p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: surface,
+      position: const SurfacePointMm(2200, 1200),
+    );
+    expect(controller.beginPortDrivenCableFromSelectedPort('power-in'), isTrue);
+    expect(controller.portDrivenCableStartBinding?.componentId, socket.id);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 800,
+            height: 600,
+            child: SurfaceCanvas(controller: controller),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tapAt(_screenPoint(tester, controller, board.position));
+    await tester.pump();
+    expect(controller.portDrivenCableReadyToFinish, isTrue);
+    expect(controller.portDrivenCableCompletionBinding?.componentId, board.id);
+    expect(controller.finishManualCableDraft(endpointSnapRadiusMm: 40), isTrue);
+    expect(controller.p2.routes, hasLength(1));
+    final route = controller.p2.routes.single;
+    expect(route.source.componentId, board.id);
+    expect(route.source.portId, 'power-out');
+    expect(route.target.componentId, socket.id);
+    expect(route.target.portId, 'power-in');
+    expect(route.segments.single.points.first, board.position);
+    expect(route.segments.single.points.last, socket.position);
+    expect(controller.portDrivenCableStartBinding, isNull);
+    expect(controller.portDrivenCableCompletionBinding, isNull);
+  });
+
 }
