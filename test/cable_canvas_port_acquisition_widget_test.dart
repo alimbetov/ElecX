@@ -63,7 +63,8 @@ void main() {
       position: const SurfacePointMm(2200, 1200),
     );
     controller.p2.select(board.id);
-    expect(controller.beginPortDrivenCableFromSelectedPort('power-out'), isTrue);
+    expect(
+        controller.beginPortDrivenCableFromSelectedPort('power-out'), isTrue);
     final revision = controller.p2.history.mutationRevision;
     await tester.pumpWidget(
       MaterialApp(
@@ -134,7 +135,8 @@ void main() {
       position: const SurfacePointMm(2200, 1200),
     );
     controller.p2.select(board.id);
-    expect(controller.beginPortDrivenCableFromSelectedPort('power-out'), isTrue);
+    expect(
+        controller.beginPortDrivenCableFromSelectedPort('power-out'), isTrue);
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -173,7 +175,8 @@ void main() {
       surface: surface,
       position: const SurfacePointMm(2200, 1200),
     );
-    expect(controller.beginPortDrivenCableFromSelectedPort('power-in'), isTrue);
+    expect(
+        controller.beginPortDrivenCableFromSelectedPort('power-in'), isTrue);
     expect(controller.portDrivenCableStartBinding?.componentId, socket.id);
     await tester.pumpWidget(
       MaterialApp(
