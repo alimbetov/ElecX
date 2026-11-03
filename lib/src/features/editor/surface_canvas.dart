@@ -1105,8 +1105,10 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
               ),
             ),
             Positioned.fill(
-              child: Listener(
-                behavior: HitTestBehavior.opaque,
+              child: MouseRegion(
+                onExit: (_) => _clearCablePortHover(),
+                child: Listener(
+                  behavior: HitTestBehavior.opaque,
                 onPointerHover: (event) {
                   _updateBoundaryHover(event.localPosition, projection);
                   _updateCablePortHover(event.localPosition, projection);
@@ -1233,6 +1235,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                   onScaleStart: _startTouchGesture,
                   onScaleUpdate: _updateTouchGesture,
                   onScaleEnd: _endTouchGesture,
+                ),
                 ),
               ),
             ),
