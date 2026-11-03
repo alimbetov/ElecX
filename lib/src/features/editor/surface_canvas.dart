@@ -1105,9 +1105,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
               ),
             ),
             Positioned.fill(
-              child: MouseRegion(
-                onExit: (_) => _clearCablePortHover(),
-                child: Listener(
+              child: Listener(
                   behavior: HitTestBehavior.opaque,
                 onPointerHover: (event) {
                   _updateBoundaryHover(event.localPosition, projection);
@@ -1222,20 +1220,22 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                   _activePointers.remove(event.pointer);
                   _finishPointer(projection, cancelled: true);
                 },
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTapUp: (details) =>
-                      _handleTap(details, projection, surface),
-                  onDoubleTapDown: (details) => _handleDoubleTap(
-                    details,
-                    projection,
-                    surface,
-                    space.boundary.vertices,
+                child: MouseRegion(
+                  onExit: (_) => _clearCablePortHover(),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapUp: (details) =>
+                        _handleTap(details, projection, surface),
+                    onDoubleTapDown: (details) => _handleDoubleTap(
+                      details,
+                      projection,
+                      surface,
+                      space.boundary.vertices,
+                    ),
+                    onScaleStart: _startTouchGesture,
+                    onScaleUpdate: _updateTouchGesture,
+                    onScaleEnd: _endTouchGesture,
                   ),
-                  onScaleStart: _startTouchGesture,
-                  onScaleUpdate: _updateTouchGesture,
-                  onScaleEnd: _endTouchGesture,
-                ),
                 ),
               ),
             ),
