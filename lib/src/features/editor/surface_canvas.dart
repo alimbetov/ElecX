@@ -1106,7 +1106,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
             ),
             Positioned.fill(
               child: Listener(
-                  behavior: HitTestBehavior.opaque,
+                behavior: HitTestBehavior.opaque,
                 onPointerHover: (event) {
                   _updateBoundaryHover(event.localPosition, projection);
                   _updateCablePortHover(event.localPosition, projection);
@@ -2639,7 +2639,8 @@ class _SurfacePainter extends CustomPainter {
       return;
     }
     final completion = controller.portDrivenCableCompletionBinding;
-    for (final target in controller.compatiblePortDrivenCableTargetsOn(surface)) {
+    for (final target
+        in controller.compatiblePortDrivenCableTargetsOn(surface)) {
       final highlighted = hoveredCablePort?.componentId == target.componentId &&
           hoveredCablePort?.portId == target.portId;
       final completed = completion?.componentId == target.componentId &&
