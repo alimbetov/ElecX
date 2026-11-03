@@ -11,6 +11,7 @@ import 'component_catalog_session.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 import 'physical_manual_cable_draft_persistence.dart';
+import 'port_driven_cable_authoring.dart';
 import 'route_selection_session.dart';
 
 class EngineeringSelectionInspector extends StatelessWidget {
@@ -78,10 +79,13 @@ class _ComponentInspector extends StatelessWidget {
     final entry = controller.componentCatalog.byId(component.componentTypeId);
     final taxonomy =
         entry == null ? null : ComponentTaxonomyResolver.resolve(entry);
+    final routablePorts = controller.cableAuthoringPortsFor(component);
+    final activeBinding = controller.portDrivenCableStartBinding;
+    final authoringFromComponent = activeBinding?.componentId == component.id;
     return _InspectorScaffold(
       title: component.label,
       subtitle: component.componentTypeId,
-      status: 'SELECTED',
+      status: authoringFromComponent ? 'ROUTING' : 'SELECTED',
       children: [
         _section('IDENTITY', [
           _row('ID', component.id),
@@ -106,7 +110,137 @@ class _ComponentInspector extends StatelessWidget {
             component.ports.isEmpty ? '—' : '${component.ports.length}',
           ),
         ]),
+        _section('AUTHORING', [
+          _PortDrivenCableStartControl(
+            controller: controller,
+            component: component,
+            ports: routablePorts,
+            active: authoringFromComponent,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            routablePorts.isEmpty
+                ? 'У компонента нет routable power/control портов.'
+                : 'Трасса стартует строго из physical port компонента; '
+                    'earth/neutral не используются как route endpoints.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ]),
       ],
+    );
+  }
+}
+
+class _PortDrivenCableStartControl extends StatelessWidget {
+  const _PortDrivenCableStartControl({
+    required this.controller,
+    required this.component,
+    required this.ports,
+    required this.active,
+  });
+
+  final EditorController controller;
+  final ElectricalComponentPlacement component;
+  final List<ElectricalPortDefinition> ports;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    if (ports.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    if (ports.length == 1) {
+      return SizedBox(
+        width: double.infinity,
+        child: FilledButton.icon(
+          key: const ValueKey('component-route-cable'),
+          onPressed: active ? null : () => _start(context, ports.single),
+          icon: const Icon(Icons.cable_outlined, size: 18),
+          label: Text(active ? 'Прокладка активна' : 'Проложить кабель'),
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      child: PopupMenuButton<String>(
+        key: const ValueKey('component-route-cable'),
+        enabled: !active,
+        tooltip: 'Проложить кабель от физического порта',
+        onSelected: (portId) {
+          for (final port in ports) {
+            if (port.id == portId) {
+              _start(context, port);
+              return;
+            }
+          }
+        },
+        itemBuilder: (context) => [
+          for (final port in ports)
+            PopupMenuItem<String>(
+              key: ValueKey('component-route-port-${port.id}'),
+              value: port.id,
+              child: ListTile(
+                dense: true,
+                leading: const Icon(Icons.cable_outlined),
+                title: Text(port.id),
+                subtitle: Text(port.kind.name),
+              ),
+            ),
+        ],
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: active
+                ? Theme.of(context).colorScheme.surfaceContainerHighest
+                : Theme.of(context).colorScheme.primary,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.cable_outlined,
+                  size: 18,
+                  color: active
+                      ? Theme.of(context).colorScheme.onSurfaceVariant
+                      : Theme.of(context).colorScheme.onPrimary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  active ? 'Прокладка активна' : 'Проложить кабель',
+                  style: TextStyle(
+                    color: active
+                        ? Theme.of(context).colorScheme.onSurfaceVariant
+                        : Theme.of(context).colorScheme.onPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (!active) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.arrow_drop_down,
+                    color: Theme.of(context).colorScheme.onPrimary,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _start(BuildContext context, ElectricalPortDefinition port) {
+    if (controller.beginPortDrivenCableFromSelectedPort(port.id)) return;
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(
+        content: Text(
+          'Не удалось начать трассу от ${component.label}:${port.id}. '
+          'Проверьте слой кабелей и отсутствие другого активного черновика.',
+        ),
+      ),
     );
   }
 }
