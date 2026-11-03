@@ -175,8 +175,7 @@ void main() {
       surface: surface,
       position: const SurfacePointMm(2200, 1200),
     );
-    expect(
-        controller.beginPortDrivenCableFromSelectedPort('power-in'), isTrue);
+    expect(controller.beginPortDrivenCableFromSelectedPort('power-in'), isTrue);
     expect(controller.portDrivenCableStartBinding?.componentId, socket.id);
     await tester.pumpWidget(
       MaterialApp(
