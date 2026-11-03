@@ -34,7 +34,7 @@ abstract final class CableCanvasPortAcquisition {
             SemanticSnapAnchor(
               kind: SnapKind.port,
               point: MmPoint(target.position.xMm, target.position.yMm),
-              sourceId: target.componentId + ':' + target.portId,
+              sourceId: '${target.componentId}:${target.portId}',
             ),
         ],
       ),
@@ -46,7 +46,7 @@ abstract final class CableCanvasPortAcquisition {
     final matches = onHost
         .where(
           (target) =>
-              target.componentId + ':' + target.portId == candidate.sourceId,
+              '${target.componentId}:${target.portId}' == candidate.sourceId,
         )
         .toList(growable: false);
     if (matches.length != 1) return null;

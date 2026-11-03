@@ -2665,7 +2665,7 @@ class _SurfacePainter extends CustomPainter {
         canvas.drawCircle(center, 4, Paint()..color = color);
         _label(
           canvas,
-          'SNAP · ' + target.componentLabel + ':' + target.portId,
+          'SNAP · ${target.componentLabel}:${target.portId}',
           center + const Offset(19, -20),
           small: true,
         );
