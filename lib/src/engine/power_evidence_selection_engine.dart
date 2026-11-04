@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import '../domain/cable_spec.dart';
 import '../domain/electrical_circuit_calculation.dart';
 import '../domain/power_board_catalog_qualification.dart';
 import '../domain/semantic_sha256.dart';
@@ -231,8 +230,10 @@ abstract final class PowerEvidenceSelectionEngine {
             break;
           case ElectricalCircuitClosureStatus.noCompliantCable:
             issues.add(PowerEvidenceSelectionIssue.noCompliantCable);
+            break;
           case ElectricalCircuitClosureStatus.noCompliantProtection:
             issues.add(PowerEvidenceSelectionIssue.noCompliantProtection);
+            break;
         }
       }
     }
