@@ -107,6 +107,35 @@ void main() {
       expect(preview.readyToApply, isFalse);
     });
 
+    test('source document digest changes invalidate the preview fingerprint',
+        () {
+      final before = PowerEvidenceSelectionEngine.evaluate(_request());
+      final after = PowerEvidenceSelectionEngine.evaluate(
+        _request(revisedCableSourceDigest: true),
+      );
+      expect(after.closure!.isFullyClosed, isTrue);
+      expect(after.fingerprint, isNot(before.fingerprint));
+      expect(after.board.candidate.fingerprint,
+          before.board.candidate.fingerprint);
+    });
+
+    test('unapproved correction factor blocks selection; approved factor is reviewed',
+        () {
+      final unapproved = PowerEvidenceSelectionEngine.evaluate(
+        _request(useCorrectionFactor: true),
+      );
+      expect(unapproved.closure, isNull);
+      expect(
+        unapproved.issues,
+        contains(PowerEvidenceSelectionIssue.correctionFactorNotApproved),
+      );
+      final approved = PowerEvidenceSelectionEngine.evaluate(
+        _request(useCorrectionFactor: true, approveCorrectionFactor: true),
+      );
+      expect(approved.closure!.isFullyClosed, isTrue);
+      expect(approved.readyToApply, isFalse);
+    });
+
     test('an unqualified board blocks all circuit selection', () {
       final preview = PowerEvidenceSelectionEngine.evaluate(
         _request(boardQualified: false),
@@ -129,6 +158,9 @@ PowerEvidenceSelectionRequest _request({
   bool wrongRouteLength = false,
   bool wrongVoltageDrop = false,
   bool boardQualified = true,
+  bool revisedCableSourceDigest = false,
+  bool useCorrectionFactor = false,
+  bool approveCorrectionFactor = false,
   double protectionRatedCurrentA = 16,
 }) {
   final starter = PowerStarterGenerationEngine.generate(
@@ -185,7 +217,8 @@ PowerEvidenceSelectionRequest _request({
     _cable('small', 2.5, ampacityA: 15,
         sourceRevision: wrongCableRevision ? 'r2' : 'r1',
         lengthMm: wrongRouteLength ? 12000 : 10000,
-        maxDrop: wrongVoltageDrop ? 0.06 : 0.05),
+        maxDrop: wrongVoltageDrop ? 0.06 : 0.05,
+        useCorrectionFactor: useCorrectionFactor),
     _cable('large', 4, ampacityA: 25),
   ];
   if (reverseCandidates) {
@@ -194,7 +227,7 @@ PowerEvidenceSelectionRequest _request({
   final pins = [
     _pin('manual-route'),
     _pin('fault-survey'),
-    _pin('cable-source'),
+    _pin('cable-source', fill: revisedCableSourceDigest ? 'b' : 'a'),
     _pin('protection-source'),
     _pin('ampacity-source'),
     if (!omitImpedancePin) _pin('impedance-source'),
@@ -214,6 +247,8 @@ PowerEvidenceSelectionRequest _request({
         routeEvidenceSourceId: 'manual-route',
         faultCurrentEvidenceSourceId: 'fault-survey',
         normativeMaxVoltageDropRatio: 0.05,
+        approvedCorrectionFactorIds:
+            approveCorrectionFactor ? const ['grouping'] : const [],
         policy: ElectricalCircuitClosurePolicy(
           circuitId: starter.circuits.single.calculated.id,
           cableCandidates: cables,
@@ -291,10 +326,11 @@ PowerBoardCatalogQualification _board(
   );
 }
 
-PowerEvidenceSourcePin _pin(String id) => PowerEvidenceSourcePin(
+PowerEvidenceSourcePin _pin(String id, {String fill = 'a'}) =>
+    PowerEvidenceSourcePin(
       sourceId: id,
       revision: 'r1',
-      contentSha256: ''.padLeft(64, 'a'),
+      contentSha256: ''.padLeft(64, fill),
       approvalId: 'review:fixture',
     );
 
@@ -305,6 +341,7 @@ ElectricalCircuitCableCandidate _cable(
   String sourceRevision = 'r1',
   double lengthMm = 10000,
   double maxDrop = 0.05,
+  bool useCorrectionFactor = false,
 }) =>
     ElectricalCircuitCableCandidate(
       cable: CableSpec(
@@ -328,7 +365,9 @@ ElectricalCircuitCableCandidate _cable(
         SectionAmpacityEvidence(
           sectionId: 'wall',
           baseAmpacityA: ampacityA,
-          factors: const [],
+          factors: useCorrectionFactor
+              ? const [ThermalCorrectionFactor(id: 'grouping', factor: 0.9)]
+              : const [],
           sourceKey: 'ampacity-source',
         ),
       ],
