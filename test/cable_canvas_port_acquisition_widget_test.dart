@@ -88,7 +88,9 @@ void main() {
     expect(controller.routeSegments.single.points, [board.position]);
 
     await tester.tapAt(point);
-    await tester.pump();
+    // SurfaceCanvas also recognizes double taps; let the gesture arena
+    // resolve the single tap before checking the exact completion binding.
+    await tester.pump(const Duration(milliseconds: 400));
     expect(controller.portDrivenCableCompletionBinding?.componentId, socket.id);
     expect(controller.portDrivenCableCompletionBinding?.portId, 'power-in');
     expect(controller.portDrivenCableReadyToFinish, isTrue);
@@ -103,7 +105,7 @@ void main() {
         const SurfacePointMm(3600, 1200),
       ),
     );
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     expect(controller.portDrivenCableCompletionBinding, isNull);
     expect(controller.portDrivenCableReadyToFinish, isFalse);
     expect(controller.p2.routes, isEmpty);
@@ -150,7 +152,7 @@ void main() {
     );
     await tester.pump();
     await tester.tapAt(_screenPoint(tester, controller, second.position));
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     expect(controller.portDrivenCableCompletionBinding, isNull);
     expect(controller.portDrivenCableReadyToFinish, isFalse);
     expect(controller.p2.routes, isEmpty);
@@ -190,7 +192,7 @@ void main() {
     );
     await tester.pump();
     await tester.tapAt(_screenPoint(tester, controller, board.position));
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     expect(controller.portDrivenCableReadyToFinish, isTrue);
     expect(controller.portDrivenCableCompletionBinding?.componentId, board.id);
     expect(controller.finishManualCableDraft(endpointSnapRadiusMm: 40), isTrue);
