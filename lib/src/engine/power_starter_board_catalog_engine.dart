@@ -102,7 +102,11 @@ abstract final class PowerStarterBoardCatalogEngine {
     if (record == null) return PowerBoardCatalogStatus.componentMissing;
 
     final entry = record.entry;
-    if (entry.discipline != EngineeringDiscipline.power ||
+    // The V2 catalog has no typed distribution-board role yet. Only its
+    // explicit built-in board identity is accepted; a POWER junction box also
+    // has AC input/output ports but is not a distribution board.
+    if (entry.id != 'power.distribution-board.general' ||
+        entry.discipline != EngineeringDiscipline.power ||
         entry.systemClass != EngineeringSystemClass.powerAc ||
         !record.supports(
           systemClass: EngineeringSystemClass.powerAc,
