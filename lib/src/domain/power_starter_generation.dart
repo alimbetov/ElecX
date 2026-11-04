@@ -96,6 +96,7 @@ final class PowerStarterCandidate {
   PowerStarterCandidate({
     required this.projectId,
     required this.boardGenerationKey,
+    required this.catalogSnapshotId,
     required this.fingerprint,
     required Iterable<PowerStarterCircuitProposal> circuits,
     required Iterable<PowerStarterIssue> issues,
@@ -104,6 +105,7 @@ final class PowerStarterCandidate {
 
   final String projectId;
   final String boardGenerationKey;
+  final String catalogSnapshotId;
   final String fingerprint;
   final List<PowerStarterCircuitProposal> circuits;
   final List<PowerStarterIssue> issues;
