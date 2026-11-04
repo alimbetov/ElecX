@@ -62,6 +62,7 @@ abstract final class PowerStarterGenerationEngine {
     return PowerStarterCandidate(
       projectId: request.projectId,
       boardGenerationKey: request.boardGenerationKey,
+      catalogSnapshotId: request.catalogSnapshotId,
       fingerprint: fingerprint,
       circuits: proposals,
       issues: const [
