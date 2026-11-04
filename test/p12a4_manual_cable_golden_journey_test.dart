@@ -13,7 +13,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P12A.4 manual cable Golden Journey', () {
-    test('exact board-to-socket port route survives Undo/Redo and fresh Save/Reopen',
+    test(
+        'exact board-to-socket port route survives Undo/Redo and fresh Save/Reopen',
         () async {
       final root = await Directory.systemTemp.createTemp('elecx-p12a4-');
       addTearDown(() async {
@@ -109,7 +110,8 @@ void main() {
           committed.segments.single.points);
     });
 
-    test('target-first guided completion preserves electrical direction and identity',
+    test(
+        'target-first guided completion preserves electrical direction and identity',
         () {
       final editor = EditorController.demo();
       addTearDown(() {
