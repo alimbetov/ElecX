@@ -85,6 +85,18 @@ void main() {
         ).status,
         PowerBoardCatalogStatus.incompatible,
       );
+      // Junction boxes also expose AC input/output, but are not boards.
+      final junctions = ComponentCatalogEngineeringRegistry([
+        _record(componentTypeId: 'power.junction-box.general'),
+      ]);
+      expect(
+        _qualify(
+          candidate,
+          junctions,
+          componentTypeId: 'power.junction-box.general',
+        ).status,
+        PowerBoardCatalogStatus.incompatible,
+      );
     });
 
     test('missing source or envelope facts prevents auto-qualified catalog type',
