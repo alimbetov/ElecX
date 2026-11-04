@@ -105,7 +105,7 @@ PowerStarterGenerationRequest _request({
     _load('oven', 6000, ElectricalCircuitLoadKind.cookingAppliance),
   ];
   if (duplicateLoad) loads.add(loads.first);
-  if (reverse) loads.reverse();
+  if (reverse) loads.replaceRange(0, loads.length, loads.reversed.toList());
 
   return PowerStarterGenerationRequest(
     projectId: 'project-101',
