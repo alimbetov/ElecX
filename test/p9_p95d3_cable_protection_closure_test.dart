@@ -41,6 +41,51 @@ void main() {
       expect(outcome.circuit.calculation.designCurrentA, greaterThan(13));
     });
 
+    test('P12A.7 jointly selects the first cable with compatible protection',
+        () {
+      final calculation = _calculation([_load('load-a', 3000)]);
+      ElectricalCircuitClosureOutcome evaluate(
+          List<ElectricalCircuitCableCandidate> cables) =>
+          ElectricalCircuitClosureEngine.close(
+            ElectricalCircuitClosureRequest(
+              calculation: calculation,
+              policies: [
+                _policy(
+                  circuitId: 'circuit-001',
+                  cables: cables,
+                  devices: const [_c16],
+                ),
+              ],
+            ),
+          ).outcomes.single;
+
+      final small = _cableCandidate('cable-2.5', 2.5, ampacityA: 15);
+      final larger = _cableCandidate('cable-4', 4, ampacityA: 25);
+      for (final candidates in [
+        [small, larger],
+        [larger, small],
+      ]) {
+        final result = evaluate(candidates);
+        expect(result.status, ElectricalCircuitClosureStatus.closed);
+        expect(result.cableEvaluations.every((entry) => entry.isCompliant),
+            isTrue);
+        expect(result.selectedCable!.cable.id, 'cable-4');
+        expect(result.selectedProtection!.id, _c16.id);
+        expect(result.selectedCableSizing!.governingAmpacityA, 25);
+      }
+
+      final withoutCompatiblePair = evaluate([small]);
+      expect(withoutCompatiblePair.isClosed, isFalse);
+      expect(
+        withoutCompatiblePair.status,
+        ElectricalCircuitClosureStatus.noCompliantProtection,
+      );
+      expect(
+        withoutCompatiblePair.protectionSelection!.rejections[_c16.id],
+        contains('rated-current-exceeds-cable-ampacity'),
+      );
+    });
+
     test('Q16 voltage drop can force a larger conductor', () {
       final calculation = _calculation([_load('load-a', 3500)]);
       final result = ElectricalCircuitClosureEngine.close(
