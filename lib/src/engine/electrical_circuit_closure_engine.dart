@@ -317,7 +317,7 @@ abstract final class ElectricalCircuitClosureEngine {
       selectedCableSizing: selectedCableEvaluation.sizing,
       protectionSelection: protectionSelection,
       protectionPolicyRejections: policyRejections,
-      status: protectionSelection.isSelected
+      status: protectionSelection?.isSelected == true
           ? ElectricalCircuitClosureStatus.closed
           : ElectricalCircuitClosureStatus.noCompliantProtection,
     );
