@@ -23,8 +23,7 @@ abstract final class PowerStarterBoardCatalogEngine {
     required EngineeringConnectionType connectionType,
     required ComponentHostKind hostKind,
   }) {
-    if (catalogSnapshotId.trim().isEmpty ||
-        componentTypeId.trim().isEmpty) {
+    if (catalogSnapshotId.trim().isEmpty || componentTypeId.trim().isEmpty) {
       throw ArgumentError(
         'Board catalog identity and snapshot must be non-empty.',
       );
@@ -74,8 +73,7 @@ abstract final class PowerStarterBoardCatalogEngine {
             [
               port.id,
               port.direction.name,
-              port.allowedConnections.map((type) => type.name).toList()
-                ..sort(),
+              port.allowedConnections.map((type) => type.name).toList()..sort(),
             ],
         ],
     ]));
