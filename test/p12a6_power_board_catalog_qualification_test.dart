@@ -12,7 +12,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P12A.6 source-pinned board catalog qualification', () {
-    test('qualified board type resolves catalog selection but not electrical ratings',
+    test(
+        'qualified board type resolves catalog selection but not electrical ratings',
         () {
       final candidate = _candidate();
       final result = _qualify(candidate, _registry());
@@ -22,10 +23,8 @@ void main() {
       expect(result.record?.entry.id, 'power.distribution-board.general');
       expect(result.record?.metadata.source?.model, 'DB-TEST');
       expect(
-        result.remainingStarterIssues
-            .any((issue) =>
-                issue.code ==
-                PowerStarterIssueCode.boardCatalogSelectionRequired),
+        result.remainingStarterIssues.any((issue) =>
+            issue.code == PowerStarterIssueCode.boardCatalogSelectionRequired),
         isFalse,
       );
       expect(result.remainingStarterIssues, hasLength(3));
@@ -99,7 +98,8 @@ void main() {
       );
     });
 
-    test('missing source or envelope facts prevents auto-qualified catalog type',
+    test(
+        'missing source or envelope facts prevents auto-qualified catalog type',
         () {
       final candidate = _candidate();
       for (final unverified in [
