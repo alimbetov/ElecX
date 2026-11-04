@@ -298,6 +298,16 @@ abstract final class PowerEvidenceSelectionEngine {
       for (final c in cables)
         [
           c.cable.id,
+          c.cable.name,
+          c.cable.medium.id,
+          c.cable.medium.family.name,
+          c.cable.medium.protocol,
+          c.cable.segregationClass.name,
+          c.cable.outerDiameterMm,
+          c.cable.shielding.name,
+          c.cable.category,
+          c.cable.pairCount,
+          c.cable.fiberCount,
           c.cable.conductorCount,
           c.cable.conductorCrossSectionMm2,
           c.cable.ratedVoltageV,

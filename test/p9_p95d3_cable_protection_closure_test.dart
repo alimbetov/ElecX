@@ -86,6 +86,56 @@ void main() {
       );
     });
 
+    test('P12A.7 AC circuit rejects a DC-medium cable labeled POWER', () {
+      final calculation = _calculation([_load('load-a', 3000)]);
+      final candidate = ElectricalCircuitCableCandidate(
+        cable: const CableSpec(
+          id: 'dc-only-cable',
+          name: 'DC fixture',
+          medium: RouteMediumProfile.dcPower,
+          outerDiameterMm: 12,
+          segregationClass: CableSegregationClass.power,
+          conductorMaterial: ConductorMaterial.copper,
+          conductorCount: 3,
+          conductorCrossSectionMm2: 4,
+          ratedVoltageV: 450,
+        ),
+        routeLengthMm: 10000,
+        maxVoltageDropRatio: 0.05,
+        impedanceEvidence: const CableImpedanceEvidence(
+          resistanceOhmPerKm: 4,
+          sourceKey: 'impedance-table',
+        ),
+        ampacitySections: [
+          SectionAmpacityEvidence(
+            sectionId: 'wall',
+            baseAmpacityA: 30,
+            factors: const [],
+            sourceKey: 'ampacity-table',
+          ),
+        ],
+        sourceId: 'cable-evidence',
+        sourceRevision: 'r1',
+      );
+      final outcome = ElectricalCircuitClosureEngine.close(
+        ElectricalCircuitClosureRequest(
+          calculation: calculation,
+          policies: [
+            _policy(
+              circuitId: 'circuit-001',
+              cables: [candidate],
+              devices: const [_c16],
+            ),
+          ],
+        ),
+      ).outcomes.single;
+      expect(outcome.status, ElectricalCircuitClosureStatus.noCompliantCable);
+      expect(
+        outcome.cableEvaluations.single.structuralRejections,
+        contains('cable-medium-incompatible-with-ac-circuit'),
+      );
+    });
+
     test('Q16 voltage drop can force a larger conductor', () {
       final calculation = _calculation([_load('load-a', 3500)]);
       final result = ElectricalCircuitClosureEngine.close(

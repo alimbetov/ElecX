@@ -2,6 +2,7 @@ import '../domain/cable_spec.dart';
 import '../domain/electrical_circuit_calculation.dart';
 import '../domain/electrical_load_calculation.dart';
 import '../domain/overcurrent_protection.dart';
+import '../domain/route_medium.dart';
 import 'cable_sizing_engine.dart';
 import 'overcurrent_protection_selection_engine.dart';
 
@@ -332,6 +333,10 @@ abstract final class ElectricalCircuitClosureEngine {
     final structuralRejections = <String>[];
     if (!cable.isPower) {
       structuralRejections.add('cable-not-power-rated');
+    }
+    // A POWER label alone does not prove AC/DC medium compatibility.
+    if (cable.medium.id != RouteMediumProfile.acPower.id) {
+      structuralRejections.add('cable-medium-incompatible-with-ac-circuit');
     }
     if (cable.conductorCrossSectionMm2 == null) {
       structuralRejections.add('missing-conductor-cross-section');
