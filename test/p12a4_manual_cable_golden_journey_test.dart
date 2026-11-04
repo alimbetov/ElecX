@@ -179,7 +179,7 @@ void main() {
       );
       editor.p2.select(board.id);
       expect(editor.beginPortDrivenCableFromSelectedPort('power-out'), isTrue);
-      editor.surfaceTap(const SurfacePointMm(3000, 3000));
+      // Wall-edge navigation appends the boundary point exactly once.
       editor.navigateWallEdge(
         WallNavigationEdge.ceiling,
         const SurfacePointMm(3000, 3000),
