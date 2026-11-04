@@ -21,7 +21,8 @@ final class PowerEvidenceSourcePin {
         revision.trim().isEmpty ||
         approvalId.trim().isEmpty ||
         !RegExp(r'^[0-9a-f]{64}$').hasMatch(contentSha256)) {
-      throw ArgumentError('Reviewed evidence requires source, revision, SHA-256 and approval.');
+      throw ArgumentError(
+          'Reviewed evidence requires source, revision, SHA-256 and approval.');
     }
   }
 
@@ -45,7 +46,7 @@ final class PowerCircuitEvidenceBinding {
     required this.normativeMaxVoltageDropRatio,
     Iterable<String> approvedCorrectionFactorIds = const [],
   }) : approvedCorrectionFactorIds =
-           Set.unmodifiable(approvedCorrectionFactorIds) {
+            Set.unmodifiable(approvedCorrectionFactorIds) {
     if (generationKey.trim().isEmpty ||
         routeEvidenceSourceId.trim().isEmpty ||
         faultCurrentEvidenceSourceId.trim().isEmpty ||
@@ -54,7 +55,8 @@ final class PowerCircuitEvidenceBinding {
         !normativeMaxVoltageDropRatio.isFinite ||
         normativeMaxVoltageDropRatio <= 0 ||
         normativeMaxVoltageDropRatio >= 1) {
-      throw ArgumentError('Exact circuit route/fault/voltage-drop evidence is required.');
+      throw ArgumentError(
+          'Exact circuit route/fault/voltage-drop evidence is required.');
     }
   }
 
@@ -73,18 +75,18 @@ final class PowerEvidenceSelectionRequest {
     required this.normativeSource,
     required Iterable<PowerEvidenceSourcePin> approvedSources,
     required Iterable<PowerCircuitEvidenceBinding> bindings,
-  }) : approvedSources = List.unmodifiable(approvedSources),
-       bindings = List.unmodifiable(bindings) {
+  })  : approvedSources = List.unmodifiable(approvedSources),
+        bindings = List.unmodifiable(bindings) {
     final sourceIds = <String>{normativeSource.sourceId};
     for (final source in this.approvedSources) {
       if (!sourceIds.add(source.sourceId)) {
-        throw ArgumentError('Duplicate evidence source '+source.sourceId);
+        throw ArgumentError('Duplicate evidence source ${source.sourceId}');
       }
     }
     final keys = <String>{};
     for (final binding in this.bindings) {
       if (!keys.add(binding.generationKey)) {
-        throw ArgumentError('Duplicate generation binding '+binding.generationKey);
+        throw ArgumentError('Duplicate generation binding ${binding.generationKey}');
       }
     }
   }
@@ -129,7 +131,8 @@ final class PowerEvidenceSelectionPreview {
   bool get readyForEngineeringReview =>
       board.hasQualifiedBoardType &&
       closure?.isFullyClosed == true &&
-      !issues.any((issue) => issue !=
+      !issues.any((issue) =>
+          issue !=
           PowerEvidenceSelectionIssue.boardElectricalRatingsUnverified);
 
   bool get readyToApply => false;
@@ -153,7 +156,8 @@ abstract final class PowerEvidenceSelectionEngine {
       for (final item in request.approvedSources) item.sourceId: item,
     };
     final bindings = {for (final b in request.bindings) b.generationKey: b};
-    final generatedKeys = candidate.circuits.map((c) => c.generationKey).toSet();
+    final generatedKeys =
+        candidate.circuits.map((c) => c.generationKey).toSet();
     if (generatedKeys.difference(bindings.keys.toSet()).isNotEmpty) {
       issues.add(PowerEvidenceSelectionIssue.circuitBindingMissing);
     }
@@ -177,7 +181,8 @@ abstract final class PowerEvidenceSelectionEngine {
         if (pin == null) {
           issues.add(PowerEvidenceSelectionIssue.evidenceSourceUnapproved);
         } else if (revision != null && pin.revision != revision) {
-          issues.add(PowerEvidenceSelectionIssue.evidenceSourceRevisionMismatch);
+          issues
+              .add(PowerEvidenceSelectionIssue.evidenceSourceRevisionMismatch);
         }
       }
 
@@ -188,9 +193,9 @@ abstract final class PowerEvidenceSelectionEngine {
         if ((cable.routeLengthMm - binding.routeLengthMm).abs() > 0.000001) {
           issues.add(PowerEvidenceSelectionIssue.routeLengthMismatch);
         }
-        if ((cable.maxVoltageDropRatio -
-                    binding.normativeMaxVoltageDropRatio).abs() >
-                0.000000001) {
+        if ((cable.maxVoltageDropRatio - binding.normativeMaxVoltageDropRatio)
+                .abs() >
+            0.000000001) {
           issues.add(PowerEvidenceSelectionIssue.voltageDropPolicyMismatch);
         }
         final impedanceId = cable.impedanceEvidence?.sourceKey;
@@ -199,7 +204,8 @@ abstract final class PowerEvidenceSelectionEngine {
           if (section.sourceKey != null) requireSource(section.sourceKey!);
           for (final factor in section.factors) {
             if (!binding.approvedCorrectionFactorIds.contains(factor.id)) {
-              issues.add(PowerEvidenceSelectionIssue.correctionFactorNotApproved);
+              issues
+                  .add(PowerEvidenceSelectionIssue.correctionFactorNotApproved);
             }
           }
         }
@@ -319,14 +325,16 @@ abstract final class PowerEvidenceSelectionEngine {
           c.impedanceEvidence?.sourceKey,
           c.impedanceEvidence?.resistanceOhmPerKm,
           c.impedanceEvidence?.reactanceOhmPerKm,
-          for (final section in c.ampacitySections.toList()
-            ..sort((a, b) => a.sectionId.compareTo(b.sectionId)))
+          for (final section
+              in c.ampacitySections.toList()
+                ..sort((a, b) => a.sectionId.compareTo(b.sectionId)))
             [
               section.sectionId,
               section.baseAmpacityA,
               section.sourceKey,
-              for (final factor in section.factors.toList()
-                ..sort((a, b) => a.id.compareTo(b.id)))
+              for (final factor
+                  in section.factors.toList()
+                    ..sort((a, b) => a.id.compareTo(b.id)))
                 [factor.id, factor.factor],
             ],
         ],

@@ -119,7 +119,8 @@ void main() {
           before.board.candidate.fingerprint);
     });
 
-    test('unapproved correction factor blocks selection; approved factor is reviewed',
+    test(
+        'unapproved correction factor blocks selection; approved factor is reviewed',
         () {
       final unapproved = PowerEvidenceSelectionEngine.evaluate(
         _request(useCorrectionFactor: true),
@@ -214,7 +215,8 @@ PowerEvidenceSelectionRequest _request({
   );
   final board = _board(starter, qualified: boardQualified);
   final cables = <ElectricalCircuitCableCandidate>[
-    _cable('small', 2.5, ampacityA: 15,
+    _cable('small', 2.5,
+        ampacityA: 15,
         sourceRevision: wrongCableRevision ? 'r2' : 'r1',
         lengthMm: wrongRouteLength ? 12000 : 10000,
         maxDrop: wrongVoltageDrop ? 0.06 : 0.05,

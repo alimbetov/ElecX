@@ -45,7 +45,7 @@ void main() {
         () {
       final calculation = _calculation([_load('load-a', 3000)]);
       ElectricalCircuitClosureOutcome evaluate(
-          List<ElectricalCircuitCableCandidate> cables) =>
+              List<ElectricalCircuitCableCandidate> cables) =>
           ElectricalCircuitClosureEngine.close(
             ElectricalCircuitClosureRequest(
               calculation: calculation,
