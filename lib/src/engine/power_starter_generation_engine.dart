@@ -67,19 +67,23 @@ abstract final class PowerStarterGenerationEngine {
       issues: const [
         PowerStarterIssue(
           code: PowerStarterIssueCode.boardCatalogSelectionRequired,
-          explanation: 'Board model and technical catalog evidence are not resolved.',
+          explanation:
+              'Board model and technical catalog evidence are not resolved.',
         ),
         PowerStarterIssue(
           code: PowerStarterIssueCode.protectiveDeviceEvidenceRequired,
-          explanation: 'Protection selection and coordination evidence are not resolved.',
+          explanation:
+              'Protection selection and coordination evidence are not resolved.',
         ),
         PowerStarterIssue(
           code: PowerStarterIssueCode.cableSelectionEvidenceRequired,
-          explanation: 'Cable catalog, ampacity and voltage-drop evidence are not resolved.',
+          explanation:
+              'Cable catalog, ampacity and voltage-drop evidence are not resolved.',
         ),
         PowerStarterIssue(
           code: PowerStarterIssueCode.physicalRouteNotYetAvailable,
-          explanation: 'Physical route lengths and installation methods belong to P13/P14.',
+          explanation:
+              'Physical route lengths and installation methods belong to P13/P14.',
         ),
       ],
     );

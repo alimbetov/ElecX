@@ -6,7 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P12A.5 ID-free POWER starter generation', () {
-    test('produces dedicated and grouped circuits with explicit P/Q/S/I evidence',
+    test(
+        'produces dedicated and grouped circuits with explicit P/Q/S/I evidence',
         () {
       final candidate = PowerStarterGenerationEngine.generate(_request());
 
@@ -15,8 +16,10 @@ void main() {
       expect(candidate.designPowerW, closeTo(8500, 0.00001));
       expect(candidate.circuits.map((item) => item.generationKey).toSet(),
           hasLength(2));
-      expect(candidate.circuits.every((item) => item.generationKey.startsWith(
-          'power:circuit:')), isTrue);
+      expect(
+          candidate.circuits
+              .every((item) => item.generationKey.startsWith('power:circuit:')),
+          isTrue);
       expect(
         candidate.circuits
             .singleWhere((c) => c.calculated.circuit.dedicated)
@@ -42,7 +45,8 @@ void main() {
       expect(candidate.issues, hasLength(4));
     });
 
-    test('request order does not change identities or semantic fingerprint', () {
+    test('request order does not change identities or semantic fingerprint',
+        () {
       final first = PowerStarterGenerationEngine.generate(_request());
       final reversed =
           PowerStarterGenerationEngine.generate(_request(reverse: true));
