@@ -58,8 +58,7 @@ final class PowerBoardCatalogQualification {
   List<PowerStarterIssue> get remainingStarterIssues => List.unmodifiable([
         for (final issue in candidate.issues)
           if (!hasQualifiedBoardType ||
-              issue.code !=
-                  PowerStarterIssueCode.boardCatalogSelectionRequired)
+              issue.code != PowerStarterIssueCode.boardCatalogSelectionRequired)
             issue,
       ]);
 
