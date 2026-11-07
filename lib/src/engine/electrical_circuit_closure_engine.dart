@@ -2,6 +2,7 @@ import '../domain/cable_spec.dart';
 import '../domain/electrical_circuit_calculation.dart';
 import '../domain/electrical_load_calculation.dart';
 import '../domain/overcurrent_protection.dart';
+import '../domain/route_medium.dart';
 import 'cable_sizing_engine.dart';
 import 'overcurrent_protection_selection_engine.dart';
 
@@ -268,8 +269,10 @@ abstract final class ElectricalCircuitClosureEngine {
       );
     }
 
-    final selectedCableEvaluation = compliant.first;
-    final cableAmpacityA = selectedCableEvaluation.sizing.governingAmpacityA!;
+    // A minimal cable may be thermally/voltage-drop compliant yet have no
+    // compatible protective device. Test cable + protection as a pair,
+    // preserving the smallest-cable-first deterministic preference.
+    var selectedCableEvaluation = compliant.first;
     final policyRejections = <String, List<String>>{};
     final protectionCandidates = <OvercurrentProtectiveDeviceSpec>[];
     for (final candidate in policy.protectionCandidates) {
@@ -284,15 +287,27 @@ abstract final class ElectricalCircuitClosureEngine {
       }
     }
 
-    final protectionSelection = OvercurrentProtectionSelectionEngine.select(
-      OvercurrentProtectionRequest(
-        designCurrentA: circuit.calculation.designCurrentA,
-        cableAmpacityA: cableAmpacityA,
-        prospectiveShortCircuitCurrentA: policy.prospectiveShortCircuitCurrentA,
-        candidates: protectionCandidates,
-        allowedKinds: policy.allowedProtectionKinds,
-      ),
-    );
+    OvercurrentProtectionSelectionResult? protectionSelection;
+    for (final evaluation in compliant) {
+      final attempt = OvercurrentProtectionSelectionEngine.select(
+        OvercurrentProtectionRequest(
+          designCurrentA: circuit.calculation.designCurrentA,
+          cableAmpacityA: evaluation.sizing.governingAmpacityA!,
+          prospectiveShortCircuitCurrentA:
+              policy.prospectiveShortCircuitCurrentA,
+          candidates: protectionCandidates,
+          allowedKinds: policy.allowedProtectionKinds,
+        ),
+      );
+      // If none is compatible, retain the diagnostic for the smallest
+      // otherwise-compliant cable instead of publishing a false closure.
+      protectionSelection ??= attempt;
+      if (attempt.isSelected) {
+        protectionSelection = attempt;
+        selectedCableEvaluation = evaluation;
+        break;
+      }
+    }
 
     return ElectricalCircuitClosureOutcome(
       circuit: circuit,
@@ -302,7 +317,7 @@ abstract final class ElectricalCircuitClosureEngine {
       selectedCableSizing: selectedCableEvaluation.sizing,
       protectionSelection: protectionSelection,
       protectionPolicyRejections: policyRejections,
-      status: protectionSelection.isSelected
+      status: protectionSelection?.isSelected == true
           ? ElectricalCircuitClosureStatus.closed
           : ElectricalCircuitClosureStatus.noCompliantProtection,
     );
@@ -318,6 +333,10 @@ abstract final class ElectricalCircuitClosureEngine {
     final structuralRejections = <String>[];
     if (!cable.isPower) {
       structuralRejections.add('cable-not-power-rated');
+    }
+    // A POWER label alone does not prove AC/DC medium compatibility.
+    if (cable.medium.id != RouteMediumProfile.acPower.id) {
+      structuralRejections.add('cable-medium-incompatible-with-ac-circuit');
     }
     if (cable.conductorCrossSectionMm2 == null) {
       structuralRejections.add('missing-conductor-cross-section');
