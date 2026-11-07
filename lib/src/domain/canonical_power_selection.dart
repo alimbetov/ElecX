@@ -36,7 +36,10 @@ final class CanonicalEngineeringSourceReference {
 
   factory CanonicalEngineeringSourceReference.fromCanonicalJson(Object? raw) {
     final json = _map(raw, const {
-      'sourceId', 'revision', 'sha256', 'approvalId',
+      'sourceId',
+      'revision',
+      'sha256',
+      'approvalId',
     });
     return CanonicalEngineeringSourceReference(
       sourceId: _string(json['sourceId']),
@@ -79,8 +82,11 @@ final class CanonicalBoardElectricalRatings {
 
   factory CanonicalBoardElectricalRatings.fromCanonicalJson(Object? raw) {
     final json = _map(raw, const {
-      'ratedBusbarCurrentA', 'shortCircuitWithstandKa', 'ratedVoltageV',
-      'ipRating', 'manufacturerSourceId',
+      'ratedBusbarCurrentA',
+      'shortCircuitWithstandKa',
+      'ratedVoltageV',
+      'ipRating',
+      'manufacturerSourceId',
     });
     return CanonicalBoardElectricalRatings(
       ratedBusbarCurrentA: _number(json['ratedBusbarCurrentA']),
@@ -130,8 +136,11 @@ final class CanonicalCableElectricalRatings {
 
   factory CanonicalCableElectricalRatings.fromCanonicalJson(Object? raw) {
     final json = _map(raw, const {
-      'conductorCrossSectionMm2', 'conductorCount', 'ratedVoltageV',
-      'governingAmpacityA', 'calculatedVoltageDropRatio',
+      'conductorCrossSectionMm2',
+      'conductorCount',
+      'ratedVoltageV',
+      'governingAmpacityA',
+      'calculatedVoltageDropRatio',
     });
     final count = json['conductorCount'];
     if (count is! int) {
@@ -142,8 +151,7 @@ final class CanonicalCableElectricalRatings {
       conductorCount: count,
       ratedVoltageV: _number(json['ratedVoltageV']),
       governingAmpacityA: _number(json['governingAmpacityA']),
-      calculatedVoltageDropRatio:
-          _number(json['calculatedVoltageDropRatio']),
+      calculatedVoltageDropRatio: _number(json['calculatedVoltageDropRatio']),
     );
   }
 }
@@ -181,8 +189,11 @@ final class CanonicalProtectionElectricalRatings {
 
   factory CanonicalProtectionElectricalRatings.fromCanonicalJson(Object? raw) {
     final json = _map(raw, const {
-      'ratedCurrentA', 'breakingCapacityKa', 'poleCount',
-      'deviceKind', 'tripCharacteristic',
+      'ratedCurrentA',
+      'breakingCapacityKa',
+      'poleCount',
+      'deviceKind',
+      'tripCharacteristic',
     });
     final poles = json['poleCount'];
     if (poles is! int) {
@@ -224,10 +235,16 @@ final class CanonicalPowerCircuitSelection {
           sources.toList()..sort((a, b) => a.sourceId.compareTo(b.sourceId)),
         ) {
     for (final field in [
-      generationKey, boardCatalogTypeId, catalogSnapshotId,
-      cableCatalogId, cableSourceId,
-      protectionCatalogId, protectionSourceId, normativeSourceId,
-      routeEvidenceSourceId, faultCurrentEvidenceSourceId,
+      generationKey,
+      boardCatalogTypeId,
+      catalogSnapshotId,
+      cableCatalogId,
+      cableSourceId,
+      protectionCatalogId,
+      protectionSourceId,
+      normativeSourceId,
+      routeEvidenceSourceId,
+      faultCurrentEvidenceSourceId,
     ]) {
       _required(field, 'selection identity');
     }
@@ -291,13 +308,24 @@ final class CanonicalPowerCircuitSelection {
 
   factory CanonicalPowerCircuitSelection.fromCanonicalJson(Object? raw) {
     final json = _map(raw, const {
-      'circuitId', 'generationKey', 'boardComponentId', 'boardCatalogTypeId',
-      'catalogSnapshotId', 'boardRatings', 'cableCatalogId',
-      'cableRatings', 'cableSourceId',
-      'protectionCatalogId', 'protectionRatings', 'protectionSourceId',
-      'normativeSourceId', 'routeEvidenceSourceId',
-      'faultCurrentEvidenceSourceId', 'routeLengthMm',
-      'evidenceFingerprint', 'sources',
+      'circuitId',
+      'generationKey',
+      'boardComponentId',
+      'boardCatalogTypeId',
+      'catalogSnapshotId',
+      'boardRatings',
+      'cableCatalogId',
+      'cableRatings',
+      'cableSourceId',
+      'protectionCatalogId',
+      'protectionRatings',
+      'protectionSourceId',
+      'normativeSourceId',
+      'routeEvidenceSourceId',
+      'faultCurrentEvidenceSourceId',
+      'routeLengthMm',
+      'evidenceFingerprint',
+      'sources',
     });
     return CanonicalPowerCircuitSelection(
       circuitId: CircuitId(_string(json['circuitId'])),
@@ -305,11 +333,11 @@ final class CanonicalPowerCircuitSelection {
       boardComponentId: ComponentId(_string(json['boardComponentId'])),
       boardCatalogTypeId: _string(json['boardCatalogTypeId']),
       catalogSnapshotId: _string(json['catalogSnapshotId']),
-      boardRatings:
-          CanonicalBoardElectricalRatings.fromCanonicalJson(json['boardRatings']),
+      boardRatings: CanonicalBoardElectricalRatings.fromCanonicalJson(
+          json['boardRatings']),
       cableCatalogId: _string(json['cableCatalogId']),
-      cableRatings:
-          CanonicalCableElectricalRatings.fromCanonicalJson(json['cableRatings']),
+      cableRatings: CanonicalCableElectricalRatings.fromCanonicalJson(
+          json['cableRatings']),
       cableSourceId: _string(json['cableSourceId']),
       protectionCatalogId: _string(json['protectionCatalogId']),
       protectionRatings: CanonicalProtectionElectricalRatings.fromCanonicalJson(
@@ -398,8 +426,10 @@ final class CanonicalPowerSelectionRegistry {
   Map<String, Object?> toCanonicalJson() => {
         'schemaVersion': canonicalPowerSelectionSchemaVersion,
         'selections': [
-          for (final selection in (byCircuit.values.toList()
-            ..sort((a, b) => a.circuitId.value.compareTo(b.circuitId.value))))
+          for (final selection
+              in (byCircuit.values.toList()
+                ..sort(
+                    (a, b) => a.circuitId.value.compareTo(b.circuitId.value))))
             selection.toCanonicalJson(),
         ],
       };
