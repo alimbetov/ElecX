@@ -52,7 +52,8 @@ final class PowerSafetyRuleProfile {
         maxConventionalTripToAmpacityRatio <= 0 ||
         !maxFaultDisconnectionTimeMs.isFinite ||
         maxFaultDisconnectionTimeMs <= 0) {
-      throw ArgumentError('A complete, versioned normative profile is required.');
+      throw ArgumentError(
+          'A complete, versioned normative profile is required.');
     }
   }
 
@@ -92,7 +93,8 @@ final class PowerCircuitSafetyEvidence {
       faultDisconnectionTimeMs,
     ]) {
       if (value != null && (!value.isFinite || value <= 0)) {
-        throw ArgumentError('Electrical safety inputs must be positive and finite.');
+        throw ArgumentError(
+            'Electrical safety inputs must be positive and finite.');
       }
     }
   }
@@ -146,7 +148,8 @@ final class PowerElectricalSafetyReport {
   PowerSafetyVerdict get verdict {
     if (circuits.isEmpty ||
         sourceIssues.isNotEmpty ||
-        circuits.values.any((c) => c.verdict == PowerSafetyVerdict.indeterminate)) {
+        circuits.values
+            .any((c) => c.verdict == PowerSafetyVerdict.indeterminate)) {
       if (circuits.values.any((c) => c.verdict == PowerSafetyVerdict.fail)) {
         return PowerSafetyVerdict.fail;
       }
@@ -201,10 +204,10 @@ abstract final class PowerElectricalSafetyGate {
       final selection = selections.byCircuit[id]!;
       final input = evidenceByCircuit[id];
       final pins = {for (final pin in selection.sources) pin.sourceId};
-      final profileMatches = selection.normativeSourceId ==
-              profile.normativeSourceId &&
-          pins.contains(profile.normativeSourceId) &&
-          reviewed.isQualified;
+      final profileMatches =
+          selection.normativeSourceId == profile.normativeSourceId &&
+              pins.contains(profile.normativeSourceId) &&
+              reviewed.isQualified;
       final matchedSelection = input != null &&
           input.selectionFingerprint ==
               semanticSha256Hex(jsonEncode(selection.toCanonicalJson())) &&
@@ -234,10 +237,9 @@ abstract final class PowerElectricalSafetyGate {
         if (ib != null) {
           checks[PowerSafetyCheck.designCurrent] =
               ib <= iz ? PowerSafetyVerdict.pass : PowerSafetyVerdict.fail;
-          checks[PowerSafetyCheck.overloadRating] =
-              ib <= rated && rated <= iz
-                  ? PowerSafetyVerdict.pass
-                  : PowerSafetyVerdict.fail;
+          checks[PowerSafetyCheck.overloadRating] = ib <= rated && rated <= iz
+              ? PowerSafetyVerdict.pass
+              : PowerSafetyVerdict.fail;
         }
         final i2 = input.conventionalTripCurrentA;
         if (i2 != null) {
