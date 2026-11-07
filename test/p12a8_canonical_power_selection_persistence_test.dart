@@ -292,6 +292,7 @@ void main() {
         proposal: proposed,
         requestedSelections:
             CanonicalPowerSelectionRegistry(selections: [selection('c1')]),
+        canonicalCircuitIdsByCalculationId: {'calculated-c1': CircuitId('c1')},
         expectedEngineeringStateFingerprint:
             current.engineeringMetadata.engineeringState.fingerprint,
         expectedPowerSelectionFingerprint:
@@ -312,6 +313,57 @@ void main() {
       expect(() => coordinator.commitPreview(preview), throwsStateError);
       expect(session.current.version, current.version);
       expect(session.undoDepth, 0);
+    });
+
+    test('incorrect or incomplete calculator-to-canonical lineage fails closed',
+        () {
+      final proposal = EngineeringProposalDiff(
+        sourceFingerprint: 'source',
+        boardGenerationKey: 'board-key',
+        catalogSnapshotId: 'catalog-snapshot-v2',
+        entries: [
+          EngineeringProposalDiffEntry(
+            generationKey: 'generation-c1',
+            calculationCircuitId: 'calculated-c1',
+            status: EngineeringProposalStatus.selected,
+            cableCatalogId: 'cable-3x2.5',
+            protectionCatalogId: 'mcb-b16',
+          ),
+        ],
+        issues: const [],
+      );
+      EngineeringReservedProjectCommand create(Map<String, CircuitId> ids) =>
+          EngineeringReservedProjectCommand(
+            proposal: proposal,
+            requestedSelections: CanonicalPowerSelectionRegistry(
+              selections: [selection('c1')],
+            ),
+            canonicalCircuitIdsByCalculationId: ids,
+            expectedEngineeringStateFingerprint: 'state',
+            expectedPowerSelectionFingerprint: 'registry',
+          );
+
+      expect(() => create({}), throwsArgumentError);
+      expect(
+        () => create({'calculated-c1': CircuitId('wrong-circuit')}),
+        throwsArgumentError,
+      );
+      expect(
+        () => create({
+          'calculated-c1': CircuitId('c1'),
+          'undeclared-calculation': CircuitId('extra'),
+        }),
+        throwsArgumentError,
+      );
+      final mutable = {'calculated-c1': CircuitId('c1')};
+      final command = create(mutable);
+      final intent = command.normalizedIntentKey;
+      mutable['calculated-c1'] = CircuitId('tampered');
+      expect(command.normalizedIntentKey, intent);
+      expect(
+        command.canonicalCircuitIdsByCalculationId['calculated-c1'],
+        CircuitId('c1'),
+      );
     });
 
     test('proposal/selection catalog mismatch fails closed before preview', () {
@@ -336,6 +388,7 @@ void main() {
           requestedSelections: CanonicalPowerSelectionRegistry(
             selections: [selection('c1')],
           ),
+          canonicalCircuitIdsByCalculationId: {'calculated-c1': CircuitId('c1')},
           expectedEngineeringStateFingerprint: 'state',
           expectedPowerSelectionFingerprint: 'registry',
         ),
