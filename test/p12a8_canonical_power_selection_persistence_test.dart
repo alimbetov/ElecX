@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:elecx/src/application/project/project_mutation.dart';
+import 'package:elecx/src/application/project/project_mutation_reservation.dart';
+import 'package:elecx/src/application/project/engineering/engineering_proposal_diff.dart';
+import 'package:elecx/src/application/project/engineering/engineering_reserved_project_command.dart';
 import 'package:elecx/src/domain/canonical_engineering_graph.dart';
 import 'package:elecx/src/domain/canonical_power_selection.dart';
 import 'package:elecx/src/domain/engineering_circuit_topology.dart';
@@ -252,6 +255,89 @@ void main() {
       (encoded['sources'] as List).removeLast();
       expect(
         () => CanonicalPowerCircuitSelection.fromCanonicalJson(encoded),
+        throwsArgumentError,
+      );
+    });
+  });
+
+  group('P12A.8 reserved engineering preview', () {
+    test('frozen canonical preview uses existing P11 circuit IDs and cannot Apply',
+        () {
+      final base = P1010ServiceAnchorFixture().project;
+      final current = ProjectAggregateRoot(
+        id: base.id,
+        siteId: base.siteId,
+        version: base.version,
+        stores: base.stores,
+        engineeringMetadata: base.engineeringMetadata
+            .withEngineeringState(validEngineeringState()),
+      );
+      final proposed = EngineeringProposalDiff(
+        sourceFingerprint: 'test-source',
+        boardGenerationKey: 'board-key',
+        catalogSnapshotId: 'catalog-snapshot-v2',
+        entries: [
+          EngineeringProposalDiffEntry(
+            generationKey: 'generation-c1',
+            calculationCircuitId: 'calculated-c1',
+            status: EngineeringProposalStatus.selected,
+            cableCatalogId: 'cable-3x2.5',
+            protectionCatalogId: 'mcb-b16',
+          ),
+        ],
+        issues: const [],
+      );
+      final command = EngineeringReservedProjectCommand(
+        proposal: proposed,
+        requestedSelections:
+            CanonicalPowerSelectionRegistry(selections: [selection('c1')]),
+        expectedEngineeringStateFingerprint:
+            current.engineeringMetadata.engineeringState.fingerprint,
+        expectedPowerSelectionFingerprint:
+            current.engineeringMetadata.powerSelections.fingerprint,
+      );
+      final session = ProjectMutationSession(current);
+      final coordinator = ReservedProjectMutationCoordinator(session);
+      final preview = coordinator.preview(command);
+      expect(preview.hasChanges, isTrue);
+      expect(preview.candidate.engineeringMetadata.powerSelections.byCircuit,
+          contains(CircuitId('c1')));
+      expect(preview.preview.engineeringMetadataDiff.powerSelectionsChanged,
+          isTrue);
+      expect(preview.semanticChangeSet.operations.single.semanticKey,
+          contains('c1'));
+      expect(session.current.engineeringMetadata.powerSelections.isEmpty,
+          isTrue);
+      expect(() => coordinator.commitPreview(preview), throwsStateError);
+      expect(session.current.version, current.version);
+      expect(session.undoDepth, 0);
+    });
+
+    test('proposal/selection catalog mismatch fails closed before preview', () {
+      final proposal = EngineeringProposalDiff(
+        sourceFingerprint: 'source',
+        boardGenerationKey: 'board-key',
+        catalogSnapshotId: 'catalog-snapshot-v2',
+        entries: [
+          EngineeringProposalDiffEntry(
+            generationKey: 'generation-c1',
+            calculationCircuitId: 'calculated-c1',
+            status: EngineeringProposalStatus.selected,
+            cableCatalogId: 'different-cable',
+            protectionCatalogId: 'mcb-b16',
+          ),
+        ],
+        issues: const [],
+      );
+      expect(
+        () => EngineeringReservedProjectCommand(
+          proposal: proposal,
+          requestedSelections: CanonicalPowerSelectionRegistry(
+            selections: [selection('c1')],
+          ),
+          expectedEngineeringStateFingerprint: 'state',
+          expectedPowerSelectionFingerprint: 'registry',
+        ),
         throwsArgumentError,
       );
     });
