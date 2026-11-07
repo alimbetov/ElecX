@@ -97,7 +97,8 @@ final class EngineeringProposalDiff {
 
   bool get isFullySelected =>
       issues.isEmpty &&
-      entries.every((entry) => entry.status == EngineeringProposalStatus.selected);
+      entries
+          .every((entry) => entry.status == EngineeringProposalStatus.selected);
 
   /// P12A.8 still lacks trusted external reviews, board ratings and canonical
   /// persistence integration. Selection success cannot enable Apply.
@@ -114,7 +115,8 @@ abstract final class EngineeringProposalDiffProjector {
         for (final outcome in source.closure!.outcomes)
           outcome.circuitId: outcome,
     };
-    final expected = candidate.circuits.map((item) => item.calculated.id).toSet();
+    final expected =
+        candidate.circuits.map((item) => item.calculated.id).toSet();
     if (outcomes.keys.toSet().difference(expected).isNotEmpty ||
         (source.closure != null && outcomes.length != expected.length)) {
       throw StateError('Closure outcomes do not match generated circuit set.');
@@ -144,7 +146,8 @@ abstract final class EngineeringProposalDiffProjector {
       final cable = outcome!.selectedCable?.cable.id;
       final protection = outcome.selectedProtection?.id;
       if (cable == null || protection == null) {
-        throw StateError('Closed circuit lacks a selected cable/protection pair.');
+        throw StateError(
+            'Closed circuit lacks a selected cable/protection pair.');
       }
       return EngineeringProposalDiffEntry(
         generationKey: key,
