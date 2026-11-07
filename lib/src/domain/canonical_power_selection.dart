@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'engineering_graph.dart';
+import 'engineering_project_state.dart';
 import 'project_identity.dart';
 import 'semantic_sha256.dart';
 
@@ -347,6 +349,46 @@ final class CanonicalPowerSelectionRegistry {
   }
 
   final Map<CircuitId, CanonicalPowerCircuitSelection> byCircuit;
+
+  /// Project aggregate invariant, checked on *every* root rebuild (including
+  /// mutation preview/commit and Undo/Redo), not merely on disk encode.
+  /// POWER selections are annotations of existing P11 objects, not owners.
+  void validateAgainst(EngineeringProjectState state) {
+    final circuits = {for (final circuit in state.circuits) circuit.id: circuit};
+    final components = {
+      for (final component in state.graph.components) component.id: component,
+    };
+    final boardSemantics = <ComponentId, String>{};
+    for (final selection in byCircuit.values) {
+      final circuit = circuits[selection.circuitId];
+      final board = components[selection.boardComponentId];
+      if (circuit == null || board == null) {
+        throw ArgumentError(
+          'POWER selection references a missing P11 circuit or board.',
+        );
+      }
+      if (circuit.systemClass != EngineeringSystemClass.powerAc ||
+          board.discipline != EngineeringDiscipline.power ||
+          board.systemClass != EngineeringSystemClass.powerAc ||
+          board.componentTypeId != selection.boardCatalogTypeId) {
+        throw ArgumentError(
+          'POWER selection contradicts its P11 circuit or board classification.',
+        );
+      }
+      final boardFingerprint = semanticSha256Hex(jsonEncode([
+        selection.boardCatalogTypeId,
+        selection.catalogSnapshotId,
+        selection.boardRatings.toCanonicalJson(),
+      ]));
+      final previous = boardSemantics[selection.boardComponentId];
+      if (previous != null && previous != boardFingerprint) {
+        throw ArgumentError(
+          'One P11 board cannot have conflicting catalog/rating snapshots.',
+        );
+      }
+      boardSemantics[selection.boardComponentId] = boardFingerprint;
+    }
+  }
 
   bool get isEmpty => byCircuit.isEmpty;
   String get fingerprint => semanticSha256Hex(jsonEncode(toCanonicalJson()));
