@@ -41,3 +41,11 @@ P12A.8 does not introduce a second `ProjectRepository`, `ProjectMutationSession`
 5. Technical approval and independently authenticated normative records are still missing; `readyToApply` remains false. `commitPreview()` wiring, single atomic transaction, Undo/Redo and Save/Reopen acceptance are not authorized by this mapping slice.
 
 **Verdict:** type/codec implementation is a candidate for CI qualification, not accepted for production Apply.
+
+## P12A.8 reserved preview-only command (qualification pending)
+
+`EngineeringReservedProjectCommand` composes existing canonical `ReservedProjectMutationCoordinator.preview()` with a frozen, typed `CanonicalPowerSelectionRegistry`. It requires that all P12A.7 proposal entries are selected, the catalog revision and selected cable/protection IDs match, and the observed P11 engineering-state and existing selection registry fingerprints are unchanged. It **does not create fake canonical IDs** for selected existing circuits and may not silently remove previously committed selections. Its project candidate is built via the existing `ProjectMutableState` and checked by `CandidateGraphValidator` and `ProjectAggregateRoot`.
+
+The canonical `ProjectSemanticChangeSet` records `UpdateEntityOperation(CircuitId)` for each circuit selection change. The separate `CanonicalPowerSelectionDiff` retains before/after equipment and source details. The command implements `PreviewOnlyReservedProjectCommand`, and `commitPreview()` explicitly rejects it **before** the frozen commit is attempted. This restriction is independent of DTO/preview flags and remains in place until externally approved evidence, transaction-bound revalidation and electrical safety coordination are accepted.
+
+CI qualification and production normative validation are outstanding. This is a read-only integration milestone, not authorization for electrical installation design or Apply.
