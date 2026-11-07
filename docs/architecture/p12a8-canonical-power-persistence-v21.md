@@ -83,3 +83,10 @@ Missing measurements, stale snapshots, unknown circuits, duplicate circuit evide
 6. Qualify negative/fault-injection, stale/revoke-after-preview, Undo/Redo, Save/Reopen and cross-platform exact-SHA scenarios before replacing the preview-only guard.
 
 The gate does not infer installation conditions, country-specific tables or a default conventional trip/clearing-time limit. Those values are provided only by a reviewed normative profile.
+
+
+### Safety evidence purpose and subject hardening
+
+The trusted `EngineeringEvidenceReviewRecord` now optionally carries `evidencePurpose` and `subjectCircuitId`. The provisional RCD claim requires purpose `rcd-protection`, and the selectivity claim requires `selectivity-coordination`; both must explicitly refer to the selected P11 `CircuitId`. An unrelated but generally approved manufacturer document or route survey must not satisfy either proof. Each proof is also bound to a source ID pinned in the v21 selection and checked for approval, revision, digest and jurisdiction.
+
+These metadata checks **do not** independently validate proof contents, RCD trip curves or manufacturer selectivity tables. Those capabilities are still required for production certification and Apply. The target project jurisdiction/application scope is a separate required input and must match the chosen rule profile; a self-declared profile jurisdiction cannot authorize itself.
