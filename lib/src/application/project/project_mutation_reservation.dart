@@ -223,6 +223,12 @@ EntityId _allocateEntityId(
 
 /// C5 commands are pure planners over current canonical state plus one immutable
 /// reservation. They do not allocate identities from buildCandidate.
+/// Explicitly prevents incomplete engineering reviews from entering the
+/// production mutation lifecycle. A preview is allowed for inspection.
+abstract interface class PreviewOnlyReservedProjectCommand {
+  String get commitBlockReason;
+}
+
 abstract interface class ReservedProjectCommand {
   String get commandType;
 
@@ -580,6 +586,11 @@ final class ReservedProjectMutationCoordinator {
         expectedVersion: planned.observedVersion,
         currentVersion: session.current.version,
       );
+    }
+
+    if (planned._command is PreviewOnlyReservedProjectCommand) {
+      final blocked = planned._command as PreviewOnlyReservedProjectCommand;
+      throw StateError(blocked.commitBlockReason);
     }
 
     planned._command.validateReservation(
