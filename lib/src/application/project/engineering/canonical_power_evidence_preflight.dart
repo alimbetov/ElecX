@@ -47,8 +47,7 @@ final class CanonicalPowerEvidencePreflight {
       registryRevision: reviewed.registryRevision,
       issues: [
         for (final issue in EngineeringEvidenceReviewIssue.values)
-          if (issue ==
-                  EngineeringEvidenceReviewIssue.mismatchedIdentity ||
+          if (issue == EngineeringEvidenceReviewIssue.mismatchedIdentity ||
               reviewed.issues.contains(issue))
             issue,
       ],
