@@ -27,6 +27,7 @@ CanonicalPowerCircuitSelection selection(String id) =>
       generationKey: 'generation-$id',
       boardComponentId: ComponentId('board-1'),
       boardCatalogTypeId: 'board-type-v2',
+      catalogSnapshotId: 'catalog-snapshot-v2',
       boardRatings: CanonicalBoardElectricalRatings(
         ratedBusbarCurrentA: 63,
         shortCircuitWithstandKa: 6,
@@ -35,8 +36,22 @@ CanonicalPowerCircuitSelection selection(String id) =>
         manufacturerSourceId: 'board-doc',
       ),
       cableCatalogId: 'cable-3x2.5',
+      cableRatings: CanonicalCableElectricalRatings(
+        conductorCrossSectionMm2: 2.5,
+        conductorCount: 3,
+        ratedVoltageV: 450,
+        governingAmpacityA: 25,
+        calculatedVoltageDropRatio: 0.012,
+      ),
       cableSourceId: 'cable-doc',
       protectionCatalogId: 'mcb-b16',
+      protectionRatings: CanonicalProtectionElectricalRatings(
+        ratedCurrentA: 16,
+        breakingCapacityKa: 6,
+        poleCount: 1,
+        deviceKind: 'mcb',
+        tripCharacteristic: 'B',
+      ),
       protectionSourceId: 'breaker-doc',
       routeLengthMm: 12000,
       evidenceFingerprint: digest,
@@ -66,6 +81,8 @@ void main() {
         63,
       );
       expect(decoded.byCircuit[CircuitId('c1')]!.sources, hasLength(3));
+      expect(decoded.byCircuit[CircuitId('c1')]!.cableRatings.conductorCount, 3);
+      expect(decoded.byCircuit[CircuitId('c1')]!.protectionRatings.ratedCurrentA, 16);
       expect(() => decoded.byCircuit.clear(), throwsUnsupportedError);
     });
 
