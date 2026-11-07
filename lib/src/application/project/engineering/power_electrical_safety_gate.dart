@@ -211,7 +211,6 @@ abstract final class PowerElectricalSafetyGate {
           pins.contains(input.calculationSourceId) &&
           reviewed.isQualified;
       final sourceValid = matchedSelection &&
-          input != null &&
           _reviewedSource(input.calculationSourceId, registry, profile);
       final checks = <PowerSafetyCheck, PowerSafetyVerdict>{
         PowerSafetyCheck.normativeApplicability: profileMatches
