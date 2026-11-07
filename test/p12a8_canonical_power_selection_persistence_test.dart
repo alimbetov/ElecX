@@ -362,8 +362,8 @@ void main() {
         ),
       );
       expect(
-        selectivity.circuits[CircuitId('c1')]!
-            .checks[PowerSafetyCheck.selectivity],
+        selectivity
+            .circuits[CircuitId('c1')]!.checks[PowerSafetyCheck.selectivity],
         PowerSafetyVerdict.indeterminate,
       );
       expect(selectivity.readyToApply, isFalse);
