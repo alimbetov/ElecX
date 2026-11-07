@@ -22,7 +22,8 @@ final class PowerEvidenceSourcePin {
         approvalId.trim().isEmpty ||
         !RegExp(r'^[0-9a-f]{64}$').hasMatch(contentSha256)) {
       throw ArgumentError(
-          'Reviewed evidence requires source, revision, SHA-256 and approval.');
+        'Reviewed evidence requires source, revision, SHA-256 and approval.',
+      );
     }
   }
 
@@ -56,7 +57,8 @@ final class PowerCircuitEvidenceBinding {
         normativeMaxVoltageDropRatio <= 0 ||
         normativeMaxVoltageDropRatio >= 1) {
       throw ArgumentError(
-          'Exact circuit route/fault/voltage-drop evidence is required.');
+        'Exact circuit route/fault/voltage-drop evidence is required.',
+      );
     }
   }
 
@@ -181,8 +183,7 @@ abstract final class PowerEvidenceSelectionEngine {
         if (pin == null) {
           issues.add(PowerEvidenceSelectionIssue.evidenceSourceUnapproved);
         } else if (revision != null && pin.revision != revision) {
-          issues
-              .add(PowerEvidenceSelectionIssue.evidenceSourceRevisionMismatch);
+          issues.add(PowerEvidenceSelectionIssue.evidenceSourceRevisionMismatch);
         }
       }
 
@@ -204,8 +205,7 @@ abstract final class PowerEvidenceSelectionEngine {
           if (section.sourceKey != null) requireSource(section.sourceKey!);
           for (final factor in section.factors) {
             if (!binding.approvedCorrectionFactorIds.contains(factor.id)) {
-              issues
-                  .add(PowerEvidenceSelectionIssue.correctionFactorNotApproved);
+              issues.add(PowerEvidenceSelectionIssue.correctionFactorNotApproved);
             }
           }
         }
