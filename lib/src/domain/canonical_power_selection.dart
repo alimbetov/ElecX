@@ -90,6 +90,112 @@ final class CanonicalBoardElectricalRatings {
   }
 }
 
+final class CanonicalCableElectricalRatings {
+  CanonicalCableElectricalRatings({
+    required this.conductorCrossSectionMm2,
+    required this.conductorCount,
+    required this.ratedVoltageV,
+    required this.governingAmpacityA,
+    required this.calculatedVoltageDropRatio,
+  }) {
+    _positive(conductorCrossSectionMm2, 'conductorCrossSectionMm2');
+    if (conductorCount <= 0) {
+      throw ArgumentError.value(conductorCount, 'conductorCount');
+    }
+    _positive(ratedVoltageV, 'ratedVoltageV');
+    _positive(governingAmpacityA, 'governingAmpacityA');
+    if (!calculatedVoltageDropRatio.isFinite ||
+        calculatedVoltageDropRatio < 0 ||
+        calculatedVoltageDropRatio >= 1) {
+      throw ArgumentError.value(
+          calculatedVoltageDropRatio, 'calculatedVoltageDropRatio');
+    }
+  }
+
+  final double conductorCrossSectionMm2;
+  final int conductorCount;
+  final double ratedVoltageV;
+  final double governingAmpacityA;
+  final double calculatedVoltageDropRatio;
+
+  Map<String, Object?> toCanonicalJson() => {
+        'conductorCrossSectionMm2': conductorCrossSectionMm2,
+        'conductorCount': conductorCount,
+        'ratedVoltageV': ratedVoltageV,
+        'governingAmpacityA': governingAmpacityA,
+        'calculatedVoltageDropRatio': calculatedVoltageDropRatio,
+      };
+
+  factory CanonicalCableElectricalRatings.fromCanonicalJson(Object? raw) {
+    final json = _map(raw, const {
+      'conductorCrossSectionMm2', 'conductorCount', 'ratedVoltageV',
+      'governingAmpacityA', 'calculatedVoltageDropRatio',
+    });
+    final count = json['conductorCount'];
+    if (count is! int) {
+      throw const FormatException('Invalid cable conductor count.');
+    }
+    return CanonicalCableElectricalRatings(
+      conductorCrossSectionMm2: _number(json['conductorCrossSectionMm2']),
+      conductorCount: count,
+      ratedVoltageV: _number(json['ratedVoltageV']),
+      governingAmpacityA: _number(json['governingAmpacityA']),
+      calculatedVoltageDropRatio:
+          _number(json['calculatedVoltageDropRatio']),
+    );
+  }
+}
+
+final class CanonicalProtectionElectricalRatings {
+  CanonicalProtectionElectricalRatings({
+    required this.ratedCurrentA,
+    required this.breakingCapacityKa,
+    required this.poleCount,
+    required this.deviceKind,
+    required this.tripCharacteristic,
+  }) {
+    _positive(ratedCurrentA, 'ratedCurrentA');
+    _positive(breakingCapacityKa, 'breakingCapacityKa');
+    if (poleCount <= 0) {
+      throw ArgumentError.value(poleCount, 'poleCount');
+    }
+    _required(deviceKind, 'deviceKind');
+    _required(tripCharacteristic, 'tripCharacteristic');
+  }
+
+  final double ratedCurrentA;
+  final double breakingCapacityKa;
+  final int poleCount;
+  final String deviceKind;
+  final String tripCharacteristic;
+
+  Map<String, Object?> toCanonicalJson() => {
+        'ratedCurrentA': ratedCurrentA,
+        'breakingCapacityKa': breakingCapacityKa,
+        'poleCount': poleCount,
+        'deviceKind': deviceKind,
+        'tripCharacteristic': tripCharacteristic,
+      };
+
+  factory CanonicalProtectionElectricalRatings.fromCanonicalJson(Object? raw) {
+    final json = _map(raw, const {
+      'ratedCurrentA', 'breakingCapacityKa', 'poleCount',
+      'deviceKind', 'tripCharacteristic',
+    });
+    final poles = json['poleCount'];
+    if (poles is! int) {
+      throw const FormatException('Invalid protection pole count.');
+    }
+    return CanonicalProtectionElectricalRatings(
+      ratedCurrentA: _number(json['ratedCurrentA']),
+      breakingCapacityKa: _number(json['breakingCapacityKa']),
+      poleCount: poles,
+      deviceKind: _string(json['deviceKind']),
+      tripCharacteristic: _string(json['tripCharacteristic']),
+    );
+  }
+}
+
 /// One complete, losslessly persisted POWER circuit selection, keyed by the
 /// existing authoritative P11 CircuitId. Catalog keys do not replace IDs.
 final class CanonicalPowerCircuitSelection {
@@ -98,10 +204,13 @@ final class CanonicalPowerCircuitSelection {
     required this.generationKey,
     required this.boardComponentId,
     required this.boardCatalogTypeId,
+    required this.catalogSnapshotId,
     required this.boardRatings,
     required this.cableCatalogId,
+    required this.cableRatings,
     required this.cableSourceId,
     required this.protectionCatalogId,
+    required this.protectionRatings,
     required this.protectionSourceId,
     required this.routeLengthMm,
     required this.evidenceFingerprint,
@@ -110,7 +219,8 @@ final class CanonicalPowerCircuitSelection {
           sources.toList()..sort((a, b) => a.sourceId.compareTo(b.sourceId)),
         ) {
     for (final field in [
-      generationKey, boardCatalogTypeId, cableCatalogId, cableSourceId,
+      generationKey, boardCatalogTypeId, catalogSnapshotId,
+      cableCatalogId, cableSourceId,
       protectionCatalogId, protectionSourceId,
     ]) {
       _required(field, 'selection identity');
@@ -134,10 +244,13 @@ final class CanonicalPowerCircuitSelection {
   final String generationKey;
   final ComponentId boardComponentId;
   final String boardCatalogTypeId;
+  final String catalogSnapshotId;
   final CanonicalBoardElectricalRatings boardRatings;
   final String cableCatalogId;
+  final CanonicalCableElectricalRatings cableRatings;
   final String cableSourceId;
   final String protectionCatalogId;
+  final CanonicalProtectionElectricalRatings protectionRatings;
   final String protectionSourceId;
   final double routeLengthMm;
   final String evidenceFingerprint;
@@ -148,10 +261,13 @@ final class CanonicalPowerCircuitSelection {
         'generationKey': generationKey,
         'boardComponentId': boardComponentId.value,
         'boardCatalogTypeId': boardCatalogTypeId,
+        'catalogSnapshotId': catalogSnapshotId,
         'boardRatings': boardRatings.toCanonicalJson(),
         'cableCatalogId': cableCatalogId,
+        'cableRatings': cableRatings.toCanonicalJson(),
         'cableSourceId': cableSourceId,
         'protectionCatalogId': protectionCatalogId,
+        'protectionRatings': protectionRatings.toCanonicalJson(),
         'protectionSourceId': protectionSourceId,
         'routeLengthMm': routeLengthMm,
         'evidenceFingerprint': evidenceFingerprint,
@@ -161,8 +277,9 @@ final class CanonicalPowerCircuitSelection {
   factory CanonicalPowerCircuitSelection.fromCanonicalJson(Object? raw) {
     final json = _map(raw, const {
       'circuitId', 'generationKey', 'boardComponentId', 'boardCatalogTypeId',
-      'boardRatings', 'cableCatalogId', 'cableSourceId',
-      'protectionCatalogId', 'protectionSourceId', 'routeLengthMm',
+      'catalogSnapshotId', 'boardRatings', 'cableCatalogId',
+      'cableRatings', 'cableSourceId',
+      'protectionCatalogId', 'protectionRatings', 'protectionSourceId', 'routeLengthMm',
       'evidenceFingerprint', 'sources',
     });
     return CanonicalPowerCircuitSelection(
@@ -170,11 +287,16 @@ final class CanonicalPowerCircuitSelection {
       generationKey: _string(json['generationKey']),
       boardComponentId: ComponentId(_string(json['boardComponentId'])),
       boardCatalogTypeId: _string(json['boardCatalogTypeId']),
+      catalogSnapshotId: _string(json['catalogSnapshotId']),
       boardRatings:
           CanonicalBoardElectricalRatings.fromCanonicalJson(json['boardRatings']),
       cableCatalogId: _string(json['cableCatalogId']),
+      cableRatings:
+          CanonicalCableElectricalRatings.fromCanonicalJson(json['cableRatings']),
       cableSourceId: _string(json['cableSourceId']),
       protectionCatalogId: _string(json['protectionCatalogId']),
+      protectionRatings: CanonicalProtectionElectricalRatings.fromCanonicalJson(
+          json['protectionRatings']),
       protectionSourceId: _string(json['protectionSourceId']),
       routeLengthMm: _number(json['routeLengthMm']),
       evidenceFingerprint: _string(json['evidenceFingerprint']),
