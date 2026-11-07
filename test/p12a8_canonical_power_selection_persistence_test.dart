@@ -277,7 +277,8 @@ void main() {
           jsonEncode(document.payload));
     });
 
-    test('aggregate rejects orphan selections before persistence or commit', () {
+    test('aggregate rejects orphan selections before persistence or commit',
+        () {
       final project = P1010ServiceAnchorFixture().project;
       expect(
         () => ProjectAggregateRoot(
@@ -301,8 +302,8 @@ void main() {
         siteId: base.siteId,
         version: base.version,
         stores: base.stores,
-        engineeringMetadata:
-            base.engineeringMetadata.withEngineeringState(validEngineeringState()),
+        engineeringMetadata: base.engineeringMetadata
+            .withEngineeringState(validEngineeringState()),
       );
       final session = ProjectMutationSession(project);
       final preview = session.preview(ProjectMutationRequest(
@@ -315,7 +316,8 @@ void main() {
           isFalse);
     });
 
-    test('P11 engineering-only commit advances version and Undo/Redo restores it',
+    test(
+        'P11 engineering-only commit advances version and Undo/Redo restores it',
         () {
       final base = P1010ServiceAnchorFixture().project;
       final original = ProjectAggregateRoot(
@@ -323,18 +325,19 @@ void main() {
         siteId: base.siteId,
         version: base.version,
         stores: base.stores,
-        engineeringMetadata:
-            base.engineeringMetadata.withEngineeringState(validEngineeringState()),
+        engineeringMetadata: base.engineeringMetadata
+            .withEngineeringState(validEngineeringState()),
       );
       final session = ProjectMutationSession(original);
       final committed = session.commit(ProjectMutationRequest(
         expectedVersion: original.version,
         command: _DropEngineeringStateCommand(),
       ))!;
-      expect(committed.changeSet.engineeringMetadataDiff.engineeringStateChanged,
+      expect(
+          committed.changeSet.engineeringMetadataDiff.engineeringStateChanged,
           isTrue);
-      expect(session.current.engineeringMetadata.engineeringState.isEmpty,
-          isTrue);
+      expect(
+          session.current.engineeringMetadata.engineeringState.isEmpty, isTrue);
       expect(session.undoDepth, 1);
       final undo = session.undo(session.current.version)!;
       expect(undo.changeSet.engineeringMetadataDiff.engineeringStateChanged,
@@ -348,7 +351,8 @@ void main() {
           isTrue);
     });
 
-    test('mutation preview refuses to drop a selected P11 circuit and board', () {
+    test('mutation preview refuses to drop a selected P11 circuit and board',
+        () {
       final valid = projectWithPowerSelection();
       final session = ProjectMutationSession(valid);
       expect(
@@ -393,9 +397,10 @@ void main() {
 
     test('v21 decoder rejects tampered orphan selection references', () {
       final document = codec.encode(p109Snapshot(projectWithPowerSelection()));
-      final payload = jsonDecode(jsonEncode(document.payload))
-          as Map<String, dynamic>;
-      final selection = (payload['powerSelections']['selections'] as List).first;
+      final payload =
+          jsonDecode(jsonEncode(document.payload)) as Map<String, dynamic>;
+      final selection =
+          (payload['powerSelections']['selections'] as List).first;
       selection['circuitId'] = 'missing-circuit';
       expect(
         () => codec.decode(ProjectDocument(
