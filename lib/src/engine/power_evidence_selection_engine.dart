@@ -88,7 +88,8 @@ final class PowerEvidenceSelectionRequest {
     final keys = <String>{};
     for (final binding in this.bindings) {
       if (!keys.add(binding.generationKey)) {
-        throw ArgumentError('Duplicate generation binding ${binding.generationKey}');
+        throw ArgumentError(
+            'Duplicate generation binding ${binding.generationKey}');
       }
     }
   }
@@ -183,7 +184,8 @@ abstract final class PowerEvidenceSelectionEngine {
         if (pin == null) {
           issues.add(PowerEvidenceSelectionIssue.evidenceSourceUnapproved);
         } else if (revision != null && pin.revision != revision) {
-          issues.add(PowerEvidenceSelectionIssue.evidenceSourceRevisionMismatch);
+          issues
+              .add(PowerEvidenceSelectionIssue.evidenceSourceRevisionMismatch);
         }
       }
 
@@ -205,7 +207,8 @@ abstract final class PowerEvidenceSelectionEngine {
           if (section.sourceKey != null) requireSource(section.sourceKey!);
           for (final factor in section.factors) {
             if (!binding.approvedCorrectionFactorIds.contains(factor.id)) {
-              issues.add(PowerEvidenceSelectionIssue.correctionFactorNotApproved);
+              issues
+                  .add(PowerEvidenceSelectionIssue.correctionFactorNotApproved);
             }
           }
         }
