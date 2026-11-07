@@ -212,6 +212,9 @@ final class CanonicalPowerCircuitSelection {
     required this.protectionCatalogId,
     required this.protectionRatings,
     required this.protectionSourceId,
+    required this.normativeSourceId,
+    required this.routeEvidenceSourceId,
+    required this.faultCurrentEvidenceSourceId,
     required this.routeLengthMm,
     required this.evidenceFingerprint,
     required Iterable<CanonicalEngineeringSourceReference> sources,
@@ -221,7 +224,8 @@ final class CanonicalPowerCircuitSelection {
     for (final field in [
       generationKey, boardCatalogTypeId, catalogSnapshotId,
       cableCatalogId, cableSourceId,
-      protectionCatalogId, protectionSourceId,
+      protectionCatalogId, protectionSourceId, normativeSourceId,
+      routeEvidenceSourceId, faultCurrentEvidenceSourceId,
     ]) {
       _required(field, 'selection identity');
     }
@@ -235,7 +239,10 @@ final class CanonicalPowerCircuitSelection {
     final sourceIds = this.sources.map((s) => s.sourceId).toSet();
     if (!sourceIds.contains(cableSourceId) ||
         !sourceIds.contains(protectionSourceId) ||
-        !sourceIds.contains(boardRatings.manufacturerSourceId)) {
+        !sourceIds.contains(boardRatings.manufacturerSourceId) ||
+        !sourceIds.contains(normativeSourceId) ||
+        !sourceIds.contains(routeEvidenceSourceId) ||
+        !sourceIds.contains(faultCurrentEvidenceSourceId)) {
       throw ArgumentError('Selected catalog records must have pinned sources.');
     }
   }
@@ -252,6 +259,9 @@ final class CanonicalPowerCircuitSelection {
   final String protectionCatalogId;
   final CanonicalProtectionElectricalRatings protectionRatings;
   final String protectionSourceId;
+  final String normativeSourceId;
+  final String routeEvidenceSourceId;
+  final String faultCurrentEvidenceSourceId;
   final double routeLengthMm;
   final String evidenceFingerprint;
   final List<CanonicalEngineeringSourceReference> sources;
@@ -269,6 +279,9 @@ final class CanonicalPowerCircuitSelection {
         'protectionCatalogId': protectionCatalogId,
         'protectionRatings': protectionRatings.toCanonicalJson(),
         'protectionSourceId': protectionSourceId,
+        'normativeSourceId': normativeSourceId,
+        'routeEvidenceSourceId': routeEvidenceSourceId,
+        'faultCurrentEvidenceSourceId': faultCurrentEvidenceSourceId,
         'routeLengthMm': routeLengthMm,
         'evidenceFingerprint': evidenceFingerprint,
         'sources': [for (final source in sources) source.toCanonicalJson()],
@@ -279,7 +292,9 @@ final class CanonicalPowerCircuitSelection {
       'circuitId', 'generationKey', 'boardComponentId', 'boardCatalogTypeId',
       'catalogSnapshotId', 'boardRatings', 'cableCatalogId',
       'cableRatings', 'cableSourceId',
-      'protectionCatalogId', 'protectionRatings', 'protectionSourceId', 'routeLengthMm',
+      'protectionCatalogId', 'protectionRatings', 'protectionSourceId',
+      'normativeSourceId', 'routeEvidenceSourceId',
+      'faultCurrentEvidenceSourceId', 'routeLengthMm',
       'evidenceFingerprint', 'sources',
     });
     return CanonicalPowerCircuitSelection(
@@ -298,6 +313,10 @@ final class CanonicalPowerCircuitSelection {
       protectionRatings: CanonicalProtectionElectricalRatings.fromCanonicalJson(
           json['protectionRatings']),
       protectionSourceId: _string(json['protectionSourceId']),
+      normativeSourceId: _string(json['normativeSourceId']),
+      routeEvidenceSourceId: _string(json['routeEvidenceSourceId']),
+      faultCurrentEvidenceSourceId:
+          _string(json['faultCurrentEvidenceSourceId']),
       routeLengthMm: _number(json['routeLengthMm']),
       evidenceFingerprint: _string(json['evidenceFingerprint']),
       sources: _list(json['sources'])
