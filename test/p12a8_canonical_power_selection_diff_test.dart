@@ -3,7 +3,8 @@ import 'package:elecx/src/domain/canonical_power_selection.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const digest = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+const digest =
+    'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const changedDigest =
     'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 
@@ -49,7 +50,14 @@ CanonicalPowerCircuitSelection selection(
       routeLengthMm: 12000,
       evidenceFingerprint: fingerprint,
       sources: [
-        for (final id in ['board', 'cable', 'breaker', 'norm', 'route', 'fault'])
+        for (final id in [
+          'board',
+          'cable',
+          'breaker',
+          'norm',
+          'route',
+          'fault'
+        ])
           CanonicalEngineeringSourceReference(
             sourceId: id,
             revision: 'v1',
