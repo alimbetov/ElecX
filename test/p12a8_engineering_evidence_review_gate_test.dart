@@ -95,7 +95,7 @@ void main() {
         contains(EngineeringEvidenceReviewIssue.mismatchedIdentity),
       );
       expect(
-        _evaluate(record: _record(digest: 'b' * 64)).issues,
+        _evaluate(record: _record(digest: List.filled(64, 'b').join())).issues,
         contains(EngineeringEvidenceReviewIssue.mismatchedIdentity),
       );
     });
