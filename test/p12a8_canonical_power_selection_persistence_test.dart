@@ -595,7 +595,8 @@ void main() {
         throwsArgumentError,
       );
       final encoded = selection('c1').toCanonicalJson();
-      (encoded['sources'] as List).removeLast();
+      (encoded['sources'] as List)
+          .removeWhere((value) => value['sourceId'] == 'route-survey');
       expect(
         () => CanonicalPowerCircuitSelection.fromCanonicalJson(encoded),
         throwsArgumentError,
