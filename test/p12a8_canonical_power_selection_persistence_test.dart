@@ -252,13 +252,13 @@ PowerCircuitSafetyEvidence testPowerSafetyEvidence({
     cableShortCircuitWithstandA2s: complete ? cableWithstandEnergy : null,
     faultDisconnectionTimeMs: complete ? disconnectionTimeMs : null,
     residualCurrentProof: complete
-        ? const PowerSafetyClaim(
+        ? PowerSafetyClaim(
             sourceId: 'route-survey',
             status: rcdStatus,
           )
         : null,
     selectivityProof: complete
-        ? const PowerSafetyClaim(
+        ? PowerSafetyClaim(
             sourceId: 'board-doc',
             status: selectivityStatus,
           )
