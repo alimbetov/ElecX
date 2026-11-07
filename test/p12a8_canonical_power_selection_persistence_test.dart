@@ -7,6 +7,7 @@ import 'package:elecx/src/application/project/engineering/canonical_power_eviden
 import 'package:elecx/src/application/project/engineering/engineering_evidence_review_gate.dart';
 import 'package:elecx/src/application/project/engineering/engineering_proposal_diff.dart';
 import 'package:elecx/src/application/project/engineering/engineering_reserved_project_command.dart';
+import 'package:elecx/src/application/project/engineering/power_electrical_safety_gate.dart';
 import 'package:elecx/src/domain/canonical_engineering_graph.dart';
 import 'package:elecx/src/domain/canonical_power_selection.dart';
 import 'package:elecx/src/domain/engineering_circuit_topology.dart';
@@ -16,6 +17,7 @@ import 'package:elecx/src/domain/engineering_supply_topology.dart';
 import 'package:elecx/src/infrastructure/project/json_project_repository.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
+import 'package:elecx/src/domain/semantic_sha256.dart';
 import 'package:elecx/src/serialization/project/engineering_state_aware_canonical_project_document_codec.dart';
 import 'package:elecx/src/serialization/project/power_selection_aware_canonical_project_document_codec.dart';
 import 'package:elecx/src/serialization/project/project_document_codec.dart';
@@ -213,7 +215,159 @@ final class _PowerEvidenceRegistry
   }
 }
 
+PowerSafetyRuleProfile testPowerSafetyProfile({
+  String sourceId = 'normative-doc',
+}) =>
+    PowerSafetyRuleProfile(
+      normativeSourceId: sourceId,
+      jurisdiction: 'KZ',
+      applicationScope: 'POWER-AC',
+      maxConventionalTripToAmpacityRatio: 1.45,
+      maxFaultDisconnectionTimeMs: 300,
+    );
+
+PowerCircuitSafetyEvidence testPowerSafetyEvidence({
+  String id = 'c1',
+  bool complete = true,
+  double designCurrent = 12,
+  double faultCurrent = 3,
+  String? overrideFingerprint,
+}) {
+  final reference = selection(id);
+  return PowerCircuitSafetyEvidence(
+    circuitId: reference.circuitId,
+    selectionFingerprint: overrideFingerprint ??
+        semanticSha256Hex(jsonEncode(reference.toCanonicalJson())),
+    calculationSourceId: 'fault-study',
+    designCurrentA: complete ? designCurrent : null,
+    prospectiveFaultCurrentKa: complete ? faultCurrent : null,
+    conventionalTripCurrentA: complete ? 24 : null,
+    protectiveDeviceLetThroughA2s: complete ? 400 : null,
+    cableShortCircuitWithstandA2s: complete ? 800 : null,
+    faultDisconnectionTimeMs: complete ? 120 : null,
+    residualCurrentProof: complete
+        ? const PowerSafetyClaim(
+            sourceId: 'route-survey',
+            status: PowerSafetyClaimStatus.supported,
+          )
+        : null,
+    selectivityProof: complete
+        ? const PowerSafetyClaim(
+            sourceId: 'board-doc',
+            status: PowerSafetyClaimStatus.supported,
+          )
+        : null,
+  );
+}
+
 void main() {
+  group('P12A.8 provisional electrical safety gate', () {
+    PowerElectricalSafetyReport evaluate({
+      PowerCircuitSafetyEvidence? evidence,
+      PowerSafetyRuleProfile? profile,
+      _PowerEvidenceRegistry? registry,
+    }) =>
+        PowerElectricalSafetyGate.evaluate(
+          selections: CanonicalPowerSelectionRegistry(
+            selections: [selection('c1')],
+          ),
+          evidence: [evidence ?? testPowerSafetyEvidence()],
+          profile: profile ?? testPowerSafetyProfile(),
+          registry: registry ?? _PowerEvidenceRegistry(),
+        );
+
+    test('complete provisional measurements can pass, but never grant Apply',
+        () {
+      final report = evaluate();
+      expect(report.verdict, PowerSafetyVerdict.pass);
+      expect(report.circuits[CircuitId('c1')]!.checks.length,
+          PowerSafetyCheck.values.length);
+      expect(report.readyToApply, isFalse);
+    });
+
+    test('overload and breaking-capacity failures cannot be bypassed', () {
+      final overloaded = evaluate(
+        evidence: testPowerSafetyEvidence(designCurrent: 30),
+      );
+      expect(
+        overloaded.circuits[CircuitId('c1')]!
+            .checks[PowerSafetyCheck.overloadRating],
+        PowerSafetyVerdict.fail,
+      );
+      final insufficientBreaker = evaluate(
+        evidence: testPowerSafetyEvidence(faultCurrent: 10),
+      );
+      expect(
+        insufficientBreaker.circuits[CircuitId('c1')]!
+            .checks[PowerSafetyCheck.breakingCapacity],
+        PowerSafetyVerdict.fail,
+      );
+      expect(insufficientBreaker.verdict, PowerSafetyVerdict.fail);
+      expect(insufficientBreaker.readyToApply, isFalse);
+    });
+
+    test('missing evidence, stale snapshot and wrong profile are indeterminate',
+        () {
+      expect(
+        evaluate(evidence: testPowerSafetyEvidence(complete: false)).verdict,
+        PowerSafetyVerdict.indeterminate,
+      );
+      expect(
+        evaluate(
+          evidence: testPowerSafetyEvidence(overrideFingerprint: 'stale'),
+        ).verdict,
+        PowerSafetyVerdict.indeterminate,
+      );
+      final wrongProfile = evaluate(
+        profile: testPowerSafetyProfile(sourceId: 'another-standard'),
+      );
+      expect(
+        wrongProfile.circuits[CircuitId('c1')]!
+            .checks[PowerSafetyCheck.normativeApplicability],
+        PowerSafetyVerdict.indeterminate,
+      );
+      expect(wrongProfile.readyToApply, isFalse);
+    });
+
+    test('revocation of normative source is not a compliance PASS', () {
+      final result = evaluate(
+        registry: _PowerEvidenceRegistry(revokedId: 'normative-doc'),
+      );
+      expect(
+        result.sourceIssues,
+        contains(EngineeringEvidenceReviewIssue.revokedSource),
+      );
+      expect(result.verdict, PowerSafetyVerdict.indeterminate);
+    });
+
+    test('unknown and duplicate circuit measurements are rejected', () {
+      final registry = CanonicalPowerSelectionRegistry(
+        selections: [selection('c1')],
+      );
+      void run(List<PowerCircuitSafetyEvidence> evidence) {
+        PowerElectricalSafetyGate.evaluate(
+          selections: registry,
+          evidence: evidence,
+          profile: testPowerSafetyProfile(),
+          registry: _PowerEvidenceRegistry(),
+        );
+      }
+
+      expect(
+        () => run([testPowerSafetyEvidence(id: 'unknown')]),
+        throwsArgumentError,
+      );
+      expect(
+        () => run([
+          testPowerSafetyEvidence(),
+          testPowerSafetyEvidence(),
+        ]),
+        throwsArgumentError,
+      );
+    });
+  });
+
+
   group('P12A.8 trusted v21 evidence preflight', () {
     test('reviews every durable source without authorizing Apply', () {
       final selections =
