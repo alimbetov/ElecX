@@ -19,7 +19,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'support/p1010_service_anchor_fixture.dart';
 import 'support/p109_site_fixture.dart';
 
-const digest = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+const digest =
+    'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
 CanonicalEngineeringSourceReference source(String id) =>
     CanonicalEngineeringSourceReference(
@@ -200,8 +201,11 @@ void main() {
         63,
       );
       expect(decoded.byCircuit[CircuitId('c1')]!.sources, hasLength(6));
-      expect(decoded.byCircuit[CircuitId('c1')]!.cableRatings.conductorCount, 3);
-      expect(decoded.byCircuit[CircuitId('c1')]!.protectionRatings.ratedCurrentA, 16);
+      expect(
+          decoded.byCircuit[CircuitId('c1')]!.cableRatings.conductorCount, 3);
+      expect(
+          decoded.byCircuit[CircuitId('c1')]!.protectionRatings.ratedCurrentA,
+          16);
       expect(() => decoded.byCircuit.clear(), throwsUnsupportedError);
     });
 
@@ -220,7 +224,8 @@ void main() {
       ).toCanonicalJson();
       expect(
         () => CanonicalPowerSelectionRegistry.fromCanonicalJson({
-          ...original, 'schemaVersion': 999,
+          ...original,
+          'schemaVersion': 999,
         }),
         throwsFormatException,
       );
