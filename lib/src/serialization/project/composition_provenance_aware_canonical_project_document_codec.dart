@@ -17,6 +17,10 @@ final class CompositionProvenanceAwareCanonicalProjectDocumentCodec
   int get currentSchemaVersion => schemaVersion;
   @override
   ProjectDocument encode(ProjectSnapshot snapshot) {
+    if (!snapshot.aggregate.engineeringMetadata.powerSelections.isEmpty) {
+      throw const FormatException(
+          'Canonical POWER selections require project schema v21.');
+    }
     CompositionProvenanceIntegrity.validate(snapshot.aggregate);
     final registry =
         snapshot.aggregate.engineeringMetadata.generationProvenanceRegistry;
