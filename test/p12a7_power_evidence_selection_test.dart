@@ -1,3 +1,4 @@
+import 'package:elecx/src/application/project/engineering/engineering_proposal_diff.dart';
 import 'package:elecx/src/domain/cable_spec.dart';
 import 'package:elecx/src/domain/component_catalog_engineering_metadata.dart';
 import 'package:elecx/src/domain/component_catalog_v2.dart';
@@ -29,6 +30,14 @@ void main() {
       expect(selected.selectedCableSizing!.governingAmpacityA, 25);
       expect(preview.readyForEngineeringReview, isTrue);
       expect(preview.readyToApply, isFalse);
+      final engineeringDiff = EngineeringProposalDiffProjector.project(preview);
+      expect(engineeringDiff.entries, hasLength(1));
+      expect(engineeringDiff.entries.single.status,
+          EngineeringProposalStatus.selected);
+      expect(engineeringDiff.entries.single.cableCatalogId, 'large');
+      expect(engineeringDiff.entries.single.protectionCatalogId, 'mcb-16');
+      expect(engineeringDiff.sourceFingerprint, preview.fingerprint);
+      expect(engineeringDiff.readyToApply, isFalse);
       expect(preview.issues, [
         PowerEvidenceSelectionIssue.boardElectricalRatingsUnverified,
       ]);
