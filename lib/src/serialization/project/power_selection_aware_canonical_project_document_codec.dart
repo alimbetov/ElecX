@@ -21,7 +21,20 @@ final class PowerSelectionAwareCanonicalProjectDocumentCodec
   ProjectDocument encode(ProjectSnapshot snapshot) {
     final metadata = snapshot.aggregate.engineeringMetadata;
     _validateReferences(snapshot.aggregate);
-    final base = _base.encode(snapshot);
+    // The v20 codec rejects writes that would discard v21-only data. Build an
+    // ephemeral projection for its older envelope; the original snapshot and
+    // canonical selection registry remain untouched.
+    final original = snapshot.aggregate;
+    final legacyAggregate = ProjectAggregateRoot(
+      id: original.id,
+      siteId: original.siteId,
+      version: original.version,
+      stores: original.stores,
+      engineeringMetadata: metadata.withPowerSelections(
+        const CanonicalPowerSelectionRegistry.empty(),
+      ),
+    );
+    final base = _base.encode(snapshot.copyWith(aggregate: legacyAggregate));
     return ProjectDocument(
       schemaVersion: schemaVersion,
       payload: <String, Object?>{
