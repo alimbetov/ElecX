@@ -12,6 +12,8 @@ final class EngineeringEvidenceReviewRecord {
     required this.applicationScope,
     required this.isApproved,
     required this.isRevoked,
+    this.evidencePurpose,
+    this.subjectCircuitId,
   });
 
   final String sourceId;
@@ -22,6 +24,11 @@ final class EngineeringEvidenceReviewRecord {
   final String applicationScope;
   final bool isApproved;
   final bool isRevoked;
+
+  /// Optional verified metadata from authenticated evidence ingestion.
+  /// Safety proof consumers must reject an absent or wrong purpose/subject.
+  final String? evidencePurpose;
+  final String? subjectCircuitId;
 }
 
 /// The production implementation must be backed by a versioned, authenticated
