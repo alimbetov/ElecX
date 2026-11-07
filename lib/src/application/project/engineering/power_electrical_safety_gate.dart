@@ -274,10 +274,22 @@ abstract final class PowerElectricalSafetyGate {
                   ? PowerSafetyVerdict.pass
                   : PowerSafetyVerdict.fail;
         }
-        checks[PowerSafetyCheck.residualCurrentProtection] =
-            _claim(input.residualCurrentProof, pins, registry, profile);
-        checks[PowerSafetyCheck.selectivity] =
-            _claim(input.selectivityProof, pins, registry, profile);
+        checks[PowerSafetyCheck.residualCurrentProtection] = _claim(
+          input.residualCurrentProof,
+          pins,
+          registry,
+          profile,
+          id,
+          'rcd-protection',
+        );
+        checks[PowerSafetyCheck.selectivity] = _claim(
+          input.selectivityProof,
+          pins,
+          registry,
+          profile,
+          id,
+          'selectivity-coordination',
+        );
       }
       result[id] = PowerCircuitSafetyAssessment(
         circuitId: id,
@@ -296,10 +308,18 @@ abstract final class PowerElectricalSafetyGate {
     Set<String> pinnedSources,
     TrustedEngineeringEvidenceRegistry registry,
     PowerSafetyRuleProfile profile,
+    CircuitId circuitId,
+    String requiredPurpose,
   ) {
     if (claim == null ||
         !pinnedSources.contains(claim.sourceId) ||
         !_reviewedSource(claim.sourceId, registry, profile)) {
+      return PowerSafetyVerdict.indeterminate;
+    }
+    final reviewed = registry.lookup(claim.sourceId);
+    if (reviewed == null ||
+        reviewed.evidencePurpose != requiredPurpose ||
+        reviewed.subjectCircuitId != circuitId.value) {
       return PowerSafetyVerdict.indeterminate;
     }
     return switch (claim.status) {
