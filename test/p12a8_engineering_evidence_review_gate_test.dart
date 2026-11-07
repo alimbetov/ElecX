@@ -122,6 +122,13 @@ void main() {
       );
     });
 
+    test('empty required sources never qualify', () {
+      expect(
+        _evaluate(pins: []).issues,
+        contains(EngineeringEvidenceReviewIssue.missingRequiredSources),
+      );
+    });
+
     test('review issue order is deterministic', () {
       final result = _evaluate(
         record: _record(
