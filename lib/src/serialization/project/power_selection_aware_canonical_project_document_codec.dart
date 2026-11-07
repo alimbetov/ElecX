@@ -46,9 +46,9 @@ final class PowerSelectionAwareCanonicalProjectDocumentCodec
 
   @override
   ProjectSnapshot decode(ProjectDocument document) {
-    if (document.schemaVersion < 1 ||
-        document.schemaVersion > schemaVersion) {
-      throw const FormatException('Unsupported canonical POWER document schema.');
+    if (document.schemaVersion < 1 || document.schemaVersion > schemaVersion) {
+      throw const FormatException(
+          'Unsupported canonical POWER document schema.');
     }
     if (document.schemaVersion < schemaVersion) {
       if (document.payload.containsKey('powerSelections')) {
@@ -64,8 +64,8 @@ final class PowerSelectionAwareCanonicalProjectDocumentCodec
         document.payload['powerSelections'],
       );
       final base = _base.decode(ProjectDocument(
-        schemaVersion: EngineeringStateAwareCanonicalProjectDocumentCodec
-            .schemaVersion,
+        schemaVersion:
+            EngineeringStateAwareCanonicalProjectDocumentCodec.schemaVersion,
         payload: Map<String, Object?>.of(document.payload)
           ..remove('powerSelections'),
       ));
@@ -75,8 +75,8 @@ final class PowerSelectionAwareCanonicalProjectDocumentCodec
         siteId: aggregate.siteId,
         version: aggregate.version,
         stores: aggregate.stores,
-        engineeringMetadata: aggregate.engineeringMetadata
-            .withPowerSelections(selections),
+        engineeringMetadata:
+            aggregate.engineeringMetadata.withPowerSelections(selections),
       );
       _validateReferences(rebuilt);
       return base.copyWith(aggregate: rebuilt);
@@ -85,7 +85,8 @@ final class PowerSelectionAwareCanonicalProjectDocumentCodec
     } on ArgumentError {
       throw const FormatException('Invalid canonical POWER selections.');
     } on StateError {
-      throw const FormatException('Invalid canonical POWER selection references.');
+      throw const FormatException(
+          'Invalid canonical POWER selection references.');
     } on TypeError {
       throw const FormatException('Invalid canonical POWER selection types.');
     }
