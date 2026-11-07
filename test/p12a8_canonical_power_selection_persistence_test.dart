@@ -280,6 +280,8 @@ void main() {
           evidence: [evidence ?? testPowerSafetyEvidence()],
           profile: profile ?? testPowerSafetyProfile(),
           registry: registry ?? _PowerEvidenceRegistry(),
+          targetJurisdiction: 'KZ',
+          targetApplicationScope: 'POWER-AC',
         );
 
     test('complete provisional measurements can pass, but never grant Apply',
@@ -390,6 +392,25 @@ void main() {
       expect(wrongProfile.readyToApply, isFalse);
     });
 
+    test('profile jurisdiction must match independent project target', () {
+      final report = PowerElectricalSafetyGate.evaluate(
+        selections: CanonicalPowerSelectionRegistry(
+          selections: [selection('c1')],
+        ),
+        evidence: [testPowerSafetyEvidence()],
+        profile: testPowerSafetyProfile(),
+        registry: _PowerEvidenceRegistry(),
+        targetJurisdiction: 'OTHER',
+        targetApplicationScope: 'POWER-AC',
+      );
+      expect(
+        report.circuits[CircuitId('c1')]!
+            .checks[PowerSafetyCheck.normativeApplicability],
+        PowerSafetyVerdict.indeterminate,
+      );
+      expect(report.verdict, PowerSafetyVerdict.indeterminate);
+    });
+
     test('revocation of normative source is not a compliance PASS', () {
       final result = evaluate(
         registry: _PowerEvidenceRegistry(revokedId: 'normative-doc'),
@@ -411,6 +432,8 @@ void main() {
           evidence: evidence,
           profile: testPowerSafetyProfile(),
           registry: _PowerEvidenceRegistry(),
+          targetJurisdiction: 'KZ',
+          targetApplicationScope: 'POWER-AC',
         );
       }
 
