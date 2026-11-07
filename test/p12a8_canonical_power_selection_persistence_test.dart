@@ -81,6 +81,8 @@ CanonicalPowerCircuitSelection selection(String id) =>
         source('normative-doc'),
         source('route-survey'),
         source('fault-study'),
+        source('rcd-test-report'),
+        source('selectivity-study'),
       ],
     );
 
@@ -191,10 +193,11 @@ final class _DropEngineeringStateCommand implements ProjectCommand {
 
 final class _PowerEvidenceRegistry
     implements TrustedEngineeringEvidenceRegistry {
-  _PowerEvidenceRegistry({this.revokedId, this.missingId});
+  _PowerEvidenceRegistry({this.revokedId, this.missingId, this.wrongProofPurpose = false});
 
   final String? revokedId;
   final String? missingId;
+  final bool wrongProofPurpose;
 
   @override
   String get revision => 'registry-rev-1';
@@ -211,6 +214,15 @@ final class _PowerEvidenceRegistry
       applicationScope: 'POWER-AC',
       isApproved: true,
       isRevoked: sourceId == revokedId,
+      evidencePurpose: sourceId == 'rcd-test-report'
+          ? (wrongProofPurpose ? 'unrelated' : 'rcd-protection')
+          : sourceId == 'selectivity-study'
+              ? 'selectivity-coordination'
+              : null,
+      subjectCircuitId: sourceId == 'rcd-test-report' ||
+              sourceId == 'selectivity-study'
+          ? 'c1'
+          : null,
     );
   }
 }
@@ -253,13 +265,13 @@ PowerCircuitSafetyEvidence testPowerSafetyEvidence({
     faultDisconnectionTimeMs: complete ? disconnectionTimeMs : null,
     residualCurrentProof: complete
         ? PowerSafetyClaim(
-            sourceId: 'route-survey',
+            sourceId: 'rcd-test-report',
             status: rcdStatus,
           )
         : null,
     selectivityProof: complete
         ? PowerSafetyClaim(
-            sourceId: 'board-doc',
+            sourceId: 'selectivity-study',
             status: selectivityStatus,
           )
         : null,
@@ -343,6 +355,18 @@ void main() {
             .checks[PowerSafetyCheck.shortCircuitDisconnection],
         PowerSafetyVerdict.fail,
       );
+    });
+
+    test('RCD proof with unrelated reviewed purpose is indeterminate', () {
+      final report = evaluate(
+        registry: _PowerEvidenceRegistry(wrongProofPurpose: true),
+      );
+      expect(
+        report.circuits[CircuitId('c1')]!
+            .checks[PowerSafetyCheck.residualCurrentProtection],
+        PowerSafetyVerdict.indeterminate,
+      );
+      expect(report.verdict, PowerSafetyVerdict.indeterminate);
     });
 
     test('negative and missing RCD/selectivity evidence cannot pass', () {
@@ -522,7 +546,7 @@ void main() {
         decoded.byCircuit[CircuitId('c1')]!.boardRatings.ratedBusbarCurrentA,
         63,
       );
-      expect(decoded.byCircuit[CircuitId('c1')]!.sources, hasLength(6));
+      expect(decoded.byCircuit[CircuitId('c1')]!.sources, hasLength(8));
       expect(
           decoded.byCircuit[CircuitId('c1')]!.cableRatings.conductorCount, 3);
       expect(
