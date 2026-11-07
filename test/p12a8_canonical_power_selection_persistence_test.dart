@@ -1,6 +1,14 @@
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:elecx/src/application/project/project_mutation.dart';
+import 'package:elecx/src/domain/canonical_engineering_graph.dart';
 import 'package:elecx/src/domain/canonical_power_selection.dart';
+import 'package:elecx/src/domain/engineering_circuit_topology.dart';
+import 'package:elecx/src/domain/engineering_graph.dart';
+import 'package:elecx/src/domain/engineering_project_state.dart';
+import 'package:elecx/src/domain/engineering_supply_topology.dart';
+import 'package:elecx/src/infrastructure/project/json_project_repository.dart';
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/serialization/project/engineering_state_aware_canonical_project_document_codec.dart';
@@ -67,6 +75,111 @@ CanonicalPowerCircuitSelection selection(String id) =>
         source('fault-study'),
       ],
     );
+
+EngineeringProjectState validEngineeringState() {
+  final circuitId = CircuitId('c1');
+  final board = EngineeringGraphComponent(
+    id: ComponentId('board-1'),
+    componentTypeId: 'board-type-v2',
+    discipline: EngineeringDiscipline.power,
+    systemClass: EngineeringSystemClass.powerAc,
+    ports: [
+      EngineeringPortSpec.identified(
+        portId: PortId('out'),
+        direction: EngineeringPortDirection.output,
+        allowedConnections: {EngineeringConnectionType.acSinglePhase},
+        media: {EngineeringMedia.acPower},
+      ),
+    ],
+  );
+  final load = EngineeringGraphComponent(
+    id: ComponentId('load-1'),
+    componentTypeId: 'load-type',
+    discipline: EngineeringDiscipline.power,
+    systemClass: EngineeringSystemClass.powerAc,
+    ports: [
+      EngineeringPortSpec.identified(
+        portId: PortId('in'),
+        direction: EngineeringPortDirection.input,
+        allowedConnections: {EngineeringConnectionType.acSinglePhase},
+        media: {EngineeringMedia.acPower},
+      ),
+    ],
+  );
+  final connection = EngineeringGraphConnection(
+    id: EngineeringConnectionId('feed-1'),
+    fromComponentId: board.id,
+    fromPortId: PortId('out'),
+    toComponentId: load.id,
+    toPortId: PortId('in'),
+    connectionType: EngineeringConnectionType.acSinglePhase,
+    systemClass: EngineeringSystemClass.powerAc,
+    media: EngineeringMedia.acPower,
+    circuitId: circuitId,
+  );
+  final source = EngineeringSupplySource(
+    id: EngineeringSupplySourceId('power-source-1'),
+    endpoint: EngineeringPortRef(
+      componentId: board.id,
+      portId: PortId('out'),
+    ),
+    systemClass: EngineeringSystemClass.powerAc,
+    media: EngineeringMedia.acPower,
+  );
+  return EngineeringProjectState(
+    graph: CanonicalEngineeringGraph(
+      components: [board, load],
+      connections: [connection],
+    ),
+    circuits: [
+      EngineeringCircuit(
+        id: circuitId,
+        systemClass: EngineeringSystemClass.powerAc,
+        media: EngineeringMedia.acPower,
+        connectionIds: [connection.id],
+      ),
+    ],
+    sources: [source],
+    circuitSupplies: [
+      EngineeringCircuitSupply(
+        circuitId: circuitId,
+        sourceIds: [source.id],
+      ),
+    ],
+  );
+}
+
+ProjectAggregateRoot projectWithPowerSelection() {
+  final project = P1010ServiceAnchorFixture().project;
+  return ProjectAggregateRoot(
+    id: project.id,
+    siteId: project.siteId,
+    version: project.version,
+    stores: project.stores,
+    engineeringMetadata: project.engineeringMetadata
+        .withEngineeringState(validEngineeringState())
+        .withPowerSelections(
+          CanonicalPowerSelectionRegistry(selections: [selection('c1')]),
+        ),
+  );
+}
+
+/// Simulates a structurally valid but referentially destructive update.
+final class _DropEngineeringStateCommand implements ProjectCommand {
+  @override
+  String get commandType => 'test.drop-engineering-state';
+
+  @override
+  ProjectCommandCandidate buildCandidate(ProjectAggregateRoot current) =>
+      ProjectCommandCandidate.fromState(
+        state: ProjectMutableState(
+          engineeringMetadata: current.engineeringMetadata.withEngineeringState(
+            EngineeringProjectState.empty(),
+          ),
+          stores: current.stores,
+        ),
+      );
+}
 
 void main() {
   group('P12A.8 canonical POWER persistence model', () {
@@ -159,24 +272,76 @@ void main() {
           jsonEncode(document.payload));
     });
 
-    test('v21 rejects orphan circuits or board component references', () {
+    test('aggregate rejects orphan selections before persistence or commit', () {
       final project = P1010ServiceAnchorFixture().project;
-      final state = project.engineeringMetadata.withPowerSelections(
-        CanonicalPowerSelectionRegistry(selections: [selection('orphan')]),
+      expect(
+        () => ProjectAggregateRoot(
+          id: project.id,
+          siteId: project.siteId,
+          version: project.version,
+          stores: project.stores,
+          engineeringMetadata: project.engineeringMetadata.withPowerSelections(
+            CanonicalPowerSelectionRegistry(selections: [selection('orphan')]),
+          ),
+        ),
+        throwsArgumentError,
       );
-      final unsafe = ProjectAggregateRoot(
-        id: project.id,
-        siteId: project.siteId,
-        version: project.version,
-        stores: project.stores,
-        engineeringMetadata: state,
+    });
+
+    test('mutation preview refuses to drop a selected P11 circuit and board', () {
+      final valid = projectWithPowerSelection();
+      final session = ProjectMutationSession(valid);
+      expect(
+        () => session.preview(ProjectMutationRequest(
+          expectedVersion: valid.version,
+          command: _DropEngineeringStateCommand(),
+        )),
+        throwsArgumentError,
+      );
+      expect(session.current.engineeringMetadata.powerSelections.byCircuit,
+          contains(CircuitId('c1')));
+    });
+
+    test('non-empty v21 JSON repository Save/Reopen preserves all evidence',
+        () async {
+      final project = projectWithPowerSelection();
+      final directory = await Directory.systemTemp.createTemp('p12a8-v21-');
+      addTearDown(() => directory.delete(recursive: true));
+      final repository = JsonProjectRepository(
+        rootDirectory: directory,
+        codec: codec,
+      );
+      await repository.save(p109Snapshot(project));
+      final loaded = (await repository.load(project.id))!;
+      final original = project.engineeringMetadata.powerSelections;
+      final reopened = loaded.aggregate.engineeringMetadata.powerSelections;
+      expect(reopened.sameAs(original), isTrue);
+      expect(reopened.fingerprint, original.fingerprint);
+      expect(loaded.aggregate.engineeringMetadata.engineeringState.fingerprint,
+          project.engineeringMetadata.engineeringState.fingerprint);
+      expect(
+        reopened.byCircuit[CircuitId('c1')]!.boardComponentId,
+        ComponentId('board-1'),
       );
       expect(
-        () => codec.encode(p109Snapshot(unsafe)),
-        throwsFormatException,
+        reopened.byCircuit[CircuitId('c1')]!.sources.map((s) => s.sourceId),
+        containsAll(['fault-study', 'normative-doc', 'route-survey']),
       );
+      final old = legacy;
+      expect(() => old.encode(p109Snapshot(project)), throwsFormatException);
+    });
+
+    test('v21 decoder rejects tampered orphan selection references', () {
+      final document = codec.encode(p109Snapshot(projectWithPowerSelection()));
+      final payload = jsonDecode(jsonEncode(document.payload))
+          as Map<String, dynamic>;
+      final selection = (payload['powerSelections']['selections'] as List).first;
+      selection['circuitId'] = 'missing-circuit';
       expect(
-        () => legacy.encode(p109Snapshot(unsafe)),
+        () => codec.decode(ProjectDocument(
+          schemaVersion: 21,
+          payload: payload,
+        )),
         throwsFormatException,
       );
     });
