@@ -403,6 +403,17 @@ final class CanonicalPowerSelectionRegistry {
           'POWER selection contradicts its P11 circuit or board classification.',
         );
       }
+      // An existing unrelated board is not a valid supply owner for this
+      // selection. It must participate in the canonical P11 circuit.
+      final belongsToCircuit = state.graph.connections.any((connection) =>
+          circuit.connectionIds.contains(connection.id) &&
+          (connection.fromComponentId == selection.boardComponentId ||
+              connection.toComponentId == selection.boardComponentId));
+      if (!belongsToCircuit) {
+        throw ArgumentError(
+          'POWER board is not connected to its selected P11 circuit.',
+        );
+      }
       final boardFingerprint = semanticSha256Hex(jsonEncode([
         selection.boardCatalogTypeId,
         selection.catalogSnapshotId,
