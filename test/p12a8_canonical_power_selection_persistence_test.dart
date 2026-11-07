@@ -315,6 +315,39 @@ void main() {
           isFalse);
     });
 
+    test('P11 engineering-only commit advances version and Undo/Redo restores it',
+        () {
+      final base = P1010ServiceAnchorFixture().project;
+      final original = ProjectAggregateRoot(
+        id: base.id,
+        siteId: base.siteId,
+        version: base.version,
+        stores: base.stores,
+        engineeringMetadata:
+            base.engineeringMetadata.withEngineeringState(validEngineeringState()),
+      );
+      final session = ProjectMutationSession(original);
+      final committed = session.commit(ProjectMutationRequest(
+        expectedVersion: original.version,
+        command: _DropEngineeringStateCommand(),
+      ))!;
+      expect(committed.changeSet.engineeringMetadataDiff.engineeringStateChanged,
+          isTrue);
+      expect(session.current.engineeringMetadata.engineeringState.isEmpty,
+          isTrue);
+      expect(session.undoDepth, 1);
+      final undo = session.undo(session.current.version)!;
+      expect(undo.changeSet.engineeringMetadataDiff.engineeringStateChanged,
+          isTrue);
+      expect(session.current.engineeringMetadata.engineeringState.fingerprint,
+          original.engineeringMetadata.engineeringState.fingerprint);
+      final redo = session.redo(session.current.version)!;
+      expect(redo.changeSet.engineeringMetadataDiff.engineeringStateChanged,
+          isTrue);
+      expect(session.current.engineeringMetadata.engineeringState.isEmpty,
+          isTrue);
+    });
+
     test('mutation preview refuses to drop a selected P11 circuit and board', () {
       final valid = projectWithPowerSelection();
       final session = ProjectMutationSession(valid);
