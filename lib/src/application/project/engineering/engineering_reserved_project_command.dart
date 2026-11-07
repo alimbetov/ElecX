@@ -18,9 +18,8 @@ final class EngineeringReservedProjectCommand
     required CanonicalPowerSelectionRegistry requestedSelections,
     required this.expectedEngineeringStateFingerprint,
     required this.expectedPowerSelectionFingerprint,
-  }) : requestedSelections =
-            CanonicalPowerSelectionRegistry.fromCanonicalJson(
-                jsonDecode(jsonEncode(requestedSelections.toCanonicalJson()))) {
+  }) : requestedSelections = CanonicalPowerSelectionRegistry.fromCanonicalJson(
+            jsonDecode(jsonEncode(requestedSelections.toCanonicalJson()))) {
     if (!proposal.isFullySelected) {
       throw ArgumentError(
           'Unresolved engineering proposal cannot enter canonical preview.');
@@ -85,12 +84,13 @@ final class EngineeringReservedProjectCommand
             expectedPowerSelectionFingerprint) {
       throw StateError('Engineering preview baseline is stale.');
     }
-    requestedSelections.validateAgainst(
-        current.engineeringMetadata.engineeringState);
+    requestedSelections
+        .validateAgainst(current.engineeringMetadata.engineeringState);
     final old = current.engineeringMetadata.powerSelections;
     for (final existing in old.byCircuit.entries) {
       if (!requestedSelections.byCircuit.containsKey(existing.key)) {
-        throw StateError('Engineering preview cannot silently delete selections.');
+        throw StateError(
+            'Engineering preview cannot silently delete selections.');
       }
     }
   }
