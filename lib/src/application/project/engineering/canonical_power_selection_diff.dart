@@ -107,7 +107,8 @@ final class CanonicalPowerSelectionDiff {
           before: old,
           after: null,
         ));
-      } else if (old != null && next != null &&
+      } else if (old != null &&
+          next != null &&
           jsonEncode(old.toCanonicalJson()) !=
               jsonEncode(next.toCanonicalJson())) {
         changes.add(CanonicalPowerSelectionChange(
