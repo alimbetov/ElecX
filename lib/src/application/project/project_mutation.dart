@@ -420,6 +420,9 @@ abstract final class CandidateGraphValidator {
           stores: state.stores,
           engineeringMetadata: state.engineeringMetadata));
     }
+    state.engineeringMetadata.powerSelections.validateAgainst(
+      state.engineeringMetadata.engineeringState,
+    );
     state.engineeringMetadata.boundaryHostedObjectRegistry.validateAgainst(
       state.stores.boundaries,
     );
