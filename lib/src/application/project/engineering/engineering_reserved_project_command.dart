@@ -16,9 +16,12 @@ final class EngineeringReservedProjectCommand
   EngineeringReservedProjectCommand({
     required this.proposal,
     required CanonicalPowerSelectionRegistry requestedSelections,
+    required Map<String, CircuitId> canonicalCircuitIdsByCalculationId,
     required this.expectedEngineeringStateFingerprint,
     required this.expectedPowerSelectionFingerprint,
-  }) : requestedSelections = CanonicalPowerSelectionRegistry.fromCanonicalJson(
+  })  : canonicalCircuitIdsByCalculationId =
+            Map.unmodifiable(canonicalCircuitIdsByCalculationId),
+        requestedSelections = CanonicalPowerSelectionRegistry.fromCanonicalJson(
             jsonDecode(jsonEncode(requestedSelections.toCanonicalJson()))) {
     if (!proposal.isFullySelected) {
       throw ArgumentError(
@@ -31,12 +34,27 @@ final class EngineeringReservedProjectCommand
     final selectedByKey = {
       for (final entry in proposal.entries) entry.generationKey: entry,
     };
+    final proposalCalculationIds = {
+      for (final entry in proposal.entries) entry.calculationCircuitId,
+    };
+    if (this.canonicalCircuitIdsByCalculationId.keys.toSet().length !=
+            proposalCalculationIds.length ||
+        !this.canonicalCircuitIdsByCalculationId.keys.toSet().containsAll(
+              proposalCalculationIds,
+            ) ||
+        this.canonicalCircuitIdsByCalculationId.values.toSet().length !=
+            proposalCalculationIds.length) {
+      throw ArgumentError(
+          'Explicit calculation-to-canonical circuit mapping must be bijective.');
+    }
     if (selectedByKey.length != this.requestedSelections.byCircuit.length) {
       throw ArgumentError('Selection count must equal proposal circuit count.');
     }
     for (final selection in this.requestedSelections.byCircuit.values) {
       final entry = selectedByKey[selection.generationKey];
       if (entry == null ||
+          this.canonicalCircuitIdsByCalculationId[entry.calculationCircuitId] !=
+              selection.circuitId ||
           entry.cableCatalogId != selection.cableCatalogId ||
           entry.protectionCatalogId != selection.protectionCatalogId ||
           selection.catalogSnapshotId != proposal.catalogSnapshotId) {
@@ -48,6 +66,9 @@ final class EngineeringReservedProjectCommand
 
   final EngineeringProposalDiff proposal;
   final CanonicalPowerSelectionRegistry requestedSelections;
+  /// Explicit lineage: the calculator's transient circuit IDs cannot be
+  /// silently treated as authoritative P11 CircuitIds.
+  final Map<String, CircuitId> canonicalCircuitIdsByCalculationId;
   final String expectedEngineeringStateFingerprint;
   final String expectedPowerSelectionFingerprint;
 
@@ -59,6 +80,11 @@ final class EngineeringReservedProjectCommand
         commandType,
         proposal.fingerprint,
         requestedSelections.fingerprint,
+        [
+          for (final id in canonicalCircuitIdsByCalculationId.keys.toList()
+            ..sort())
+            [id, canonicalCircuitIdsByCalculationId[id]!.value],
+        ],
         expectedEngineeringStateFingerprint,
         expectedPowerSelectionFingerprint,
       ]);
