@@ -56,7 +56,8 @@ void main() {
 
     test('unresolved pair is visible but never fully selected', () {
       final diff = _diff(entries: [
-        _entry('key-1', 'circuit-1', status: EngineeringProposalStatus.unresolved),
+        _entry('key-1', 'circuit-1',
+            status: EngineeringProposalStatus.unresolved),
       ]);
       expect(diff.isFullySelected, isFalse);
       expect(diff.entries.single.cableCatalogId, isNull);
