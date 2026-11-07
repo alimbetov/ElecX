@@ -53,12 +53,18 @@ CanonicalPowerCircuitSelection selection(String id) =>
         tripCharacteristic: 'B',
       ),
       protectionSourceId: 'breaker-doc',
+      normativeSourceId: 'normative-doc',
+      routeEvidenceSourceId: 'route-survey',
+      faultCurrentEvidenceSourceId: 'fault-study',
       routeLengthMm: 12000,
       evidenceFingerprint: digest,
       sources: [
         source('breaker-doc'),
         source('board-doc'),
         source('cable-doc'),
+        source('normative-doc'),
+        source('route-survey'),
+        source('fault-study'),
       ],
     );
 
@@ -80,7 +86,7 @@ void main() {
         decoded.byCircuit[CircuitId('c1')]!.boardRatings.ratedBusbarCurrentA,
         63,
       );
-      expect(decoded.byCircuit[CircuitId('c1')]!.sources, hasLength(3));
+      expect(decoded.byCircuit[CircuitId('c1')]!.sources, hasLength(6));
       expect(decoded.byCircuit[CircuitId('c1')]!.cableRatings.conductorCount, 3);
       expect(decoded.byCircuit[CircuitId('c1')]!.protectionRatings.ratedCurrentA, 16);
       expect(() => decoded.byCircuit.clear(), throwsUnsupportedError);
