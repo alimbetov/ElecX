@@ -34,6 +34,7 @@ abstract interface class TrustedEngineeringEvidenceRegistry {
 }
 
 enum EngineeringEvidenceReviewIssue {
+  missingRequiredSources,
   missingSource,
   mismatchedIdentity,
   unapprovedSource,
@@ -75,6 +76,9 @@ abstract final class EngineeringEvidenceReviewGate {
 
     final pins = requiredSources.toList()
       ..sort((a, b) => a.sourceId.compareTo(b.sourceId));
+    if (pins.isEmpty) {
+      issues.add(EngineeringEvidenceReviewIssue.missingRequiredSources);
+    }
     final visited = <String>{};
     for (final pin in pins) {
       if (!visited.add(pin.sourceId)) {
