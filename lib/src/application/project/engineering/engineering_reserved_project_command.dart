@@ -66,6 +66,7 @@ final class EngineeringReservedProjectCommand
 
   final EngineeringProposalDiff proposal;
   final CanonicalPowerSelectionRegistry requestedSelections;
+
   /// Explicit lineage: the calculator's transient circuit IDs cannot be
   /// silently treated as authoritative P11 CircuitIds.
   final Map<String, CircuitId> canonicalCircuitIdsByCalculationId;
@@ -81,8 +82,8 @@ final class EngineeringReservedProjectCommand
         proposal.fingerprint,
         requestedSelections.fingerprint,
         [
-          for (final id in canonicalCircuitIdsByCalculationId.keys.toList()
-            ..sort())
+          for (final id
+              in canonicalCircuitIdsByCalculationId.keys.toList()..sort())
             [id, canonicalCircuitIdsByCalculationId[id]!.value],
         ],
         expectedEngineeringStateFingerprint,
