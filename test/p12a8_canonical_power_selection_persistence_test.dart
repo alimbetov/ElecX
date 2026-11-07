@@ -296,8 +296,8 @@ void main() {
         evidence: testPowerSafetyEvidence(designCurrent: 30),
       );
       expect(
-        overloaded.circuits[CircuitId('c1')]!
-            .checks[PowerSafetyCheck.overloadRating],
+        overloaded
+            .circuits[CircuitId('c1')]!.checks[PowerSafetyCheck.overloadRating],
         PowerSafetyVerdict.fail,
       );
       final insufficientBreaker = evaluate(
@@ -427,7 +427,6 @@ void main() {
       );
     });
   });
-
 
   group('P12A.8 trusted v21 evidence preflight', () {
     test('reviews every durable source without authorizing Apply', () {
