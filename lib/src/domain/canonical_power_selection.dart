@@ -382,7 +382,9 @@ final class CanonicalPowerSelectionRegistry {
   /// mutation preview/commit and Undo/Redo), not merely on disk encode.
   /// POWER selections are annotations of existing P11 objects, not owners.
   void validateAgainst(EngineeringProjectState state) {
-    final circuits = {for (final circuit in state.circuits) circuit.id: circuit};
+    final circuits = {
+      for (final circuit in state.circuits) circuit.id: circuit
+    };
     final components = {
       for (final component in state.graph.components) component.id: component,
     };
