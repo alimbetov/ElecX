@@ -2,7 +2,8 @@ import 'package:elecx/src/application/project/engineering/engineering_evidence_r
 import 'package:elecx/src/engine/power_evidence_selection_engine.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-const _digest = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+const _digest =
+    'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 
 PowerEvidenceSourcePin _pin({
   String revision = 'r1',
