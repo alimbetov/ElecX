@@ -187,7 +187,8 @@ final class _DropEngineeringStateCommand implements ProjectCommand {
       );
 }
 
-final class _PowerEvidenceRegistry implements TrustedEngineeringEvidenceRegistry {
+final class _PowerEvidenceRegistry
+    implements TrustedEngineeringEvidenceRegistry {
   _PowerEvidenceRegistry({this.revokedId, this.missingId});
 
   final String? revokedId;
@@ -247,7 +248,8 @@ void main() {
       );
     });
 
-    test('conflicting revisions for same source across circuits fail closed', () {
+    test('conflicting revisions for same source across circuits fail closed',
+        () {
       final changed = selection('c2').toCanonicalJson();
       final pins = changed['sources'] as List;
       (pins.first as Map<String, Object?>)['revision'] = 'rev-2';
@@ -265,7 +267,6 @@ void main() {
           contains(EngineeringEvidenceReviewIssue.mismatchedIdentity));
     });
   });
-
 
   group('P12A.8 canonical POWER persistence model', () {
     test('registry JSON round-trip preserves all fields and stable fingerprint',
@@ -469,7 +470,9 @@ void main() {
           requestedSelections: CanonicalPowerSelectionRegistry(
             selections: [selection('c1')],
           ),
-          canonicalCircuitIdsByCalculationId: {'calculated-c1': CircuitId('c1')},
+          canonicalCircuitIdsByCalculationId: {
+            'calculated-c1': CircuitId('c1')
+          },
           expectedEngineeringStateFingerprint: 'state',
           expectedPowerSelectionFingerprint: 'registry',
         ),
