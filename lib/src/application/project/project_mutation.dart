@@ -203,6 +203,7 @@ final class ProjectEngineeringMetadataDiff {
     this.generationProvenanceRegistryChanged = false,
     this.appliedEngineeringProposalRegistryChanged = false,
     this.powerSelectionsChanged = false,
+    this.engineeringStateChanged = false,
     this.siteLayoutChanged = false,
   });
 
@@ -216,6 +217,7 @@ final class ProjectEngineeringMetadataDiff {
         generationProvenanceRegistryChanged = false,
         appliedEngineeringProposalRegistryChanged = false,
         powerSelectionsChanged = false,
+        engineeringStateChanged = false,
         siteLayoutChanged = false;
 
   factory ProjectEngineeringMetadataDiff.between(
@@ -245,6 +247,8 @@ final class ProjectEngineeringMetadataDiff {
             .sameAs(after.appliedEngineeringProposalRegistry),
         powerSelectionsChanged:
             !before.powerSelections.sameAs(after.powerSelections),
+        engineeringStateChanged:
+            !before.engineeringState.sameAs(after.engineeringState),
       );
 
   final ProjectEngineeringNorth? beforeProjectNorth;
@@ -256,6 +260,7 @@ final class ProjectEngineeringMetadataDiff {
   final bool generationProvenanceRegistryChanged;
   final bool appliedEngineeringProposalRegistryChanged;
   final bool powerSelectionsChanged;
+  final bool engineeringStateChanged;
   final bool siteLayoutChanged;
 
   bool get projectNorthChanged => beforeProjectNorth != afterProjectNorth;
@@ -268,7 +273,8 @@ final class ProjectEngineeringMetadataDiff {
       !boundaryConstructionRegistryChanged &&
       !generationProvenanceRegistryChanged &&
       !appliedEngineeringProposalRegistryChanged &&
-      !powerSelectionsChanged;
+      !powerSelectionsChanged &&
+      !engineeringStateChanged;
   bool get isNotEmpty => !isEmpty;
 }
 
