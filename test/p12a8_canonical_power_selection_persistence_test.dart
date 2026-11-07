@@ -261,7 +261,8 @@ void main() {
   });
 
   group('P12A.8 reserved engineering preview', () {
-    test('frozen canonical preview uses existing P11 circuit IDs and cannot Apply',
+    test(
+        'frozen canonical preview uses existing P11 circuit IDs and cannot Apply',
         () {
       final base = P1010ServiceAnchorFixture().project;
       final current = ProjectAggregateRoot(
@@ -306,8 +307,8 @@ void main() {
           isTrue);
       expect(preview.semanticChangeSet.operations.single.semanticKey,
           contains('c1'));
-      expect(session.current.engineeringMetadata.powerSelections.isEmpty,
-          isTrue);
+      expect(
+          session.current.engineeringMetadata.powerSelections.isEmpty, isTrue);
       expect(() => coordinator.commitPreview(preview), throwsStateError);
       expect(session.current.version, current.version);
       expect(session.undoDepth, 0);
@@ -433,8 +434,8 @@ void main() {
       final redo = session.redo(session.current.version)!;
       expect(redo.changeSet.engineeringMetadataDiff.engineeringStateChanged,
           isTrue);
-      expect(session.current.engineeringMetadata.engineeringState.isEmpty,
-          isTrue);
+      expect(
+          session.current.engineeringMetadata.engineeringState.isEmpty, isTrue);
     });
 
     test('mutation preview refuses to drop a selected P11 circuit and board',
