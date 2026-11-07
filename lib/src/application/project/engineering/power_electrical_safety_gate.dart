@@ -206,12 +206,11 @@ abstract final class PowerElectricalSafetyGate {
       final selection = selections.byCircuit[id]!;
       final input = evidenceByCircuit[id];
       final pins = {for (final pin in selection.sources) pin.sourceId};
-      final profileMatches =
-          profile.jurisdiction == targetJurisdiction &&
-              profile.applicationScope == targetApplicationScope &&
-              selection.normativeSourceId == profile.normativeSourceId &&
-              pins.contains(profile.normativeSourceId) &&
-              reviewed.isQualified;
+      final profileMatches = profile.jurisdiction == targetJurisdiction &&
+          profile.applicationScope == targetApplicationScope &&
+          selection.normativeSourceId == profile.normativeSourceId &&
+          pins.contains(profile.normativeSourceId) &&
+          reviewed.isQualified;
       final matchedSelection = input != null &&
           input.selectionFingerprint ==
               semanticSha256Hex(jsonEncode(selection.toCanonicalJson())) &&
