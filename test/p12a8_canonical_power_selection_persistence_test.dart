@@ -231,6 +231,12 @@ PowerCircuitSafetyEvidence testPowerSafetyEvidence({
   bool complete = true,
   double designCurrent = 12,
   double faultCurrent = 3,
+  double conventionalTrip = 24,
+  double letThroughEnergy = 400,
+  double cableWithstandEnergy = 800,
+  double disconnectionTimeMs = 120,
+  PowerSafetyClaimStatus rcdStatus = PowerSafetyClaimStatus.supported,
+  PowerSafetyClaimStatus selectivityStatus = PowerSafetyClaimStatus.supported,
   String? overrideFingerprint,
 }) {
   final reference = selection(id);
@@ -241,20 +247,20 @@ PowerCircuitSafetyEvidence testPowerSafetyEvidence({
     calculationSourceId: 'fault-study',
     designCurrentA: complete ? designCurrent : null,
     prospectiveFaultCurrentKa: complete ? faultCurrent : null,
-    conventionalTripCurrentA: complete ? 24 : null,
-    protectiveDeviceLetThroughA2s: complete ? 400 : null,
-    cableShortCircuitWithstandA2s: complete ? 800 : null,
-    faultDisconnectionTimeMs: complete ? 120 : null,
+    conventionalTripCurrentA: complete ? conventionalTrip : null,
+    protectiveDeviceLetThroughA2s: complete ? letThroughEnergy : null,
+    cableShortCircuitWithstandA2s: complete ? cableWithstandEnergy : null,
+    faultDisconnectionTimeMs: complete ? disconnectionTimeMs : null,
     residualCurrentProof: complete
         ? const PowerSafetyClaim(
             sourceId: 'route-survey',
-            status: PowerSafetyClaimStatus.supported,
+            status: rcdStatus,
           )
         : null,
     selectivityProof: complete
         ? const PowerSafetyClaim(
             sourceId: 'board-doc',
-            status: PowerSafetyClaimStatus.supported,
+            status: selectivityStatus,
           )
         : null,
   );
@@ -304,6 +310,61 @@ void main() {
       );
       expect(insufficientBreaker.verdict, PowerSafetyVerdict.fail);
       expect(insufficientBreaker.readyToApply, isFalse);
+    });
+
+    test('conventional trip and thermal fault energy are independently gated',
+        () {
+      final trip = evaluate(
+        evidence: testPowerSafetyEvidence(conventionalTrip: 60),
+      );
+      expect(
+        trip.circuits[CircuitId('c1')]!
+            .checks[PowerSafetyCheck.conventionalTrip],
+        PowerSafetyVerdict.fail,
+      );
+      final thermal = evaluate(
+        evidence: testPowerSafetyEvidence(
+          letThroughEnergy: 1200,
+          cableWithstandEnergy: 800,
+        ),
+      );
+      expect(
+        thermal.circuits[CircuitId('c1')]!
+            .checks[PowerSafetyCheck.shortCircuitThermal],
+        PowerSafetyVerdict.fail,
+      );
+      final delayed = evaluate(
+        evidence: testPowerSafetyEvidence(disconnectionTimeMs: 900),
+      );
+      expect(
+        delayed.circuits[CircuitId('c1')]!
+            .checks[PowerSafetyCheck.shortCircuitDisconnection],
+        PowerSafetyVerdict.fail,
+      );
+    });
+
+    test('negative and missing RCD/selectivity evidence cannot pass', () {
+      final rcd = evaluate(
+        evidence: testPowerSafetyEvidence(
+          rcdStatus: PowerSafetyClaimStatus.contradicted,
+        ),
+      );
+      expect(
+        rcd.circuits[CircuitId('c1')]!
+            .checks[PowerSafetyCheck.residualCurrentProtection],
+        PowerSafetyVerdict.fail,
+      );
+      final selectivity = evaluate(
+        evidence: testPowerSafetyEvidence(
+          selectivityStatus: PowerSafetyClaimStatus.unknown,
+        ),
+      );
+      expect(
+        selectivity.circuits[CircuitId('c1')]!
+            .checks[PowerSafetyCheck.selectivity],
+        PowerSafetyVerdict.indeterminate,
+      );
+      expect(selectivity.readyToApply, isFalse);
     });
 
     test('missing evidence, stale snapshot and wrong profile are indeterminate',
