@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/project_mutation_reservation.dart';
+import 'package:elecx/src/application/project/engineering/canonical_power_evidence_preflight.dart';
+import 'package:elecx/src/application/project/engineering/engineering_evidence_review_gate.dart';
 import 'package:elecx/src/application/project/engineering/engineering_proposal_diff.dart';
 import 'package:elecx/src/application/project/engineering/engineering_reserved_project_command.dart';
 import 'package:elecx/src/domain/canonical_engineering_graph.dart';
@@ -185,7 +187,86 @@ final class _DropEngineeringStateCommand implements ProjectCommand {
       );
 }
 
+final class _PowerEvidenceRegistry implements TrustedEngineeringEvidenceRegistry {
+  _PowerEvidenceRegistry({this.revokedId, this.missingId});
+
+  final String? revokedId;
+  final String? missingId;
+
+  @override
+  String get revision => 'registry-rev-1';
+
+  @override
+  EngineeringEvidenceReviewRecord? lookup(String sourceId) {
+    if (sourceId == missingId) return null;
+    return EngineeringEvidenceReviewRecord(
+      sourceId: sourceId,
+      revision: 'rev-1',
+      contentSha256: digest,
+      approvalId: 'approval-1',
+      jurisdiction: 'KZ',
+      applicationScope: 'POWER-AC',
+      isApproved: true,
+      isRevoked: sourceId == revokedId,
+    );
+  }
+}
+
 void main() {
+  group('P12A.8 trusted v21 evidence preflight', () {
+    test('reviews every durable source without authorizing Apply', () {
+      final selections =
+          CanonicalPowerSelectionRegistry(selections: [selection('c1')]);
+      final result = CanonicalPowerEvidencePreflight.evaluate(
+        selections: selections,
+        registry: _PowerEvidenceRegistry(),
+        jurisdiction: 'KZ',
+        applicationScope: 'POWER-AC',
+      );
+      expect(result.isQualified, isTrue);
+      expect(result.registryRevision, 'registry-rev-1');
+    });
+
+    test('missing and revoked source block preflight', () {
+      final selections =
+          CanonicalPowerSelectionRegistry(selections: [selection('c1')]);
+      EngineeringEvidenceReviewResult review(_PowerEvidenceRegistry registry) =>
+          CanonicalPowerEvidencePreflight.evaluate(
+            selections: selections,
+            registry: registry,
+            jurisdiction: 'KZ',
+            applicationScope: 'POWER-AC',
+          );
+      expect(
+        review(_PowerEvidenceRegistry(missingId: 'route-survey')).issues,
+        contains(EngineeringEvidenceReviewIssue.missingSource),
+      );
+      expect(
+        review(_PowerEvidenceRegistry(revokedId: 'normative-doc')).issues,
+        contains(EngineeringEvidenceReviewIssue.revokedSource),
+      );
+    });
+
+    test('conflicting revisions for same source across circuits fail closed', () {
+      final changed = selection('c2').toCanonicalJson();
+      final pins = changed['sources'] as List;
+      (pins.first as Map<String, Object?>)['revision'] = 'rev-2';
+      final selections = CanonicalPowerSelectionRegistry(selections: [
+        selection('c1'),
+        CanonicalPowerCircuitSelection.fromCanonicalJson(changed),
+      ]);
+      final result = CanonicalPowerEvidencePreflight.evaluate(
+        selections: selections,
+        registry: _PowerEvidenceRegistry(),
+        jurisdiction: 'KZ',
+        applicationScope: 'POWER-AC',
+      );
+      expect(result.issues,
+          contains(EngineeringEvidenceReviewIssue.mismatchedIdentity));
+    });
+  });
+
+
   group('P12A.8 canonical POWER persistence model', () {
     test('registry JSON round-trip preserves all fields and stable fingerprint',
         () {
