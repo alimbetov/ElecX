@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'applied_engineering_proposal.dart';
+import 'canonical_power_selection.dart';
 import 'boundary_construction_registry.dart';
 import 'boundary_edge_identity_registry.dart';
 import 'boundary_host_registry.dart';
@@ -134,6 +135,7 @@ final class ProjectEngineeringMetadata {
     this.appliedEngineeringProposalRegistry =
         const AppliedEngineeringProposalRegistry.empty(),
     EngineeringProjectState? engineeringState,
+    this.powerSelections = const CanonicalPowerSelectionRegistry.empty(),
   }) : _engineeringState = engineeringState;
 
   final ProjectEngineeringNorth? projectNorth;
@@ -144,6 +146,7 @@ final class ProjectEngineeringMetadata {
   final BoundaryConstructionRegistry boundaryConstructionRegistry;
   final GenerationProvenanceRegistry generationProvenanceRegistry;
   final AppliedEngineeringProposalRegistry appliedEngineeringProposalRegistry;
+  final CanonicalPowerSelectionRegistry powerSelections;
   final EngineeringProjectState? _engineeringState;
 
   EngineeringProjectState get engineeringState =>
@@ -160,6 +163,7 @@ final class ProjectEngineeringMetadata {
     GenerationProvenanceRegistry? generationProvenanceRegistry,
     AppliedEngineeringProposalRegistry? appliedEngineeringProposalRegistry,
     EngineeringProjectState? engineeringState,
+    CanonicalPowerSelectionRegistry? powerSelections,
   }) {
     if (clearProjectNorth && projectNorth != null) {
       throw ArgumentError(
@@ -183,6 +187,7 @@ final class ProjectEngineeringMetadata {
       appliedEngineeringProposalRegistry: appliedEngineeringProposalRegistry ??
           this.appliedEngineeringProposalRegistry,
       engineeringState: engineeringState ?? _engineeringState,
+      powerSelections: powerSelections ?? this.powerSelections,
     );
   }
 
@@ -226,6 +231,10 @@ final class ProjectEngineeringMetadata {
           EngineeringProjectState state) =>
       copyWith(engineeringState: state);
 
+  ProjectEngineeringMetadata withPowerSelections(
+          CanonicalPowerSelectionRegistry selections) =>
+      copyWith(powerSelections: selections);
+
   @override
   bool operator ==(Object other) =>
       other is ProjectEngineeringMetadata &&
@@ -238,7 +247,8 @@ final class ProjectEngineeringMetadata {
       other.generationProvenanceRegistry.sameAs(generationProvenanceRegistry) &&
       other.appliedEngineeringProposalRegistry
           .sameAs(appliedEngineeringProposalRegistry) &&
-      other.engineeringState.sameAs(engineeringState);
+      other.engineeringState.sameAs(engineeringState) &&
+      other.powerSelections.sameAs(powerSelections);
 
   @override
   int get hashCode {
@@ -246,6 +256,7 @@ final class ProjectEngineeringMetadata {
       projectNorth,
       jsonEncode(siteLayout.toCanonicalJson()),
       engineeringState.fingerprint,
+      powerSelections.fingerprint,
     );
     final entries = boundaryEdgeIdentityRegistry.owners.entries.toList()
       ..sort((a, b) => a.key.value.compareTo(b.key.value));
