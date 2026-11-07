@@ -211,6 +211,7 @@ abstract final class PowerElectricalSafetyGate {
           pins.contains(input.calculationSourceId) &&
           reviewed.isQualified;
       final sourceValid = matchedSelection &&
+          input != null &&
           _reviewedSource(input.calculationSourceId, registry, profile);
       final checks = <PowerSafetyCheck, PowerSafetyVerdict>{
         PowerSafetyCheck.normativeApplicability: profileMatches
@@ -227,7 +228,7 @@ abstract final class PowerElectricalSafetyGate {
             PowerSafetyVerdict.indeterminate,
         PowerSafetyCheck.selectivity: PowerSafetyVerdict.indeterminate,
       };
-      if (sourceValid) {
+      if (input != null && sourceValid) {
         final ib = input.designCurrentA;
         final iz = selection.cableRatings.governingAmpacityA;
         final rated = selection.protectionRatings.ratedCurrentA;
