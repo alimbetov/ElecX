@@ -169,6 +169,10 @@ void main() {
         () => codec.encode(p109Snapshot(unsafe)),
         throwsFormatException,
       );
+      expect(
+        () => legacy.encode(p109Snapshot(unsafe)),
+        throwsFormatException,
+      );
     });
 
     test('older schema cannot disguise a v21 POWER selection payload', () {
