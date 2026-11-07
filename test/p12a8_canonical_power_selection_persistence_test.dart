@@ -293,6 +293,28 @@ void main() {
       );
     });
 
+    test('P11 engineering-state-only edits produce a canonical metadata diff',
+        () {
+      final base = P1010ServiceAnchorFixture().project;
+      final project = ProjectAggregateRoot(
+        id: base.id,
+        siteId: base.siteId,
+        version: base.version,
+        stores: base.stores,
+        engineeringMetadata:
+            base.engineeringMetadata.withEngineeringState(validEngineeringState()),
+      );
+      final session = ProjectMutationSession(project);
+      final preview = session.preview(ProjectMutationRequest(
+        expectedVersion: project.version,
+        command: _DropEngineeringStateCommand(),
+      ));
+      expect(preview.hasChanges, isTrue);
+      expect(preview.engineeringMetadataDiff.engineeringStateChanged, isTrue);
+      expect(session.current.engineeringMetadata.engineeringState.isEmpty,
+          isFalse);
+    });
+
     test('mutation preview refuses to drop a selected P11 circuit and board', () {
       final valid = projectWithPowerSelection();
       final session = ProjectMutationSession(valid);
