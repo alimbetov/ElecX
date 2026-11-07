@@ -175,12 +175,14 @@ abstract final class PowerElectricalSafetyGate {
     required Iterable<PowerCircuitSafetyEvidence> evidence,
     required PowerSafetyRuleProfile profile,
     required TrustedEngineeringEvidenceRegistry registry,
+    required String targetJurisdiction,
+    required String targetApplicationScope,
   }) {
     final reviewed = CanonicalPowerEvidencePreflight.evaluate(
       selections: selections,
       registry: registry,
-      jurisdiction: profile.jurisdiction,
-      applicationScope: profile.applicationScope,
+      jurisdiction: targetJurisdiction,
+      applicationScope: targetApplicationScope,
     );
     final evidenceList = evidence.toList();
     final evidenceByCircuit = <CircuitId, PowerCircuitSafetyEvidence>{};
@@ -205,7 +207,9 @@ abstract final class PowerElectricalSafetyGate {
       final input = evidenceByCircuit[id];
       final pins = {for (final pin in selection.sources) pin.sourceId};
       final profileMatches =
-          selection.normativeSourceId == profile.normativeSourceId &&
+          profile.jurisdiction == targetJurisdiction &&
+              profile.applicationScope == targetApplicationScope &&
+              selection.normativeSourceId == profile.normativeSourceId &&
               pins.contains(profile.normativeSourceId) &&
               reviewed.isQualified;
       final matchedSelection = input != null &&
