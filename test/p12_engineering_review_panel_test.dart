@@ -41,8 +41,8 @@ void main() {
     expect(find.byKey(const ValueKey('p12-review-rcd-count')), findsOneWidget);
     expect(find.byKey(const ValueKey('p12-review-diff-unavailable')),
         findsOneWidget);
-    expect(find.byKey(const ValueKey('p12-review-apply-blocked')),
-        findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('p12-review-apply-blocked')), findsOneWidget);
   });
 
   testWidgets('P12 diff is only shown when frozen baseline is supplied',
