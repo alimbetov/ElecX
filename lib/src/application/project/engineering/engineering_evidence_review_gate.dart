@@ -24,6 +24,7 @@ final class EngineeringEvidenceReviewRecord {
     this.verifiedFaultEnvelopeFingerprint,
     this.verifiedProtectionLimitsFingerprint,
     this.verifiedUpstreamProtectionCatalogId,
+    this.verifiedResidualTopologyFingerprint,
   });
 
   final String sourceId;
@@ -58,6 +59,9 @@ final class EngineeringEvidenceReviewRecord {
 
   /// Approved upstream protective device identity for the reviewed pair.
   final String? verifiedUpstreamProtectionCatalogId;
+
+  /// Authenticated board / MCB / upstream RCD circuit coverage snapshot.
+  final String? verifiedResidualTopologyFingerprint;
 }
 
 /// The production implementation must be backed by a versioned, authenticated
