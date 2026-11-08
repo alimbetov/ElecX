@@ -15,6 +15,7 @@ import 'package:elecx/src/application/project/engineering/power_fault_envelope_g
 import 'package:elecx/src/application/project/engineering/power_protection_device_gate.dart';
 import 'package:elecx/src/application/project/engineering/manufacturer_protection_pair_gate.dart';
 import 'package:elecx/src/application/project/engineering/manufacturer_evidence_ingestion.dart';
+import 'package:elecx/src/application/project/engineering/manufacturer_article_discovery_directory.dart';
 import 'package:elecx/src/application/project/engineering/manufacturer_project_coordination_gate.dart';
 import 'package:elecx/src/application/project/engineering/canonical_residual_protection_assignment.dart';
 import 'package:elecx/src/serialization/project/residual_protection_aware_canonical_project_document_codec.dart';
@@ -703,6 +704,19 @@ final class _DocumentTestRegistry
 }
 
 void main() {
+  test('official product articles are identity-only, never coordination', () {
+    final directory = ManufacturerArticleDiscoveryDirectory.articles;
+    expect(directory, hasLength(2));
+    expect(directory.first.articleNumber, 'A9F74116');
+    expect(directory.first.tripCurve, 'C');
+    expect(directory.last.articleNumber, 'A9R11240');
+    expect(directory.last.residualType, 'AC');
+    for (final article in directory) {
+      expect(article.isManufacturerCoordinationQualified, isFalse);
+      expect(Uri.parse(article.officialProductUrl).scheme, 'https');
+    }
+  });
+
   group('P12 R1 manufacturer document authenticity ingestion', () {
     final documentBytes =
         Uint8List.fromList(utf8.encode('TEST-ONLY manufacturer PDF bytes'));
