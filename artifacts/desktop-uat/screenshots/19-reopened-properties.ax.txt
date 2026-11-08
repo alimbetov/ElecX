@@ -1,0 +1,142 @@
+Window: "elecx", App: elecx.
+0 standard window elecx, Secondary Actions: Raise
+	1 container elecx
+		2 container (settable) Уровень 1 · Комната 4
+PROJECT
+2.5D: click surface · keyboard: ←/→ walls, ↑ ceiling, ↓ floor
+detail · 7.0 mm/px
+Double-click кромки → соседняя плоскость
+Розетка 2
+SELECT // READY
+WALL 1
+SNAP ON
+GRID 100
+SELECTED
+ENGINEERING INSPECTOR
+			3 container (settable)
+				4 button (settable)
+				5 container (settable) ElecX · Новый проект. · 1
+				6 text (settable) Saved
+				7 button (settable)
+				8 button (settable)
+				9 button (settable) Compass
+					10 button (settable)
+				11 button (settable)
+				12 button (settable)
+				13 button (settable)
+			14 container (settable)
+				15 button (settable)
+				16 button (settable)
+				17 button (settable)
+				18 button (settable)
+				19 button (settable)
+				20 button (settable)
+				21 button (settable)
+				22 button (settable)
+				23 button (settable)
+				24 button (settable)
+				25 button (settable)
+				26 button (settable)
+				27 button (settable)
+			28 container (settable)
+				29 button (settable) Новый проект.
+				30 button (settable) Новый проект.
+				31 button (settable) Level 1
+				32 button (settable) Комната 4
+			33 container (settable)
+				34 container (settable) Новый проект.
+					35 button (settable)
+					36 button (settable)
+				37 button (settable) Новый проект.
+					38 button (settable)
+				39 button (settable) Level 1
+					40 button (settable)
+				41 button (settable) Комната 1
+				42 button (settable) Комната 2
+				43 button (settable) Комната 3
+				44 button (settable) Комната 4
+			45 button (settable) + Building
+			46 button (settable) + Level
+			47 button (settable) + Room
+			48 container (settable) ROOM SURFACES
+Комната 4 · 2.40 × 1.60 m
+Current surface: Wall 1
+				49 button (settable)
+			50 container (settable) Room surface preview, Wall 1, canonical room be45c539-64c5-42b1-b12b-95caa9fada9f
+			51 button (settable) Plan
+				52 button (settable) Plan
+			53 button (settable) Floor
+				54 button (settable) Floor
+			55 button (settable) Ceiling
+				56 button (settable) Ceiling
+			57 container (settable)
+				58 button (settable) Wall 1, current surface
+					59 button (settable) W1 · 2.40m
+				60 button (settable) Wall 2
+					61 button (settable) W2 · 1.60m
+				62 button (settable) Wall 3
+					63 button (settable) W3 · 2.40m
+				64 button (settable) Wall 4
+					65 button (settable) W4 · 1.60m
+			66 button (settable)
+			67 button (settable)
+			68 container (settable)
+				69 button (settable) Розетка 2, электрический компонент, Value: 1200 на 300 мм
+				70 button (settable) Кабельная трасса route-1, Value: power.ac
+			71 button (settable) Редактировать границы
+			72 button (settable)
+			73 button (settable)
+			74 button (settable)
+			75 button (settable)
+			76 button (settable)
+			77 button (settable)
+			78 button (settable)
+			79 button (settable)
+			80 text (settable) 100 мм
+			81 button (settable)
+			82 button (settable)
+			83 button (settable)
+			84 button (settable)
+			85 container (settable) Компоненты
+				86 button (settable)
+			87 container (settable) Room semantics inspector
+				88 container (settable)
+					89 text (settable) ROOM SEMANTICS
+					90 text (settable) Комната 4
+					91 button (settable) Usage
+Unknown
+					92 text (settable) Openings
+					93 text (settable) No canonical openings
+					94 text (settable) Adjacent spaces
+					95 text (settable) No canonical adjacency
+					96 text (settable) Classifications
+					97 text (settable) No overlay classifications
+			98 text (settable) Группы комнаты · 1
+ДАННЫЕ 1
+			99 container (settable) Электрическая группа
+Нагрузка: Розетка 2
+Щит: Распределительный щит 1
+Группа: Группа · Розетка 2
+Кабель: CAB-1
+Трасса: 1.10 м · с резервом 1.16 м
+Нагрузка: 1000 Вт · 230 В · I≈4.35 A (P/U)
+Укажите кабель
+Группа подключена и защищена, но марка/спецификация кабеля не назначена.
+Защита: QF-1 · 16 A · 2P
+				100 button (settable) Нагрузка
+				101 button (settable) Расчёт
+				102 button (settable) Кабель
+				103 button (settable) Изменить защиту
+			104 button (settable)
+	105 close button
+	106 full screen button Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	107 minimize button
+	108 text elecx
+109 menu bar
+	110 elecx
+	111 Edit
+	112 View
+	113 Window
+	114 Help
+
+The focused UI element is 1 container elecx

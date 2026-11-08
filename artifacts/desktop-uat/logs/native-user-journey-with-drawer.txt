@@ -1,0 +1,7 @@
+00:00 +0: loading /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/integration_test/desktop_user_journey_test.dart
+Building macOS application...
+✓ Built build/macos/Build/Products/Debug/elecx.app
+Failed to foreground app; open returned 1
+00:00 +0: native UI creates a project, previews a building and saves rooms
+00:12 +1: (tearDownAll)
+00:12 +1: All tests passed!

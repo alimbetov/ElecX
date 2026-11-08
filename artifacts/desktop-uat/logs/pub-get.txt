@@ -1,0 +1,18 @@
+Resolving dependencies...
+Downloading packages...
+  code_assets 2.1.0 (2.2.0 available)
+  crypto 3.0.7 (3.0.8 available)
+  drift 2.35.2 (2.35.3 available)
+  flutter_lints 5.0.0 (6.0.0 available)
+  jni 1.1.0 (1.1.2 available)
+  lints 5.1.1 (6.1.0 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  native_toolchain_c 0.19.5 (0.19.6 available)
+  objective_c 9.6.2 (9.6.3 available)
+  sqlite3 3.9.0 (3.9.1 available)
+  test_api 0.7.12 (0.7.15 available)
+  vector_math 2.4.3 (2.4.4 available)
+  web 1.1.1 (1.1.2 available)
+Got dependencies!
+13 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.

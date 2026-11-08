@@ -1,0 +1,76 @@
+Window: "elecx", App: elecx.
+0 standard window elecx, Secondary Actions: Raise
+	1 container elecx
+		2 container (settable) Dismiss
+			3 container (settable)
+				4 container (settable) Room semantics inspector
+					5 container (settable)
+						6 text (settable) ROOM SEMANTICS
+						7 text (settable) Комната 4
+						8 button (settable) Usage
+Unknown
+						9 text (settable) Openings
+						10 text (settable) No canonical openings
+						11 text (settable) Adjacent spaces
+						12 text (settable) No canonical adjacency
+						13 text (settable) Classifications
+						14 text (settable) No overlay classifications
+				15 text (settable) Группы комнаты · 1
+ДАННЫЕ 1
+				16 container (settable) Электрическая группа
+Нагрузка: Розетка 2
+Щит: Распределительный щит 1
+Группа: Группа · Розетка 2
+Кабель: CAB-1
+Трасса: 1.10 м · с резервом 1.16 м
+Нагрузка: 1000 Вт · 230 В · I≈4.35 A (P/U)
+Укажите кабель
+Группа подключена и защищена, но марка/спецификация кабеля не назначена.
+Защита: QF-1 · 16 A · 2P
+					17 button (settable) Нагрузка
+					18 button (settable) Расчёт
+					19 button (settable) Кабель
+					20 button (settable) Изменить защиту
+				21 text (settable) ENGINEERING INSPECTOR
+				22 button (settable)
+				23 container (settable)
+					24 text (settable) Розетка 2
+power.socket.general
+SELECTED
+					25 text (settable) IDENTITY
+ID
+component-2-socket-general
+CATEGORY
+power
+TYPE
+socketOutlet
+SYSTEM
+powerAc
+					26 text (settable) POSITION
+SURFACE
+WALL
+X
+1200 mm
+Y / H
+300 mm
+ROTATION
+0°
+					27 text (settable) ELECTRICAL
+VOLTAGE
+230 V
+POWER
+1000 W
+PORTS
+2
+	28 close button
+	29 full screen button Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	30 minimize button
+	31 text elecx
+32 menu bar
+	33 elecx
+	34 Edit
+	35 View
+	36 Window
+	37 Help
+
+The focused UI element is 1 container elecx

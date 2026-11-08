@@ -1,0 +1,74 @@
+Dart SDK 3.13.5
+Flutter SDK 3.47.7
+elecx 0.1.0+1
+
+dependencies:
+- crypto 3.0.7 [typed_data]
+- drift 2.35.2 [async convert collection meta stream_channel sqlite3 path stack_trace web]
+- flutter 0.0.0 [characters collection material_color_utilities meta vector_math sky_engine]
+- flutter_localizations 0.0.0 [flutter intl path]
+- path 1.9.1
+- path_provider 2.1.6 [flutter path_provider_android path_provider_foundation path_provider_linux path_provider_platform_interface path_provider_windows]
+- sqlite3 3.9.0 [collection ffi meta path web typed_data hooks code_assets native_toolchain_c crypto]
+
+dev dependencies:
+- flutter_lints 5.0.0 [lints]
+- flutter_test 0.0.0 [flutter test_api matcher path fake_async clock stack_trace vector_math leak_tracker_flutter_testing collection meta stream_channel]
+- integration_test 0.0.0 [flutter flutter_driver flutter_test path vm_service]
+
+transitive dependencies:
+- args 2.7.0
+- async 2.13.1 [collection meta]
+- boolean_selector 2.1.2 [source_span string_scanner]
+- characters 1.4.1
+- clock 1.1.3
+- code_assets 2.1.0 [collection hooks logging]
+- collection 1.19.1
+- convert 3.1.2 [typed_data]
+- fake_async 1.3.3 [clock collection]
+- ffi 2.2.0
+- file 7.0.1 [meta path]
+- flutter_driver 0.0.0 [file flutter flutter_test fuchsia_remote_debug_protocol path meta vm_service webdriver matcher]
+- fuchsia_remote_debug_protocol 0.0.0 [process vm_service meta]
+- glob 2.2.0 [async collection file path string_scanner]
+- hooks 2.2.0 [collection crypto logging pub_semver record_use yaml]
+- intl 0.20.3 [clock meta path]
+- jni 1.1.0 [args collection ffi jni_util meta package_config path plugin_platform_interface]
+- jni_flutter 1.0.4+1 [flutter jni]
+- jni_util 1.0.0 [path]
+- leak_tracker 11.0.2 [clock collection meta path vm_service]
+- leak_tracker_flutter_testing 3.0.10 [flutter leak_tracker leak_tracker_testing matcher meta]
+- leak_tracker_testing 3.0.2 [leak_tracker matcher meta]
+- lints 5.1.1
+- logging 1.3.0
+- matcher 0.12.20 [async meta stack_trace term_glyph test_api]
+- material_color_utilities 0.13.0 [collection]
+- meta 1.19.0
+- native_toolchain_c 0.19.5 [code_assets file glob hooks logging meta process pub_semver]
+- objective_c 9.6.2 [code_assets collection ffi hooks logging meta pub_semver]
+- package_config 3.0.0 [meta]
+- path_provider_android 2.3.1 [flutter jni jni_flutter path_provider_platform_interface]
+- path_provider_foundation 2.6.0 [ffi flutter objective_c path_provider_platform_interface]
+- path_provider_linux 2.2.2 [ffi flutter path path_provider_platform_interface xdg_directories]
+- path_provider_platform_interface 2.1.3 [flutter platform plugin_platform_interface]
+- path_provider_windows 2.3.0 [ffi flutter path path_provider_platform_interface]
+- platform 3.2.0 [meta]
+- plugin_platform_interface 2.1.8 [meta]
+- process 5.0.6 [file path platform]
+- pub_semver 2.2.1 [collection]
+- record_use 1.1.1 [collection meta pub_semver]
+- sky_engine 0.0.0
+- source_span 1.10.2 [collection path term_glyph]
+- stack_trace 1.12.2 [path]
+- stream_channel 2.1.4 [async]
+- string_scanner 1.4.1 [source_span]
+- sync_http 0.3.1
+- term_glyph 1.2.2
+- test_api 0.7.12 [async boolean_selector collection meta source_span stack_trace stream_channel string_scanner term_glyph]
+- typed_data 1.4.0 [collection]
+- vector_math 2.4.3
+- vm_service 15.4.0
+- web 1.1.1
+- webdriver 3.2.0 [matcher path stack_trace sync_http web]
+- xdg_directories 1.1.0 [meta path]
+- yaml 3.1.4 [collection source_span string_scanner]

@@ -1,0 +1,5 @@
+Cleaning Xcode workspace...                                         7.6s
+Deleting build...                                                   59ms
+Deleting .dart_tool...                                              11ms
+Deleting ephemeral...                                                1ms
+Deleting .flutter-plugins-dependencies...                            0ms
