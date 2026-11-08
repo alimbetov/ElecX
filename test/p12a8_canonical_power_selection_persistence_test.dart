@@ -1,5 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:crypto/crypto.dart';
 
 import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/project_mutation_reservation.dart';
@@ -11,6 +14,7 @@ import 'package:elecx/src/application/project/engineering/power_electrical_safet
 import 'package:elecx/src/application/project/engineering/power_fault_envelope_gate.dart';
 import 'package:elecx/src/application/project/engineering/power_protection_device_gate.dart';
 import 'package:elecx/src/application/project/engineering/manufacturer_protection_pair_gate.dart';
+import 'package:elecx/src/application/project/engineering/manufacturer_evidence_ingestion.dart';
 import 'package:elecx/src/application/project/engineering/canonical_residual_protection_assignment.dart';
 import 'package:elecx/src/serialization/project/residual_protection_aware_canonical_project_document_codec.dart';
 import 'package:elecx/src/application/project/engineering/power_apply_safety_revalidation.dart';
@@ -641,7 +645,171 @@ ProjectAggregateRoot projectWithDurableRcd() {
   );
 }
 
+final class _TrustedTestManufacturerPublisher
+    implements ManufacturerPublisherProvenanceVerifier {
+  const _TrustedTestManufacturerPublisher({this.allowed = true});
+
+  final bool allowed;
+
+  @override
+  bool verifiesPublisher({
+    required Uri documentUri,
+    required Uint8List documentBytes,
+    required String manufacturerId,
+    required String documentSha256,
+  }) =>
+      allowed &&
+      documentUri.host == 'manufacturer.example' &&
+      manufacturerId == 'TEST-VENDOR' &&
+      sha256.convert(documentBytes).toString() == documentSha256;
+}
+
+final class _DocumentTestRegistry implements TrustedEngineeringEvidenceRegistry {
+  const _DocumentTestRegistry(
+    this.row, {
+    this.revoked = false,
+    this.contradicted = false,
+  });
+
+  final ManufacturerProtectionPairRecord row;
+  final bool revoked;
+  final bool contradicted;
+
+  @override
+  String get revision => 'registry-rev-1';
+
+  @override
+  EngineeringEvidenceReviewRecord? lookup(String sourceId) {
+    if (sourceId != row.sourceId) return null;
+    return EngineeringEvidenceReviewRecord(
+      sourceId: sourceId,
+      revision: 'rev-1',
+      contentSha256: row.documentSha256,
+      approvalId: 'approval-1',
+      jurisdiction: 'KZ',
+      applicationScope: 'POWER-AC',
+      isApproved: true,
+      isRevoked: revoked,
+      evidencePurpose: 'manufacturer-coordination',
+      subjectCircuitId: row.circuitId,
+      verifiedSafetyFinding: contradicted
+          ? EngineeringVerifiedSafetyFinding.contradicted
+          : EngineeringVerifiedSafetyFinding.supported,
+      verifiedManufacturerPairFingerprint: row.fingerprint,
+    );
+  }
+}
+
 void main() {
+  group('P12 R1 manufacturer document authenticity ingestion', () {
+    final documentBytes =
+        Uint8List.fromList(utf8.encode('TEST-ONLY manufacturer PDF bytes'));
+    final documentHash = sha256.convert(documentBytes).toString();
+    final publisherUri = Uri.parse('https://manufacturer.example/coordination');
+
+    ManufacturerProtectionPairRecord reviewedRow({
+      String? documentSha256,
+      double maximumCoveredFaultKa = 6,
+    }) =>
+        ManufacturerProtectionPairRecord(
+          circuitId: 'c1',
+          downstream: ManufacturerProtectionArticle(
+            manufacturerId: 'TEST-VENDOR',
+            articleNumber: 'mcb-b16',
+            deviceKind: 'mcb',
+            catalogRevision: 'CAT-1',
+          ),
+          upstream: ManufacturerProtectionArticle(
+            manufacturerId: 'TEST-VENDOR',
+            articleNumber: 'RCD-A40-ARTICLE',
+            deviceKind: 'rcd',
+            catalogRevision: 'CAT-1',
+          ),
+          sourceId: 'selectivity-study',
+          documentRevision: 'TABLE-REV-1',
+          documentSha256: documentSha256 ?? documentHash,
+          tableId: 'TEST-TABLE-01',
+          maximumCoveredFaultKa: maximumCoveredFaultKa,
+        );
+
+    CanonicalPowerCircuitSelection pinnedSelection() {
+      final snapshot = jsonDecode(
+        jsonEncode(selection('c1').toCanonicalJson()),
+      ) as Map<String, dynamic>;
+      for (final source in snapshot['sources'] as List<dynamic>) {
+        final ref = source as Map<String, dynamic>;
+        if (ref['sourceId'] == 'selectivity-study') {
+          ref['sha256'] = documentHash;
+        }
+      }
+      return CanonicalPowerCircuitSelection.fromCanonicalJson(snapshot);
+    }
+
+    ManufacturerEvidenceAdmission admit({
+      Uint8List? bytes,
+      ManufacturerProtectionPairRecord? row,
+      ManufacturerPublisherProvenanceVerifier verifier =
+          const _TrustedTestManufacturerPublisher(),
+      String revision = 'registry-rev-1',
+      bool revoked = false,
+      bool contradicted = false,
+    }) {
+      final reviewed = row ?? reviewedRow();
+      return ManufacturerEvidenceIngestion.admit(
+        documentBytes: bytes ?? documentBytes,
+        publisherUri: publisherUri,
+        reviewedRow: reviewed,
+        selection: pinnedSelection(),
+        registry: _DocumentTestRegistry(
+          reviewed,
+          revoked: revoked,
+          contradicted: contradicted,
+        ),
+        publisherVerifier: verifier,
+        expectedRegistryRevision: revision,
+        selectedDownstreamArticleNumber: 'mcb-b16',
+        selectedUpstreamArticleNumber: 'RCD-A40-ARTICLE',
+        jurisdiction: 'KZ',
+        applicationScope: 'POWER-AC',
+        maximumProspectiveFaultKa: 3,
+      );
+    }
+
+    test('exact PDF bytes and publisher identity admit a pinned reviewed row',
+        () {
+      final accepted = admit();
+      expect(accepted.documentSha256, documentHash);
+      expect(accepted.registryRevision, 'registry-rev-1');
+      expect(accepted.catalog.rows.single.fingerprint,
+          reviewedRow().fingerprint);
+      expect(accepted.readyToApply, isFalse);
+    });
+
+    test('tampered bytes, wrong publisher, and stale registry are denied', () {
+      expect(
+        () => admit(bytes: Uint8List.fromList(utf8.encode('TAMPERED'))),
+        throwsStateError,
+      );
+      expect(
+        () => admit(
+          verifier: const _TrustedTestManufacturerPublisher(allowed: false),
+        ),
+        throwsStateError,
+      );
+      expect(() => admit(revision: 'old-registry'), throwsStateError);
+    });
+
+    test('revoked/contradicted reviews and insufficient range are denied', () {
+      expect(() => admit(revoked: true), throwsStateError);
+      expect(() => admit(contradicted: true), throwsStateError);
+      expect(
+        () => admit(row: reviewedRow(maximumCoveredFaultKa: 2)),
+        throwsStateError,
+      );
+    });
+  });
+
+
   group('P12 trusted manufacturer coordination source preflight', () {
     ManufacturerProtectionPairRecord pair({
       double coverage = 6,
