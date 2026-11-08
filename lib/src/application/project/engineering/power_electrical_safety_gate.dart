@@ -15,6 +15,8 @@ enum PowerSafetyCheck {
   overloadRating,
   conventionalTrip,
   breakingCapacity,
+  boardShortCircuitWithstand,
+  cableVoltageRating,
   shortCircuitThermal,
   shortCircuitDisconnection,
   residualCurrentProtection,
@@ -260,6 +262,9 @@ abstract final class PowerElectricalSafetyGate {
         PowerSafetyCheck.overloadRating: PowerSafetyVerdict.indeterminate,
         PowerSafetyCheck.conventionalTrip: PowerSafetyVerdict.indeterminate,
         PowerSafetyCheck.breakingCapacity: PowerSafetyVerdict.indeterminate,
+        PowerSafetyCheck.boardShortCircuitWithstand:
+            PowerSafetyVerdict.indeterminate,
+        PowerSafetyCheck.cableVoltageRating: PowerSafetyVerdict.indeterminate,
         PowerSafetyCheck.shortCircuitThermal: PowerSafetyVerdict.indeterminate,
         PowerSafetyCheck.shortCircuitDisconnection:
             PowerSafetyVerdict.indeterminate,
@@ -291,7 +296,16 @@ abstract final class PowerElectricalSafetyGate {
               fault <= selection.protectionRatings.breakingCapacityKa
                   ? PowerSafetyVerdict.pass
                   : PowerSafetyVerdict.fail;
+          checks[PowerSafetyCheck.boardShortCircuitWithstand] =
+              fault <= selection.boardRatings.shortCircuitWithstandKa
+                  ? PowerSafetyVerdict.pass
+                  : PowerSafetyVerdict.fail;
         }
+        checks[PowerSafetyCheck.cableVoltageRating] =
+            selection.cableRatings.ratedVoltageV >=
+                    selection.boardRatings.ratedVoltageV
+                ? PowerSafetyVerdict.pass
+                : PowerSafetyVerdict.fail;
         final deviceEnergy = input.protectiveDeviceLetThroughA2s;
         final cableEnergy = input.cableShortCircuitWithstandA2s;
         if (deviceEnergy != null && cableEnergy != null) {
