@@ -306,8 +306,10 @@ final class _PowerEvidenceRegistry
           sourceId == 'route-survey' && earthing != null
               ? earthing!.fingerprintFor(
                   CircuitId('c1'),
-                  residualDevice?.protectionCatalogId ??
-                      selection('c1').protectionCatalogId)
+                  residualDevice?.deviceType.toLowerCase().startsWith('rcbo') ==
+                          true
+                      ? residualDevice!.protectionCatalogId
+                      : selection('c1').protectionCatalogId)
               : sourceId == 'fault-study'
                   ? (approvedCalculation ?? testPowerSafetyEvidence())
                       .calculationFingerprint
