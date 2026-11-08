@@ -20,6 +20,10 @@ final class PowerSelectionAwareCanonicalProjectDocumentCodec
   @override
   ProjectDocument encode(ProjectSnapshot snapshot) {
     final metadata = snapshot.aggregate.engineeringMetadata;
+    if (!metadata.residualProtection.isEmpty) {
+      throw const FormatException(
+          'Group RCD data cannot be written using a pre-v22 codec.');
+    }
     _validateReferences(snapshot.aggregate);
     // The v20 codec rejects writes that would discard v21-only data. Build an
     // ephemeral projection for its older envelope; the original snapshot and
