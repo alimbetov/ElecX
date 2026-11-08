@@ -25,10 +25,12 @@ final class PowerApplySafetyRevalidation
     required Map<CircuitId, ReviewedResidualDeviceCharacteristic>
         residualDevices,
     required Map<CircuitId, ReviewedProtectionCoordination> coordination,
+    required Map<CircuitId, ReviewedEarthingDisconnectionEvidence> earthing,
   })  : circuitEvidence = List.unmodifiable(circuitEvidence),
         faultEnvelopes = Map.unmodifiable(faultEnvelopes),
         residualDevices = Map.unmodifiable(residualDevices),
-        coordination = Map.unmodifiable(coordination);
+        coordination = Map.unmodifiable(coordination),
+        earthing = Map.unmodifiable(earthing);
 
   final String expectedRegistryRevision;
   final String expectedEngineeringStateFingerprint;
@@ -42,6 +44,7 @@ final class PowerApplySafetyRevalidation
   final Map<CircuitId, PowerCircuitFaultEnvelope> faultEnvelopes;
   final Map<CircuitId, ReviewedResidualDeviceCharacteristic> residualDevices;
   final Map<CircuitId, ReviewedProtectionCoordination> coordination;
+  final Map<CircuitId, ReviewedEarthingDisconnectionEvidence> earthing;
 
   @override
   void revalidateEngineeringSafety({
@@ -69,7 +72,8 @@ final class PowerApplySafetyRevalidation
         !ids.containsAll(circuitEvidence.map((s) => s.circuitId)) ||
         !_exactKeys(ids, faultEnvelopes.keys.toSet()) ||
         !_exactKeys(ids, residualDevices.keys.toSet()) ||
-        !_exactKeys(ids, coordination.keys.toSet())) {
+        !_exactKeys(ids, coordination.keys.toSet()) ||
+        !_exactKeys(ids, earthing.keys.toSet())) {
       throw StateError('Incomplete safety evidence for canonical circuits.');
     }
 
@@ -104,6 +108,7 @@ final class PowerApplySafetyRevalidation
         faultAssessment: fault,
         residualDevice: residualDevices[id]!,
         coordination: coordination[id]!,
+        earthing: earthing[id]!,
         limits: protectionLimits,
         profile: profile,
         registry: registry,
