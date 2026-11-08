@@ -713,13 +713,11 @@ void main() {
       );
     });
 
-    test('negative manufacturer statement is FAIL, not an unknown result',
-        () {
+    test('negative manufacturer statement is FAIL, not an unknown result', () {
       final result = check(pair(), contradicted: 'selectivity-study');
       expect(result.verdict, PowerSafetyVerdict.fail);
       expect(
-        result.checks[
-            ManufacturerPairCheck.independentCoordinationAttestation],
+        result.checks[ManufacturerPairCheck.independentCoordinationAttestation],
         PowerSafetyVerdict.fail,
       );
     });
@@ -733,7 +731,6 @@ void main() {
       );
     });
   });
-
 
   group('P12 v22 durable group RCD ownership and migration', () {
     const codec = ResidualProtectionAwareCanonicalProjectDocumentCodec();
