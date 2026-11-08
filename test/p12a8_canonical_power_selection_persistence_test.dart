@@ -665,7 +665,8 @@ final class _TrustedTestManufacturerPublisher
       sha256.convert(documentBytes).toString() == documentSha256;
 }
 
-final class _DocumentTestRegistry implements TrustedEngineeringEvidenceRegistry {
+final class _DocumentTestRegistry
+    implements TrustedEngineeringEvidenceRegistry {
   const _DocumentTestRegistry(
     this.row, {
     this.revoked = false,
@@ -781,8 +782,8 @@ void main() {
       final accepted = admit();
       expect(accepted.documentSha256, documentHash);
       expect(accepted.registryRevision, 'registry-rev-1');
-      expect(accepted.catalog.rows.single.fingerprint,
-          reviewedRow().fingerprint);
+      expect(
+          accepted.catalog.rows.single.fingerprint, reviewedRow().fingerprint);
       expect(accepted.readyToApply, isFalse);
     });
 
@@ -800,8 +801,7 @@ void main() {
       expect(() => admit(revision: 'old-registry'), throwsStateError);
     });
 
-    test('admitted device pair matches canonical v22 RCD and P11 circuit',
-        () {
+    test('admitted device pair matches canonical v22 RCD and P11 circuit', () {
       final base = projectWithDurableRcd();
       final selectedJson = jsonDecode(
         jsonEncode(selection('c1').toCanonicalJson()),
@@ -925,7 +925,6 @@ void main() {
       );
     });
   });
-
 
   group('P12 trusted manufacturer coordination source preflight', () {
     ManufacturerProtectionPairRecord pair({
