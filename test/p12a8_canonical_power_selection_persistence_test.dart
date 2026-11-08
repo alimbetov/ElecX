@@ -602,6 +602,36 @@ void main() {
       );
     }
 
+    test('both quantitative and fault-envelope gates accept independently pinned reviews',
+        () {
+      final envelope = testFaultEnvelope();
+      final registry = _PowerEvidenceRegistry(
+        approvedCalculation: testPowerSafetyEvidence(),
+        faultEnvelope: envelope,
+      );
+      final quantitative = PowerElectricalSafetyGate.evaluate(
+        selections: CanonicalPowerSelectionRegistry(
+          selections: [selection('c1')],
+        ),
+        evidence: [testPowerSafetyEvidence()],
+        profile: testPowerSafetyProfile(),
+        registry: registry,
+        targetJurisdiction: 'KZ',
+        targetApplicationScope: 'POWER-AC',
+      );
+      final fault = PowerFaultEnvelopeGate.evaluate(
+        selection: selection('c1'),
+        envelope: envelope,
+        expectedSupplyIds: const ['grid', 'backup'],
+        profile: testPowerSafetyProfile(),
+        registry: registry,
+      );
+      expect(quantitative.verdict, PowerSafetyVerdict.pass);
+      expect(fault.verdict, PowerSafetyVerdict.pass);
+      expect(quantitative.readyToApply, isFalse);
+      expect(fault.readyToApply, isFalse);
+    });
+
     test('full reviewed grid and backup max/min scenarios pass preflight only',
         () {
       final result = evaluate();
