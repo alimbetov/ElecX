@@ -204,8 +204,11 @@ final class CanonicalResidualProtectionRegistry {
                 connection.toComponentId == deviceId) ||
             !activeConnections.any((connection) =>
                 connection.fromComponentId == deviceId &&
-                connection.toComponentId != assignment.boardComponentId)) {
-          throw ArgumentError('RCD is not in the P11 circuit feed path.');
+                connection.toComponentId != assignment.boardComponentId) ||
+            activeConnections.any((connection) =>
+                connection.fromComponentId == assignment.boardComponentId &&
+                connection.toComponentId != deviceId)) {
+          throw ArgumentError('RCD is absent from or bypassed by the P11 feed.');
         }
       }
     }
