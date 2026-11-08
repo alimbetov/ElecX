@@ -237,3 +237,31 @@ explicitly persisted RCD device identity, upstream ownership, affected
 circuits, earthing/protection review and manufacturer coordination evidence.
 The temporary RCBO-qualified test fixture is distinct from the original
 MCB selection and does not overwrite P12A.7's MCB catalogue behavior.
+
+
+### Dedicated upstream RCD coverage for a canonical MCB circuit (proposal-stage)
+
+`CanonicalResidualProtectionAssignment` now provides an immutable,
+fingerprinted P11 `CircuitId` coverage list with owning board `ComponentId`,
+downstream MCB catalog ID, upstream RCD catalog ID and independently pinned
+source ID. `PowerProtectionDeviceGate` may treat a canonical MCB as having
+residual-current protection only when a distinct reviewed RCD device
+characteristic matches that **exact** upstream catalog and
+`EngineeringEvidenceReviewRecord.verifiedResidualTopologyFingerprint`
+matches the full assignment, in addition to normal approval, purpose,
+revision, source hash, jurisdiction and circuit checks. Missing reviews
+and a substituted circuit remain `INDETERMINATE`.
+
+`PowerApplySafetyRevalidation` accepts optional per-circuit upstream RCD
+assignments and passes them into the protection gate. No assignment is
+automatically inferred from proximity, board membership or a manufacturer
+document.
+
+**Lifecycle limitation:** this assignment is currently a frozen,
+reviewed **proposal-side object**. It is not yet durably encoded in project
+schema v21 and not cross-checked against independently materialized upstream
+protective-device entities in the authoritative P11 graph. Consequently it
+cannot authorize production Apply; next acceptance requires an additive
+canonical persistence revision, complete group-RCD topology and protection
+selectivity between all actual associated devices. Existing
+`EngineeringReservedProjectCommand` remains preview-only.
