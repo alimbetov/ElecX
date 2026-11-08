@@ -15,10 +15,12 @@ final class CanonicalResidualProtectionAssignment {
     required this.upstreamResidualCatalogId,
     required this.evidenceSourceId,
     required Iterable<CircuitId> protectedCircuitIds,
+    Map<CircuitId, String> downstreamCatalogOverrides = const {},
   }) : protectedCircuitIds = List.unmodifiable(
           protectedCircuitIds.toList()
             ..sort((a, b) => a.value.compareTo(b.value)),
-        ) {
+        ),
+        downstreamCatalogOverrides = Map.unmodifiable(downstreamCatalogOverrides) {
     if (downstreamProtectionCatalogId.trim().isEmpty ||
         upstreamResidualCatalogId.trim().isEmpty ||
         evidenceSourceId.trim().isEmpty ||
@@ -28,6 +30,12 @@ final class CanonicalResidualProtectionAssignment {
             this.protectedCircuitIds.length) {
       throw ArgumentError('Explicit, unique RCD circuit coverage required.');
     }
+    for (final entry in this.downstreamCatalogOverrides.entries) {
+      if (!this.protectedCircuitIds.contains(entry.key) ||
+          entry.value.trim().isEmpty) {
+        throw ArgumentError('Invalid circuit-specific MCB catalog override.');
+      }
+    }
   }
 
   final ComponentId boardComponentId;
@@ -36,6 +44,7 @@ final class CanonicalResidualProtectionAssignment {
   final String upstreamResidualCatalogId;
   final String evidenceSourceId;
   final List<CircuitId> protectedCircuitIds;
+  final Map<CircuitId, String> downstreamCatalogOverrides;
 
   String get fingerprint => semanticSha256Hex(jsonEncode([
         'p12a8.upstream-rcd-assignment.v2',
@@ -45,11 +54,18 @@ final class CanonicalResidualProtectionAssignment {
         upstreamResidualCatalogId,
         evidenceSourceId,
         [for (final id in protectedCircuitIds) id.value],
+        [
+          for (final id in downstreamCatalogOverrides.keys.toList()
+            ..sort((a, b) => a.value.compareTo(b.value)))
+            [id.value, downstreamCatalogOverrides[id]],
+        ],
       ]));
 
   bool matches(CanonicalPowerCircuitSelection selection) =>
       selection.boardComponentId == boardComponentId &&
-      selection.protectionCatalogId == downstreamProtectionCatalogId &&
+      selection.protectionCatalogId ==
+          (downstreamCatalogOverrides[selection.circuitId] ??
+              downstreamProtectionCatalogId) &&
       protectedCircuitIds.contains(selection.circuitId);
 
   Map<String, Object?> toCanonicalJson() => {
@@ -61,11 +77,16 @@ final class CanonicalResidualProtectionAssignment {
         'protectedCircuitIds': [
           for (final circuit in protectedCircuitIds) circuit.value
         ],
+        'downstreamCatalogOverrides': {
+          for (final id in downstreamCatalogOverrides.keys.toList()
+            ..sort((a, b) => a.value.compareTo(b.value)))
+            id.value: downstreamCatalogOverrides[id],
+        },
       };
 
   factory CanonicalResidualProtectionAssignment.fromCanonicalJson(Object? raw) {
     if (raw is! Map<String, dynamic> ||
-        raw.keys.toSet().length != 6 ||
+        raw.keys.toSet().length != 7 ||
         !raw.keys.toSet().containsAll(const {
           'boardComponentId',
           'upstreamResidualComponentId',
@@ -73,6 +94,7 @@ final class CanonicalResidualProtectionAssignment {
           'upstreamResidualCatalogId',
           'evidenceSourceId',
           'protectedCircuitIds',
+          'downstreamCatalogOverrides',
         })) {
       throw const FormatException('Invalid group RCD document shape.');
     }
@@ -84,9 +106,12 @@ final class CanonicalResidualProtectionAssignment {
     }
 
     final rawIds = raw['protectedCircuitIds'];
-    if (rawIds is! List) {
-      throw const FormatException('Invalid protected P11 circuit list.');
+    if (rawIds is! List ||
+        raw['downstreamCatalogOverrides'] is! Map<String, dynamic>) {
+      throw const FormatException('Invalid P11 circuit catalog mapping.');
     }
+    final rawOverrides =
+        raw['downstreamCatalogOverrides'] as Map<String, dynamic>;
     return CanonicalResidualProtectionAssignment(
       boardComponentId: ComponentId(requiredString(raw['boardComponentId'])),
       upstreamResidualComponentId:
@@ -97,6 +122,10 @@ final class CanonicalResidualProtectionAssignment {
           requiredString(raw['upstreamResidualCatalogId']),
       evidenceSourceId: requiredString(raw['evidenceSourceId']),
       protectedCircuitIds: rawIds.map((v) => CircuitId(requiredString(v))),
+      downstreamCatalogOverrides: {
+        for (final entry in rawOverrides.entries)
+          CircuitId(requiredString(entry.key)): requiredString(entry.value),
+      },
     );
   }
 }
