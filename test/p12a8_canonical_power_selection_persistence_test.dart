@@ -393,6 +393,66 @@ ReviewedProtectionCoordination testCoordination({
       sourceId: 'selectivity-study',
     );
 
+/// Deliberately strips PreviewOnly marker to verify coordinator does not
+/// accept an unqualified P12 Apply, even if the candidate is otherwise valid.
+class _UnqualifiedP12Proxy implements ReservedProjectCommand {
+  _UnqualifiedP12Proxy(this.delegate);
+
+  final EngineeringReservedProjectCommand delegate;
+
+  @override
+  String get commandType => delegate.commandType;
+
+  @override
+  String get normalizedIntentKey => delegate.normalizedIntentKey;
+
+  @override
+  MutationIdentityReservation reserveIdentities(EntityIdFactory factory) =>
+      delegate.reserveIdentities(factory);
+
+  @override
+  ProjectCommandCandidate buildCandidate({
+    required ProjectAggregateRoot current,
+    required MutationIdentityReservation reservation,
+  }) =>
+      delegate.buildCandidate(current: current, reservation: reservation);
+
+  @override
+  void validateReservation({
+    required ProjectAggregateRoot current,
+    required MutationIdentityReservation reservation,
+  }) =>
+      delegate.validateReservation(
+        current: current,
+        reservation: reservation,
+      );
+
+  @override
+  Iterable<ProjectSemanticOperation> semanticOperations({
+    required ProjectAggregateRoot before,
+    required ProjectAggregateRoot candidate,
+    required MutationIdentityReservation reservation,
+  }) =>
+      delegate.semanticOperations(
+        before: before,
+        candidate: candidate,
+        reservation: reservation,
+      );
+}
+
+final class _RejectingP12Proxy extends _UnqualifiedP12Proxy
+    implements TransactionalEngineeringSafetyRevalidation {
+  _RejectingP12Proxy(super.delegate);
+
+  @override
+  void revalidateEngineeringSafety({
+    required ProjectAggregateRoot current,
+    required ProjectAggregateRoot candidate,
+  }) {
+    throw StateError('Source revoked between preview and commit');
+  }
+}
+
 void main() {
   group('P12 reviewed RCD/RCBO and selectivity device preflight', () {
     PowerProtectionDeviceAssessment evaluate({
@@ -1165,6 +1225,54 @@ void main() {
           session.current.engineeringMetadata.powerSelections.isEmpty, isTrue);
       expect(() => coordinator.commitPreview(preview), throwsStateError);
       expect(session.current.version, current.version);
+      expect(session.undoDepth, 0);
+    });
+
+    test('P12 coordinator denies missing and failing commit-boundary gates', () {
+      final base = P1010ServiceAnchorFixture().project;
+      final project = ProjectAggregateRoot(
+        id: base.id,
+        siteId: base.siteId,
+        version: base.version,
+        stores: base.stores,
+        engineeringMetadata: base.engineeringMetadata
+            .withEngineeringState(validEngineeringState()),
+      );
+      final proposal = EngineeringProposalDiff(
+        sourceFingerprint: 'test-source',
+        boardGenerationKey: 'board-key',
+        catalogSnapshotId: 'catalog-snapshot-v2',
+        entries: [
+          EngineeringProposalDiffEntry(
+            generationKey: 'generation-c1',
+            calculationCircuitId: 'calculated-c1',
+            status: EngineeringProposalStatus.selected,
+            cableCatalogId: 'cable-3x2.5',
+            protectionCatalogId: 'mcb-b16',
+          ),
+        ],
+        issues: const [],
+      );
+      final delegate = EngineeringReservedProjectCommand(
+        proposal: proposal,
+        requestedSelections:
+            CanonicalPowerSelectionRegistry(selections: [selection('c1')]),
+        canonicalCircuitIdsByCalculationId: {'calculated-c1': CircuitId('c1')},
+        expectedEngineeringStateFingerprint:
+            project.engineeringMetadata.engineeringState.fingerprint,
+        expectedPowerSelectionFingerprint:
+            project.engineeringMetadata.powerSelections.fingerprint,
+      );
+      final session = ProjectMutationSession(project);
+      final coordinator = ReservedProjectMutationCoordinator(session);
+      final missing = coordinator.preview(_UnqualifiedP12Proxy(delegate));
+      expect(() => coordinator.commitPreview(missing), throwsStateError);
+      expect(session.current.version, project.version);
+      expect(session.undoDepth, 0);
+
+      final rejected = coordinator.preview(_RejectingP12Proxy(delegate));
+      expect(() => coordinator.commitPreview(rejected), throwsStateError);
+      expect(session.current.version, project.version);
       expect(session.undoDepth, 0);
     });
 
