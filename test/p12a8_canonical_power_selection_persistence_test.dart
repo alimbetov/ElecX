@@ -9,6 +9,7 @@ import 'package:elecx/src/application/project/engineering/engineering_proposal_d
 import 'package:elecx/src/application/project/engineering/engineering_reserved_project_command.dart';
 import 'package:elecx/src/application/project/engineering/power_electrical_safety_gate.dart';
 import 'package:elecx/src/application/project/engineering/power_fault_envelope_gate.dart';
+import 'package:elecx/src/application/project/engineering/power_protection_device_gate.dart';
 import 'package:elecx/src/domain/canonical_engineering_graph.dart';
 import 'package:elecx/src/domain/canonical_power_selection.dart';
 import 'package:elecx/src/domain/engineering_circuit_topology.dart';
@@ -203,7 +204,10 @@ final class _PowerEvidenceRegistry
       this.withoutVerifiedFinding = false,
       this.withoutVerifiedRuleProfile = false,
       this.approvedCalculation,
-      this.faultEnvelope});
+      this.faultEnvelope,
+      this.residualDevice,
+      this.coordination,
+      this.deviceLimits});
 
   final String? revokedId;
   final String? missingId;
@@ -212,6 +216,9 @@ final class _PowerEvidenceRegistry
   final bool withoutVerifiedRuleProfile;
   final PowerCircuitSafetyEvidence? approvedCalculation;
   final PowerCircuitFaultEnvelope? faultEnvelope;
+  final ReviewedResidualDeviceCharacteristic? residualDevice;
+  final ReviewedProtectionCoordination? coordination;
+  final PowerProtectionDeviceLimits? deviceLimits;
 
   @override
   String get revision => 'registry-rev-1';
@@ -244,6 +251,10 @@ final class _PowerEvidenceRegistry
                   sourceId == 'selectivity-study')
           ? EngineeringVerifiedSafetyFinding.supported
           : null,
+      verifiedProtectionLimitsFingerprint: sourceId == 'normative-doc' &&
+              deviceLimits != null && !withoutVerifiedRuleProfile
+          ? deviceLimits!.fingerprintFor(testPowerSafetyProfile())
+          : null,
       verifiedRuleProfileFingerprint:
           sourceId == 'normative-doc' && !withoutVerifiedRuleProfile
               ? testPowerSafetyProfile().fingerprint
@@ -252,7 +263,11 @@ final class _PowerEvidenceRegistry
           ? (faultEnvelope?.fingerprint ??
               (approvedCalculation ?? testPowerSafetyEvidence())
                   .calculationFingerprint)
-          : null,
+          : sourceId == 'rcd-test-report' && residualDevice != null
+              ? residualDevice!.fingerprintFor(CircuitId('c1'))
+              : sourceId == 'selectivity-study' && coordination != null
+                  ? coordination!.fingerprintFor(CircuitId('c1'))
+                  : null,
     );
   }
 }
@@ -346,7 +361,168 @@ PowerCircuitFaultEnvelope testFaultEnvelope({
   );
 }
 
+PowerProtectionDeviceLimits testProtectionLimits() =>
+    PowerProtectionDeviceLimits(
+      maximumResidualOperatingCurrentMa: 30,
+      maximumResidualTripTimeMs: 250,
+    );
+
+ReviewedResidualDeviceCharacteristic testResidualDevice({
+  double operatingCurrentMa = 20,
+  double tripTimeMs = 80,
+  String catalogId = 'protection-b16',
+}) =>
+    ReviewedResidualDeviceCharacteristic(
+      protectionCatalogId: catalogId,
+      deviceType: 'RCBO type A',
+      ratedResidualCurrentMa: 30,
+      measuredOperatingResidualCurrentMa: operatingCurrentMa,
+      measuredTripTimeMs: tripTimeMs,
+      testResidualCurrentMa: 30,
+      sourceId: 'rcd-test-report',
+    );
+
+ReviewedProtectionCoordination testCoordination({
+  double coverageKa = 6,
+  String upstreamId = 'upstream-c63',
+}) =>
+    ReviewedProtectionCoordination(
+      downstreamProtectionCatalogId: selection('c1').protectionCatalogId,
+      upstreamProtectionCatalogId: upstreamId,
+      coveredFaultCurrentKa: coverageKa,
+      sourceId: 'selectivity-study',
+    );
+
 void main() {
+  group('P12 reviewed RCD/RCBO and selectivity device preflight', () {
+    PowerProtectionDeviceAssessment evaluate({
+      ReviewedResidualDeviceCharacteristic? residual,
+      ReviewedProtectionCoordination? selectivity,
+      PowerProtectionDeviceLimits? limits,
+      _PowerEvidenceRegistry? reviewed,
+      PowerCircuitFaultEnvelope? envelope,
+      PowerCircuitFaultEnvelope? assessedEnvelope,
+    }) {
+      final input = envelope ?? testFaultEnvelope();
+      final bound = assessedEnvelope ?? input;
+      final device = residual ?? testResidualDevice(
+          catalogId: selection('c1').protectionCatalogId);
+      final pair = selectivity ?? testCoordination();
+      final policy = limits ?? testProtectionLimits();
+      final registry = reviewed ??
+          _PowerEvidenceRegistry(
+            residualDevice: device,
+            coordination: pair,
+            deviceLimits: policy,
+            faultEnvelope: bound,
+          );
+      final faults = PowerFaultEnvelopeGate.evaluate(
+        selection: selection('c1'),
+        envelope: bound,
+        expectedSupplyIds: const ['grid', 'backup'],
+        profile: testPowerSafetyProfile(),
+        registry: registry,
+      );
+      return PowerProtectionDeviceGate.evaluate(
+        selection: selection('c1'),
+        faultEnvelope: input,
+        faultAssessment: faults,
+        residualDevice: device,
+        coordination: pair,
+        limits: policy,
+        profile: testPowerSafetyProfile(),
+        registry: registry,
+      );
+    }
+
+    test('independently reviewed matching manufacturer case passes preflight',
+        () {
+      final result = evaluate();
+      expect(result.verdict, PowerSafetyVerdict.pass);
+      expect(result.readyToApply, isFalse);
+      expect(result.checks.length, PowerProtectionDeviceCheck.values.length);
+    });
+
+    test('unverified device data cannot be approved by source ID alone', () {
+      final result = evaluate(
+        reviewed: _PowerEvidenceRegistry(),
+      );
+      expect(result.verdict, PowerSafetyVerdict.indeterminate);
+      expect(
+        result.checks[PowerProtectionDeviceCheck.trustedResidualCharacteristic],
+        PowerSafetyVerdict.indeterminate,
+      );
+    });
+
+    test('RCD trip time and residual current limitations are separate', () {
+      final delayed = evaluate(
+        residual: testResidualDevice(
+            catalogId: selection('c1').protectionCatalogId,
+            tripTimeMs: 900),
+      );
+      expect(
+        delayed.checks[PowerProtectionDeviceCheck.residualTripTime],
+        PowerSafetyVerdict.fail,
+      );
+      final current = evaluate(
+        residual: testResidualDevice(
+            catalogId: selection('c1').protectionCatalogId,
+            operatingCurrentMa: 45),
+      );
+      expect(
+        current.checks[PowerProtectionDeviceCheck.residualCurrentThreshold],
+        PowerSafetyVerdict.fail,
+      );
+    });
+
+    test('selectivity must cover worst reviewed fault scenario', () {
+      final result = evaluate(selectivity: testCoordination(coverageKa: 2));
+      expect(
+        result.checks[PowerProtectionDeviceCheck.selectivityFaultCoverage],
+        PowerSafetyVerdict.fail,
+      );
+    });
+
+    test('stale fault assessment cannot authorize different envelope ADS', () {
+      final result = evaluate(
+        envelope: testFaultEnvelope(maxBackupKa: 5),
+        assessedEnvelope: testFaultEnvelope(),
+      );
+      expect(
+        result.checks[PowerProtectionDeviceCheck.automaticDisconnection],
+        PowerSafetyVerdict.indeterminate,
+      );
+      expect(result.readyToApply, isFalse);
+    });
+
+    test('different protection catalog and revised evidence fail closed', () {
+      final mismatched = evaluate(
+        residual: testResidualDevice(catalogId: 'unrelated-rcbo'),
+      );
+      expect(
+        mismatched.checks[
+            PowerProtectionDeviceCheck.trustedResidualCharacteristic],
+        PowerSafetyVerdict.indeterminate,
+      );
+      final missingProof = evaluate(
+        reviewed: _PowerEvidenceRegistry(
+          revokedId: 'rcd-test-report',
+          residualDevice: testResidualDevice(
+              catalogId: selection('c1').protectionCatalogId),
+          coordination: testCoordination(),
+          deviceLimits: testProtectionLimits(),
+          faultEnvelope: testFaultEnvelope(),
+        ),
+      );
+      expect(
+        missingProof.checks[
+            PowerProtectionDeviceCheck.trustedResidualCharacteristic],
+        PowerSafetyVerdict.indeterminate,
+      );
+    });
+  });
+
+
   group('P12A.8 multi-supply fault envelope', () {
     PowerFaultEnvelopeAssessment evaluate({
       PowerCircuitFaultEnvelope? envelope,
