@@ -694,8 +694,11 @@ final class ProjectMutationSession {
       entityDiff: stateDiff.entityDiff,
       engineeringMetadataDiff: stateDiff.engineeringMetadataDiff,
     );
-    _requirePowerCommitGuard(changeSet);
-    commitGuard?.call(before, restored, changeSet);
+    if (changeSet.engineeringMetadataDiff.powerSelectionsChanged ||
+        changeSet.engineeringMetadataDiff.residualProtectionChanged) {
+      _requirePowerCommitGuard(changeSet);
+      commitGuard?.call(before, restored, changeSet);
+    }
     _current = restored;
     _boundaryIdentityRegistry =
         restored.engineeringMetadata.boundaryEdgeIdentityRegistry;
@@ -730,8 +733,11 @@ final class ProjectMutationSession {
       entityDiff: stateDiff.entityDiff,
       engineeringMetadataDiff: stateDiff.engineeringMetadataDiff,
     );
-    _requirePowerCommitGuard(changeSet);
-    commitGuard?.call(before, restored, changeSet);
+    if (changeSet.engineeringMetadataDiff.powerSelectionsChanged ||
+        changeSet.engineeringMetadataDiff.residualProtectionChanged) {
+      _requirePowerCommitGuard(changeSet);
+      commitGuard?.call(before, restored, changeSet);
+    }
     _current = restored;
     _boundaryIdentityRegistry =
         restored.engineeringMetadata.boundaryEdgeIdentityRegistry;
