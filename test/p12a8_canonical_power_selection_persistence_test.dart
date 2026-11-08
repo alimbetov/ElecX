@@ -728,6 +728,8 @@ void main() {
       double maximumCoveredFaultKa = 6,
     }) =>
         ManufacturerProtectionPairRecord(
+          coordinationCategory:
+              ManufacturerPairCoordinationCategory.residualDeviceBackup,
           circuitId: 'c1',
           downstream: ManufacturerProtectionArticle(
             manufacturerId: 'TEST-VENDOR',
@@ -838,6 +840,8 @@ void main() {
         ),
       );
       final row = ManufacturerProtectionPairRecord(
+          coordinationCategory:
+              ManufacturerPairCoordinationCategory.residualDeviceBackup,
         circuitId: 'c1',
         downstream: ManufacturerProtectionArticle(
           manufacturerId: 'TEST-VENDOR',
@@ -946,6 +950,8 @@ void main() {
       String upstreamArticle = 'RCD-A40-ARTICLE',
     }) =>
         ManufacturerProtectionPairRecord(
+          coordinationCategory:
+              ManufacturerPairCoordinationCategory.residualDeviceBackup,
           circuitId: 'c1',
           downstream: ManufacturerProtectionArticle(
             manufacturerId: 'TEST-VENDOR',
