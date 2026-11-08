@@ -756,7 +756,7 @@ void main() {
     });
 
     test('MCB with reviewed upstream group RCD qualifies precommit only', () {
-      final project = projectWithPowerSelection();
+      final project = projectWithDurableRcd();
       final selectionForCircuit =
           project.engineeringMetadata.powerSelections.byCircuit[CircuitId('c1')]!;
       final supply = project.engineeringMetadata.engineeringState
