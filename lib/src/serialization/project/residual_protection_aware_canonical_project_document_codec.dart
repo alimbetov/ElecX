@@ -1,5 +1,4 @@
 import '../../application/project/project_snapshot.dart';
-import '../../domain/canonical_power_selection.dart';
 import '../../domain/canonical_residual_protection_registry.dart';
 import '../../domain/project_aggregate.dart';
 import 'power_selection_aware_canonical_project_document_codec.dart';
