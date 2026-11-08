@@ -272,11 +272,17 @@ abstract final class PowerProtectionDeviceGate {
 
     final residualFingerprint =
         residualDevice.fingerprintFor(selection.circuitId);
-    final residualReview =
-        residualDevice.protectionCatalogId == selection.protectionCatalogId
-            ? reviewed(
-                residualDevice.sourceId, 'rcd-protection', residualFingerprint)
-            : PowerSafetyVerdict.indeterminate;
+    // A selected MCB is not an RCD/RCBO. A separate upstream RCD requires
+    // explicit canonical device topology and is not silently inferred.
+    final residualCapableSelection =
+        selection.protectionRatings.deviceKind.trim().toLowerCase() ==
+                'rcbo' &&
+            residualDevice.deviceType.trim().toLowerCase().startsWith('rcbo');
+    final residualReview = residualCapableSelection &&
+            residualDevice.protectionCatalogId == selection.protectionCatalogId
+        ? reviewed(
+            residualDevice.sourceId, 'rcd-protection', residualFingerprint)
+        : PowerSafetyVerdict.indeterminate;
     checks[PowerProtectionDeviceCheck.trustedResidualCharacteristic] =
         residualReview;
     if (residualReview == PowerSafetyVerdict.pass) {
