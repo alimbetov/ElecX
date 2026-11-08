@@ -545,10 +545,19 @@ void main() {
 
     test('all reviewed gates revalidate against actual P11 supply topology',
         () {
-      final project = projectWithPowerSelection();
+      final previous = projectWithPowerSelection();
+      final chosen = rcboSelection();
+      final project = ProjectAggregateRoot(
+        id: previous.id,
+        siteId: previous.siteId,
+        version: previous.version,
+        stores: previous.stores,
+        engineeringMetadata: previous.engineeringMetadata.withPowerSelections(
+          CanonicalPowerSelectionRegistry(selections: [chosen]),
+        ),
+      );
       final actualSupply = project.engineeringMetadata.engineeringState
           .circuitSupplies.single.sourceIds.single.value;
-      final chosen = selection('c1');
       final envelope = PowerCircuitFaultEnvelope(
         circuitId: chosen.circuitId,
         selectionFingerprint:
@@ -568,10 +577,10 @@ void main() {
       final limits = testProtectionLimits();
       final residual =
           testResidualDevice(catalogId: chosen.protectionCatalogId);
-      final pair = testCoordination();
+      final pair = testCoordination(selected: chosen);
       final earth = testEarthing();
       final registry = _PowerEvidenceRegistry(
-        approvedCalculation: testPowerSafetyEvidence(),
+        approvedCalculation: testPowerSafetyEvidence(selected: chosen),
         faultEnvelope: envelope,
         residualDevice: residual,
         coordination: pair,
@@ -589,7 +598,7 @@ void main() {
         profile: testPowerSafetyProfile(),
         protectionLimits: limits,
         registry: registry,
-        circuitEvidence: [testPowerSafetyEvidence()],
+        circuitEvidence: [testPowerSafetyEvidence(selected: chosen)],
         faultEnvelopes: {chosen.circuitId: envelope},
         residualDevices: {chosen.circuitId: residual},
         coordination: {chosen.circuitId: pair},
