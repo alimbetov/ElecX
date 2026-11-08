@@ -612,7 +612,9 @@ final class ReservedProjectMutationCoordinator {
     // review. A fabricated or incomplete Preview still cannot be committed.
     final canonicalPowerChanged =
         session.current.engineeringMetadata.powerSelections.fingerprint !=
-            planned.candidate.engineeringMetadata.powerSelections.fingerprint;
+            planned.candidate.engineeringMetadata.powerSelections.fingerprint ||
+        session.current.engineeringMetadata.residualProtection.fingerprint !=
+            planned.candidate.engineeringMetadata.residualProtection.fingerprint;
     if ((canonicalPowerChanged ||
             planned._command.commandType.startsWith('p12')) &&
         planned._command is! TransactionalEngineeringSafetyRevalidation) {
