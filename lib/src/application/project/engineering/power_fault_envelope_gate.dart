@@ -227,8 +227,8 @@ abstract final class PowerFaultEnvelopeGate {
             : PowerSafetyVerdict.fail;
     results[PowerFaultEnvelopeCheck.maximumThermalEnergy] =
         envelope.scenarios.every(
-          (s) => s.maximumLetThroughA2s <= s.cableWithstandA2s,
-        )
+      (s) => s.maximumLetThroughA2s <= s.cableWithstandA2s,
+    )
             ? PowerSafetyVerdict.pass
             : PowerSafetyVerdict.fail;
 
@@ -236,9 +236,9 @@ abstract final class PowerFaultEnvelopeGate {
     // is sufficiently fast for each supply case, not the maximum fault alone.
     results[PowerFaultEnvelopeCheck.minimumFaultDisconnection] =
         envelope.scenarios.every(
-          (s) => s.minimumFaultClearingTimeMs <=
-              profile.maxFaultDisconnectionTimeMs,
-        )
+      (s) =>
+          s.minimumFaultClearingTimeMs <= profile.maxFaultDisconnectionTimeMs,
+    )
             ? PowerSafetyVerdict.pass
             : PowerSafetyVerdict.fail;
     return PowerFaultEnvelopeAssessment._(
