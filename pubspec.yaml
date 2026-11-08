@@ -15,6 +15,7 @@ dependencies:
   drift: ^2.20.0
   # Explicit native-asset pin; Dart hook verifies upstream SHA-256.
   sqlite3: 3.9.0
+  crypto: 3.0.7
   path: ^1.9.0
   path_provider: ^2.1.4
 
