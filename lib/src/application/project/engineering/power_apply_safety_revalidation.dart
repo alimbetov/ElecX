@@ -86,7 +86,8 @@ final class PowerApplySafetyRevalidation
 
     // All RCD relationships must be project-owned and survive Save/Reopen.
     // Caller-injected proof may only *match* the immutable candidate ledger.
-    final durableByCircuit = <CircuitId, CanonicalResidualProtectionAssignment>{};
+    final durableByCircuit =
+        <CircuitId, CanonicalResidualProtectionAssignment>{};
     for (final group
         in candidate.engineeringMetadata.residualProtection.assignments) {
       for (final id in group.protectedCircuitIds) {
@@ -95,7 +96,8 @@ final class PowerApplySafetyRevalidation
     }
     if (!_exactKeys(
         durableByCircuit.keys.toSet(), upstreamRcdAssignments.keys.toSet())) {
-      throw StateError('Group RCD proof is not persisted in canonical project.');
+      throw StateError(
+          'Group RCD proof is not persisted in canonical project.');
     }
     for (final id in durableByCircuit.keys) {
       if (durableByCircuit[id]!.fingerprint !=
