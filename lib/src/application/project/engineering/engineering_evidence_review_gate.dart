@@ -1,5 +1,9 @@
 import '../../../engine/power_evidence_selection_engine.dart';
 
+/// Verified safety outcomes are supplied by trusted engineering review,
+/// never by the caller constructing a preview.
+enum EngineeringVerifiedSafetyFinding { supported, contradicted, indeterminate }
+
 /// Review records must be loaded from a trusted, authenticated ingestion
 /// boundary. Constructing one in application code is not proof of authenticity.
 final class EngineeringEvidenceReviewRecord {
@@ -14,6 +18,7 @@ final class EngineeringEvidenceReviewRecord {
     required this.isRevoked,
     this.evidencePurpose,
     this.subjectCircuitId,
+    this.verifiedSafetyFinding,
   });
 
   final String sourceId;
@@ -29,6 +34,7 @@ final class EngineeringEvidenceReviewRecord {
   /// Safety proof consumers must reject an absent or wrong purpose/subject.
   final String? evidencePurpose;
   final String? subjectCircuitId;
+  final EngineeringVerifiedSafetyFinding? verifiedSafetyFinding;
 }
 
 /// The production implementation must be backed by a versioned, authenticated
