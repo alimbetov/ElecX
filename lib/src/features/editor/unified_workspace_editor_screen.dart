@@ -12,7 +12,7 @@ import 'canonical_editor_workspace_adapter.dart';
 import 'canonical_space_semantics_adapter.dart';
 import 'canonical_project_navigator.dart';
 import 'context_minimap.dart';
-import 'device_catalog_panel.dart';
+import 'engineering_inspector_panel.dart';
 import 'editor_building_workspace.dart';
 import 'editor_controller.dart';
 import 'editor_document_history.dart';
@@ -24,8 +24,6 @@ import 'editor_project_recovery.dart';
 import 'project_north_edit_dialog.dart';
 import 'project_persistence_metadata.dart';
 import 'project_save_diagnostics.dart';
-import 'room_circuit_overview.dart';
-import 'room_circuit_panel.dart';
 import 'room_surface_navigator.dart';
 import 'space_semantics_inspector.dart';
 import 'space_semantics_inspector_editing.dart';
@@ -1180,20 +1178,10 @@ class _UnifiedWorkspaceEditorScreenState
                   : Drawer(
                       width: EditorLayoutPolicy.inspectorWidth(mode),
                       child: SafeArea(
-                        child: Column(
-                          children: [
-                            if (_spaceSemanticsInspector(compact: true)
-                                case final semanticsInspector?) ...[
-                              semanticsInspector,
-                              const Divider(height: 1),
-                            ],
-                            RoomCircuitOverviewPanel(controller: controller),
-                            RoomCircuitPanel(controller: controller),
-                            const Divider(height: 1),
-                            Expanded(
-                              child: DeviceCatalogPanel(controller: controller),
-                            ),
-                          ],
+                        child: EngineeringInspectorPanel(
+                          controller: controller,
+                          semanticsInspector:
+                              _spaceSemanticsInspector(compact: true),
                         ),
                       ),
                     ),
@@ -1392,6 +1380,13 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
             : 'ElecX · ${projectMetadata.projectName} · ${workspace.activeLevel?.displayName ?? ''}',
       ),
       actions: [
+        if (compact)
+          IconButton(
+            key: const ValueKey('project-inspector-open'),
+            tooltip: 'Открыть инженерную панель',
+            onPressed: () => Scaffold.of(context).openEndDrawer(),
+            icon: const Icon(Icons.tune),
+          ),
         if (!compact)
           Padding(
             key: const ValueKey('project-save-status'),
@@ -1567,14 +1562,12 @@ class _CatalogPanel extends StatelessWidget {
             ),
           ),
           const Divider(height: 1),
-          if (semanticsInspector != null) ...[
-            semanticsInspector!,
-            const Divider(height: 1),
-          ],
-          RoomCircuitOverviewPanel(controller: controller),
-          RoomCircuitPanel(controller: controller),
-          const Divider(height: 1),
-          Expanded(child: DeviceCatalogPanel(controller: controller)),
+          Expanded(
+            child: EngineeringInspectorPanel(
+              controller: controller,
+              semanticsInspector: semanticsInspector,
+            ),
+          ),
         ],
       );
 }
