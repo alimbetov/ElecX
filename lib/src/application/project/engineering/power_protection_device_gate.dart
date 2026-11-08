@@ -101,12 +101,49 @@ final class ReviewedProtectionCoordination {
       ];
 }
 
+/// Earthing/PE and earth-fault loop evidence is mandatory for ADS.
+final class ReviewedEarthingDisconnectionEvidence {
+  ReviewedEarthingDisconnectionEvidence({
+    required this.earthingArrangement,
+    required this.measuredFaultLoopImpedanceOhm,
+    required this.protectiveConductorContinuityVerified,
+    required this.sourceId,
+  }) {
+    if (earthingArrangement.trim().isEmpty ||
+        sourceId.trim().isEmpty ||
+        !measuredFaultLoopImpedanceOhm.isFinite ||
+        measuredFaultLoopImpedanceOhm <= 0) {
+      throw ArgumentError('Valid earthing and loop evidence is required.');
+    }
+  }
+
+  final String earthingArrangement;
+  final double measuredFaultLoopImpedanceOhm;
+  final bool protectiveConductorContinuityVerified;
+  final String sourceId;
+
+  String fingerprintFor(
+    CircuitId circuitId,
+    String protectionCatalogId,
+  ) =>
+      semanticSha256Hex(jsonEncode([
+        'p12a8.reviewed-earthing-and-ads.v1',
+        circuitId.value,
+        protectionCatalogId,
+        earthingArrangement,
+        measuredFaultLoopImpedanceOhm,
+        protectiveConductorContinuityVerified,
+        sourceId,
+      ]));
+}
+
 enum PowerProtectionDeviceCheck {
   trustedResidualCharacteristic,
   residualCurrentThreshold,
   residualTripTime,
   trustedSelectivityPair,
   selectivityFaultCoverage,
+  earthingAndPeContinuity,
   automaticDisconnection,
 }
 
@@ -172,6 +209,7 @@ abstract final class PowerProtectionDeviceGate {
     required PowerFaultEnvelopeAssessment faultAssessment,
     required ReviewedResidualDeviceCharacteristic residualDevice,
     required ReviewedProtectionCoordination coordination,
+    required ReviewedEarthingDisconnectionEvidence earthing,
     required PowerProtectionDeviceLimits limits,
     required PowerSafetyRuleProfile profile,
     required TrustedEngineeringEvidenceRegistry registry,
@@ -280,10 +318,26 @@ abstract final class PowerProtectionDeviceGate {
               : PowerSafetyVerdict.fail;
     }
 
-    // Automatic disconnection is only considered after every independently
-    // reviewed supply scenario has passed the minimum-fault requirement.
+    final earthingReview = reviewed(
+      earthing.sourceId,
+      'earthing-and-ads',
+      earthing.fingerprintFor(
+        selection.circuitId,
+        selection.protectionCatalogId,
+      ),
+    );
+    checks[PowerProtectionDeviceCheck.earthingAndPeContinuity] =
+        earthingReview == PowerSafetyVerdict.pass &&
+                !earthing.protectiveConductorContinuityVerified
+            ? PowerSafetyVerdict.fail
+            : earthingReview;
+
+    // Automatic disconnection requires reviewed PE/earthing measurements and
+    // *every* independently reviewed minimum-fault clearing scenario.
     checks[PowerProtectionDeviceCheck.automaticDisconnection] =
-        faultAssessment.verifiedEnvelopeFingerprint ==
+        checks[PowerProtectionDeviceCheck.earthingAndPeContinuity] ==
+                PowerSafetyVerdict.pass &&
+            faultAssessment.verifiedEnvelopeFingerprint ==
                 faultEnvelope.fingerprint &&
             faultAssessment.checks[
                     PowerFaultEnvelopeCheck.minimumFaultDisconnection] ==
