@@ -237,14 +237,33 @@ final class CanonicalResidualProtectionRegistry {
         final activeConnections = state.graph.connections.where(
           (connection) => circuits.single.connectionIds.contains(connection.id),
         ).toList();
-        if (!activeConnections.any((connection) =>
+        final downstream = activeConnections
+            .where((connection) =>
                 connection.fromComponentId == deviceId &&
-                connection.toComponentId != assignment.boardComponentId) ||
-            activeConnections.any((connection) =>
-                connection.fromComponentId == assignment.boardComponentId &&
-                connection.toComponentId != deviceId)) {
-          throw ArgumentError(
-              'RCD is absent from or bypassed by the P11 feed.');
+                connection.toComponentId != assignment.boardComponentId)
+            .map((connection) => connection.toComponentId)
+            .toSet();
+        // Traverse this circuit while deliberately excluding the RCD.
+        // Every protected load must be unreachable from the board by any
+        // alternative feed path, including indirect board->junction->load.
+        final reachable = <ComponentId>{assignment.boardComponentId};
+        var changed = true;
+        while (changed) {
+          changed = false;
+          for (final connection in activeConnections) {
+            if (connection.toComponentId == deviceId ||
+                connection.fromComponentId == deviceId) {
+              continue;
+            }
+            if (reachable.contains(connection.fromComponentId) &&
+                reachable.add(connection.toComponentId)) {
+              changed = true;
+            }
+          }
+        }
+        if (downstream.isEmpty ||
+            downstream.any(reachable.contains)) {
+          throw ArgumentError('P11 circuit bypasses its assigned group RCD.');
         }
       }
     }
