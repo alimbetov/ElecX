@@ -1020,6 +1020,7 @@ void main() {
       );
       final assignment = CanonicalResidualProtectionAssignment(
         boardComponentId: selectionForCircuit.boardComponentId,
+        upstreamResidualComponentId: ComponentId('rcd-1'),
         downstreamProtectionCatalogId: selectionForCircuit.protectionCatalogId,
         upstreamResidualCatalogId: 'rcd-a40',
         evidenceSourceId: 'rcd-test-report',
@@ -1517,14 +1518,14 @@ void main() {
         () {
       final envelope = testFaultEnvelope(selected: rcboSelection());
       final registry = _PowerEvidenceRegistry(
-        approvedCalculation: testPowerSafetyEvidence(),
+        approvedCalculation: testPowerSafetyEvidence(selected: rcboSelection()),
         faultEnvelope: envelope,
       );
       final quantitative = PowerElectricalSafetyGate.evaluate(
         selections: CanonicalPowerSelectionRegistry(
           selections: [rcboSelection()],
         ),
-        evidence: [testPowerSafetyEvidence()],
+        evidence: [testPowerSafetyEvidence(selected: rcboSelection())],
         profile: testPowerSafetyProfile(),
         registry: registry,
         targetJurisdiction: 'KZ',
@@ -1621,14 +1622,16 @@ void main() {
     test('minimum fault current clearing time and max thermal energy checked',
         () {
       final delayed = evaluate(
-        envelope: testFaultEnvelope(backupClearingMs: 450),
+        envelope: testFaultEnvelope(
+            selected: rcboSelection(), backupClearingMs: 450),
       );
       expect(
         delayed.checks[PowerFaultEnvelopeCheck.minimumFaultDisconnection],
         PowerSafetyVerdict.fail,
       );
       final thermal = evaluate(
-        envelope: testFaultEnvelope(backupEnergy: 1200),
+        envelope: testFaultEnvelope(
+            selected: rcboSelection(), backupEnergy: 1200),
       );
       expect(
         thermal.checks[PowerFaultEnvelopeCheck.maximumThermalEnergy],
