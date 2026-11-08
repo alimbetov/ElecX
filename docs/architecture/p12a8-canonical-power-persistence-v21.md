@@ -363,3 +363,46 @@ required ingestion fields only. A production manufacturer pair cannot
 be accepted without the exact product/model numbers, the applicable
 table and revision, source content hash, measured/reviewed characteristics,
 operating conditions and an independently approved coordination result.
+
+
+### P12 Manufacturer Evidence Registry — article-pair qualification (2026-11-08)
+
+The new `manufacturer_protection_pair_gate.dart` contains a typed,
+immutable `ManufacturerCoordinationCatalogSnapshot` and an
+independently attested `ManufacturerPairEvidenceGate`.
+
+- The downstream MCB/RCBO and upstream protective device must have **exact
+  manufacturer identifiers, article numbers, device kinds and catalog
+  revisions**. Generic B16, type A and rated current labels are insufficient.
+- Every coordination row identifies its exact P11 `circuitId`, manufacturer
+  document revision, document SHA-256, table ID and covered prospective
+  fault-current range endpoint. Pair rows with identical circuit/article
+  identities cannot coexist ambiguously in one snapshot.
+- The selected canonical protection catalog ID must equal the attested
+  downstream article, and the upstream article must match the selected
+  upstream product. Cross-circuit and cross-article reuse fails closed.
+- An independently provisioned `TrustedEngineeringEvidenceRegistry` must
+  verify **all** existing source pins, approval, jurisdiction and application
+  scope, and additionally attest
+  `verifiedManufacturerPairFingerprint` with purpose
+  `manufacturer-coordination`. A document hash alone, caller-created
+  snapshot or unsigned catalogue row does not yield PASS.
+- Explicitly contradicted review yields FAIL. Missing, revoked, mismatched
+  or unverified evidence yields INDETERMINATE. A verified pair whose
+  prospective short-circuit duty exceeds its reviewed coverage yields FAIL.
+- `ManufacturerPairAssessment.readyToApply` remains **false**. This
+  is a preflight module, not yet an authorizing part of production Apply.
+
+Tests use fabricated `TEST-VENDOR` articles and proof digests. They
+exercise immutability, duplicate-pair rejection, review identity,
+revocation, contradicted evidence and fault range. **No genuine device
+coordination is asserted**. Engineering release still requires verified
+manufacturer documents and an authenticated ingestion adapter with
+consistent versioned snapshot semantics.
+
+The Android native acceptance failures on the previously evaluated SHA
+are separate from this engineering contract: a Gradle distribution download
+returned HTTP 504, while Android SQLite hook downloads produced unexpected
+SHA-256 hashes. Never accept a mismatched binary or disable native asset
+integrity verification. Until those issues and the new exact-SHA CI resolve,
+PR #32 remains Draft and Apply remains PreviewOnly.
