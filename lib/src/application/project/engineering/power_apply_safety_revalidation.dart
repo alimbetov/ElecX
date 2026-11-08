@@ -112,10 +112,7 @@ final class PowerApplySafetyRevalidation
     for (final assignment in upstreamRcdAssignments.values) {
       for (final protectedId in assignment.protectedCircuitIds) {
         final circuit = selections.byCircuit[protectedId];
-        if (circuit == null ||
-            circuit.boardComponentId != assignment.boardComponentId ||
-            circuit.protectionCatalogId !=
-                assignment.downstreamProtectionCatalogId) {
+        if (circuit == null || !assignment.matches(circuit)) {
           throw StateError('Upstream RCD group contains foreign circuit.');
         }
       }
