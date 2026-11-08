@@ -1,4 +1,5 @@
 import '../../application/project/project_boundary_topology_editing.dart';
+import '../../application/project/engineering/p12_engineering_proposal_source.dart';
 import '../../application/project/project_mutation.dart';
 import '../../application/project/project_north_editing.dart';
 import '../../application/project/project_space_semantics_editing.dart';
@@ -71,6 +72,7 @@ final class CanonicalEditorResolvedRuntime {
     required this.wizardMutations,
     required this.binding,
     this.apartmentEngineeringPipeline,
+    this.p12EngineeringProposalSource,
     CanonicalEditorMaterializer? materializer,
     this.persistenceOwnerProjectId,
   }) : materializer = materializer ??
@@ -88,6 +90,9 @@ final class CanonicalEditorResolvedRuntime {
   /// Wizard. Null means that production engineering generation is unavailable;
   /// callers must not silently downgrade to a geometry-only Apartment Wizard.
   final ApartmentEngineeringPipeline? apartmentEngineeringPipeline;
+
+  /// Explicit source-backed P12 capability; absent unless provided by host.
+  final P12EngineeringProposalSource? p12EngineeringProposalSource;
 
   final CanonicalEditorWorkspaceBinding binding;
   final CanonicalEditorMaterializer materializer;
