@@ -25,9 +25,11 @@ class P12EngineeringReviewPanel extends StatelessWidget {
     final current = project;
     final metadata = current?.engineeringMetadata;
     final engineeringState = metadata?.engineeringState;
-    final selections = metadata?.powerSelections;
-    final residual = metadata?.residualProtection;
-    final diff = baselineSelections != null && selections != null
+    final selections = metadata?.powerSelections ??
+        const CanonicalPowerSelectionRegistry.empty();
+    final residual = metadata?.residualProtection ??
+        const CanonicalResidualProtectionRegistry.empty();
+    final diff = current != null && baselineSelections != null
         ? CanonicalPowerSelectionDiff.between(baselineSelections!, selections)
         : null;
     return Column(
@@ -51,11 +53,11 @@ class P12EngineeringReviewPanel extends StatelessWidget {
         ] else ...[
           Text('Версия проекта: ${current.version}',
               key: const ValueKey('p12-review-project-version')),
-          Text('P11 цепей: ${engineeringState!.circuits.length}',
+          Text('P11 цепей: ${engineeringState?.circuits.length ?? 0}',
               key: const ValueKey('p12-review-circuit-count')),
-          Text('Выбрано защит/кабелей P12: ${selections!.byCircuit.length}',
+          Text('Выбрано защит/кабелей P12: ${selections.byCircuit.length}',
               key: const ValueKey('p12-review-selection-count')),
-          Text('Постоянных групп RCD: ${residual!.assignments.length}',
+          Text('Постоянных групп RCD: ${residual.assignments.length}',
               key: const ValueKey('p12-review-rcd-count')),
           const SizedBox(height: 12),
           if (selections.isEmpty)
