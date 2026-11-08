@@ -10,6 +10,7 @@ import 'package:elecx/src/application/project/engineering/engineering_reserved_p
 import 'package:elecx/src/application/project/engineering/power_electrical_safety_gate.dart';
 import 'package:elecx/src/application/project/engineering/power_fault_envelope_gate.dart';
 import 'package:elecx/src/application/project/engineering/power_protection_device_gate.dart';
+import 'package:elecx/src/application/project/engineering/power_apply_safety_revalidation.dart';
 import 'package:elecx/src/domain/canonical_engineering_graph.dart';
 import 'package:elecx/src/domain/canonical_power_selection.dart';
 import 'package:elecx/src/domain/engineering_circuit_topology.dart';
@@ -455,6 +456,82 @@ final class _RejectingP12Proxy extends _UnqualifiedP12Proxy
 }
 
 void main() {
+  group('P12 transaction-bound full safety composition', () {
+    PowerApplySafetyRevalidation safety({
+      required ProjectAggregateRoot project,
+      String expectedRegistryRevision = 'registry-rev-1',
+      bool includeDevices = true,
+    }) {
+      final envelope = testFaultEnvelope();
+      final residual = testResidualDevice(
+          catalogId: selection('c1').protectionCatalogId);
+      final coordination = testCoordination();
+      final limits = testProtectionLimits();
+      return PowerApplySafetyRevalidation(
+        expectedRegistryRevision: expectedRegistryRevision,
+        expectedEngineeringStateFingerprint:
+            project.engineeringMetadata.engineeringState.fingerprint,
+        expectedSelectionFingerprint:
+            project.engineeringMetadata.powerSelections.fingerprint,
+        targetJurisdiction: 'KZ',
+        targetApplicationScope: 'POWER-AC',
+        profile: testPowerSafetyProfile(),
+        protectionLimits: limits,
+        registry: _PowerEvidenceRegistry(
+          approvedCalculation: testPowerSafetyEvidence(),
+          faultEnvelope: envelope,
+          residualDevice: residual,
+          coordination: coordination,
+          deviceLimits: limits,
+        ),
+        circuitEvidence: [testPowerSafetyEvidence()],
+        faultEnvelopes: {CircuitId('c1'): envelope},
+        residualDevices: includeDevices
+            ? {CircuitId('c1'): residual}
+            : <CircuitId, ReviewedResidualDeviceCharacteristic>{},
+        coordination: {CircuitId('c1'): coordination},
+      );
+    }
+
+    test('missing device coverage fails before canonical commit', () {
+      final project = projectWithPowerSelection();
+      expect(
+        () => safety(project: project, includeDevices: false)
+            .revalidateEngineeringSafety(
+          current: project,
+          candidate: project,
+        ),
+        throwsStateError,
+      );
+    });
+
+    test('changed registry revision invalidates frozen preview', () {
+      final project = projectWithPowerSelection();
+      expect(
+        () => safety(
+          project: project,
+          expectedRegistryRevision: 'revoked-after-preview',
+        ).revalidateEngineeringSafety(
+          current: project,
+          candidate: project,
+        ),
+        throwsStateError,
+      );
+    });
+
+    test('favorable but wrong supply IDs cannot qualify entire Apply', () {
+      final project = projectWithPowerSelection();
+      expect(
+        () => safety(project: project).revalidateEngineeringSafety(
+          current: project,
+          candidate: project,
+        ),
+        throwsStateError,
+      );
+    });
+  });
+
+
   group('P12 reviewed RCD/RCBO and selectivity device preflight', () {
     PowerProtectionDeviceAssessment evaluate({
       ReviewedResidualDeviceCharacteristic? residual,
