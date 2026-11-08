@@ -123,3 +123,49 @@ These checks are **not** a full switchboard assembly design evaluation. The boar
 `PowerFaultEnvelopeGate` compares the highest prospective fault current across cases with both protective-device breaking capacity and reviewed board withstand, checks thermal energy for *every* case, and checks minimum-fault disconnection time for *every* case against the attested normative profile. A trusted, non-revoked record must attest the exact entire envelope fingerprint, its pinned source revision/hash/approval, the canonical P11 CircuitId and `fault-envelope` evidence purpose. The normative timing rule profile fingerprint must also be independently attested. None of these values may be substituted from a country default.
 
 **Remaining production blockers:** The preferred `evaluateForEngineeringState` entry point now derives expected source IDs from authoritative P11 `EngineeringProjectState.circuitSupplies` rather than caller-controlled values; however the actual transfer/supply-mode inventory and exclusivity scenarios are not yet fully qualified; the fault envelope must be cross-validated with electrical network parameters, source impedance, cable route impedance, earthing/PE continuity, breaker trip curves and verified upstream/downstream coordination. A separate preliminary envelope PASS must not grant production Apply or be construed as a certified electrical installation design. `readyToApply` remains false; `EngineeringReservedProjectCommand` remains preview-only.
+
+
+### P12A.8 follow-up: device-specific RCD/RCBO, ADS and selectivity (2026-11-08)
+
+`PowerProtectionDeviceGate` adds a **provisional**, independently reviewed
+characteristics contract for concrete catalog devices:
+
+- Residual-current device: selected protection catalog ID, device type,
+  manufacturer/test source ID, rated residual current, measured operating
+  residual current, applied test stimulus and measured trip time. The exact
+  tuple is fingerprinted and must match an authenticated source record
+  scoped to the same canonical P11 circuit and evidence purpose.
+- Normative device thresholds: residual operating limit and trip-time limit
+  must be independently attested as an exact digest, linked to a separately
+  authenticated numerical `PowerSafetyRuleProfile`. No hard-coded trip
+  thresholds or default RCD type are used for production policy.
+- Selectivity: an explicit downstream/upstream protective-device catalog pair
+  plus a reviewed fault-current coverage interval endpoint. The trusted
+  source attests the exact pair, upstream identity, source revision/digest,
+  circuit and a positive manufacturer/engineering coordination finding.
+  Measured time ordering *alone* is never treated as proof of selectivity.
+- Automatic disconnection: a passing, source-reviewed max/min fault envelope
+  with full supply coverage and a matching frozen envelope fingerprint is
+  mandatory. A result from another circuit, supply scenario or outdated
+  envelope cannot be reused.
+
+`PowerApplySafetyRevalidation` composes the existing quantitative checks,
+canonical P11 supply-based max/min fault envelope and device-specific protection
+checks across **every** selected circuit. It rejects incomplete circuit coverage,
+mismatched project/selection fingerprints or changes to the trusted registry
+revision before/after evaluation. The existing
+`ReservedProjectMutationCoordinator.commitPreview()` now requires
+`TransactionalEngineeringSafetyRevalidation` on future P12 commands and invokes
+it immediately before the normal canonical transaction; missing or rejecting
+revalidation fails without consuming the reservation or mutating project state.
+
+**Important:** this is a commit-boundary contract and a tested read-only
+qualification path, not permission to Apply. The current
+`EngineeringReservedProjectCommand` remains
+`PreviewOnlyReservedProjectCommand` and is rejected by the coordinator first.
+A future production-authorized P12 command must use authenticated, consistent
+registry snapshots, authoritative upstream-device topology, real manufacturer
+time-current/coordination evidence, earthing and fault-loop checks, applicable
+jurisdictional rules and full exact-SHA CI/security qualification. This PR
+**must not** be treated as certified RCD, ADS or selectivity engineering
+without that validated ingestion and production acceptance.
