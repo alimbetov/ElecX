@@ -691,6 +691,34 @@ void main() {
           maximumProspectiveFaultKa: maximumFault,
         );
 
+    test('catalog snapshot is immutable and rejects ambiguous article pairs',
+        () {
+      final row = pair();
+      final snapshot = ManufacturerCoordinationCatalogSnapshot(
+        revision: 'CATALOG-REV-1',
+        rows: [row],
+      );
+      expect(
+        snapshot.lookup(
+          circuitId: 'c1',
+          downstreamArticleNumber: 'mcb-b16',
+          upstreamArticleNumber: 'RCD-A40-ARTICLE',
+        )?.fingerprint,
+        row.fingerprint,
+      );
+      expect(
+        () => ManufacturerCoordinationCatalogSnapshot(
+          revision: 'CATALOG-REV-1',
+          rows: [row, row],
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => snapshot.rows.add(row),
+        throwsUnsupportedError,
+      );
+    });
+
     test('matching attested exact pair passes preflight but not Apply', () {
       final result = check(pair());
       expect(result.verdict, PowerSafetyVerdict.pass);
