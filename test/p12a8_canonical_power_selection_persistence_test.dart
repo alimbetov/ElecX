@@ -252,6 +252,10 @@ final class _PowerEvidenceRegistry
                   sourceId == 'selectivity-study')
           ? EngineeringVerifiedSafetyFinding.supported
           : null,
+      verifiedUpstreamProtectionCatalogId:
+          sourceId == 'selectivity-study'
+              ? coordination?.upstreamProtectionCatalogId
+              : null,
       verifiedProtectionLimitsFingerprint: sourceId == 'normative-doc' &&
               deviceLimits != null && !withoutVerifiedRuleProfile
           ? deviceLimits!.fingerprintFor(testPowerSafetyProfile())
@@ -673,6 +677,25 @@ void main() {
       expect(
         current.checks[PowerProtectionDeviceCheck.residualCurrentThreshold],
         PowerSafetyVerdict.fail,
+      );
+    });
+
+    test('an unreviewed upstream catalog identity cannot prove selectivity',
+        () {
+      final wrongPair = testCoordination(upstreamId: 'another-upstream');
+      final result = evaluate(
+        selectivity: wrongPair,
+        reviewed: _PowerEvidenceRegistry(
+          residualDevice: testResidualDevice(
+              catalogId: selection('c1').protectionCatalogId),
+          coordination: testCoordination(),
+          deviceLimits: testProtectionLimits(),
+          faultEnvelope: testFaultEnvelope(),
+        ),
+      );
+      expect(
+        result.checks[PowerProtectionDeviceCheck.trustedSelectivityPair],
+        PowerSafetyVerdict.indeterminate,
       );
     });
 
