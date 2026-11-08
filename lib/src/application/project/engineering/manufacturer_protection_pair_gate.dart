@@ -84,6 +84,51 @@ final class ManufacturerProtectionPairRecord {
       ]));
 }
 
+/// Read-only materialized catalog. Loading it is NOT proof of authenticity:
+/// each row must separately match the trusted, revision-pinned review record.
+final class ManufacturerCoordinationCatalogSnapshot {
+  ManufacturerCoordinationCatalogSnapshot({
+    required this.revision,
+    required Iterable<ManufacturerProtectionPairRecord> rows,
+  }) : rows = List.unmodifiable(
+          rows.toList()
+            ..sort((a, b) => a.fingerprint.compareTo(b.fingerprint)),
+        ) {
+    if (revision.trim().isEmpty) {
+      throw ArgumentError('Manufacturer catalog revision is mandatory.');
+    }
+    final identities = <String>{};
+    for (final row in this.rows) {
+      final key = jsonEncode([
+        row.circuitId,
+        row.downstream.canonical,
+        row.upstream.canonical,
+      ]);
+      if (!identities.add(key)) {
+        throw ArgumentError('Ambiguous manufacturer coordination pair.');
+      }
+    }
+  }
+
+  final String revision;
+  final List<ManufacturerProtectionPairRecord> rows;
+
+  ManufacturerProtectionPairRecord? lookup({
+    required String circuitId,
+    required String downstreamArticleNumber,
+    required String upstreamArticleNumber,
+  }) {
+    for (final row in rows) {
+      if (row.circuitId == circuitId &&
+          row.downstream.articleNumber == downstreamArticleNumber &&
+          row.upstream.articleNumber == upstreamArticleNumber) {
+        return row;
+      }
+    }
+    return null;
+  }
+}
+
 enum ManufacturerPairCheck {
   exactCatalogArticles,
   pinnedManufacturerDocument,
