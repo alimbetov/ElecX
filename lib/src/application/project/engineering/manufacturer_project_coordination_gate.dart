@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import '../../../domain/project_aggregate.dart';
 import '../../../domain/project_identity.dart';
+import '../../../domain/semantic_sha256.dart';
 import 'engineering_evidence_review_gate.dart';
 import 'manufacturer_evidence_ingestion.dart';
 import 'manufacturer_protection_pair_gate.dart';
@@ -17,12 +20,12 @@ final class ManufacturerProjectCoordinationAssessment {
   final Map<CircuitId, PowerSafetyVerdict> circuits;
 
   PowerSafetyVerdict get verdict {
+    if (circuits.values.contains(PowerSafetyVerdict.fail)) {
+      return PowerSafetyVerdict.fail;
+    }
     if (circuits.isEmpty ||
         circuits.values.contains(PowerSafetyVerdict.indeterminate)) {
       return PowerSafetyVerdict.indeterminate;
-    }
-    if (circuits.values.contains(PowerSafetyVerdict.fail)) {
-      return PowerSafetyVerdict.fail;
     }
     return PowerSafetyVerdict.pass;
   }
@@ -78,7 +81,7 @@ abstract final class ManufacturerProjectCoordinationGate {
       if (selected == null || admission == null || fault == null ||
           fault.circuitId != id ||
           fault.selectionFingerprint !=
-              metadata.powerSelections.byCircuit[id]!.fingerprint ||
+              semanticSha256Hex(jsonEncode(selected.toCanonicalJson())) ||
           admission.registryRevision != expectedRegistryRevision ||
           admission.catalog.rows.length != 1 ||
           admission.documentSha256 !=
