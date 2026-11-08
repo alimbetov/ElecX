@@ -53,8 +53,7 @@ final class ReviewedResidualDeviceCharacteristic {
       manufacturerDocumentRevision != null &&
       manufacturerDocumentRevision!.trim().isNotEmpty;
 
-  String fingerprintFor(CircuitId circuitId) =>
-      semanticSha256Hex(jsonEncode([
+  String fingerprintFor(CircuitId circuitId) => semanticSha256Hex(jsonEncode([
         'p12a8.reviewed-residual-characteristic.v1',
         circuitId.value,
         protectionCatalogId,
@@ -115,8 +114,7 @@ final class ReviewedProtectionCoordination {
       coordinationTableId != null &&
       coordinationTableId!.trim().isNotEmpty;
 
-  String fingerprintFor(CircuitId circuitId) =>
-      semanticSha256Hex(jsonEncode([
+  String fingerprintFor(CircuitId circuitId) => semanticSha256Hex(jsonEncode([
         'p12a8.reviewed-selectivity-pair.v1',
         circuitId.value,
         downstreamProtectionCatalogId,
@@ -268,8 +266,7 @@ abstract final class PowerProtectionDeviceGate {
         normative.jurisdiction != profile.jurisdiction ||
         normative.applicationScope != profile.applicationScope ||
         normative.verifiedRuleProfileFingerprint != profile.fingerprint ||
-        normative.verifiedProtectionLimitsFingerprint !=
-            normativeFingerprint ||
+        normative.verifiedProtectionLimitsFingerprint != normativeFingerprint ||
         registry.revision.trim().isEmpty) {
       return PowerProtectionDeviceAssessment(checks);
     }
@@ -340,16 +337,15 @@ abstract final class PowerProtectionDeviceGate {
     if (residualReview == PowerSafetyVerdict.pass) {
       checks[PowerProtectionDeviceCheck.residualCurrentThreshold] =
           residualDevice.measuredOperatingResidualCurrentMa <=
-                  residualDevice.ratedResidualCurrentMa &&
-              residualDevice.measuredOperatingResidualCurrentMa <=
-                  limits.maximumResidualOperatingCurrentMa
+                      residualDevice.ratedResidualCurrentMa &&
+                  residualDevice.measuredOperatingResidualCurrentMa <=
+                      limits.maximumResidualOperatingCurrentMa
               ? PowerSafetyVerdict.pass
               : PowerSafetyVerdict.fail;
       // The exact test stimulus is part of the signed source. A manufacturer
       // or competent engineer must validate its normative test applicability.
       checks[PowerProtectionDeviceCheck.residualTripTime] =
-          residualDevice.measuredTripTimeMs <=
-                  limits.maximumResidualTripTimeMs
+          residualDevice.measuredTripTimeMs <= limits.maximumResidualTripTimeMs
               ? PowerSafetyVerdict.pass
               : PowerSafetyVerdict.fail;
     }
@@ -357,15 +353,14 @@ abstract final class PowerProtectionDeviceGate {
     final coordinationFingerprint =
         coordination.fingerprintFor(selection.circuitId);
     final coordinationReview = registry.lookup(coordination.sourceId);
-    final pairReview =
-        coordination.hasReviewedManufacturerTable &&
+    final pairReview = coordination.hasReviewedManufacturerTable &&
             coordination.downstreamProtectionCatalogId ==
                 selection.protectionCatalogId &&
             coordinationReview?.verifiedUpstreamProtectionCatalogId ==
                 coordination.upstreamProtectionCatalogId
-            ? reviewed(coordination.sourceId, 'selectivity-coordination',
-                coordinationFingerprint)
-            : PowerSafetyVerdict.indeterminate;
+        ? reviewed(coordination.sourceId, 'selectivity-coordination',
+            coordinationFingerprint)
+        : PowerSafetyVerdict.indeterminate;
     checks[PowerProtectionDeviceCheck.trustedSelectivityPair] = pairReview;
     if (pairReview == PowerSafetyVerdict.pass) {
       final maxFault = faultEnvelope.scenarios
@@ -393,8 +388,8 @@ abstract final class PowerProtectionDeviceGate {
 
     // Automatic disconnection requires reviewed PE/earthing measurements and
     // *every* independently reviewed minimum-fault clearing scenario.
-    checks[PowerProtectionDeviceCheck.automaticDisconnection] =
-        checks[PowerProtectionDeviceCheck.earthingAndPeContinuity] ==
+    checks[PowerProtectionDeviceCheck.automaticDisconnection] = checks[
+                    PowerProtectionDeviceCheck.earthingAndPeContinuity] ==
                 PowerSafetyVerdict.pass &&
             faultAssessment.verifiedEnvelopeFingerprint ==
                 faultEnvelope.fingerprint &&
@@ -403,12 +398,12 @@ abstract final class PowerProtectionDeviceGate {
                 PowerSafetyVerdict.pass &&
             faultAssessment.checks[PowerFaultEnvelopeCheck.trustedEnvelope] ==
                 PowerSafetyVerdict.pass &&
-            faultAssessment.checks[
-                    PowerFaultEnvelopeCheck.completeSupplyCoverage] ==
+            faultAssessment
+                    .checks[PowerFaultEnvelopeCheck.completeSupplyCoverage] ==
                 PowerSafetyVerdict.pass &&
             faultAssessment.verdict == PowerSafetyVerdict.pass
-            ? PowerSafetyVerdict.pass
-            : PowerSafetyVerdict.indeterminate;
+        ? PowerSafetyVerdict.pass
+        : PowerSafetyVerdict.indeterminate;
     return PowerProtectionDeviceAssessment(checks);
   }
 }
