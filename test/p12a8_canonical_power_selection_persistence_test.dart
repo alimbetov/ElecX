@@ -840,8 +840,8 @@ void main() {
         ),
       );
       final row = ManufacturerProtectionPairRecord(
-          coordinationCategory:
-              ManufacturerPairCoordinationCategory.residualDeviceBackup,
+        coordinationCategory:
+            ManufacturerPairCoordinationCategory.residualDeviceBackup,
         circuitId: 'c1',
         downstream: ManufacturerProtectionArticle(
           manufacturerId: 'TEST-VENDOR',

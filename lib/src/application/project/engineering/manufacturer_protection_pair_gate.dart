@@ -73,7 +73,9 @@ final class ManufacturerProtectionPairRecord {
     final categoryValid = switch (coordinationCategory) {
       ManufacturerPairCoordinationCategory.shortCircuitSelectivity =>
         (lower == 'mcb' || lower == 'mccb' || lower == 'rcbo') &&
-            (upper == 'mcb' || upper == 'mccb' || upper == 'acb' ||
+            (upper == 'mcb' ||
+                upper == 'mccb' ||
+                upper == 'acb' ||
                 upper == 'rcbo'),
       ManufacturerPairCoordinationCategory.residualDeviceBackup =>
         (lower == 'mcb' || lower == 'rcbo') &&
