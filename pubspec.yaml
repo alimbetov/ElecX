@@ -25,5 +25,16 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^5.0.0
 
+# Official sqlite3 build-hook transport selection. OS packages must be
+# independently qualified for production Linux/macOS; other targets keep
+# upstream SHA-256-verified, bundled native assets.
+hooks:
+  user_defines:
+    sqlite3:
+      source:
+        linux: system
+        macos: system
+        default: sqlite3
+
 flutter:
   uses-material-design: true
