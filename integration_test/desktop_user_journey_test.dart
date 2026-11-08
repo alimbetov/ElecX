@@ -77,6 +77,17 @@ void main() {
     await tester.tap(continueProject);
     await tester.pumpAndSettle();
     expect(find.byType(UnifiedWorkspaceEditorScreen), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('p12-review-open')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('p12-review-dialog')), findsOneWidget);
+    expect(find.byKey(const ValueKey('p12-review-panel')), findsOneWidget);
+    expect(find.byKey(const ValueKey('p12-review-apply-blocked')),
+        findsOneWidget);
+    expect(find.byKey(const ValueKey('p12-review-diff-unavailable')),
+        findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('p12-review-close')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('p12-review-dialog')), findsNothing);
     await tester.tap(find.byIcon(Icons.menu).first);
     await tester.pumpAndSettle();
     for (var number = 1; number <= 4; number++) {
