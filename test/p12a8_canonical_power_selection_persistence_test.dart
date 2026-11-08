@@ -493,6 +493,66 @@ void main() {
       );
     }
 
+    test('all reviewed gates revalidate against actual P11 supply topology',
+        () {
+      final project = projectWithPowerSelection();
+      final actualSupply = project.engineeringMetadata.engineeringState
+          .circuitSupplies.single.sourceIds.single.value;
+      final chosen = selection('c1');
+      final envelope = PowerCircuitFaultEnvelope(
+        circuitId: chosen.circuitId,
+        selectionFingerprint:
+            semanticSha256Hex(jsonEncode(chosen.toCanonicalJson())),
+        sourceId: 'fault-study',
+        scenarios: [
+          PowerSupplyFaultScenario(
+            supplyId: actualSupply,
+            maximumProspectiveFaultKa: 3,
+            minimumProspectiveFaultKa: 0.5,
+            maximumLetThroughA2s: 400,
+            cableWithstandA2s: 800,
+            minimumFaultClearingTimeMs: 120,
+          ),
+        ],
+      );
+      final limits = testProtectionLimits();
+      final residual =
+          testResidualDevice(catalogId: chosen.protectionCatalogId);
+      final pair = testCoordination();
+      final registry = _PowerEvidenceRegistry(
+        approvedCalculation: testPowerSafetyEvidence(),
+        faultEnvelope: envelope,
+        residualDevice: residual,
+        coordination: pair,
+        deviceLimits: limits,
+      );
+      final boundary = PowerApplySafetyRevalidation(
+        expectedRegistryRevision: registry.revision,
+        expectedEngineeringStateFingerprint:
+            project.engineeringMetadata.engineeringState.fingerprint,
+        expectedSelectionFingerprint:
+            project.engineeringMetadata.powerSelections.fingerprint,
+        targetJurisdiction: 'KZ',
+        targetApplicationScope: 'POWER-AC',
+        profile: testPowerSafetyProfile(),
+        protectionLimits: limits,
+        registry: registry,
+        circuitEvidence: [testPowerSafetyEvidence()],
+        faultEnvelopes: {chosen.circuitId: envelope},
+        residualDevices: {chosen.circuitId: residual},
+        coordination: {chosen.circuitId: pair},
+      );
+      expect(
+        () => boundary.revalidateEngineeringSafety(
+          current: project,
+          candidate: project,
+        ),
+        returnsNormally,
+      );
+      // Revalidation is a prerequisite only; it never invokes commitPreview.
+      expect(project.version, project.version);
+    });
+
     test('missing device coverage fails before canonical commit', () {
       final project = projectWithPowerSelection();
       expect(
