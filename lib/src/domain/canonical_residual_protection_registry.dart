@@ -115,10 +115,12 @@ final class CanonicalResidualProtectionRegistry {
     final covered = <CircuitId>{};
     final keys = <String>{};
     for (final assignment in this.assignments) {
-      final groupKey = jsonEncode([
-        assignment.boardComponentId.value,
-        assignment.upstreamResidualCatalogId,
-      ]);
+      final groupKey = assignment.upstreamResidualComponentId?.value ??
+          jsonEncode([
+            assignment.boardComponentId.value,
+            assignment.upstreamResidualCatalogId,
+            assignment.fingerprint,
+          ]);
       if (!keys.add(groupKey)) {
         throw ArgumentError('Duplicate upstream RCD group identity.');
       }
@@ -176,6 +178,12 @@ final class CanonicalResidualProtectionRegistry {
               assignment.upstreamResidualCatalogId) {
         throw ArgumentError('RCD catalog does not match a P11 device entity.');
       }
+      final boardFeedsRcd = state.graph.connections.any((connection) =>
+          connection.fromComponentId == assignment.boardComponentId &&
+          connection.toComponentId == deviceId);
+      if (!boardFeedsRcd) {
+        throw ArgumentError('Group RCD has no P11 board feed.');
+      }
       for (final id in assignment.protectedCircuitIds) {
         final selected = selections.byCircuit[id];
         if (selected == null ||
@@ -200,9 +208,6 @@ final class CanonicalResidualProtectionRegistry {
           (connection) => circuits.single.connectionIds.contains(connection.id),
         ).toList();
         if (!activeConnections.any((connection) =>
-                connection.fromComponentId == assignment.boardComponentId &&
-                connection.toComponentId == deviceId) ||
-            !activeConnections.any((connection) =>
                 connection.fromComponentId == deviceId &&
                 connection.toComponentId != assignment.boardComponentId) ||
             activeConnections.any((connection) =>
