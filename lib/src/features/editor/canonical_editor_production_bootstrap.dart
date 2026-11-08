@@ -1,5 +1,6 @@
 import '../../application/project/canonical_project_persistence_owner.dart';
 import '../../application/project/project_mutation.dart';
+import '../../application/project/engineering/p12_engineering_proposal_source.dart';
 import '../../application/project/project_mutation_reservation.dart';
 import '../../application/project/project_repository.dart';
 import '../../application/project/project_structure_authoring.dart';
@@ -19,6 +20,7 @@ final class CanonicalEditorProductionHandle {
     required this.wizardMutations,
     required this.binding,
     this.apartmentEngineeringPipeline,
+    this.p12EngineeringProposalSource,
   }) : runtimeConfig = CanonicalEditorProductionRuntimeConfig(
           resolveRuntime: (workspace, metadata) {
             if (metadata.projectId != owner.projectId.value ||
@@ -30,6 +32,7 @@ final class CanonicalEditorProductionHandle {
               wizardMutations: wizardMutations,
               binding: binding,
               apartmentEngineeringPipeline: apartmentEngineeringPipeline,
+              p12EngineeringProposalSource: p12EngineeringProposalSource,
               persistenceOwnerProjectId: owner.projectId,
             );
           },
@@ -73,6 +76,7 @@ final class CanonicalEditorProductionHandle {
   /// composition root. The canonical bootstrap never fabricates electrical
   /// supply, load or protection inputs when this capability is absent.
   final ApartmentEngineeringPipeline? apartmentEngineeringPipeline;
+  final P12EngineeringProposalSource? p12EngineeringProposalSource;
 
   final CanonicalEditorProductionRuntimeConfig runtimeConfig;
 
@@ -112,6 +116,7 @@ final class CanonicalEditorProductionHandle {
       wizardMutations: wizardMutations,
       binding: bootstrap.binding,
       apartmentEngineeringPipeline: apartmentEngineeringPipeline,
+      p12EngineeringProposalSource: p12EngineeringProposalSource,
     );
   }
 
@@ -119,6 +124,7 @@ final class CanonicalEditorProductionHandle {
     required EditorProjectDocument legacyDocument,
     required ProjectRepository repository,
     ApartmentEngineeringPipeline? apartmentEngineeringPipeline,
+    P12EngineeringProposalSource? p12EngineeringProposalSource,
   }) async {
     final bootstrap = CanonicalEditorLegacyBootstrap.create(legacyDocument);
     var owner = await CanonicalProjectPersistenceOwner.load(
@@ -160,6 +166,7 @@ final class CanonicalEditorProductionHandle {
       wizardMutations: wizardMutations,
       binding: bootstrap.binding,
       apartmentEngineeringPipeline: apartmentEngineeringPipeline,
+      p12EngineeringProposalSource: p12EngineeringProposalSource,
     );
   }
 }
