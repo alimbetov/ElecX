@@ -321,11 +321,17 @@ abstract final class PowerElectricalSafetyGate {
         reviewed.subjectCircuitId != circuitId.value) {
       return PowerSafetyVerdict.indeterminate;
     }
-    return switch (claim.status) {
-      PowerSafetyClaimStatus.supported => PowerSafetyVerdict.pass,
-      PowerSafetyClaimStatus.contradicted => PowerSafetyVerdict.fail,
-      PowerSafetyClaimStatus.unknown => PowerSafetyVerdict.indeterminate,
-    };
+    if (claim.status == PowerSafetyClaimStatus.contradicted ||
+        reviewed.verifiedSafetyFinding ==
+            EngineeringVerifiedSafetyFinding.contradicted) {
+      return PowerSafetyVerdict.fail;
+    }
+    if (claim.status == PowerSafetyClaimStatus.supported &&
+        reviewed.verifiedSafetyFinding ==
+            EngineeringVerifiedSafetyFinding.supported) {
+      return PowerSafetyVerdict.pass;
+    }
+    return PowerSafetyVerdict.indeterminate;
   }
 
   static bool _reviewedSource(
