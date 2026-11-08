@@ -265,3 +265,71 @@ cannot authorize production Apply; next acceptance requires an additive
 canonical persistence revision, complete group-RCD topology and protection
 selectivity between all actual associated devices. Existing
 `EngineeringReservedProjectCommand` remains preview-only.
+
+
+### Canonical v22 group-RCD persistence and P11 physical-device ownership
+
+P12 now uses `CanonicalResidualProtectionRegistry` as a **project-owned**
+immutable ledger in `ProjectEngineeringMetadata.residualProtection`, not a
+detached engineering sidecar. The project is written by
+`ResidualProtectionAwareCanonicalProjectDocumentCodec` as **schema v22**,
+with an additive `residualProtection.assignments` payload. Native repository
+construction uses this codec. Schema v1–v21 documents decode with an empty
+ledger; the v21 codec rejects writes of non-empty v22 group-RCD data instead
+of silently discarding them.
+
+Every durable assignment carries both P11 `boardComponentId` and a distinct
+P11 `upstreamResidualComponentId`, plus a manufacturer/catalog key,
+explicit covered `CircuitId` values, downstream MCB catalog ID, and
+pinned evidence source. Validation happens on **every**
+`ProjectAggregateRoot` construction and insists that (a) the actual RCD
+component exists with a matching component type, (b) its input is wired from
+the declared board, (c) each covered circuit is routed outward through that
+RCD, (d) that circuit cannot bypass the RCD directly from its board, and
+(e) each MCB circuit is selected in the canonical POWER registry. Duplicate
+device IDs and double protection ownership are rejected. Distinct physical
+RCD devices may use the same manufacturer catalog part.
+
+The canonical mutation diff now tracks `residualProtectionChanged`.
+Dedicated regression tests cover v21→v22 migration, v22 JSON repository
+Save/Reopen, deterministic re-encoding, missing P11 entities, foreign board,
+duplicate ownership, metadata diffs and Undo/Redo. The mutation core
+`ProjectMutationSession.commit/undo/redo` now fails closed for POWER/RCD
+changes when no `ProjectCommitGuard` is installed. The reserved coordinator
+also requires transaction-bound engineering revalidation; that preflight
+compares every caller-supplied RCD proposal with the **exact durable
+candidate RCD ledger**. A transient RCD review cannot authorize a mutation
+of unrelated project ownership.
+
+**Not yet a production release:** An authenticated production commit guard
+must re-check registry/source revisions and real electrical engineering
+evidence in the same consistency boundary as the canonical project update.
+Test commit guards are mock callbacks and are not electrical authorization.
+Multi-circuit group RCDs with different downstream MCB catalogs need a
+per-circuit catalog mapping before generalized production authoring.
+
+### Manufacturer catalog and coordination intake — acceptance requirements
+
+Manufacturer-specific RCD, RCBO and MCB approval must be grounded in an
+actual product article/model, rated characteristics, test conditions and
+the **exact** manufacturer coordination table and revision for the two
+selected protective devices. `ReviewedProtectionCoordination` now
+requires `manufacturerId`, `coordinationDocumentRevision` and
+`coordinationTableId` before any preliminary selectivity PASS; all fields
+are covered by the trusted source fingerprint. A generic approved report
+or a nominal breaker label such as `mcb-b16` does not qualify.
+
+Reference manufacturer publications for ingestion research:
+- Schneider Electric 2026 Selectivity, Cascading and Coordination Guide:
+  https://www.se.com/sa/en/download/document/LVPED318033EN/
+- Schneider Electric RCD coordination guidance:
+  https://www.se.com/be/en/faqs/FAQ000277195/
+- Schneider Electric time-current characteristic overview:
+  https://www.se.com/uk/en/faqs/FAQ000283725/
+
+These references define the type of records the system must ingest; they
+do not prove compatibility of any particular unnamed project device pair.
+All `TEST-MANUFACTURER` identifiers and numeric test fixtures are synthetic.
+No real manufacturer compatibility certificate has yet been loaded into
+the authenticated registry. The current P12A.8 engineering command is
+still PreviewOnly and cannot commit to production.
