@@ -11,6 +11,7 @@ import 'package:elecx/src/application/project/engineering/power_electrical_safet
 import 'package:elecx/src/application/project/engineering/power_fault_envelope_gate.dart';
 import 'package:elecx/src/application/project/engineering/power_protection_device_gate.dart';
 import 'package:elecx/src/application/project/engineering/canonical_residual_protection_assignment.dart';
+import 'package:elecx/src/serialization/project/residual_protection_aware_canonical_project_document_codec.dart';
 import 'package:elecx/src/application/project/engineering/power_apply_safety_revalidation.dart';
 import 'package:elecx/src/domain/canonical_engineering_graph.dart';
 import 'package:elecx/src/domain/canonical_power_selection.dart';
@@ -510,7 +511,135 @@ ReviewedEarthingDisconnectionEvidence testEarthing({
       sourceId: 'route-survey',
     );
 
+CanonicalResidualProtectionAssignment testDurableRcd({
+  String circuitId = 'c1',
+  String boardId = 'board-1',
+  String proofId = 'rcd-test-report',
+}) =>
+    CanonicalResidualProtectionAssignment(
+      boardComponentId: ComponentId(boardId),
+      downstreamProtectionCatalogId: 'mcb-b16',
+      upstreamResidualCatalogId: 'rcd-a40',
+      evidenceSourceId: proofId,
+      protectedCircuitIds: [CircuitId(circuitId)],
+    );
+
+ProjectAggregateRoot projectWithDurableRcd() {
+  final base = projectWithPowerSelection();
+  return ProjectAggregateRoot(
+    id: base.id,
+    siteId: base.siteId,
+    version: base.version,
+    stores: base.stores,
+    engineeringMetadata: base.engineeringMetadata.withResidualProtection(
+      CanonicalResidualProtectionRegistry(
+        assignments: [testDurableRcd()],
+      ),
+    ),
+  );
+}
+
 void main() {
+  group('P12 v22 durable group RCD ownership and migration', () {
+    const codec = ResidualProtectionAwareCanonicalProjectDocumentCodec();
+    const v21 = PowerSelectionAwareCanonicalProjectDocumentCodec();
+
+    test('v21 migration to v22 preserves POWER and initializes empty RCD', () {
+      final old = v21.encode(p109Snapshot(projectWithPowerSelection()));
+      final migrated = codec.decode(old);
+      expect(migrated.aggregate.engineeringMetadata.residualProtection.isEmpty,
+          isTrue);
+      expect(migrated.aggregate.engineeringMetadata.powerSelections.isEmpty,
+          isFalse);
+      final upgraded = codec.encode(migrated);
+      expect(upgraded.schemaVersion, 22);
+      expect(
+          codec.decode(upgraded).aggregate.engineeringMetadata.residualProtection.isEmpty,
+          isTrue);
+    });
+
+    test('v22 Save/Reopen preserves RCD ownership and deterministic JSON',
+        () async {
+      final project = projectWithDurableRcd();
+      final directory = await Directory.systemTemp.createTemp('p12-rcd-v22-');
+      addTearDown(() => directory.delete(recursive: true));
+      final repository = JsonProjectRepository(
+        rootDirectory: directory,
+        codec: codec,
+      );
+      await repository.save(p109Snapshot(project));
+      final loaded = (await repository.load(project.id))!;
+      final restored = loaded.aggregate.engineeringMetadata.residualProtection;
+      final expected = project.engineeringMetadata.residualProtection;
+      expect(restored.sameAs(expected), isTrue);
+      expect(restored.assignments.single.protectedCircuitIds.single,
+          CircuitId('c1'));
+      expect(loaded.aggregate.engineeringMetadata.powerSelections.fingerprint,
+          project.engineeringMetadata.powerSelections.fingerprint);
+      final rewritten = codec.encode(loaded);
+      expect(rewritten.schemaVersion, 22);
+      expect(
+        jsonEncode(rewritten.payload),
+        jsonEncode(codec.encode(p109Snapshot(project)).payload),
+      );
+      expect(() => v21.encode(p109Snapshot(project)), throwsFormatException);
+    });
+
+    test('aggregate and v22 decoder reject dangling or foreign RCD ownership',
+        () {
+      final valid = projectWithDurableRcd();
+      final broken = CanonicalResidualProtectionRegistry(
+        assignments: [testDurableRcd(circuitId: 'missing')],
+      );
+      expect(
+        () => ProjectAggregateRoot(
+          id: valid.id,
+          siteId: valid.siteId,
+          version: valid.version,
+          stores: valid.stores,
+          engineeringMetadata:
+              valid.engineeringMetadata.withResidualProtection(broken),
+        ),
+        throwsArgumentError,
+      );
+      final document = codec.encode(p109Snapshot(valid));
+      final payload =
+          jsonDecode(jsonEncode(document.payload)) as Map<String, dynamic>;
+      final rcd =
+          (payload['residualProtection']['assignments'] as List).first;
+      rcd['boardComponentId'] = 'foreign-board';
+      expect(
+        () => codec.decode(ProjectDocument(
+          schemaVersion: 22,
+          payload: payload,
+        )),
+        throwsFormatException,
+      );
+    });
+
+    test('v21 document cannot smuggle v22 assignments', () {
+      final project = projectWithDurableRcd();
+      final document = codec.encode(p109Snapshot(project));
+      expect(
+        () => codec.decode(ProjectDocument(
+          schemaVersion: 21,
+          payload: document.payload,
+        )),
+        throwsFormatException,
+      );
+    });
+
+    test('duplicate RCD group ownership cannot survive registry creation', () {
+      expect(
+        () => CanonicalResidualProtectionRegistry(
+          assignments: [testDurableRcd(), testDurableRcd()],
+        ),
+        throwsArgumentError,
+      );
+    });
+  });
+
+
   group('P12 transaction-bound full safety composition', () {
     PowerApplySafetyRevalidation safety({
       required ProjectAggregateRoot project,
