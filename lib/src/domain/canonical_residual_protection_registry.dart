@@ -93,7 +93,8 @@ final class CanonicalResidualProtectionAssignment {
           ComponentId(requiredString(raw['upstreamResidualComponentId'])),
       downstreamProtectionCatalogId:
           requiredString(raw['downstreamProtectionCatalogId']),
-      upstreamResidualCatalogId: requiredString(raw['upstreamResidualCatalogId']),
+      upstreamResidualCatalogId:
+          requiredString(raw['upstreamResidualCatalogId']),
       evidenceSourceId: requiredString(raw['evidenceSourceId']),
       protectedCircuitIds: rawIds.map((v) => CircuitId(requiredString(v))),
     );
@@ -168,7 +169,8 @@ final class CanonicalResidualProtectionRegistry {
     for (final assignment in assignments) {
       final deviceId = assignment.upstreamResidualComponentId;
       if (deviceId == null || deviceId == assignment.boardComponentId) {
-        throw ArgumentError('Durable group RCD needs a distinct P11 device ID.');
+        throw ArgumentError(
+            'Durable group RCD needs a distinct P11 device ID.');
       }
       final devices = state.graph.components
           .where((component) => component.id == deviceId)
@@ -190,8 +192,7 @@ final class CanonicalResidualProtectionRegistry {
             selected.protectionRatings.deviceKind.trim().toLowerCase() !=
                 'mcb' ||
             !assignment.matches(selected)) {
-          throw ArgumentError(
-              'Group RCD references an unselected or unrelated P11 MCB circuit.');
+          throw ArgumentError('Group RCD references unrelated P11 MCB.');
         }
         final pins = selected.sources.map((s) => s.sourceId).toSet();
         if (!pins.contains(assignment.evidenceSourceId)) {
@@ -213,7 +214,8 @@ final class CanonicalResidualProtectionRegistry {
             activeConnections.any((connection) =>
                 connection.fromComponentId == assignment.boardComponentId &&
                 connection.toComponentId != deviceId)) {
-          throw ArgumentError('RCD is absent from or bypassed by the P11 feed.');
+          throw ArgumentError(
+              'RCD is absent from or bypassed by the P11 feed.');
         }
       }
     }
