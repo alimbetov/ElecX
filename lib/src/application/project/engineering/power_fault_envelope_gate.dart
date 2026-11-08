@@ -96,7 +96,7 @@ enum PowerFaultEnvelopeCheck {
 
 /// Only read-only PREVIEW evidence; it never certifies protective coordination.
 final class PowerFaultEnvelopeAssessment {
-  PowerFaultEnvelopeAssessment(
+  PowerFaultEnvelopeAssessment._(
     Map<PowerFaultEnvelopeCheck, PowerSafetyVerdict> results, {
     this.verifiedEnvelopeFingerprint,
   }) : checks = Map.unmodifiable(results);
@@ -135,7 +135,7 @@ abstract final class PowerFaultEnvelopeGate {
         .where((s) => s.circuitId == selection.circuitId)
         .toList();
     if (declarations.length != 1) {
-      return PowerFaultEnvelopeAssessment({
+      return PowerFaultEnvelopeAssessment._({
         for (final check in PowerFaultEnvelopeCheck.values)
           check: PowerSafetyVerdict.indeterminate,
       });
@@ -167,7 +167,7 @@ abstract final class PowerFaultEnvelopeGate {
         expected.any((s) => s.trim().isEmpty) ||
         expected.length != observed.length ||
         !expected.containsAll(observed)) {
-      return PowerFaultEnvelopeAssessment(results);
+      return PowerFaultEnvelopeAssessment._(results);
     }
     results[PowerFaultEnvelopeCheck.completeSupplyCoverage] =
         PowerSafetyVerdict.pass;
@@ -211,7 +211,7 @@ abstract final class PowerFaultEnvelopeGate {
         record.evidencePurpose == 'fault-envelope' &&
         record.verifiedFaultEnvelopeFingerprint == envelope.fingerprint &&
         registry.revision.trim().isNotEmpty;
-    if (!matched) return PowerFaultEnvelopeAssessment(results);
+    if (!matched) return PowerFaultEnvelopeAssessment._(results);
 
     results[PowerFaultEnvelopeCheck.trustedEnvelope] = PowerSafetyVerdict.pass;
     final maximum = envelope.scenarios
@@ -241,7 +241,7 @@ abstract final class PowerFaultEnvelopeGate {
         )
             ? PowerSafetyVerdict.pass
             : PowerSafetyVerdict.fail;
-    return PowerFaultEnvelopeAssessment(
+    return PowerFaultEnvelopeAssessment._(
       results,
       verifiedEnvelopeFingerprint: envelope.fingerprint,
     );
