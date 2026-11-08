@@ -19,6 +19,7 @@ final class EngineeringEvidenceReviewRecord {
     this.evidencePurpose,
     this.subjectCircuitId,
     this.verifiedSafetyFinding,
+    this.verifiedRuleProfileFingerprint,
   });
 
   final String sourceId;
@@ -35,6 +36,10 @@ final class EngineeringEvidenceReviewRecord {
   final String? evidencePurpose;
   final String? subjectCircuitId;
   final EngineeringVerifiedSafetyFinding? verifiedSafetyFinding;
+
+  /// Authenticated digest of the actual numerical rule profile, not just its
+  /// normative document identity. Missing evidence cannot authorize a PASS.
+  final String? verifiedRuleProfileFingerprint;
 }
 
 /// The production implementation must be backed by a versioned, authenticated
