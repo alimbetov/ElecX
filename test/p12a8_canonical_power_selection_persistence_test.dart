@@ -658,11 +658,11 @@ void main() {
       PowerCircuitFaultEnvelope? envelope,
       PowerCircuitFaultEnvelope? assessedEnvelope,
     }) {
-      final input = envelope ?? testFaultEnvelope();
+      final input = envelope ?? testFaultEnvelope(selected: rcboSelection());
       final bound = assessedEnvelope ?? input;
       final device = residual ?? testResidualDevice(
-          catalogId: selection('c1').protectionCatalogId);
-      final pair = selectivity ?? testCoordination();
+          catalogId: rcboSelection().protectionCatalogId);
+      final pair = selectivity ?? testCoordination(selected: rcboSelection());
       final policy = limits ?? testProtectionLimits();
       final earth = earthing ?? testEarthing();
       final registry = reviewed ??
@@ -674,14 +674,14 @@ void main() {
             faultEnvelope: bound,
           );
       final faults = PowerFaultEnvelopeGate.evaluate(
-        selection: selection('c1'),
+        selection: rcboSelection(),
         envelope: bound,
         expectedSupplyIds: const ['grid', 'backup'],
         profile: testPowerSafetyProfile(),
         registry: registry,
       );
       return PowerProtectionDeviceGate.evaluate(
-        selection: selection('c1'),
+        selection: rcboSelection(),
         faultEnvelope: input,
         faultAssessment: faults,
         residualDevice: device,
@@ -704,15 +704,15 @@ void main() {
     test('missing earthing review cannot grant automatic disconnection PASS',
         () {
       final device = testResidualDevice(
-          catalogId: selection('c1').protectionCatalogId);
-      final pair = testCoordination();
+          catalogId: rcboSelection().protectionCatalogId);
+      final pair = testCoordination(selected: rcboSelection());
       final limits = testProtectionLimits();
       final result = evaluate(
         reviewed: _PowerEvidenceRegistry(
           residualDevice: device,
           coordination: pair,
           deviceLimits: limits,
-          faultEnvelope: testFaultEnvelope(),
+          faultEnvelope: testFaultEnvelope(selected: rcboSelection()),
         ),
       );
       expect(
@@ -749,7 +749,7 @@ void main() {
     test('RCD trip time and residual current limitations are separate', () {
       final delayed = evaluate(
         residual: testResidualDevice(
-            catalogId: selection('c1').protectionCatalogId,
+            catalogId: rcboSelection().protectionCatalogId,
             tripTimeMs: 900),
       );
       expect(
@@ -758,7 +758,7 @@ void main() {
       );
       final current = evaluate(
         residual: testResidualDevice(
-            catalogId: selection('c1').protectionCatalogId,
+            catalogId: rcboSelection().protectionCatalogId,
             operatingCurrentMa: 45),
       );
       expect(
@@ -769,15 +769,15 @@ void main() {
 
     test('an unreviewed upstream catalog identity cannot prove selectivity',
         () {
-      final wrongPair = testCoordination(upstreamId: 'another-upstream');
+      final wrongPair = testCoordination(selected: rcboSelection(), upstreamId: 'another-upstream');
       final result = evaluate(
         selectivity: wrongPair,
         reviewed: _PowerEvidenceRegistry(
           residualDevice: testResidualDevice(
-              catalogId: selection('c1').protectionCatalogId),
-          coordination: testCoordination(),
+              catalogId: rcboSelection().protectionCatalogId),
+          coordination: testCoordination(selected: rcboSelection()),
           deviceLimits: testProtectionLimits(),
-          faultEnvelope: testFaultEnvelope(),
+          faultEnvelope: testFaultEnvelope(selected: rcboSelection()),
         ),
       );
       expect(
@@ -789,8 +789,8 @@ void main() {
     test('authenticated negative RCD and coordination findings are FAIL', () {
       PowerProtectionDeviceAssessment assess(String contradicted) {
         final residual = testResidualDevice(
-            catalogId: selection('c1').protectionCatalogId);
-        final pair = testCoordination();
+            catalogId: rcboSelection().protectionCatalogId);
+        final pair = testCoordination(selected: rcboSelection());
         final limits = testProtectionLimits();
         return evaluate(
           residual: residual,
@@ -800,7 +800,7 @@ void main() {
             residualDevice: residual,
             coordination: pair,
             deviceLimits: limits,
-            faultEnvelope: testFaultEnvelope(),
+            faultEnvelope: testFaultEnvelope(selected: rcboSelection()),
             contradictedId: contradicted,
           ),
         );
@@ -819,7 +819,7 @@ void main() {
     });
 
     test('selectivity must cover worst reviewed fault scenario', () {
-      final result = evaluate(selectivity: testCoordination(coverageKa: 2));
+      final result = evaluate(selectivity: testCoordination(selected: rcboSelection(), coverageKa: 2));
       expect(
         result.checks[PowerProtectionDeviceCheck.selectivityFaultCoverage],
         PowerSafetyVerdict.fail,
@@ -828,8 +828,8 @@ void main() {
 
     test('stale fault assessment cannot authorize different envelope ADS', () {
       final result = evaluate(
-        envelope: testFaultEnvelope(maxBackupKa: 5),
-        assessedEnvelope: testFaultEnvelope(),
+        envelope: testFaultEnvelope(selected: rcboSelection(), maxBackupKa: 5),
+        assessedEnvelope: testFaultEnvelope(selected: rcboSelection()),
       );
       expect(
         result.checks[PowerProtectionDeviceCheck.automaticDisconnection],
@@ -851,10 +851,10 @@ void main() {
         reviewed: _PowerEvidenceRegistry(
           revokedId: 'rcd-test-report',
           residualDevice: testResidualDevice(
-              catalogId: selection('c1').protectionCatalogId),
-          coordination: testCoordination(),
+              catalogId: rcboSelection().protectionCatalogId),
+          coordination: testCoordination(selected: rcboSelection()),
           deviceLimits: testProtectionLimits(),
-          faultEnvelope: testFaultEnvelope(),
+          faultEnvelope: testFaultEnvelope(selected: rcboSelection()),
         ),
       );
       expect(
@@ -872,9 +872,9 @@ void main() {
       PowerCircuitFaultEnvelope? approved,
       Iterable<String> supplies = const ['grid', 'backup'],
     }) {
-      final requested = envelope ?? testFaultEnvelope();
+      final requested = envelope ?? testFaultEnvelope(selected: rcboSelection());
       return PowerFaultEnvelopeGate.evaluate(
-        selection: selection('c1'),
+        selection: rcboSelection(),
         envelope: requested,
         expectedSupplyIds: supplies,
         profile: testPowerSafetyProfile(),
@@ -886,14 +886,14 @@ void main() {
 
     test('both quantitative and fault-envelope gates accept independently pinned reviews',
         () {
-      final envelope = testFaultEnvelope();
+      final envelope = testFaultEnvelope(selected: rcboSelection());
       final registry = _PowerEvidenceRegistry(
         approvedCalculation: testPowerSafetyEvidence(),
         faultEnvelope: envelope,
       );
       final quantitative = PowerElectricalSafetyGate.evaluate(
         selections: CanonicalPowerSelectionRegistry(
-          selections: [selection('c1')],
+          selections: [rcboSelection()],
         ),
         evidence: [testPowerSafetyEvidence()],
         profile: testPowerSafetyProfile(),
@@ -902,7 +902,7 @@ void main() {
         targetApplicationScope: 'POWER-AC',
       );
       final fault = PowerFaultEnvelopeGate.evaluate(
-        selection: selection('c1'),
+        selection: rcboSelection(),
         envelope: envelope,
         expectedSupplyIds: const ['grid', 'backup'],
         profile: testPowerSafetyProfile(),
@@ -924,9 +924,9 @@ void main() {
 
     test('canonical P11 topology cannot be spoofed by caller supply IDs', () {
       final state = validEngineeringState();
-      final envelope = testFaultEnvelope();
+      final envelope = testFaultEnvelope(selected: rcboSelection());
       final result = PowerFaultEnvelopeGate.evaluateForEngineeringState(
-        selection: selection('c1'),
+        selection: rcboSelection(),
         engineeringState: state,
         envelope: envelope,
         profile: testPowerSafetyProfile(),
@@ -941,7 +941,7 @@ void main() {
       final matching = PowerCircuitFaultEnvelope(
         circuitId: CircuitId('c1'),
         selectionFingerprint:
-            semanticSha256Hex(jsonEncode(selection('c1').toCanonicalJson())),
+            semanticSha256Hex(jsonEncode(rcboSelection().toCanonicalJson())),
         sourceId: 'fault-study',
         scenarios: [
           PowerSupplyFaultScenario(
@@ -955,7 +955,7 @@ void main() {
         ],
       );
       final confirmed = PowerFaultEnvelopeGate.evaluateForEngineeringState(
-        selection: selection('c1'),
+        selection: rcboSelection(),
         engineeringState: state,
         envelope: matching,
         profile: testPowerSafetyProfile(),
@@ -976,7 +976,7 @@ void main() {
 
     test('worst maximum fault scenario exceeds breaker and board capacity',
         () {
-      final result = evaluate(envelope: testFaultEnvelope(maxBackupKa: 10));
+      final result = evaluate(envelope: testFaultEnvelope(selected: rcboSelection(), maxBackupKa: 10));
       expect(
         result.checks[PowerFaultEnvelopeCheck.maximumBreakingCapacity],
         PowerSafetyVerdict.fail,
@@ -1009,8 +1009,8 @@ void main() {
     test('changed fault scenario cannot reuse approved envelope fingerprint',
         () {
       final result = evaluate(
-        envelope: testFaultEnvelope(maxBackupKa: 0.9),
-        approved: testFaultEnvelope(),
+        envelope: testFaultEnvelope(selected: rcboSelection(), maxBackupKa: 0.9),
+        approved: testFaultEnvelope(selected: rcboSelection()),
       );
       expect(result.verdict, PowerSafetyVerdict.indeterminate);
       expect(
@@ -1020,10 +1020,10 @@ void main() {
     });
 
     test('unattested profile or revoked calculation is never accepted', () {
-      final envelope = testFaultEnvelope();
+      final envelope = testFaultEnvelope(selected: rcboSelection());
       PowerFaultEnvelopeAssessment assess(_PowerEvidenceRegistry registry) =>
           PowerFaultEnvelopeGate.evaluate(
-            selection: selection('c1'),
+            selection: rcboSelection(),
             envelope: envelope,
             expectedSupplyIds: const ['grid', 'backup'],
             profile: testPowerSafetyProfile(),
@@ -1057,7 +1057,7 @@ void main() {
         ),
         throwsArgumentError,
       );
-      final one = testFaultEnvelope().scenarios.first;
+      final one = testFaultEnvelope(selected: rcboSelection()).scenarios.first;
       expect(
         () => PowerCircuitFaultEnvelope(
           circuitId: CircuitId('c1'),
