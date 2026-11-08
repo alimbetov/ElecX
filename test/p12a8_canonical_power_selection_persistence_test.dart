@@ -321,6 +321,29 @@ void main() {
       expect(report.readyToApply, isFalse);
     });
 
+    test('unattested or modified numeric safety rule profile cannot pass', () {
+      final missingAttestation = evaluate(
+        registry: _PowerEvidenceRegistry(withoutVerifiedRuleProfile: true),
+      );
+      expect(
+        missingAttestation.circuits[CircuitId('c1')]!
+            .checks[PowerSafetyCheck.normativeApplicability],
+        PowerSafetyVerdict.indeterminate,
+      );
+      expect(missingAttestation.verdict, PowerSafetyVerdict.indeterminate);
+      final changedRule = evaluate(
+        profile: PowerSafetyRuleProfile(
+          normativeSourceId: 'normative-doc',
+          jurisdiction: 'KZ',
+          applicationScope: 'POWER-AC',
+          maxConventionalTripToAmpacityRatio: 100,
+          maxFaultDisconnectionTimeMs: 30000,
+        ),
+      );
+      expect(changedRule.verdict, PowerSafetyVerdict.indeterminate);
+      expect(changedRule.readyToApply, isFalse);
+    });
+
     test('overload and breaking-capacity failures cannot be bypassed', () {
       final overloaded = evaluate(
         evidence: testPowerSafetyEvidence(designCurrent: 30),
