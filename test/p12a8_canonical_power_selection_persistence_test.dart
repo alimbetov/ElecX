@@ -10,6 +10,7 @@ import 'package:elecx/src/application/project/engineering/engineering_reserved_p
 import 'package:elecx/src/application/project/engineering/power_electrical_safety_gate.dart';
 import 'package:elecx/src/application/project/engineering/power_fault_envelope_gate.dart';
 import 'package:elecx/src/application/project/engineering/power_protection_device_gate.dart';
+import 'package:elecx/src/application/project/engineering/manufacturer_protection_pair_gate.dart';
 import 'package:elecx/src/application/project/engineering/canonical_residual_protection_assignment.dart';
 import 'package:elecx/src/serialization/project/residual_protection_aware_canonical_project_document_codec.dart';
 import 'package:elecx/src/application/project/engineering/power_apply_safety_revalidation.dart';
@@ -231,7 +232,8 @@ final class _PowerEvidenceRegistry
       this.deviceLimits,
       this.contradictedId,
       this.earthing,
-      this.upstreamRcdAssignment});
+      this.upstreamRcdAssignment,
+      this.manufacturerPair});
 
   final String? revokedId;
   final String? missingId;
@@ -246,6 +248,7 @@ final class _PowerEvidenceRegistry
   final String? contradictedId;
   final ReviewedEarthingDisconnectionEvidence? earthing;
   final CanonicalResidualProtectionAssignment? upstreamRcdAssignment;
+  final ManufacturerProtectionPairRecord? manufacturerPair;
 
   @override
   String get revision => 'registry-rev-1';
@@ -269,7 +272,9 @@ final class _PowerEvidenceRegistry
               : sourceId == 'rcd-test-report'
                   ? (wrongProofPurpose ? 'unrelated' : 'rcd-protection')
                   : sourceId == 'selectivity-study'
-                      ? 'selectivity-coordination'
+                      ? (manufacturerPair == null
+                          ? 'selectivity-coordination'
+                          : 'manufacturer-coordination')
                       : null,
       subjectCircuitId: (sourceId == 'route-survey' && earthing != null) ||
               (sourceId == 'fault-study' && faultEnvelope != null) ||
@@ -284,6 +289,9 @@ final class _PowerEvidenceRegistry
           ? (sourceId == contradictedId
               ? EngineeringVerifiedSafetyFinding.contradicted
               : EngineeringVerifiedSafetyFinding.supported)
+          : null,
+      verifiedManufacturerPairFingerprint: sourceId == 'selectivity-study'
+          ? manufacturerPair?.fingerprint
           : null,
       verifiedResidualTopologyFingerprint: sourceId == 'rcd-test-report'
           ? upstreamRcdAssignment?.fingerprint
@@ -634,6 +642,99 @@ ProjectAggregateRoot projectWithDurableRcd() {
 }
 
 void main() {
+  group('P12 trusted manufacturer coordination source preflight', () {
+    ManufacturerProtectionPairRecord pair({
+      double coverage = 6,
+      String upstreamArticle = 'RCD-A40-ARTICLE',
+    }) =>
+        ManufacturerProtectionPairRecord(
+          circuitId: 'c1',
+          downstream: ManufacturerProtectionArticle(
+            manufacturerId: 'TEST-VENDOR',
+            articleNumber: 'mcb-b16',
+            deviceKind: 'mcb',
+            catalogRevision: 'CAT-1',
+          ),
+          upstream: ManufacturerProtectionArticle(
+            manufacturerId: 'TEST-VENDOR',
+            articleNumber: upstreamArticle,
+            deviceKind: 'rcd',
+            catalogRevision: 'CAT-1',
+          ),
+          sourceId: 'selectivity-study',
+          documentRevision: 'TABLE-REV-1',
+          documentSha256: digest,
+          tableId: 'TEST-TABLE-01',
+          maximumCoveredFaultKa: coverage,
+        );
+
+    ManufacturerPairAssessment check(
+      ManufacturerProtectionPairRecord input, {
+      ManufacturerProtectionPairRecord? attested,
+      String? revoked,
+      String? contradicted,
+      String selectedUpstreamArticle = 'RCD-A40-ARTICLE',
+      double maximumFault = 3,
+    }) =>
+        ManufacturerPairEvidenceGate.evaluate(
+          selection: selection('c1'),
+          row: input,
+          registry: _PowerEvidenceRegistry(
+            manufacturerPair: attested ?? input,
+            revokedId: revoked,
+            contradictedId: contradicted,
+          ),
+          selectedDownstreamArticleNumber: 'mcb-b16',
+          selectedUpstreamArticleNumber: selectedUpstreamArticle,
+          targetJurisdiction: 'KZ',
+          targetApplicationScope: 'POWER-AC',
+          maximumProspectiveFaultKa: maximumFault,
+        );
+
+    test('matching attested exact pair passes preflight but not Apply', () {
+      final result = check(pair());
+      expect(result.verdict, PowerSafetyVerdict.pass);
+      expect(result.readyToApply, isFalse);
+    });
+
+    test('wrong article, unreviewed revision, and revoked source fail closed',
+        () {
+      expect(
+        check(pair(), selectedUpstreamArticle: 'WRONG-ARTICLE').verdict,
+        PowerSafetyVerdict.indeterminate,
+      );
+      expect(
+        check(pair(), attested: pair(upstreamArticle: 'OTHER-ARTICLE')).verdict,
+        PowerSafetyVerdict.indeterminate,
+      );
+      expect(
+        check(pair(), revoked: 'selectivity-study').verdict,
+        PowerSafetyVerdict.indeterminate,
+      );
+    });
+
+    test('negative manufacturer statement is FAIL, not an unknown result',
+        () {
+      final result = check(pair(), contradicted: 'selectivity-study');
+      expect(result.verdict, PowerSafetyVerdict.fail);
+      expect(
+        result.checks[
+            ManufacturerPairCheck.independentCoordinationAttestation],
+        PowerSafetyVerdict.fail,
+      );
+    });
+
+    test('reviewed manufacturer table cannot exceed fault coverage', () {
+      final result = check(pair(coverage: 2), maximumFault: 3);
+      expect(result.verdict, PowerSafetyVerdict.fail);
+      expect(
+        result.checks[ManufacturerPairCheck.worstCaseFaultCoverage],
+        PowerSafetyVerdict.fail,
+      );
+    });
+  });
+
+
   group('P12 v22 durable group RCD ownership and migration', () {
     const codec = ResidualProtectionAwareCanonicalProjectDocumentCodec();
     const v21 = PowerSelectionAwareCanonicalProjectDocumentCodec();
