@@ -62,6 +62,17 @@ final class PowerSafetyRuleProfile {
   final String applicationScope;
   final double maxConventionalTripToAmpacityRatio;
   final double maxFaultDisconnectionTimeMs;
+
+  /// Immutable numerical-policy identity, independently attested by the
+  /// authenticated normative registry before any provisional PASS.
+  String get fingerprint => semanticSha256Hex(jsonEncode([
+        'p12a8.power-safety-rule-profile.v1',
+        normativeSourceId,
+        jurisdiction,
+        applicationScope,
+        maxConventionalTripToAmpacityRatio,
+        maxFaultDisconnectionTimeMs,
+      ]));
 }
 
 /// Inputs may be absent: absence means INDETERMINATE, never assumed success.
@@ -206,17 +217,20 @@ abstract final class PowerElectricalSafetyGate {
       final selection = selections.byCircuit[id]!;
       final input = evidenceByCircuit[id];
       final pins = {for (final pin in selection.sources) pin.sourceId};
+      final normativeReview = registry.lookup(profile.normativeSourceId);
       final profileMatches = profile.jurisdiction == targetJurisdiction &&
           profile.applicationScope == targetApplicationScope &&
           selection.normativeSourceId == profile.normativeSourceId &&
           pins.contains(profile.normativeSourceId) &&
+          normativeReview?.verifiedRuleProfileFingerprint ==
+              profile.fingerprint &&
           reviewed.isQualified;
       final matchedSelection = input != null &&
           input.selectionFingerprint ==
               semanticSha256Hex(jsonEncode(selection.toCanonicalJson())) &&
           pins.contains(input.calculationSourceId) &&
           reviewed.isQualified;
-      final sourceValid = matchedSelection &&
+      final sourceValid = profileMatches && matchedSelection &&
           _reviewedSource(input.calculationSourceId, registry, profile);
       final checks = <PowerSafetyCheck, PowerSafetyVerdict>{
         PowerSafetyCheck.normativeApplicability: profileMatches
