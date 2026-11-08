@@ -229,6 +229,16 @@ abstract interface class PreviewOnlyReservedProjectCommand {
   String get commitBlockReason;
 }
 
+/// Opt-in command contract for future qualified P12 Apply. Revalidates all
+/// safety evidence against the *current* project immediately before commit.
+/// An existing PreviewOnlyReservedProjectCommand is never exempted by this.
+abstract interface class TransactionalEngineeringSafetyRevalidation {
+  void revalidateEngineeringSafety({
+    required ProjectAggregateRoot current,
+    required ProjectAggregateRoot candidate,
+  });
+}
+
 abstract interface class ReservedProjectCommand {
   String get commandType;
 
@@ -597,6 +607,21 @@ final class ReservedProjectMutationCoordinator {
       current: session.current,
       reservation: planned.reservation,
     );
+
+    // Future P12 Apply commands must participate in transaction-bound safety
+    // review. A fabricated or incomplete Preview still cannot be committed.
+    if (planned._command.commandType.startsWith('p12') &&
+        planned._command is! TransactionalEngineeringSafetyRevalidation) {
+      throw StateError(
+          'P12 Apply requires transaction-bound engineering safety revalidation.');
+    }
+    if (planned._command is TransactionalEngineeringSafetyRevalidation) {
+      (planned._command as TransactionalEngineeringSafetyRevalidation)
+          .revalidateEngineeringSafety(
+        current: session.current,
+        candidate: planned.candidate,
+      );
+    }
 
     final result = session.commit(
       ProjectMutationRequest(
