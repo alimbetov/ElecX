@@ -699,11 +699,13 @@ void main() {
         rows: [row],
       );
       expect(
-        snapshot.lookup(
-          circuitId: 'c1',
-          downstreamArticleNumber: 'mcb-b16',
-          upstreamArticleNumber: 'RCD-A40-ARTICLE',
-        )?.fingerprint,
+        snapshot
+            .lookup(
+              circuitId: 'c1',
+              downstreamArticleNumber: 'mcb-b16',
+              upstreamArticleNumber: 'RCD-A40-ARTICLE',
+            )
+            ?.fingerprint,
         row.fingerprint,
       );
       expect(
