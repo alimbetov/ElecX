@@ -226,7 +226,8 @@ abstract final class PowerProtectionDeviceGate {
       }
       return switch (record.verifiedSafetyFinding) {
         EngineeringVerifiedSafetyFinding.supported => PowerSafetyVerdict.pass,
-        EngineeringVerifiedSafetyFinding.contradicted => PowerSafetyVerdict.fail,
+        EngineeringVerifiedSafetyFinding.contradicted =>
+          PowerSafetyVerdict.fail,
         _ => PowerSafetyVerdict.indeterminate,
       };
     }
