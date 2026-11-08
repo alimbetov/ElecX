@@ -203,6 +203,7 @@ final class ProjectEngineeringMetadataDiff {
     this.generationProvenanceRegistryChanged = false,
     this.appliedEngineeringProposalRegistryChanged = false,
     this.powerSelectionsChanged = false,
+    this.residualProtectionChanged = false,
     this.engineeringStateChanged = false,
     this.siteLayoutChanged = false,
   });
@@ -217,6 +218,7 @@ final class ProjectEngineeringMetadataDiff {
         generationProvenanceRegistryChanged = false,
         appliedEngineeringProposalRegistryChanged = false,
         powerSelectionsChanged = false,
+        residualProtectionChanged = false,
         engineeringStateChanged = false,
         siteLayoutChanged = false;
 
@@ -247,6 +249,8 @@ final class ProjectEngineeringMetadataDiff {
             .sameAs(after.appliedEngineeringProposalRegistry),
         powerSelectionsChanged:
             !before.powerSelections.sameAs(after.powerSelections),
+        residualProtectionChanged:
+            !before.residualProtection.sameAs(after.residualProtection),
         engineeringStateChanged:
             !before.engineeringState.sameAs(after.engineeringState),
       );
@@ -260,6 +264,7 @@ final class ProjectEngineeringMetadataDiff {
   final bool generationProvenanceRegistryChanged;
   final bool appliedEngineeringProposalRegistryChanged;
   final bool powerSelectionsChanged;
+  final bool residualProtectionChanged;
   final bool engineeringStateChanged;
   final bool siteLayoutChanged;
 
@@ -274,6 +279,7 @@ final class ProjectEngineeringMetadataDiff {
       !generationProvenanceRegistryChanged &&
       !appliedEngineeringProposalRegistryChanged &&
       !powerSelectionsChanged &&
+      !residualProtectionChanged &&
       !engineeringStateChanged;
   bool get isNotEmpty => !isEmpty;
 }
