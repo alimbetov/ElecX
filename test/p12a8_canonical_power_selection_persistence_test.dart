@@ -198,13 +198,15 @@ final class _PowerEvidenceRegistry
       this.missingId,
       this.wrongProofPurpose = false,
       this.withoutVerifiedFinding = false,
-      this.withoutVerifiedRuleProfile = false});
+      this.withoutVerifiedRuleProfile = false,
+      this.approvedCalculation});
 
   final String? revokedId;
   final String? missingId;
   final bool wrongProofPurpose;
   final bool withoutVerifiedFinding;
   final bool withoutVerifiedRuleProfile;
+  final PowerCircuitSafetyEvidence? approvedCalculation;
 
   @override
   String get revision => 'registry-rev-1';
@@ -239,6 +241,10 @@ final class _PowerEvidenceRegistry
           sourceId == 'normative-doc' && !withoutVerifiedRuleProfile
               ? testPowerSafetyProfile().fingerprint
               : null,
+      verifiedCalculationFingerprint: sourceId == 'fault-study'
+          ? (approvedCalculation ?? testPowerSafetyEvidence())
+              .calculationFingerprint
+          : null,
     );
   }
 }
@@ -307,7 +313,9 @@ void main() {
           ),
           evidence: [evidence ?? testPowerSafetyEvidence()],
           profile: profile ?? testPowerSafetyProfile(),
-          registry: registry ?? _PowerEvidenceRegistry(),
+          registry: registry ??
+              _PowerEvidenceRegistry(
+                  approvedCalculation: evidence ?? testPowerSafetyEvidence()),
           targetJurisdiction: 'KZ',
           targetApplicationScope: 'POWER-AC',
         );
@@ -342,6 +350,21 @@ void main() {
       );
       expect(changedRule.verdict, PowerSafetyVerdict.indeterminate);
       expect(changedRule.readyToApply, isFalse);
+    });
+
+    test('tampered measurement cannot reuse a reviewed source ID', () {
+      final tampered = testPowerSafetyEvidence(faultCurrent: 0.1);
+      final report = evaluate(
+        evidence: tampered,
+        registry: _PowerEvidenceRegistry(),
+      );
+      expect(
+        report.circuits[CircuitId('c1')]!
+            .checks[PowerSafetyCheck.breakingCapacity],
+        PowerSafetyVerdict.indeterminate,
+      );
+      expect(report.verdict, PowerSafetyVerdict.indeterminate);
+      expect(report.readyToApply, isFalse);
     });
 
     test('overload and breaking-capacity failures cannot be bypassed', () {
