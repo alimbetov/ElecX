@@ -511,13 +511,77 @@ ReviewedEarthingDisconnectionEvidence testEarthing({
       sourceId: 'route-survey',
     );
 
+EngineeringProjectState engineeringStateWithGroupRcd() {
+  final original = validEngineeringState();
+  final rcd = EngineeringGraphComponent(
+    id: ComponentId('rcd-1'),
+    componentTypeId: 'rcd-a40',
+    discipline: EngineeringDiscipline.power,
+    systemClass: EngineeringSystemClass.powerAc,
+    ports: [
+      EngineeringPortSpec.identified(
+        portId: PortId('in'),
+        direction: EngineeringPortDirection.input,
+        allowedConnections: {EngineeringConnectionType.acSinglePhase},
+        media: {EngineeringMedia.acPower},
+      ),
+      EngineeringPortSpec.identified(
+        portId: PortId('out'),
+        direction: EngineeringPortDirection.output,
+        allowedConnections: {EngineeringConnectionType.acSinglePhase},
+        media: {EngineeringMedia.acPower},
+      ),
+    ],
+  );
+  final upstream = EngineeringGraphConnection(
+    id: EngineeringConnectionId('feed-to-rcd'),
+    fromComponentId: ComponentId('board-1'),
+    fromPortId: PortId('out'),
+    toComponentId: rcd.id,
+    toPortId: PortId('in'),
+    connectionType: EngineeringConnectionType.acSinglePhase,
+    systemClass: EngineeringSystemClass.powerAc,
+    media: EngineeringMedia.acPower,
+    circuitId: CircuitId('c1'),
+  );
+  final downstream = EngineeringGraphConnection(
+    id: EngineeringConnectionId('feed-from-rcd'),
+    fromComponentId: rcd.id,
+    fromPortId: PortId('out'),
+    toComponentId: ComponentId('load-1'),
+    toPortId: PortId('in'),
+    connectionType: EngineeringConnectionType.acSinglePhase,
+    systemClass: EngineeringSystemClass.powerAc,
+    media: EngineeringMedia.acPower,
+    circuitId: CircuitId('c1'),
+  );
+  return EngineeringProjectState(
+    graph: CanonicalEngineeringGraph(
+      components: [...original.graph.components, rcd],
+      connections: [upstream, downstream],
+    ),
+    circuits: [
+      EngineeringCircuit(
+        id: CircuitId('c1'),
+        systemClass: EngineeringSystemClass.powerAc,
+        media: EngineeringMedia.acPower,
+        connectionIds: [upstream.id, downstream.id],
+      ),
+    ],
+    sources: original.sources,
+    circuitSupplies: original.circuitSupplies,
+  );
+}
+
 CanonicalResidualProtectionAssignment testDurableRcd({
   String circuitId = 'c1',
   String boardId = 'board-1',
+  String deviceId = 'rcd-1',
   String proofId = 'rcd-test-report',
 }) =>
     CanonicalResidualProtectionAssignment(
       boardComponentId: ComponentId(boardId),
+      upstreamResidualComponentId: ComponentId(deviceId),
       downstreamProtectionCatalogId: 'mcb-b16',
       upstreamResidualCatalogId: 'rcd-a40',
       evidenceSourceId: proofId,
@@ -531,7 +595,9 @@ ProjectAggregateRoot projectWithDurableRcd() {
     siteId: base.siteId,
     version: base.version,
     stores: base.stores,
-    engineeringMetadata: base.engineeringMetadata.withResidualProtection(
+    engineeringMetadata: base.engineeringMetadata
+        .withEngineeringState(engineeringStateWithGroupRcd())
+        .withResidualProtection(
       CanonicalResidualProtectionRegistry(
         assignments: [testDurableRcd()],
       ),
