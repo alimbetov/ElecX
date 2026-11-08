@@ -1,4 +1,3 @@
-import '../../../domain/canonical_power_selection.dart';
 import '../../../domain/project_aggregate.dart';
 import '../../../domain/project_identity.dart';
 import '../project_mutation_reservation.dart';
@@ -23,7 +22,8 @@ final class PowerApplySafetyRevalidation
     required this.registry,
     required Iterable<PowerCircuitSafetyEvidence> circuitEvidence,
     required Map<CircuitId, PowerCircuitFaultEnvelope> faultEnvelopes,
-    required Map<CircuitId, ReviewedResidualDeviceCharacteristic> residualDevices,
+    required Map<CircuitId, ReviewedResidualDeviceCharacteristic>
+        residualDevices,
     required Map<CircuitId, ReviewedProtectionCoordination> coordination,
   })  : circuitEvidence = List.unmodifiable(circuitEvidence),
         faultEnvelopes = Map.unmodifiable(faultEnvelopes),
@@ -95,7 +95,8 @@ final class PowerApplySafetyRevalidation
         registry: registry,
       );
       if (fault.verdict != PowerSafetyVerdict.pass) {
-        throw StateError('Supply/fault safety gate is not qualified: ${id.value}.');
+        throw StateError(
+            'Supply/fault safety gate is not qualified: ${id.value}.');
       }
       final devices = PowerProtectionDeviceGate.evaluate(
         selection: selection,
