@@ -16,7 +16,7 @@ final class CanonicalResidualProtectionAssignment {
     required this.evidenceSourceId,
     required Iterable<CircuitId> protectedCircuitIds,
     Map<CircuitId, String> downstreamCatalogOverrides = const {},
-  }) : protectedCircuitIds = List.unmodifiable(
+  })  : protectedCircuitIds = List.unmodifiable(
           protectedCircuitIds.toList()
             ..sort((a, b) => a.value.compareTo(b.value)),
         ),
@@ -56,8 +56,9 @@ final class CanonicalResidualProtectionAssignment {
         evidenceSourceId,
         [for (final id in protectedCircuitIds) id.value],
         [
-          for (final id in downstreamCatalogOverrides.keys.toList()
-            ..sort((a, b) => a.value.compareTo(b.value)))
+          for (final id
+              in downstreamCatalogOverrides.keys.toList()
+                ..sort((a, b) => a.value.compareTo(b.value)))
             [id.value, downstreamCatalogOverrides[id]],
         ],
       ]));
@@ -79,8 +80,9 @@ final class CanonicalResidualProtectionAssignment {
           for (final circuit in protectedCircuitIds) circuit.value
         ],
         'downstreamCatalogOverrides': {
-          for (final id in downstreamCatalogOverrides.keys.toList()
-            ..sort((a, b) => a.value.compareTo(b.value)))
+          for (final id
+              in downstreamCatalogOverrides.keys.toList()
+                ..sort((a, b) => a.value.compareTo(b.value)))
             id.value: downstreamCatalogOverrides[id],
         },
       };
@@ -134,8 +136,7 @@ final class CanonicalResidualProtectionAssignment {
 /// Single project-owned immutable ledger of assignments, never a second P11
 /// graph. Full cross-reference validation runs on every aggregate rebuild.
 final class CanonicalResidualProtectionRegistry {
-  const CanonicalResidualProtectionRegistry.empty()
-      : assignments = const [];
+  const CanonicalResidualProtectionRegistry.empty() : assignments = const [];
 
   CanonicalResidualProtectionRegistry({
     required Iterable<CanonicalResidualProtectionAssignment> assignments,
@@ -167,8 +168,7 @@ final class CanonicalResidualProtectionRegistry {
 
   bool get isEmpty => assignments.isEmpty;
 
-  String get fingerprint =>
-      semanticSha256Hex(jsonEncode(toCanonicalJson()));
+  String get fingerprint => semanticSha256Hex(jsonEncode(toCanonicalJson()));
 
   Map<String, Object?> toCanonicalJson() => {
         'assignments': [
@@ -235,9 +235,12 @@ final class CanonicalResidualProtectionRegistry {
         if (circuits.length != 1 || boards.length != 1) {
           throw ArgumentError('Group RCD references missing P11 topology.');
         }
-        final activeConnections = state.graph.connections.where(
-          (connection) => circuits.single.connectionIds.contains(connection.id),
-        ).toList();
+        final activeConnections = state.graph.connections
+            .where(
+              (connection) =>
+                  circuits.single.connectionIds.contains(connection.id),
+            )
+            .toList();
         final downstream = activeConnections
             .where((connection) =>
                 connection.fromComponentId == deviceId &&
