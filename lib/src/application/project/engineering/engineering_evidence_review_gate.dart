@@ -23,6 +23,7 @@ final class EngineeringEvidenceReviewRecord {
     this.verifiedCalculationFingerprint,
     this.verifiedFaultEnvelopeFingerprint,
     this.verifiedProtectionLimitsFingerprint,
+    this.verifiedUpstreamProtectionCatalogId,
   });
 
   final String sourceId;
@@ -54,6 +55,9 @@ final class EngineeringEvidenceReviewRecord {
 
   /// Independently attested policy-specific RCD/RCBO operating thresholds.
   final String? verifiedProtectionLimitsFingerprint;
+
+  /// Approved upstream protective device identity for the reviewed pair.
+  final String? verifiedUpstreamProtectionCatalogId;
 }
 
 /// The production implementation must be backed by a versioned, authenticated
