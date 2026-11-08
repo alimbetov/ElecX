@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'applied_engineering_proposal.dart';
 import 'canonical_power_selection.dart';
+import 'canonical_residual_protection_registry.dart';
 import 'boundary_construction_registry.dart';
 import 'boundary_edge_identity_registry.dart';
 import 'boundary_host_registry.dart';
@@ -136,6 +137,7 @@ final class ProjectEngineeringMetadata {
         const AppliedEngineeringProposalRegistry.empty(),
     EngineeringProjectState? engineeringState,
     this.powerSelections = const CanonicalPowerSelectionRegistry.empty(),
+    this.residualProtection = const CanonicalResidualProtectionRegistry.empty(),
   }) : _engineeringState = engineeringState;
 
   final ProjectEngineeringNorth? projectNorth;
@@ -147,6 +149,7 @@ final class ProjectEngineeringMetadata {
   final GenerationProvenanceRegistry generationProvenanceRegistry;
   final AppliedEngineeringProposalRegistry appliedEngineeringProposalRegistry;
   final CanonicalPowerSelectionRegistry powerSelections;
+  final CanonicalResidualProtectionRegistry residualProtection;
   final EngineeringProjectState? _engineeringState;
 
   EngineeringProjectState get engineeringState =>
@@ -164,6 +167,7 @@ final class ProjectEngineeringMetadata {
     AppliedEngineeringProposalRegistry? appliedEngineeringProposalRegistry,
     EngineeringProjectState? engineeringState,
     CanonicalPowerSelectionRegistry? powerSelections,
+    CanonicalResidualProtectionRegistry? residualProtection,
   }) {
     if (clearProjectNorth && projectNorth != null) {
       throw ArgumentError(
@@ -188,6 +192,7 @@ final class ProjectEngineeringMetadata {
           this.appliedEngineeringProposalRegistry,
       engineeringState: engineeringState ?? _engineeringState,
       powerSelections: powerSelections ?? this.powerSelections,
+      residualProtection: residualProtection ?? this.residualProtection,
     );
   }
 
@@ -235,6 +240,10 @@ final class ProjectEngineeringMetadata {
           CanonicalPowerSelectionRegistry selections) =>
       copyWith(powerSelections: selections);
 
+  ProjectEngineeringMetadata withResidualProtection(
+          CanonicalResidualProtectionRegistry registry) =>
+      copyWith(residualProtection: registry);
+
   @override
   bool operator ==(Object other) =>
       other is ProjectEngineeringMetadata &&
@@ -248,7 +257,8 @@ final class ProjectEngineeringMetadata {
       other.appliedEngineeringProposalRegistry
           .sameAs(appliedEngineeringProposalRegistry) &&
       other.engineeringState.sameAs(engineeringState) &&
-      other.powerSelections.sameAs(powerSelections);
+      other.powerSelections.sameAs(powerSelections) &&
+      other.residualProtection.sameAs(residualProtection);
 
   @override
   int get hashCode {
@@ -257,6 +267,7 @@ final class ProjectEngineeringMetadata {
       jsonEncode(siteLayout.toCanonicalJson()),
       engineeringState.fingerprint,
       powerSelections.fingerprint,
+      residualProtection.fingerprint,
     );
     final entries = boundaryEdgeIdentityRegistry.owners.entries.toList()
       ..sort((a, b) => a.key.value.compareTo(b.key.value));
