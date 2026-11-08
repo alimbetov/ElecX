@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../../../domain/canonical_power_selection.dart';
 import '../../../domain/project_identity.dart';
 import '../../../domain/semantic_sha256.dart';
+import 'canonical_residual_protection_assignment.dart';
 import 'engineering_evidence_review_gate.dart';
 import 'power_electrical_safety_gate.dart';
 import 'power_fault_envelope_gate.dart';
@@ -208,6 +209,7 @@ abstract final class PowerProtectionDeviceGate {
     required PowerCircuitFaultEnvelope faultEnvelope,
     required PowerFaultEnvelopeAssessment faultAssessment,
     required ReviewedResidualDeviceCharacteristic residualDevice,
+    CanonicalResidualProtectionAssignment? upstreamRcdAssignment,
     required ReviewedProtectionCoordination coordination,
     required ReviewedEarthingDisconnectionEvidence earthing,
     required PowerProtectionDeviceLimits limits,
@@ -272,14 +274,30 @@ abstract final class PowerProtectionDeviceGate {
 
     final residualFingerprint =
         residualDevice.fingerprintFor(selection.circuitId);
-    // A selected MCB is not an RCD/RCBO. A separate upstream RCD requires
-    // explicit canonical device topology and is not silently inferred.
-    final residualCapableSelection =
-        selection.protectionRatings.deviceKind.trim().toLowerCase() ==
-                'rcbo' &&
-            residualDevice.deviceType.trim().toLowerCase().startsWith('rcbo');
-    final residualReview = residualCapableSelection &&
-            residualDevice.protectionCatalogId == selection.protectionCatalogId
+    final kind = selection.protectionRatings.deviceKind.trim().toLowerCase();
+    final deviceType = residualDevice.deviceType.trim().toLowerCase();
+    final selectedRcbo = kind == 'rcbo' &&
+        deviceType.startsWith('rcbo') &&
+        residualDevice.protectionCatalogId == selection.protectionCatalogId;
+    // Ordinary MCB circuits are protected by a separate upstream RCD only
+    // when both the actual P11 circuit coverage and the upstream catalog
+    // identity are independently attested. An in-memory assignment alone
+    // is never authority to grant residual-current protection.
+    final assignment = upstreamRcdAssignment;
+    final assignmentRecord = assignment == null
+        ? null
+        : registry.lookup(assignment.evidenceSourceId);
+    final upstreamRcd = kind == 'mcb' &&
+        deviceType.startsWith('rcd') &&
+        assignment != null &&
+        assignment.matches(selection) &&
+        assignment.upstreamResidualCatalogId ==
+            residualDevice.protectionCatalogId &&
+        assignment.evidenceSourceId == residualDevice.sourceId &&
+        pins.containsKey(assignment.evidenceSourceId) &&
+        assignmentRecord?.verifiedResidualTopologyFingerprint ==
+            assignment.fingerprint;
+    final residualReview = (selectedRcbo || upstreamRcd)
         ? reviewed(
             residualDevice.sourceId, 'rcd-protection', residualFingerprint)
         : PowerSafetyVerdict.indeterminate;
