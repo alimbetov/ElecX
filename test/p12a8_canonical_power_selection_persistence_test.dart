@@ -441,6 +441,7 @@ ReviewedProtectionCoordination testCoordination({
   double coverageKa = 6,
   String upstreamId = 'upstream-c63',
   CanonicalPowerCircuitSelection? selected,
+  bool withManufacturerTable = true,
 }) =>
     ReviewedProtectionCoordination(
       downstreamProtectionCatalogId:
@@ -448,6 +449,10 @@ ReviewedProtectionCoordination testCoordination({
       upstreamProtectionCatalogId: upstreamId,
       coveredFaultCurrentKa: coverageKa,
       sourceId: 'selectivity-study',
+      manufacturerId: withManufacturerTable ? 'TEST-MANUFACTURER' : null,
+      coordinationDocumentRevision:
+          withManufacturerTable ? 'TEST-REVISION-1' : null,
+      coordinationTableId: withManufacturerTable ? 'TEST-PAIR-01' : null,
     );
 
 /// Deliberately strips PreviewOnly marker to verify coordinator does not
@@ -1326,6 +1331,20 @@ void main() {
             PowerProtectionDeviceCheck.trustedSelectivityPair],
         PowerSafetyVerdict.fail,
       );
+    });
+
+    test('a generic approved document cannot replace a manufacturer table',
+        () {
+      final withoutTable = testCoordination(
+        selected: rcboSelection(),
+        withManufacturerTable: false,
+      );
+      final report = evaluate(selectivity: withoutTable);
+      expect(
+        report.checks[PowerProtectionDeviceCheck.trustedSelectivityPair],
+        PowerSafetyVerdict.indeterminate,
+      );
+      expect(report.readyToApply, isFalse);
     });
 
     test('selectivity must cover worst reviewed fault scenario', () {
