@@ -22,7 +22,7 @@ abstract interface class ManufacturerPublisherProvenanceVerifier {
 /// Admission receipt is only a proof of successful preflight at the exact
 /// trusted registry revision; it never grants engineering Apply.
 final class ManufacturerEvidenceAdmission {
-  ManufacturerEvidenceAdmission({
+  ManufacturerEvidenceAdmission._({
     required this.catalog,
     required this.documentSha256,
     required this.registryRevision,
@@ -91,7 +91,7 @@ abstract final class ManufacturerEvidenceIngestion {
       throw StateError('Manufacturer coordination row is not qualified.');
     }
 
-    return ManufacturerEvidenceAdmission(
+    return ManufacturerEvidenceAdmission._(
       catalog: ManufacturerCoordinationCatalogSnapshot(
         revision: expectedRegistryRevision,
         rows: [reviewedRow],
