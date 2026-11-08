@@ -10,6 +10,7 @@ import 'package:elecx/src/application/project/engineering/engineering_reserved_p
 import 'package:elecx/src/application/project/engineering/power_electrical_safety_gate.dart';
 import 'package:elecx/src/application/project/engineering/power_fault_envelope_gate.dart';
 import 'package:elecx/src/application/project/engineering/power_protection_device_gate.dart';
+import 'package:elecx/src/application/project/engineering/canonical_residual_protection_assignment.dart';
 import 'package:elecx/src/application/project/engineering/power_apply_safety_revalidation.dart';
 import 'package:elecx/src/domain/canonical_engineering_graph.dart';
 import 'package:elecx/src/domain/canonical_power_selection.dart';
@@ -210,7 +211,8 @@ final class _PowerEvidenceRegistry
       this.coordination,
       this.deviceLimits,
       this.contradictedId,
-      this.earthing});
+      this.earthing,
+      this.upstreamRcdAssignment});
 
   final String? revokedId;
   final String? missingId;
@@ -224,6 +226,7 @@ final class _PowerEvidenceRegistry
   final PowerProtectionDeviceLimits? deviceLimits;
   final String? contradictedId;
   final ReviewedEarthingDisconnectionEvidence? earthing;
+  final CanonicalResidualProtectionAssignment? upstreamRcdAssignment;
 
   @override
   String get revision => 'registry-rev-1';
@@ -262,6 +265,10 @@ final class _PowerEvidenceRegistry
               ? EngineeringVerifiedSafetyFinding.contradicted
               : EngineeringVerifiedSafetyFinding.supported)
           : null,
+      verifiedResidualTopologyFingerprint:
+          sourceId == 'rcd-test-report'
+              ? upstreamRcdAssignment?.fingerprint
+              : null,
       verifiedUpstreamProtectionCatalogId:
           sourceId == 'selectivity-study'
               ? coordination?.upstreamProtectionCatalogId
@@ -401,10 +408,11 @@ ReviewedResidualDeviceCharacteristic testResidualDevice({
   double operatingCurrentMa = 20,
   double tripTimeMs = 80,
   String catalogId = 'protection-b16',
+  String deviceType = 'RCBO type A',
 }) =>
     ReviewedResidualDeviceCharacteristic(
       protectionCatalogId: catalogId,
-      deviceType: 'RCBO type A',
+      deviceType: deviceType,
       ratedResidualCurrentMa: 30,
       measuredOperatingResidualCurrentMa: operatingCurrentMa,
       measuredTripTimeMs: tripTimeMs,
