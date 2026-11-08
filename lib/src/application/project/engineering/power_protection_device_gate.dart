@@ -70,6 +70,9 @@ final class ReviewedProtectionCoordination {
     required this.upstreamProtectionCatalogId,
     required this.coveredFaultCurrentKa,
     required this.sourceId,
+    this.manufacturerId,
+    this.coordinationDocumentRevision,
+    this.coordinationTableId,
   }) {
     if (downstreamProtectionCatalogId.trim().isEmpty ||
         upstreamProtectionCatalogId.trim().isEmpty ||
@@ -86,6 +89,20 @@ final class ReviewedProtectionCoordination {
   final double coveredFaultCurrentKa;
   final String sourceId;
 
+  /// Exact manufacturer coordination table and revision, not a generic
+  /// statement that two product families are usually compatible.
+  final String? manufacturerId;
+  final String? coordinationDocumentRevision;
+  final String? coordinationTableId;
+
+  bool get hasReviewedManufacturerTable =>
+      manufacturerId != null &&
+      manufacturerId!.trim().isNotEmpty &&
+      coordinationDocumentRevision != null &&
+      coordinationDocumentRevision!.trim().isNotEmpty &&
+      coordinationTableId != null &&
+      coordinationTableId!.trim().isNotEmpty;
+
   String fingerprintFor(CircuitId circuitId) =>
       semanticSha256Hex(jsonEncode([
         'p12a8.reviewed-selectivity-pair.v1',
@@ -99,6 +116,9 @@ final class ReviewedProtectionCoordination {
         upstreamProtectionCatalogId,
         coveredFaultCurrentKa,
         sourceId,
+        manufacturerId,
+        coordinationDocumentRevision,
+        coordinationTableId,
       ];
 }
 
@@ -324,7 +344,8 @@ abstract final class PowerProtectionDeviceGate {
         coordination.fingerprintFor(selection.circuitId);
     final coordinationReview = registry.lookup(coordination.sourceId);
     final pairReview =
-        coordination.downstreamProtectionCatalogId ==
+        coordination.hasReviewedManufacturerTable &&
+            coordination.downstreamProtectionCatalogId ==
                 selection.protectionCatalogId &&
             coordinationReview?.verifiedUpstreamProtectionCatalogId ==
                 coordination.upstreamProtectionCatalogId
