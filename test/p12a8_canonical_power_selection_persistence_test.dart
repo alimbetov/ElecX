@@ -788,6 +788,41 @@ void main() {
       );
     });
 
+    test('group RCD supports distinct MCB catalog IDs per protected circuit',
+        () {
+      final first = selection('c1');
+      final secondJson = selection('c2').toCanonicalJson();
+      secondJson['protectionCatalogId'] = 'mcb-b10';
+      final second = CanonicalPowerCircuitSelection.fromCanonicalJson(
+        secondJson,
+      );
+      final group = CanonicalResidualProtectionAssignment(
+        boardComponentId: ComponentId('board-1'),
+        upstreamResidualComponentId: ComponentId('rcd-1'),
+        downstreamProtectionCatalogId: 'mcb-b16',
+        upstreamResidualCatalogId: 'rcd-a40',
+        evidenceSourceId: 'rcd-test-report',
+        protectedCircuitIds: [first.circuitId, second.circuitId],
+        downstreamCatalogOverrides: {second.circuitId: 'mcb-b10'},
+      );
+      expect(group.matches(first), isTrue);
+      expect(group.matches(second), isTrue);
+      final reopened = CanonicalResidualProtectionAssignment.fromCanonicalJson(
+        jsonDecode(jsonEncode(group.toCanonicalJson())),
+      );
+      expect(reopened.fingerprint, group.fingerprint);
+      expect(reopened.downstreamCatalogOverrides[second.circuitId], 'mcb-b10');
+      final wrong = CanonicalResidualProtectionAssignment(
+        boardComponentId: ComponentId('board-1'),
+        upstreamResidualComponentId: ComponentId('rcd-1'),
+        downstreamProtectionCatalogId: 'mcb-b16',
+        upstreamResidualCatalogId: 'rcd-a40',
+        evidenceSourceId: 'rcd-test-report',
+        protectedCircuitIds: [first.circuitId, second.circuitId],
+      );
+      expect(wrong.matches(second), isFalse);
+    });
+
     test('two physical RCDs may use the same manufacturer catalog part', () {
       final ledger = CanonicalResidualProtectionRegistry(
         assignments: [
