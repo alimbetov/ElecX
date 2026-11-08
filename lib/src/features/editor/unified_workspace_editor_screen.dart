@@ -13,6 +13,7 @@ import 'canonical_space_semantics_adapter.dart';
 import 'canonical_project_navigator.dart';
 import 'context_minimap.dart';
 import 'engineering_inspector_panel.dart';
+import 'p12_engineering_review_panel.dart';
 import 'editor_building_workspace.dart';
 import 'editor_controller.dart';
 import 'editor_document_history.dart';
@@ -972,6 +973,42 @@ class _UnifiedWorkspaceEditorScreenState
     }
   }
 
+  void _openP12EngineeringReview() {
+    // Resolve at click-time; never cache a stale project snapshot in UI state.
+    final project = _canonicalProjectMatchesScreen
+        ? _canonicalResolvedRuntime?.session.project
+        : null;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        key: const ValueKey('p12-review-dialog'),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 740, maxHeight: 720),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: P12EngineeringReviewPanel(project: project),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    key: const ValueKey('p12-review-close'),
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Закрыть'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _openMiniMap() {
     showContextMiniMapSheet(
       context: context,
@@ -1196,6 +1233,7 @@ class _UnifiedWorkspaceEditorScreenState
                 onSaveProject: _saveProject,
                 onOpenProject: _openSavedProject,
                 onOpenMiniMap: _openMiniMap,
+                onOpenP12EngineeringReview: _openP12EngineeringReview,
               ),
               body: Column(
                 children: [
@@ -1354,6 +1392,7 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.onSaveProject,
     required this.onOpenProject,
     required this.onOpenMiniMap,
+    required this.onOpenP12EngineeringReview,
   });
 
   final EditorBuildingWorkspace workspace;
@@ -1366,6 +1405,7 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onSaveProject;
   final VoidCallback onOpenProject;
   final VoidCallback onOpenMiniMap;
+  final VoidCallback onOpenP12EngineeringReview;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -1380,6 +1420,12 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
             : 'ElecX · ${projectMetadata.projectName} · ${workspace.activeLevel?.displayName ?? ''}',
       ),
       actions: [
+        IconButton(
+          key: const ValueKey('p12-review-open'),
+          tooltip: 'P12 · Проверка инженерного проекта',
+          onPressed: onOpenP12EngineeringReview,
+          icon: const Icon(Icons.fact_check_outlined),
+        ),
         if (compact)
           IconButton(
             key: const ValueKey('project-inspector-open'),
