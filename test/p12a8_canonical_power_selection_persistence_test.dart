@@ -42,10 +42,12 @@ CanonicalEngineeringSourceReference source(String id) =>
       approvalId: 'approval-1',
     );
 
-CanonicalPowerCircuitSelection selection(String id, {
+CanonicalPowerCircuitSelection selection(
+  String id, {
   double boardFaultWithstandKa = 6,
   double cableRatedVoltageV = 450,
-}) => CanonicalPowerCircuitSelection(
+}) =>
+    CanonicalPowerCircuitSelection(
       circuitId: CircuitId(id),
       generationKey: 'generation-$id',
       boardComponentId: ComponentId('board-1'),
@@ -263,17 +265,18 @@ final class _PowerEvidenceRegistry
       evidencePurpose: sourceId == 'route-survey' && earthing != null
           ? 'earthing-and-ads'
           : sourceId == 'fault-study' && faultEnvelope != null
-          ? 'fault-envelope'
-          : sourceId == 'rcd-test-report'
-          ? (wrongProofPurpose ? 'unrelated' : 'rcd-protection')
-          : sourceId == 'selectivity-study'
-              ? 'selectivity-coordination'
-              : null,
+              ? 'fault-envelope'
+              : sourceId == 'rcd-test-report'
+                  ? (wrongProofPurpose ? 'unrelated' : 'rcd-protection')
+                  : sourceId == 'selectivity-study'
+                      ? 'selectivity-coordination'
+                      : null,
       subjectCircuitId: (sourceId == 'route-survey' && earthing != null) ||
               (sourceId == 'fault-study' && faultEnvelope != null) ||
-              sourceId == 'rcd-test-report' || sourceId == 'selectivity-study'
-              ? 'c1'
-              : null,
+              sourceId == 'rcd-test-report' ||
+              sourceId == 'selectivity-study'
+          ? 'c1'
+          : null,
       verifiedSafetyFinding: !withoutVerifiedFinding &&
               (sourceId == 'rcd-test-report' ||
                   sourceId == 'selectivity-study' ||
@@ -282,16 +285,15 @@ final class _PowerEvidenceRegistry
               ? EngineeringVerifiedSafetyFinding.contradicted
               : EngineeringVerifiedSafetyFinding.supported)
           : null,
-      verifiedResidualTopologyFingerprint:
-          sourceId == 'rcd-test-report'
-              ? upstreamRcdAssignment?.fingerprint
-              : null,
-      verifiedUpstreamProtectionCatalogId:
-          sourceId == 'selectivity-study'
-              ? coordination?.upstreamProtectionCatalogId
-              : null,
+      verifiedResidualTopologyFingerprint: sourceId == 'rcd-test-report'
+          ? upstreamRcdAssignment?.fingerprint
+          : null,
+      verifiedUpstreamProtectionCatalogId: sourceId == 'selectivity-study'
+          ? coordination?.upstreamProtectionCatalogId
+          : null,
       verifiedProtectionLimitsFingerprint: sourceId == 'normative-doc' &&
-              deviceLimits != null && !withoutVerifiedRuleProfile
+              deviceLimits != null &&
+              !withoutVerifiedRuleProfile
           ? deviceLimits!.fingerprintFor(testPowerSafetyProfile())
           : null,
       verifiedRuleProfileFingerprint:
@@ -300,20 +302,20 @@ final class _PowerEvidenceRegistry
               : null,
       verifiedFaultEnvelopeFingerprint:
           sourceId == 'fault-study' ? faultEnvelope?.fingerprint : null,
-      verifiedCalculationFingerprint: sourceId == 'route-survey' &&
-              earthing != null
-          ? earthing!.fingerprintFor(
-              CircuitId('c1'),
-              residualDevice?.protectionCatalogId ??
-                  selection('c1').protectionCatalogId)
-          : sourceId == 'fault-study'
-          ? (approvedCalculation ?? testPowerSafetyEvidence())
-              .calculationFingerprint
-          : sourceId == 'rcd-test-report' && residualDevice != null
-              ? residualDevice!.fingerprintFor(CircuitId('c1'))
-              : sourceId == 'selectivity-study' && coordination != null
-                  ? coordination!.fingerprintFor(CircuitId('c1'))
-                  : null,
+      verifiedCalculationFingerprint:
+          sourceId == 'route-survey' && earthing != null
+              ? earthing!.fingerprintFor(
+                  CircuitId('c1'),
+                  residualDevice?.protectionCatalogId ??
+                      selection('c1').protectionCatalogId)
+              : sourceId == 'fault-study'
+                  ? (approvedCalculation ?? testPowerSafetyEvidence())
+                      .calculationFingerprint
+                  : sourceId == 'rcd-test-report' && residualDevice != null
+                      ? residualDevice!.fingerprintFor(CircuitId('c1'))
+                      : sourceId == 'selectivity-study' && coordination != null
+                          ? coordination!.fingerprintFor(CircuitId('c1'))
+                          : null,
     );
   }
 }
@@ -369,7 +371,6 @@ PowerCircuitSafetyEvidence testPowerSafetyEvidence({
         : null,
   );
 }
-
 
 PowerCircuitFaultEnvelope testFaultEnvelope({
   CanonicalPowerCircuitSelection? selected,
@@ -623,10 +624,10 @@ ProjectAggregateRoot projectWithDurableRcd() {
     engineeringMetadata: base.engineeringMetadata
         .withEngineeringState(engineeringStateWithGroupRcd())
         .withResidualProtection(
-      CanonicalResidualProtectionRegistry(
-        assignments: [testDurableRcd()],
-      ),
-    ),
+          CanonicalResidualProtectionRegistry(
+            assignments: [testDurableRcd()],
+          ),
+        ),
   );
 }
 
@@ -645,7 +646,12 @@ void main() {
       final upgraded = codec.encode(migrated);
       expect(upgraded.schemaVersion, 22);
       expect(
-          codec.decode(upgraded).aggregate.engineeringMetadata.residualProtection.isEmpty,
+          codec
+              .decode(upgraded)
+              .aggregate
+              .engineeringMetadata
+              .residualProtection
+              .isEmpty,
           isTrue);
     });
 
@@ -696,8 +702,7 @@ void main() {
       final document = codec.encode(p109Snapshot(valid));
       final payload =
           jsonDecode(jsonEncode(document.payload)) as Map<String, dynamic>;
-      final rcd =
-          (payload['residualProtection']['assignments'] as List).first;
+      final rcd = (payload['residualProtection']['assignments'] as List).first;
       rcd['boardComponentId'] = 'foreign-board';
       expect(
         () => codec.decode(ProjectDocument(
@@ -737,7 +742,8 @@ void main() {
         original,
         commitGuard: (before, candidate, changeSet) {
           approvals.add(changeSet.kind);
-          expect(candidate.engineeringMetadata.powerSelections.isEmpty, isFalse);
+          expect(
+              candidate.engineeringMetadata.powerSelections.isEmpty, isFalse);
         },
       );
       final preview = session.preview(ProjectMutationRequest(
@@ -839,8 +845,9 @@ void main() {
 
     test('RCD v22 decoder rejects duplicate circuit coverage and bad shape',
         () {
-      final document = const ResidualProtectionAwareCanonicalProjectDocumentCodec()
-          .encode(p109Snapshot(projectWithDurableRcd()));
+      final document =
+          const ResidualProtectionAwareCanonicalProjectDocumentCodec()
+              .encode(p109Snapshot(projectWithDurableRcd()));
       final corrupted =
           jsonDecode(jsonEncode(document.payload)) as Map<String, dynamic>;
       final groups = corrupted['residualProtection']['assignments'] as List;
@@ -874,7 +881,6 @@ void main() {
     });
   });
 
-
   group('P12 transaction-bound full safety composition', () {
     PowerApplySafetyRevalidation safety({
       required ProjectAggregateRoot project,
@@ -882,8 +888,8 @@ void main() {
       bool includeDevices = true,
     }) {
       final envelope = testFaultEnvelope();
-      final residual = testResidualDevice(
-          catalogId: selection('c1').protectionCatalogId);
+      final residual =
+          testResidualDevice(catalogId: selection('c1').protectionCatalogId);
       final coordination = testCoordination();
       final limits = testProtectionLimits();
       final earth = testEarthing();
@@ -992,8 +998,8 @@ void main() {
 
     test('MCB with reviewed upstream group RCD qualifies precommit only', () {
       final project = projectWithDurableRcd();
-      final selectionForCircuit =
-          project.engineeringMetadata.powerSelections.byCircuit[CircuitId('c1')]!;
+      final selectionForCircuit = project
+          .engineeringMetadata.powerSelections.byCircuit[CircuitId('c1')]!;
       final supply = project.engineeringMetadata.engineeringState
           .circuitSupplies.single.sourceIds.single.value;
       final envelope = PowerCircuitFaultEnvelope(
@@ -1098,7 +1104,6 @@ void main() {
     });
   });
 
-
   group('P12 reviewed RCD/RCBO and selectivity device preflight', () {
     PowerProtectionDeviceAssessment evaluate({
       ReviewedResidualDeviceCharacteristic? residual,
@@ -1111,8 +1116,8 @@ void main() {
     }) {
       final input = envelope ?? testFaultEnvelope(selected: rcboSelection());
       final bound = assessedEnvelope ?? input;
-      final device = residual ?? testResidualDevice(
-          catalogId: rcboSelection().protectionCatalogId);
+      final device = residual ??
+          testResidualDevice(catalogId: rcboSelection().protectionCatalogId);
       final pair = selectivity ?? testCoordination(selected: rcboSelection());
       final policy = limits ?? testProtectionLimits();
       final earth = earthing ?? testEarthing();
@@ -1147,8 +1152,7 @@ void main() {
     test('MCB-only selection must not inherit an RCBO claim', () {
       final mcb = selection('c1');
       final envelope = testFaultEnvelope(selected: mcb);
-      final residual =
-          testResidualDevice(catalogId: mcb.protectionCatalogId);
+      final residual = testResidualDevice(catalogId: mcb.protectionCatalogId);
       final pair = testCoordination(selected: mcb);
       final limits = testProtectionLimits();
       final earthing = testEarthing();
@@ -1238,8 +1242,8 @@ void main() {
 
       final approved = assess(assignment);
       expect(
-        approved.checks[
-            PowerProtectionDeviceCheck.trustedResidualCharacteristic],
+        approved
+            .checks[PowerProtectionDeviceCheck.trustedResidualCharacteristic],
         PowerSafetyVerdict.pass,
       );
       expect(approved.readyToApply, isFalse);
@@ -1269,8 +1273,8 @@ void main() {
 
       final unverified = assess(null);
       expect(
-        unverified.checks[
-            PowerProtectionDeviceCheck.trustedResidualCharacteristic],
+        unverified
+            .checks[PowerProtectionDeviceCheck.trustedResidualCharacteristic],
         PowerSafetyVerdict.indeterminate,
       );
 
@@ -1298,8 +1302,8 @@ void main() {
 
     test('missing earthing review cannot grant automatic disconnection PASS',
         () {
-      final device = testResidualDevice(
-          catalogId: rcboSelection().protectionCatalogId);
+      final device =
+          testResidualDevice(catalogId: rcboSelection().protectionCatalogId);
       final pair = testCoordination(selected: rcboSelection());
       final limits = testProtectionLimits();
       final result = evaluate(
@@ -1358,8 +1362,7 @@ void main() {
     test('RCD trip time and residual current limitations are separate', () {
       final delayed = evaluate(
         residual: testResidualDevice(
-            catalogId: rcboSelection().protectionCatalogId,
-            tripTimeMs: 900),
+            catalogId: rcboSelection().protectionCatalogId, tripTimeMs: 900),
       );
       expect(
         delayed.checks[PowerProtectionDeviceCheck.residualTripTime],
@@ -1378,7 +1381,8 @@ void main() {
 
     test('an unreviewed upstream catalog identity cannot prove selectivity',
         () {
-      final wrongPair = testCoordination(selected: rcboSelection(), upstreamId: 'another-upstream');
+      final wrongPair = testCoordination(
+          selected: rcboSelection(), upstreamId: 'another-upstream');
       final result = evaluate(
         selectivity: wrongPair,
         reviewed: _PowerEvidenceRegistry(
@@ -1397,8 +1401,8 @@ void main() {
 
     test('authenticated negative RCD and coordination findings are FAIL', () {
       PowerProtectionDeviceAssessment assess(String contradicted) {
-        final residual = testResidualDevice(
-            catalogId: rcboSelection().protectionCatalogId);
+        final residual =
+            testResidualDevice(catalogId: rcboSelection().protectionCatalogId);
         final pair = testCoordination(selected: rcboSelection());
         final limits = testProtectionLimits();
         return evaluate(
@@ -1416,19 +1420,18 @@ void main() {
       }
 
       expect(
-        assess('rcd-test-report').checks[
-            PowerProtectionDeviceCheck.trustedResidualCharacteristic],
+        assess('rcd-test-report')
+            .checks[PowerProtectionDeviceCheck.trustedResidualCharacteristic],
         PowerSafetyVerdict.fail,
       );
       expect(
-        assess('selectivity-study').checks[
-            PowerProtectionDeviceCheck.trustedSelectivityPair],
+        assess('selectivity-study')
+            .checks[PowerProtectionDeviceCheck.trustedSelectivityPair],
         PowerSafetyVerdict.fail,
       );
     });
 
-    test('a generic approved document cannot replace a manufacturer table',
-        () {
+    test('a generic approved document cannot replace a manufacturer table', () {
       final withoutTable = testCoordination(
         selected: rcboSelection(),
         withManufacturerTable: false,
@@ -1442,7 +1445,9 @@ void main() {
     });
 
     test('selectivity must cover worst reviewed fault scenario', () {
-      final result = evaluate(selectivity: testCoordination(selected: rcboSelection(), coverageKa: 2));
+      final result = evaluate(
+          selectivity:
+              testCoordination(selected: rcboSelection(), coverageKa: 2));
       expect(
         result.checks[PowerProtectionDeviceCheck.selectivityFaultCoverage],
         PowerSafetyVerdict.fail,
@@ -1466,8 +1471,8 @@ void main() {
         residual: testResidualDevice(catalogId: 'unrelated-rcbo'),
       );
       expect(
-        mismatched.checks[
-            PowerProtectionDeviceCheck.trustedResidualCharacteristic],
+        mismatched
+            .checks[PowerProtectionDeviceCheck.trustedResidualCharacteristic],
         PowerSafetyVerdict.indeterminate,
       );
       final missingProof = evaluate(
@@ -1481,13 +1486,12 @@ void main() {
         ),
       );
       expect(
-        missingProof.checks[
-            PowerProtectionDeviceCheck.trustedResidualCharacteristic],
+        missingProof
+            .checks[PowerProtectionDeviceCheck.trustedResidualCharacteristic],
         PowerSafetyVerdict.indeterminate,
       );
     });
   });
-
 
   group('P12A.8 multi-supply fault envelope', () {
     PowerFaultEnvelopeAssessment evaluate({
@@ -1495,7 +1499,8 @@ void main() {
       PowerCircuitFaultEnvelope? approved,
       Iterable<String> supplies = const ['grid', 'backup'],
     }) {
-      final requested = envelope ?? testFaultEnvelope(selected: rcboSelection());
+      final requested =
+          envelope ?? testFaultEnvelope(selected: rcboSelection());
       return PowerFaultEnvelopeGate.evaluate(
         selection: rcboSelection(),
         envelope: requested,
@@ -1507,7 +1512,8 @@ void main() {
       );
     }
 
-    test('both quantitative and fault-envelope gates accept independently pinned reviews',
+    test(
+        'both quantitative and fault-envelope gates accept independently pinned reviews',
         () {
       final envelope = testFaultEnvelope(selected: rcboSelection());
       final registry = _PowerEvidenceRegistry(
@@ -1597,9 +1603,10 @@ void main() {
       );
     });
 
-    test('worst maximum fault scenario exceeds breaker and board capacity',
-        () {
-      final result = evaluate(envelope: testFaultEnvelope(selected: rcboSelection(), maxBackupKa: 10));
+    test('worst maximum fault scenario exceeds breaker and board capacity', () {
+      final result = evaluate(
+          envelope:
+              testFaultEnvelope(selected: rcboSelection(), maxBackupKa: 10));
       expect(
         result.checks[PowerFaultEnvelopeCheck.maximumBreakingCapacity],
         PowerSafetyVerdict.fail,
@@ -1632,7 +1639,8 @@ void main() {
     test('changed fault scenario cannot reuse approved envelope fingerprint',
         () {
       final result = evaluate(
-        envelope: testFaultEnvelope(selected: rcboSelection(), maxBackupKa: 0.9),
+        envelope:
+            testFaultEnvelope(selected: rcboSelection(), maxBackupKa: 0.9),
         approved: testFaultEnvelope(selected: rcboSelection()),
       );
       expect(result.verdict, PowerSafetyVerdict.indeterminate);
@@ -1693,7 +1701,6 @@ void main() {
     });
   });
 
-
   group('P12A.8 provisional electrical safety gate', () {
     PowerElectricalSafetyReport evaluate({
       PowerCircuitSafetyEvidence? evidence,
@@ -1709,8 +1716,8 @@ void main() {
           profile: profile ?? testPowerSafetyProfile(),
           registry: registry ??
               _PowerEvidenceRegistry(
-                  approvedCalculation: evidence ??
-                      testPowerSafetyEvidence(selected: selected)),
+                  approvedCalculation:
+                      evidence ?? testPowerSafetyEvidence(selected: selected)),
           targetJurisdiction: 'KZ',
           targetApplicationScope: 'POWER-AC',
         );
@@ -1843,7 +1850,8 @@ void main() {
       );
     });
 
-    test('caller-supported RCD and selectivity without trusted findings stay indeterminate',
+    test(
+        'caller-supported RCD and selectivity without trusted findings stay indeterminate',
         () {
       final report = evaluate(
         registry: _PowerEvidenceRegistry(withoutVerifiedFinding: true),
@@ -1854,8 +1862,7 @@ void main() {
         PowerSafetyVerdict.indeterminate,
       );
       expect(
-        report.circuits[CircuitId('c1')]!
-            .checks[PowerSafetyCheck.selectivity],
+        report.circuits[CircuitId('c1')]!.checks[PowerSafetyCheck.selectivity],
         PowerSafetyVerdict.indeterminate,
       );
       expect(report.verdict, PowerSafetyVerdict.indeterminate);
@@ -2164,7 +2171,8 @@ void main() {
       expect(session.undoDepth, 0);
     });
 
-    test('P12 coordinator denies missing and failing commit-boundary gates', () {
+    test('P12 coordinator denies missing and failing commit-boundary gates',
+        () {
       final base = P1010ServiceAnchorFixture().project;
       final project = ProjectAggregateRoot(
         id: base.id,
