@@ -995,6 +995,29 @@ void main() {
           maximumProspectiveFaultKa: maximumFault,
         );
 
+    test('RCD backup evidence cannot claim MCB short-circuit selectivity', () {
+      final original = pair();
+      expect(
+        () => ManufacturerProtectionPairRecord(
+          coordinationCategory:
+              ManufacturerPairCoordinationCategory.shortCircuitSelectivity,
+          circuitId: original.circuitId,
+          downstream: original.downstream,
+          upstream: original.upstream,
+          sourceId: original.sourceId,
+          documentRevision: original.documentRevision,
+          documentSha256: original.documentSha256,
+          tableId: original.tableId,
+          maximumCoveredFaultKa: original.maximumCoveredFaultKa,
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        original.coordinationCategory,
+        ManufacturerPairCoordinationCategory.residualDeviceBackup,
+      );
+    });
+
     test('catalog snapshot is immutable and rejects ambiguous article pairs',
         () {
       final row = pair();
