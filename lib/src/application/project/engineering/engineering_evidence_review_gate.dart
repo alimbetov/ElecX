@@ -21,6 +21,7 @@ final class EngineeringEvidenceReviewRecord {
     this.verifiedSafetyFinding,
     this.verifiedRuleProfileFingerprint,
     this.verifiedCalculationFingerprint,
+    this.verifiedProtectionLimitsFingerprint,
   });
 
   final String sourceId;
@@ -45,6 +46,9 @@ final class EngineeringEvidenceReviewRecord {
   /// Frozen, independently reviewed numerical input bundle for one P11
   /// circuit. Review of a generic source ID cannot authorize altered values.
   final String? verifiedCalculationFingerprint;
+
+  /// Independently attested policy-specific RCD/RCBO operating thresholds.
+  final String? verifiedProtectionLimitsFingerprint;
 }
 
 /// The production implementation must be backed by a versioned, authenticated
