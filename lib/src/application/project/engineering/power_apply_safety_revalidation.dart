@@ -84,6 +84,21 @@ final class PowerApplySafetyRevalidation
       throw StateError('Incomplete safety evidence for canonical circuits.');
     }
 
+    // A reviewed group RCD must not silently cover an unknown or unrelated
+    // canonical circuit. The current conservative model requires one board
+    // and downstream protective catalog across its declared group.
+    for (final assignment in upstreamRcdAssignments.values) {
+      for (final protectedId in assignment.protectedCircuitIds) {
+        final circuit = selections.byCircuit[protectedId];
+        if (circuit == null ||
+            circuit.boardComponentId != assignment.boardComponentId ||
+            circuit.protectionCatalogId !=
+                assignment.downstreamProtectionCatalogId) {
+          throw StateError('Upstream RCD group contains foreign circuit.');
+        }
+      }
+    }
+
     final quantitative = PowerElectricalSafetyGate.evaluate(
       selections: selections,
       evidence: circuitEvidence,
