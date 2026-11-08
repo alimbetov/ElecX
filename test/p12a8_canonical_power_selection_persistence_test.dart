@@ -1622,16 +1622,16 @@ void main() {
     test('minimum fault current clearing time and max thermal energy checked',
         () {
       final delayed = evaluate(
-        envelope: testFaultEnvelope(
-            selected: rcboSelection(), backupClearingMs: 450),
+        envelope:
+            testFaultEnvelope(selected: rcboSelection(), backupClearingMs: 450),
       );
       expect(
         delayed.checks[PowerFaultEnvelopeCheck.minimumFaultDisconnection],
         PowerSafetyVerdict.fail,
       );
       final thermal = evaluate(
-        envelope: testFaultEnvelope(
-            selected: rcboSelection(), backupEnergy: 1200),
+        envelope:
+            testFaultEnvelope(selected: rcboSelection(), backupEnergy: 1200),
       );
       expect(
         thermal.checks[PowerFaultEnvelopeCheck.maximumThermalEnergy],
