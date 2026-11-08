@@ -97,10 +97,12 @@ enum PowerFaultEnvelopeCheck {
 /// Only read-only PREVIEW evidence; it never certifies protective coordination.
 final class PowerFaultEnvelopeAssessment {
   PowerFaultEnvelopeAssessment(
-      Map<PowerFaultEnvelopeCheck, PowerSafetyVerdict> results)
-      : checks = Map.unmodifiable(results);
+    Map<PowerFaultEnvelopeCheck, PowerSafetyVerdict> results, {
+    this.verifiedEnvelopeFingerprint,
+  }) : checks = Map.unmodifiable(results);
 
   final Map<PowerFaultEnvelopeCheck, PowerSafetyVerdict> checks;
+  final String? verifiedEnvelopeFingerprint;
 
   PowerSafetyVerdict get verdict {
     if (checks.values.contains(PowerSafetyVerdict.fail)) {
@@ -239,6 +241,9 @@ abstract final class PowerFaultEnvelopeGate {
         )
             ? PowerSafetyVerdict.pass
             : PowerSafetyVerdict.fail;
-    return PowerFaultEnvelopeAssessment(results);
+    return PowerFaultEnvelopeAssessment(
+      results,
+      verifiedEnvelopeFingerprint: envelope.fingerprint,
+    );
   }
 }
