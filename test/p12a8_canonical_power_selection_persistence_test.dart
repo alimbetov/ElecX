@@ -373,6 +373,49 @@ void main() {
       expect(result.checks, hasLength(PowerFaultEnvelopeCheck.values.length));
     });
 
+    test('canonical P11 topology cannot be spoofed by caller supply IDs', () {
+      final state = validEngineeringState();
+      final envelope = testFaultEnvelope();
+      final result = PowerFaultEnvelopeGate.evaluateForEngineeringState(
+        selection: selection('c1'),
+        engineeringState: state,
+        envelope: envelope,
+        profile: testPowerSafetyProfile(),
+        registry: _PowerEvidenceRegistry(faultEnvelope: envelope),
+      );
+      expect(
+        result.checks[PowerFaultEnvelopeCheck.completeSupplyCoverage],
+        PowerSafetyVerdict.indeterminate,
+      );
+
+      final realSource = envelope.scenarios.first;
+      final matching = PowerCircuitFaultEnvelope(
+        circuitId: CircuitId('c1'),
+        selectionFingerprint:
+            semanticSha256Hex(jsonEncode(selection('c1').toCanonicalJson())),
+        sourceId: 'fault-study',
+        scenarios: [
+          PowerSupplyFaultScenario(
+            supplyId: state.circuitSupplies.single.sourceIds.single.value,
+            maximumProspectiveFaultKa: realSource.maximumProspectiveFaultKa,
+            minimumProspectiveFaultKa: realSource.minimumProspectiveFaultKa,
+            maximumLetThroughA2s: realSource.maximumLetThroughA2s,
+            cableWithstandA2s: realSource.cableWithstandA2s,
+            minimumFaultClearingTimeMs: realSource.minimumFaultClearingTimeMs,
+          ),
+        ],
+      );
+      final confirmed = PowerFaultEnvelopeGate.evaluateForEngineeringState(
+        selection: selection('c1'),
+        engineeringState: state,
+        envelope: matching,
+        profile: testPowerSafetyProfile(),
+        registry: _PowerEvidenceRegistry(faultEnvelope: matching),
+      );
+      expect(confirmed.verdict, PowerSafetyVerdict.pass);
+      expect(confirmed.readyToApply, isFalse);
+    });
+
     test('missing supply from independent topology fails closed', () {
       final result = evaluate(supplies: const ['grid', 'backup', 'generator']);
       expect(result.verdict, PowerSafetyVerdict.indeterminate);
