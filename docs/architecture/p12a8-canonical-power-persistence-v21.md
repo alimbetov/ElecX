@@ -96,3 +96,10 @@ These metadata checks **do not** independently validate proof contents, RCD trip
 An engineer or UI-supplied `PowerSafetyClaimStatus.supported` is never sufficient to return `PASS`. The trusted, authenticated evidence registry must also return an explicit `EngineeringVerifiedSafetyFinding.supported` on the matching document, purpose and P11 circuit. If the authenticated review has no finding, the result is `INDETERMINATE`; an authenticated contradictory finding or a contradictory caller claim returns `FAIL`. A source digest or approval ID proves an identity/review record, not the electrical calculation itself.
 
 This improves trust-boundary separation but does not create a real protection-coordination engine: the review ingestion must still validate RCD/RCBO technical parameters, manufacturer curves, protection selectivity and jurisdictional applicability before those findings are fit for production.
+
+
+### Authenticated numeric rule profile binding
+
+The provisional `PowerSafetyRuleProfile` now exposes a deterministic `fingerprint` of its numerical limits, source identity, jurisdiction and application scope. A source review that merely attests the normative document does **not** attest values extracted from it. The trusted `EngineeringEvidenceReviewRecord.verifiedRuleProfileFingerprint` must match the **exact** selected policy fingerprint for `normativeApplicability = PASS`. Missing or changed numeric limits yield `INDETERMINATE` and prevent all downstream calculation criteria from passing.
+
+Only the trusted normative ingestion boundary may populate this attestation after independent rule extraction, effective-date/applicability checking and engineering review. An in-memory test fixture is not evidence of real-world compliance. The `PreviewOnlyReservedProjectCommand` and `readyToApply == false` restrictions remain unchanged.
