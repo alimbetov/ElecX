@@ -550,7 +550,10 @@ void main() {
         returnsNormally,
       );
       // Revalidation is a prerequisite only; it never invokes commitPreview.
-      expect(project.version, project.version);
+      expect(boundary, isA<TransactionalEngineeringSafetyRevalidation>());
+      final session = ProjectMutationSession(project);
+      expect(session.undoDepth, 0);
+      expect(session.current.version, project.version);
     });
 
     test('missing device coverage fails before canonical commit', () {
