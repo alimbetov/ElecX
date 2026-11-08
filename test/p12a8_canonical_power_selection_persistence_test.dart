@@ -502,6 +502,7 @@ void main() {
           catalogId: selection('c1').protectionCatalogId);
       final coordination = testCoordination();
       final limits = testProtectionLimits();
+      final earth = testEarthing();
       return PowerApplySafetyRevalidation(
         expectedRegistryRevision: expectedRegistryRevision,
         expectedEngineeringStateFingerprint:
@@ -518,6 +519,7 @@ void main() {
           residualDevice: residual,
           coordination: coordination,
           deviceLimits: limits,
+          earthing: earth,
         ),
         circuitEvidence: [testPowerSafetyEvidence()],
         faultEnvelopes: {CircuitId('c1'): envelope},
@@ -525,6 +527,7 @@ void main() {
             ? {CircuitId('c1'): residual}
             : <CircuitId, ReviewedResidualDeviceCharacteristic>{},
         coordination: {CircuitId('c1'): coordination},
+        earthing: {CircuitId('c1'): earth},
       );
     }
 
@@ -554,12 +557,14 @@ void main() {
       final residual =
           testResidualDevice(catalogId: chosen.protectionCatalogId);
       final pair = testCoordination();
+      final earth = testEarthing();
       final registry = _PowerEvidenceRegistry(
         approvedCalculation: testPowerSafetyEvidence(),
         faultEnvelope: envelope,
         residualDevice: residual,
         coordination: pair,
         deviceLimits: limits,
+        earthing: earth,
       );
       final boundary = PowerApplySafetyRevalidation(
         expectedRegistryRevision: registry.revision,
@@ -576,6 +581,7 @@ void main() {
         faultEnvelopes: {chosen.circuitId: envelope},
         residualDevices: {chosen.circuitId: residual},
         coordination: {chosen.circuitId: pair},
+        earthing: {chosen.circuitId: earth},
       );
       expect(
         () => boundary.revalidateEngineeringSafety(
@@ -635,6 +641,7 @@ void main() {
       ReviewedResidualDeviceCharacteristic? residual,
       ReviewedProtectionCoordination? selectivity,
       PowerProtectionDeviceLimits? limits,
+      ReviewedEarthingDisconnectionEvidence? earthing,
       _PowerEvidenceRegistry? reviewed,
       PowerCircuitFaultEnvelope? envelope,
       PowerCircuitFaultEnvelope? assessedEnvelope,
@@ -645,11 +652,13 @@ void main() {
           catalogId: selection('c1').protectionCatalogId);
       final pair = selectivity ?? testCoordination();
       final policy = limits ?? testProtectionLimits();
+      final earth = earthing ?? testEarthing();
       final registry = reviewed ??
           _PowerEvidenceRegistry(
             residualDevice: device,
             coordination: pair,
             deviceLimits: policy,
+            earthing: earth,
             faultEnvelope: bound,
           );
       final faults = PowerFaultEnvelopeGate.evaluate(
@@ -665,6 +674,7 @@ void main() {
         faultAssessment: faults,
         residualDevice: device,
         coordination: pair,
+        earthing: earth,
         limits: policy,
         profile: testPowerSafetyProfile(),
         registry: registry,
