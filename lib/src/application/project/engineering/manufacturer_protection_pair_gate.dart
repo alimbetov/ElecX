@@ -93,7 +93,8 @@ enum ManufacturerPairCheck {
 
 /// This is a read-only, fail-closed evidence preflight. Never permits Apply.
 final class ManufacturerPairAssessment {
-  ManufacturerPairAssessment(Map<ManufacturerPairCheck, PowerSafetyVerdict> checks)
+  ManufacturerPairAssessment(
+      Map<ManufacturerPairCheck, PowerSafetyVerdict> checks)
       : checks = Map.unmodifiable(checks);
 
   final Map<ManufacturerPairCheck, PowerSafetyVerdict> checks;
@@ -175,8 +176,7 @@ abstract final class ManufacturerPairEvidenceGate {
       return ManufacturerPairAssessment(checks);
     }
 
-    if (!maximumProspectiveFaultKa.isFinite ||
-        maximumProspectiveFaultKa <= 0) {
+    if (!maximumProspectiveFaultKa.isFinite || maximumProspectiveFaultKa <= 0) {
       return ManufacturerPairAssessment(checks);
     }
     checks[ManufacturerPairCheck.worstCaseFaultCoverage] =
