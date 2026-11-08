@@ -194,11 +194,15 @@ final class _DropEngineeringStateCommand implements ProjectCommand {
 final class _PowerEvidenceRegistry
     implements TrustedEngineeringEvidenceRegistry {
   _PowerEvidenceRegistry(
-      {this.revokedId, this.missingId, this.wrongProofPurpose = false});
+      {this.revokedId,
+      this.missingId,
+      this.wrongProofPurpose = false,
+      this.withoutVerifiedFinding = false});
 
   final String? revokedId;
   final String? missingId;
   final bool wrongProofPurpose;
+  final bool withoutVerifiedFinding;
 
   @override
   String get revision => 'registry-rev-1';
@@ -224,6 +228,11 @@ final class _PowerEvidenceRegistry
           sourceId == 'rcd-test-report' || sourceId == 'selectivity-study'
               ? 'c1'
               : null,
+      verifiedSafetyFinding: !withoutVerifiedFinding &&
+              (sourceId == 'rcd-test-report' ||
+                  sourceId == 'selectivity-study')
+          ? EngineeringVerifiedSafetyFinding.supported
+          : null,
     );
   }
 }
@@ -356,6 +365,25 @@ void main() {
             .checks[PowerSafetyCheck.shortCircuitDisconnection],
         PowerSafetyVerdict.fail,
       );
+    });
+
+    test('caller-supported RCD and selectivity without trusted findings stay indeterminate',
+        () {
+      final report = evaluate(
+        registry: _PowerEvidenceRegistry(withoutVerifiedFinding: true),
+      );
+      expect(
+        report.circuits[CircuitId('c1')]!
+            .checks[PowerSafetyCheck.residualCurrentProtection],
+        PowerSafetyVerdict.indeterminate,
+      );
+      expect(
+        report.circuits[CircuitId('c1')]!
+            .checks[PowerSafetyCheck.selectivity],
+        PowerSafetyVerdict.indeterminate,
+      );
+      expect(report.verdict, PowerSafetyVerdict.indeterminate);
+      expect(report.readyToApply, isFalse);
     });
 
     test('RCD proof with unrelated reviewed purpose is indeterminate', () {
