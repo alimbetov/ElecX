@@ -61,14 +61,14 @@ final class CanonicalResidualProtectionAssignment {
 
   factory CanonicalResidualProtectionAssignment.fromCanonicalJson(Object? raw) {
     if (raw is! Map<String, dynamic> ||
-        raw.keys.toSet().difference(const {
+        raw.keys.toSet().length != 5 ||
+        !raw.keys.toSet().containsAll(const {
           'boardComponentId',
           'downstreamProtectionCatalogId',
           'upstreamResidualCatalogId',
           'evidenceSourceId',
           'protectedCircuitIds',
-        }).isEmpty == false ||
-        raw.keys.length != 5) {
+        })) {
       throw const FormatException('Invalid group RCD document shape.');
     }
     String requiredString(Object? value) {
