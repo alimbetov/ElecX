@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../../domain/canonical_power_selection.dart';
+import '../../../domain/engineering_project_state.dart';
 import '../../../domain/project_identity.dart';
 import '../../../domain/semantic_sha256.dart';
 import 'engineering_evidence_review_gate.dart';
@@ -119,6 +120,33 @@ final class PowerFaultEnvelopeAssessment {
 /// IDs sourced from the canonical topology, not derived from the envelope.
 /// The trusted registry must attest the exact envelope fingerprint.
 abstract final class PowerFaultEnvelopeGate {
+  /// Prefer this entry point for real project preview. Supply coverage comes
+  /// from the authoritative P11 topology, never from the caller's envelope.
+  static PowerFaultEnvelopeAssessment evaluateForEngineeringState({
+    required CanonicalPowerCircuitSelection selection,
+    required EngineeringProjectState engineeringState,
+    required PowerCircuitFaultEnvelope envelope,
+    required PowerSafetyRuleProfile profile,
+    required TrustedEngineeringEvidenceRegistry registry,
+  }) {
+    final declarations = engineeringState.circuitSupplies
+        .where((s) => s.circuitId == selection.circuitId)
+        .toList();
+    if (declarations.length != 1) {
+      return PowerFaultEnvelopeAssessment({
+        for (final check in PowerFaultEnvelopeCheck.values)
+          check: PowerSafetyVerdict.indeterminate,
+      });
+    }
+    return evaluate(
+      selection: selection,
+      envelope: envelope,
+      expectedSupplyIds: declarations.single.sourceIds.map((id) => id.value),
+      profile: profile,
+      registry: registry,
+    );
+  }
+
   static PowerFaultEnvelopeAssessment evaluate({
     required CanonicalPowerCircuitSelection selection,
     required PowerCircuitFaultEnvelope envelope,
