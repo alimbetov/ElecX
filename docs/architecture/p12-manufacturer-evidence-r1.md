@@ -87,3 +87,39 @@ barriers stay intact.
   persistence, reopen and authoritative Apply acceptance.
 
 Until all of these are green, PR #32 must remain Draft.
+
+
+## R1 implementation extension: explicit coordination categories
+
+`ManufacturerPairCoordinationCategory` now distinguishes:
+
+- `shortCircuitSelectivity`: both reviewed downstream and upstream products
+  must be devices capable of applicable overcurrent discrimination, such as
+  the relevant MCB/MCCB/ACB/RCBO combinations.
+- `residualDeviceBackup`: an MCB/RCBO downstream from a separately reviewed
+  RCD/RCCB, where the manufacturer's *conditional* coordination/backup
+  evidence explicitly supports that exact pair.
+
+This category enters the reviewed row fingerprint, so a reviewed backup
+table cannot later be reused to declare short-circuit selectivity.
+Residual-current discrimination between two RCDs is a **different**
+engineering calculation and is not implemented by this R1 gate.
+
+The reference-only `ManufacturerArticleDiscoveryDirectory` includes two
+actual articles from official Schneider Electric product pages. Its records
+carry `isManufacturerCoordinationQualified == false`; reference identity
+cannot be used to authorize the reviewed coordination or project Apply.
+
+`ManufacturerEvidenceIngestion` accepts the original unmodified PDF bytes
+and checks their SHA-256, external publisher provenance verifier, exact
+approved evidence source, revision and fingerprint. Its admission type has
+a library-private constructor, reducing accidental forgery by UI code.
+A production `ManufacturerPublisherProvenanceVerifier` with real
+cryptographic publisher identity verification has **not** been installed.
+The test implementation only simulates this independent boundary.
+
+`ManufacturerProjectCoordinationGate` evaluates these admitted records
+against the permanent project-owned P11/v22 RCD topology and each selected
+circuit's maximum reviewed fault case. It checks the frozen engineering
+state, power-selection, RCD registry and trusted review revisions. It is
+a **non-authorizing preflight** with `readyToApply == false`.
