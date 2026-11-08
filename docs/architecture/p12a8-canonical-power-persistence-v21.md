@@ -90,3 +90,9 @@ The gate does not infer installation conditions, country-specific tables or a de
 The trusted `EngineeringEvidenceReviewRecord` now optionally carries `evidencePurpose` and `subjectCircuitId`. The provisional RCD claim requires purpose `rcd-protection`, and the selectivity claim requires `selectivity-coordination`; both must explicitly refer to the selected P11 `CircuitId`. An unrelated but generally approved manufacturer document or route survey must not satisfy either proof. Each proof is also bound to a source ID pinned in the v21 selection and checked for approval, revision, digest and jurisdiction.
 
 These metadata checks **do not** independently validate proof contents, RCD trip curves or manufacturer selectivity tables. Those capabilities are still required for production certification and Apply. The target project jurisdiction/application scope is a separate required input and must match the chosen rule profile; a self-declared profile jurisdiction cannot authorize itself.
+
+### Independent finding required for RCD/selectivity PASS
+
+An engineer or UI-supplied `PowerSafetyClaimStatus.supported` is never sufficient to return `PASS`. The trusted, authenticated evidence registry must also return an explicit `EngineeringVerifiedSafetyFinding.supported` on the matching document, purpose and P11 circuit. If the authenticated review has no finding, the result is `INDETERMINATE`; an authenticated contradictory finding or a contradictory caller claim returns `FAIL`. A source digest or approval ID proves an identity/review record, not the electrical calculation itself.
+
+This improves trust-boundary separation but does not create a real protection-coordination engine: the review ingestion must still validate RCD/RCBO technical parameters, manufacturer curves, protection selectivity and jurisdictional applicability before those findings are fit for production.
