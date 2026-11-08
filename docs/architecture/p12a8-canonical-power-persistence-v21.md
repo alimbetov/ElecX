@@ -169,3 +169,26 @@ time-current/coordination evidence, earthing and fault-loop checks, applicable
 jurisdictional rules and full exact-SHA CI/security qualification. This PR
 **must not** be treated as certified RCD, ADS or selectivity engineering
 without that validated ingestion and production acceptance.
+
+
+### P12 safety hardening: combined evidence identities and mutation guard
+
+Independent numerical review fields are mandatory for their individual roles:
+`verifiedCalculationFingerprint` (Ib/In/Iz, thermal and fault inputs),
+`verifiedFaultEnvelopeFingerprint` (all source max/min scenarios),
+`verifiedProtectionLimitsFingerprint` (normative RCD thresholds),
+and device-specific proof fingerprints tied to exact catalog IDs.
+A single signed source may attest multiple disjoint engineering snapshots
+without one proof overwriting another.
+
+The coordination review must also name the authenticated
+`verifiedUpstreamProtectionCatalogId` for the exact downstream/upstream pair;
+an arbitrary caller-supplied upstream ID is not enough. A positive preliminary
+review does not yet establish that the pair exists in the authoritative
+distribution-board topology: that reconciliation is a production blocker.
+
+The mutation coordinator now requires commit-boundary safety revalidation
+whenever **canonical POWER selections change**, irrespective of the command's
+claimed type/name. Renaming a mutating command cannot bypass the P12 guard.
+The existing P12A.8 engineering command remains preview-only even if a
+separate revalidation object passes. Production authorization is still closed.
