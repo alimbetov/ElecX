@@ -279,7 +279,9 @@ final class _PowerEvidenceRegistry
       verifiedCalculationFingerprint: sourceId == 'route-survey' &&
               earthing != null
           ? earthing!.fingerprintFor(
-              CircuitId('c1'), selection('c1').protectionCatalogId)
+              CircuitId('c1'),
+              residualDevice?.protectionCatalogId ??
+                  selection('c1').protectionCatalogId)
           : sourceId == 'fault-study'
           ? (approvedCalculation ?? testPowerSafetyEvidence())
               .calculationFingerprint
@@ -381,6 +383,14 @@ PowerCircuitFaultEnvelope testFaultEnvelope({
   );
 }
 
+CanonicalPowerCircuitSelection rcboSelection() {
+  final snapshot = selection('c1').toCanonicalJson();
+  snapshot['protectionCatalogId'] = 'rcbo-b16';
+  (snapshot['protectionRatings'] as Map<String, Object?>)['deviceKind'] =
+      'rcbo';
+  return CanonicalPowerCircuitSelection.fromCanonicalJson(snapshot);
+}
+
 PowerProtectionDeviceLimits testProtectionLimits() =>
     PowerProtectionDeviceLimits(
       maximumResidualOperatingCurrentMa: 30,
@@ -405,9 +415,11 @@ ReviewedResidualDeviceCharacteristic testResidualDevice({
 ReviewedProtectionCoordination testCoordination({
   double coverageKa = 6,
   String upstreamId = 'upstream-c63',
+  CanonicalPowerCircuitSelection? selected,
 }) =>
     ReviewedProtectionCoordination(
-      downstreamProtectionCatalogId: selection('c1').protectionCatalogId,
+      downstreamProtectionCatalogId:
+          (selected ?? selection('c1')).protectionCatalogId,
       upstreamProtectionCatalogId: upstreamId,
       coveredFaultCurrentKa: coverageKa,
       sourceId: 'selectivity-study',
