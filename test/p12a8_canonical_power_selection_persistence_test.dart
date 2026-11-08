@@ -426,10 +426,14 @@ ReviewedResidualDeviceCharacteristic testResidualDevice({
   double tripTimeMs = 80,
   String catalogId = 'protection-b16',
   String deviceType = 'RCBO type A',
+  bool withManufacturer = true,
 }) =>
     ReviewedResidualDeviceCharacteristic(
       protectionCatalogId: catalogId,
       deviceType: deviceType,
+      manufacturerId: withManufacturer ? 'TEST-MANUFACTURER' : null,
+      manufacturerDocumentRevision:
+          withManufacturer ? 'TEST-RCD-REVISION-1' : null,
       ratedResidualCurrentMa: 30,
       measuredOperatingResidualCurrentMa: operatingCurrentMa,
       measuredTripTimeMs: tripTimeMs,
@@ -1300,6 +1304,20 @@ void main() {
         result.checks[PowerProtectionDeviceCheck.trustedResidualCharacteristic],
         PowerSafetyVerdict.indeterminate,
       );
+    });
+
+    test('unsigned manufacturer identity cannot qualify residual protection',
+        () {
+      final unverified = testResidualDevice(
+        catalogId: rcboSelection().protectionCatalogId,
+        withManufacturer: false,
+      );
+      final report = evaluate(residual: unverified);
+      expect(
+        report.checks[PowerProtectionDeviceCheck.trustedResidualCharacteristic],
+        PowerSafetyVerdict.indeterminate,
+      );
+      expect(report.readyToApply, isFalse);
     });
 
     test('RCD trip time and residual current limitations are separate', () {
