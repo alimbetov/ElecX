@@ -263,7 +263,9 @@ abstract final class PowerProtectionDeviceGate {
     // Automatic disconnection is only considered after every independently
     // reviewed supply scenario has passed the minimum-fault requirement.
     checks[PowerProtectionDeviceCheck.automaticDisconnection] =
-        faultAssessment.checks[
+        faultAssessment.verifiedEnvelopeFingerprint ==
+                faultEnvelope.fingerprint &&
+            faultAssessment.checks[
                     PowerFaultEnvelopeCheck.minimumFaultDisconnection] ==
                 PowerSafetyVerdict.pass &&
             faultAssessment.checks[PowerFaultEnvelopeCheck.trustedEnvelope] ==
