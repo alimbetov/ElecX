@@ -121,6 +121,21 @@ final class PowerCircuitSafetyEvidence {
   final double? faultDisconnectionTimeMs;
   final PowerSafetyClaim? residualCurrentProof;
   final PowerSafetyClaim? selectivityProof;
+
+  /// Includes the canonical circuit, frozen equipment and every quantitative
+  /// measurement. A reviewed source ID alone cannot validate caller numbers.
+  String get calculationFingerprint => semanticSha256Hex(jsonEncode([
+        'p12a8.power-circuit-safety-input.v1',
+        circuitId.value,
+        selectionFingerprint,
+        calculationSourceId,
+        designCurrentA,
+        prospectiveFaultCurrentKa,
+        conventionalTripCurrentA,
+        protectiveDeviceLetThroughA2s,
+        cableShortCircuitWithstandA2s,
+        faultDisconnectionTimeMs,
+      ]));
 }
 
 final class PowerCircuitSafetyAssessment {
@@ -230,7 +245,12 @@ abstract final class PowerElectricalSafetyGate {
               semanticSha256Hex(jsonEncode(selection.toCanonicalJson())) &&
           pins.contains(input.calculationSourceId) &&
           reviewed.isQualified;
-      final sourceValid = profileMatches && matchedSelection &&
+      final calculationReview =
+          input == null ? null : registry.lookup(input.calculationSourceId);
+      final sourceValid = profileMatches &&
+          matchedSelection &&
+          calculationReview?.verifiedCalculationFingerprint ==
+              input.calculationFingerprint &&
           _reviewedSource(input.calculationSourceId, registry, profile);
       final checks = <PowerSafetyCheck, PowerSafetyVerdict>{
         PowerSafetyCheck.normativeApplicability: profileMatches
