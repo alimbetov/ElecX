@@ -784,6 +784,47 @@ void main() {
       );
     });
 
+    test('two physical RCDs may use the same manufacturer catalog part', () {
+      final ledger = CanonicalResidualProtectionRegistry(
+        assignments: [
+          testDurableRcd(),
+          testDurableRcd(circuitId: 'c2', deviceId: 'rcd-2'),
+        ],
+      );
+      expect(ledger.assignments, hasLength(2));
+      final reopened = CanonicalResidualProtectionRegistry.fromCanonicalJson(
+        jsonDecode(jsonEncode(ledger.toCanonicalJson())),
+      );
+      expect(reopened.fingerprint, ledger.fingerprint);
+    });
+
+    test('RCD v22 decoder rejects duplicate circuit coverage and bad shape',
+        () {
+      final document = const ResidualProtectionAwareCanonicalProjectDocumentCodec()
+          .encode(p109Snapshot(projectWithDurableRcd()));
+      final corrupted =
+          jsonDecode(jsonEncode(document.payload)) as Map<String, dynamic>;
+      final groups = corrupted['residualProtection']['assignments'] as List;
+      final duplicate = jsonDecode(jsonEncode(groups.single));
+      groups.add(duplicate);
+      expect(
+        () => const ResidualProtectionAwareCanonicalProjectDocumentCodec()
+            .decode(ProjectDocument(schemaVersion: 22, payload: corrupted)),
+        throwsFormatException,
+      );
+
+      final malformed =
+          jsonDecode(jsonEncode(document.payload)) as Map<String, dynamic>;
+      final group =
+          (malformed['residualProtection']['assignments'] as List).single;
+      group['unexpectedField'] = true;
+      expect(
+        () => const ResidualProtectionAwareCanonicalProjectDocumentCodec()
+            .decode(ProjectDocument(schemaVersion: 22, payload: malformed)),
+        throwsFormatException,
+      );
+    });
+
     test('duplicate RCD group ownership cannot survive registry creation', () {
       expect(
         () => CanonicalResidualProtectionRegistry(
