@@ -713,7 +713,24 @@ void main() {
 
     test('v22 mutation diff and Undo/Redo preserve group-RCD identity', () {
       final original = projectWithDurableRcd();
-      final session = ProjectMutationSession(original);
+      final unguarded = ProjectMutationSession(original);
+      expect(
+        () => unguarded.commit(ProjectMutationRequest(
+          expectedVersion: original.version,
+          command: _ClearResidualProtectionCommand(),
+        )),
+        throwsStateError,
+      );
+      expect(unguarded.current.engineeringMetadata.residualProtection.isEmpty,
+          isFalse);
+      final approvals = <ProjectChangeKind>[];
+      final session = ProjectMutationSession(
+        original,
+        commitGuard: (before, candidate, changeSet) {
+          approvals.add(changeSet.kind);
+          expect(candidate.engineeringMetadata.powerSelections.isEmpty, isFalse);
+        },
+      );
       final preview = session.preview(ProjectMutationRequest(
         expectedVersion: original.version,
         command: _ClearResidualProtectionCommand(),
@@ -736,6 +753,11 @@ void main() {
       session.redo(session.current.version);
       expect(session.current.engineeringMetadata.residualProtection.isEmpty,
           isTrue);
+      expect(approvals, [
+        ProjectChangeKind.command,
+        ProjectChangeKind.undo,
+        ProjectChangeKind.redo,
+      ]);
     });
 
     test('persistent ownership requires an actual matching P11 RCD component',
