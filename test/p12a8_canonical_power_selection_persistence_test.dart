@@ -446,6 +446,13 @@ class _UnqualifiedP12Proxy implements ReservedProjectCommand {
       );
 }
 
+final class _RenamedUnqualifiedP12Proxy extends _UnqualifiedP12Proxy {
+  _RenamedUnqualifiedP12Proxy(super.delegate);
+
+  @override
+  String get commandType => 'generic.power-update';
+}
+
 final class _RejectingP12Proxy extends _UnqualifiedP12Proxy
     implements TransactionalEngineeringSafetyRevalidation {
   _RejectingP12Proxy(super.delegate);
@@ -1463,6 +1470,10 @@ void main() {
       expect(() => coordinator.commitPreview(missing), throwsStateError);
       expect(session.current.version, project.version);
       expect(session.undoDepth, 0);
+
+      final renamed = coordinator.preview(_RenamedUnqualifiedP12Proxy(delegate));
+      expect(() => coordinator.commitPreview(renamed), throwsStateError);
+      expect(session.current.version, project.version);
 
       final rejected = coordinator.preview(_RejectingP12Proxy(delegate));
       expect(() => coordinator.commitPreview(rejected), throwsStateError);
