@@ -208,7 +208,8 @@ final class _PowerEvidenceRegistry
       this.faultEnvelope,
       this.residualDevice,
       this.coordination,
-      this.deviceLimits});
+      this.deviceLimits,
+      this.contradictedId});
 
   final String? revokedId;
   final String? missingId;
@@ -220,6 +221,7 @@ final class _PowerEvidenceRegistry
   final ReviewedResidualDeviceCharacteristic? residualDevice;
   final ReviewedProtectionCoordination? coordination;
   final PowerProtectionDeviceLimits? deviceLimits;
+  final String? contradictedId;
 
   @override
   String get revision => 'registry-rev-1';
@@ -250,7 +252,9 @@ final class _PowerEvidenceRegistry
       verifiedSafetyFinding: !withoutVerifiedFinding &&
               (sourceId == 'rcd-test-report' ||
                   sourceId == 'selectivity-study')
-          ? EngineeringVerifiedSafetyFinding.supported
+          ? (sourceId == contradictedId
+              ? EngineeringVerifiedSafetyFinding.contradicted
+              : EngineeringVerifiedSafetyFinding.supported)
           : null,
       verifiedUpstreamProtectionCatalogId:
           sourceId == 'selectivity-study'
@@ -703,6 +707,38 @@ void main() {
       expect(
         result.checks[PowerProtectionDeviceCheck.trustedSelectivityPair],
         PowerSafetyVerdict.indeterminate,
+      );
+    });
+
+    test('authenticated negative RCD and coordination findings are FAIL', () {
+      PowerProtectionDeviceAssessment assess(String contradicted) {
+        final residual = testResidualDevice(
+            catalogId: selection('c1').protectionCatalogId);
+        final pair = testCoordination();
+        final limits = testProtectionLimits();
+        return evaluate(
+          residual: residual,
+          selectivity: pair,
+          limits: limits,
+          reviewed: _PowerEvidenceRegistry(
+            residualDevice: residual,
+            coordination: pair,
+            deviceLimits: limits,
+            faultEnvelope: testFaultEnvelope(),
+            contradictedId: contradicted,
+          ),
+        );
+      }
+
+      expect(
+        assess('rcd-test-report').checks[
+            PowerProtectionDeviceCheck.trustedResidualCharacteristic],
+        PowerSafetyVerdict.fail,
+      );
+      expect(
+        assess('selectivity-study').checks[
+            PowerProtectionDeviceCheck.trustedSelectivityPair],
+        PowerSafetyVerdict.fail,
       );
     });
 
