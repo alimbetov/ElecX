@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../domain/project_orientation.dart';
+import '../../application/project/engineering/p12_engineering_proposal_source.dart';
 import '../../domain/route_host.dart';
 import '../shared/production_error_boundary.dart';
 import 'canonical_editor_production_runtime.dart';
@@ -978,6 +979,20 @@ class _UnifiedWorkspaceEditorScreenState
     final project = _canonicalProjectMatchesScreen
         ? _canonicalResolvedRuntime?.session.project
         : null;
+    P12EngineeringProposalSnapshot? proposalSnapshot;
+    String? unavailableReason;
+    if (project != null) {
+      try {
+        proposalSnapshot = P12EngineeringProposalReadGate.read(
+          current: project,
+          source: _canonicalResolvedRuntime?.p12EngineeringProposalSource,
+        );
+      } catch (error) {
+        unavailableReason =
+            'Предложение P12 отклонено: не совпадает с текущей версией '
+            'проекта либо источник недоступен. Пересчитайте Preview.';
+      }
+    }
     showDialog<void>(
       context: context,
       builder: (dialogContext) => Dialog(
@@ -990,7 +1005,11 @@ class _UnifiedWorkspaceEditorScreenState
               children: [
                 Expanded(
                   child: SingleChildScrollView(
-                    child: P12EngineeringReviewPanel(project: project),
+                    child: P12EngineeringReviewPanel(
+                      project: project,
+                      proposalSnapshot: proposalSnapshot,
+                      proposalUnavailableReason: unavailableReason,
+                    ),
                   ),
                 ),
                 Align(
