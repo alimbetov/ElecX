@@ -20,7 +20,8 @@ final class CanonicalResidualProtectionAssignment {
           protectedCircuitIds.toList()
             ..sort((a, b) => a.value.compareTo(b.value)),
         ),
-        downstreamCatalogOverrides = Map.unmodifiable(downstreamCatalogOverrides) {
+        downstreamCatalogOverrides =
+            Map.unmodifiable(downstreamCatalogOverrides) {
     if (downstreamProtectionCatalogId.trim().isEmpty ||
         upstreamResidualCatalogId.trim().isEmpty ||
         evidenceSourceId.trim().isEmpty ||
@@ -261,8 +262,7 @@ final class CanonicalResidualProtectionRegistry {
             }
           }
         }
-        if (downstream.isEmpty ||
-            downstream.any(reachable.contains)) {
+        if (downstream.isEmpty || downstream.any(reachable.contains)) {
           throw ArgumentError('P11 circuit bypasses its assigned group RCD.');
         }
       }
