@@ -8,6 +8,7 @@ import 'package:elecx/src/application/project/engineering/engineering_evidence_r
 import 'package:elecx/src/application/project/engineering/engineering_proposal_diff.dart';
 import 'package:elecx/src/application/project/engineering/engineering_reserved_project_command.dart';
 import 'package:elecx/src/application/project/engineering/power_electrical_safety_gate.dart';
+import 'package:elecx/src/application/project/engineering/power_fault_envelope_gate.dart';
 import 'package:elecx/src/domain/canonical_engineering_graph.dart';
 import 'package:elecx/src/domain/canonical_power_selection.dart';
 import 'package:elecx/src/domain/engineering_circuit_topology.dart';
@@ -201,7 +202,8 @@ final class _PowerEvidenceRegistry
       this.wrongProofPurpose = false,
       this.withoutVerifiedFinding = false,
       this.withoutVerifiedRuleProfile = false,
-      this.approvedCalculation});
+      this.approvedCalculation,
+      this.faultEnvelope});
 
   final String? revokedId;
   final String? missingId;
@@ -209,6 +211,7 @@ final class _PowerEvidenceRegistry
   final bool withoutVerifiedFinding;
   final bool withoutVerifiedRuleProfile;
   final PowerCircuitSafetyEvidence? approvedCalculation;
+  final PowerCircuitFaultEnvelope? faultEnvelope;
 
   @override
   String get revision => 'registry-rev-1';
@@ -225,13 +228,15 @@ final class _PowerEvidenceRegistry
       applicationScope: 'POWER-AC',
       isApproved: true,
       isRevoked: sourceId == revokedId,
-      evidencePurpose: sourceId == 'rcd-test-report'
+      evidencePurpose: sourceId == 'fault-study' && faultEnvelope != null
+          ? 'fault-envelope'
+          : sourceId == 'rcd-test-report'
           ? (wrongProofPurpose ? 'unrelated' : 'rcd-protection')
           : sourceId == 'selectivity-study'
               ? 'selectivity-coordination'
               : null,
-      subjectCircuitId:
-          sourceId == 'rcd-test-report' || sourceId == 'selectivity-study'
+      subjectCircuitId: (sourceId == 'fault-study' && faultEnvelope != null) ||
+              sourceId == 'rcd-test-report' || sourceId == 'selectivity-study'
               ? 'c1'
               : null,
       verifiedSafetyFinding: !withoutVerifiedFinding &&
@@ -244,8 +249,9 @@ final class _PowerEvidenceRegistry
               ? testPowerSafetyProfile().fingerprint
               : null,
       verifiedCalculationFingerprint: sourceId == 'fault-study'
-          ? (approvedCalculation ?? testPowerSafetyEvidence())
-              .calculationFingerprint
+          ? (faultEnvelope?.fingerprint ??
+              (approvedCalculation ?? testPowerSafetyEvidence())
+                  .calculationFingerprint)
           : null,
     );
   }
@@ -303,7 +309,150 @@ PowerCircuitSafetyEvidence testPowerSafetyEvidence({
   );
 }
 
+
+PowerCircuitFaultEnvelope testFaultEnvelope({
+  CanonicalPowerCircuitSelection? selected,
+  double maxGridKa = 3,
+  double minGridKa = 0.5,
+  double maxBackupKa = 4,
+  double minBackupKa = 0.3,
+  double backupClearingMs = 120,
+  double backupEnergy = 400,
+}) {
+  final reference = selected ?? selection('c1');
+  return PowerCircuitFaultEnvelope(
+    circuitId: reference.circuitId,
+    selectionFingerprint:
+        semanticSha256Hex(jsonEncode(reference.toCanonicalJson())),
+    sourceId: 'fault-study',
+    scenarios: [
+      PowerSupplyFaultScenario(
+        supplyId: 'grid',
+        maximumProspectiveFaultKa: maxGridKa,
+        minimumProspectiveFaultKa: minGridKa,
+        maximumLetThroughA2s: 400,
+        cableWithstandA2s: 800,
+        minimumFaultClearingTimeMs: 130,
+      ),
+      PowerSupplyFaultScenario(
+        supplyId: 'backup',
+        maximumProspectiveFaultKa: maxBackupKa,
+        minimumProspectiveFaultKa: minBackupKa,
+        maximumLetThroughA2s: backupEnergy,
+        cableWithstandA2s: 800,
+        minimumFaultClearingTimeMs: backupClearingMs,
+      ),
+    ],
+  );
+}
+
 void main() {
+  group('P12A.8 multi-supply fault envelope', () {
+    PowerFaultEnvelopeAssessment evaluate({
+      PowerCircuitFaultEnvelope? envelope,
+      PowerCircuitFaultEnvelope? approved,
+      Iterable<String> supplies = const ['grid', 'backup'],
+    }) {
+      final requested = envelope ?? testFaultEnvelope();
+      return PowerFaultEnvelopeGate.evaluate(
+        selection: selection('c1'),
+        envelope: requested,
+        expectedSupplyIds: supplies,
+        profile: testPowerSafetyProfile(),
+        registry: _PowerEvidenceRegistry(
+          faultEnvelope: approved ?? requested,
+        ),
+      );
+    }
+
+    test('full reviewed grid and backup max/min scenarios pass preflight only',
+        () {
+      final result = evaluate();
+      expect(result.verdict, PowerSafetyVerdict.pass);
+      expect(result.readyToApply, isFalse);
+      expect(result.checks, hasLength(PowerFaultEnvelopeCheck.values.length));
+    });
+
+    test('missing supply from independent topology fails closed', () {
+      final result = evaluate(supplies: const ['grid', 'backup', 'generator']);
+      expect(result.verdict, PowerSafetyVerdict.indeterminate);
+      expect(
+        result.checks[PowerFaultEnvelopeCheck.completeSupplyCoverage],
+        PowerSafetyVerdict.indeterminate,
+      );
+    });
+
+    test('worst maximum fault scenario exceeds breaker and board capacity',
+        () {
+      final result = evaluate(envelope: testFaultEnvelope(maxBackupKa: 10));
+      expect(
+        result.checks[PowerFaultEnvelopeCheck.maximumBreakingCapacity],
+        PowerSafetyVerdict.fail,
+      );
+      expect(
+        result.checks[PowerFaultEnvelopeCheck.maximumBoardWithstand],
+        PowerSafetyVerdict.fail,
+      );
+      expect(result.verdict, PowerSafetyVerdict.fail);
+    });
+
+    test('minimum fault current clearing time and max thermal energy checked',
+        () {
+      final delayed = evaluate(
+        envelope: testFaultEnvelope(backupClearingMs: 450),
+      );
+      expect(
+        delayed.checks[PowerFaultEnvelopeCheck.minimumFaultDisconnection],
+        PowerSafetyVerdict.fail,
+      );
+      final thermal = evaluate(
+        envelope: testFaultEnvelope(backupEnergy: 1200),
+      );
+      expect(
+        thermal.checks[PowerFaultEnvelopeCheck.maximumThermalEnergy],
+        PowerSafetyVerdict.fail,
+      );
+    });
+
+    test('changed fault scenario cannot reuse approved envelope fingerprint',
+        () {
+      final result = evaluate(
+        envelope: testFaultEnvelope(maxBackupKa: 0.9),
+        approved: testFaultEnvelope(),
+      );
+      expect(result.verdict, PowerSafetyVerdict.indeterminate);
+      expect(
+        result.checks[PowerFaultEnvelopeCheck.trustedEnvelope],
+        PowerSafetyVerdict.indeterminate,
+      );
+    });
+
+    test('unordered min/max fault currents and duplicate supply fail', () {
+      expect(
+        () => PowerSupplyFaultScenario(
+          supplyId: 'grid',
+          maximumProspectiveFaultKa: 1,
+          minimumProspectiveFaultKa: 2,
+          maximumLetThroughA2s: 400,
+          cableWithstandA2s: 800,
+          minimumFaultClearingTimeMs: 120,
+        ),
+        throwsArgumentError,
+      );
+      final one = testFaultEnvelope().scenarios.first;
+      expect(
+        () => PowerCircuitFaultEnvelope(
+          circuitId: CircuitId('c1'),
+          selectionFingerprint: 'snapshot',
+          sourceId: 'fault-study',
+          scenarios: [one, one],
+        ),
+        throwsArgumentError,
+      );
+    });
+  });
+
+
   group('P12A.8 provisional electrical safety gate', () {
     PowerElectricalSafetyReport evaluate({
       PowerCircuitSafetyEvidence? evidence,
