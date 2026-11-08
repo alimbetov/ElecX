@@ -751,6 +751,86 @@ void main() {
       expect(report.readyToApply, isFalse);
     });
 
+    test('MCB plus independently attested upstream RCD has explicit coverage',
+        () {
+      final mcb = selection('c1');
+      final assignment = CanonicalResidualProtectionAssignment(
+        boardComponentId: mcb.boardComponentId,
+        downstreamProtectionCatalogId: mcb.protectionCatalogId,
+        upstreamResidualCatalogId: 'rcd-a40',
+        evidenceSourceId: 'rcd-test-report',
+        protectedCircuitIds: [mcb.circuitId],
+      );
+      final residual = testResidualDevice(
+        catalogId: 'rcd-a40',
+        deviceType: 'RCD type A',
+      );
+      final pair = testCoordination(selected: mcb);
+      final limits = testProtectionLimits();
+      final earth = testEarthing();
+      final envelope = testFaultEnvelope(selected: mcb);
+      PowerProtectionDeviceAssessment assess(
+        CanonicalResidualProtectionAssignment? reviewedAssignment, {
+        CanonicalResidualProtectionAssignment? requestedAssignment,
+      }) {
+        final registry = _PowerEvidenceRegistry(
+          residualDevice: residual,
+          coordination: pair,
+          deviceLimits: limits,
+          earthing: earth,
+          faultEnvelope: envelope,
+          upstreamRcdAssignment: reviewedAssignment,
+        );
+        final fault = PowerFaultEnvelopeGate.evaluate(
+          selection: mcb,
+          envelope: envelope,
+          expectedSupplyIds: const ['grid', 'backup'],
+          profile: testPowerSafetyProfile(),
+          registry: registry,
+        );
+        return PowerProtectionDeviceGate.evaluate(
+          selection: mcb,
+          faultEnvelope: envelope,
+          faultAssessment: fault,
+          residualDevice: residual,
+          upstreamRcdAssignment: requestedAssignment ?? assignment,
+          coordination: pair,
+          earthing: earth,
+          limits: limits,
+          profile: testPowerSafetyProfile(),
+          registry: registry,
+        );
+      }
+
+      final approved = assess(assignment);
+      expect(
+        approved.checks[
+            PowerProtectionDeviceCheck.trustedResidualCharacteristic],
+        PowerSafetyVerdict.pass,
+      );
+      expect(approved.readyToApply, isFalse);
+
+      final unverified = assess(null);
+      expect(
+        unverified.checks[
+            PowerProtectionDeviceCheck.trustedResidualCharacteristic],
+        PowerSafetyVerdict.indeterminate,
+      );
+
+      final wrongCircuit = CanonicalResidualProtectionAssignment(
+        boardComponentId: mcb.boardComponentId,
+        downstreamProtectionCatalogId: mcb.protectionCatalogId,
+        upstreamResidualCatalogId: 'rcd-a40',
+        evidenceSourceId: 'rcd-test-report',
+        protectedCircuitIds: [CircuitId('c2')],
+      );
+      expect(
+        assess(assignment, requestedAssignment: wrongCircuit)
+            .checks[PowerProtectionDeviceCheck.trustedResidualCharacteristic],
+        PowerSafetyVerdict.indeterminate,
+      );
+    });
+
     test('independently reviewed matching manufacturer case passes preflight',
         () {
       final result = evaluate();
