@@ -197,12 +197,14 @@ final class _PowerEvidenceRegistry
       {this.revokedId,
       this.missingId,
       this.wrongProofPurpose = false,
-      this.withoutVerifiedFinding = false});
+      this.withoutVerifiedFinding = false,
+      this.withoutVerifiedRuleProfile = false});
 
   final String? revokedId;
   final String? missingId;
   final bool wrongProofPurpose;
   final bool withoutVerifiedFinding;
+  final bool withoutVerifiedRuleProfile;
 
   @override
   String get revision => 'registry-rev-1';
@@ -233,6 +235,10 @@ final class _PowerEvidenceRegistry
                   sourceId == 'selectivity-study')
           ? EngineeringVerifiedSafetyFinding.supported
           : null,
+      verifiedRuleProfileFingerprint:
+          sourceId == 'normative-doc' && !withoutVerifiedRuleProfile
+              ? testPowerSafetyProfile().fingerprint
+              : null,
     );
   }
 }
