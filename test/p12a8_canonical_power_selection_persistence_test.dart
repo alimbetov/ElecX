@@ -209,7 +209,8 @@ final class _PowerEvidenceRegistry
       this.residualDevice,
       this.coordination,
       this.deviceLimits,
-      this.contradictedId});
+      this.contradictedId,
+      this.earthing});
 
   final String? revokedId;
   final String? missingId;
@@ -222,6 +223,7 @@ final class _PowerEvidenceRegistry
   final ReviewedProtectionCoordination? coordination;
   final PowerProtectionDeviceLimits? deviceLimits;
   final String? contradictedId;
+  final ReviewedEarthingDisconnectionEvidence? earthing;
 
   @override
   String get revision => 'registry-rev-1';
@@ -238,20 +240,24 @@ final class _PowerEvidenceRegistry
       applicationScope: 'POWER-AC',
       isApproved: true,
       isRevoked: sourceId == revokedId,
-      evidencePurpose: sourceId == 'fault-study' && faultEnvelope != null
+      evidencePurpose: sourceId == 'route-survey' && earthing != null
+          ? 'earthing-and-ads'
+          : sourceId == 'fault-study' && faultEnvelope != null
           ? 'fault-envelope'
           : sourceId == 'rcd-test-report'
           ? (wrongProofPurpose ? 'unrelated' : 'rcd-protection')
           : sourceId == 'selectivity-study'
               ? 'selectivity-coordination'
               : null,
-      subjectCircuitId: (sourceId == 'fault-study' && faultEnvelope != null) ||
+      subjectCircuitId: (sourceId == 'route-survey' && earthing != null) ||
+              (sourceId == 'fault-study' && faultEnvelope != null) ||
               sourceId == 'rcd-test-report' || sourceId == 'selectivity-study'
               ? 'c1'
               : null,
       verifiedSafetyFinding: !withoutVerifiedFinding &&
               (sourceId == 'rcd-test-report' ||
-                  sourceId == 'selectivity-study')
+                  sourceId == 'selectivity-study' ||
+                  (sourceId == 'route-survey' && earthing != null))
           ? (sourceId == contradictedId
               ? EngineeringVerifiedSafetyFinding.contradicted
               : EngineeringVerifiedSafetyFinding.supported)
@@ -270,7 +276,11 @@ final class _PowerEvidenceRegistry
               : null,
       verifiedFaultEnvelopeFingerprint:
           sourceId == 'fault-study' ? faultEnvelope?.fingerprint : null,
-      verifiedCalculationFingerprint: sourceId == 'fault-study'
+      verifiedCalculationFingerprint: sourceId == 'route-survey' &&
+              earthing != null
+          ? earthing!.fingerprintFor(
+              CircuitId('c1'), selection('c1').protectionCatalogId)
+          : sourceId == 'fault-study'
           ? (approvedCalculation ?? testPowerSafetyEvidence())
               .calculationFingerprint
           : sourceId == 'rcd-test-report' && residualDevice != null
@@ -469,6 +479,16 @@ final class _RejectingP12Proxy extends _UnqualifiedP12Proxy
     throw StateError('Source revoked between preview and commit');
   }
 }
+
+ReviewedEarthingDisconnectionEvidence testEarthing({
+  bool peContinuous = true,
+}) =>
+    ReviewedEarthingDisconnectionEvidence(
+      earthingArrangement: 'TN-S',
+      measuredFaultLoopImpedanceOhm: 0.4,
+      protectiveConductorContinuityVerified: peContinuous,
+      sourceId: 'route-survey',
+    );
 
 void main() {
   group('P12 transaction-bound full safety composition', () {
