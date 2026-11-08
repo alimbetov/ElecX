@@ -84,6 +84,26 @@ final class PowerApplySafetyRevalidation
       throw StateError('Incomplete safety evidence for canonical circuits.');
     }
 
+    // All RCD relationships must be project-owned and survive Save/Reopen.
+    // Caller-injected proof may only *match* the immutable candidate ledger.
+    final durableByCircuit = <CircuitId, CanonicalResidualProtectionAssignment>{};
+    for (final group
+        in candidate.engineeringMetadata.residualProtection.assignments) {
+      for (final id in group.protectedCircuitIds) {
+        durableByCircuit[id] = group;
+      }
+    }
+    if (!_exactKeys(
+        durableByCircuit.keys.toSet(), upstreamRcdAssignments.keys.toSet())) {
+      throw StateError('Group RCD proof is not persisted in canonical project.');
+    }
+    for (final id in durableByCircuit.keys) {
+      if (durableByCircuit[id]!.fingerprint !=
+          upstreamRcdAssignments[id]!.fingerprint) {
+        throw StateError('Group RCD proposal differs from durable ownership.');
+      }
+    }
+
     // A reviewed group RCD must not silently cover an unknown or unrelated
     // canonical circuit. The current conservative model requires one board
     // and downstream protective catalog across its declared group.
