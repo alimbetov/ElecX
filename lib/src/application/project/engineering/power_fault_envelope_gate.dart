@@ -28,7 +28,8 @@ final class PowerSupplyFaultScenario {
         maximumLetThroughA2s <= 0 ||
         cableWithstandA2s <= 0 ||
         minimumFaultClearingTimeMs <= 0) {
-      throw ArgumentError('Complete and ordered max/min fault evidence required.');
+      throw ArgumentError(
+          'Complete and ordered max/min fault evidence required.');
     }
   }
 
@@ -94,7 +95,8 @@ enum PowerFaultEnvelopeCheck {
 
 /// Only read-only PREVIEW evidence; it never certifies protective coordination.
 final class PowerFaultEnvelopeAssessment {
-  PowerFaultEnvelopeAssessment(Map<PowerFaultEnvelopeCheck, PowerSafetyVerdict> results)
+  PowerFaultEnvelopeAssessment(
+      Map<PowerFaultEnvelopeCheck, PowerSafetyVerdict> results)
       : checks = Map.unmodifiable(results);
 
   final Map<PowerFaultEnvelopeCheck, PowerSafetyVerdict> checks;
