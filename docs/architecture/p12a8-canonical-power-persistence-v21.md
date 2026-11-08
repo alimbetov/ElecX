@@ -217,3 +217,23 @@ authenticated installation measurement report in production**. The existing
 preview-only restriction remains fully active. No code in P12A.8 may claim
 that an installation meets a national or IEC standard solely from these
 in-memory test fixtures.
+
+
+### Device-kind integrity: MCB is not an RCD
+
+The canonical v21 selection contains `protectionRatings.deviceKind`.
+`PowerProtectionDeviceGate` now requires an actual `rcbo`-kind selection
+with a matching reviewed RCBO manufacturer/test characteristic before an
+RCD/RCBO claim can produce `PASS`. A selected ordinary `mcb` cannot be
+promoted to residual-current protection by passing an unrelated source
+claim, even when the caller writes "RCBO" in test metadata. Negative
+regression coverage asserts this failure mode.
+
+Residential boards may legitimately have **MCB + separate upstream RCD**
+instead of RCBO on each outgoing circuit. That topology is **not** represented
+as a complete linked protective-device pair in the current canonical POWER
+selection. The correct result for such circuits is `INDETERMINATE` pending
+explicitly persisted RCD device identity, upstream ownership, affected
+circuits, earthing/protection review and manufacturer coordination evidence.
+The temporary RCBO-qualified test fixture is distinct from the original
+MCB selection and does not overwrite P12A.7's MCB catalogue behavior.
