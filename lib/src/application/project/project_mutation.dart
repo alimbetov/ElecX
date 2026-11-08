@@ -651,6 +651,7 @@ final class ProjectMutationSession {
       entityDiff: stateDiff.entityDiff,
       engineeringMetadataDiff: stateDiff.engineeringMetadataDiff,
     );
+    _requirePowerCommitGuard(changeSet);
     commitGuard?.call(before, committed, changeSet);
     _requireVersion(request.expectedVersion);
     _current = committed;
@@ -693,6 +694,8 @@ final class ProjectMutationSession {
       entityDiff: stateDiff.entityDiff,
       engineeringMetadataDiff: stateDiff.engineeringMetadataDiff,
     );
+    _requirePowerCommitGuard(changeSet);
+    commitGuard?.call(before, restored, changeSet);
     _current = restored;
     _boundaryIdentityRegistry =
         restored.engineeringMetadata.boundaryEdgeIdentityRegistry;
@@ -727,12 +730,23 @@ final class ProjectMutationSession {
       entityDiff: stateDiff.entityDiff,
       engineeringMetadataDiff: stateDiff.engineeringMetadataDiff,
     );
+    _requirePowerCommitGuard(changeSet);
+    commitGuard?.call(before, restored, changeSet);
     _current = restored;
     _boundaryIdentityRegistry =
         restored.engineeringMetadata.boundaryEdgeIdentityRegistry;
     _redoStack.removeLast();
     _undoStack.add(record);
     return ProjectMutationResult(project: restored, changeSet: changeSet);
+  }
+
+  void _requirePowerCommitGuard(ProjectChangeSet changeSet) {
+    final diff = changeSet.engineeringMetadataDiff;
+    if ((diff.powerSelectionsChanged || diff.residualProtectionChanged) &&
+        commitGuard == null) {
+      throw StateError(
+          'POWER/RCD mutation requires an authenticated commit guard.');
+    }
   }
 
   ProjectAggregateRoot _commitState({
