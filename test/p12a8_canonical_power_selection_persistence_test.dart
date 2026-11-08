@@ -427,6 +427,32 @@ void main() {
       );
     });
 
+    test('unattested profile or revoked calculation is never accepted', () {
+      final envelope = testFaultEnvelope();
+      PowerFaultEnvelopeAssessment assess(_PowerEvidenceRegistry registry) =>
+          PowerFaultEnvelopeGate.evaluate(
+            selection: selection('c1'),
+            envelope: envelope,
+            expectedSupplyIds: const ['grid', 'backup'],
+            profile: testPowerSafetyProfile(),
+            registry: registry,
+          );
+      expect(
+        assess(_PowerEvidenceRegistry(
+          faultEnvelope: envelope,
+          withoutVerifiedRuleProfile: true,
+        )).verdict,
+        PowerSafetyVerdict.indeterminate,
+      );
+      expect(
+        assess(_PowerEvidenceRegistry(
+          faultEnvelope: envelope,
+          revokedId: 'fault-study',
+        )).verdict,
+        PowerSafetyVerdict.indeterminate,
+      );
+    });
+
     test('unordered min/max fault currents and duplicate supply fail', () {
       expect(
         () => PowerSupplyFaultScenario(
