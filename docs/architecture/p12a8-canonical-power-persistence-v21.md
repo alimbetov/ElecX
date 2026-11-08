@@ -103,3 +103,14 @@ This improves trust-boundary separation but does not create a real protection-co
 The provisional `PowerSafetyRuleProfile` now exposes a deterministic `fingerprint` of its numerical limits, source identity, jurisdiction and application scope. A source review that merely attests the normative document does **not** attest values extracted from it. The trusted `EngineeringEvidenceReviewRecord.verifiedRuleProfileFingerprint` must match the **exact** selected policy fingerprint for `normativeApplicability = PASS`. Missing or changed numeric limits yield `INDETERMINATE` and prevent all downstream calculation criteria from passing.
 
 Only the trusted normative ingestion boundary may populate this attestation after independent rule extraction, effective-date/applicability checking and engineering review. An in-memory test fixture is not evidence of real-world compliance. The `PreviewOnlyReservedProjectCommand` and `readyToApply == false` restrictions remain unchanged.
+
+
+### Audit hardening: attested measurements and switchboard checks
+
+Quantitative safety measurements are now bound to their exact authoritative circuit and frozen selection by `PowerCircuitSafetyEvidence.calculationFingerprint`. The independent trusted record for `calculationSourceId` must contain an identical `verifiedCalculationFingerprint`. A generic approved document, source ID, or unchanged equipment selection does not authorize caller-modified current, thermal energy or clearing time. Missing/mismatched measurements yield `INDETERMINATE` for the quantitative checks, not a provisional PASS.
+
+Additional separate preliminary checks:
+- `boardShortCircuitWithstand`: compare the explicitly supplied prospective maximum fault current with the reviewed board short-circuit withstand rating.
+- `cableVoltageRating`: fail when the selected cable rated voltage is lower than the reviewed board rated voltage.
+
+These checks are **not** a full switchboard assembly design evaluation. The board's catalog withstand type must match the actual manufacturer rating basis, protective-device coordination, duration, conditional rating assumptions and fault clearing scenarios before production approval. A non-verified source can never be promoted into a real certified electrical design by this preliminary gate.
