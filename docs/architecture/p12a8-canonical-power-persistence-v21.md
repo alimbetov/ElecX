@@ -192,3 +192,28 @@ whenever **canonical POWER selections change**, irrespective of the command's
 claimed type/name. Renaming a mutating command cannot bypass the P12 guard.
 The existing P12A.8 engineering command remains preview-only even if a
 separate revalidation object passes. Production authorization is still closed.
+
+
+### P12A.8 safety audit: ADS also requires earthing and PE evidence
+
+Following the device review, automatic disconnection of supply (ADS) cannot
+receive a provisional PASS merely because a reviewed breaker/fault scenario
+contains a clearing time. `ReviewedEarthingDisconnectionEvidence` now requires
+an explicit earthing arrangement, independently reviewed measured fault-loop
+impedance, verified protective conductor continuity, exact P11 circuit and
+protective-device catalog identity, and a pinned approved source record with
+purpose `earthing-and-ads`. The whole measurement tuple is fingerprinted.
+
+Missing/revoked/unmatched review leaves `earthingAndPeContinuity` and ADS
+`INDETERMINATE`. Verified broken PE continuity is a hard `FAIL`. Passing
+grounding/PE evidence is a necessary input to ADS but is **not** itself
+proof of protection coordination. A production engineering review must check
+the earthing arrangement, circuit-specific fault-loop impedance requirements,
+device operating curve, protective bonding and relevant field tests.
+
+The current test fixture reuses a pinned route/survey evidence source as a
+mock of a trusted PE/earthing report; **this must be replaced by a dedicated,
+authenticated installation measurement report in production**. The existing
+preview-only restriction remains fully active. No code in P12A.8 may claim
+that an installation meets a national or IEC standard solely from these
+in-memory test fixtures.
