@@ -20,6 +20,7 @@ final class EngineeringEvidenceReviewRecord {
     this.subjectCircuitId,
     this.verifiedSafetyFinding,
     this.verifiedRuleProfileFingerprint,
+    this.verifiedCalculationFingerprint,
   });
 
   final String sourceId;
@@ -40,6 +41,10 @@ final class EngineeringEvidenceReviewRecord {
   /// Authenticated digest of the actual numerical rule profile, not just its
   /// normative document identity. Missing evidence cannot authorize a PASS.
   final String? verifiedRuleProfileFingerprint;
+
+  /// Frozen, independently reviewed numerical input bundle for one P11
+  /// circuit. Review of a generic source ID cannot authorize altered values.
+  final String? verifiedCalculationFingerprint;
 }
 
 /// The production implementation must be backed by a versioned, authenticated
