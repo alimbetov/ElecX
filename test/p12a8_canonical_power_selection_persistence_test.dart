@@ -626,6 +626,76 @@ void main() {
       expect(session.current.version, project.version);
     });
 
+    test('MCB with reviewed upstream group RCD qualifies precommit only', () {
+      final project = projectWithPowerSelection();
+      final selectionForCircuit =
+          project.engineeringMetadata.powerSelections.byCircuit[CircuitId('c1')]!;
+      final supply = project.engineeringMetadata.engineeringState
+          .circuitSupplies.single.sourceIds.single.value;
+      final envelope = PowerCircuitFaultEnvelope(
+        circuitId: selectionForCircuit.circuitId,
+        selectionFingerprint: semanticSha256Hex(
+            jsonEncode(selectionForCircuit.toCanonicalJson())),
+        sourceId: 'fault-study',
+        scenarios: [
+          PowerSupplyFaultScenario(
+            supplyId: supply,
+            maximumProspectiveFaultKa: 3,
+            minimumProspectiveFaultKa: 0.5,
+            maximumLetThroughA2s: 400,
+            cableWithstandA2s: 800,
+            minimumFaultClearingTimeMs: 120,
+          ),
+        ],
+      );
+      final assignment = CanonicalResidualProtectionAssignment(
+        boardComponentId: selectionForCircuit.boardComponentId,
+        downstreamProtectionCatalogId: selectionForCircuit.protectionCatalogId,
+        upstreamResidualCatalogId: 'rcd-a40',
+        evidenceSourceId: 'rcd-test-report',
+        protectedCircuitIds: [selectionForCircuit.circuitId],
+      );
+      final residual =
+          testResidualDevice(catalogId: 'rcd-a40', deviceType: 'RCD type A');
+      final pair = testCoordination(selected: selectionForCircuit);
+      final earth = testEarthing();
+      final limits = testProtectionLimits();
+      final registry = _PowerEvidenceRegistry(
+        approvedCalculation: testPowerSafetyEvidence(),
+        faultEnvelope: envelope,
+        residualDevice: residual,
+        coordination: pair,
+        earthing: earth,
+        deviceLimits: limits,
+        upstreamRcdAssignment: assignment,
+      );
+      final boundary = PowerApplySafetyRevalidation(
+        expectedRegistryRevision: registry.revision,
+        expectedEngineeringStateFingerprint:
+            project.engineeringMetadata.engineeringState.fingerprint,
+        expectedSelectionFingerprint:
+            project.engineeringMetadata.powerSelections.fingerprint,
+        targetJurisdiction: 'KZ',
+        targetApplicationScope: 'POWER-AC',
+        profile: testPowerSafetyProfile(),
+        protectionLimits: limits,
+        registry: registry,
+        circuitEvidence: [testPowerSafetyEvidence()],
+        faultEnvelopes: {selectionForCircuit.circuitId: envelope},
+        residualDevices: {selectionForCircuit.circuitId: residual},
+        coordination: {selectionForCircuit.circuitId: pair},
+        earthing: {selectionForCircuit.circuitId: earth},
+        upstreamRcdAssignments: {selectionForCircuit.circuitId: assignment},
+      );
+      expect(
+        () => boundary.revalidateEngineeringSafety(
+          current: project,
+          candidate: project,
+        ),
+        returnsNormally,
+      );
+    });
+
     test('missing device coverage fails before canonical commit', () {
       final project = projectWithPowerSelection();
       expect(
