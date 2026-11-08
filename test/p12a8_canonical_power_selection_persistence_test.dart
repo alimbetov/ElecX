@@ -15,6 +15,7 @@ import 'package:elecx/src/application/project/engineering/power_fault_envelope_g
 import 'package:elecx/src/application/project/engineering/power_protection_device_gate.dart';
 import 'package:elecx/src/application/project/engineering/manufacturer_protection_pair_gate.dart';
 import 'package:elecx/src/application/project/engineering/manufacturer_evidence_ingestion.dart';
+import 'package:elecx/src/application/project/engineering/manufacturer_project_coordination_gate.dart';
 import 'package:elecx/src/application/project/engineering/canonical_residual_protection_assignment.dart';
 import 'package:elecx/src/serialization/project/residual_protection_aware_canonical_project_document_codec.dart';
 import 'package:elecx/src/application/project/engineering/power_apply_safety_revalidation.dart';
@@ -797,6 +798,122 @@ void main() {
         throwsStateError,
       );
       expect(() => admit(revision: 'old-registry'), throwsStateError);
+    });
+
+    test('admitted device pair matches canonical v22 RCD and P11 circuit',
+        () {
+      final base = projectWithDurableRcd();
+      final selectedJson = jsonDecode(
+        jsonEncode(selection('c1').toCanonicalJson()),
+      ) as Map<String, dynamic>;
+      for (final source in selectedJson['sources'] as List<dynamic>) {
+        final ref = source as Map<String, dynamic>;
+        if (ref['sourceId'] == 'selectivity-study') {
+          ref['sha256'] = documentHash;
+        }
+      }
+      final selected =
+          CanonicalPowerCircuitSelection.fromCanonicalJson(selectedJson);
+      final project = ProjectAggregateRoot(
+        id: base.id,
+        siteId: base.siteId,
+        version: base.version,
+        stores: base.stores,
+        engineeringMetadata: base.engineeringMetadata.withPowerSelections(
+          CanonicalPowerSelectionRegistry(selections: [selected]),
+        ),
+      );
+      final row = ManufacturerProtectionPairRecord(
+        circuitId: 'c1',
+        downstream: ManufacturerProtectionArticle(
+          manufacturerId: 'TEST-VENDOR',
+          articleNumber: 'mcb-b16',
+          deviceKind: 'mcb',
+          catalogRevision: 'CAT-1',
+        ),
+        upstream: ManufacturerProtectionArticle(
+          manufacturerId: 'TEST-VENDOR',
+          articleNumber: 'rcd-a40',
+          deviceKind: 'rcd',
+          catalogRevision: 'CAT-1',
+        ),
+        sourceId: 'selectivity-study',
+        documentRevision: 'TABLE-REV-1',
+        documentSha256: documentHash,
+        tableId: 'TEST-TABLE-01',
+        maximumCoveredFaultKa: 6,
+      );
+      final registry = _DocumentTestRegistry(row);
+      final admitted = ManufacturerEvidenceIngestion.admit(
+        documentBytes: documentBytes,
+        publisherUri: publisherUri,
+        reviewedRow: row,
+        selection: selected,
+        registry: registry,
+        publisherVerifier: const _TrustedTestManufacturerPublisher(),
+        expectedRegistryRevision: registry.revision,
+        selectedDownstreamArticleNumber: 'mcb-b16',
+        selectedUpstreamArticleNumber: 'rcd-a40',
+        jurisdiction: 'KZ',
+        applicationScope: 'POWER-AC',
+        maximumProspectiveFaultKa: 3,
+      );
+      final fault = PowerCircuitFaultEnvelope(
+        circuitId: selected.circuitId,
+        selectionFingerprint:
+            semanticSha256Hex(jsonEncode(selected.toCanonicalJson())),
+        sourceId: 'fault-study',
+        scenarios: [
+          PowerSupplyFaultScenario(
+            supplyId: 'power-source-1',
+            maximumProspectiveFaultKa: 3,
+            minimumProspectiveFaultKa: 0.5,
+            maximumLetThroughA2s: 400,
+            cableWithstandA2s: 800,
+            minimumFaultClearingTimeMs: 120,
+          ),
+        ],
+      );
+      ManufacturerProjectCoordinationAssessment assess({
+        String? residualFingerprint,
+        Map<CircuitId, ManufacturerEvidenceAdmission>? documents,
+        Map<CircuitId, PowerCircuitFaultEnvelope>? faults,
+      }) =>
+          ManufacturerProjectCoordinationGate.evaluate(
+            project: project,
+            registry: registry,
+            expectedRegistryRevision: registry.revision,
+            expectedEngineeringStateFingerprint:
+                project.engineeringMetadata.engineeringState.fingerprint,
+            expectedPowerSelectionFingerprint:
+                project.engineeringMetadata.powerSelections.fingerprint,
+            expectedResidualProtectionFingerprint: residualFingerprint ??
+                project.engineeringMetadata.residualProtection.fingerprint,
+            admissions: documents ?? {selected.circuitId: admitted},
+            faultEnvelopes: faults ?? {selected.circuitId: fault},
+            jurisdiction: 'KZ',
+            applicationScope: 'POWER-AC',
+          );
+      expect(assess().verdict, PowerSafetyVerdict.pass);
+      expect(assess().readyToApply, isFalse);
+      expect(
+        assess(residualFingerprint: 'stale').verdict,
+        PowerSafetyVerdict.indeterminate,
+      );
+      expect(
+        assess(documents: const {}).verdict,
+        PowerSafetyVerdict.indeterminate,
+      );
+      final stale = PowerCircuitFaultEnvelope(
+        circuitId: selected.circuitId,
+        selectionFingerprint: 'stale-digest',
+        sourceId: 'fault-study',
+        scenarios: fault.scenarios,
+      );
+      expect(
+        assess(faults: {selected.circuitId: stale}).verdict,
+        PowerSafetyVerdict.indeterminate,
+      );
     });
 
     test('revoked/contradicted reviews and insufficient range are denied', () {
