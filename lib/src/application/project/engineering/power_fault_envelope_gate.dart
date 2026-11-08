@@ -146,8 +146,24 @@ abstract final class PowerFaultEnvelopeGate {
       for (final source in selection.sources) source.sourceId: source
     };
     final pinnedSource = pinned[envelope.sourceId];
+    final normativePin = pinned[profile.normativeSourceId];
+    final normative = registry.lookup(profile.normativeSourceId);
+    final normativeMatched =
+        selection.normativeSourceId == profile.normativeSourceId &&
+            normativePin != null &&
+            normative != null &&
+            normative.sourceId == normativePin.sourceId &&
+            normative.revision == normativePin.revision &&
+            normative.contentSha256 == normativePin.sha256 &&
+            normative.approvalId == normativePin.approvalId &&
+            normative.isApproved &&
+            !normative.isRevoked &&
+            normative.jurisdiction == profile.jurisdiction &&
+            normative.applicationScope == profile.applicationScope &&
+            normative.verifiedRuleProfileFingerprint == profile.fingerprint;
     final record = registry.lookup(envelope.sourceId);
-    final matched = envelope.circuitId == selection.circuitId &&
+    final matched = normativeMatched &&
+        envelope.circuitId == selection.circuitId &&
         envelope.selectionFingerprint == selectedFingerprint &&
         pinnedSource != null &&
         record != null &&
