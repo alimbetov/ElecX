@@ -61,7 +61,7 @@ final class ReviewedResidualDeviceCharacteristic {
         canonical,
       ]));
 
-  List<Object> get canonical => [
+  List<Object?> get canonical => [
         protectionCatalogId,
         deviceType,
         ratedResidualCurrentMa,
@@ -123,7 +123,7 @@ final class ReviewedProtectionCoordination {
         canonical,
       ]));
 
-  List<Object> get canonical => [
+  List<Object?> get canonical => [
         downstreamProtectionCatalogId,
         upstreamProtectionCatalogId,
         coveredFaultCurrentKa,
@@ -227,7 +227,7 @@ final class PowerProtectionDeviceLimits {
         canonical,
       ]));
 
-  List<Object> get canonical => [
+  List<Object?> get canonical => [
         maximumResidualOperatingCurrentMa,
         maximumResidualTripTimeMs,
       ];
