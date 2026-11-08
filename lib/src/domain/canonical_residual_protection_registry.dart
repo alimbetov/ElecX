@@ -10,6 +10,7 @@ import 'semantic_sha256.dart';
 final class CanonicalResidualProtectionAssignment {
   CanonicalResidualProtectionAssignment({
     required this.boardComponentId,
+    this.upstreamResidualComponentId,
     required this.downstreamProtectionCatalogId,
     required this.upstreamResidualCatalogId,
     required this.evidenceSourceId,
@@ -30,14 +31,16 @@ final class CanonicalResidualProtectionAssignment {
   }
 
   final ComponentId boardComponentId;
+  final ComponentId? upstreamResidualComponentId;
   final String downstreamProtectionCatalogId;
   final String upstreamResidualCatalogId;
   final String evidenceSourceId;
   final List<CircuitId> protectedCircuitIds;
 
   String get fingerprint => semanticSha256Hex(jsonEncode([
-        'p12a8.upstream-rcd-assignment.v1',
+        'p12a8.upstream-rcd-assignment.v2',
         boardComponentId.value,
+        upstreamResidualComponentId?.value,
         downstreamProtectionCatalogId,
         upstreamResidualCatalogId,
         evidenceSourceId,
@@ -51,6 +54,7 @@ final class CanonicalResidualProtectionAssignment {
 
   Map<String, Object?> toCanonicalJson() => {
         'boardComponentId': boardComponentId.value,
+        'upstreamResidualComponentId': upstreamResidualComponentId?.value,
         'downstreamProtectionCatalogId': downstreamProtectionCatalogId,
         'upstreamResidualCatalogId': upstreamResidualCatalogId,
         'evidenceSourceId': evidenceSourceId,
@@ -61,9 +65,10 @@ final class CanonicalResidualProtectionAssignment {
 
   factory CanonicalResidualProtectionAssignment.fromCanonicalJson(Object? raw) {
     if (raw is! Map<String, dynamic> ||
-        raw.keys.toSet().length != 5 ||
+        raw.keys.toSet().length != 6 ||
         !raw.keys.toSet().containsAll(const {
           'boardComponentId',
+          'upstreamResidualComponentId',
           'downstreamProtectionCatalogId',
           'upstreamResidualCatalogId',
           'evidenceSourceId',
@@ -84,6 +89,8 @@ final class CanonicalResidualProtectionAssignment {
     }
     return CanonicalResidualProtectionAssignment(
       boardComponentId: ComponentId(requiredString(raw['boardComponentId'])),
+      upstreamResidualComponentId:
+          ComponentId(requiredString(raw['upstreamResidualComponentId'])),
       downstreamProtectionCatalogId:
           requiredString(raw['downstreamProtectionCatalogId']),
       upstreamResidualCatalogId: requiredString(raw['upstreamResidualCatalogId']),
@@ -157,6 +164,18 @@ final class CanonicalResidualProtectionRegistry {
     CanonicalPowerSelectionRegistry selections,
   ) {
     for (final assignment in assignments) {
+      final deviceId = assignment.upstreamResidualComponentId;
+      if (deviceId == null || deviceId == assignment.boardComponentId) {
+        throw ArgumentError('Durable group RCD needs a distinct P11 device ID.');
+      }
+      final devices = state.graph.components
+          .where((component) => component.id == deviceId)
+          .toList();
+      if (devices.length != 1 ||
+          devices.single.componentTypeId !=
+              assignment.upstreamResidualCatalogId) {
+        throw ArgumentError('RCD catalog does not match a P11 device entity.');
+      }
       for (final id in assignment.protectedCircuitIds) {
         final selected = selections.byCircuit[id];
         if (selected == null ||
@@ -170,11 +189,23 @@ final class CanonicalResidualProtectionRegistry {
         if (!pins.contains(assignment.evidenceSourceId)) {
           throw ArgumentError('Group RCD proof is not pinned by selection.');
         }
-        if (state.circuits.where((c) => c.id == id).length != 1 ||
-            state.graph.components
-                .where((c) => c.id == assignment.boardComponentId)
-                .length != 1) {
+        final circuits = state.circuits.where((c) => c.id == id).toList();
+        final boards = state.graph.components
+            .where((c) => c.id == assignment.boardComponentId)
+            .toList();
+        if (circuits.length != 1 || boards.length != 1) {
           throw ArgumentError('Group RCD references missing P11 topology.');
+        }
+        final activeConnections = state.graph.connections.where(
+          (connection) => circuits.single.connectionIds.contains(connection.id),
+        ).toList();
+        if (!activeConnections.any((connection) =>
+                connection.fromComponentId == assignment.boardComponentId &&
+                connection.toComponentId == deviceId) ||
+            !activeConnections.any((connection) =>
+                connection.fromComponentId == deviceId &&
+                connection.toComponentId != assignment.boardComponentId)) {
+          throw ArgumentError('RCD is not in the P11 circuit feed path.');
         }
       }
     }
