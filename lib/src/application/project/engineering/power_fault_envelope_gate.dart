@@ -209,7 +209,7 @@ abstract final class PowerFaultEnvelopeGate {
         record.applicationScope == profile.applicationScope &&
         record.subjectCircuitId == selection.circuitId.value &&
         record.evidencePurpose == 'fault-envelope' &&
-        record.verifiedCalculationFingerprint == envelope.fingerprint &&
+        record.verifiedFaultEnvelopeFingerprint == envelope.fingerprint &&
         registry.revision.trim().isNotEmpty;
     if (!matched) return PowerFaultEnvelopeAssessment(results);
 
