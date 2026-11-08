@@ -19,6 +19,8 @@ final class ReviewedResidualDeviceCharacteristic {
     required this.measuredTripTimeMs,
     required this.testResidualCurrentMa,
     required this.sourceId,
+    this.manufacturerId,
+    this.manufacturerDocumentRevision,
   }) {
     if (protectionCatalogId.trim().isEmpty ||
         deviceType.trim().isEmpty ||
@@ -42,6 +44,14 @@ final class ReviewedResidualDeviceCharacteristic {
   final double measuredTripTimeMs;
   final double testResidualCurrentMa;
   final String sourceId;
+  final String? manufacturerId;
+  final String? manufacturerDocumentRevision;
+
+  bool get hasReviewedManufacturerIdentity =>
+      manufacturerId != null &&
+      manufacturerId!.trim().isNotEmpty &&
+      manufacturerDocumentRevision != null &&
+      manufacturerDocumentRevision!.trim().isNotEmpty;
 
   String fingerprintFor(CircuitId circuitId) =>
       semanticSha256Hex(jsonEncode([
@@ -59,6 +69,8 @@ final class ReviewedResidualDeviceCharacteristic {
         measuredTripTimeMs,
         testResidualCurrentMa,
         sourceId,
+        manufacturerId,
+        manufacturerDocumentRevision,
       ];
 }
 
@@ -297,6 +309,7 @@ abstract final class PowerProtectionDeviceGate {
     final kind = selection.protectionRatings.deviceKind.trim().toLowerCase();
     final deviceType = residualDevice.deviceType.trim().toLowerCase();
     final selectedRcbo = kind == 'rcbo' &&
+        residualDevice.hasReviewedManufacturerIdentity &&
         deviceType.startsWith('rcbo') &&
         residualDevice.protectionCatalogId == selection.protectionCatalogId;
     // Ordinary MCB circuits are protected by a separate upstream RCD only
@@ -308,6 +321,7 @@ abstract final class PowerProtectionDeviceGate {
         ? null
         : registry.lookup(assignment.evidenceSourceId);
     final upstreamRcd = kind == 'mcb' &&
+        residualDevice.hasReviewedManufacturerIdentity &&
         deviceType.startsWith('rcd') &&
         assignment != null &&
         assignment.matches(selection) &&
