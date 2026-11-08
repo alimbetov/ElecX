@@ -201,40 +201,46 @@ abstract final class PowerProtectionDeviceGate {
         registry.revision.trim().isEmpty) {
       return PowerProtectionDeviceAssessment(checks);
     }
-    bool reviewed(
+    PowerSafetyVerdict reviewed(
       String sourceId,
       String purpose,
       String expectedFingerprint,
     ) {
       final pin = pins[sourceId];
       final record = registry.lookup(sourceId);
-      return pin != null &&
-          record != null &&
-          record.sourceId == pin.sourceId &&
-          record.revision == pin.revision &&
-          record.contentSha256 == pin.sha256 &&
-          record.approvalId == pin.approvalId &&
-          record.isApproved &&
-          !record.isRevoked &&
-          record.jurisdiction == profile.jurisdiction &&
-          record.applicationScope == profile.applicationScope &&
-          record.subjectCircuitId == selection.circuitId.value &&
-          record.evidencePurpose == purpose &&
-          record.verifiedCalculationFingerprint == expectedFingerprint &&
-          record.verifiedSafetyFinding ==
-              EngineeringVerifiedSafetyFinding.supported &&
-          registry.revision.trim().isNotEmpty;
+      if (pin == null ||
+          record == null ||
+          record.sourceId != pin.sourceId ||
+          record.revision != pin.revision ||
+          record.contentSha256 != pin.sha256 ||
+          record.approvalId != pin.approvalId ||
+          !record.isApproved ||
+          record.isRevoked ||
+          record.jurisdiction != profile.jurisdiction ||
+          record.applicationScope != profile.applicationScope ||
+          record.subjectCircuitId != selection.circuitId.value ||
+          record.evidencePurpose != purpose ||
+          record.verifiedCalculationFingerprint != expectedFingerprint ||
+          registry.revision.trim().isEmpty) {
+        return PowerSafetyVerdict.indeterminate;
+      }
+      return switch (record.verifiedSafetyFinding) {
+        EngineeringVerifiedSafetyFinding.supported => PowerSafetyVerdict.pass,
+        EngineeringVerifiedSafetyFinding.contradicted => PowerSafetyVerdict.fail,
+        _ => PowerSafetyVerdict.indeterminate,
+      };
     }
 
     final residualFingerprint =
         residualDevice.fingerprintFor(selection.circuitId);
-    final residualTrusted =
-        residualDevice.protectionCatalogId == selection.protectionCatalogId &&
-            reviewed(residualDevice.sourceId, 'rcd-protection',
-                residualFingerprint);
-    if (residualTrusted) {
-      checks[PowerProtectionDeviceCheck.trustedResidualCharacteristic] =
-          PowerSafetyVerdict.pass;
+    final residualReview =
+        residualDevice.protectionCatalogId == selection.protectionCatalogId
+            ? reviewed(
+                residualDevice.sourceId, 'rcd-protection', residualFingerprint)
+            : PowerSafetyVerdict.indeterminate;
+    checks[PowerProtectionDeviceCheck.trustedResidualCharacteristic] =
+        residualReview;
+    if (residualReview == PowerSafetyVerdict.pass) {
       checks[PowerProtectionDeviceCheck.residualCurrentThreshold] =
           residualDevice.measuredOperatingResidualCurrentMa <=
                   residualDevice.ratedResidualCurrentMa &&
@@ -254,16 +260,16 @@ abstract final class PowerProtectionDeviceGate {
     final coordinationFingerprint =
         coordination.fingerprintFor(selection.circuitId);
     final coordinationReview = registry.lookup(coordination.sourceId);
-    final pairTrusted =
+    final pairReview =
         coordination.downstreamProtectionCatalogId ==
                 selection.protectionCatalogId &&
             coordinationReview?.verifiedUpstreamProtectionCatalogId ==
-                coordination.upstreamProtectionCatalogId &&
-            reviewed(coordination.sourceId, 'selectivity-coordination',
-                coordinationFingerprint);
-    if (pairTrusted) {
-      checks[PowerProtectionDeviceCheck.trustedSelectivityPair] =
-          PowerSafetyVerdict.pass;
+                coordination.upstreamProtectionCatalogId
+            ? reviewed(coordination.sourceId, 'selectivity-coordination',
+                coordinationFingerprint)
+            : PowerSafetyVerdict.indeterminate;
+    checks[PowerProtectionDeviceCheck.trustedSelectivityPair] = pairReview;
+    if (pairReview == PowerSafetyVerdict.pass) {
       final maxFault = faultEnvelope.scenarios
           .map((s) => s.maximumProspectiveFaultKa)
           .reduce((a, b) => a > b ? a : b);
