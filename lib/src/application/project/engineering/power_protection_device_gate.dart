@@ -253,9 +253,12 @@ abstract final class PowerProtectionDeviceGate {
 
     final coordinationFingerprint =
         coordination.fingerprintFor(selection.circuitId);
+    final coordinationReview = registry.lookup(coordination.sourceId);
     final pairTrusted =
         coordination.downstreamProtectionCatalogId ==
                 selection.protectionCatalogId &&
+            coordinationReview?.verifiedUpstreamProtectionCatalogId ==
+                coordination.upstreamProtectionCatalogId &&
             reviewed(coordination.sourceId, 'selectivity-coordination',
                 coordinationFingerprint);
     if (pairTrusted) {
