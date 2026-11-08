@@ -91,8 +91,7 @@ final class ManufacturerCoordinationCatalogSnapshot {
     required this.revision,
     required Iterable<ManufacturerProtectionPairRecord> rows,
   }) : rows = List.unmodifiable(
-          rows.toList()
-            ..sort((a, b) => a.fingerprint.compareTo(b.fingerprint)),
+          rows.toList()..sort((a, b) => a.fingerprint.compareTo(b.fingerprint)),
         ) {
     if (revision.trim().isEmpty) {
       throw ArgumentError('Manufacturer catalog revision is mandatory.');
