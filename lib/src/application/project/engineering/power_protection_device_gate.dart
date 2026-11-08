@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../../domain/canonical_power_selection.dart';
+import '../../../domain/project_identity.dart';
 import '../../../domain/semantic_sha256.dart';
 import 'engineering_evidence_review_gate.dart';
 import 'power_electrical_safety_gate.dart';
@@ -41,6 +42,14 @@ final class ReviewedResidualDeviceCharacteristic {
   final double testResidualCurrentMa;
   final String sourceId;
 
+  String fingerprintFor(CircuitId circuitId) =>
+      semanticSha256Hex(jsonEncode([
+        'p12a8.reviewed-residual-characteristic.v1',
+        circuitId.value,
+        protectionCatalogId,
+        canonical,
+      ]));
+
   List<Object> get canonical => [
         protectionCatalogId,
         deviceType,
@@ -75,6 +84,14 @@ final class ReviewedProtectionCoordination {
   final String upstreamProtectionCatalogId;
   final double coveredFaultCurrentKa;
   final String sourceId;
+
+  String fingerprintFor(CircuitId circuitId) =>
+      semanticSha256Hex(jsonEncode([
+        'p12a8.reviewed-selectivity-pair.v1',
+        circuitId.value,
+        downstreamProtectionCatalogId,
+        canonical,
+      ]));
 
   List<Object> get canonical => [
         downstreamProtectionCatalogId,
@@ -133,6 +150,13 @@ final class PowerProtectionDeviceLimits {
   final double maximumResidualOperatingCurrentMa;
   final double maximumResidualTripTimeMs;
 
+  String fingerprintFor(PowerSafetyRuleProfile profile) =>
+      semanticSha256Hex(jsonEncode([
+        'p12a8.protection-device-limits.v1',
+        profile.fingerprint,
+        canonical,
+      ]));
+
   List<Object> get canonical => [
         maximumResidualOperatingCurrentMa,
         maximumResidualTripTimeMs,
@@ -157,11 +181,7 @@ abstract final class PowerProtectionDeviceGate {
         check: PowerSafetyVerdict.indeterminate,
     };
     final normative = registry.lookup(profile.normativeSourceId);
-    final normativeFingerprint = semanticSha256Hex(jsonEncode([
-      'p12a8.protection-device-limits.v1',
-      profile.fingerprint,
-      limits.canonical,
-    ]));
+    final normativeFingerprint = limits.fingerprintFor(profile);
     if (selection.normativeSourceId != profile.normativeSourceId ||
         normative?.isApproved != true ||
         normative?.isRevoked != false ||
@@ -196,12 +216,8 @@ abstract final class PowerProtectionDeviceGate {
           registry.revision.trim().isNotEmpty;
     }
 
-    final residualFingerprint = semanticSha256Hex(jsonEncode([
-      'p12a8.reviewed-residual-characteristic.v1',
-      selection.circuitId.value,
-      selection.protectionCatalogId,
-      residualDevice.canonical,
-    ]));
+    final residualFingerprint =
+        residualDevice.fingerprintFor(selection.circuitId);
     final residualTrusted =
         residualDevice.protectionCatalogId == selection.protectionCatalogId &&
             reviewed(residualDevice.sourceId, 'rcd-protection',
@@ -225,12 +241,8 @@ abstract final class PowerProtectionDeviceGate {
               : PowerSafetyVerdict.fail;
     }
 
-    final coordinationFingerprint = semanticSha256Hex(jsonEncode([
-      'p12a8.reviewed-selectivity-pair.v1',
-      selection.circuitId.value,
-      selection.protectionCatalogId,
-      coordination.canonical,
-    ]));
+    final coordinationFingerprint =
+        coordination.fingerprintFor(selection.circuitId);
     final pairTrusted =
         coordination.downstreamProtectionCatalogId ==
                 selection.protectionCatalogId &&
