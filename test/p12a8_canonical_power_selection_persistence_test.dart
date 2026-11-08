@@ -193,7 +193,8 @@ final class _DropEngineeringStateCommand implements ProjectCommand {
 
 final class _PowerEvidenceRegistry
     implements TrustedEngineeringEvidenceRegistry {
-  _PowerEvidenceRegistry({this.revokedId, this.missingId, this.wrongProofPurpose = false});
+  _PowerEvidenceRegistry(
+      {this.revokedId, this.missingId, this.wrongProofPurpose = false});
 
   final String? revokedId;
   final String? missingId;
@@ -219,10 +220,10 @@ final class _PowerEvidenceRegistry
           : sourceId == 'selectivity-study'
               ? 'selectivity-coordination'
               : null,
-      subjectCircuitId: sourceId == 'rcd-test-report' ||
-              sourceId == 'selectivity-study'
-          ? 'c1'
-          : null,
+      subjectCircuitId:
+          sourceId == 'rcd-test-report' || sourceId == 'selectivity-study'
+              ? 'c1'
+              : null,
     );
   }
 }
