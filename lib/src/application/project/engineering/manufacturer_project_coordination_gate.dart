@@ -78,7 +78,9 @@ abstract final class ManufacturerProjectCoordinationGate {
       final selected = metadata.powerSelections.byCircuit[id];
       final admission = admissions[id];
       final fault = faultEnvelopes[id];
-      if (selected == null || admission == null || fault == null ||
+      if (selected == null ||
+          admission == null ||
+          fault == null ||
           fault.circuitId != id ||
           fault.selectionFingerprint !=
               semanticSha256Hex(jsonEncode(selected.toCanonicalJson())) ||
