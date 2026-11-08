@@ -1,0 +1,115 @@
+{
+  "sameBuilding": true,
+  "sameP2": true,
+  "components": 9,
+  "routes": 1,
+  "prototypeCircuitBundles": 1,
+  "allEndpointComponentsExist": true,
+  "physicalLengthMm": 2250.0,
+  "reservedLengthMm": 2362.5,
+  "segmentIdsPresent": false,
+  "route": [
+    {
+      "id": "route-1",
+      "source": {
+        "componentId": "component-1-db-general",
+        "portId": "power-out"
+      },
+      "target": {
+        "componentId": "component-9-light-general",
+        "portId": "power-in"
+      },
+      "segments": [
+        {
+          "surface": {
+            "spaceId": "elecx-canonical-space-v1:42788f31-0b1a-4ecc-85f8-5a5ee408ee8a",
+            "type": "wall",
+            "wallIndex": 0,
+            "boundaryEdgeId": null
+          },
+          "points": [
+            {
+              "xMm": 3000,
+              "yMm": 1500
+            },
+            {
+              "xMm": 3000,
+              "yMm": 3000
+            }
+          ],
+          "anchorIds": []
+        },
+        {
+          "surface": {
+            "spaceId": "elecx-canonical-space-v1:42788f31-0b1a-4ecc-85f8-5a5ee408ee8a",
+            "type": "ceiling",
+            "wallIndex": null,
+            "boundaryEdgeId": null
+          },
+          "points": [
+            {
+              "xMm": 3000,
+              "yMm": 0
+            },
+            {
+              "xMm": 3000,
+              "yMm": 750
+            }
+          ],
+          "anchorIds": []
+        }
+      ],
+      "penetrations": [],
+      "verticalCoreLegs": [],
+      "cableType": null,
+      "reservePercent": 5,
+      "medium": {
+        "id": "power.ac",
+        "family": "power",
+        "flowVisual": "acOscillation",
+        "bidirectional": false,
+        "protocol": null
+      }
+    }
+  ],
+  "circuitBundles": [
+    {
+      "circuit": {
+        "id": "circuit-1",
+        "name": "Группа · Светильник 9",
+        "boardId": "component-1-db-general",
+        "protectiveDeviceId": null
+      },
+      "cable": {
+        "id": "cable-1",
+        "routeId": "route-1",
+        "circuitId": "circuit-1",
+        "designation": "CAB-1",
+        "cableSpecId": null,
+        "endA": {
+          "componentId": "component-1-db-general",
+          "portId": "power-out",
+          "terminalId": null
+        },
+        "endB": {
+          "componentId": "component-9-light-general",
+          "portId": "power-in",
+          "terminalId": null
+        }
+      },
+      "protectiveDevice": null
+    }
+  ],
+  "quitVerification": "native Quit after detaching flutter sessions; ps exact executable filter exit 1, no matches before new flutter run",
+  "componentRoleMap": {
+    "DB-01": "component-1-db-general",
+    "S-01": "component-2-socket-general",
+    "S-02": "component-4-socket-general",
+    "S-03": "component-6-socket-general",
+    "S-04": "component-8-socket-general",
+    "L-01": "component-3-light-general",
+    "L-02": "component-5-light-general",
+    "L-03": "component-7-light-general",
+    "L-04": "component-9-light-general"
+  }
+}

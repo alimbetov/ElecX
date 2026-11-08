@@ -17,3 +17,8 @@ Screenshots are under `../../../artifacts/desktop-uat/screenshots/` from this di
 | Save/Reopen | Save icon, hub, persisted projects | Native save → Cmd+Q → fresh launch → unlock → open project | PASS for tested data: four rooms, board, socket, one route/group, load power and protection retained | 18-restarted-hub, 19-reopened-properties (+ AX transcript) | No data loss observed |
 
 Strict matrix: 4 PASS, 5 PARTIAL, 0 unqualified PASS for the complete apartment electrical design scenario. P12 Production Apply was not invoked or bypassed. The ordinary geometry wizard Apply and user-entered prototype group protection are distinct from P12 production approval.
+
+
+## Advanced routing retest — 2026-11-09
+
+See [Multi-surface routing acceptance](MULTI_SURFACE_ROUTING_FINAL_REPORT.md) on baseline 9f15d985. P12 toolbar review now exists (supersedes earlier missing-entry finding); source remains unavailable and Apply blocked. Five-room/nine-component/local Wall→Ceiling save-reopen verified; required cross-room/canonical branching acceptance BLOCKED. Earlier basic UAT observations remain historical, not proof of advanced routing.

@@ -51,3 +51,8 @@ This does not certify every canonical registry or every subsystem's lifecycle. N
 3. Coordinate canvas overlays and expose a compact status HUD; make rectangle and placement gestures explicit.
 4. Explain unavailable calculation and apartment wizard inputs, and provide an actionable first-run quick-unlock message.
 5. Consolidate localization and remove internal implementation terminology from routine screens.
+
+
+## Advanced routing retest — 2026-11-09
+
+See [Multi-surface routing acceptance](MULTI_SURFACE_ROUTING_FINAL_REPORT.md) on baseline 9f15d985. P12 toolbar review now exists (supersedes earlier missing-entry finding); source remains unavailable and Apply blocked. Five-room/nine-component/local Wall→Ceiling save-reopen verified; required cross-room/canonical branching acceptance BLOCKED. Earlier basic UAT observations remain historical, not proof of advanced routing.

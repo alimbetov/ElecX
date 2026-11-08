@@ -33,3 +33,8 @@ All 27 PNGs were captured from ElecX by cua_repl. None are generated/mock screen
 | [27-fixed-compact-drawer.png](../../../artifacts/desktop-uat/screenshots/27-fixed-compact-drawer.png) | 4718592×4292935744 | 2.3593e+06×2.14647e+09 | D01/D08 fixed: pointer-opened compact drawer; scrolling exposes load/cable/protection actions without overflow. |
 
 The adjacent `19-reopened-properties.ax.txt` and `27-fixed-compact-drawer.ax.txt` are native accessibility transcripts. Full SHA-256 digests and captions are in [screenshot-manifest.json](../../../artifacts/desktop-uat/screenshot-manifest.json).
+
+
+## Advanced routing retest — 2026-11-09
+
+See [Multi-surface routing acceptance](MULTI_SURFACE_ROUTING_FINAL_REPORT.md) on baseline 9f15d985. P12 toolbar review now exists (supersedes earlier missing-entry finding); source remains unavailable and Apply blocked. Five-room/nine-component/local Wall→Ceiling save-reopen verified; required cross-room/canonical branching acceptance BLOCKED. Earlier basic UAT observations remain historical, not proof of advanced routing.

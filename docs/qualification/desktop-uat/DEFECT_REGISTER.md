@@ -96,3 +96,8 @@ Severity measures the requested user journey, not whether a feature was promised
 - Status: FIXED; widget navigation regression plus native integration coverage, and GUI retest.
 
 Counts: P0 0; P1 1 (planned capability gap); P2 6 (2 fixed, 4 open); P3 1 open. No P0/data-loss regression observed. No claim that every subsystem was exhaustively tested.
+
+
+## Advanced routing retest — 2026-11-09
+
+See [Multi-surface routing acceptance](MULTI_SURFACE_ROUTING_FINAL_REPORT.md) on baseline 9f15d985. P12 toolbar review now exists (supersedes earlier missing-entry finding); source remains unavailable and Apply blocked. Five-room/nine-component/local Wall→Ceiling save-reopen verified; required cross-room/canonical branching acceptance BLOCKED. Earlier basic UAT observations remain historical, not proof of advanced routing.

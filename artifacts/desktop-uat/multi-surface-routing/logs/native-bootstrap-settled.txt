@@ -1,0 +1,7 @@
+00:00 +0: loading /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/integration_test/multi_surface_routing_user_journey_test.dart
+Building macOS application...                                   
+✓ Built build/macos/Build/Products/Debug/elecx.app
+Failed to foreground app; open returned 1
+00:00 +0: production UI creates five adjacent rooms and honest P12 review
+00:16 +1: (tearDownAll)
+00:16 +1: All tests passed!

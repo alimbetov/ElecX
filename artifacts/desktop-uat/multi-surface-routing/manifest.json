@@ -1,0 +1,233 @@
+{
+  "baselineSHA": "9f15d9854d1a43c70d3d7f5d8b787dda4f459c31",
+  "files": [
+    {
+      "path": ".gitignore",
+      "bytes": 87,
+      "sha256": "34aa13b95e93512ecf583b54e7d95d5dc5ee9bdcb423eff8157a6728a6d461dd",
+      "storage": "tracked evidence"
+    },
+    {
+      "path": "README.md",
+      "bytes": 1119,
+      "sha256": "1c8962d18012e9d45a9d2b0156d8a378ead27166202ed199a908da5c6275fe72",
+      "storage": "tracked evidence"
+    },
+    {
+      "path": "before-restart.json",
+      "bytes": 26884,
+      "sha256": "c4d79793e432b4d1e1aa27b2df0b20a4a167ab87d538c58fe722cda4ab72ab53",
+      "storage": "tracked evidence"
+    },
+    {
+      "path": "delete-load-audit.json",
+      "bytes": 81,
+      "sha256": "51d2eb25a5ca8c820369404dbbd803795a49646866289ccc83ce49ba162520e6",
+      "storage": "tracked evidence"
+    },
+    {
+      "path": "logs/analyze.txt",
+      "bytes": 96,
+      "sha256": "d60e7568718fcc5fdaa8102a1d2a550393b33fec65c85ef2bfb779c4a86672e5",
+      "storage": "tracked evidence"
+    },
+    {
+      "path": "logs/clean-after-bootstrap.txt",
+      "bytes": 365,
+      "sha256": "77f43d917a916d233df740be5f08f85732217667b909a4c6770fae5249d6fcf9",
+      "storage": "tracked evidence"
+    },
+    {
+      "path": "logs/devices.txt",
+      "bytes": 597,
+      "sha256": "f505255ecf552e995cbba985796fa0b9f0527c84c6a51a993429aedc9076dbbc",
+      "storage": "tracked evidence"
+    },
+    {
+      "path": "logs/doctor.txt",
+      "bytes": 2631,
+      "sha256": "e8c04bf29e8dc15d5b3e1f6dedcd4d8237322bd3741a2beb62c716183ac3641e",
+      "storage": "tracked evidence"
+    },
+    {
+      "path": "logs/focused-regression.txt",
+      "bytes": 2100,
+      "sha256": "ab0006536918053965048af947316446c9232c0735ec6488cb5efafcc27f5ae3",
+      "storage": "tracked evidence"
+    },
+    {
+      "path": "logs/macos-production.txt",
+      "bytes": 1951,
+      "sha256": "e361a61208a24804dd40721f01fe846c91aca0e07157a25b794e3e4f860cfd36",
+      "storage": "tracked evidence"
+    },
+    {
+      "path": "logs/macos-restart.txt",
+      "bytes": 881,
+      "sha256": "d20940e3f7283eb11eb6e1b28eefbdf62b843c10f90aa61dfc9696972e91f1a3",
+      "storage": "tracked evidence"
+    },
+    {
+      "path": "logs/macos-run.txt",
+      "bytes": 927,
+      "sha256": "667e603adfd3d53611b6b5c06a7e3ab149e4bd2dde3f55cb780eee66a12faa01",
+      "storage": "tracked evidence"
+    },
+    {
+      "path": "logs/native-bootstrap-retry.txt",
+      "bytes": 8932,
+      "sha256": "9edf09ab680ff68973cda07fdcf189b42f796e5e07f1b128aa1f658bdc92c192",
+      "storage": "tracked evidence"
+    },
+    {
+      "path": "logs/native-bootstrap-settled.txt",
+      "bytes": 425,
+      "sha256": "4f4fedb3db1657e6312ecb501cc4947392c789fb6d11cbbda4299c121c953976",
+      "storage": "tracked evidence"
+    },
+    {
+      "path": "logs/native-bootstrap.txt",
+      "bytes": 2471,
+      "sha256": "41a19542948320a5fd2ee7b72e2d724de8a45df192d891cd1e92debe9767e863",
+      "storage": "tracked evidence"
+    },
+    {
+      "path": "logs/pub-get.txt",
+      "bytes": 750,
+      "sha256": "94ee47d69391f8427517c330db06206859b5f4d528b4e23c3790dc5d8b13f085",
+      "storage": "tracked evidence"
+    },
+    {
+      "path": "logs/sdk.txt",
+      "bytes": 320,
+      "sha256": "6922c7b0b2b6b314354b37e7775c281a124b8e0b02c3c75d2acbe0926f9ebda1",
+      "storage": "tracked evidence"
+    },
+    {
+      "path": "logs/tests.txt",
+      "bytes": 409385,
+      "sha256": "a705bd75260f912778b897c221aeb060d0afb553c19744bcc09eb61d2e8bc7a8",
+      "storage": "tracked evidence"
+    },
+    {
+      "path": "reopen-comparison.json",
+      "bytes": 3001,
+      "sha256": "a2fbfe3bcdae8d1f5a076fd387bba8884a326993cd1b974541692f7dcebac386",
+      "storage": "tracked evidence"
+    },
+    {
+      "path": "screenshots/01-launch.png",
+      "bytes": 75027,
+      "sha256": "a53a0dcd9367b45cc549cbda87a527eb27fdba5259caf1d022155c1a315720bf",
+      "storage": "local native capture; excluded from git"
+    },
+    {
+      "path": "screenshots/02-five-room-plan.png",
+      "bytes": 512888,
+      "sha256": "95e94e918c0f9263cb22e518e92b0cccb8cf9883446abb64fb1d18bfb8ee2771",
+      "storage": "local native capture; excluded from git"
+    },
+    {
+      "path": "screenshots/03-p12-source-unavailable.png",
+      "bytes": 554953,
+      "sha256": "077c0abbda67ed961bc872e2c1fcecf20958958de6888c4f8d08023b0d98d609",
+      "storage": "local native capture; excluded from git"
+    },
+    {
+      "path": "screenshots/04-corridor-board-wall.png",
+      "bytes": 469774,
+      "sha256": "c9be7ba113288b8c7b2158124e1c10a79b1478bd26a9984b4bb61c2e05cbdcea",
+      "storage": "local native capture; excluded from git"
+    },
+    {
+      "path": "screenshots/05-living-common-board-blocked.png",
+      "bytes": 499562,
+      "sha256": "2e92a9527a14d5efb7fb6945eb307449235f702dcc775ce3740358d89e6d57d3",
+      "storage": "local native capture; excluded from git"
+    },
+    {
+      "path": "screenshots/06-living-ceiling-light.png",
+      "bytes": 449738,
+      "sha256": "a40dec0e219dc1a89f771f57da038b54293628ecd9a64d1495b2d735f4afcd44",
+      "storage": "local native capture; excluded from git"
+    },
+    {
+      "path": "screenshots/07-local-ceiling-route-control.png",
+      "bytes": 457936,
+      "sha256": "d20a85de3582dc61fbdd76887d897bddbb54f5176a5527ba4eb3d62242b1e8be",
+      "storage": "local native capture; excluded from git"
+    },
+    {
+      "path": "screenshots/08-local-wall-route-control.png",
+      "bytes": 499470,
+      "sha256": "58c446fa0bb5ef06fe93f0e2016cd732c63546936e0e3e2f4acfefd25e21b4a5",
+      "storage": "local native capture; excluded from git"
+    },
+    {
+      "path": "screenshots/09-invalid-draft-rejected.ax.txt",
+      "bytes": 115,
+      "sha256": "e7b073a6db7c2e17581e6fcf46f453de2faea3bc49231765d4c001ff2db75230",
+      "storage": "tracked evidence"
+    },
+    {
+      "path": "screenshots/09-invalid-draft-rejected.png",
+      "bytes": 431412,
+      "sha256": "84cb76f52dcab841aa2331a33984ea5f75c3e6488ca1b4f3f13b3cb73c27c90e",
+      "storage": "local native capture; excluded from git"
+    },
+    {
+      "path": "screenshots/10-cross-room-draft-cancelled.png",
+      "bytes": 506149,
+      "sha256": "5c70f4d1970839e97d26660634dc7dc3e9d2d5985a246b05dda261efacd11e0b",
+      "storage": "local native capture; excluded from git"
+    },
+    {
+      "path": "screenshots/11-delete-connected-load.png",
+      "bytes": 422492,
+      "sha256": "6bb856fa926fe752a5dcc2574bc8a609cf14c0123cb6e9bf0c9dd91d8d52cb52",
+      "storage": "local native capture; excluded from git"
+    },
+    {
+      "path": "screenshots/12-p12-after-p2-edit.png",
+      "bytes": 559172,
+      "sha256": "bb99196282931782fcda5a450c8b2c19ef439172a490978a583c075b0282f7c0",
+      "storage": "local native capture; excluded from git"
+    },
+    {
+      "path": "screenshots/13-reopen-ceiling-route.png",
+      "bytes": 435311,
+      "sha256": "d7f8b0e285c57f24a775134a27f529762eac1a3fcaf31e4c11cbcd960b2d8c05",
+      "storage": "local native capture; excluded from git"
+    },
+    {
+      "path": "screenshots/14-reopen-wall-route.png",
+      "bytes": 470397,
+      "sha256": "79e4a1a762cebf8c13e3b98275075bebba06716107f2f89ba6cf43bd4089fdba",
+      "storage": "local native capture; excluded from git"
+    },
+    {
+      "path": "screenshots/15-reopen-plan-no-route-overlay.png",
+      "bytes": 536230,
+      "sha256": "8d99456dd75507329fbae3ec5233e130b85d1e421c4b2303fa5e0ce3a2418455",
+      "storage": "local native capture; excluded from git"
+    },
+    {
+      "path": "screenshots/15-reopen.ax.txt",
+      "bytes": 4883,
+      "sha256": "124fa304d96dd44e713dcb478d79d2077ec533410ec3a85b0f929c9523822db5",
+      "storage": "tracked evidence"
+    },
+    {
+      "path": "target-project.json",
+      "bytes": 391,
+      "sha256": "f541544c7974ac4b845e80b64755af119eece8445eb5f0623de80e936e652818",
+      "storage": "tracked evidence"
+    },
+    {
+      "path": "ui-created-geometry.json",
+      "bytes": 1791,
+      "sha256": "c4d6f4f8b9e0e873594da8d8c66ebe1e488b8830f23ab2700790d20bf62edf74",
+      "storage": "tracked evidence"
+    }
+  ]
+}

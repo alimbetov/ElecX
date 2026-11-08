@@ -1,0 +1,158 @@
+Window: "elecx", App: elecx.
+0 standard window elecx, Secondary Actions: Raise
+	1 container elecx
+		2 container (settable) Уровень 1 · Комната 1
+PROJECT
+2.5D: click surface · keyboard: ←/→ walls, ↑ ceiling, ↓ floor
+SELECT // READY
+PLAN
+SNAP ON
+GRID 100
+SELECTED
+ENGINEERING INSPECTOR
+			3 container (settable)
+				4 button (settable)
+				5 container (settable) ElecX · ElecX Multi-Surface Routing Acceptance · 1
+				6 button (settable)
+				7 text (settable) Saved
+				8 button (settable)
+				9 button (settable)
+				10 button (settable) Compass
+					11 button (settable)
+				12 button (settable)
+				13 button (settable)
+				14 button (settable)
+			15 container (settable)
+				16 button (settable)
+				17 button (settable)
+				18 button (settable)
+				19 button (settable)
+				20 button (settable)
+				21 button (settable)
+				22 button (settable)
+				23 button (settable)
+				24 button (settable)
+				25 button (settable)
+				26 button (settable)
+				27 button (settable)
+			28 container (settable)
+				29 button (settable) ElecX Multi-Surface Routing Acceptance
+				30 button (settable) Residential Building A
+				31 button (settable) Level 1
+			32 container (settable)
+				33 container (settable) ElecX Multi-Surface Routing Acceptance
+					34 button (settable)
+					35 button (settable)
+				36 button (settable) Residential Building A
+					37 button (settable)
+				38 button (settable) Level 1
+					39 button (settable)
+				40 button (settable) Комната 1
+				41 button (settable) Комната 2
+				42 button (settable) Комната 3
+				43 button (settable) Комната 4
+				44 button (settable) Комната 5
+			45 button (settable) + Building
+			46 button (settable) + Level
+			47 button (settable) + Room
+			48 container (settable) ROOM SURFACES
+Комната 1 · 6.00 × 1.50 m
+Current surface: Plan
+				49 button (settable)
+			50 container (settable) Room surface preview, Plan, canonical room 42788f31-0b1a-4ecc-85f8-5a5ee408ee8a
+			51 button (settable) Plan, current surface
+				52 button (settable) Plan
+			53 button (settable) Floor
+				54 button (settable) Floor
+			55 button (settable) Ceiling
+				56 button (settable) Ceiling
+			57 container (settable)
+				58 button (settable) Wall 1
+					59 button (settable) W1 · 6.00m
+				60 button (settable) Wall 2
+					61 button (settable) W2 · 1.50m
+				62 button (settable) Wall 3
+					63 button (settable) W3 · 6.00m
+				64 button (settable) Wall 4
+					65 button (settable) W4 · 1.50m
+			66 button (settable)
+			67 button (settable)
+			68 text (settable) Select: ● вершина · ■ стена · проём
+			69 container (settable) detail · 13.7 mm/px
+				70 button (settable)
+				71 button (settable)
+				72 button (settable)
+				73 button (settable)
+			74 container (settable) Компоненты
+				75 button (settable)
+			76 container (settable)
+				77 container (settable) Room semantics inspector
+					78 container (settable)
+						79 text (settable) ROOM SEMANTICS
+						80 text (settable) Комната 1
+						81 button (settable) Usage
+Unknown
+						82 text (settable) Openings
+						83 text (settable) No canonical openings
+						84 text (settable) Adjacent spaces
+						85 text (settable) No canonical adjacency
+						86 text (settable) Classifications
+						87 text (settable) No overlay classifications
+				88 text (settable) Группы комнаты · 1
+ДАННЫЕ 1
+				89 container (settable) Электрическая группа
+Нагрузка: Светильник 9
+Щит: Распределительный щит 1
+Группа: Группа · Светильник 9
+Кабель: CAB-1
+Трасса: 2.25 м · с резервом 2.36 м
+Нагрузка: 15 Вт · 230 В · I≈0.07 A (P/U)
+Назначьте защиту группы
+Связность и нагрузка заданы, но защитный аппарат ещё не выбран инженером.
+Защита не назначена — требуется инженерный выбор.
+					90 button (settable) Нагрузка
+					91 button (settable) Расчёт
+					92 button (settable) Кабель
+					93 button (settable) Назначить защиту
+			94 container (settable)
+				95 text (settable) Светильник 9
+lighting.luminaire.general
+SELECTED
+				96 text (settable) IDENTITY
+ID
+component-9-light-general
+CATEGORY
+lighting
+TYPE
+luminaire
+SYSTEM
+lighting
+				97 text (settable) POSITION
+SURFACE
+CEILING
+X
+3000 mm
+Y / H
+750 mm
+ROTATION
+0°
+				98 text (settable) ELECTRICAL
+VOLTAGE
+230 V
+POWER
+15 W
+PORTS
+3
+			99 button (settable)
+	100 close button
+	101 full screen button Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	102 minimize button
+	103 text elecx
+104 menu bar
+	105 elecx
+	106 Edit
+	107 View
+	108 Window
+	109 Help
+
+The focused UI element is 1 container elecx

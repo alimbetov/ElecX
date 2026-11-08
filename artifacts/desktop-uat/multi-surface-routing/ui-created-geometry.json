@@ -1,0 +1,82 @@
+{
+  "projectId": "project-hnz7xi8qfs-ha7o3x8y3wbh",
+  "rooms": [
+    {
+      "requestedRole": "Corridor",
+      "actualName": "Комната 1",
+      "spaceId": "elecx-canonical-space-v1:42788f31-0b1a-4ecc-85f8-5a5ee408ee8a",
+      "bboxMm": [
+        -4400,
+        6100,
+        1600,
+        7600
+      ],
+      "dimensionsMm": [
+        6000,
+        1500
+      ]
+    },
+    {
+      "requestedRole": "Living Room",
+      "actualName": "Комната 2",
+      "spaceId": "elecx-canonical-space-v1:4320ff50-bee0-4c8b-bf9f-a44182792e99",
+      "bboxMm": [
+        -4400,
+        2100,
+        600,
+        6100
+      ],
+      "dimensionsMm": [
+        5000,
+        4000
+      ]
+    },
+    {
+      "requestedRole": "Bedroom",
+      "actualName": "Комната 3",
+      "spaceId": "elecx-canonical-space-v1:6f847b04-0d82-4b87-8e91-00489c47c320",
+      "bboxMm": [
+        600,
+        2600,
+        4600,
+        6100
+      ],
+      "dimensionsMm": [
+        4000,
+        3500
+      ]
+    },
+    {
+      "requestedRole": "Kitchen",
+      "actualName": "Комната 4",
+      "spaceId": "elecx-canonical-space-v1:3a51db98-541b-490f-9a40-65f10497fc84",
+      "bboxMm": [
+        1600,
+        6100,
+        5600,
+        9100
+      ],
+      "dimensionsMm": [
+        4000,
+        3000
+      ]
+    },
+    {
+      "requestedRole": "Bathroom",
+      "actualName": "Комната 5",
+      "spaceId": "elecx-canonical-space-v1:debd16c1-1a40-48aa-af51-2e27df00e301",
+      "bboxMm": [
+        -900,
+        7600,
+        1600,
+        9600
+      ],
+      "dimensionsMm": [
+        2500,
+        2000
+      ]
+    }
+  ],
+  "positiveAreaOverlap": false,
+  "note": "Read-only inspection of UI-saved JSON; shared physical penetration/adjacency objects not inferred from touching bounds."
+}

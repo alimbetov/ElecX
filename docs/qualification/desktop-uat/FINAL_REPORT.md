@@ -79,3 +79,8 @@ Technical foundation is substantial: macOS build, SQLite system-source dependenc
 The desktop journey is PARTIAL: useful room/equipment sketching and prototype electrical grouping can be performed and persisted, but the named residential brief and evidence-backed P12 review cannot be completed. GREEN CI is not used as a substitute for this result.
 
 Priority next sprint: read-only P12 review and exact unavailable-gate guidance; supported named structure/project metadata; qualified structural action wiring; coordinated canvas overlays; first-run instructions and consistent localization. Keep production engineering Apply blocked until all existing evidence and safety acceptance gates are satisfied.
+
+
+## Advanced routing retest — 2026-11-09
+
+See [Multi-surface routing acceptance](MULTI_SURFACE_ROUTING_FINAL_REPORT.md) on baseline 9f15d985. P12 toolbar review now exists (supersedes earlier missing-entry finding); source remains unavailable and Apply blocked. Five-room/nine-component/local Wall→Ceiling save-reopen verified; required cross-room/canonical branching acceptance BLOCKED. Earlier basic UAT observations remain historical, not proof of advanced routing.
