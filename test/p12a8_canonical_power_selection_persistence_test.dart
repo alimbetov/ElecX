@@ -693,6 +693,47 @@ void main() {
       );
     }
 
+    test('MCB-only selection must not inherit an RCBO claim', () {
+      final mcb = selection('c1');
+      final envelope = testFaultEnvelope(selected: mcb);
+      final residual =
+          testResidualDevice(catalogId: mcb.protectionCatalogId);
+      final pair = testCoordination(selected: mcb);
+      final limits = testProtectionLimits();
+      final earthing = testEarthing();
+      final registry = _PowerEvidenceRegistry(
+        residualDevice: residual,
+        coordination: pair,
+        deviceLimits: limits,
+        earthing: earthing,
+        faultEnvelope: envelope,
+      );
+      final faults = PowerFaultEnvelopeGate.evaluate(
+        selection: mcb,
+        envelope: envelope,
+        expectedSupplyIds: const ['grid', 'backup'],
+        profile: testPowerSafetyProfile(),
+        registry: registry,
+      );
+      final report = PowerProtectionDeviceGate.evaluate(
+        selection: mcb,
+        faultEnvelope: envelope,
+        faultAssessment: faults,
+        residualDevice: residual,
+        coordination: pair,
+        earthing: earthing,
+        limits: limits,
+        profile: testPowerSafetyProfile(),
+        registry: registry,
+      );
+      expect(
+        report.checks[PowerProtectionDeviceCheck.trustedResidualCharacteristic],
+        PowerSafetyVerdict.indeterminate,
+      );
+      expect(report.verdict, PowerSafetyVerdict.indeterminate);
+      expect(report.readyToApply, isFalse);
+    });
+
     test('independently reviewed matching manufacturer case passes preflight',
         () {
       final result = evaluate();
