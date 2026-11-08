@@ -259,10 +259,11 @@ final class _PowerEvidenceRegistry
           sourceId == 'normative-doc' && !withoutVerifiedRuleProfile
               ? testPowerSafetyProfile().fingerprint
               : null,
+      verifiedFaultEnvelopeFingerprint:
+          sourceId == 'fault-study' ? faultEnvelope?.fingerprint : null,
       verifiedCalculationFingerprint: sourceId == 'fault-study'
-          ? (faultEnvelope?.fingerprint ??
-              (approvedCalculation ?? testPowerSafetyEvidence())
-                  .calculationFingerprint)
+          ? (approvedCalculation ?? testPowerSafetyEvidence())
+              .calculationFingerprint
           : sourceId == 'rcd-test-report' && residualDevice != null
               ? residualDevice!.fingerprintFor(CircuitId('c1'))
               : sourceId == 'selectivity-study' && coordination != null
