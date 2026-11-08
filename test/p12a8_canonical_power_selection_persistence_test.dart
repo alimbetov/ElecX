@@ -689,6 +689,40 @@ void main() {
       expect(result.checks.length, PowerProtectionDeviceCheck.values.length);
     });
 
+    test('missing earthing review cannot grant automatic disconnection PASS',
+        () {
+      final device = testResidualDevice(
+          catalogId: selection('c1').protectionCatalogId);
+      final pair = testCoordination();
+      final limits = testProtectionLimits();
+      final result = evaluate(
+        reviewed: _PowerEvidenceRegistry(
+          residualDevice: device,
+          coordination: pair,
+          deviceLimits: limits,
+          faultEnvelope: testFaultEnvelope(),
+        ),
+      );
+      expect(
+        result.checks[PowerProtectionDeviceCheck.earthingAndPeContinuity],
+        PowerSafetyVerdict.indeterminate,
+      );
+      expect(
+        result.checks[PowerProtectionDeviceCheck.automaticDisconnection],
+        PowerSafetyVerdict.indeterminate,
+      );
+    });
+
+    test('reviewed broken PE continuity is a hard safety failure', () {
+      final result = evaluate(earthing: testEarthing(peContinuous: false));
+      expect(
+        result.checks[PowerProtectionDeviceCheck.earthingAndPeContinuity],
+        PowerSafetyVerdict.fail,
+      );
+      expect(result.verdict, PowerSafetyVerdict.fail);
+      expect(result.readyToApply, isFalse);
+    });
+
     test('unverified device data cannot be approved by source ID alone', () {
       final result = evaluate(
         reviewed: _PowerEvidenceRegistry(),
