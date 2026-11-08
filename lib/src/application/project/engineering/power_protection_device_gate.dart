@@ -180,17 +180,27 @@ abstract final class PowerProtectionDeviceGate {
       for (final check in PowerProtectionDeviceCheck.values)
         check: PowerSafetyVerdict.indeterminate,
     };
+    final pins = {for (final s in selection.sources) s.sourceId: s};
+    final normativePin = pins[profile.normativeSourceId];
     final normative = registry.lookup(profile.normativeSourceId);
     final normativeFingerprint = limits.fingerprintFor(profile);
     if (selection.normativeSourceId != profile.normativeSourceId ||
-        normative?.isApproved != true ||
-        normative?.isRevoked != false ||
-        normative?.verifiedRuleProfileFingerprint != profile.fingerprint ||
-        normative?.verifiedProtectionLimitsFingerprint !=
-            normativeFingerprint) {
+        normativePin == null ||
+        normative == null ||
+        normative.sourceId != normativePin.sourceId ||
+        normative.revision != normativePin.revision ||
+        normative.contentSha256 != normativePin.sha256 ||
+        normative.approvalId != normativePin.approvalId ||
+        normative.isApproved != true ||
+        normative.isRevoked != false ||
+        normative.jurisdiction != profile.jurisdiction ||
+        normative.applicationScope != profile.applicationScope ||
+        normative.verifiedRuleProfileFingerprint != profile.fingerprint ||
+        normative.verifiedProtectionLimitsFingerprint !=
+            normativeFingerprint ||
+        registry.revision.trim().isEmpty) {
       return PowerProtectionDeviceAssessment(checks);
     }
-    final pins = {for (final s in selection.sources) s.sourceId: s};
     bool reviewed(
       String sourceId,
       String purpose,
