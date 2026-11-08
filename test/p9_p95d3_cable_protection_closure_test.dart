@@ -41,6 +41,101 @@ void main() {
       expect(outcome.circuit.calculation.designCurrentA, greaterThan(13));
     });
 
+    test('P12A.7 jointly selects the first cable with compatible protection',
+        () {
+      final calculation = _calculation([_load('load-a', 3000)]);
+      ElectricalCircuitClosureOutcome evaluate(
+              List<ElectricalCircuitCableCandidate> cables) =>
+          ElectricalCircuitClosureEngine.close(
+            ElectricalCircuitClosureRequest(
+              calculation: calculation,
+              policies: [
+                _policy(
+                  circuitId: 'circuit-001',
+                  cables: cables,
+                  devices: const [_c16],
+                ),
+              ],
+            ),
+          ).outcomes.single;
+
+      final small = _cableCandidate('cable-2.5', 2.5, ampacityA: 15);
+      final larger = _cableCandidate('cable-4', 4, ampacityA: 25);
+      for (final candidates in [
+        [small, larger],
+        [larger, small],
+      ]) {
+        final result = evaluate(candidates);
+        expect(result.status, ElectricalCircuitClosureStatus.closed);
+        expect(result.cableEvaluations.every((entry) => entry.isCompliant),
+            isTrue);
+        expect(result.selectedCable!.cable.id, 'cable-4');
+        expect(result.selectedProtection!.id, _c16.id);
+        expect(result.selectedCableSizing!.governingAmpacityA, 25);
+      }
+
+      final withoutCompatiblePair = evaluate([small]);
+      expect(withoutCompatiblePair.isClosed, isFalse);
+      expect(
+        withoutCompatiblePair.status,
+        ElectricalCircuitClosureStatus.noCompliantProtection,
+      );
+      expect(
+        withoutCompatiblePair.protectionSelection!.rejections[_c16.id],
+        contains('rated-current-exceeds-cable-ampacity'),
+      );
+    });
+
+    test('P12A.7 AC circuit rejects a DC-medium cable labeled POWER', () {
+      final calculation = _calculation([_load('load-a', 3000)]);
+      final candidate = ElectricalCircuitCableCandidate(
+        cable: const CableSpec(
+          id: 'dc-only-cable',
+          name: 'DC fixture',
+          medium: RouteMediumProfile.dcPower,
+          outerDiameterMm: 12,
+          segregationClass: CableSegregationClass.power,
+          conductorMaterial: ConductorMaterial.copper,
+          conductorCount: 3,
+          conductorCrossSectionMm2: 4,
+          ratedVoltageV: 450,
+        ),
+        routeLengthMm: 10000,
+        maxVoltageDropRatio: 0.05,
+        impedanceEvidence: const CableImpedanceEvidence(
+          resistanceOhmPerKm: 4,
+          sourceKey: 'impedance-table',
+        ),
+        ampacitySections: [
+          SectionAmpacityEvidence(
+            sectionId: 'wall',
+            baseAmpacityA: 30,
+            factors: const [],
+            sourceKey: 'ampacity-table',
+          ),
+        ],
+        sourceId: 'cable-evidence',
+        sourceRevision: 'r1',
+      );
+      final outcome = ElectricalCircuitClosureEngine.close(
+        ElectricalCircuitClosureRequest(
+          calculation: calculation,
+          policies: [
+            _policy(
+              circuitId: 'circuit-001',
+              cables: [candidate],
+              devices: const [_c16],
+            ),
+          ],
+        ),
+      ).outcomes.single;
+      expect(outcome.status, ElectricalCircuitClosureStatus.noCompliantCable);
+      expect(
+        outcome.cableEvaluations.single.structuralRejections,
+        contains('cable-medium-incompatible-with-ac-circuit'),
+      );
+    });
+
     test('Q16 voltage drop can force a larger conductor', () {
       final calculation = _calculation([_load('load-a', 3500)]);
       final result = ElectricalCircuitClosureEngine.close(
