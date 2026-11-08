@@ -1507,7 +1507,8 @@ void main() {
       expect(session.current.version, project.version);
       expect(session.undoDepth, 0);
 
-      final renamed = coordinator.preview(_RenamedUnqualifiedP12Proxy(delegate));
+      final renamed =
+          coordinator.preview(_RenamedUnqualifiedP12Proxy(delegate));
       expect(() => coordinator.commitPreview(renamed), throwsStateError);
       expect(session.current.version, project.version);
 
