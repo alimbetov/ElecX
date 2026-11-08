@@ -16,10 +16,10 @@ void main() {
       ),
     ));
     expect(find.byKey(const ValueKey('p12-review-no-project')), findsOneWidget);
-    expect(find.byKey(const ValueKey('p12-review-apply-blocked')),
-        findsOneWidget);
-    expect(find.byKey(const ValueKey('p12-review-project-version')),
-        findsNothing);
+    expect(
+        find.byKey(const ValueKey('p12-review-apply-blocked')), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('p12-review-project-version')), findsNothing);
   });
 
   testWidgets('P12 review inspects project-owned state, no invented diff',
@@ -34,12 +34,11 @@ void main() {
     ));
     expect(find.byKey(const ValueKey('p12-review-project-version')),
         findsOneWidget);
-    expect(find.byKey(const ValueKey('p12-review-circuit-count')),
-        findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('p12-review-circuit-count')), findsOneWidget);
     expect(find.byKey(const ValueKey('p12-review-selection-count')),
         findsOneWidget);
-    expect(find.byKey(const ValueKey('p12-review-rcd-count')),
-        findsOneWidget);
+    expect(find.byKey(const ValueKey('p12-review-rcd-count')), findsOneWidget);
     expect(find.byKey(const ValueKey('p12-review-diff-unavailable')),
         findsOneWidget);
     expect(find.byKey(const ValueKey('p12-review-apply-blocked')),
@@ -61,7 +60,6 @@ void main() {
     ));
     expect(find.byKey(const ValueKey('p12-review-diff-unavailable')),
         findsNothing);
-    expect(find.byKey(const ValueKey('p12-review-diff-empty')),
-        findsOneWidget);
+    expect(find.byKey(const ValueKey('p12-review-diff-empty')), findsOneWidget);
   });
 }
