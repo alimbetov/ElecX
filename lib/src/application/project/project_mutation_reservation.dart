@@ -610,7 +610,11 @@ final class ReservedProjectMutationCoordinator {
 
     // Future P12 Apply commands must participate in transaction-bound safety
     // review. A fabricated or incomplete Preview still cannot be committed.
-    if (planned._command.commandType.startsWith('p12') &&
+    final canonicalPowerChanged =
+        session.current.engineeringMetadata.powerSelections.fingerprint !=
+            planned.candidate.engineeringMetadata.powerSelections.fingerprint;
+    if ((canonicalPowerChanged ||
+            planned._command.commandType.startsWith('p12')) &&
         planned._command is! TransactionalEngineeringSafetyRevalidation) {
       throw StateError(
           'P12 Apply requires transaction-bound engineering safety revalidation.');
