@@ -333,3 +333,33 @@ All `TEST-MANUFACTURER` identifiers and numeric test fixtures are synthetic.
 No real manufacturer compatibility certificate has yet been loaded into
 the authenticated registry. The current P12A.8 engineering command is
 still PreviewOnly and cannot commit to production.
+
+
+### P12A.8 follow-up: v22 mixed-MCB group coverage and feed bypass review
+
+The v22 group-RCD ledger supports one physical RCD protecting a group of
+P11 circuits with *different* downstream MCB catalog articles. The immutable
+`downstreamCatalogOverrides` field is keyed by canonical `CircuitId`,
+strictly persisted as part of the v22 document and group fingerprint.
+Selection matching uses the actual per-circuit MCB catalog identity, never
+the nominal group default for an overridden circuit. Both missing and foreign
+override keys are rejected. Separate physical RCD component IDs may reuse a
+manufacturer model number without incorrectly colliding.
+
+P11 validation checks the board→RCD feed globally, then the RCD→protected
+circuit path separately for each circuit. This supports a common upstream
+feed, rather than incorrectly demanding separate physical board→RCD wires
+for every outgoing circuit. A circuit-specific directed graph traversal
+excluding the RCD rejects an alternate direct **or indirect** board→load
+feed that would bypass the device. This is a necessary structural topology
+check, but not proof of neutral grouping, actual terminal placement,
+conductor sizing, terminal limits, polarity or installed wiring. Those remain
+required independent field/device verification evidence.
+
+Manufacturer tests in this PR use synthetic `TEST-MANUFACTURER` documents
+and catalog codes. Official sources such as Schneider Electric's 2026
+coordination guide and the RCD coordination guidance are used to define
+required ingestion fields only. A production manufacturer pair cannot
+be accepted without the exact product/model numbers, the applicable
+table and revision, source content hash, measured/reviewed characteristics,
+operating conditions and an independently approved coordination result.
