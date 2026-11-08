@@ -35,12 +35,20 @@ final class ManufacturerProtectionArticle {
       ];
 }
 
+/// These are distinct electrical claims; one must never be substituted for
+/// the other. Residual-current trip selectivity needs a separate study.
+enum ManufacturerPairCoordinationCategory {
+  shortCircuitSelectivity,
+  residualDeviceBackup,
+}
+
 /// One independently reviewable manufacturer coordination table row.
 /// Its numerical coverage is not inferred from device ratings or curves.
 final class ManufacturerProtectionPairRecord {
   ManufacturerProtectionPairRecord({
     required this.downstream,
     required this.upstream,
+    required this.coordinationCategory,
     required this.sourceId,
     required this.documentRevision,
     required this.documentSha256,
@@ -60,10 +68,25 @@ final class ManufacturerProtectionPairRecord {
             downstream.articleNumber == upstream.articleNumber)) {
       throw ArgumentError('Complete distinct manufacturer pair required.');
     }
+    final lower = downstream.deviceKind.toLowerCase();
+    final upper = upstream.deviceKind.toLowerCase();
+    final categoryValid = switch (coordinationCategory) {
+      ManufacturerPairCoordinationCategory.shortCircuitSelectivity =>
+        (lower == 'mcb' || lower == 'mccb' || lower == 'rcbo') &&
+            (upper == 'mcb' || upper == 'mccb' || upper == 'acb' ||
+                upper == 'rcbo'),
+      ManufacturerPairCoordinationCategory.residualDeviceBackup =>
+        (lower == 'mcb' || lower == 'rcbo') &&
+            (upper == 'rcd' || upper == 'rccb'),
+    };
+    if (!categoryValid) {
+      throw ArgumentError('Device types contradict coordination category.');
+    }
   }
 
   final ManufacturerProtectionArticle downstream;
   final ManufacturerProtectionArticle upstream;
+  final ManufacturerPairCoordinationCategory coordinationCategory;
   final String sourceId;
   final String documentRevision;
   final String documentSha256;
@@ -76,6 +99,7 @@ final class ManufacturerProtectionPairRecord {
         circuitId,
         downstream.canonical,
         upstream.canonical,
+        coordinationCategory.name,
         sourceId,
         documentRevision,
         documentSha256.toLowerCase(),
