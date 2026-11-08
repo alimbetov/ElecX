@@ -37,8 +37,10 @@ CanonicalEngineeringSourceReference source(String id) =>
       approvalId: 'approval-1',
     );
 
-CanonicalPowerCircuitSelection selection(String id) =>
-    CanonicalPowerCircuitSelection(
+CanonicalPowerCircuitSelection selection(String id, {
+  double boardFaultWithstandKa = 6,
+  double cableRatedVoltageV = 450,
+}) => CanonicalPowerCircuitSelection(
       circuitId: CircuitId(id),
       generationKey: 'generation-$id',
       boardComponentId: ComponentId('board-1'),
@@ -46,7 +48,7 @@ CanonicalPowerCircuitSelection selection(String id) =>
       catalogSnapshotId: 'catalog-snapshot-v2',
       boardRatings: CanonicalBoardElectricalRatings(
         ratedBusbarCurrentA: 63,
-        shortCircuitWithstandKa: 6,
+        shortCircuitWithstandKa: boardFaultWithstandKa,
         ratedVoltageV: 230,
         ipRating: 'IP40',
         manufacturerSourceId: 'board-doc',
@@ -55,7 +57,7 @@ CanonicalPowerCircuitSelection selection(String id) =>
       cableRatings: CanonicalCableElectricalRatings(
         conductorCrossSectionMm2: 2.5,
         conductorCount: 3,
-        ratedVoltageV: 450,
+        ratedVoltageV: cableRatedVoltageV,
         governingAmpacityA: 25,
         calculatedVoltageDropRatio: 0.012,
       ),
@@ -262,6 +264,7 @@ PowerSafetyRuleProfile testPowerSafetyProfile({
 
 PowerCircuitSafetyEvidence testPowerSafetyEvidence({
   String id = 'c1',
+  CanonicalPowerCircuitSelection? selected,
   bool complete = true,
   double designCurrent = 12,
   double faultCurrent = 3,
@@ -273,7 +276,7 @@ PowerCircuitSafetyEvidence testPowerSafetyEvidence({
   PowerSafetyClaimStatus selectivityStatus = PowerSafetyClaimStatus.supported,
   String? overrideFingerprint,
 }) {
-  final reference = selection(id);
+  final reference = selected ?? selection(id);
   return PowerCircuitSafetyEvidence(
     circuitId: reference.circuitId,
     selectionFingerprint: overrideFingerprint ??
@@ -304,18 +307,20 @@ void main() {
   group('P12A.8 provisional electrical safety gate', () {
     PowerElectricalSafetyReport evaluate({
       PowerCircuitSafetyEvidence? evidence,
+      CanonicalPowerCircuitSelection? selected,
       PowerSafetyRuleProfile? profile,
       _PowerEvidenceRegistry? registry,
     }) =>
         PowerElectricalSafetyGate.evaluate(
           selections: CanonicalPowerSelectionRegistry(
-            selections: [selection('c1')],
+            selections: [selected ?? selection('c1')],
           ),
-          evidence: [evidence ?? testPowerSafetyEvidence()],
+          evidence: [evidence ?? testPowerSafetyEvidence(selected: selected)],
           profile: profile ?? testPowerSafetyProfile(),
           registry: registry ??
               _PowerEvidenceRegistry(
-                  approvedCalculation: evidence ?? testPowerSafetyEvidence()),
+                  approvedCalculation: evidence ??
+                      testPowerSafetyEvidence(selected: selected)),
           targetJurisdiction: 'KZ',
           targetApplicationScope: 'POWER-AC',
         );
@@ -386,6 +391,35 @@ void main() {
       );
       expect(insufficientBreaker.verdict, PowerSafetyVerdict.fail);
       expect(insufficientBreaker.readyToApply, isFalse);
+    });
+
+    test('board fault withstand and cable voltage can fail independently', () {
+      final weakBoard = selection('c1', boardFaultWithstandKa: 2);
+      final boardReport = evaluate(
+        selected: weakBoard,
+        evidence: testPowerSafetyEvidence(selected: weakBoard),
+      );
+      expect(
+        boardReport.circuits[CircuitId('c1')]!
+            .checks[PowerSafetyCheck.boardShortCircuitWithstand],
+        PowerSafetyVerdict.fail,
+      );
+      expect(
+        boardReport.circuits[CircuitId('c1')]!
+            .checks[PowerSafetyCheck.breakingCapacity],
+        PowerSafetyVerdict.pass,
+      );
+      final underratedCable = selection('c1', cableRatedVoltageV: 200);
+      final cableReport = evaluate(
+        selected: underratedCable,
+        evidence: testPowerSafetyEvidence(selected: underratedCable),
+      );
+      expect(
+        cableReport.circuits[CircuitId('c1')]!
+            .checks[PowerSafetyCheck.cableVoltageRating],
+        PowerSafetyVerdict.fail,
+      );
+      expect(cableReport.verdict, PowerSafetyVerdict.fail);
     });
 
     test('conventional trip and thermal fault energy are independently gated',
