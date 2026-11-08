@@ -25,6 +25,7 @@ final class EngineeringEvidenceReviewRecord {
     this.verifiedProtectionLimitsFingerprint,
     this.verifiedUpstreamProtectionCatalogId,
     this.verifiedResidualTopologyFingerprint,
+    this.verifiedManufacturerPairFingerprint,
   });
 
   final String sourceId;
@@ -62,6 +63,9 @@ final class EngineeringEvidenceReviewRecord {
 
   /// Authenticated board / MCB / upstream RCD circuit coverage snapshot.
   final String? verifiedResidualTopologyFingerprint;
+
+  /// SHA-256 of the exact manufacturer articles, table revision and fault range.
+  final String? verifiedManufacturerPairFingerprint;
 }
 
 /// The production implementation must be backed by a versioned, authenticated
