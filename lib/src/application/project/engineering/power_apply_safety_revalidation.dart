@@ -1,6 +1,7 @@
 import '../../../domain/project_aggregate.dart';
 import '../../../domain/project_identity.dart';
 import '../project_mutation_reservation.dart';
+import 'canonical_residual_protection_assignment.dart';
 import 'engineering_evidence_review_gate.dart';
 import 'power_electrical_safety_gate.dart';
 import 'power_fault_envelope_gate.dart';
@@ -26,11 +27,14 @@ final class PowerApplySafetyRevalidation
         residualDevices,
     required Map<CircuitId, ReviewedProtectionCoordination> coordination,
     required Map<CircuitId, ReviewedEarthingDisconnectionEvidence> earthing,
+    Map<CircuitId, CanonicalResidualProtectionAssignment>
+        upstreamRcdAssignments = const {},
   })  : circuitEvidence = List.unmodifiable(circuitEvidence),
         faultEnvelopes = Map.unmodifiable(faultEnvelopes),
         residualDevices = Map.unmodifiable(residualDevices),
         coordination = Map.unmodifiable(coordination),
-        earthing = Map.unmodifiable(earthing);
+        earthing = Map.unmodifiable(earthing),
+        upstreamRcdAssignments = Map.unmodifiable(upstreamRcdAssignments);
 
   final String expectedRegistryRevision;
   final String expectedEngineeringStateFingerprint;
@@ -45,6 +49,8 @@ final class PowerApplySafetyRevalidation
   final Map<CircuitId, ReviewedResidualDeviceCharacteristic> residualDevices;
   final Map<CircuitId, ReviewedProtectionCoordination> coordination;
   final Map<CircuitId, ReviewedEarthingDisconnectionEvidence> earthing;
+  final Map<CircuitId, CanonicalResidualProtectionAssignment>
+      upstreamRcdAssignments;
 
   @override
   void revalidateEngineeringSafety({
@@ -73,7 +79,8 @@ final class PowerApplySafetyRevalidation
         !_exactKeys(ids, faultEnvelopes.keys.toSet()) ||
         !_exactKeys(ids, residualDevices.keys.toSet()) ||
         !_exactKeys(ids, coordination.keys.toSet()) ||
-        !_exactKeys(ids, earthing.keys.toSet())) {
+        !_exactKeys(ids, earthing.keys.toSet()) ||
+        !ids.containsAll(upstreamRcdAssignments.keys)) {
       throw StateError('Incomplete safety evidence for canonical circuits.');
     }
 
@@ -107,6 +114,7 @@ final class PowerApplySafetyRevalidation
         faultEnvelope: faultEnvelopes[id]!,
         faultAssessment: fault,
         residualDevice: residualDevices[id]!,
+        upstreamRcdAssignment: upstreamRcdAssignments[id],
         coordination: coordination[id]!,
         earthing: earthing[id]!,
         limits: protectionLimits,
