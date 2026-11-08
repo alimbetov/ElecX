@@ -880,6 +880,29 @@ void main() {
       );
       expect(approved.readyToApply, isFalse);
 
+      expect(
+        () => CanonicalResidualProtectionAssignment(
+          boardComponentId: mcb.boardComponentId,
+          downstreamProtectionCatalogId: mcb.protectionCatalogId,
+          upstreamResidualCatalogId: 'rcd-a40',
+          evidenceSourceId: 'rcd-test-report',
+          protectedCircuitIds: [mcb.circuitId, mcb.circuitId],
+        ),
+        throwsArgumentError,
+      );
+      final wrongBoard = CanonicalResidualProtectionAssignment(
+        boardComponentId: ComponentId('foreign-board'),
+        downstreamProtectionCatalogId: mcb.protectionCatalogId,
+        upstreamResidualCatalogId: 'rcd-a40',
+        evidenceSourceId: 'rcd-test-report',
+        protectedCircuitIds: [mcb.circuitId],
+      );
+      expect(
+        assess(assignment, requestedAssignment: wrongBoard)
+            .checks[PowerProtectionDeviceCheck.trustedResidualCharacteristic],
+        PowerSafetyVerdict.indeterminate,
+      );
+
       final unverified = assess(null);
       expect(
         unverified.checks[
