@@ -181,6 +181,22 @@ ProjectAggregateRoot projectWithPowerSelection() {
   );
 }
 
+final class _ClearResidualProtectionCommand implements ProjectCommand {
+  @override
+  String get commandType => 'test.clear-residual-ownership';
+
+  @override
+  ProjectCommandCandidate buildCandidate(ProjectAggregateRoot current) =>
+      ProjectCommandCandidate.fromState(
+        state: ProjectMutableState(
+          engineeringMetadata: current.engineeringMetadata
+              .withResidualProtection(
+                  const CanonicalResidualProtectionRegistry.empty()),
+          stores: current.stores,
+        ),
+      );
+}
+
 /// Simulates a structurally valid but referentially destructive update.
 final class _DropEngineeringStateCommand implements ProjectCommand {
   @override
@@ -692,6 +708,52 @@ void main() {
           payload: document.payload,
         )),
         throwsFormatException,
+      );
+    });
+
+    test('v22 mutation diff and Undo/Redo preserve group-RCD identity', () {
+      final original = projectWithDurableRcd();
+      final session = ProjectMutationSession(original);
+      final preview = session.preview(ProjectMutationRequest(
+        expectedVersion: original.version,
+        command: _ClearResidualProtectionCommand(),
+      ));
+      expect(preview.engineeringMetadataDiff.residualProtectionChanged, isTrue);
+      expect(preview.hasChanges, isTrue);
+      final committed = session.commit(ProjectMutationRequest(
+        expectedVersion: original.version,
+        command: _ClearResidualProtectionCommand(),
+      ));
+      expect(committed, isNotNull);
+      expect(session.current.engineeringMetadata.residualProtection.isEmpty,
+          isTrue);
+      expect(session.undoDepth, 1);
+      session.undo(session.current.version);
+      expect(
+        session.current.engineeringMetadata.residualProtection.fingerprint,
+        original.engineeringMetadata.residualProtection.fingerprint,
+      );
+      session.redo(session.current.version);
+      expect(session.current.engineeringMetadata.residualProtection.isEmpty,
+          isTrue);
+    });
+
+    test('persistent ownership requires an actual matching P11 RCD component',
+        () {
+      final valid = projectWithDurableRcd();
+      final mismatched = CanonicalResidualProtectionRegistry(
+        assignments: [testDurableRcd(deviceId: 'missing-rcd')],
+      );
+      expect(
+        () => ProjectAggregateRoot(
+          id: valid.id,
+          siteId: valid.siteId,
+          version: valid.version,
+          stores: valid.stores,
+          engineeringMetadata:
+              valid.engineeringMetadata.withResidualProtection(mismatched),
+        ),
+        throwsArgumentError,
       );
     });
 
