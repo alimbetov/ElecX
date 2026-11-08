@@ -4,6 +4,8 @@ import '../../domain/project_aggregate.dart';
 import '../../domain/canonical_power_selection.dart';
 import '../../domain/canonical_residual_protection_registry.dart';
 import '../../application/project/engineering/canonical_power_selection_diff.dart';
+import '../../application/project/engineering/engineering_proposal_diff.dart';
+import '../../application/project/engineering/p12_engineering_proposal_source.dart';
 
 /// Read-only rendering of the authoritative project-owned P11/v22 state.
 /// The legacy editor group widgets are not evidence of P12 qualification.
@@ -12,6 +14,8 @@ class P12EngineeringReviewPanel extends StatelessWidget {
     super.key,
     required this.project,
     this.baselineSelections,
+    this.proposalSnapshot,
+    this.proposalUnavailableReason,
   });
 
   final ProjectAggregateRoot? project;
@@ -19,6 +23,10 @@ class P12EngineeringReviewPanel extends StatelessWidget {
   /// Optional independently frozen before-state. Null is NOT an empty state;
   /// without a genuine before-state it is forbidden to show a fabricated diff.
   final CanonicalPowerSelectionRegistry? baselineSelections;
+
+  /// Source-backed P12A.7 proposal, verified against current project baseline.
+  final P12EngineeringProposalSnapshot? proposalSnapshot;
+  final String? proposalUnavailableReason;
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +83,53 @@ class P12EngineeringReviewPanel extends StatelessWidget {
               _CircuitReviewRow(
                 selection: selected,
                 assignment: _findAssignment(residual, selected),
+              ),
+          ],
+          const SizedBox(height: 16),
+          Text('P12 Engineering Proposal',
+              style: Theme.of(context).textTheme.titleMedium),
+          if (proposalSnapshot == null)
+            Text(
+              proposalUnavailableReason ??
+                  'Источник P12 proposal не подключён: требуются '
+                      'утверждённые расчётные входные данные и evidence.',
+              key: const ValueKey('p12-review-proposal-unavailable'),
+            )
+          else ...[
+            Text(
+              'Snapshot: ${proposalSnapshot!.proposal.fingerprint}',
+              key: const ValueKey('p12-review-proposal-fingerprint'),
+            ),
+            Text(
+              'Цепей в предложении: ${proposalSnapshot!.proposal.entries.length}',
+              key: const ValueKey('p12-review-proposal-count'),
+            ),
+            for (final item in proposalSnapshot!.proposal.entries)
+              ListTile(
+                key: ValueKey('p12-review-proposal-${item.generationKey}'),
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: Text('Цепь: ${item.generationKey}'),
+                subtitle: Text(
+                  item.status == EngineeringProposalStatus.selected
+                      ? 'Кабель: ${item.cableCatalogId} · Защита: ${item.protectionCatalogId}'
+                      : 'Не разрешена: отсутствует подтверждённый выбор',
+                ),
+              ),
+            if (proposalSnapshot!.proposal.issues.isNotEmpty) ...[
+              Text('Диагностика',
+                  style: Theme.of(context).textTheme.titleSmall),
+              for (final issue in proposalSnapshot!.proposal.issues)
+                Text(
+                  issue.name,
+                  key: ValueKey('p12-review-issue-${issue.name}'),
+                ),
+            ],
+            if (!proposalSnapshot!.proposal.isFullySelected)
+              const Text(
+                'Предложение не завершено: требуются исправления и '
+                'повторная проверка источников.',
+                key: ValueKey('p12-review-proposal-incomplete'),
               ),
           ],
           const SizedBox(height: 16),
