@@ -808,6 +808,24 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                 ),
               ),
             ),
+            if (cableProjection.segments.isNotEmpty ||
+                cableProjection.hasIncompleteProjection)
+              Positioned(
+                left: 10,
+                top: 58,
+                child: IgnorePointer(
+                  child: Chip(
+                    key: const ValueKey('plan-p2-cable-overlay-status'),
+                    avatar: const Icon(Icons.cable, size: 16),
+                    label: Text(
+                      'P2 трассы (не P11) · '
+                      '${cableProjection.segments.length} сегм.'
+                      '${cableProjection.hasIncompleteProjection ? " · неподтверждённые поверхности: ${cableProjection.skippedSurfaceSegments}" : ""}',
+                    ),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ),
             if (externalWallGizmo != null) externalWallGizmo,
             Positioned(
               right: compact ? 8 : 12,
