@@ -1,4 +1,5 @@
 import 'building_composition.dart';
+import 'geometry.dart';
 import 'project_identity.dart';
 import 'project_model.dart';
 import 'slab_topology.dart';
@@ -12,6 +13,7 @@ import 'vertical_core_route_leg.dart';
 abstract final class VerticalCoreRouteLegAuthoring {
   static VerticalCoreRouteLeg betweenAdjacentSlabs({
     required VerticalCore core,
+    required MmPoint penetrationPlanPoint,
     required ProjectSlab lowerSlab,
     required ProjectSlab upperSlab,
     required BuildingLevel lowerLevel,
@@ -38,6 +40,36 @@ abstract final class VerticalCoreRouteLegAuthoring {
         !core.servedLevelNumbers.contains(intermediateLevelNumber) ||
         !core.servedLevelNumbers.contains(upperLevelNumber)) {
       throw ArgumentError('Riser must serve three consecutive level numbers.');
+    }
+    final servedSpaces = [
+      (lowerLevelNumber, lowerLevel),
+      (intermediateLevelNumber, intermediateLevel),
+      (upperLevelNumber, upperLevel),
+    ];
+    for (final (number, level) in servedSpaces) {
+      final spaceId = core.spaceIdByLevel[number];
+      if (spaceId == null ||
+          !level.spaces.any(
+            (space) =>
+                space.id == spaceId &&
+                space.boundary.contains(penetrationPlanPoint),
+          )) {
+        throw ArgumentError(
+          'VerticalCore must have a matching physical space at level $number '
+          'containing the penetration XY point.',
+        );
+      }
+    }
+    for (final slab in [lowerSlab, upperSlab]) {
+      final footprint = MmPolygon([
+        for (final point in slab.footprint)
+          MmPoint(point.xMm, point.yMm),
+      ]);
+      if (!footprint.contains(penetrationPlanPoint)) {
+        throw ArgumentError(
+          'VerticalCore penetration point lies outside slab ${slab.id}.',
+        );
+      }
     }
     if (lowerSlab.kind != SlabKind.interLevel ||
         upperSlab.kind != SlabKind.interLevel ||
