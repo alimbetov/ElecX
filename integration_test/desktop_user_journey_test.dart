@@ -17,8 +17,7 @@ Future<void> waitFor(WidgetTester tester, Finder finder) async {
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets(
-      'native UI creates a project, previews a building and saves rooms',
+  testWidgets('native UI creates project, previews building and saves rooms',
       (tester) async {
     app.main();
     await tester.pumpAndSettle();
