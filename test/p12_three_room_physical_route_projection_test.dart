@@ -225,7 +225,8 @@ void main() {
     expect(restored.target.componentId, restoredSocket.id);
     expect(restored.segments, hasLength(5));
     for (var index = 0; index < physical.segments.length; index++) {
-      expect(restored.segments[index].surface, physical.segments[index].surface);
+      expect(
+          restored.segments[index].surface, physical.segments[index].surface);
       expect(restored.segments[index].points, physical.segments[index].points);
     }
     expect(restored.penetrations.map((p) => p.id.value).toList(),
