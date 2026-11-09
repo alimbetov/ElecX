@@ -14,7 +14,10 @@ abstract final class VerticalCoreRouteLegAuthoring {
     required VerticalCore core,
     required ProjectSlab lowerSlab,
     required ProjectSlab upperSlab,
+    required BuildingLevel lowerLevel,
     required BuildingLevel intermediateLevel,
+    required BuildingLevel upperLevel,
+    required int lowerRoomHeightMm,
     required int lowerLevelNumber,
     required int intermediateLevelNumber,
     required int upperLevelNumber,
@@ -25,11 +28,8 @@ abstract final class VerticalCoreRouteLegAuthoring {
         core.kind != VerticalCoreKind.serviceShaft) {
       throw ArgumentError('VerticalCore must be a cable-capable riser or shaft.');
     }
-    if (intermediateRoomHeightMm <= 0) {
-      throw ArgumentError.value(
-        intermediateRoomHeightMm,
-        'intermediateRoomHeightMm',
-      );
+    if (lowerRoomHeightMm <= 0 || intermediateRoomHeightMm <= 0) {
+      throw ArgumentError('Room heights must be positive.');
     }
     if (lowerLevelNumber + 1 != intermediateLevelNumber ||
         intermediateLevelNumber + 1 != upperLevelNumber ||
@@ -44,13 +44,16 @@ abstract final class VerticalCoreRouteLegAuthoring {
         lowerSlab.buildingId != upperSlab.buildingId ||
         lowerSlab.aboveLevelId?.value != intermediateLevel.id ||
         upperSlab.belowLevelId?.value != intermediateLevel.id ||
-        lowerSlab.belowLevelId == null ||
-        upperSlab.aboveLevelId == null) {
+        lowerSlab.belowLevelId?.value != lowerLevel.id ||
+        upperSlab.aboveLevelId?.value != upperLevel.id) {
       throw ArgumentError('Slabs must enclose the same intermediate level.');
     }
-    if (lowerSlab.topElevationMm != intermediateLevel.elevationMm ||
+    if (lowerSlab.bottomElevationMm !=
+            lowerLevel.elevationMm + lowerRoomHeightMm ||
+        lowerSlab.topElevationMm != intermediateLevel.elevationMm ||
         upperSlab.bottomElevationMm !=
-            intermediateLevel.elevationMm + intermediateRoomHeightMm) {
+            intermediateLevel.elevationMm + intermediateRoomHeightMm ||
+        upperSlab.topElevationMm != upperLevel.elevationMm) {
       throw ArgumentError('Slab elevations do not match intermediate room Z.');
     }
     final lengthMm =
