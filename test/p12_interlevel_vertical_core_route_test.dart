@@ -202,6 +202,7 @@ void main() {
     ];
     ElectricalCableRoute route({
       List<BoundaryPenetration>? openings,
+      List<ElectricalRouteSegment>? spans,
     }) =>
         ElectricalCableRoute(
           id: 'multi-floor',
@@ -213,7 +214,7 @@ void main() {
             componentId: 'third-floor-board',
             portId: 'in',
           ),
-          segments: segments,
+          segments: spans ?? segments,
           penetrations: openings ?? penetrations,
           verticalCoreLegs: [hidden],
         );
@@ -225,6 +226,70 @@ void main() {
     expect(physical.hiddenVerticalCoreLengthMm, 3000);
     expect(physical.geometricLengthMm, 4640);
     expect(physical.installationLengthMm, 4872);
+
+    final lowerWall = RoomSurfaceRef.wall(space1.id, 0);
+    final upperWall = RoomSurfaceRef.wall(space3.id, 0);
+    final wallToCeiling = SurfaceTransitionGraph.candidates(
+      level: level1,
+      fromSpace: space1,
+      fromSurface: lowerWall,
+      point: const SurfacePointMm(1500, 3000),
+    ).singleWhere(
+      (candidate) => candidate.toSurface == below,
+    );
+    expect(wallToCeiling.toPoint, const SurfacePointMm(1500, 0));
+    expect(wallToCeiling.requiresPenetration, isFalse);
+
+    final floorToWall = SurfaceTransitionGraph.candidates(
+      level: level3,
+      fromSpace: space3,
+      fromSurface: above,
+      point: const SurfacePointMm(1500, 0),
+    ).singleWhere(
+      (candidate) => candidate.toSurface == upperWall,
+    );
+    expect(floorToWall.toPoint, const SurfacePointMm(1500, 0));
+    expect(floorToWall.requiresPenetration, isFalse);
+
+    final combined = route(spans: [
+      ElectricalRouteSegment(
+        surface: lowerWall,
+        points: const [
+          SurfacePointMm(1500, 1200),
+          SurfacePointMm(1500, 3000),
+        ],
+      ),
+      ElectricalRouteSegment(
+        surface: below,
+        points: const [
+          SurfacePointMm(1500, 0),
+          bottomPoint,
+        ],
+      ),
+      ...segments.sublist(1, 3),
+      ElectricalRouteSegment(
+        surface: above,
+        points: const [
+          topPoint,
+          SurfacePointMm(1500, 0),
+        ],
+      ),
+      ElectricalRouteSegment(
+        surface: upperWall,
+        points: const [
+          SurfacePointMm(1500, 0),
+          SurfacePointMm(1500, 1200),
+        ],
+      ),
+    ]);
+    expect(combined.segments, hasLength(6));
+    expect(combined.penetrations, hasLength(2));
+    expect(combined.verticalCoreLegs, hasLength(1));
+    expect(combined.visibleLengthMm, 5000);
+    expect(combined.hiddenPenetrationLengthMm, 440);
+    expect(combined.hiddenVerticalCoreLengthMm, 3000);
+    expect(combined.geometricLengthMm, 8440);
+    expect(combined.installationLengthMm, 8862);
 
     expect(() => route(openings: penetrations.take(1).toList()),
         throwsArgumentError);
