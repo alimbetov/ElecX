@@ -233,8 +233,8 @@ void main() {
         position: const SurfacePointMm(900, 1200),
       );
       controller.p2.select(board.id);
-      expect(controller.beginPortDrivenCableFromSelectedPort('power-out'),
-          isTrue);
+      expect(
+          controller.beginPortDrivenCableFromSelectedPort('power-out'), isTrue);
       final remoteTargets = controller.blockedCrossRoomCableTargets;
       expect(remoteTargets, hasLength(1));
       expect(remoteTargets.single.componentId, remote.id);
