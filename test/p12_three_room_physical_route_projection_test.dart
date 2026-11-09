@@ -4,6 +4,10 @@ import 'package:elecx/src/domain/geometry.dart';
 import 'package:elecx/src/domain/project_model.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/engine/plan_cable_route_projector.dart';
+import 'package:elecx/src/features/editor/editor_building_workspace.dart';
+import 'package:elecx/src/features/editor/editor_controller.dart';
+import 'package:elecx/src/features/editor/editor_p2_session.dart';
+import 'package:elecx/src/features/editor/editor_project_document.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -105,6 +109,42 @@ void main() {
     expect(() => route([passages.first]), throwsArgumentError);
     expect(() => route([passages.last]), throwsArgumentError);
     expect(() => route([]), throwsArgumentError);
+  });
+
+  test('two wall passages survive canonical project JSON round-trip', () {
+    final editor = EditorController.demo();
+    final workspace = EditorBuildingWorkspace.demo(editor);
+    addTearDown(() {
+      editor.disposeP2State();
+      workspace.dispose();
+      editor.dispose();
+    });
+
+    final base = EditorProjectDocument.capture(workspace);
+    final document = EditorProjectDocument(
+      schemaVersion: base.schemaVersion,
+      metadata: base.metadata,
+      building: base.building,
+      site: base.site,
+      workspaceContext: base.workspaceContext,
+      activeLevelNumber: base.activeLevelNumber,
+      selectedZoneId: base.selectedZoneId,
+      activeOutdoorZoneId: base.activeOutdoorZoneId,
+      openingsByLevel: base.openingsByLevel,
+      resume: base.resume,
+      p2State: EditorP2State(routes: [route(passages)]),
+    );
+
+    final restored = EditorProjectDocument.fromJson(document.toJson());
+    final physical = restored.p2State.routes.single;
+    expect(physical.id, 'three-room-route');
+    expect(physical.segments, hasLength(5));
+    expect(physical.penetrations.map((item) => item.id.value).toList(),
+        ['wall-ab', 'wall-bc']);
+    expect(physical.geometricLengthMm, 3180);
+    expect(physical.installationLengthMm, 3339);
+    expect(physical.penetrations.first.hostThicknessMm, 180);
+    expect(physical.penetrations.last.hostThicknessMm, 200);
   });
 
   test('three-room projection keeps physical surface spans distinct', () {
