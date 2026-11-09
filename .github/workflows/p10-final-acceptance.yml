@@ -24,7 +24,11 @@ jobs:
         run: flutter --version | grep -q '^Flutter 3\.47\.7 '
       - run: flutter pub get
       - run: python3 -m unittest discover -s tool -p 'p10_apple_simulator_test.py'
-      - run: dart format --output=none --set-exit-if-changed lib test qualification_test tool integration_test test_driver
+      - name: Check Dart formatting with exact diff
+        shell: bash
+        run: |
+          dart format lib test qualification_test tool integration_test test_driver
+          git diff --exit-code -- lib test qualification_test tool integration_test test_driver
       - run: flutter analyze
       - run: flutter test
       - run: flutter test --concurrency=1 test/p8_wizard_nfr_a11y_i18n_qualification_test.dart test/p8_wizard_r23_extended_qualification_test.dart
