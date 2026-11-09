@@ -192,6 +192,41 @@ void main() {
       intermediateRoomHeightMm: 3000,
     );
     expect(hidden.lengthMm, 3000);
+    void requalify(VerticalCoreRouteLeg leg) =>
+        VerticalCoreRouteLegAuthoring.validatePersisted(
+          leg: leg,
+          core: core,
+          penetrationPlanPoint: const MmPoint(1500, 1000),
+          lowerSlab: slab12,
+          upperSlab: slab23,
+          lowerLevel: level1,
+          intermediateLevel: level2,
+          upperLevel: level3,
+          lowerRoomHeightMm: 3000,
+          lowerLevelNumber: 1,
+          intermediateLevelNumber: 2,
+          upperLevelNumber: 3,
+          intermediateRoomHeightMm: 3000,
+        );
+    expect(() => requalify(hidden), returnsNormally);
+    expect(
+      () => requalify(VerticalCoreRouteLeg(
+        verticalCoreId: hidden.verticalCoreId,
+        fromSlabId: hidden.fromSlabId,
+        toSlabId: hidden.toSlabId,
+        lengthMm: 2800,
+      )),
+      throwsStateError,
+    );
+    expect(
+      () => requalify(VerticalCoreRouteLeg(
+        verticalCoreId: VerticalCoreId('unregistered-core'),
+        fromSlabId: hidden.fromSlabId,
+        toSlabId: hidden.toSlabId,
+        lengthMm: 3000,
+      )),
+      throwsStateError,
+    );
 
     final segments = <ElectricalRouteSegment>[
       ElectricalRouteSegment(
