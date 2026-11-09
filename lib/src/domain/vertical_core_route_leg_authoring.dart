@@ -11,6 +11,47 @@ import 'vertical_core_route_leg.dart';
 /// BoundaryPenetration. The vertical core leg accounts only for the free
 /// intermediate vertical run, without double-counting slab thickness.
 abstract final class VerticalCoreRouteLegAuthoring {
+  /// Requalifies a persisted leg against current canonical building evidence.
+  ///
+  /// A stored length or core identity is never trusted merely because the
+  /// JSON structure can be deserialized.
+  static void validatePersisted({
+    required VerticalCoreRouteLeg leg,
+    required VerticalCore core,
+    required MmPoint penetrationPlanPoint,
+    required ProjectSlab lowerSlab,
+    required ProjectSlab upperSlab,
+    required BuildingLevel lowerLevel,
+    required BuildingLevel intermediateLevel,
+    required BuildingLevel upperLevel,
+    required int lowerRoomHeightMm,
+    required int lowerLevelNumber,
+    required int intermediateLevelNumber,
+    required int upperLevelNumber,
+    required int intermediateRoomHeightMm,
+  }) {
+    final expected = betweenAdjacentSlabs(
+      core: core,
+      penetrationPlanPoint: penetrationPlanPoint,
+      lowerSlab: lowerSlab,
+      upperSlab: upperSlab,
+      lowerLevel: lowerLevel,
+      intermediateLevel: intermediateLevel,
+      upperLevel: upperLevel,
+      lowerRoomHeightMm: lowerRoomHeightMm,
+      lowerLevelNumber: lowerLevelNumber,
+      intermediateLevelNumber: intermediateLevelNumber,
+      upperLevelNumber: upperLevelNumber,
+      intermediateRoomHeightMm: intermediateRoomHeightMm,
+    );
+    if (leg != expected) {
+      throw StateError(
+        'Persisted VerticalCore leg differs from canonical slab and '
+        'shaft evidence.',
+      );
+    }
+  }
+
   static VerticalCoreRouteLeg betweenAdjacentSlabs({
     required VerticalCore core,
     required MmPoint penetrationPlanPoint,
