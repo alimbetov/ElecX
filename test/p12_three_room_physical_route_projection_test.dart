@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:elecx/src/domain/boundary_penetration.dart';
+import 'package:elecx/src/domain/cable_penetration_authoring.dart';
+import 'package:elecx/src/domain/surface_transition_graph.dart';
 import 'package:elecx/src/domain/electrical_routing.dart';
 import 'package:elecx/src/domain/electrical_placement.dart';
 import 'package:elecx/src/domain/geometry.dart';
@@ -253,6 +255,141 @@ void main() {
       ),
       isTrue,
     );
+  });
+
+  test('R3.4 authoring proves two walls and wall-ceiling continuity', () {
+    EngineeringSpace room(String id, int left, int right) {
+      final polygon = MmPolygon.rectangle(
+        MmPoint(left, 0),
+        MmPoint(right, 3000),
+      );
+      return EngineeringSpace(
+        id: id,
+        name: id,
+        type: SpaceType.room,
+        boundary: polygon,
+        referenceFrame: RoomReferenceFrame(origin: polygon.bounds.center),
+      );
+    }
+
+    final a = room('room-a', 0, 4000);
+    final b = room('room-b', 4000, 8000);
+    final c = room('room-c', 8000, 12000);
+    final level = BuildingLevel(
+      id: 'level-1',
+      name: 'Level 1',
+      elevationMm: 0,
+      spaces: [a, b, c],
+    );
+    final routedSegments = <ElectricalRouteSegment>[
+      ElectricalRouteSegment(
+        surface: wallA,
+        points: const [
+          SurfacePointMm(900, 1200),
+          SurfacePointMm(1500, 1200),
+        ],
+      ),
+      ElectricalRouteSegment(
+        surface: wallBEntry,
+        points: const [
+          SurfacePointMm(1500, 1200),
+          SurfacePointMm(1500, 3000),
+        ],
+      ),
+      ElectricalRouteSegment(
+        surface: ceilingB,
+        points: const [
+          SurfacePointMm(0, 1500),
+          SurfacePointMm(4000, 1500),
+        ],
+      ),
+      ElectricalRouteSegment(
+        surface: wallBExit,
+        points: const [
+          SurfacePointMm(1500, 3000),
+          SurfacePointMm(1500, 1200),
+        ],
+      ),
+      ElectricalRouteSegment(
+        surface: wallC,
+        points: const [
+          SurfacePointMm(1500, 1200),
+          SurfacePointMm(2200, 1200),
+        ],
+      ),
+    ];
+
+    SurfaceTransitionCandidate? resolve(
+      RoomSurfaceRef from,
+      SurfacePointMm fromPoint,
+      RoomSurfaceRef to,
+      SurfacePointMm toPoint,
+    ) {
+      final space = switch (from.spaceId) {
+        'room-a' => a,
+        'room-b' => b,
+        'room-c' => c,
+        _ => throw StateError('Unknown space'),
+      };
+      final candidates = SurfaceTransitionGraph.candidates(
+        level: level,
+        fromSpace: space,
+        fromSurface: from,
+        point: fromPoint,
+        thicknessResolver: (entry, exit) =>
+            entry.spaceId == 'room-a' ? 180 : 200,
+        materialResolver: (entry, exit) =>
+            entry.spaceId == 'room-a' ? 'brick' : 'concrete',
+      );
+      for (final candidate in candidates) {
+        if (candidate.toSurface == to && candidate.toPoint == toPoint) {
+          return candidate;
+        }
+      }
+      return null;
+    }
+
+    ElectricalCableRoute author(List<ElectricalRouteSegment> spans) =>
+        CablePenetrationAuthoring.build(
+          routeId: 'topology-backed-route',
+          source: const ElectricalEndpointRef(
+            componentId: 'board',
+            portId: 'out',
+          ),
+          target: const ElectricalEndpointRef(
+            componentId: 'socket',
+            portId: 'in',
+          ),
+          segments: spans,
+          resolveTransition: resolve,
+          penetrationIdFactory: (index, _) =>
+              BoundaryPenetrationId('actual-passage-$index'),
+        );
+
+    final physical = author(routedSegments);
+    expect(physical.segments, hasLength(5));
+    expect(physical.penetrations, hasLength(2));
+    expect(physical.penetrations.first.hostThicknessMm, 180);
+    expect(physical.penetrations.last.hostThicknessMm, 200);
+    expect(physical.visibleLengthMm, 8900);
+    expect(physical.hiddenPenetrationLengthMm, 380);
+    expect(physical.geometricLengthMm, 9280);
+    expect(physical.installationLengthMm, 9744);
+
+    final invalid = [
+      routedSegments.first,
+      routedSegments[1],
+      ElectricalRouteSegment(
+        surface: ceilingB,
+        points: const [
+          SurfacePointMm(100, 1500),
+          SurfacePointMm(4000, 1500),
+        ],
+      ),
+      routedSegments[3],
+      routedSegments.last,
+    ];
+    expect(() => author(invalid), throwsStateError);
   });
 
   test('three-room projection keeps physical surface spans distinct', () {
