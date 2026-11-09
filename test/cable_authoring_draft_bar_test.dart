@@ -72,10 +72,7 @@ void main() {
       final controller = EditorController.demo();
       addTearDown(controller.dispose);
       controller.setTool(EditorTool.cableRoute);
-      final surface = RoomSurfaceRef.wall(
-        controller.level.spaces.first.id,
-        0,
-      );
+      final surface = RoomSurfaceRef.wall(controller.level.spaces.first.id, 0);
       controller.routeSegments.addAll([
         SurfaceRouteSegmentDraft(
           surface: surface,
