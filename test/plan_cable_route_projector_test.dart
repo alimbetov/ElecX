@@ -50,17 +50,16 @@ void main() {
     expect(result.skippedSurfaceSegments, 0);
     expect(result.segments, hasLength(2));
     expect(result.segments.first.isVerticalPlanMarker, isTrue);
-    final expectedWallPoint =
-        RoomSurfaceResolver.wallLocalToPlan(wall, 900);
-    expect(result.segments.first.points, [expectedWallPoint, expectedWallPoint]);
+    final expectedWallPoint = RoomSurfaceResolver.wallLocalToPlan(wall, 900);
+    expect(
+        result.segments.first.points, [expectedWallPoint, expectedWallPoint]);
     expect(result.segments.last.surfaceType, SurfacePlaneType.ceiling);
     expect(
       result.segments.last.points,
       [
-        MmPoint(space.boundary.bounds.left + 900,
-            space.boundary.bounds.bottom),
-        MmPoint(space.boundary.bounds.left + 1500,
-            space.boundary.bounds.bottom),
+        MmPoint(space.boundary.bounds.left + 900, space.boundary.bounds.bottom),
+        MmPoint(
+            space.boundary.bounds.left + 1500, space.boundary.bounds.bottom),
       ],
     );
   });
