@@ -82,9 +82,7 @@ abstract final class EngineeringRouteQualificationService {
       final upper = building.levels
           .where((item) => item.level.id == upperSlab.aboveLevelId?.value)
           .toList(growable: false);
-      if (intermediate.length != 1 ||
-          lower.length != 1 ||
-          upper.length != 1) {
+      if (intermediate.length != 1 || lower.length != 1 || upper.length != 1) {
         return result(
           EngineeringRouteQualificationStatus.stale,
           'Referenced canonical levels no longer exist.',
@@ -100,12 +98,12 @@ abstract final class EngineeringRouteQualificationService {
       }
 
       final firstPassage = route.penetrations.where(
-        (p) => p.slabId == lowerSlab.id &&
-            p.verticalCoreId == leg.verticalCoreId,
+        (p) =>
+            p.slabId == lowerSlab.id && p.verticalCoreId == leg.verticalCoreId,
       );
       final secondPassage = route.penetrations.where(
-        (p) => p.slabId == upperSlab.id &&
-            p.verticalCoreId == leg.verticalCoreId,
+        (p) =>
+            p.slabId == upperSlab.id && p.verticalCoreId == leg.verticalCoreId,
       );
       if (firstPassage.length != 1 || secondPassage.length != 1) {
         return result(
@@ -124,8 +122,7 @@ abstract final class EngineeringRouteQualificationService {
           upperPassage.entryAnchor.surface.type != SurfacePlaneType.ceiling ||
           upperPassage.exitAnchor.surface.type != SurfacePlaneType.floor ||
           !lower.single.level.spaces.any(
-            (space) =>
-                space.id == lowerPassage.entryAnchor.surface.spaceId,
+            (space) => space.id == lowerPassage.entryAnchor.surface.spaceId,
           ) ||
           !intermediate.single.level.spaces.any(
             (space) =>
@@ -133,8 +130,7 @@ abstract final class EngineeringRouteQualificationService {
                 space.id == upperPassage.entryAnchor.surface.spaceId,
           ) ||
           !upper.single.level.spaces.any(
-            (space) =>
-                space.id == upperPassage.exitAnchor.surface.spaceId,
+            (space) => space.id == upperPassage.exitAnchor.surface.spaceId,
           )) {
         return result(
           EngineeringRouteQualificationStatus.stale,
