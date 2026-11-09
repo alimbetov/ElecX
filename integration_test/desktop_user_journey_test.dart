@@ -79,8 +79,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('p12-review-dialog')), findsOneWidget);
     expect(find.byKey(const ValueKey('p12-review-panel')), findsOneWidget);
-    expect(find.byKey(const ValueKey('p12-review-apply-blocked')),
-        findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('p12-review-apply-blocked')), findsOneWidget);
     expect(find.byKey(const ValueKey('p12-review-diff-unavailable')),
         findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('p12-review-close')));
