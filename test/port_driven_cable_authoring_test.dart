@@ -229,7 +229,7 @@ void main() {
       );
       final remote = controller.p2.placeComponent(
         type: ElectricalComponentType.socketOutlet,
-        surface: RoomSurfaceRef.wall('room-102', 0),
+        surface: RoomSurfaceRef.wall('corridor-1', 0),
         position: const SurfacePointMm(900, 1200),
       );
       controller.p2.select(board.id);
@@ -238,7 +238,7 @@ void main() {
       final remoteTargets = controller.blockedCrossRoomCableTargets;
       expect(remoteTargets, hasLength(1));
       expect(remoteTargets.single.componentId, remote.id);
-      expect(remoteTargets.single.surface.spaceId, 'room-102');
+      expect(remoteTargets.single.surface.spaceId, 'corridor-1');
       expect(controller.compatiblePortDrivenCableTargets, isEmpty);
       expect(
         controller.snapPortDrivenCableCompletionTarget(
@@ -266,7 +266,7 @@ void main() {
       );
       final remote = controller.p2.placeComponent(
         type: ElectricalComponentType.socketOutlet,
-        surface: RoomSurfaceRef.wall('room-102', 0),
+        surface: RoomSurfaceRef.wall('corridor-1', 0),
         position: const SurfacePointMm(900, 1200),
       );
       controller.p2.select(board.id);
@@ -321,7 +321,7 @@ void main() {
     );
     controller.p2.placeComponent(
       type: ElectricalComponentType.socketOutlet,
-      surface: RoomSurfaceRef.wall('room-102', 0),
+      surface: RoomSurfaceRef.wall('corridor-1', 0),
       position: const SurfacePointMm(900, 1200),
     );
     controller.p2.select(board.id);
