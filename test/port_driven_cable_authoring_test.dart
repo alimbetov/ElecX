@@ -213,6 +213,96 @@ void main() {
     });
   });
 
+  group('Multi-room routing discovery — non-authorizing', () {
+    test('remote-room compatible loads are identified but cannot be snapped',
+        () {
+      final controller = EditorController.demo();
+      addTearDown(() {
+        controller.disposeP2State();
+        controller.dispose();
+      });
+      controller.showWall(0);
+      final board = controller.p2.placeComponent(
+        type: ElectricalComponentType.distributionBoard,
+        surface: RoomSurfaceRef.wall('room-101', 0),
+        position: const SurfacePointMm(500, 1200),
+      );
+      final remote = controller.p2.placeComponent(
+        type: ElectricalComponentType.socketOutlet,
+        surface: RoomSurfaceRef.wall('room-102', 0),
+        position: const SurfacePointMm(900, 1200),
+      );
+      controller.p2.select(board.id);
+      expect(controller.beginPortDrivenCableFromSelectedPort('power-out'),
+          isTrue);
+      final remoteTargets = controller.blockedCrossRoomCableTargets;
+      expect(remoteTargets, hasLength(1));
+      expect(remoteTargets.single.componentId, remote.id);
+      expect(remoteTargets.single.surface.spaceId, 'room-102');
+      expect(controller.compatiblePortDrivenCableTargets, isEmpty);
+      expect(
+        controller.snapPortDrivenCableCompletionTarget(
+          componentId: remote.id,
+          portId: 'power-in',
+        ),
+        isFalse,
+      );
+      expect(controller.p2.routes, isEmpty);
+      expect(controller.routeSegments, hasLength(1));
+    });
+
+    testWidgets('remote-room targets show a passage prerequisite, not a button',
+        (tester) async {
+      final controller = EditorController.demo();
+      addTearDown(() {
+        controller.disposeP2State();
+        controller.dispose();
+      });
+      controller.showWall(0);
+      final board = controller.p2.placeComponent(
+        type: ElectricalComponentType.distributionBoard,
+        surface: RoomSurfaceRef.wall('room-101', 0),
+        position: const SurfacePointMm(500, 1200),
+      );
+      controller.p2.placeComponent(
+        type: ElectricalComponentType.socketOutlet,
+        surface: RoomSurfaceRef.wall('room-102', 0),
+        position: const SurfacePointMm(900, 1200),
+      );
+      controller.p2.select(board.id);
+      expect(controller.beginPortDrivenCableFromSelectedPort('power-out'),
+          isTrue);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: SizedBox(
+                width: 520,
+                child: CableAuthoringDraftBar(controller: controller),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(
+        find.byKey(const ValueKey('cable-cross-room-targets-blocked')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('cable-cross-room-passage-required')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          const ValueKey('cable-completion-target-'
+              'component-2-socket-outlet-power-in'),
+        ),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   group('P12A.2 guided cable completion', () {
     test('compatible completion targets expose only electrically valid ports',
         () {
