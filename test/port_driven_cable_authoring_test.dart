@@ -270,8 +270,8 @@ void main() {
         position: const SurfacePointMm(900, 1200),
       );
       controller.p2.select(board.id);
-      expect(controller.beginPortDrivenCableFromSelectedPort('power-out'),
-          isTrue);
+      expect(
+          controller.beginPortDrivenCableFromSelectedPort('power-out'), isTrue);
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -325,8 +325,8 @@ void main() {
       position: const SurfacePointMm(900, 1200),
     );
     controller.p2.select(board.id);
-    expect(controller.beginPortDrivenCableFromSelectedPort('power-out'),
-        isTrue);
+    expect(
+        controller.beginPortDrivenCableFromSelectedPort('power-out'), isTrue);
     expect(controller.blockedCrossRoomCableTargets, hasLength(1));
     controller.p2.placeComponent(
       type: ElectricalComponentType.socketOutlet,
