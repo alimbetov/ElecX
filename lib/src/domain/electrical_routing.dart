@@ -169,7 +169,11 @@ final class ElectricalCableRoute {
     for (var index = 0; index + 1 < segments.length; index++) {
       final before = segments[index];
       final after = segments[index + 1];
-      if (before.points.isEmpty || after.points.isEmpty) continue;
+      if (before.points.isEmpty || after.points.isEmpty) {
+        throw ArgumentError(
+          'Route $id transition ${index + 1} has an empty surface segment.',
+        );
+      }
       if (before.surface == after.surface) {
         if (before.points.last != after.points.first) {
           throw ArgumentError(
