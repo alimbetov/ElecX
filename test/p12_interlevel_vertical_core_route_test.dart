@@ -439,6 +439,44 @@ void main() {
       qualify(physical, slabs: const {}).status,
       EngineeringRouteQualificationStatus.requiresReview,
     );
+    final displacedLower = BuildingLevel(
+      id: level1.id,
+      name: level1.name,
+      elevationMm: level1.elevationMm,
+      spaces: [
+        EngineeringSpace(
+          id: space1.id,
+          name: space1.name,
+          type: SpaceType.room,
+          boundary: MmPolygon.rectangle(
+            const MmPoint(250, 0),
+            const MmPoint(4250, 3000),
+          ),
+          referenceFrame:
+              const RoomReferenceFrame(origin: MmPoint(2250, 1500)),
+        ),
+      ],
+    );
+    final alteredBuilding = ComposedBuilding(
+      building: Building(
+        id: 'building',
+        name: 'Altered project',
+        levels: [displacedLower, level2, level3],
+      ),
+      levels: [
+        ComposedBuildingLevel(
+          level: displacedLower,
+          levelNumber: 1,
+          kind: BuildingLevelKind.residential,
+        ),
+        ...composed.levels.skip(1),
+      ],
+      verticalCores: [core],
+    );
+    expect(
+      qualify(physical, owner: alteredBuilding).status,
+      EngineeringRouteQualificationStatus.stale,
+    );
     expect(
       qualify(physical, owner: ComposedBuilding(
         building: composed.building,
