@@ -15,6 +15,7 @@ import '../../engine/spatial_scene_index.dart';
 import '../../engine/world_camera.dart';
 import 'electrical_host_geometry_guard.dart';
 import 'editor_controller.dart';
+import 'editor_p2_session.dart';
 import 'editor_viewport_commands.dart';
 import 'viewport_zoom_policy.dart';
 import 'plan_geometry_editor_actions.dart';
@@ -69,6 +70,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     controller.editCancellationListenable.addListener(
       _cancelTransientInteraction,
     );
+    controller.p2.addListener(_onP2RoutesChanged);
     _rebuildIndex(force: true);
   }
 
@@ -82,11 +84,13 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
       oldWidget.controller.editCancellationListenable.removeListener(
         _cancelTransientInteraction,
       );
+      oldWidget.controller.p2.removeListener(_onP2RoutesChanged);
       _lastViewportRevision = controller.viewportCommandRevision;
       controller.viewportCommandListenable.addListener(_onViewportCommand);
       controller.editCancellationListenable.addListener(
         _cancelTransientInteraction,
       );
+      controller.p2.addListener(_onP2RoutesChanged);
       _selectedExternalEdgeIndex = null;
       _selectedExternalSpaceId = null;
       _selectedExternalPullSign = 1;
@@ -100,7 +104,12 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     controller.editCancellationListenable.removeListener(
       _cancelTransientInteraction,
     );
+    controller.p2.removeListener(_onP2RoutesChanged);
     super.dispose();
+  }
+
+  void _onP2RoutesChanged() {
+    if (mounted) setState(() {});
   }
 
   void _onViewportCommand() {
