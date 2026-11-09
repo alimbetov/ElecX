@@ -535,6 +535,10 @@ void main() {
       isTrue,
     );
 
+    final requalified = author(persisted.segments);
+    expect(requalified.penetrations, hasLength(2));
+    expect(requalified.geometricLengthMm, persisted.geometricLengthMm);
+
     final invalid = [
       routedSegments.first,
       routedSegments[1],
@@ -559,12 +563,12 @@ void main() {
       ),
     );
     expect(
-      () => author(routedSegments, evidence: mismatchedWall),
+      () => author(persisted.segments, evidence: mismatchedWall),
       throwsStateError,
     );
     expect(
       () => author(
-        routedSegments,
+        persisted.segments,
         evidence: constructions.remove(host('room-b', 3)),
       ),
       throwsStateError,
