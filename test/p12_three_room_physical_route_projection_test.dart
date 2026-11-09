@@ -382,7 +382,10 @@ void main() {
       );
     }
 
-    ElectricalCableRoute author(List<ElectricalRouteSegment> spans) =>
+    ElectricalCableRoute author(
+      List<ElectricalRouteSegment> spans, {
+      BoundaryConstructionRegistry? evidence,
+    }) =>
         CablePenetrationAuthoring.build(
           routeId: 'topology-backed-route',
           source: const ElectricalEndpointRef(
@@ -396,7 +399,7 @@ void main() {
           segments: spans,
           resolveTransition: (from, fromPoint, to, toPoint) =>
               resolveWithRegistry(
-            constructions,
+            evidence ?? constructions,
             from,
             fromPoint,
             to,
@@ -474,6 +477,46 @@ void main() {
     expect(reopened.editor.p2.components, hasLength(2));
     final persisted = reopened.editor.p2.routes.single;
     expect(persisted.id, physical.id);
+    expect(persisted.segments, hasLength(routedSegments.length));
+    for (var index = 0; index < routedSegments.length; index++) {
+      expect(persisted.segments[index].surface, routedSegments[index].surface);
+      expect(persisted.segments[index].points, routedSegments[index].points);
+    }
+    expect(
+      persisted.penetrations.map((p) => p.id.value).toList(),
+      ['actual-passage-0', 'actual-passage-3'],
+    );
+    for (var index = 0; index < physical.penetrations.length; index++) {
+      final before = physical.penetrations[index];
+      final after = persisted.penetrations[index];
+      expect(after.entryAnchor.surface, before.entryAnchor.surface);
+      expect(after.entryAnchor.point, before.entryAnchor.point);
+      expect(after.exitAnchor.surface, before.exitAnchor.surface);
+      expect(after.exitAnchor.point, before.exitAnchor.point);
+      expect(after.hostThicknessMm, before.hostThicknessMm);
+      expect(after.materialId, before.materialId);
+      expect(after.routeId, physical.id);
+    }
+    expect(persisted.source.componentId, 'board');
+    expect(persisted.source.portId, 'out');
+    expect(persisted.target.componentId, 'socket');
+    expect(persisted.target.portId, 'in');
+    expect(
+      reopened.editor.p2.components
+          .singleWhere((component) => component.id == 'board')
+          .ports
+          .single
+          .kind,
+      ElectricalPortKind.powerOut,
+    );
+    expect(
+      reopened.editor.p2.components
+          .singleWhere((component) => component.id == 'socket')
+          .ports
+          .single
+          .kind,
+      ElectricalPortKind.powerIn,
+    );
     expect(persisted.penetrations, hasLength(2));
     expect(persisted.geometricLengthMm, 9280);
     expect(persisted.installationLengthMm, 9744);
@@ -506,6 +549,26 @@ void main() {
       routedSegments.last,
     ];
     expect(() => author(invalid), throwsStateError);
+    final mismatchedWall = constructions.put(
+      host('room-b', 3),
+      BoundaryConstructionProfile(
+        kind: BoundaryConstructionKind.wall,
+        thicknessMm: 250,
+        materialId: 'brick',
+        fireRatingId: 'EI60',
+      ),
+    );
+    expect(
+      () => author(routedSegments, evidence: mismatchedWall),
+      throwsStateError,
+    );
+    expect(
+      () => author(
+        routedSegments,
+        evidence: constructions.remove(host('room-b', 3)),
+      ),
+      throwsStateError,
+    );
   });
 
   test('three-room projection keeps physical surface spans distinct', () {
