@@ -3,6 +3,7 @@ import 'electrical_routing.dart';
 import 'geometry.dart';
 import 'project_identity.dart';
 import 'slab_topology.dart';
+import 'surfaces.dart';
 import 'vertical_core_route_leg_authoring.dart';
 
 enum EngineeringRouteQualificationStatus {
@@ -110,6 +111,34 @@ abstract final class EngineeringRouteQualificationService {
         return result(
           EngineeringRouteQualificationStatus.blocked,
           'Exactly two core-owned slab passages are required.',
+        );
+      }
+      final lowerPassage = firstPassage.single;
+      final upperPassage = secondPassage.single;
+      if (lowerPassage.hostThicknessMm != lowerSlab.thicknessMm ||
+          lowerPassage.materialId != lowerSlab.materialId ||
+          upperPassage.hostThicknessMm != upperSlab.thicknessMm ||
+          upperPassage.materialId != upperSlab.materialId ||
+          lowerPassage.entryAnchor.surface.type != SurfacePlaneType.ceiling ||
+          lowerPassage.exitAnchor.surface.type != SurfacePlaneType.floor ||
+          upperPassage.entryAnchor.surface.type != SurfacePlaneType.ceiling ||
+          upperPassage.exitAnchor.surface.type != SurfacePlaneType.floor ||
+          !lower.single.level.spaces.any(
+            (space) =>
+                space.id == lowerPassage.entryAnchor.surface.spaceId,
+          ) ||
+          !intermediate.single.level.spaces.any(
+            (space) =>
+                space.id == lowerPassage.exitAnchor.surface.spaceId &&
+                space.id == upperPassage.entryAnchor.surface.spaceId,
+          ) ||
+          !upper.single.level.spaces.any(
+            (space) =>
+                space.id == upperPassage.exitAnchor.surface.spaceId,
+          )) {
+        return result(
+          EngineeringRouteQualificationStatus.stale,
+          'Slab passage construction or floor/ceiling owner has changed.',
         );
       }
       final firstPoint = firstPassage.single.exitAnchor.point;
