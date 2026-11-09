@@ -122,7 +122,7 @@ void main() {
     final middleCeiling = RoomSurfaceRef.ceiling(space2.id);
     final above = RoomSurfaceRef.floor(space3.id);
     const bottomPoint = SurfacePointMm(1500, 1000);
-    const topPoint = SurfacePointMm(1600, 1000);
+    const topPoint = bottomPoint;
     final firstCrossing = crossing(
       fromLevel: level1,
       fromSpace: space1,
@@ -165,11 +165,11 @@ void main() {
       ),
       ElectricalRouteSegment(
         surface: middleFloor,
-        points: const [bottomPoint, topPoint],
+        points: const [bottomPoint, bottomPoint],
       ),
       ElectricalRouteSegment(
         surface: middleCeiling,
-        points: const [topPoint, topPoint],
+        points: const [bottomPoint, bottomPoint],
       ),
       ElectricalRouteSegment(
         surface: above,
