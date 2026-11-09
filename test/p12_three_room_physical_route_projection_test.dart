@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:elecx/src/domain/boundary_penetration.dart';
 import 'package:elecx/src/domain/electrical_routing.dart';
+import 'package:elecx/src/domain/electrical_placement.dart';
 import 'package:elecx/src/domain/geometry.dart';
 import 'package:elecx/src/domain/project_model.dart';
 import 'package:elecx/src/domain/surfaces.dart';
@@ -111,40 +114,144 @@ void main() {
     expect(() => route([]), throwsArgumentError);
   });
 
-  test('two wall passages survive canonical project JSON round-trip', () {
-    final editor = EditorController.demo();
-    final workspace = EditorBuildingWorkspace.demo(editor);
-    addTearDown(() {
-      editor.disposeP2State();
+  test('R3.4 saves, loads and reopens one three-room electrical project',
+      () async {
+    EngineeringSpace room(String id, int left, int right) {
+      final boundary = MmPolygon.rectangle(
+        MmPoint(left, 0),
+        MmPoint(right, 3000),
+      );
+      return EngineeringSpace(
+        id: id,
+        name: id,
+        type: SpaceType.room,
+        boundary: boundary,
+        referenceFrame: RoomReferenceFrame(origin: boundary.bounds.center),
+      );
+    }
+
+    final level = BuildingLevel(
+      id: 'level-1',
+      name: 'Level 1',
+      elevationMm: 0,
+      spaces: [
+        room('room-a', 0, 4000),
+        room('room-b', 4000, 8000),
+        room('room-c', 8000, 12000),
+      ],
+    );
+    final editor = EditorController.restored(level: level, openings: const []);
+    final workspace = EditorBuildingWorkspace.blank(
+      editor,
+      projectId: 'r3-three-room',
+      projectName: 'Three-room electrical acceptance',
+    );
+    final panel = ElectricalComponentPlacement(
+      id: 'board',
+      type: ElectricalComponentType.distributionBoard,
+      surface: wallA,
+      position: segments.first.points.first,
+      label: 'Main distribution board',
+      ports: const [
+        ElectricalPortDefinition(id: 'out', kind: ElectricalPortKind.powerOut),
+      ],
+    );
+    final socket = ElectricalComponentPlacement(
+      id: 'socket',
+      type: ElectricalComponentType.socketOutlet,
+      surface: wallC,
+      position: segments.last.points.last,
+      label: 'Room C socket',
+      ports: const [
+        ElectricalPortDefinition(id: 'in', kind: ElectricalPortKind.powerIn),
+      ],
+    );
+    final physical = route(passages);
+    editor.restoreP2State(EditorP2State(
+      components: [panel, socket],
+      routes: [physical],
+    ));
+    final directory = await Directory.systemTemp.createTemp('elecx-r3-');
+    addTearDown(() async {
       workspace.dispose();
       editor.dispose();
+      if (await directory.exists()) {
+        await directory.delete(recursive: true);
+      }
     });
 
-    final base = EditorProjectDocument.capture(workspace);
-    final document = EditorProjectDocument(
-      schemaVersion: base.schemaVersion,
-      metadata: base.metadata,
-      building: base.building,
-      site: base.site,
-      workspaceContext: base.workspaceContext,
-      activeLevelNumber: base.activeLevelNumber,
-      selectedZoneId: base.selectedZoneId,
-      activeOutdoorZoneId: base.activeOutdoorZoneId,
-      openingsByLevel: base.openingsByLevel,
-      resume: base.resume,
-      p2State: EditorP2State(routes: [route(passages)]),
+    expect(editor.level.spaces, hasLength(3));
+    expect(
+      ElectricalConnectivityValidator.routeIsConnected(
+        route: physical,
+        components: editor.p2.components,
+      ),
+      isTrue,
+    );
+    expect(
+      ElectricalConnectivityValidator.routeIsPhysicallyAnchored(
+        route: physical,
+        components: editor.p2.components,
+      ),
+      isTrue,
     );
 
-    final restored = EditorProjectDocument.fromJson(document.toJson());
-    final physical = restored.p2State.routes.single;
-    expect(physical.id, 'three-room-route');
-    expect(physical.segments, hasLength(5));
-    expect(physical.penetrations.map((item) => item.id.value).toList(),
+    final document = EditorProjectDocument.capture(workspace);
+    final store = JsonFileEditorProjectStore(directory);
+    await store.save(document);
+    final reloaded = await store.load(document.projectId);
+    expect(reloaded, isNotNull);
+    final reopened = reloaded!.restore();
+    addTearDown(() {
+      reopened.workspace.dispose();
+      reopened.editor.dispose();
+    });
+
+    expect(reopened.editor.level.spaces.map((s) => s.id).toList(),
+        ['room-a', 'room-b', 'room-c']);
+    expect(reopened.editor.p2.components, hasLength(2));
+    final restoredPanel = reopened.editor.p2.components
+        .singleWhere((component) => component.id == 'board');
+    final restoredSocket = reopened.editor.p2.components
+        .singleWhere((component) => component.id == 'socket');
+    expect(restoredPanel.type, ElectricalComponentType.distributionBoard);
+    expect(restoredPanel.ports.single.kind, ElectricalPortKind.powerOut);
+    expect(restoredSocket.type, ElectricalComponentType.socketOutlet);
+    expect(restoredSocket.ports.single.kind, ElectricalPortKind.powerIn);
+
+    final restored = reopened.editor.p2.routes.single;
+    expect(restored.id, physical.id);
+    expect(restored.source.componentId, restoredPanel.id);
+    expect(restored.target.componentId, restoredSocket.id);
+    expect(restored.segments, hasLength(5));
+    for (var index = 0; index < physical.segments.length; index++) {
+      expect(restored.segments[index].surface, physical.segments[index].surface);
+      expect(restored.segments[index].points, physical.segments[index].points);
+    }
+    expect(restored.penetrations.map((p) => p.id.value).toList(),
         ['wall-ab', 'wall-bc']);
-    expect(physical.geometricLengthMm, 3180);
-    expect(physical.installationLengthMm, 3339);
-    expect(physical.penetrations.first.hostThicknessMm, 180);
-    expect(physical.penetrations.last.hostThicknessMm, 200);
+    expect(restored.penetrations.first.hostThicknessMm, 180);
+    expect(restored.penetrations.last.hostThicknessMm, 200);
+    expect(restored.penetrations.first.materialId, 'brick');
+    expect(restored.penetrations.last.materialId, 'concrete');
+    expect(restored.visibleLengthMm, 2800);
+    expect(restored.hiddenPenetrationLengthMm, 380);
+    expect(restored.geometricLengthMm, 3180);
+    expect(restored.installationLengthMm, 3339);
+    expect(
+      ElectricalConnectivityValidator.routeIsConnected(
+        route: restored,
+        components: reopened.editor.p2.components,
+      ),
+      isTrue,
+    );
+    expect(
+      ElectricalConnectivityValidator.routeIsPhysicallyAnchored(
+        route: restored,
+        components: reopened.editor.p2.components,
+      ),
+      isTrue,
+    );
   });
 
   test('three-room projection keeps physical surface spans distinct', () {
