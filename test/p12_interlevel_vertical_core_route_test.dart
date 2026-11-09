@@ -8,6 +8,7 @@ import 'package:elecx/src/domain/project_model.dart';
 import 'package:elecx/src/domain/slab_topology.dart';
 import 'package:elecx/src/domain/surface_transition_graph.dart';
 import 'package:elecx/src/domain/surfaces.dart';
+import 'package:elecx/src/domain/vertical_core_route_leg.dart';
 import 'package:elecx/src/domain/vertical_core_route_leg_authoring.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -234,6 +235,7 @@ void main() {
     ElectricalCableRoute route({
       List<BoundaryPenetration>? openings,
       List<ElectricalRouteSegment>? spans,
+      List<VerticalCoreRouteLeg>? legs,
     }) =>
         ElectricalCableRoute(
           id: 'multi-floor',
@@ -247,7 +249,7 @@ void main() {
           ),
           segments: spans ?? segments,
           penetrations: openings ?? penetrations,
-          verticalCoreLegs: [hidden],
+          verticalCoreLegs: legs ?? [hidden],
         );
     final physical = route();
     expect(physical.penetrations, hasLength(2));
@@ -257,6 +259,56 @@ void main() {
     expect(physical.hiddenVerticalCoreLengthMm, 3000);
     expect(physical.geometricLengthMm, 4640);
     expect(physical.installationLengthMm, 4872);
+
+    // A reverse/unreferenced riser leg must not inflate cable length.
+    final reverseLeg = VerticalCoreRouteLeg(
+      verticalCoreId: hidden.verticalCoreId,
+      fromSlabId: slab23.id,
+      toSlabId: slab12.id,
+      lengthMm: 3000,
+    );
+    expect(
+      () => route(legs: [hidden, reverseLeg]),
+      throwsArgumentError,
+    );
+
+    // Passing through two slabs at different XY cannot be represented as a
+    // single straight-Z leg, even when all penetration IDs are valid.
+    const displacedPoint = SurfacePointMm(1700, 1000);
+    final displacedUpper = BoundaryPenetration.slabTyped(
+      id: BoundaryPenetrationId('p23'),
+      slabId: slab23.id,
+      entrySurface: secondCrossing.fromSurface,
+      entryPoint: displacedPoint,
+      exitSurface: secondCrossing.toSurface,
+      exitPoint: displacedPoint,
+      hostThicknessMm: 220,
+      materialId: 'concrete',
+      routeId: 'multi-floor',
+      verticalCoreId: hidden.verticalCoreId,
+    );
+    final displacedSegments = <ElectricalRouteSegment>[
+      segments.first,
+      segments[1],
+      ElectricalRouteSegment(
+        surface: middleCeiling,
+        points: const [displacedPoint, displacedPoint],
+      ),
+      ElectricalRouteSegment(
+        surface: above,
+        points: const [
+          displacedPoint,
+          SurfacePointMm(2200, 1000),
+        ],
+      ),
+    ];
+    expect(
+      () => route(
+        openings: [penetrations.first, displacedUpper],
+        spans: displacedSegments,
+      ),
+      throwsArgumentError,
+    );
 
     final lowerWall = RoomSurfaceRef.wall(space1.id, 0);
     final upperWall = RoomSurfaceRef.wall(space3.id, 0);
