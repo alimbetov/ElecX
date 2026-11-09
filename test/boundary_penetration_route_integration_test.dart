@@ -33,6 +33,80 @@ void main() {
       );
     });
 
+    test('empty intermediate segment cannot bypass physical passage gate', () {
+      final segments = <ElectricalRouteSegment>[
+        ElectricalRouteSegment(
+          surface: RoomSurfaceRef.wall('space-a', 1),
+          points: const [
+            SurfacePointMm(100, 1000),
+            SurfacePointMm(500, 1000),
+          ],
+        ),
+        ElectricalRouteSegment(
+          surface: RoomSurfaceRef.wall('space-b', 3),
+          points: const [],
+        ),
+        ElectricalRouteSegment(
+          surface: RoomSurfaceRef.wall('space-c', 1),
+          points: const [
+            SurfacePointMm(100, 1000),
+            SurfacePointMm(500, 1000),
+          ],
+        ),
+      ];
+      expect(
+        () => ElectricalCableRoute(
+          id: 'route-empty-bypass',
+          source: const ElectricalEndpointRef(
+            componentId: 'source',
+            portId: 'out',
+          ),
+          target: const ElectricalEndpointRef(
+            componentId: 'target',
+            portId: 'in',
+          ),
+          segments: segments,
+        ),
+        throwsA(
+          isA<ArgumentError>().having(
+            (error) => error.message,
+            'message',
+            contains('empty surface segment'),
+          ),
+        ),
+      );
+    });
+
+    test('empty final cross-room segment fails closed', () {
+      expect(
+        () => ElectricalCableRoute(
+          id: 'route-empty-target',
+          source: const ElectricalEndpointRef(
+            componentId: 'source',
+            portId: 'out',
+          ),
+          target: const ElectricalEndpointRef(
+            componentId: 'target',
+            portId: 'in',
+          ),
+          segments: [
+            ElectricalRouteSegment(
+              surface: RoomSurfaceRef.wall('space-a', 1),
+              points: const [
+                SurfacePointMm(100, 1000),
+                SurfacePointMm(500, 1000),
+              ],
+            ),
+            ElectricalRouteSegment(
+              surface: RoomSurfaceRef.wall('space-b', 3),
+              points: const [],
+            ),
+          ],
+        ),
+        throwsArgumentError,
+      );
+    });
+
     test('floor-to-ceiling route fails closed without a slab penetration', () {
       expect(
         () => ElectricalCableRoute(
