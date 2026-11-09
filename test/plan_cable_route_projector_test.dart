@@ -1,5 +1,6 @@
 import 'package:elecx/src/domain/electrical_routing.dart';
 import 'package:elecx/src/domain/geometry.dart';
+import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/engine/plan_cable_route_projector.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
