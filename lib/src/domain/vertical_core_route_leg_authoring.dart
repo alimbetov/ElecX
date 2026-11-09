@@ -26,7 +26,8 @@ abstract final class VerticalCoreRouteLegAuthoring {
     if (core.kind != VerticalCoreKind.electricalRiser &&
         core.kind != VerticalCoreKind.cableRiser &&
         core.kind != VerticalCoreKind.serviceShaft) {
-      throw ArgumentError('VerticalCore must be a cable-capable riser or shaft.');
+      throw ArgumentError(
+          'VerticalCore must be a cable-capable riser or shaft.');
     }
     if (lowerRoomHeightMm <= 0 || intermediateRoomHeightMm <= 0) {
       throw ArgumentError('Room heights must be positive.');
@@ -56,8 +57,7 @@ abstract final class VerticalCoreRouteLegAuthoring {
         upperSlab.topElevationMm != upperLevel.elevationMm) {
       throw ArgumentError('Slab elevations do not match intermediate room Z.');
     }
-    final lengthMm =
-        upperSlab.bottomElevationMm - lowerSlab.topElevationMm;
+    final lengthMm = upperSlab.bottomElevationMm - lowerSlab.topElevationMm;
     if (lengthMm <= 0) {
       throw ArgumentError('Vertical run between slabs must be positive.');
     }
