@@ -264,7 +264,7 @@ void main() {
         surface: RoomSurfaceRef.wall('room-101', 0),
         position: const SurfacePointMm(500, 1200),
       );
-      controller.p2.placeComponent(
+      final remote = controller.p2.placeComponent(
         type: ElectricalComponentType.socketOutlet,
         surface: RoomSurfaceRef.wall('room-102', 0),
         position: const SurfacePointMm(900, 1200),
@@ -294,13 +294,47 @@ void main() {
       );
       expect(
         find.byKey(
-          const ValueKey('cable-completion-target-'
-              'component-2-socket-outlet-power-in'),
+          ValueKey('cable-completion-target-${remote.id}-power-in'),
         ),
         findsNothing,
       );
+      final save = tester.widget<FilledButton>(
+        find.byKey(const ValueKey('cable-draft-commit')),
+      );
+      expect(save.onPressed, isNull);
+      expect(controller.p2.routes, isEmpty);
       expect(tester.takeException(), isNull);
     });
+  });
+
+  test('cross-room discovery invalidates on P2 mutation revision', () {
+    final controller = EditorController.demo();
+    addTearDown(() {
+      controller.disposeP2State();
+      controller.dispose();
+    });
+    controller.showWall(0);
+    final board = controller.p2.placeComponent(
+      type: ElectricalComponentType.distributionBoard,
+      surface: RoomSurfaceRef.wall('room-101', 0),
+      position: const SurfacePointMm(500, 1200),
+    );
+    controller.p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: RoomSurfaceRef.wall('room-102', 0),
+      position: const SurfacePointMm(900, 1200),
+    );
+    controller.p2.select(board.id);
+    expect(controller.beginPortDrivenCableFromSelectedPort('power-out'),
+        isTrue);
+    expect(controller.blockedCrossRoomCableTargets, hasLength(1));
+    controller.p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: RoomSurfaceRef.wall('room-101', 0),
+      position: const SurfacePointMm(1700, 1200),
+    );
+    expect(controller.blockedCrossRoomCableTargets, isEmpty);
+    expect(controller.p2.routes, isEmpty);
   });
 
   group('P12A.2 guided cable completion', () {
