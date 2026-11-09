@@ -9,6 +9,7 @@ import '../../domain/surfaces.dart';
 import '../../engine/adaptive_grid.dart';
 import '../../engine/plan_geometry_editing.dart';
 import '../../engine/plan_pull_measure.dart';
+import '../../engine/plan_cable_route_projector.dart';
 import '../../engine/render_policy.dart';
 import '../../engine/spatial_scene_index.dart';
 import '../../engine/world_camera.dart';
@@ -695,6 +696,10 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
         final scheme = Theme.of(context).colorScheme;
         final pullMeasureOverlay = _buildPullMeasureOverlay(scheme);
         final externalWallGizmo = _buildExternalWallGizmo(scheme);
+        final cableProjection = PlanCableRouteProjector.project(
+          level: controller.level,
+          routes: controller.p2.routes,
+        );
 
         return Stack(
           children: [
@@ -708,6 +713,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                     lod: lod,
                     previewBoundary: _previewBoundary,
                     previewOpening: _previewOpening,
+                    cableProjection: cableProjection,
                     scheme: scheme,
                   ),
                 ),
@@ -833,6 +839,7 @@ class _PlanPainter extends CustomPainter {
     required this.lod,
     required this.previewBoundary,
     required this.previewOpening,
+    required this.cableProjection,
     required this.scheme,
   })  : selectedSpaceId = controller.selectedSpaceId,
         selectedOpeningId = controller.selectedOpeningId,
@@ -869,9 +876,20 @@ class _PlanPainter extends CustomPainter {
   final List<ArchitecturalOpening> openings;
   final MmPolygon? previewBoundary;
   final ArchitecturalOpening? previewOpening;
+  final PlanCableProjection cableProjection;
   final ColorScheme scheme;
   final int openingFingerprint;
   final int sceneFingerprint;
+
+  int get routeFingerprint => Object.hashAll([
+        cableProjection.skippedSurfaceSegments,
+        for (final segment in cableProjection.segments)
+          Object.hash(
+            segment.routeId,
+            segment.surfaceType,
+            Object.hashAll(segment.points),
+          ),
+      ]);
 
   Offset p(MmPoint point, Size size) {
     final screen = camera.worldToScreen(
@@ -890,6 +908,42 @@ class _PlanPainter extends CustomPainter {
           ? previewBoundary!
           : space.boundary;
       _drawSpace(canvas, size, space, boundary);
+    }
+    _drawCableRoutes(canvas, size);
+  }
+
+  /// Physical P2 route projection only. No inferred connection across rooms.
+  void _drawCableRoutes(Canvas canvas, Size size) {
+    for (final segment in cableProjection.segments) {
+      final color = switch (segment.surfaceType) {
+        SurfacePlaneType.floor => scheme.tertiary,
+        SurfacePlaneType.wall => scheme.primary,
+        SurfacePlaneType.ceiling => scheme.secondary,
+      };
+      final paint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.2
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..color = color.withValues(alpha: 0.9);
+      if (segment.isVerticalPlanMarker) {
+        final center = p(segment.points.first, size);
+        canvas.drawCircle(center, 5, paint);
+        canvas.drawCircle(
+          center,
+          2,
+          Paint()..color = color.withValues(alpha: 0.9),
+        );
+        continue;
+      }
+      final path = Path();
+      final first = p(segment.points.first, size);
+      path.moveTo(first.dx, first.dy);
+      for (final point in segment.points.skip(1)) {
+        final position = p(point, size);
+        path.lineTo(position.dx, position.dy);
+      }
+      canvas.drawPath(path, paint);
     }
   }
 
@@ -1126,6 +1180,9 @@ class _PlanPainter extends CustomPainter {
       oldDelegate.openingFingerprint != openingFingerprint ||
       oldDelegate.previewBoundary != previewBoundary ||
       oldDelegate.previewOpening != previewOpening ||
+      oldDelegate.cableProjection.segments.length !=
+          cableProjection.segments.length ||
+      oldDelegate.routeFingerprint != routeFingerprint ||
       oldDelegate.scheme != scheme;
 }
 
