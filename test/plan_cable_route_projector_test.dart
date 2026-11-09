@@ -6,9 +6,12 @@ import 'package:elecx/src/engine/plan_cable_route_projector.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-ElectricalCableRoute route(List<ElectricalRouteSegment> segments) =>
+ElectricalCableRoute route(
+  List<ElectricalRouteSegment> segments, {
+  String id = 'route-test',
+}) =>
     ElectricalCableRoute(
-      id: 'route-test',
+      id: id,
       source: const ElectricalEndpointRef(
         componentId: 'board',
         portId: 'power-out',
@@ -69,6 +72,9 @@ void main() {
     addTearDown(controller.dispose);
     final living = controller.level.spaces.first;
     final corridor = controller.level.spaces.last;
+    // These are two separate physical routes, not a single route crossing
+    // a room boundary without a documented penetration. The projector must
+    // never invent a link between their independent plan projections.
     final result = PlanCableRouteProjector.project(
       level: controller.level,
       routes: [
@@ -80,6 +86,8 @@ void main() {
               SurfacePointMm(400, 100),
             ],
           ),
+        ], id: 'living-route'),
+        route([
           ElectricalRouteSegment(
             surface: RoomSurfaceRef.floor(corridor.id),
             points: const [
@@ -87,12 +95,41 @@ void main() {
               SurfacePointMm(400, 100),
             ],
           ),
-        ]),
+        ], id: 'corridor-route'),
       ],
     );
     expect(result.segments, hasLength(2));
+    expect(result.segments.map((segment) => segment.routeId),
+        ['living-route', 'corridor-route']);
     expect(result.segments.first.points.last,
         isNot(result.segments.last.points.first));
+  });
+
+  test('unqualified cross-room transition is rejected before projection', () {
+    final controller = EditorController.demo();
+    addTearDown(controller.dispose);
+    final living = controller.level.spaces.first;
+    final corridor = controller.level.spaces.last;
+
+    expect(
+      () => route([
+        ElectricalRouteSegment(
+          surface: RoomSurfaceRef.floor(living.id),
+          points: const [
+            SurfacePointMm(100, 100),
+            SurfacePointMm(400, 100),
+          ],
+        ),
+        ElectricalRouteSegment(
+          surface: RoomSurfaceRef.floor(corridor.id),
+          points: const [
+            SurfacePointMm(100, 100),
+            SurfacePointMm(400, 100),
+          ],
+        ),
+      ]),
+      throwsArgumentError,
+    );
   });
 
   test('unknown/canonical-unmapped wall host is skipped, never guessed', () {
