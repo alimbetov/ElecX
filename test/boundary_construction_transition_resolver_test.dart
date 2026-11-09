@@ -109,6 +109,38 @@ void main() {
       expect(result.penetrationRequirement!.materialId, 'brick');
     });
 
+    test('rejects a wall passage with unmatched exit geometry', () {
+      final result = BoundaryConstructionTransitionResolver.resolve(
+        level: level,
+        fromSpace: roomA,
+        fromSurface: RoomSurfaceRef.wall('room-a', 1),
+        fromPoint: const SurfacePointMm(1500, 1200),
+        toSurface: RoomSurfaceRef.wall('room-b', 3),
+        toPoint: const SurfacePointMm(1700, 1200),
+        constructions: registry(),
+        edgeOrderResolver: edgeOrder,
+        canonicalSpaceIdResolver: canonicalSpace,
+      );
+
+      expect(result, isNull);
+    });
+
+    test('rejects a wall passage when construction evidence is absent', () {
+      final result = BoundaryConstructionTransitionResolver.resolve(
+        level: level,
+        fromSpace: roomA,
+        fromSurface: RoomSurfaceRef.wall('room-a', 1),
+        fromPoint: const SurfacePointMm(1500, 1200),
+        toSurface: RoomSurfaceRef.wall('room-b', 3),
+        toPoint: const SurfacePointMm(1500, 1200),
+        constructions: BoundaryConstructionRegistry({}),
+        edgeOrderResolver: edgeOrder,
+        canonicalSpaceIdResolver: canonicalSpace,
+      );
+
+      expect(result, isNull);
+    });
+
     test('rejects conflicting thickness across two faces of one wall', () {
       final result = BoundaryConstructionTransitionResolver.resolve(
         level: level,
