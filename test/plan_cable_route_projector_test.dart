@@ -106,7 +106,7 @@ void main() {
           ElectricalRouteSegment(
             surface: RoomSurfaceRef.wallByBoundaryEdge(
               controller.level.spaces.first.id,
-              const BoundaryEdgeId('edge-not-resolved'),
+              BoundaryEdgeId('edge-not-resolved'),
             ),
             points: const [
               SurfacePointMm(100, 1000),
