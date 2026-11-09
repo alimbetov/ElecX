@@ -1,16 +1,24 @@
+import 'dart:io';
+
 import 'package:elecx/src/domain/boundary_penetration.dart';
 import 'package:elecx/src/domain/boundary_topology.dart';
 import 'package:elecx/src/domain/building_composition.dart';
 import 'package:elecx/src/domain/engineering_route_qualification.dart';
 import 'package:elecx/src/domain/electrical_routing.dart';
+import 'package:elecx/src/domain/electrical_placement.dart';
 import 'package:elecx/src/domain/geometry.dart';
 import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_model.dart';
 import 'package:elecx/src/domain/slab_topology.dart';
+import 'package:elecx/src/domain/site_outdoor_model.dart';
 import 'package:elecx/src/domain/surface_transition_graph.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/domain/vertical_core_route_leg.dart';
 import 'package:elecx/src/domain/vertical_core_route_leg_authoring.dart';
+import 'package:elecx/src/features/editor/editor_building_workspace.dart';
+import 'package:elecx/src/features/editor/editor_controller.dart';
+import 'package:elecx/src/features/editor/editor_p2_session.dart';
+import 'package:elecx/src/features/editor/editor_project_document.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -151,7 +159,7 @@ void main() {
     );
   });
 
-  test('L1 to L3 riser counts each slab exactly once and free Z once', () {
+  test('L1 to L3 riser counts each slab exactly once and free Z once', () async {
     final below = RoomSurfaceRef.ceiling(space1.id);
     final middleFloor = RoomSurfaceRef.floor(space2.id);
     final middleCeiling = RoomSurfaceRef.ceiling(space2.id);
@@ -341,6 +349,91 @@ void main() {
     expect(
       qualify(physical).status,
       EngineeringRouteQualificationStatus.valid,
+    );
+
+    final editor = EditorController.restored(
+      level: level1,
+      openings: const [],
+    );
+    final site = ComposedProjectSite(
+      site: ProjectSite(
+        id: 'multi-level-site',
+        name: 'Multi-level routing acceptance',
+        buildings: [composed.building],
+      ),
+      outdoorZones: const [],
+      connections: const [],
+    );
+    final workspace = EditorBuildingWorkspace(
+      editor: editor,
+      building: composed,
+      site: site,
+      initialLevelNumber: 1,
+    );
+    editor.restoreP2State(EditorP2State(
+      components: [
+        ElectricalComponentPlacement(
+          id: 'main-board',
+          type: ElectricalComponentType.distributionBoard,
+          surface: below,
+          position: segments.first.points.first,
+          label: 'Level 1 board',
+          ports: const [
+            ElectricalPortDefinition(
+              id: 'out',
+              kind: ElectricalPortKind.powerOut,
+            ),
+          ],
+        ),
+        ElectricalComponentPlacement(
+          id: 'third-floor-board',
+          type: ElectricalComponentType.distributionBoard,
+          surface: above,
+          position: segments.last.points.last,
+          label: 'Level 3 board',
+          ports: const [
+            ElectricalPortDefinition(
+              id: 'in',
+              kind: ElectricalPortKind.powerIn,
+            ),
+          ],
+        ),
+      ],
+      routes: [physical],
+    ));
+    final directory =
+        await Directory.systemTemp.createTemp('elecx-three-level-');
+    addTearDown(() async {
+      workspace.dispose();
+      editor.dispose();
+      if (await directory.exists()) await directory.delete(recursive: true);
+    });
+    final document = EditorProjectDocument.capture(workspace);
+    final store = JsonFileEditorProjectStore(directory);
+    await store.save(document);
+    final loaded = await store.load(document.projectId);
+    expect(loaded, isNotNull);
+    final reopened = loaded!.restore();
+    addTearDown(() {
+      reopened.workspace.dispose();
+      reopened.editor.dispose();
+    });
+    expect(reopened.editor.p2.routes.single.verticalCoreLegs, [hidden]);
+    expect(reopened.editor.p2.routes.single.penetrations, hasLength(2));
+    expect(reopened.workspace.building.levels, hasLength(3));
+    expect(
+      reopened.qualifyVerticalCoreRoutes(
+        canonicalSlabs: {slab12.id: slab12, slab23.id: slab23},
+        roomHeightsByLevelId: const {'L1': 3000, 'L2': 3000},
+      ).single.status,
+      EngineeringRouteQualificationStatus.valid,
+    );
+    expect(
+      reopened.qualifyVerticalCoreRoutes(
+        canonicalSlabs: const {},
+        roomHeightsByLevelId: const {'L1': 3000, 'L2': 3000},
+      ).single.status,
+      EngineeringRouteQualificationStatus.requiresReview,
     );
     expect(
       qualify(physical, slabs: const {}).status,
