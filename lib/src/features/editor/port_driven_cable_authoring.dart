@@ -168,8 +168,7 @@ extension PortDrivenCableAuthoring on EditorController {
       return const <PortDrivenCableCompletionTarget>[];
     }
     final source = _componentById(p2.components, binding.componentId);
-    final startPort =
-        source == null ? null : _portById(source, binding.portId);
+    final startPort = source == null ? null : _portById(source, binding.portId);
     if (source == null ||
         startPort == null ||
         startPort.kind != binding.portKind) {
