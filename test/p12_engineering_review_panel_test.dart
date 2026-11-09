@@ -84,16 +84,16 @@ void main() {
     ));
     expect(find.byKey(const ValueKey('p12-review-proposal-count')),
         findsOneWidget);
-    expect(find.byKey(const ValueKey('p12-review-proposal-c1')),
-        findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('p12-review-proposal-c1')), findsOneWidget);
     expect(
       find.byKey(const ValueKey('p12-review-issue-circuitBindingMissing')),
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('p12-review-proposal-incomplete')),
         findsOneWidget);
-    expect(find.byKey(const ValueKey('p12-review-apply-blocked')),
-        findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('p12-review-apply-blocked')), findsOneWidget);
   });
 
   testWidgets('P12 diff is only shown when frozen baseline is supplied',
