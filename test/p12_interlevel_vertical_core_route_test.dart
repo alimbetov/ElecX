@@ -368,6 +368,26 @@ void main() {
       qualify(forged).status,
       EngineeringRouteQualificationStatus.stale,
     );
+    final alteredPassage = BoundaryPenetration.slabTyped(
+      id: penetrations.first.id,
+      slabId: slab12.id,
+      entrySurface: penetrations.first.entryAnchor.surface,
+      entryPoint: penetrations.first.entryAnchor.point,
+      exitSurface: penetrations.first.exitAnchor.surface,
+      exitPoint: penetrations.first.exitAnchor.point,
+      hostThicknessMm: 180,
+      materialId: 'concrete',
+      routeId: physical.id,
+      verticalCoreId: hidden.verticalCoreId,
+    );
+    expect(
+      qualify(
+        physical.copyWith(
+          penetrations: [alteredPassage, penetrations.last],
+        ),
+      ).status,
+      EngineeringRouteQualificationStatus.stale,
+    );
 
     // A reverse/unreferenced riser leg must not inflate cable length.
     final reverseLeg = VerticalCoreRouteLeg(
