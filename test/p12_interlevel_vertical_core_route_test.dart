@@ -231,7 +231,7 @@ void main() {
     final invalidOwner = BoundaryPenetration.slabTyped(
       id: BoundaryPenetrationId('p23'),
       slabId: slab23.id,
-      entrySurface: secondCrossing.entrySurface,
+      entrySurface: secondCrossing.fromSurface,
       entryPoint: secondCrossing.fromPoint,
       exitSurface: secondCrossing.toSurface,
       exitPoint: secondCrossing.toPoint,
