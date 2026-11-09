@@ -20,8 +20,7 @@ void main() {
           const MmPoint(0, 0),
           const MmPoint(4000, 3000),
         ),
-        referenceFrame:
-            const RoomReferenceFrame(origin: MmPoint(2000, 1500)),
+        referenceFrame: const RoomReferenceFrame(origin: MmPoint(2000, 1500)),
       );
   final space1 = room('room-l1');
   final space2 = room('room-l2');
