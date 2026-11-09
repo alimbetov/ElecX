@@ -83,18 +83,24 @@ void main() {
   test('wall to ceiling and ceiling to wall are continuous', () {
     final wall = RoomSurfaceRef.wall(room.id, 0);
     final ceiling = RoomSurfaceRef.ceiling(room.id);
-    final forward = author('wall-ceiling', [
-      segment(wall, const SurfacePointMm(1000, 1200),
-          const SurfacePointMm(1000, 3000)),
-      segment(ceiling, const SurfacePointMm(1000, 0),
-          const SurfacePointMm(2000, 0)),
-    ], sameRoom);
-    final backward = author('ceiling-wall', [
-      segment(ceiling, const SurfacePointMm(2000, 0),
-          const SurfacePointMm(1000, 0)),
-      segment(wall, const SurfacePointMm(1000, 3000),
-          const SurfacePointMm(1000, 1200)),
-    ], sameRoom);
+    final forward = author(
+        'wall-ceiling',
+        [
+          segment(wall, const SurfacePointMm(1000, 1200),
+              const SurfacePointMm(1000, 3000)),
+          segment(ceiling, const SurfacePointMm(1000, 0),
+              const SurfacePointMm(2000, 0)),
+        ],
+        sameRoom);
+    final backward = author(
+        'ceiling-wall',
+        [
+          segment(ceiling, const SurfacePointMm(2000, 0),
+              const SurfacePointMm(1000, 0)),
+          segment(wall, const SurfacePointMm(1000, 3000),
+              const SurfacePointMm(1000, 1200)),
+        ],
+        sameRoom);
 
     expect(forward.penetrations, isEmpty);
     expect(backward.penetrations, isEmpty);
@@ -105,18 +111,24 @@ void main() {
   test('wall to floor and floor to wall are continuous', () {
     final wall = RoomSurfaceRef.wall(room.id, 0);
     final floor = RoomSurfaceRef.floor(room.id);
-    final forward = author('wall-floor', [
-      segment(wall, const SurfacePointMm(1000, 1200),
-          const SurfacePointMm(1000, 0)),
-      segment(floor, const SurfacePointMm(1000, 0),
-          const SurfacePointMm(2000, 0)),
-    ], sameRoom);
-    final backward = author('floor-wall', [
-      segment(floor, const SurfacePointMm(2000, 0),
-          const SurfacePointMm(1000, 0)),
-      segment(wall, const SurfacePointMm(1000, 0),
-          const SurfacePointMm(1000, 1200)),
-    ], sameRoom);
+    final forward = author(
+        'wall-floor',
+        [
+          segment(wall, const SurfacePointMm(1000, 1200),
+              const SurfacePointMm(1000, 0)),
+          segment(floor, const SurfacePointMm(1000, 0),
+              const SurfacePointMm(2000, 0)),
+        ],
+        sameRoom);
+    final backward = author(
+        'floor-wall',
+        [
+          segment(floor, const SurfacePointMm(2000, 0),
+              const SurfacePointMm(1000, 0)),
+          segment(wall, const SurfacePointMm(1000, 0),
+              const SurfacePointMm(1000, 1200)),
+        ],
+        sameRoom);
 
     expect(forward.penetrations, isEmpty);
     expect(backward.penetrations, isEmpty);
@@ -125,21 +137,27 @@ void main() {
   test('adjacent walls connect only through their common corner', () {
     final wall0 = RoomSurfaceRef.wall(room.id, 0);
     final wall1 = RoomSurfaceRef.wall(room.id, 1);
-    final physical = author('wall-corner', [
-      segment(wall0, const SurfacePointMm(3000, 1200),
-          const SurfacePointMm(4000, 1200)),
-      segment(wall1, const SurfacePointMm(0, 1200),
-          const SurfacePointMm(0, 1800)),
-    ], sameRoom);
+    final physical = author(
+        'wall-corner',
+        [
+          segment(wall0, const SurfacePointMm(3000, 1200),
+              const SurfacePointMm(4000, 1200)),
+          segment(wall1, const SurfacePointMm(0, 1200),
+              const SurfacePointMm(0, 1800)),
+        ],
+        sameRoom);
     expect(physical.penetrations, isEmpty);
 
     expect(
-      () => author('wall-teleport', [
-        segment(wall0, const SurfacePointMm(1000, 1200),
-            const SurfacePointMm(2000, 1200)),
-        segment(wall1, const SurfacePointMm(0, 1200),
-            const SurfacePointMm(0, 1800)),
-      ], sameRoom),
+      () => author(
+          'wall-teleport',
+          [
+            segment(wall0, const SurfacePointMm(1000, 1200),
+                const SurfacePointMm(2000, 1200)),
+            segment(wall1, const SurfacePointMm(0, 1200),
+                const SurfacePointMm(0, 1800)),
+          ],
+          sameRoom),
       throwsStateError,
     );
   });
@@ -148,21 +166,27 @@ void main() {
     final floor = RoomSurfaceRef.floor(room.id);
     final ceiling = RoomSurfaceRef.ceiling(room.id);
     expect(
-      () => author('floor-ceiling-teleport', [
-        segment(floor, const SurfacePointMm(500, 500),
-            const SurfacePointMm(1000, 500)),
-        segment(ceiling, const SurfacePointMm(1000, 500),
-            const SurfacePointMm(1500, 500)),
-      ], sameRoom),
+      () => author(
+          'floor-ceiling-teleport',
+          [
+            segment(floor, const SurfacePointMm(500, 500),
+                const SurfacePointMm(1000, 500)),
+            segment(ceiling, const SurfacePointMm(1000, 500),
+                const SurfacePointMm(1500, 500)),
+          ],
+          sameRoom),
       throwsStateError,
     );
     expect(
-      () => author('ceiling-floor-teleport', [
-        segment(ceiling, const SurfacePointMm(500, 500),
-            const SurfacePointMm(1000, 500)),
-        segment(floor, const SurfacePointMm(1000, 500),
-            const SurfacePointMm(1500, 500)),
-      ], sameRoom),
+      () => author(
+          'ceiling-floor-teleport',
+          [
+            segment(ceiling, const SurfacePointMm(500, 500),
+                const SurfacePointMm(1000, 500)),
+            segment(floor, const SurfacePointMm(1000, 500),
+                const SurfacePointMm(1500, 500)),
+          ],
+          sameRoom),
       throwsStateError,
     );
   });
@@ -257,17 +281,21 @@ void main() {
     }
 
     expect(
-      () => author('no-slab', up,
-          (from, p, to, q) => transition(from, p, to, q)),
+      () =>
+          author('no-slab', up, (from, p, to, q) => transition(from, p, to, q)),
       throwsStateError,
     );
     expect(
-      () => author('wrong-floor', [
-        up.first,
-        segment(RoomSurfaceRef.ceiling(upperRoom.id),
-            const SurfacePointMm(1500, 1000),
-            const SurfacePointMm(2000, 1000)),
-      ], verified),
+      () => author(
+          'wrong-floor',
+          [
+            up.first,
+            segment(
+                RoomSurfaceRef.ceiling(upperRoom.id),
+                const SurfacePointMm(1500, 1000),
+                const SurfacePointMm(2000, 1000)),
+          ],
+          verified),
       throwsStateError,
     );
   });
