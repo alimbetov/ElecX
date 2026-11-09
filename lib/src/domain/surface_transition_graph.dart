@@ -268,6 +268,13 @@ abstract final class SurfaceTransitionGraph {
 
     final planPoint = _horizontalToPlan(fromSpace, point);
     if (!_containsOrTouches(toSpace.boundary, planPoint)) return null;
+    // Level adjacency alone is not evidence that the slab covers this XY
+    // location. Reject penetration points outside its physical footprint.
+    final slabFootprint = MmPolygon([
+      for (final vertex in canonicalSlab.footprint)
+        MmPoint(vertex.xMm, vertex.yMm),
+    ]);
+    if (!_containsOrTouches(slabFootprint, planPoint)) return null;
 
     final target = expectedTo == SurfacePlaneType.floor
         ? RoomSurfaceRef.floor(toSpace.id)
