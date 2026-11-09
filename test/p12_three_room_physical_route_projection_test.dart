@@ -1,5 +1,8 @@
 import 'dart:io';
 
+import 'package:elecx/src/domain/boundary_construction_registry.dart';
+import 'package:elecx/src/domain/boundary_construction_transition_resolver.dart';
+import 'package:elecx/src/domain/boundary_host_migration.dart';
 import 'package:elecx/src/domain/boundary_penetration.dart';
 import 'package:elecx/src/domain/cable_penetration_authoring.dart';
 import 'package:elecx/src/domain/surface_transition_graph.dart';
@@ -320,7 +323,41 @@ void main() {
       ),
     ];
 
-    SurfaceTransitionCandidate? resolve(
+    final edgeOrders = <String, List<BoundaryEdgeId>>{
+      for (final id in ['room-a', 'room-b', 'room-c'])
+        id: [
+          for (var index = 0; index < 4; index++)
+            BoundaryEdgeId('$id-edge-$index'),
+        ],
+    };
+    final canonicalSpaces = <String, SpaceId>{
+      for (final id in edgeOrders.keys) id: SpaceId('canonical-$id'),
+    };
+    BoundaryEdgeHostRef host(String space, int wall) => BoundaryEdgeHostRef(
+          spaceId: canonicalSpaces[space]!,
+          edgeId: edgeOrders[space]![wall],
+        );
+    final wallAB = BoundaryConstructionProfile(
+      kind: BoundaryConstructionKind.wall,
+      thicknessMm: 180,
+      materialId: 'brick',
+      fireRatingId: 'EI60',
+    );
+    final wallBC = BoundaryConstructionProfile(
+      kind: BoundaryConstructionKind.wall,
+      thicknessMm: 200,
+      materialId: 'concrete',
+      fireRatingId: 'EI90',
+    );
+    final constructions = BoundaryConstructionRegistry({
+      host('room-a', 1): wallAB,
+      host('room-b', 3): wallAB,
+      host('room-b', 1): wallBC,
+      host('room-c', 3): wallBC,
+    });
+
+    SurfaceTransitionCandidate? resolveWithRegistry(
+      BoundaryConstructionRegistry registry,
       RoomSurfaceRef from,
       SurfacePointMm fromPoint,
       RoomSurfaceRef to,
@@ -332,22 +369,17 @@ void main() {
         'room-c' => c,
         _ => throw StateError('Unknown space'),
       };
-      final candidates = SurfaceTransitionGraph.candidates(
+      return BoundaryConstructionTransitionResolver.resolve(
         level: level,
         fromSpace: space,
         fromSurface: from,
-        point: fromPoint,
-        thicknessResolver: (entry, exit) =>
-            entry.spaceId == 'room-a' ? 180 : 200,
-        materialResolver: (entry, exit) =>
-            entry.spaceId == 'room-a' ? 'brick' : 'concrete',
+        fromPoint: fromPoint,
+        toSurface: to,
+        toPoint: toPoint,
+        constructions: registry,
+        edgeOrderResolver: (id) => edgeOrders[id],
+        canonicalSpaceIdResolver: (id) => canonicalSpaces[id],
       );
-      for (final candidate in candidates) {
-        if (candidate.toSurface == to && candidate.toPoint == toPoint) {
-          return candidate;
-        }
-      }
-      return null;
     }
 
     ElectricalCableRoute author(List<ElectricalRouteSegment> spans) =>
@@ -362,7 +394,14 @@ void main() {
             portId: 'in',
           ),
           segments: spans,
-          resolveTransition: resolve,
+          resolveTransition: (from, fromPoint, to, toPoint) =>
+              resolveWithRegistry(
+            constructions,
+            from,
+            fromPoint,
+            to,
+            toPoint,
+          ),
           penetrationIdFactory: (index, _) =>
               BoundaryPenetrationId('actual-passage-$index'),
         );
