@@ -113,6 +113,35 @@ void main() {
     expect(physical!.penetrationRequirement!.slabId, slab12.id);
     expect(physical.penetrationRequirement!.hostThicknessMm, 220);
     expect(physical.toSurface, RoomSurfaceRef.floor(space2.id));
+
+    final smallFootprint = ProjectSlab(
+      id: slab12.id,
+      buildingId: slab12.buildingId,
+      kind: SlabKind.interLevel,
+      belowLevelId: slab12.belowLevelId,
+      aboveLevelId: slab12.aboveLevelId,
+      bottomElevationMm: slab12.bottomElevationMm,
+      thicknessMm: slab12.thicknessMm,
+      materialId: slab12.materialId,
+      footprint: const [
+        BoundaryPointMm(xMm: 0, yMm: 0),
+        BoundaryPointMm(xMm: 500, yMm: 0),
+        BoundaryPointMm(xMm: 500, yMm: 500),
+        BoundaryPointMm(xMm: 0, yMm: 500),
+      ],
+    );
+    expect(
+      crossing(
+        fromLevel: level1,
+        fromSpace: space1,
+        fromSurface: RoomSurfaceRef.ceiling(space1.id),
+        point: const SurfacePointMm(1000, 1000),
+        toLevel: level2,
+        toSpace: space2,
+        slab: smallFootprint,
+      ),
+      isNull,
+    );
   });
 
   test('L1 to L3 riser counts each slab exactly once and free Z once', () {
