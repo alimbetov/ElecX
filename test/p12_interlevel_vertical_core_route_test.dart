@@ -74,6 +74,11 @@ void main() {
     name: 'Electrical shaft',
     kind: VerticalCoreKind.cableRiser,
     servedLevelNumbers: [1, 2, 3],
+    spaceIdByLevel: {
+      1: space1.id,
+      2: space2.id,
+      3: space3.id,
+    },
   );
 
   SurfaceTransitionCandidate? crossing({
@@ -174,6 +179,7 @@ void main() {
     expect(secondCrossing, isNotNull);
     final hidden = VerticalCoreRouteLegAuthoring.betweenAdjacentSlabs(
       core: core,
+      penetrationPlanPoint: const MmPoint(1500, 1000),
       lowerSlab: slab12,
       upperSlab: slab23,
       lowerLevel: level1,
@@ -398,6 +404,7 @@ void main() {
     expect(
       () => VerticalCoreRouteLegAuthoring.betweenAdjacentSlabs(
         core: core,
+        penetrationPlanPoint: const MmPoint(1500, 1000),
         lowerSlab: slab12,
         upperSlab: invalidSlab,
         lowerLevel: level1,
@@ -420,6 +427,7 @@ void main() {
     expect(
       () => VerticalCoreRouteLegAuthoring.betweenAdjacentSlabs(
         core: stair,
+        penetrationPlanPoint: const MmPoint(1500, 1000),
         lowerSlab: slab12,
         upperSlab: slab23,
         lowerLevel: level1,
