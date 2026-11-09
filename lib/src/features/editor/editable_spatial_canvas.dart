@@ -7,6 +7,7 @@ import '../../domain/geometry.dart';
 import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/adaptive_grid.dart';
+import '../../engine/editor_layers.dart';
 import '../../engine/plan_geometry_editing.dart';
 import '../../engine/plan_pull_measure.dart';
 import '../../engine/plan_cable_route_projector.dart';
@@ -707,7 +708,9 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
         final externalWallGizmo = _buildExternalWallGizmo(scheme);
         final cableProjection = PlanCableRouteProjector.project(
           level: controller.level,
-          routes: controller.p2.routes,
+          routes: controller.p2.layers.isVisible(EditorLayerId.cableRoutes)
+              ? controller.p2.routes
+              : const [],
         );
 
         return Stack(
