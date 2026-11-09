@@ -418,6 +418,50 @@ void main() {
       ),
       throwsArgumentError,
     );
+    final missingLevelSpace = VerticalCore(
+      id: 'unmapped-riser',
+      name: 'Unmapped shaft',
+      kind: VerticalCoreKind.cableRiser,
+      servedLevelNumbers: [1, 2, 3],
+      spaceIdByLevel: {
+        1: space1.id,
+        3: space3.id,
+      },
+    );
+    expect(
+      () => VerticalCoreRouteLegAuthoring.betweenAdjacentSlabs(
+        core: missingLevelSpace,
+        penetrationPlanPoint: const MmPoint(1500, 1000),
+        lowerSlab: slab12,
+        upperSlab: slab23,
+        lowerLevel: level1,
+        intermediateLevel: level2,
+        upperLevel: level3,
+        lowerRoomHeightMm: 3000,
+        lowerLevelNumber: 1,
+        intermediateLevelNumber: 2,
+        upperLevelNumber: 3,
+        intermediateRoomHeightMm: 3000,
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => VerticalCoreRouteLegAuthoring.betweenAdjacentSlabs(
+        core: core,
+        penetrationPlanPoint: const MmPoint(4500, 1000),
+        lowerSlab: slab12,
+        upperSlab: slab23,
+        lowerLevel: level1,
+        intermediateLevel: level2,
+        upperLevel: level3,
+        lowerRoomHeightMm: 3000,
+        lowerLevelNumber: 1,
+        intermediateLevelNumber: 2,
+        upperLevelNumber: 3,
+        intermediateRoomHeightMm: 3000,
+      ),
+      throwsArgumentError,
+    );
     final stair = VerticalCore(
       id: 'stair-1',
       name: 'Stairwell',
