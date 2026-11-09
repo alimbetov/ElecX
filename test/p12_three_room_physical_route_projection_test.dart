@@ -6,6 +6,7 @@ import 'package:elecx/src/domain/surface_transition_graph.dart';
 import 'package:elecx/src/domain/electrical_routing.dart';
 import 'package:elecx/src/domain/electrical_placement.dart';
 import 'package:elecx/src/domain/geometry.dart';
+import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/project_model.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/engine/plan_cable_route_projector.dart';
@@ -413,7 +414,8 @@ void main() {
       ],
       routes: [physical],
     ));
-    final directory = await Directory.systemTemp.createTemp('elecx-r3-authored-');
+    final directory =
+        await Directory.systemTemp.createTemp('elecx-r3-authored-');
     addTearDown(() async {
       workspace.dispose();
       editor.dispose();
