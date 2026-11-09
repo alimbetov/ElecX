@@ -1,6 +1,7 @@
 import 'package:elecx/src/domain/boundary_penetration.dart';
 import 'package:elecx/src/domain/boundary_topology.dart';
 import 'package:elecx/src/domain/building_composition.dart';
+import 'package:elecx/src/domain/engineering_route_qualification.dart';
 import 'package:elecx/src/domain/electrical_routing.dart';
 import 'package:elecx/src/domain/geometry.dart';
 import 'package:elecx/src/domain/project_identity.dart';
@@ -300,6 +301,73 @@ void main() {
     expect(physical.hiddenVerticalCoreLengthMm, 3000);
     expect(physical.geometricLengthMm, 4640);
     expect(physical.installationLengthMm, 4872);
+
+    final composed = ComposedBuilding(
+      building: Building(
+        id: 'building',
+        name: 'Multi-level',
+        levels: [level1, level2, level3],
+      ),
+      levels: [
+        ComposedBuildingLevel(
+          level: level1,
+          levelNumber: 1,
+          kind: BuildingLevelKind.residential,
+        ),
+        ComposedBuildingLevel(
+          level: level2,
+          levelNumber: 2,
+          kind: BuildingLevelKind.residential,
+        ),
+        ComposedBuildingLevel(
+          level: level3,
+          levelNumber: 3,
+          kind: BuildingLevelKind.residential,
+        ),
+      ],
+      verticalCores: [core],
+    );
+    EngineeringRouteQualificationResult qualify(
+      ElectricalCableRoute candidate, {
+      Map<SlabId, ProjectSlab>? slabs,
+      ComposedBuilding? owner,
+    }) =>
+        EngineeringRouteQualificationService.qualifyVerticalCoreRoute(
+          route: candidate,
+          building: owner ?? composed,
+          canonicalSlabs: slabs ?? {slab12.id: slab12, slab23.id: slab23},
+          roomHeightsByLevelId: const {'L1': 3000, 'L2': 3000},
+        );
+    expect(
+      qualify(physical).status,
+      EngineeringRouteQualificationStatus.valid,
+    );
+    expect(
+      qualify(physical, slabs: const {}).status,
+      EngineeringRouteQualificationStatus.requiresReview,
+    );
+    expect(
+      qualify(physical, owner: ComposedBuilding(
+        building: composed.building,
+        levels: composed.levels,
+        verticalCores: const [],
+      )).status,
+      EngineeringRouteQualificationStatus.blocked,
+    );
+    final forged = physical.copyWith(
+      verticalCoreLegs: [
+        VerticalCoreRouteLeg(
+          verticalCoreId: hidden.verticalCoreId,
+          fromSlabId: hidden.fromSlabId,
+          toSlabId: hidden.toSlabId,
+          lengthMm: 1,
+        ),
+      ],
+    );
+    expect(
+      qualify(forged).status,
+      EngineeringRouteQualificationStatus.stale,
+    );
 
     // A reverse/unreferenced riser leg must not inflate cable length.
     final reverseLeg = VerticalCoreRouteLeg(
