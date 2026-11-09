@@ -83,6 +83,17 @@ class CableAuthoringDraftBar extends StatelessWidget {
                 ),
               ],
             ),
+            if (controller.routeSegments.length > 1) ...[
+              const SizedBox(height: 5),
+              Text(
+                'Участков: ${controller.routeSegments.length} · '
+                'Переходов между поверхностями: '
+                '${controller.routeSegments.length - 1} · '
+                'Физическая проверка при сохранении',
+                key: const ValueKey('cable-draft-transition-summary'),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
             const SizedBox(height: 5),
             Text(
               transitionDisconnected
