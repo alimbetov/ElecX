@@ -10,11 +10,13 @@ import '../../domain/cable_identity.dart';
 import '../../domain/circuit_cable_registry.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/electrical_routing.dart';
+import '../../domain/engineering_route_qualification.dart';
 import '../../domain/geometry.dart';
 import '../../domain/project_identity.dart';
 import '../../domain/project_model.dart';
 import '../../domain/route_medium.dart';
 import '../../domain/site_orientation.dart';
+import '../../domain/slab_topology.dart';
 import '../../domain/site_outdoor_model.dart';
 import '../../domain/surfaces.dart';
 import '../../domain/vertical_core_route_leg.dart';
@@ -67,6 +69,23 @@ final class RestoredEditorProject {
 
   final EditorController editor;
   final EditorBuildingWorkspace workspace;
+
+  /// Explicit post-restore qualification. The current project schema does not
+  /// persist canonical slabs, so callers must supply current construction
+  /// evidence rather than silently accepting serialized route lengths.
+  List<EngineeringRouteQualificationResult> qualifyVerticalCoreRoutes({
+    required Map<SlabId, ProjectSlab> canonicalSlabs,
+    required Map<String, int> roomHeightsByLevelId,
+  }) =>
+      List.unmodifiable([
+        for (final route in editor.p2.routes)
+          EngineeringRouteQualificationService.qualifyVerticalCoreRoute(
+            route: route,
+            building: workspace.building,
+            canonicalSlabs: canonicalSlabs,
+            roomHeightsByLevelId: roomHeightsByLevelId,
+          ),
+      ]);
 }
 
 /// Versioned, canonical persisted state for one editable ElecX workspace.
