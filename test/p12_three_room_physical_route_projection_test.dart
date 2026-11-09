@@ -257,7 +257,7 @@ void main() {
     );
   });
 
-  test('R3.4 authoring proves two walls and wall-ceiling continuity', () {
+  test('R3.4 authored route persists with real rooms and ports', () async {
     EngineeringSpace room(String id, int left, int right) {
       final polygon = MmPolygon.rectangle(
         MmPoint(left, 0),
@@ -375,6 +375,81 @@ void main() {
     expect(physical.hiddenPenetrationLengthMm, 380);
     expect(physical.geometricLengthMm, 9280);
     expect(physical.installationLengthMm, 9744);
+
+    final editor = EditorController.restored(level: level, openings: const []);
+    final workspace = EditorBuildingWorkspace.blank(
+      editor,
+      projectId: 'topology-backed-project',
+      projectName: 'Topology-backed three-room project',
+    );
+    editor.restoreP2State(EditorP2State(
+      components: [
+        ElectricalComponentPlacement(
+          id: 'board',
+          type: ElectricalComponentType.distributionBoard,
+          surface: wallA,
+          position: routedSegments.first.points.first,
+          label: 'Distribution board',
+          ports: const [
+            ElectricalPortDefinition(
+              id: 'out',
+              kind: ElectricalPortKind.powerOut,
+            ),
+          ],
+        ),
+        ElectricalComponentPlacement(
+          id: 'socket',
+          type: ElectricalComponentType.socketOutlet,
+          surface: wallC,
+          position: routedSegments.last.points.last,
+          label: 'Room C socket',
+          ports: const [
+            ElectricalPortDefinition(
+              id: 'in',
+              kind: ElectricalPortKind.powerIn,
+            ),
+          ],
+        ),
+      ],
+      routes: [physical],
+    ));
+    final directory = await Directory.systemTemp.createTemp('elecx-r3-authored-');
+    addTearDown(() async {
+      workspace.dispose();
+      editor.dispose();
+      if (await directory.exists()) await directory.delete(recursive: true);
+    });
+    final document = EditorProjectDocument.capture(workspace);
+    final store = JsonFileEditorProjectStore(directory);
+    await store.save(document);
+    final loaded = await store.load(document.projectId);
+    expect(loaded, isNotNull);
+    final reopened = loaded!.restore();
+    addTearDown(() {
+      reopened.workspace.dispose();
+      reopened.editor.dispose();
+    });
+    expect(reopened.editor.level.spaces, hasLength(3));
+    expect(reopened.editor.p2.components, hasLength(2));
+    final persisted = reopened.editor.p2.routes.single;
+    expect(persisted.id, physical.id);
+    expect(persisted.penetrations, hasLength(2));
+    expect(persisted.geometricLengthMm, 9280);
+    expect(persisted.installationLengthMm, 9744);
+    expect(
+      ElectricalConnectivityValidator.routeIsConnected(
+        route: persisted,
+        components: reopened.editor.p2.components,
+      ),
+      isTrue,
+    );
+    expect(
+      ElectricalConnectivityValidator.routeIsPhysicallyAnchored(
+        route: persisted,
+        components: reopened.editor.p2.components,
+      ),
+      isTrue,
+    );
 
     final invalid = [
       routedSegments.first,
