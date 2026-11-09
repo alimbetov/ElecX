@@ -17,8 +17,7 @@ Future<void> waitFor(WidgetTester tester, Finder finder) async {
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('native UI creates project, previews building and saves rooms',
-      (tester) async {
+  testWidgets('desktop authoring save/reopen', (tester) async {
     app.main();
     await tester.pumpAndSettle();
     for (final digit in ['1', '2', '3', '4']) {
