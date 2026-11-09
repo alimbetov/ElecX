@@ -40,6 +40,9 @@ class CableAuthoringDraftBar extends StatelessWidget {
         : controller.compatiblePortDrivenCableTargets;
     final readyToFinish =
         binding != null && controller.portDrivenCableReadyToFinish;
+    final remoteTargets = binding == null
+        ? const <PortDrivenCableCompletionTarget>[]
+        : controller.blockedCrossRoomCableTargets;
     final selectedComponent = controller.p2.selectedComponent;
     final selectedPorts = selectedComponent == null
         ? const <ElectricalPortDefinition>[]
@@ -182,6 +185,44 @@ class CableAuthoringDraftBar extends StatelessWidget {
                       ),
                   ],
                 ),
+            ],
+            if (remoteTargets.isNotEmpty) ...[
+              const SizedBox(height: 7),
+              Container(
+                key: const ValueKey('cable-cross-room-targets-blocked'),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .errorContainer
+                      .withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Совместимые нагрузки в других комнатах: '
+                      '${remoteTargets.length}',
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Электрическая совместимость не подтверждает '
+                      'кабельный проход. Для соединения комнат требуются '
+                      'каноническая смежность, строительная конструкция '
+                      'и утверждённый переход через границу. '
+                      'Прокладка без них заблокирована.',
+                      key: ValueKey('cable-cross-room-passage-required'),
+                    ),
+                    for (final target in remoteTargets.take(4))
+                      Text(
+                        '${target.surface.spaceId} · '
+                        '${target.componentLabel} · ${target.portId}',
+                      ),
+                  ],
+                ),
+              ),
             ],
             const SizedBox(height: 7),
             Wrap(
