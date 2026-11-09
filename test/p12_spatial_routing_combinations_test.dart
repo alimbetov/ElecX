@@ -1,3 +1,4 @@
+import 'package:elecx/src/domain/boundary_topology.dart';
 import 'package:elecx/src/domain/cable_penetration_authoring.dart';
 import 'package:elecx/src/domain/electrical_routing.dart';
 import 'package:elecx/src/domain/geometry.dart';
