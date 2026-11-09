@@ -62,8 +62,7 @@ abstract final class VerticalCoreRouteLegAuthoring {
     }
     for (final slab in [lowerSlab, upperSlab]) {
       final footprint = MmPolygon([
-        for (final point in slab.footprint)
-          MmPoint(point.xMm, point.yMm),
+        for (final point in slab.footprint) MmPoint(point.xMm, point.yMm),
       ]);
       if (!footprint.contains(penetrationPlanPoint)) {
         throw ArgumentError(
