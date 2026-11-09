@@ -141,6 +141,52 @@ abstract final class EngineeringRouteQualificationService {
           'Slab passage construction or floor/ceiling owner has changed.',
         );
       }
+      MmPoint? globalPlanPoint(
+        ComposedBuildingLevel level,
+        String spaceId,
+        SurfacePointMm local,
+      ) {
+        for (final space in level.level.spaces) {
+          if (space.id == spaceId) {
+            final bounds = space.boundary.bounds;
+            return MmPoint(
+              bounds.left + local.xMm,
+              bounds.bottom + local.yMm,
+            );
+          }
+        }
+        return null;
+      }
+
+      final planPoints = [
+        globalPlanPoint(
+          lower.single,
+          lowerPassage.entryAnchor.surface.spaceId,
+          lowerPassage.entryAnchor.point,
+        ),
+        globalPlanPoint(
+          intermediate.single,
+          lowerPassage.exitAnchor.surface.spaceId,
+          lowerPassage.exitAnchor.point,
+        ),
+        globalPlanPoint(
+          intermediate.single,
+          upperPassage.entryAnchor.surface.spaceId,
+          upperPassage.entryAnchor.point,
+        ),
+        globalPlanPoint(
+          upper.single,
+          upperPassage.exitAnchor.surface.spaceId,
+          upperPassage.exitAnchor.point,
+        ),
+      ];
+      if (planPoints.any((point) => point == null) ||
+          planPoints.any((point) => point != planPoints.first)) {
+        return result(
+          EngineeringRouteQualificationStatus.stale,
+          'Slab penetrations are no longer co-linear in global building XY.',
+        );
+      }
       final firstPoint = firstPassage.single.exitAnchor.point;
       final secondPoint = secondPassage.single.entryAnchor.point;
       if (firstPoint != secondPoint) {
