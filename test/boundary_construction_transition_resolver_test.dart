@@ -1,5 +1,7 @@
 import 'package:elecx/src/domain/boundary_construction_registry.dart';
 import 'package:elecx/src/domain/boundary_construction_transition_resolver.dart';
+import 'package:elecx/src/domain/cable_penetration_authoring.dart';
+import 'package:elecx/src/domain/electrical_routing.dart';
 import 'package:elecx/src/domain/boundary_host_migration.dart';
 import 'package:elecx/src/domain/geometry.dart';
 import 'package:elecx/src/domain/project_identity.dart';
@@ -107,6 +109,62 @@ void main() {
       expect(result.toPoint, toPoint);
       expect(result.penetrationRequirement!.hostThicknessMm, 180);
       expect(result.penetrationRequirement!.materialId, 'brick');
+    });
+
+    test('authoring binds a real shared wall to one physical penetration', () {
+      final fromSurface = RoomSurfaceRef.wall('room-a', 1);
+      final toSurface = RoomSurfaceRef.wall('room-b', 3);
+      final segments = <ElectricalRouteSegment>[
+        ElectricalRouteSegment(
+          surface: fromSurface,
+          points: const [
+            SurfacePointMm(200, 1200),
+            SurfacePointMm(1500, 1200),
+          ],
+        ),
+        ElectricalRouteSegment(
+          surface: toSurface,
+          points: const [
+            SurfacePointMm(1500, 1200),
+            SurfacePointMm(2400, 1200),
+          ],
+        ),
+      ];
+
+      final route = CablePenetrationAuthoring.build(
+        routeId: 'shared-wall-route',
+        source: const ElectricalEndpointRef(
+          componentId: 'panel',
+          portId: 'out',
+        ),
+        target: const ElectricalEndpointRef(
+          componentId: 'socket',
+          portId: 'in',
+        ),
+        segments: segments,
+        resolveTransition: (from, fromPoint, to, toPoint) =>
+            BoundaryConstructionTransitionResolver.resolve(
+          level: level,
+          fromSpace: roomA,
+          fromSurface: from,
+          fromPoint: fromPoint,
+          toSurface: to,
+          toPoint: toPoint,
+          constructions: registry(),
+          edgeOrderResolver: edgeOrder,
+          canonicalSpaceIdResolver: canonicalSpace,
+        ),
+        penetrationIdFactory: (_, __) => BoundaryPenetrationId('wall-ab'),
+      );
+
+      expect(route.penetrations, hasLength(1));
+      expect(route.penetrations.single.hostThicknessMm, 180);
+      expect(route.penetrations.single.materialId, 'brick');
+      expect(route.penetrations.single.entryAnchor.point,
+          segments.first.points.last);
+      expect(route.penetrations.single.exitAnchor.point,
+          segments.last.points.first);
+      expect(route.hiddenPenetrationLengthMm, 180);
     });
 
     test('rejects a wall passage with unmatched exit geometry', () {
