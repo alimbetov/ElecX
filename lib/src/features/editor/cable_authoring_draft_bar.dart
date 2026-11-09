@@ -55,6 +55,13 @@ class CableAuthoringDraftBar extends StatelessWidget {
         : controller.routeSegments.any(
             (segment) => segment.points.length >= 2,
           );
+    var surfaceTransitions = 0;
+    for (var i = 1; i < controller.routeSegments.length; i++) {
+      if (controller.routeSegments[i - 1].surface !=
+          controller.routeSegments[i].surface) {
+        surfaceTransitions++;
+      }
+    }
 
     return Material(
       key: const ValueKey('cable-authoring-draft-bar'),
@@ -83,12 +90,12 @@ class CableAuthoringDraftBar extends StatelessWidget {
                 ),
               ],
             ),
-            if (controller.routeSegments.length > 1) ...[
+            if (surfaceTransitions > 0) ...[
               const SizedBox(height: 5),
               Text(
                 'Участков: ${controller.routeSegments.length} · '
                 'Переходов между поверхностями: '
-                '${controller.routeSegments.length - 1} · '
+                '$surfaceTransitions · '
                 'Физическая проверка при сохранении',
                 key: const ValueKey('cable-draft-transition-summary'),
                 style: Theme.of(context).textTheme.bodySmall,
