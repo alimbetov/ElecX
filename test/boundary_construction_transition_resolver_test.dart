@@ -167,6 +167,57 @@ void main() {
       expect(route.hiddenPenetrationLengthMm, 180);
     });
 
+    test('authoring rejects missing evidence without a synthetic passage', () {
+      final fromSurface = RoomSurfaceRef.wall('room-a', 1);
+      final toSurface = RoomSurfaceRef.wall('room-b', 3);
+      final segments = <ElectricalRouteSegment>[
+        ElectricalRouteSegment(
+          surface: fromSurface,
+          points: const [
+            SurfacePointMm(200, 1200),
+            SurfacePointMm(1500, 1200),
+          ],
+        ),
+        ElectricalRouteSegment(
+          surface: toSurface,
+          points: const [
+            SurfacePointMm(1500, 1200),
+            SurfacePointMm(2400, 1200),
+          ],
+        ),
+      ];
+
+      expect(
+        () => CablePenetrationAuthoring.build(
+          routeId: 'unproven-wall-route',
+          source: const ElectricalEndpointRef(
+            componentId: 'panel',
+            portId: 'out',
+          ),
+          target: const ElectricalEndpointRef(
+            componentId: 'socket',
+            portId: 'in',
+          ),
+          segments: segments,
+          resolveTransition: (from, fromPoint, to, toPoint) =>
+              BoundaryConstructionTransitionResolver.resolve(
+            level: level,
+            fromSpace: roomA,
+            fromSurface: from,
+            fromPoint: fromPoint,
+            toSurface: to,
+            toPoint: toPoint,
+            constructions: registry(bThicknessMm: 200),
+            edgeOrderResolver: edgeOrder,
+            canonicalSpaceIdResolver: canonicalSpace,
+          ),
+          penetrationIdFactory: (_, __) =>
+              BoundaryPenetrationId('invalid-wall'),
+        ),
+        throwsStateError,
+      );
+    });
+
     test('rejects a wall passage with unmatched exit geometry', () {
       final result = BoundaryConstructionTransitionResolver.resolve(
         level: level,
