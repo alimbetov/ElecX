@@ -159,7 +159,8 @@ void main() {
     );
   });
 
-  test('L1 to L3 riser counts each slab exactly once and free Z once', () async {
+  test('L1 to L3 riser counts each slab exactly once and free Z once',
+      () async {
     final below = RoomSurfaceRef.ceiling(space1.id);
     final middleFloor = RoomSurfaceRef.floor(space2.id);
     final middleCeiling = RoomSurfaceRef.ceiling(space2.id);
@@ -422,17 +423,23 @@ void main() {
     expect(reopened.editor.p2.routes.single.penetrations, hasLength(2));
     expect(reopened.workspace.building.levels, hasLength(3));
     expect(
-      reopened.qualifyVerticalCoreRoutes(
-        canonicalSlabs: {slab12.id: slab12, slab23.id: slab23},
-        roomHeightsByLevelId: const {'L1': 3000, 'L2': 3000},
-      ).single.status,
+      reopened
+          .qualifyVerticalCoreRoutes(
+            canonicalSlabs: {slab12.id: slab12, slab23.id: slab23},
+            roomHeightsByLevelId: const {'L1': 3000, 'L2': 3000},
+          )
+          .single
+          .status,
       EngineeringRouteQualificationStatus.valid,
     );
     expect(
-      reopened.qualifyVerticalCoreRoutes(
-        canonicalSlabs: const {},
-        roomHeightsByLevelId: const {'L1': 3000, 'L2': 3000},
-      ).single.status,
+      reopened
+          .qualifyVerticalCoreRoutes(
+            canonicalSlabs: const {},
+            roomHeightsByLevelId: const {'L1': 3000, 'L2': 3000},
+          )
+          .single
+          .status,
       EngineeringRouteQualificationStatus.requiresReview,
     );
     expect(
@@ -452,8 +459,7 @@ void main() {
             const MmPoint(250, 0),
             const MmPoint(4250, 3000),
           ),
-          referenceFrame:
-              const RoomReferenceFrame(origin: MmPoint(2250, 1500)),
+          referenceFrame: const RoomReferenceFrame(origin: MmPoint(2250, 1500)),
         ),
       ],
     );
@@ -478,11 +484,12 @@ void main() {
       EngineeringRouteQualificationStatus.stale,
     );
     expect(
-      qualify(physical, owner: ComposedBuilding(
-        building: composed.building,
-        levels: composed.levels,
-        verticalCores: const [],
-      )).status,
+      qualify(physical,
+          owner: ComposedBuilding(
+            building: composed.building,
+            levels: composed.levels,
+            verticalCores: const [],
+          )).status,
       EngineeringRouteQualificationStatus.blocked,
     );
     final forged = physical.copyWith(
