@@ -457,9 +457,12 @@ void main() {
     expect(loaded.canonicalSlabs[slab23.id]!.aboveLevelId, LevelId('L3'));
     expect(loaded.canonicalSlabs[slab23.id]!.footprint, hasLength(4));
     expect(
-      reopened.qualifyVerticalCoreRoutes(
-        roomHeightsByLevelId: const {'L1': 3000, 'L2': 3000},
-      ).single.status,
+      reopened
+          .qualifyVerticalCoreRoutes(
+            roomHeightsByLevelId: const {'L1': 3000, 'L2': 3000},
+          )
+          .single
+          .status,
       EngineeringRouteQualificationStatus.valid,
     );
     expect(
