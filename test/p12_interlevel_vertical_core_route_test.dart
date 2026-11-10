@@ -467,6 +467,12 @@ void main() {
       reopened.routeQualifications.single.status,
       EngineeringRouteQualificationStatus.stale,
     );
+    expect(
+      reopened.qualifyVerticalCoreRoutes(
+        roomHeightsByLevelId: const {'L1': 3000, 'L2': 3000},
+      ).single.status,
+      EngineeringRouteQualificationStatus.stale,
+    );
     reopened.workspace.replaceCanonicalSlabs(const {});
     expect(
       reopened.routeQualifications.single.status,
