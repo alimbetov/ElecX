@@ -94,7 +94,8 @@ void main() {
       expect(redone.geometricLengthMm, 2000);
 
       final document = EditorProjectDocument.capture(workspace);
-      expect(document.schemaVersion, EditorProjectDocument.currentSchemaVersion);
+      expect(
+          document.schemaVersion, EditorProjectDocument.currentSchemaVersion);
       final json = document.toJson();
       final routeJson =
           (((json['p2']! as Map)['routes']! as List).single as Map);
