@@ -409,7 +409,11 @@ void main() {
       editor.dispose();
       if (await directory.exists()) await directory.delete(recursive: true);
     });
-    final document = EditorProjectDocument.capture(workspace);
+    final document = EditorProjectDocument.capture(
+      workspace,
+      canonicalSlabs: {slab12.id: slab12, slab23.id: slab23},
+    );
+    expect(document.canonicalSlabs.keys, containsAll([slab12.id, slab23.id]));
     final store = JsonFileEditorProjectStore(directory);
     await store.save(document);
     final loaded = await store.load(document.projectId);
@@ -422,6 +426,19 @@ void main() {
     expect(reopened.editor.p2.routes.single.verticalCoreLegs, [hidden]);
     expect(reopened.editor.p2.routes.single.penetrations, hasLength(2));
     expect(reopened.workspace.building.levels, hasLength(3));
+    expect(loaded.canonicalSlabs, hasLength(2));
+    expect(loaded.canonicalSlabs[slab12.id]!.bottomElevationMm, 3000);
+    expect(loaded.canonicalSlabs[slab12.id]!.thicknessMm, 220);
+    expect(loaded.canonicalSlabs[slab12.id]!.materialId, 'concrete');
+    expect(loaded.canonicalSlabs[slab12.id]!.belowLevelId, LevelId('L1'));
+    expect(loaded.canonicalSlabs[slab23.id]!.aboveLevelId, LevelId('L3'));
+    expect(loaded.canonicalSlabs[slab23.id]!.footprint, hasLength(4));
+    expect(
+      reopened.qualifyVerticalCoreRoutes(
+        roomHeightsByLevelId: const {'L1': 3000, 'L2': 3000},
+      ).single.status,
+      EngineeringRouteQualificationStatus.valid,
+    );
     expect(
       reopened
           .qualifyVerticalCoreRoutes(
