@@ -11,6 +11,7 @@ import '../../domain/residential_tower_builder.dart';
 import '../../domain/site_outdoor_model.dart';
 import '../../domain/surfaces.dart';
 import 'editor_controller.dart';
+import 'editor_p2_session.dart';
 
 enum EditorWorkspaceContext { buildingLevel, siteOutdoor }
 
