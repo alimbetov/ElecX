@@ -140,7 +140,7 @@ final class EditorProjectDocument {
     EditorBuildingWorkspace workspace, {
     EditorProjectMetadata? metadata,
     DateTime? now,
-    Map<SlabId, ProjectSlab> canonicalSlabs = const {},
+    Map<SlabId, ProjectSlab>? canonicalSlabs,
   }) {
     final editor = workspace.editor;
     if (editor.p2.isManipulating) {
@@ -153,7 +153,8 @@ final class EditorProjectDocument {
     if (blockingIssue != null) {
       throw EditorProjectSaveBlockedException(blockingIssue);
     }
-    SlabTopologyValidator.validateOrThrow(canonicalSlabs);
+    final currentSlabs = canonicalSlabs ?? workspace.canonicalSlabs;
+    SlabTopologyValidator.validateOrThrow(currentSlabs);
     workspace.synchronizeActiveEditorState();
     final projectMetadata = metadata ??
         EditorProjectMetadata.create(
@@ -191,7 +192,7 @@ final class EditorProjectDocument {
         openingSequence: editor.openingSequence,
       ),
       p2State: editor.p2.state,
-      canonicalSlabs: Map.unmodifiable(canonicalSlabs),
+      canonicalSlabs: Map.unmodifiable(currentSlabs),
     );
   }
 
@@ -210,6 +211,7 @@ final class EditorProjectDocument {
       site: site,
       initialLevelNumber: activeLevelNumber,
       initialOpeningsByLevel: openingsByLevel,
+      canonicalSlabs: canonicalSlabs,
     );
     workspace.restoreNavigationState(
       context: workspaceContext,
