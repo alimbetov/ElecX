@@ -63,6 +63,13 @@ abstract final class EngineeringRouteQualificationService {
           'Canonical ProjectSlab evidence is missing.',
         );
       }
+      if (lowerSlab.buildingId.value != building.building.id ||
+          upperSlab.buildingId.value != building.building.id) {
+        return result(
+          EngineeringRouteQualificationStatus.stale,
+          'Canonical slab owner does not match the current building.',
+        );
+      }
 
       final matches = building.verticalCores
           .where((candidate) => candidate.id == leg.verticalCoreId.value)
