@@ -352,6 +352,41 @@ void main() {
       EngineeringRouteQualificationStatus.valid,
     );
 
+    // A shaft mapping cannot qualify passages hosted by another room, even
+    // when both rooms contain the same global XY point.
+    final otherLowerRoom = room('unrelated-lower-room');
+    final remappedLowerLevel = BuildingLevel(
+      id: level1.id,
+      name: level1.name,
+      elevationMm: level1.elevationMm,
+      spaces: [space1, otherLowerRoom],
+    );
+    final remappedCore = VerticalCore(
+      id: core.id,
+      name: core.name,
+      kind: core.kind,
+      servedLevelNumbers: core.servedLevelNumbers,
+      spaceIdByLevel: {...core.spaceIdByLevel, 1: otherLowerRoom.id},
+    );
+    final remappedBuilding = ComposedBuilding(
+      building: Building(
+        id: composed.building.id,
+        name: composed.building.name,
+        levels: [remappedLowerLevel, level2, level3],
+      ),
+      levels: [
+        ComposedBuildingLevel(
+          level: remappedLowerLevel,
+          levelNumber: 1,
+          kind: BuildingLevelKind.residential,
+        ),
+        ...composed.levels.skip(1),
+      ],
+      verticalCores: [remappedCore],
+    );
+    expect(qualify(physical, owner: remappedBuilding).status,
+        EngineeringRouteQualificationStatus.stale);
+
     final editor = EditorController.restored(
       level: level1,
       openings: const [],

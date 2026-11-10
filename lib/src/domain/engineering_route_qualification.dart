@@ -27,9 +27,9 @@ final class EngineeringRouteQualificationResult {
 
 /// Independent, non-mutating check of persisted multi-level riser legs.
 ///
-/// The project document currently persists building levels and VerticalCore
-/// owners, but not the canonical ProjectSlab registry. Callers MUST supply the
-/// current slab evidence; missing evidence never qualifies a route as valid.
+/// Schema v9 persists canonical slab evidence alongside building/core owners.
+/// Callers MUST supply current evidence; missing evidence never qualifies a
+/// route as valid.
 /// Other types of route (wall-only / single slab) require separate validators.
 abstract final class EngineeringRouteQualificationService {
   static EngineeringRouteQualificationResult qualifyVerticalCoreRoute({
@@ -120,6 +120,20 @@ abstract final class EngineeringRouteQualificationService {
       }
       final lowerPassage = firstPassage.single;
       final upperPassage = secondPassage.single;
+      final core = matches.single;
+      if (core.spaceIdByLevel[lower.single.levelNumber] !=
+              lowerPassage.entryAnchor.surface.spaceId ||
+          core.spaceIdByLevel[intermediate.single.levelNumber] !=
+              lowerPassage.exitAnchor.surface.spaceId ||
+          core.spaceIdByLevel[intermediate.single.levelNumber] !=
+              upperPassage.entryAnchor.surface.spaceId ||
+          core.spaceIdByLevel[upper.single.levelNumber] !=
+              upperPassage.exitAnchor.surface.spaceId) {
+        return result(
+          EngineeringRouteQualificationStatus.stale,
+          'Slab passage room ownership differs from the current VerticalCore.',
+        );
+      }
       if (lowerPassage.hostThicknessMm != lowerSlab.thicknessMm ||
           lowerPassage.materialId != lowerSlab.materialId ||
           upperPassage.hostThicknessMm != upperSlab.thicknessMm ||
