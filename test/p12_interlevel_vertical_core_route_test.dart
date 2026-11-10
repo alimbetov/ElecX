@@ -443,6 +443,9 @@ void main() {
       reopened.workspace.dispose();
       reopened.editor.dispose();
     });
+    final savedAgain = EditorProjectDocument.capture(reopened.workspace);
+    expect(savedAgain.canonicalSlabs, hasLength(2));
+    expect(savedAgain.canonicalSlabs[slab12.id]!.thicknessMm, 220);
     expect(reopened.editor.p2.routes.single.verticalCoreLegs, [hidden]);
     expect(reopened.editor.p2.routes.single.penetrations, hasLength(2));
     expect(reopened.workspace.building.levels, hasLength(3));
