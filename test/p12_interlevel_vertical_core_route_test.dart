@@ -446,6 +446,36 @@ void main() {
     final savedAgain = EditorProjectDocument.capture(reopened.workspace);
     expect(savedAgain.canonicalSlabs, hasLength(2));
     expect(savedAgain.canonicalSlabs[slab12.id]!.thicknessMm, 220);
+    expect(
+      reopened.routeQualifications.single.status,
+      EngineeringRouteQualificationStatus.valid,
+    );
+    reopened.workspace.replaceCanonicalSlabs({
+      slab12.id: slab('slab-12', 'L1', 'L2', 3000, thickness: 180),
+      slab23.id: slab23,
+    });
+    expect(
+      reopened.routeQualifications.single.status,
+      EngineeringRouteQualificationStatus.stale,
+    );
+    reopened.workspace.replaceCanonicalSlabs(const {});
+    expect(
+      reopened.routeQualifications.single.status,
+      EngineeringRouteQualificationStatus.requiresReview,
+    );
+    reopened.workspace.replaceCanonicalSlabs({
+      slab12.id: slab12,
+      slab23.id: slab23,
+    });
+    reopened.workspace.replaceBuilding(ComposedBuilding(
+      building: composed.building,
+      levels: composed.levels,
+      verticalCores: const [],
+    ));
+    expect(
+      reopened.routeQualifications.single.status,
+      EngineeringRouteQualificationStatus.blocked,
+    );
     expect(reopened.editor.p2.routes.single.verticalCoreLegs, [hidden]);
     expect(reopened.editor.p2.routes.single.penetrations, hasLength(2));
     expect(reopened.workspace.building.levels, hasLength(3));
