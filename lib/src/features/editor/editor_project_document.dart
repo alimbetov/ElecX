@@ -373,7 +373,8 @@ Map<SlabId, ProjectSlab> _slabsFromJson(Map<String, Object?> json) {
       aboveLevelId: _nullableString(value['aboveLevelId']) == null
           ? null
           : LevelId(_nullableString(value['aboveLevelId'])!),
-      bottomElevationMm: _int(value['bottomElevationMm'], 'slab.bottomElevationMm'),
+      bottomElevationMm:
+          _int(value['bottomElevationMm'], 'slab.bottomElevationMm'),
       thicknessMm: _int(value['thicknessMm'], 'slab.thicknessMm'),
       materialId: _string(value['materialId'], 'slab.materialId'),
       footprint: [
