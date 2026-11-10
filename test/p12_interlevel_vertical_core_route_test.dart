@@ -578,6 +578,45 @@ void main() {
       reopened.routeQualifications.single.status,
       EngineeringRouteQualificationStatus.valid,
     );
+    final raisedLowerLevel = BuildingLevel(
+      id: level1.id,
+      name: level1.name,
+      elevationMm: 100,
+      spaces: level1.spaces,
+    );
+    final raisedBuilding = ComposedBuilding(
+      building: Building(
+        id: composed.building.id,
+        name: composed.building.name,
+        levels: [raisedLowerLevel, level2, level3],
+      ),
+      levels: [
+        ComposedBuildingLevel(
+          level: raisedLowerLevel,
+          levelNumber: 1,
+          kind: BuildingLevelKind.residential,
+        ),
+        ...composed.levels.skip(1),
+      ],
+      verticalCores: [core],
+    );
+    reopened.workspace.replaceBuilding(raisedBuilding);
+    // Capture synchronizes the active editor. It must not resurrect the old
+    // active level and overwrite an explicitly replaced canonical building.
+    final raisedSaved = EditorProjectDocument.capture(reopened.workspace);
+    expect(raisedSaved.building.levelByNumber(1)!.level.elevationMm, 100);
+    expect(
+        raisedSaved.site.site.buildings.single.levels.first.elevationMm, 100);
+    final raisedReopened = raisedSaved.restore();
+    addTearDown(() {
+      raisedReopened.workspace.dispose();
+      raisedReopened.editor.dispose();
+    });
+    expect(raisedReopened.editor.level.elevationMm, 100);
+    final raisedResaved =
+        EditorProjectDocument.capture(raisedReopened.workspace);
+    expect(raisedResaved.building.levelByNumber(1)!.level.elevationMm, 100);
+
     reopened.workspace.replaceBuilding(composed);
     expect(reopened.editor.p2.routes.single.verticalCoreLegs, [hidden]);
     expect(reopened.editor.p2.routes.single.penetrations, hasLength(2));

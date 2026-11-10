@@ -169,6 +169,10 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
       throw ArgumentError('Cannot replace a building with another identity.');
     }
     building = updated;
+    if (_context == EditorWorkspaceContext.buildingLevel) {
+      final active = updated.levelByNumber(_activeLevelNumber);
+      if (active != null) editor.level = active.level;
+    }
     site = site.copyWith(
       site: site.site.copyWith(
         buildings: [
