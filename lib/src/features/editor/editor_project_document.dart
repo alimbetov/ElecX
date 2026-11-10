@@ -92,7 +92,7 @@ final class RestoredEditorProject {
           EngineeringRouteQualificationService.qualifyVerticalCoreRoute(
             route: route,
             building: workspace.building,
-            canonicalSlabs: canonicalSlabs ?? this.canonicalSlabs,
+            canonicalSlabs: canonicalSlabs ?? workspace.canonicalSlabs,
             roomHeightsByLevelId: roomHeightsByLevelId,
           ),
       ]);
