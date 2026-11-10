@@ -178,6 +178,7 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
     );
     requalifyRoutes();
   }
+
   final Map<int, List<ArchitecturalOpening>> _openingsByLevel;
 
   EditorWorkspaceContext _context = EditorWorkspaceContext.buildingLevel;
