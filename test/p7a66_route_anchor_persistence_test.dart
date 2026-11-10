@@ -9,7 +9,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('P7A-6.6 route anchor persistence', () {
-    test('current schema round-trip preserves durable route anchor ids exactly', () {
+    test('current schema round-trip preserves durable route anchor ids exactly',
+        () {
       final fixture = _routeDocumentJson();
       final json = fixture.json;
       final segment = fixture.segment;
@@ -63,7 +64,8 @@ void main() {
 
         final decoded = EditorProjectDocument.fromJson(fixture.json);
 
-        expect(decoded.schemaVersion, EditorProjectDocument.currentSchemaVersion);
+        expect(
+            decoded.schemaVersion, EditorProjectDocument.currentSchemaVersion);
         expect(decoded.p2State.routes.single.penetrations, isEmpty);
         final encodedRoute =
             ((decoded.toJson()['p2']! as Map)['routes']! as List).single as Map;
