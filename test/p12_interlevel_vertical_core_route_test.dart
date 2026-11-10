@@ -420,6 +420,15 @@ void main() {
     final migrated = EditorProjectDocument.fromJson(legacyV8);
     expect(migrated.schemaVersion, 9);
     expect(migrated.canonicalSlabs, isEmpty);
+    final legacyReopened = migrated.restore();
+    addTearDown(() {
+      legacyReopened.workspace.dispose();
+      legacyReopened.editor.dispose();
+    });
+    expect(
+      legacyReopened.routeQualifications.single.status,
+      EngineeringRouteQualificationStatus.requiresReview,
+    );
 
     final corrupt = document.toJson();
     final slabMap = Map<String, Object?>.from(
@@ -462,6 +471,24 @@ void main() {
     expect(
       reopened.routeQualifications.single.status,
       EngineeringRouteQualificationStatus.requiresReview,
+    );
+    reopened.workspace.replaceCanonicalSlabs({
+      slab12.id: ProjectSlab(
+        id: slab12.id,
+        buildingId: BuildingId('foreign-building'),
+        kind: slab12.kind,
+        belowLevelId: slab12.belowLevelId,
+        aboveLevelId: slab12.aboveLevelId,
+        bottomElevationMm: slab12.bottomElevationMm,
+        thicknessMm: slab12.thicknessMm,
+        materialId: slab12.materialId,
+        footprint: slab12.footprint,
+      ),
+      slab23.id: slab23,
+    });
+    expect(
+      reopened.routeQualifications.single.status,
+      EngineeringRouteQualificationStatus.stale,
     );
     reopened.workspace.replaceCanonicalSlabs({
       slab12.id: slab12,
