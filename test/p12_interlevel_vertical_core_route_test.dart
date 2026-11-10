@@ -459,6 +459,20 @@ void main() {
       reopened.routeQualifications.single.status,
       EngineeringRouteQualificationStatus.valid,
     );
+    // Qualification must follow route deletion and undo/redo after Restore.
+    reopened.editor.p2.select(physical.source.componentId);
+    expect(reopened.editor.p2.deleteSelection(), isTrue);
+    expect(reopened.routeQualifications, isEmpty);
+    reopened.editor.p2.undo();
+    expect(reopened.routeQualifications.single.routeId, physical.id);
+    expect(reopened.routeQualifications.single.status,
+        EngineeringRouteQualificationStatus.valid);
+    reopened.editor.p2.redo();
+    expect(reopened.routeQualifications, isEmpty);
+    reopened.editor.p2.undo();
+    expect(reopened.routeQualifications.single.status,
+        EngineeringRouteQualificationStatus.valid);
+
     reopened.workspace.replaceCanonicalSlabs({
       slab12.id: slab('slab-12', 'L1', 'L2', 3000, thickness: 180),
       slab23.id: slab23,

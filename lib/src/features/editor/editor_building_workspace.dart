@@ -122,14 +122,19 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
   ComposedBuilding building;
   ComposedProjectSite site;
   Map<SlabId, ProjectSlab> canonicalSlabs;
-  List<EngineeringRouteQualificationResult> _routeQualifications = const [];
 
+  /// Derived from current committed state, including deletion and undo/redo.
+  /// A stored result must not outlive the route or construction it qualified.
   List<EngineeringRouteQualificationResult> get routeQualifications =>
-      _routeQualifications;
+      _qualifyCurrentRoutes();
 
   /// Recompute qualifications from the current building, slabs and routes.
   /// Unknown construction evidence must never be classified as VALID.
   void requalifyRoutes() {
+    notifyListeners();
+  }
+
+  List<EngineeringRouteQualificationResult> _qualifyCurrentRoutes() {
     final heights = <String, int>{};
     for (final slab in canonicalSlabs.values) {
       final belowId = slab.belowLevelId?.value;
@@ -140,7 +145,7 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
         if (height > 0) heights[belowId] = height;
       }
     }
-    _routeQualifications = List.unmodifiable([
+    return List.unmodifiable([
       for (final route in editor.p2.routes)
         EngineeringRouteQualificationService.qualifyVerticalCoreRoute(
           route: route,
@@ -149,7 +154,6 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
           roomHeightsByLevelId: heights,
         ),
     ]);
-    notifyListeners();
   }
 
   /// Explicit mutation boundary for a canonical construction change.
