@@ -76,6 +76,10 @@ final class RestoredEditorProject {
   final EditorBuildingWorkspace workspace;
   final Map<SlabId, ProjectSlab> canonicalSlabs;
 
+  /// Automatically computed after Restore and after canonical changes.
+  List<EngineeringRouteQualificationResult> get routeQualifications =>
+      workspace.routeQualifications;
+
   /// Explicit post-restore qualification. The current project schema does not
   /// use the persisted slab registry by default. Callers may override it
   /// with fresh construction evidence after the building is edited.
@@ -234,6 +238,7 @@ final class EditorProjectDocument {
       CanonicalRoomSurfaceRuntimeRegistry.stageResume(editor, stableResume);
     }
     editor.restoreP2State(p2State);
+    workspace.requalifyRoutes();
     return RestoredEditorProject(
       editor: editor,
       workspace: workspace,
