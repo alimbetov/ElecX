@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import '../../domain/building_composition.dart';
 import '../../domain/geometry.dart';
 import '../../domain/project_model.dart';
+import '../../domain/project_identity.dart';
+import '../../domain/slab_topology.dart';
 import '../../domain/site_orientation.dart';
 import '../../domain/residential_tower_builder.dart';
 import '../../domain/site_outdoor_model.dart';
@@ -16,9 +18,11 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
     required this.editor,
     required this.building,
     required this.site,
+    Map<SlabId, ProjectSlab> canonicalSlabs = const {},
     int initialLevelNumber = 1,
     Map<int, List<ArchitecturalOpening>> initialOpeningsByLevel = const {},
-  })  : _activeLevelNumber = initialLevelNumber,
+  })  : canonicalSlabs = Map.unmodifiable(canonicalSlabs),
+        _activeLevelNumber = initialLevelNumber,
         _openingsByLevel = {
           for (final entry in initialOpeningsByLevel.entries)
             entry.key: List<ArchitecturalOpening>.of(entry.value),
@@ -115,6 +119,7 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
   final EditorController editor;
   ComposedBuilding building;
   ComposedProjectSite site;
+  final Map<SlabId, ProjectSlab> canonicalSlabs;
   final Map<int, List<ArchitecturalOpening>> _openingsByLevel;
 
   EditorWorkspaceContext _context = EditorWorkspaceContext.buildingLevel;
