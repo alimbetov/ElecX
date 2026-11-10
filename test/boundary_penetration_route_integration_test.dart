@@ -301,7 +301,7 @@ void main() {
       );
 
       final json = document.toJson();
-      expect(json['schemaVersion'], 8);
+      expect(json['schemaVersion'], EditorProjectDocument.currentSchemaVersion);
       final routeJson = ((json['p2']! as Map)['routes']! as List).single as Map;
       final firstSurface =
           ((routeJson['segments']! as List).first as Map)['surface'] as Map;
