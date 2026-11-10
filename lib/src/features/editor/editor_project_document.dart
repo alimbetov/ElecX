@@ -5,6 +5,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 import '../../domain/boundary_penetration.dart';
+import '../../domain/boundary_topology.dart';
 import '../../domain/building_composition.dart';
 import '../../domain/cable_identity.dart';
 import '../../domain/circuit_cable_registry.dart';
@@ -16,6 +17,7 @@ import '../../domain/project_identity.dart';
 import '../../domain/project_model.dart';
 import '../../domain/route_medium.dart';
 import '../../domain/site_orientation.dart';
+import '../../domain/slab_topology.dart';
 import '../../domain/slab_topology.dart';
 import '../../domain/site_outdoor_model.dart';
 import '../../domain/surfaces.dart';
@@ -65,16 +67,21 @@ final class EditorProjectResumeState {
 }
 
 final class RestoredEditorProject {
-  const RestoredEditorProject({required this.editor, required this.workspace});
+  const RestoredEditorProject({
+    required this.editor,
+    required this.workspace,
+    this.canonicalSlabs = const {},
+  });
 
   final EditorController editor;
   final EditorBuildingWorkspace workspace;
+  final Map<SlabId, ProjectSlab> canonicalSlabs;
 
   /// Explicit post-restore qualification. The current project schema does not
-  /// persist canonical slabs, so callers must supply current construction
-  /// evidence rather than silently accepting serialized route lengths.
+  /// use the persisted slab registry by default. Callers may override it
+  /// with fresh construction evidence after the building is edited.
   List<EngineeringRouteQualificationResult> qualifyVerticalCoreRoutes({
-    required Map<SlabId, ProjectSlab> canonicalSlabs,
+    Map<SlabId, ProjectSlab>? canonicalSlabs,
     required Map<String, int> roomHeightsByLevelId,
   }) =>
       List.unmodifiable([
@@ -82,7 +89,7 @@ final class RestoredEditorProject {
           EngineeringRouteQualificationService.qualifyVerticalCoreRoute(
             route: route,
             building: workspace.building,
-            canonicalSlabs: canonicalSlabs,
+            canonicalSlabs: canonicalSlabs ?? this.canonicalSlabs,
             roomHeightsByLevelId: roomHeightsByLevelId,
           ),
       ]);
@@ -106,6 +113,7 @@ final class EditorProjectDocument {
     required this.openingsByLevel,
     required this.resume,
     required this.p2State,
+    this.canonicalSlabs = const {},
   });
 
   static const currentSchemaVersion =
@@ -126,11 +134,13 @@ final class EditorProjectDocument {
   final Map<int, List<ArchitecturalOpening>> openingsByLevel;
   final EditorProjectResumeState resume;
   final EditorP2State p2State;
+  final Map<SlabId, ProjectSlab> canonicalSlabs;
 
   factory EditorProjectDocument.capture(
     EditorBuildingWorkspace workspace, {
     EditorProjectMetadata? metadata,
     DateTime? now,
+    Map<SlabId, ProjectSlab> canonicalSlabs = const {},
   }) {
     final editor = workspace.editor;
     if (editor.p2.isManipulating) {
@@ -143,6 +153,7 @@ final class EditorProjectDocument {
     if (blockingIssue != null) {
       throw EditorProjectSaveBlockedException(blockingIssue);
     }
+    SlabTopologyValidator.validateOrThrow(canonicalSlabs);
     workspace.synchronizeActiveEditorState();
     final projectMetadata = metadata ??
         EditorProjectMetadata.create(
@@ -180,6 +191,7 @@ final class EditorProjectDocument {
         openingSequence: editor.openingSequence,
       ),
       p2State: editor.p2.state,
+      canonicalSlabs: Map.unmodifiable(canonicalSlabs),
     );
   }
 
@@ -221,7 +233,11 @@ final class EditorProjectDocument {
       CanonicalRoomSurfaceRuntimeRegistry.stageResume(editor, stableResume);
     }
     editor.restoreP2State(p2State);
-    return RestoredEditorProject(editor: editor, workspace: workspace);
+    return RestoredEditorProject(
+      editor: editor,
+      workspace: workspace,
+      canonicalSlabs: canonicalSlabs,
+    );
   }
 
   Map<String, Object?> toJson() => {
@@ -233,6 +249,10 @@ final class EditorProjectDocument {
           'updatedAt': metadata.updatedAt.toUtc().toIso8601String(),
         },
         'building': _buildingToJson(building),
+        'canonicalSlabs': {
+          for (final entry in canonicalSlabs.entries)
+            entry.key.value: _slabToJson(entry.value),
+        },
         'site': _siteToJson(site),
         'workspace': {
           'context': workspaceContext.name,
@@ -309,8 +329,67 @@ final class EditorProjectDocument {
       openingsByLevel: Map.unmodifiable(openings),
       resume: _resumeFromJson(_map(workspace['resume'], 'workspace.resume')),
       p2State: _p2FromJson(_map(migrated['p2'], 'p2')),
+      canonicalSlabs: _slabsFromJson(
+        _map(migrated['canonicalSlabs'], 'canonicalSlabs'),
+      ),
     );
   }
+}
+
+Map<String, Object?> _slabToJson(ProjectSlab slab) => {
+      'id': slab.id.value,
+      'buildingId': slab.buildingId.value,
+      'kind': slab.kind.name,
+      'belowLevelId': slab.belowLevelId?.value,
+      'aboveLevelId': slab.aboveLevelId?.value,
+      'bottomElevationMm': slab.bottomElevationMm,
+      'thicknessMm': slab.thicknessMm,
+      'materialId': slab.materialId,
+      'footprint': [
+        for (final p in slab.footprint) {'xMm': p.xMm, 'yMm': p.yMm},
+      ],
+    };
+
+Map<SlabId, ProjectSlab> _slabsFromJson(Map<String, Object?> json) {
+  final slabs = <SlabId, ProjectSlab>{};
+  for (final entry in json.entries) {
+    final value = _map(entry.value, 'canonicalSlabs.${entry.key}');
+    final id = SlabId(_string(value['id'], 'slab.id'));
+    if (id.value != entry.key) {
+      throw FormatException('Canonical slab key does not match slab id.');
+    }
+    final slab = ProjectSlab(
+      id: id,
+      buildingId: BuildingId(_string(value['buildingId'], 'slab.buildingId')),
+      kind: _enumValue(
+        SlabKind.values,
+        _string(value['kind'], 'slab.kind'),
+        'slab.kind',
+      ),
+      belowLevelId: _nullableString(value['belowLevelId']) == null
+          ? null
+          : LevelId(_nullableString(value['belowLevelId'])!),
+      aboveLevelId: _nullableString(value['aboveLevelId']) == null
+          ? null
+          : LevelId(_nullableString(value['aboveLevelId'])!),
+      bottomElevationMm: _int(value['bottomElevationMm'], 'slab.bottomElevationMm'),
+      thicknessMm: _int(value['thicknessMm'], 'slab.thicknessMm'),
+      materialId: _string(value['materialId'], 'slab.materialId'),
+      footprint: [
+        for (final item in _list(value['footprint'], 'slab.footprint'))
+          () {
+            final point = _map(item, 'slab.footprint.point');
+            return BoundaryPointMm(
+              xMm: _int(point['xMm'], 'slab.footprint.xMm'),
+              yMm: _int(point['yMm'], 'slab.footprint.yMm'),
+            );
+          }(),
+      ],
+    );
+    slabs[id] = slab;
+  }
+  SlabTopologyValidator.validateOrThrow(slabs);
+  return Map.unmodifiable(slabs);
 }
 
 abstract interface class EditorProjectStore {
