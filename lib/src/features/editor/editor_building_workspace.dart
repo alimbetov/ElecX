@@ -164,6 +164,17 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
       throw ArgumentError('Cannot replace a building with another identity.');
     }
     building = updated;
+    site = site.copyWith(
+      site: site.site.copyWith(
+        buildings: [
+          for (final candidate in site.site.buildings)
+            if (candidate.id == updated.building.id)
+              updated.building
+            else
+              candidate,
+        ],
+      ),
+    );
     requalifyRoutes();
   }
   final Map<int, List<ArchitecturalOpening>> _openingsByLevel;
