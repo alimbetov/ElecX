@@ -352,6 +352,74 @@ void main() {
       EngineeringRouteQualificationStatus.valid,
     );
 
+    ProjectSlab modifiedSlabEvidence(
+            {String? material, bool displaced = false}) =>
+        ProjectSlab(
+          id: slab12.id,
+          buildingId: slab12.buildingId,
+          kind: slab12.kind,
+          belowLevelId: slab12.belowLevelId,
+          aboveLevelId: slab12.aboveLevelId,
+          bottomElevationMm: slab12.bottomElevationMm,
+          thicknessMm: slab12.thicknessMm,
+          materialId: material ?? slab12.materialId,
+          footprint: displaced
+              ? const [
+                  BoundaryPointMm(xMm: 5000, yMm: 0),
+                  BoundaryPointMm(xMm: 9000, yMm: 0),
+                  BoundaryPointMm(xMm: 9000, yMm: 3000),
+                  BoundaryPointMm(xMm: 5000, yMm: 3000),
+                ]
+              : slab12.footprint,
+        );
+    for (final changed in [
+      modifiedSlabEvidence(material: 'brick'),
+      modifiedSlabEvidence(displaced: true),
+    ]) {
+      expect(
+        qualify(physical, slabs: {slab12.id: changed, slab23.id: slab23})
+            .status,
+        EngineeringRouteQualificationStatus.stale,
+      );
+    }
+    final unrelatedSlab = slab('unrelated-slab', 'L4', 'L5', 9000);
+    expect(
+      qualify(physical, slabs: {
+        slab12.id: slab12,
+        slab23.id: slab23,
+        unrelatedSlab.id: unrelatedSlab,
+      }).status,
+      EngineeringRouteQualificationStatus.valid,
+    );
+    final raisedMiddle = BuildingLevel(
+      id: level2.id,
+      name: level2.name,
+      elevationMm: level2.elevationMm + 100,
+      spaces: level2.spaces,
+    );
+    expect(
+      qualify(physical,
+          owner: ComposedBuilding(
+            building: Building(
+              id: composed.building.id,
+              name: composed.building.name,
+              levels: [level1, raisedMiddle, level3],
+            ),
+            levels: [
+              composed.levels.first,
+              ComposedBuildingLevel(
+                level: raisedMiddle,
+                levelNumber: 2,
+                kind: BuildingLevelKind.residential,
+              ),
+              composed.levels.last,
+            ],
+            verticalCores: [core],
+          )).status,
+      EngineeringRouteQualificationStatus.stale,
+    );
+    expect(qualify(physical).status, EngineeringRouteQualificationStatus.valid);
+
     // A shaft mapping cannot qualify passages hosted by another room, even
     // when both rooms contain the same global XY point.
     final otherLowerRoom = room('unrelated-lower-room');
