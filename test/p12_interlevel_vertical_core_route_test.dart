@@ -509,11 +509,24 @@ void main() {
       reopened.routeQualifications.single.status,
       EngineeringRouteQualificationStatus.blocked,
     );
-    reopened.workspace.replaceBuilding(composed);
+    reopened.workspace.replaceBuilding(ComposedBuilding(
+      building: Building(
+        id: composed.building.id,
+        name: 'Updated physical building',
+        levels: composed.building.levels,
+      ),
+      levels: composed.levels,
+      verticalCores: [core],
+    ));
+    expect(
+      reopened.workspace.site.site.buildings.single.name,
+      'Updated physical building',
+    );
     expect(
       reopened.routeQualifications.single.status,
       EngineeringRouteQualificationStatus.valid,
     );
+    reopened.workspace.replaceBuilding(composed);
     expect(reopened.editor.p2.routes.single.verticalCoreLegs, [hidden]);
     expect(reopened.editor.p2.routes.single.penetrations, hasLength(2));
     expect(reopened.workspace.building.levels, hasLength(3));
