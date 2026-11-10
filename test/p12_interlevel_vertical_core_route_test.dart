@@ -414,6 +414,26 @@ void main() {
       canonicalSlabs: {slab12.id: slab12, slab23.id: slab23},
     );
     expect(document.canonicalSlabs.keys, containsAll([slab12.id, slab23.id]));
+    final legacyV8 = document.toJson()
+      ..['schemaVersion'] = 8
+      ..remove('canonicalSlabs');
+    final migrated = EditorProjectDocument.fromJson(legacyV8);
+    expect(migrated.schemaVersion, 9);
+    expect(migrated.canonicalSlabs, isEmpty);
+
+    final corrupt = document.toJson();
+    final slabMap = Map<String, Object?>.from(
+      corrupt['canonicalSlabs']! as Map,
+    );
+    final alteredSlab = Map<String, Object?>.from(
+      slabMap[slab12.id.value]! as Map,
+    )..['id'] = 'unrelated-slab';
+    slabMap[slab12.id.value] = alteredSlab;
+    corrupt['canonicalSlabs'] = slabMap;
+    expect(
+      () => EditorProjectDocument.fromJson(corrupt),
+      throwsFormatException,
+    );
     final store = JsonFileEditorProjectStore(directory);
     await store.save(document);
     final loaded = await store.load(document.projectId);
