@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../domain/building_composition.dart';
+import '../../domain/engineering_route_qualification.dart';
 import '../../domain/geometry.dart';
 import '../../domain/project_model.dart';
 import '../../domain/project_identity.dart';
@@ -119,7 +120,52 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
   final EditorController editor;
   ComposedBuilding building;
   ComposedProjectSite site;
-  final Map<SlabId, ProjectSlab> canonicalSlabs;
+  Map<SlabId, ProjectSlab> canonicalSlabs;
+  List<EngineeringRouteQualificationResult> _routeQualifications = const [];
+
+  List<EngineeringRouteQualificationResult> get routeQualifications =>
+      _routeQualifications;
+
+  /// Recompute qualifications from the current building, slabs and routes.
+  /// Unknown construction evidence must never be classified as VALID.
+  void requalifyRoutes() {
+    final heights = <String, int>{};
+    for (final slab in canonicalSlabs.values) {
+      final belowId = slab.belowLevelId?.value;
+      if (belowId == null) continue;
+      for (final level in building.levels) {
+        if (level.level.id != belowId) continue;
+        final height = slab.bottomElevationMm - level.level.elevationMm;
+        if (height > 0) heights[belowId] = height;
+      }
+    }
+    _routeQualifications = List.unmodifiable([
+      for (final route in editor.p2.routes)
+        EngineeringRouteQualificationService.qualifyVerticalCoreRoute(
+          route: route,
+          building: building,
+          canonicalSlabs: canonicalSlabs,
+          roomHeightsByLevelId: heights,
+        ),
+    ]);
+    notifyListeners();
+  }
+
+  /// Explicit mutation boundary for a canonical construction change.
+  void replaceCanonicalSlabs(Map<SlabId, ProjectSlab> slabs) {
+    SlabTopologyValidator.validateOrThrow(slabs);
+    canonicalSlabs = Map.unmodifiable(slabs);
+    requalifyRoutes();
+  }
+
+  /// Apply an updated building aggregate and invalidate stale route evidence.
+  void replaceBuilding(ComposedBuilding updated) {
+    if (updated.building.id != building.building.id) {
+      throw ArgumentError('Cannot replace a building with another identity.');
+    }
+    building = updated;
+    requalifyRoutes();
+  }
   final Map<int, List<ArchitecturalOpening>> _openingsByLevel;
 
   EditorWorkspaceContext _context = EditorWorkspaceContext.buildingLevel;
