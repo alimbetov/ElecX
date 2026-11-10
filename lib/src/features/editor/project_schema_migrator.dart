@@ -1,7 +1,7 @@
 final class EditorProjectSchemaMigrator {
   const EditorProjectSchemaMigrator._();
 
-  static const int currentSchemaVersion = 8;
+  static const int currentSchemaVersion = 9;
 
   static Map<String, Object?> migrate(
     Map<String, Object?> source, {
@@ -32,6 +32,7 @@ final class EditorProjectSchemaMigrator {
         5 => _v5ToV6(result),
         6 => _v6ToV7(result),
         7 => _v7ToV8(result),
+        8 => _v8ToV9(result),
         _ => throw FormatException(
             'No ElecX migration registered from schema $version.',
           ),
@@ -40,6 +41,16 @@ final class EditorProjectSchemaMigrator {
     }
     return result;
   }
+
+  /// Schema v8 stores slab references on penetrations but not the canonical
+  /// slab constructions themselves. Never synthesize a physical slab from a
+  /// route or floor. Old projects explicitly remain unqualified until edited.
+  static Map<String, Object?> _v8ToV9(Map<String, Object?> source) =>
+      <String, Object?>{
+        ...source,
+        'schemaVersion': 9,
+        'canonicalSlabs': const <String, Object?>{},
+      };
 
   /// Schema v7 persisted physical penetration aggregates but predated stable
   /// SlabId ownership. Migration never guesses a slab from geometry or level
