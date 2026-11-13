@@ -80,22 +80,16 @@ final class RestoredEditorProject {
   List<EngineeringRouteQualificationResult> get routeQualifications =>
       workspace.routeQualifications;
 
-  /// Explicit post-restore qualification. The current project schema does not
-  /// use the persisted slab registry by default. Callers may override it
-  /// with fresh construction evidence after the building is edited.
+  /// Explicit post-restore qualification using the current workspace registry.
+  /// Callers may override it with fresh construction evidence.
   List<EngineeringRouteQualificationResult> qualifyVerticalCoreRoutes({
     Map<SlabId, ProjectSlab>? canonicalSlabs,
     required Map<String, int> roomHeightsByLevelId,
   }) =>
-      List.unmodifiable([
-        for (final route in editor.p2.routes)
-          EngineeringRouteQualificationService.qualifyVerticalCoreRoute(
-            route: route,
-            building: workspace.building,
-            canonicalSlabs: canonicalSlabs ?? workspace.canonicalSlabs,
-            roomHeightsByLevelId: roomHeightsByLevelId,
-          ),
-      ]);
+      workspace.qualifyVerticalCoreRoutes(
+        canonicalSlabs: canonicalSlabs,
+        roomHeightsByLevelId: roomHeightsByLevelId,
+      );
 }
 
 /// Versioned, canonical persisted state for one editable ElecX workspace.

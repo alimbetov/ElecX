@@ -122,34 +122,43 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
   ComposedBuilding building;
   ComposedProjectSite site;
   Map<SlabId, ProjectSlab> canonicalSlabs;
-  List<EngineeringRouteQualificationResult> _routeQualifications = const [];
 
+  /// Derived from current committed state, including deletion and undo/redo.
+  /// A stored result must not outlive the route or construction it qualified.
   List<EngineeringRouteQualificationResult> get routeQualifications =>
-      _routeQualifications;
+      qualifyVerticalCoreRoutes();
 
   /// Recompute qualifications from the current building, slabs and routes.
   /// Unknown construction evidence must never be classified as VALID.
   void requalifyRoutes() {
+    notifyListeners();
+  }
+
+  List<EngineeringRouteQualificationResult> qualifyVerticalCoreRoutes({
+    Map<SlabId, ProjectSlab>? canonicalSlabs,
+    Map<String, int>? roomHeightsByLevelId,
+  }) {
+    final currentBuilding = _currentBuildingSnapshot();
+    final slabs = canonicalSlabs ?? this.canonicalSlabs;
     final heights = <String, int>{};
-    for (final slab in canonicalSlabs.values) {
+    for (final slab in slabs.values) {
       final belowId = slab.belowLevelId?.value;
       if (belowId == null) continue;
-      for (final level in building.levels) {
+      for (final level in currentBuilding.levels) {
         if (level.level.id != belowId) continue;
         final height = slab.bottomElevationMm - level.level.elevationMm;
         if (height > 0) heights[belowId] = height;
       }
     }
-    _routeQualifications = List.unmodifiable([
+    return List.unmodifiable([
       for (final route in editor.p2.routes)
         EngineeringRouteQualificationService.qualifyVerticalCoreRoute(
           route: route,
-          building: building,
-          canonicalSlabs: canonicalSlabs,
-          roomHeightsByLevelId: heights,
+          building: currentBuilding,
+          canonicalSlabs: slabs,
+          roomHeightsByLevelId: roomHeightsByLevelId ?? heights,
         ),
     ]);
-    notifyListeners();
   }
 
   /// Explicit mutation boundary for a canonical construction change.
@@ -165,6 +174,10 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
       throw ArgumentError('Cannot replace a building with another identity.');
     }
     building = updated;
+    if (_context == EditorWorkspaceContext.buildingLevel) {
+      final active = updated.levelByNumber(_activeLevelNumber);
+      if (active != null) editor.level = active.level;
+    }
     site = site.copyWith(
       site: site.site.copyWith(
         buildings: [
@@ -335,6 +348,26 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
     _openingsByLevel[_activeLevelNumber] = List<ArchitecturalOpening>.of(
       editor.openings,
     );
+    building = _currentBuildingSnapshot();
+    final geometry = building.building;
+    site = site.copyWith(
+      site: site.site.copyWith(
+        buildings: [
+          for (final candidate in site.site.buildings)
+            if (candidate.id == geometry.id) geometry else candidate,
+        ],
+      ),
+    );
+  }
+
+  /// Includes committed active-level edits before Save without synchronizing
+  /// or notifying. Qualification reads must not mutate editor/workspace state.
+  ComposedBuilding _currentBuildingSnapshot() {
+    if (_context != EditorWorkspaceContext.buildingLevel) return building;
+    final current = building.levelByNumber(_activeLevelNumber);
+    if (current == null || identical(current.level, editor.level)) {
+      return building;
+    }
     final updatedLevel = ComposedBuildingLevel(
       level: editor.level,
       levelNumber: current.levelNumber,
@@ -351,18 +384,10 @@ final class EditorBuildingWorkspace extends ChangeNotifier {
       name: building.building.name,
       levels: [for (final level in levels) level.level],
     );
-    building = ComposedBuilding(
+    return ComposedBuilding(
       building: geometry,
       levels: levels,
       verticalCores: building.verticalCores,
-    );
-    site = site.copyWith(
-      site: site.site.copyWith(
-        buildings: [
-          for (final candidate in site.site.buildings)
-            if (candidate.id == geometry.id) geometry else candidate,
-        ],
-      ),
     );
   }
 

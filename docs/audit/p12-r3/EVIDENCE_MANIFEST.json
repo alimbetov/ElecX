@@ -1,0 +1,254 @@
+{
+  "date": "2026-11-10 Asia/Almaty",
+  "localEvidenceDirectory": "/Users/ruslanalimbetov/Documents/electra/ElecX-p12-r3-evidence-20261110",
+  "rawLogsCommitted": false,
+  "files": [
+    {
+      "file": "01-production-hub.png",
+      "bytes": 210856,
+      "sha256": "08e013e059619e4754d053684edf3f78c4a42db63fa10032004019ef6c61deae"
+    },
+    {
+      "file": "02-ceiling-route.png",
+      "bytes": 432600,
+      "sha256": "c97a37aaf4304c36597a1a475d5742cfc2da94c9fe23bfe996830e97c83bdeaa"
+    },
+    {
+      "file": "03-wall-route.png",
+      "bytes": 469948,
+      "sha256": "6263e50c626c15248b394dad86aaebf29379bceb571d2b274eb0ba6ceb7498bb"
+    },
+    {
+      "file": "04-impossible-transition-rejected.png",
+      "bytes": 521626,
+      "sha256": "a34f3c0ac798e64c38a3e75410b09ff5f977f4cb6d57f5a7e3664b61bb08ceba"
+    },
+    {
+      "file": "04-validation.ax.txt",
+      "bytes": 5610,
+      "sha256": "5b8b071b8905da331a5d709a0a39742c2e89bd15f454b68abbebcfaa396feacc"
+    },
+    {
+      "file": "05-reopened-route.png",
+      "bytes": 420302,
+      "sha256": "40d01785f62135cf171f153467bc00e356c62b1fa6d9e107b2f88d16cbf399ce"
+    },
+    {
+      "file": "06-p12-safety-review.png",
+      "bytes": 542086,
+      "sha256": "e0811cd27e3e5434746380b6b5dbfc230981f6c0e81b439a1052853c0d3e8f39"
+    },
+    {
+      "file": "analyze-baseline.log",
+      "bytes": 771,
+      "sha256": "08cec3a4ff86a372e8adf7bf6a72bfe986de4cb9a29c85b6f11ef37aeb3fad7d"
+    },
+    {
+      "file": "analyze-final.log",
+      "bytes": 846,
+      "sha256": "409ddd87bba8c57fb0b03e205d37ad492ad1be57d8dd42cd844261c01a9d95b3"
+    },
+    {
+      "file": "analyze-fix1.log",
+      "bytes": 771,
+      "sha256": "ba090ae52e0c334161977f4806aa8b459ad63b7b9fc785e4eadfc694f87493ed"
+    },
+    {
+      "file": "analyze-fix2.log",
+      "bytes": 771,
+      "sha256": "aa87d22773c527a813507ab4ade4ddbb9af922cfbfa549144696b22b43ca2535"
+    },
+    {
+      "file": "analyze-fix3.log",
+      "bytes": 771,
+      "sha256": "db352e5138e0422feea237078840d396ff78acb4b817d06d4b4d5540a7b7d290"
+    },
+    {
+      "file": "boundary_penetration_route_integration.log",
+      "bytes": 2040,
+      "sha256": "e29da9319f67b1a2407fd99ca9c63c094fc04dbc32a50c1a6186941708f85722"
+    },
+    {
+      "file": "building-capture-green.log",
+      "bytes": 2859,
+      "sha256": "df243b192bd34b5b9e1861918bb2afbe0dc4cac2a77af129b22ec63e9455bb7d"
+    },
+    {
+      "file": "building-capture-red.log",
+      "bytes": 1550,
+      "sha256": "0b30773eb79288b197e036ffa240bdf97eeb1f82a508af8b9bbceec4f1263d8b"
+    },
+    {
+      "file": "core-owner-green.log",
+      "bytes": 2798,
+      "sha256": "a2d75179924da7f8fd768d7d31fa87dc9b7571fe3910d3ce468ba4bb90e879ab"
+    },
+    {
+      "file": "core-owner-red.log",
+      "bytes": 1700,
+      "sha256": "020814fe5745a4f0edc19202052fa8db70d350b8938dec756705b8949c7cc19f"
+    },
+    {
+      "file": "devices.log",
+      "bytes": 816,
+      "sha256": "cac12b50f86c439a320c881b900e5841e2c14eea7c61cc89908f6167b8ccbd5d"
+    },
+    {
+      "file": "doctor.log",
+      "bytes": 2857,
+      "sha256": "f153a74858e80ff039de90580f3456c244ff97a523ca755397980400335fa6bc"
+    },
+    {
+      "file": "focused-results.json",
+      "bytes": 446,
+      "sha256": "170098f6a448d43f5deacb2a7e674530c1c09f7a8101d48a96b3482f7b7f4350"
+    },
+    {
+      "file": "format-baseline.log",
+      "bytes": 49,
+      "sha256": "7ba054926cf7d3c18c7ffd2ccf5d6673d66aeb4880b4616f2e79efd2809e9866"
+    },
+    {
+      "file": "format-final.log",
+      "bytes": 49,
+      "sha256": "cf9e4c71371c09fd85fa4c3b2f84f34dbdef4f3d0b70615a6dc8c052cbe25746"
+    },
+    {
+      "file": "full-baseline.log",
+      "bytes": 416241,
+      "sha256": "80611c175c7c652ba022d126b59f4c66ffa0df0f43dbfc226a0dd6ff6d7c994d"
+    },
+    {
+      "file": "full-final.log",
+      "bytes": 416899,
+      "sha256": "eec9582fd6c2cc917b8c2c81b09b5c48e63f215b15a5ceeee0bee7133f7bb532"
+    },
+    {
+      "file": "macos-production.log",
+      "bytes": 1947,
+      "sha256": "75b4790ad6c129a30c18c51da4d9adbd13d45765feda887465fb7ea35e76d93a"
+    },
+    {
+      "file": "macos-reopen.log",
+      "bytes": 1575,
+      "sha256": "8efe0afbdde0fbe34f771df25407bcbf60a79499330cd607061f2c7b2e268cf1"
+    },
+    {
+      "file": "macos-smoke.log",
+      "bytes": 1033,
+      "sha256": "56feaba085fc9924faa2683d3bd21eb72c40f6d2d4e7a3957bec0060acc72ed3"
+    },
+    {
+      "file": "mutation-matrix.log",
+      "bytes": 5902,
+      "sha256": "2a2583093bb59ac730374aa548579990a4f8d910c35c67baf0eb3e990dc6901d"
+    },
+    {
+      "file": "native-before.json",
+      "bytes": 12088,
+      "sha256": "7ada0f0a757e4874efdbe3c26f3d7eedc8d6b9f3af95452b67d54e47503a2689"
+    },
+    {
+      "file": "native-reopen-comparison.json",
+      "bytes": 274,
+      "sha256": "a290c251fb75798d61cf35bddcd9a41bba246e6c800ab39a80bb2d31041f67de"
+    },
+    {
+      "file": "native-saved.json",
+      "bytes": 26902,
+      "sha256": "a78b8377761bb03d47011404d851bdeac0be5938503176327b82510dd6035c6d"
+    },
+    {
+      "file": "p12_interlevel_vertical_core_route.log",
+      "bytes": 1034,
+      "sha256": "c8ec88707b43096617877f026d5624aab2d6b0640bc669979336c0cc8eb8490d"
+    },
+    {
+      "file": "p12_spatial_routing_combinations.log",
+      "bytes": 1150,
+      "sha256": "66c6f087d28004220bc617f4067a677a6982d9eef2a19293b5afaaaef2e9a949"
+    },
+    {
+      "file": "p12_three_room_physical_route_projection.log",
+      "bytes": 1173,
+      "sha256": "7548c9c14a35f1ac489079c5242f9574652322a59562122b0fdd3220d4a811ca"
+    },
+    {
+      "file": "p7a66_route_anchor_persistence.log",
+      "bytes": 1459,
+      "sha256": "e7ba85965a52ef2e191f43979953bdff89c3edb2e293a4625ad2a2457f4b3d15"
+    },
+    {
+      "file": "pub-get.log",
+      "bytes": 750,
+      "sha256": "53705dc58ef59f33bd8817f8356d1f9093a1dd55df4c23f482d3d4914f371ded"
+    },
+    {
+      "file": "qualification-cache-green.log",
+      "bytes": 1034,
+      "sha256": "c8ec88707b43096617877f026d5624aab2d6b0640bc669979336c0cc8eb8490d"
+    },
+    {
+      "file": "qualification-cache-red.log",
+      "bytes": 1598,
+      "sha256": "76825dfa8cf93cd8994fb011e8d8d5946adb4addc0d4107b4b4e473717594f81"
+    },
+    {
+      "file": "related-fix1.log",
+      "bytes": 7374,
+      "sha256": "653e8515cc60fd3bdbb1d28501ebc3eebc6770cc97c571301fbc9b10584a3e2e"
+    },
+    {
+      "file": "slab_route_persistence_qualification.log",
+      "bytes": 1060,
+      "sha256": "ac7b3177e67b905ecfe4fd20310394f6ffecf42e503997fb6c2bf95648270978"
+    }
+  ],
+  "continuation20261113": {
+    "date": "2026-11-13 Asia/Almaty",
+    "localEvidenceDirectory": "/Users/ruslanalimbetov/Documents/electra/ElecX-p12-r3-evidence-20261113",
+    "rawLogsCommitted": false,
+    "files": [
+      {
+        "file": "01-native-guided-cable-start.ax.txt",
+        "bytes": 115,
+        "sha256": "e7b073a6db7c2e17581e6fcf46f453de2faea3bc49231765d4c001ff2db75230"
+      },
+      {
+        "file": "01-native-guided-cable-start.png",
+        "bytes": 459081,
+        "sha256": "1e73a0a553d8b6ea9240698a36787e5abf64d27077378a5956e359daa09f023c"
+      },
+      {
+        "file": "active-geometry-green.log",
+        "bytes": 3587,
+        "sha256": "91726182a11ad377682f00d2f82033ab41941b0cdd56ccb75c0620c00d690c80"
+      },
+      {
+        "file": "active-geometry-red.log",
+        "bytes": 1025,
+        "sha256": "dd9b973c7bb2f54e991079a355ff014aa7b528351cee2a9c3d679546dd47d25d"
+      },
+      {
+        "file": "analyze.log",
+        "bytes": 96,
+        "sha256": "bb7009642ec8336084c6034a7b19c31ab46340245516abd54cf3a4b88b749fc3"
+      },
+      {
+        "file": "format-final.log",
+        "bytes": 49,
+        "sha256": "0bbcef4bb1f29bd2de59a58c4656d6c4563285b7feff82a3fa7eaa767efedb72"
+      },
+      {
+        "file": "format.log",
+        "bytes": 97,
+        "sha256": "96303aa2615c27b3473afd2c09aeb92bb95ac57fe3dcd08b507127e451391d4f"
+      },
+      {
+        "file": "full.log",
+        "bytes": 419741,
+        "sha256": "745411f0f761e3aa78db088efb68c84ec7b108286f7a444c7693d6b669a6d78f"
+      }
+    ]
+  }
+}
