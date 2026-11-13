@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/electrical_placement.dart';
 import '../../domain/surfaces.dart';
+import 'cable_authoring_guidance.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 import 'manual_cable_draft_persistence.dart';
@@ -90,6 +91,15 @@ class CableAuthoringDraftBar extends StatelessWidget {
                 ),
               ],
             ),
+            CableAuthoringGuidance(
+              hasSource: binding != null,
+              hasDraft: hasDraft,
+              hasCompatibleTarget: completionTargets.isNotEmpty,
+              readyToFinish: readyToFinish,
+              transitionDisconnected: transitionDisconnected,
+              crossRoomBlocked: remoteTargets.isNotEmpty,
+            ),
+            const SizedBox(height: 7),
             if (surfaceTransitions > 0) ...[
               const SizedBox(height: 5),
               Text(
