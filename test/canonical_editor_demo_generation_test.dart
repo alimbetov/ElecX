@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:elecx/src/domain/electrical_placement.dart';
+
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/features/editor/canonical_editor_demo_generation.dart';
 import 'package:elecx/src/features/editor/canonical_editor_production_bootstrap.dart';
@@ -50,8 +52,29 @@ void main() {
       expect(activeLevel.level.spaces, hasLength(4));
       expect(
         activeLevel.level.spaces.map((room) => room.name).toSet(),
-        <String>{'Гостиная', 'Кухня', 'Спальня', 'Санузел'},
+        <String>{'Гостиная', 'Кухня', 'Спальня', 'Коридор'},
       );
+
+      final placements = generated.document.p2State.components;
+      expect(placements, hasLength(13));
+      for (final entry in <ElectricalComponentType, int>{
+        ElectricalComponentType.distributionBoard: 1,
+        ElectricalComponentType.socketOutlet: 6,
+        ElectricalComponentType.lightingPoint: 3,
+        ElectricalComponentType.switchControl: 3,
+      }.entries) {
+        expect(placements.where((item) => item.type == entry.key),
+            hasLength(entry.value));
+      }
+      final roomIds = activeLevel.level.spaces.map((room) => room.id).toSet();
+      expect(placements.every((item) => roomIds.contains(item.surface.spaceId)),
+          isTrue);
+      // Fixture creation must never pre-apply an electrical proposal.
+      expect(generated.document.p2State.routes, isEmpty);
+      final decoded =
+          EditorProjectDocument.fromJson(generated.document.toJson());
+      expect(decoded.p2State.components.map((item) => item.id),
+          placements.map((item) => item.id));
 
       final reopened = await CanonicalEditorProductionHandle.loadOrBootstrap(
         legacyDocument: generated.document,

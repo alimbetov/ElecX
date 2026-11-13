@@ -1,5 +1,7 @@
 import '../../application/project/project_room_rectangle_authoring.dart';
 import '../../domain/boundary_topology.dart';
+import '../../domain/electrical_placement.dart';
+import '../../domain/surfaces.dart';
 import '../../domain/project_identity.dart';
 import 'canonical_editor_production_bootstrap.dart';
 import 'canonical_editor_production_materializer.dart';
@@ -78,6 +80,44 @@ final class CanonicalEditorDemoGenerator {
         }
       }
 
+      // Use the same placement/history boundary as interactive authoring.
+      // This fixture contains equipment only: no routes or unqualified design
+      // values are pre-applied or presented as an approved electrical scheme.
+      for (var index = 0; index < roomIds.length; index++) {
+        final id = roomIds[index];
+        final legacyId = handle.binding.legacySpaceIds[id]!;
+        final topology = handle.session.project.index.boundary(id)!;
+        final wall = RoomSurfaceRef.wallByBoundaryEdge(
+          legacyId,
+          topology.orderedEdgeIds.first,
+        );
+        if (index == 3) {
+          editor.p2.placeComponent(
+            type: ElectricalComponentType.distributionBoard,
+            surface: wall,
+            position: const SurfacePointMm(500, 1500),
+          );
+        } else {
+          for (final x in [1000, 2500]) {
+            editor.p2.placeComponent(
+              type: ElectricalComponentType.socketOutlet,
+              surface: wall,
+              position: SurfacePointMm(x, 300),
+            );
+          }
+          editor.p2.placeComponent(
+            type: ElectricalComponentType.switchControl,
+            surface: wall,
+            position: const SurfacePointMm(500, 900),
+          );
+          editor.p2.placeComponent(
+            type: ElectricalComponentType.lightingPoint,
+            surface: RoomSurfaceRef.ceiling(legacyId),
+            position: const SurfacePointMm(1800, 1700),
+          );
+        }
+      }
+      editor.p2.clearSelection();
       final document = EditorProjectDocument.capture(
         workspace,
         metadata: initialDocument.metadata,
@@ -124,21 +164,21 @@ const List<_DemoRoom> _rooms = <_DemoRoom>[
   _DemoRoom(
     name: 'Гостиная',
     first: BoundaryPointMm(xMm: 0, yMm: 0),
-    second: BoundaryPointMm(xMm: 6000, yMm: 4500),
-  ),
-  _DemoRoom(
-    name: 'Кухня',
-    first: BoundaryPointMm(xMm: 6000, yMm: 0),
-    second: BoundaryPointMm(xMm: 9600, yMm: 3000),
+    second: BoundaryPointMm(xMm: 4000, yMm: 3500),
   ),
   _DemoRoom(
     name: 'Спальня',
-    first: BoundaryPointMm(xMm: 0, yMm: 4500),
-    second: BoundaryPointMm(xMm: 4200, yMm: 8100),
+    first: BoundaryPointMm(xMm: 4000, yMm: 0),
+    second: BoundaryPointMm(xMm: 8000, yMm: 3500),
   ),
   _DemoRoom(
-    name: 'Санузел',
-    first: BoundaryPointMm(xMm: 4200, yMm: 4500),
-    second: BoundaryPointMm(xMm: 6600, yMm: 6700),
+    name: 'Кухня',
+    first: BoundaryPointMm(xMm: 8000, yMm: 0),
+    second: BoundaryPointMm(xMm: 11500, yMm: 3500),
+  ),
+  _DemoRoom(
+    name: 'Коридор',
+    first: BoundaryPointMm(xMm: 0, yMm: 3500),
+    second: BoundaryPointMm(xMm: 11500, yMm: 5000),
   ),
 ];

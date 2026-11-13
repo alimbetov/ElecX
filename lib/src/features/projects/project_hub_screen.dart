@@ -170,7 +170,7 @@ class _ProjectHubScreenState extends State<ProjectHubScreen> {
                 }
               },
               icon: const Icon(Icons.auto_awesome_outlined),
-              label: const Text('Демо'),
+              label: const Text('Квартира R4'),
             ),
           FilledButton(
             key: const ValueKey('create-project-confirm'),
