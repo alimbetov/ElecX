@@ -39,3 +39,7 @@ These are event-driven regression assertions, not proof of all possible simultan
 ## Remaining qualification blockers
 
 Native basic startup, routing rejection and Save/Quit/Reopen pass. Full canonical three-level route authoring/status inspection was not reachable in the inspected production editor and remains BLOCKED; see DESKTOP_ACCEPTANCE.md. Do not treat passing domain fixtures as desktop acceptance. P12 source is honestly unavailable and Apply blocked. These scope gaps are not resolved by the three minimal fixes; no new model/UI feature was fabricated. Merge gate remains blocked if the task requires full native multi-level GREEN.
+
+## 2026-11-13 debugging continuation
+
+Merged current target `981dfe59` into the fix branch (`fb760150`), preserving its guided cable-authoring changes. Confirmed fourth P1 defect D4: committed active-room geometry edits before Save/navigation left workspace geometry stale, so a physically invalid core route remained VALID. RED expected STALE, actual VALID. Fix `38a97cf4` qualifies against a pure snapshot containing the current editor level; restored-document qualification uses the same path. Reads preserve workspace identity, route identity and saved state. Regression moves the active room away from the crossing, checks both qualification APIs, restores it and checks VALID. Four confirmed defects fixed in total; the native multi-level acceptance blocker remains.

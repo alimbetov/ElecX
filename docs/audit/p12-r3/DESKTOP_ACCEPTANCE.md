@@ -22,3 +22,9 @@ Used the existing `ElecX Multi-Surface Routing Acceptance` project previously cr
 Verdict: basic native editor smoke PASS; full requested multi-level Desktop qualification PARTIAL/BLOCKED. Domain persistence/qualification regressions are green but cannot satisfy this missing native journey. Automatic path_provider integration smoke passed separately (1 test). No full production main.dart integration harness for three-level authoring was fabricated.
 
 Screenshots and raw logs are kept locally in `/Users/ruslanalimbetov/Documents/electra/ElecX-p12-r3-evidence-20261110/`; manifest hashes are committed, temporary logs/build artifacts are not. This is a local evidence location, not an uploaded artifact URL.
+
+## 2026-11-13 production runtime rerun
+
+Rebuilt/reran the real `lib/main.dart` after D4 changes and integration of target `981dfe59`. PIN/Hub PASS. Hub contained a newer user autosave (13 components, one route, revision 28); it was left untouched. Created a separate empty project through the production UI (the displayed default name remained «Новый проект»), drew a 5.40 × 3.30 m room and activated the cable tool. The new Source / Path / Receiver guidance and surface/Cancel controls rendered at the normal desktop size; empty-draft Finish remained disabled. Escape returned to SELECT. Evidence: `01-native-guided-cable-start.png` and matching AX text in the Nov13 evidence directory.
+
+This rerun verifies startup and initial guidance only. It does not prove completed routing, compact-window layout, or native three-level qualification. D4 is verified by production-controller regression, not a claimed native status inspection. Full three-level Desktop gate remains BLOCKED; previous Nov10 Save/Reopen evidence remains historical.

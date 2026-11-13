@@ -203,5 +203,52 @@
       "bytes": 1060,
       "sha256": "ac7b3177e67b905ecfe4fd20310394f6ffecf42e503997fb6c2bf95648270978"
     }
-  ]
+  ],
+  "continuation20261113": {
+    "date": "2026-11-13 Asia/Almaty",
+    "localEvidenceDirectory": "/Users/ruslanalimbetov/Documents/electra/ElecX-p12-r3-evidence-20261113",
+    "rawLogsCommitted": false,
+    "files": [
+      {
+        "file": "01-native-guided-cable-start.ax.txt",
+        "bytes": 115,
+        "sha256": "e7b073a6db7c2e17581e6fcf46f453de2faea3bc49231765d4c001ff2db75230"
+      },
+      {
+        "file": "01-native-guided-cable-start.png",
+        "bytes": 459081,
+        "sha256": "1e73a0a553d8b6ea9240698a36787e5abf64d27077378a5956e359daa09f023c"
+      },
+      {
+        "file": "active-geometry-green.log",
+        "bytes": 3587,
+        "sha256": "91726182a11ad377682f00d2f82033ab41941b0cdd56ccb75c0620c00d690c80"
+      },
+      {
+        "file": "active-geometry-red.log",
+        "bytes": 1025,
+        "sha256": "dd9b973c7bb2f54e991079a355ff014aa7b528351cee2a9c3d679546dd47d25d"
+      },
+      {
+        "file": "analyze.log",
+        "bytes": 96,
+        "sha256": "bb7009642ec8336084c6034a7b19c31ab46340245516abd54cf3a4b88b749fc3"
+      },
+      {
+        "file": "format-final.log",
+        "bytes": 49,
+        "sha256": "0bbcef4bb1f29bd2de59a58c4656d6c4563285b7feff82a3fa7eaa767efedb72"
+      },
+      {
+        "file": "format.log",
+        "bytes": 97,
+        "sha256": "96303aa2615c27b3473afd2c09aeb92bb95ac57fe3dcd08b507127e451391d4f"
+      },
+      {
+        "file": "full.log",
+        "bytes": 419741,
+        "sha256": "745411f0f761e3aa78db088efb68c84ec7b108286f7a444c7693d6b669a6d78f"
+      }
+    ]
+  }
 }

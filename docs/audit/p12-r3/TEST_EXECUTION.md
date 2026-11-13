@@ -36,3 +36,14 @@ Each command was `flutter test test/<name>_test.dart`, with its own process, exi
 The early full-suite attempt overlapped introduction of the intentional RED regression and is not valid baseline qualification. It is superseded by the stable 2099-test GREEN run after all three production fixes. Audit-harness errors (one nonexistent test filename; later duplicate local helper name) were corrected and rerun; neither is counted as a product defect or PASS. Raw evidence retains the actual failure/green phases. Expanded matrix adds assertions to an existing interlevel fixture, so top-level test count is unchanged; three regression scenarios were added, not three new test registrations.
 
 After the final additional test-only matrix, formatter/analyzer and 27 focused tests passed. Exact final PR SHA must additionally pass all six GitHub workflows; live/final snapshot is recorded in PR and MERGE_QUALIFICATION.md, never inferred from baseline CI. No skip is counted as PASS.
+
+## 2026-11-13 rerun after target integration and D4
+
+- D4 RED: expected STALE, actual VALID (`active-geometry-red.log`).
+- D4 and related workspace/document/UI suites: 19 PASS (`active-geometry-green.log`).
+- Full suite: **2105 PASS**, 2m31s (`full.log`); includes six guided-authoring tests from the updated target.
+- Analyzer: no issues (`analyze.log`).
+- Initial format check exposed upstream `cable_authoring_guidance_test.dart` formatting. Formatting-only commit `3e08c506`; final formatter PASS (`format-final.log`). No assertions changed after the full-suite run.
+- Production native `flutter --no-version-check run --no-pub -d macos -t lib/main.dart`: build/start PASS. Initial version-check startup stall was interrupted and rerun with these flags; not classified as a product failure.
+
+Raw logs and native evidence: `ElecX-p12-r3-evidence-20261113` beside the worktree. CI for previous PR head `6d34641b2b24519df396d244fc88493eec8f266c` was independently verified: all six workflows SUCCESS; this does not qualify the new head.
