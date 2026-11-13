@@ -26,7 +26,8 @@ void main() {
 
   testWidgets('initial guide asks for a source port', (tester) async {
     await tester.pumpWidget(screen());
-    expect(find.byKey(const ValueKey('cable-guided-authoring')), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('cable-guided-authoring')), findsOneWidget);
     expect(find.textContaining('Выберите щит'), findsOneWidget);
     expect(find.text('1 · Источник'), findsOneWidget);
   });
@@ -70,6 +71,7 @@ void main() {
       (tester) async {
     await tester.pumpWidget(screen(source: true, draft: true, remote: true));
     expect(find.textContaining('подтверждённая проходка'), findsOneWidget);
-    expect(find.textContaining('соединение напрямую запрещено'), findsOneWidget);
+    expect(
+        find.textContaining('соединение напрямую запрещено'), findsOneWidget);
   });
 }

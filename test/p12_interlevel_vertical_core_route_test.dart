@@ -352,6 +352,109 @@ void main() {
       EngineeringRouteQualificationStatus.valid,
     );
 
+    ProjectSlab modifiedSlabEvidence(
+            {String? material, bool displaced = false}) =>
+        ProjectSlab(
+          id: slab12.id,
+          buildingId: slab12.buildingId,
+          kind: slab12.kind,
+          belowLevelId: slab12.belowLevelId,
+          aboveLevelId: slab12.aboveLevelId,
+          bottomElevationMm: slab12.bottomElevationMm,
+          thicknessMm: slab12.thicknessMm,
+          materialId: material ?? slab12.materialId,
+          footprint: displaced
+              ? const [
+                  BoundaryPointMm(xMm: 5000, yMm: 0),
+                  BoundaryPointMm(xMm: 9000, yMm: 0),
+                  BoundaryPointMm(xMm: 9000, yMm: 3000),
+                  BoundaryPointMm(xMm: 5000, yMm: 3000),
+                ]
+              : slab12.footprint,
+        );
+    for (final changed in [
+      modifiedSlabEvidence(material: 'brick'),
+      modifiedSlabEvidence(displaced: true),
+    ]) {
+      expect(
+        qualify(physical, slabs: {slab12.id: changed, slab23.id: slab23})
+            .status,
+        EngineeringRouteQualificationStatus.stale,
+      );
+    }
+    final unrelatedSlab = slab('unrelated-slab', 'L4', 'L5', 9000);
+    expect(
+      qualify(physical, slabs: {
+        slab12.id: slab12,
+        slab23.id: slab23,
+        unrelatedSlab.id: unrelatedSlab,
+      }).status,
+      EngineeringRouteQualificationStatus.valid,
+    );
+    final raisedMiddle = BuildingLevel(
+      id: level2.id,
+      name: level2.name,
+      elevationMm: level2.elevationMm + 100,
+      spaces: level2.spaces,
+    );
+    expect(
+      qualify(physical,
+          owner: ComposedBuilding(
+            building: Building(
+              id: composed.building.id,
+              name: composed.building.name,
+              levels: [level1, raisedMiddle, level3],
+            ),
+            levels: [
+              composed.levels.first,
+              ComposedBuildingLevel(
+                level: raisedMiddle,
+                levelNumber: 2,
+                kind: BuildingLevelKind.residential,
+              ),
+              composed.levels.last,
+            ],
+            verticalCores: [core],
+          )).status,
+      EngineeringRouteQualificationStatus.stale,
+    );
+    expect(qualify(physical).status, EngineeringRouteQualificationStatus.valid);
+
+    // A shaft mapping cannot qualify passages hosted by another room, even
+    // when both rooms contain the same global XY point.
+    final otherLowerRoom = room('unrelated-lower-room');
+    final remappedLowerLevel = BuildingLevel(
+      id: level1.id,
+      name: level1.name,
+      elevationMm: level1.elevationMm,
+      spaces: [space1, otherLowerRoom],
+    );
+    final remappedCore = VerticalCore(
+      id: core.id,
+      name: core.name,
+      kind: core.kind,
+      servedLevelNumbers: core.servedLevelNumbers,
+      spaceIdByLevel: {...core.spaceIdByLevel, 1: otherLowerRoom.id},
+    );
+    final remappedBuilding = ComposedBuilding(
+      building: Building(
+        id: composed.building.id,
+        name: composed.building.name,
+        levels: [remappedLowerLevel, level2, level3],
+      ),
+      levels: [
+        ComposedBuildingLevel(
+          level: remappedLowerLevel,
+          levelNumber: 1,
+          kind: BuildingLevelKind.residential,
+        ),
+        ...composed.levels.skip(1),
+      ],
+      verticalCores: [remappedCore],
+    );
+    expect(qualify(physical, owner: remappedBuilding).status,
+        EngineeringRouteQualificationStatus.stale);
+
     final editor = EditorController.restored(
       level: level1,
       openings: const [],
@@ -459,6 +562,57 @@ void main() {
       reopened.routeQualifications.single.status,
       EngineeringRouteQualificationStatus.valid,
     );
+    // Qualification must follow route deletion and undo/redo after Restore.
+    reopened.editor.p2.select(physical.source.componentId);
+    expect(reopened.editor.p2.deleteSelection(), isTrue);
+    expect(reopened.routeQualifications, isEmpty);
+    reopened.editor.p2.undo();
+    expect(reopened.routeQualifications.single.routeId, physical.id);
+    expect(reopened.routeQualifications.single.status,
+        EngineeringRouteQualificationStatus.valid);
+    reopened.editor.p2.redo();
+    expect(reopened.routeQualifications, isEmpty);
+    reopened.editor.p2.undo();
+    expect(reopened.routeQualifications.single.status,
+        EngineeringRouteQualificationStatus.valid);
+
+    // Architecture edits live in the editor until Save/level navigation.
+    // Qualification must inspect that current geometry without mutating it.
+    final originalActiveLevel = reopened.editor.level;
+    final originalBuilding = reopened.workspace.building;
+    final movedRoom = space1.copyWith(
+      boundary: MmPolygon.rectangle(
+        const MmPoint(250, 0),
+        const MmPoint(4250, 3000),
+      ),
+      referenceFrame: const RoomReferenceFrame(origin: MmPoint(2250, 1500)),
+    );
+    void restoreActiveGeometry(BuildingLevel level) =>
+        reopened.editor.restoreDocumentArchitecture(
+          level: level,
+          openings: reopened.editor.openings,
+          roomSequence: reopened.editor.roomSequence,
+          openingSequence: reopened.editor.openingSequence,
+          selectedSpaceId: space1.id,
+        );
+    restoreActiveGeometry(originalActiveLevel.copyWith(spaces: [movedRoom]));
+    expect(reopened.routeQualifications.single.status,
+        EngineeringRouteQualificationStatus.stale);
+    expect(
+      reopened
+          .qualifyVerticalCoreRoutes(
+            roomHeightsByLevelId: const {'L1': 3000, 'L2': 3000},
+          )
+          .single
+          .status,
+      EngineeringRouteQualificationStatus.stale,
+    );
+    expect(identical(reopened.workspace.building, originalBuilding), isTrue);
+    expect(reopened.editor.p2.routes.single.id, physical.id);
+    restoreActiveGeometry(originalActiveLevel);
+    expect(reopened.routeQualifications.single.status,
+        EngineeringRouteQualificationStatus.valid);
+
     reopened.workspace.replaceCanonicalSlabs({
       slab12.id: slab('slab-12', 'L1', 'L2', 3000, thickness: 180),
       slab23.id: slab23,
@@ -529,6 +683,45 @@ void main() {
       reopened.routeQualifications.single.status,
       EngineeringRouteQualificationStatus.valid,
     );
+    final raisedLowerLevel = BuildingLevel(
+      id: level1.id,
+      name: level1.name,
+      elevationMm: 100,
+      spaces: level1.spaces,
+    );
+    final raisedBuilding = ComposedBuilding(
+      building: Building(
+        id: composed.building.id,
+        name: composed.building.name,
+        levels: [raisedLowerLevel, level2, level3],
+      ),
+      levels: [
+        ComposedBuildingLevel(
+          level: raisedLowerLevel,
+          levelNumber: 1,
+          kind: BuildingLevelKind.residential,
+        ),
+        ...composed.levels.skip(1),
+      ],
+      verticalCores: [core],
+    );
+    reopened.workspace.replaceBuilding(raisedBuilding);
+    // Capture synchronizes the active editor. It must not resurrect the old
+    // active level and overwrite an explicitly replaced canonical building.
+    final raisedSaved = EditorProjectDocument.capture(reopened.workspace);
+    expect(raisedSaved.building.levelByNumber(1)!.level.elevationMm, 100);
+    expect(
+        raisedSaved.site.site.buildings.single.levels.first.elevationMm, 100);
+    final raisedReopened = raisedSaved.restore();
+    addTearDown(() {
+      raisedReopened.workspace.dispose();
+      raisedReopened.editor.dispose();
+    });
+    expect(raisedReopened.editor.level.elevationMm, 100);
+    final raisedResaved =
+        EditorProjectDocument.capture(raisedReopened.workspace);
+    expect(raisedResaved.building.levelByNumber(1)!.level.elevationMm, 100);
+
     reopened.workspace.replaceBuilding(composed);
     expect(reopened.editor.p2.routes.single.verticalCoreLegs, [hidden]);
     expect(reopened.editor.p2.routes.single.penetrations, hasLength(2));
