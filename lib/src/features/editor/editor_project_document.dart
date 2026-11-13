@@ -86,15 +86,10 @@ final class RestoredEditorProject {
     Map<SlabId, ProjectSlab>? canonicalSlabs,
     required Map<String, int> roomHeightsByLevelId,
   }) =>
-      List.unmodifiable([
-        for (final route in editor.p2.routes)
-          EngineeringRouteQualificationService.qualifyVerticalCoreRoute(
-            route: route,
-            building: workspace.building,
-            canonicalSlabs: canonicalSlabs ?? workspace.canonicalSlabs,
-            roomHeightsByLevelId: roomHeightsByLevelId,
-          ),
-      ]);
+      workspace.qualifyVerticalCoreRoutes(
+        canonicalSlabs: canonicalSlabs,
+        roomHeightsByLevelId: roomHeightsByLevelId,
+      );
 }
 
 /// Versioned, canonical persisted state for one editable ElecX workspace.

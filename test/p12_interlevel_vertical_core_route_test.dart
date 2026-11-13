@@ -576,6 +576,43 @@ void main() {
     expect(reopened.routeQualifications.single.status,
         EngineeringRouteQualificationStatus.valid);
 
+    // Architecture edits live in the editor until Save/level navigation.
+    // Qualification must inspect that current geometry without mutating it.
+    final originalActiveLevel = reopened.editor.level;
+    final originalBuilding = reopened.workspace.building;
+    final movedRoom = space1.copyWith(
+      boundary: MmPolygon.rectangle(
+        const MmPoint(250, 0),
+        const MmPoint(4250, 3000),
+      ),
+      referenceFrame: const RoomReferenceFrame(origin: MmPoint(2250, 1500)),
+    );
+    void restoreActiveGeometry(BuildingLevel level) =>
+        reopened.editor.restoreDocumentArchitecture(
+          level: level,
+          openings: reopened.editor.openings,
+          roomSequence: reopened.editor.roomSequence,
+          openingSequence: reopened.editor.openingSequence,
+          selectedSpaceId: space1.id,
+        );
+    restoreActiveGeometry(originalActiveLevel.copyWith(spaces: [movedRoom]));
+    expect(reopened.routeQualifications.single.status,
+        EngineeringRouteQualificationStatus.stale);
+    expect(
+      reopened
+          .qualifyVerticalCoreRoutes(
+            roomHeightsByLevelId: const {'L1': 3000, 'L2': 3000},
+          )
+          .single
+          .status,
+      EngineeringRouteQualificationStatus.stale,
+    );
+    expect(identical(reopened.workspace.building, originalBuilding), isTrue);
+    expect(reopened.editor.p2.routes.single.id, physical.id);
+    restoreActiveGeometry(originalActiveLevel);
+    expect(reopened.routeQualifications.single.status,
+        EngineeringRouteQualificationStatus.valid);
+
     reopened.workspace.replaceCanonicalSlabs({
       slab12.id: slab('slab-12', 'L1', 'L2', 3000, thickness: 180),
       slab23.id: slab23,
