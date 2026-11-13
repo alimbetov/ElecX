@@ -1,3 +1,4 @@
+import 'package:elecx/src/domain/surface_routing.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/features/editor/cable_authoring_draft_bar.dart';
 import 'package:elecx/src/features/editor/editor_controller.dart';
@@ -30,6 +31,69 @@ void main() {
 
       expect(controller.routeSegments, isEmpty);
       expect(controller.tool, EditorTool.select);
+    });
+
+    testWidgets('multiple draft surfaces show transitions as unverified',
+        (tester) async {
+      final controller = EditorController.demo();
+      addTearDown(controller.dispose);
+      controller.setTool(EditorTool.cableRoute);
+      final roomId = controller.level.spaces.first.id;
+      controller.routeSegments.addAll([
+        SurfaceRouteSegmentDraft(
+          surface: RoomSurfaceRef.wall(roomId, 0),
+          points: const [
+            SurfacePointMm(100, 1000),
+            SurfacePointMm(900, 1000),
+          ],
+        ),
+        SurfaceRouteSegmentDraft(
+          surface: RoomSurfaceRef.ceiling(roomId),
+          points: const [
+            SurfacePointMm(900, 100),
+            SurfacePointMm(1500, 100),
+          ],
+        ),
+      ]);
+
+      await tester.pumpWidget(_barHarness(controller));
+
+      expect(find.byKey(const ValueKey('cable-draft-transition-summary')),
+          findsOneWidget);
+      expect(find.textContaining('Участков: 2'), findsOneWidget);
+      expect(find.textContaining('Переходов между поверхностями: 1'),
+          findsOneWidget);
+      expect(find.textContaining('Физическая проверка при сохранении'),
+          findsOneWidget);
+    });
+
+    testWidgets('split segments on one surface are not a physical transition',
+        (tester) async {
+      final controller = EditorController.demo();
+      addTearDown(controller.dispose);
+      controller.setTool(EditorTool.cableRoute);
+      final surface = RoomSurfaceRef.wall(controller.level.spaces.first.id, 0);
+      controller.routeSegments.addAll([
+        SurfaceRouteSegmentDraft(
+          surface: surface,
+          points: const [
+            SurfacePointMm(100, 1000),
+            SurfacePointMm(900, 1000),
+          ],
+        ),
+        SurfaceRouteSegmentDraft(
+          surface: surface,
+          points: const [
+            SurfacePointMm(900, 1000),
+            SurfacePointMm(1200, 1000),
+          ],
+        ),
+      ]);
+
+      await tester.pumpWidget(_barHarness(controller));
+
+      expect(find.byKey(const ValueKey('cable-draft-transition-summary')),
+          findsNothing);
     });
 
     testWidgets('surface-less cable entry exposes explicit wall host selection',

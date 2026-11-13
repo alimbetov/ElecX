@@ -1,0 +1,35 @@
+{
+  "baseline_branch": "feat/p12a8-engineering-preview-diff",
+  "baseline_commit": "b4c4a85749d0ca3a9e912ad6256862078052f055",
+  "macOS": "15.6 (24G84)",
+  "architecture": "arm64",
+  "flutter": "3.47.7",
+  "dart": "3.13.5",
+  "SDK": "/Users/ruslanalimbetov/Documents/electra/flutter-sdk",
+  "Xcode": "26.3 (17C529)",
+  "CocoaPods": "1.17.0",
+  "dependencies": "pubspec.lock unchanged; sqlite3 3.9.0 system source for macOS",
+  "devices": [
+    "macOS darwin-arm64",
+    "Chrome web"
+  ],
+  "original_checkout": "ElecX on main at 6a1c93ef2a198d85c63543c5626bdc15f8f340cd; pre-existing changes analysis_options.yaml and pubspec.lock preserved",
+  "worktree": "/Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat",
+  "GUI": "native macOS via cua_repl; real PNG captures; no generated screenshots",
+  "tested_fix_commit": "0b7d527c255387c491adffe586d2af7825b93bdb",
+  "final_GUI_retest": {
+    "compact": [
+      800,
+      628
+    ],
+    "desktop": [
+      1280,
+      800
+    ],
+    "full_screen": [
+      1470,
+      920
+    ],
+    "normal_1440x900": "attempted; macOS clamped to 1440x858"
+  }
+}

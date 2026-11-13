@@ -1,0 +1,18 @@
+Launching lib/main.dart on macOS in debug mode...
+Building macOS application...                                   
+✓ Built build/macos/Build/Products/Debug/elecx.app
+[IMPORTANT:flutter/shell/platform/embedder/embedder_surface_metal_impeller.mm(53)] Using the Impeller rendering backend (MetalSDF).
+Syncing files to device macOS...                                   112ms
+
+Flutter run key commands.
+r Hot reload. 🔥🔥🔥
+R Hot restart.
+h List all available interactive commands.
+d Detach (terminate "flutter run" but leave application running).
+c Clear the screen
+q Quit (terminate the application on the device).
+
+A Dart VM Service on macOS is available at: http://127.0.0.1:50038/wVLQ7vcR3HQ=/
+The Flutter DevTools debugger and profiler on macOS is available at: http://127.0.0.1:50038/wVLQ7vcR3HQ=/devtools/?uri=ws://127.0.0.1:50038/wVLQ7vcR3HQ=/ws
+
+Application finished.

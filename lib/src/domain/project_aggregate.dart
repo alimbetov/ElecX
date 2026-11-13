@@ -656,6 +656,13 @@ final class ProjectAggregateRoot {
     if (issues.isNotEmpty) {
       throw ProjectAggregateValidationException(issues);
     }
+    engineeringMetadata.powerSelections.validateAgainst(
+      engineeringMetadata.engineeringState,
+    );
+    engineeringMetadata.residualProtection.validateAgainst(
+      engineeringMetadata.engineeringState,
+      engineeringMetadata.powerSelections,
+    );
     engineeringMetadata.boundaryHostedObjectRegistry.validateAgainst(
       stores.boundaries,
     );

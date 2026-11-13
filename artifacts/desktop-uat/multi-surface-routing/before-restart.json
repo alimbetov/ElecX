@@ -1,0 +1,997 @@
+{
+  "schemaVersion": 8,
+  "metadata": {
+    "projectId": "project-hnz7xi8qfs-ha7o3x8y3wbh",
+    "projectName": "ElecX Multi-Surface Routing Acceptance",
+    "createdAt": "2026-11-08T19:06:40.478680Z",
+    "updatedAt": "2026-11-08T19:36:28.844703Z"
+  },
+  "building": {
+    "building": {
+      "id": "building-project-hnz7xi8qfs-ha7o3x8y3wbh",
+      "name": "Residential Building A",
+      "levels": [
+        {
+          "id": "level-project-hnz7xi8qfs-ha7o3x8y3wbh-1",
+          "name": "Level 1",
+          "elevationMm": 0,
+          "spaces": [
+            {
+              "id": "elecx-canonical-space-v1:42788f31-0b1a-4ecc-85f8-5a5ee408ee8a",
+              "name": "Комната 1",
+              "type": "room",
+              "boundary": [
+                {
+                  "x": -4400,
+                  "y": 6100
+                },
+                {
+                  "x": 1600,
+                  "y": 6100
+                },
+                {
+                  "x": 1600,
+                  "y": 7600
+                },
+                {
+                  "x": -4400,
+                  "y": 7600
+                }
+              ],
+              "referenceFrame": {
+                "origin": {
+                  "x": -1400,
+                  "y": 6850
+                },
+                "rotationRadians": 0.0
+              },
+              "grid": {
+                "minorStepMm": 100,
+                "majorEvery": 10
+              },
+              "wallProfiles": {}
+            },
+            {
+              "id": "elecx-canonical-space-v1:4320ff50-bee0-4c8b-bf9f-a44182792e99",
+              "name": "Комната 2",
+              "type": "room",
+              "boundary": [
+                {
+                  "x": -4400,
+                  "y": 2100
+                },
+                {
+                  "x": 600,
+                  "y": 2100
+                },
+                {
+                  "x": 600,
+                  "y": 6100
+                },
+                {
+                  "x": -4400,
+                  "y": 6100
+                }
+              ],
+              "referenceFrame": {
+                "origin": {
+                  "x": -1900,
+                  "y": 4100
+                },
+                "rotationRadians": 0.0
+              },
+              "grid": {
+                "minorStepMm": 100,
+                "majorEvery": 10
+              },
+              "wallProfiles": {}
+            },
+            {
+              "id": "elecx-canonical-space-v1:6f847b04-0d82-4b87-8e91-00489c47c320",
+              "name": "Комната 3",
+              "type": "room",
+              "boundary": [
+                {
+                  "x": 600,
+                  "y": 2600
+                },
+                {
+                  "x": 4600,
+                  "y": 2600
+                },
+                {
+                  "x": 4600,
+                  "y": 6100
+                },
+                {
+                  "x": 600,
+                  "y": 6100
+                }
+              ],
+              "referenceFrame": {
+                "origin": {
+                  "x": 2600,
+                  "y": 4350
+                },
+                "rotationRadians": 0.0
+              },
+              "grid": {
+                "minorStepMm": 100,
+                "majorEvery": 10
+              },
+              "wallProfiles": {}
+            },
+            {
+              "id": "elecx-canonical-space-v1:3a51db98-541b-490f-9a40-65f10497fc84",
+              "name": "Комната 4",
+              "type": "room",
+              "boundary": [
+                {
+                  "x": 1600,
+                  "y": 6100
+                },
+                {
+                  "x": 5600,
+                  "y": 6100
+                },
+                {
+                  "x": 5600,
+                  "y": 9100
+                },
+                {
+                  "x": 1600,
+                  "y": 9100
+                }
+              ],
+              "referenceFrame": {
+                "origin": {
+                  "x": 3600,
+                  "y": 7600
+                },
+                "rotationRadians": 0.0
+              },
+              "grid": {
+                "minorStepMm": 100,
+                "majorEvery": 10
+              },
+              "wallProfiles": {}
+            },
+            {
+              "id": "elecx-canonical-space-v1:debd16c1-1a40-48aa-af51-2e27df00e301",
+              "name": "Комната 5",
+              "type": "room",
+              "boundary": [
+                {
+                  "x": -900,
+                  "y": 7600
+                },
+                {
+                  "x": 1600,
+                  "y": 7600
+                },
+                {
+                  "x": 1600,
+                  "y": 9600
+                },
+                {
+                  "x": -900,
+                  "y": 9600
+                }
+              ],
+              "referenceFrame": {
+                "origin": {
+                  "x": 350,
+                  "y": 8600
+                },
+                "rotationRadians": 0.0
+              },
+              "grid": {
+                "minorStepMm": 100,
+                "majorEvery": 10
+              },
+              "wallProfiles": {}
+            }
+          ]
+        }
+      ]
+    },
+    "levels": [
+      {
+        "level": {
+          "id": "level-project-hnz7xi8qfs-ha7o3x8y3wbh-1",
+          "name": "Level 1",
+          "elevationMm": 0,
+          "spaces": [
+            {
+              "id": "elecx-canonical-space-v1:42788f31-0b1a-4ecc-85f8-5a5ee408ee8a",
+              "name": "Комната 1",
+              "type": "room",
+              "boundary": [
+                {
+                  "x": -4400,
+                  "y": 6100
+                },
+                {
+                  "x": 1600,
+                  "y": 6100
+                },
+                {
+                  "x": 1600,
+                  "y": 7600
+                },
+                {
+                  "x": -4400,
+                  "y": 7600
+                }
+              ],
+              "referenceFrame": {
+                "origin": {
+                  "x": -1400,
+                  "y": 6850
+                },
+                "rotationRadians": 0.0
+              },
+              "grid": {
+                "minorStepMm": 100,
+                "majorEvery": 10
+              },
+              "wallProfiles": {}
+            },
+            {
+              "id": "elecx-canonical-space-v1:4320ff50-bee0-4c8b-bf9f-a44182792e99",
+              "name": "Комната 2",
+              "type": "room",
+              "boundary": [
+                {
+                  "x": -4400,
+                  "y": 2100
+                },
+                {
+                  "x": 600,
+                  "y": 2100
+                },
+                {
+                  "x": 600,
+                  "y": 6100
+                },
+                {
+                  "x": -4400,
+                  "y": 6100
+                }
+              ],
+              "referenceFrame": {
+                "origin": {
+                  "x": -1900,
+                  "y": 4100
+                },
+                "rotationRadians": 0.0
+              },
+              "grid": {
+                "minorStepMm": 100,
+                "majorEvery": 10
+              },
+              "wallProfiles": {}
+            },
+            {
+              "id": "elecx-canonical-space-v1:6f847b04-0d82-4b87-8e91-00489c47c320",
+              "name": "Комната 3",
+              "type": "room",
+              "boundary": [
+                {
+                  "x": 600,
+                  "y": 2600
+                },
+                {
+                  "x": 4600,
+                  "y": 2600
+                },
+                {
+                  "x": 4600,
+                  "y": 6100
+                },
+                {
+                  "x": 600,
+                  "y": 6100
+                }
+              ],
+              "referenceFrame": {
+                "origin": {
+                  "x": 2600,
+                  "y": 4350
+                },
+                "rotationRadians": 0.0
+              },
+              "grid": {
+                "minorStepMm": 100,
+                "majorEvery": 10
+              },
+              "wallProfiles": {}
+            },
+            {
+              "id": "elecx-canonical-space-v1:3a51db98-541b-490f-9a40-65f10497fc84",
+              "name": "Комната 4",
+              "type": "room",
+              "boundary": [
+                {
+                  "x": 1600,
+                  "y": 6100
+                },
+                {
+                  "x": 5600,
+                  "y": 6100
+                },
+                {
+                  "x": 5600,
+                  "y": 9100
+                },
+                {
+                  "x": 1600,
+                  "y": 9100
+                }
+              ],
+              "referenceFrame": {
+                "origin": {
+                  "x": 3600,
+                  "y": 7600
+                },
+                "rotationRadians": 0.0
+              },
+              "grid": {
+                "minorStepMm": 100,
+                "majorEvery": 10
+              },
+              "wallProfiles": {}
+            },
+            {
+              "id": "elecx-canonical-space-v1:debd16c1-1a40-48aa-af51-2e27df00e301",
+              "name": "Комната 5",
+              "type": "room",
+              "boundary": [
+                {
+                  "x": -900,
+                  "y": 7600
+                },
+                {
+                  "x": 1600,
+                  "y": 7600
+                },
+                {
+                  "x": 1600,
+                  "y": 9600
+                },
+                {
+                  "x": -900,
+                  "y": 9600
+                }
+              ],
+              "referenceFrame": {
+                "origin": {
+                  "x": 350,
+                  "y": 8600
+                },
+                "rotationRadians": 0.0
+              },
+              "grid": {
+                "minorStepMm": 100,
+                "majorEvery": 10
+              },
+              "wallProfiles": {}
+            }
+          ]
+        },
+        "levelNumber": 1,
+        "kind": "residential",
+        "floorToFloorHeightMm": 3000,
+        "zones": []
+      }
+    ],
+    "verticalCores": []
+  },
+  "site": {
+    "site": {
+      "id": "site-project-hnz7xi8qfs-ha7o3x8y3wbh",
+      "name": "ElecX Multi-Surface Routing Acceptance",
+      "buildings": [
+        {
+          "id": "building-project-hnz7xi8qfs-ha7o3x8y3wbh",
+          "name": "Residential Building A",
+          "levels": [
+            {
+              "id": "level-project-hnz7xi8qfs-ha7o3x8y3wbh-1",
+              "name": "Level 1",
+              "elevationMm": 0,
+              "spaces": [
+                {
+                  "id": "elecx-canonical-space-v1:42788f31-0b1a-4ecc-85f8-5a5ee408ee8a",
+                  "name": "Комната 1",
+                  "type": "room",
+                  "boundary": [
+                    {
+                      "x": -4400,
+                      "y": 6100
+                    },
+                    {
+                      "x": 1600,
+                      "y": 6100
+                    },
+                    {
+                      "x": 1600,
+                      "y": 7600
+                    },
+                    {
+                      "x": -4400,
+                      "y": 7600
+                    }
+                  ],
+                  "referenceFrame": {
+                    "origin": {
+                      "x": -1400,
+                      "y": 6850
+                    },
+                    "rotationRadians": 0.0
+                  },
+                  "grid": {
+                    "minorStepMm": 100,
+                    "majorEvery": 10
+                  },
+                  "wallProfiles": {}
+                },
+                {
+                  "id": "elecx-canonical-space-v1:4320ff50-bee0-4c8b-bf9f-a44182792e99",
+                  "name": "Комната 2",
+                  "type": "room",
+                  "boundary": [
+                    {
+                      "x": -4400,
+                      "y": 2100
+                    },
+                    {
+                      "x": 600,
+                      "y": 2100
+                    },
+                    {
+                      "x": 600,
+                      "y": 6100
+                    },
+                    {
+                      "x": -4400,
+                      "y": 6100
+                    }
+                  ],
+                  "referenceFrame": {
+                    "origin": {
+                      "x": -1900,
+                      "y": 4100
+                    },
+                    "rotationRadians": 0.0
+                  },
+                  "grid": {
+                    "minorStepMm": 100,
+                    "majorEvery": 10
+                  },
+                  "wallProfiles": {}
+                },
+                {
+                  "id": "elecx-canonical-space-v1:6f847b04-0d82-4b87-8e91-00489c47c320",
+                  "name": "Комната 3",
+                  "type": "room",
+                  "boundary": [
+                    {
+                      "x": 600,
+                      "y": 2600
+                    },
+                    {
+                      "x": 4600,
+                      "y": 2600
+                    },
+                    {
+                      "x": 4600,
+                      "y": 6100
+                    },
+                    {
+                      "x": 600,
+                      "y": 6100
+                    }
+                  ],
+                  "referenceFrame": {
+                    "origin": {
+                      "x": 2600,
+                      "y": 4350
+                    },
+                    "rotationRadians": 0.0
+                  },
+                  "grid": {
+                    "minorStepMm": 100,
+                    "majorEvery": 10
+                  },
+                  "wallProfiles": {}
+                },
+                {
+                  "id": "elecx-canonical-space-v1:3a51db98-541b-490f-9a40-65f10497fc84",
+                  "name": "Комната 4",
+                  "type": "room",
+                  "boundary": [
+                    {
+                      "x": 1600,
+                      "y": 6100
+                    },
+                    {
+                      "x": 5600,
+                      "y": 6100
+                    },
+                    {
+                      "x": 5600,
+                      "y": 9100
+                    },
+                    {
+                      "x": 1600,
+                      "y": 9100
+                    }
+                  ],
+                  "referenceFrame": {
+                    "origin": {
+                      "x": 3600,
+                      "y": 7600
+                    },
+                    "rotationRadians": 0.0
+                  },
+                  "grid": {
+                    "minorStepMm": 100,
+                    "majorEvery": 10
+                  },
+                  "wallProfiles": {}
+                },
+                {
+                  "id": "elecx-canonical-space-v1:debd16c1-1a40-48aa-af51-2e27df00e301",
+                  "name": "Комната 5",
+                  "type": "room",
+                  "boundary": [
+                    {
+                      "x": -900,
+                      "y": 7600
+                    },
+                    {
+                      "x": 1600,
+                      "y": 7600
+                    },
+                    {
+                      "x": 1600,
+                      "y": 9600
+                    },
+                    {
+                      "x": -900,
+                      "y": 9600
+                    }
+                  ],
+                  "referenceFrame": {
+                    "origin": {
+                      "x": 350,
+                      "y": 8600
+                    },
+                    "rotationRadians": 0.0
+                  },
+                  "grid": {
+                    "minorStepMm": 100,
+                    "majorEvery": 10
+                  },
+                  "wallProfiles": {}
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "projectNorthDegrees": 0.0,
+      "solarContext": null
+    },
+    "outdoorZones": [],
+    "connections": []
+  },
+  "workspace": {
+    "context": "buildingLevel",
+    "activeLevelNumber": 1,
+    "selectedZoneId": null,
+    "activeOutdoorZoneId": null,
+    "openingsByLevel": {
+      "1": []
+    },
+    "resume": {
+      "selectedSpaceId": "elecx-canonical-space-v1:42788f31-0b1a-4ecc-85f8-5a5ee408ee8a",
+      "selectedOpeningId": null,
+      "activeSurface": null,
+      "canonicalSurface": {
+        "spaceId": "42788f31-0b1a-4ecc-85f8-5a5ee408ee8a",
+        "kind": "ceiling",
+        "boundaryEdgeId": null
+      },
+      "viewMode": "plan",
+      "snapEnabled": true,
+      "dimensionsVisible": true,
+      "floorGridMm": 500,
+      "zoom": 1.0,
+      "roomSequence": 1,
+      "openingSequence": 1
+    }
+  },
+  "p2": {
+    "components": [
+      {
+        "id": "component-1-db-general",
+        "type": "distributionBoard",
+        "componentTypeId": "power.distribution-board.general",
+        "surface": {
+          "spaceId": "elecx-canonical-space-v1:42788f31-0b1a-4ecc-85f8-5a5ee408ee8a",
+          "type": "wall",
+          "wallIndex": 0,
+          "boundaryEdgeId": null
+        },
+        "position": {
+          "xMm": 3000,
+          "yMm": 1500
+        },
+        "label": "Распределительный щит 1",
+        "rotationDegrees": 0,
+        "ratedPowerW": null,
+        "voltageV": 230,
+        "ports": [
+          {
+            "id": "power-out",
+            "kind": "powerOut"
+          },
+          {
+            "id": "earth",
+            "kind": "earth"
+          }
+        ]
+      },
+      {
+        "id": "component-2-socket-general",
+        "type": "socketOutlet",
+        "componentTypeId": "power.socket.general",
+        "surface": {
+          "spaceId": "elecx-canonical-space-v1:4320ff50-bee0-4c8b-bf9f-a44182792e99",
+          "type": "wall",
+          "wallIndex": 0,
+          "boundaryEdgeId": null
+        },
+        "position": {
+          "xMm": 2500,
+          "yMm": 300
+        },
+        "label": "Розетка 2",
+        "rotationDegrees": 0,
+        "ratedPowerW": null,
+        "voltageV": 230,
+        "ports": [
+          {
+            "id": "power-in",
+            "kind": "powerIn"
+          },
+          {
+            "id": "earth",
+            "kind": "earth"
+          }
+        ]
+      },
+      {
+        "id": "component-3-light-general",
+        "type": "lightingPoint",
+        "componentTypeId": "lighting.luminaire.general",
+        "surface": {
+          "spaceId": "elecx-canonical-space-v1:4320ff50-bee0-4c8b-bf9f-a44182792e99",
+          "type": "ceiling",
+          "wallIndex": null,
+          "boundaryEdgeId": null
+        },
+        "position": {
+          "xMm": 2500,
+          "yMm": 2000
+        },
+        "label": "Светильник 3",
+        "rotationDegrees": 0,
+        "ratedPowerW": 15,
+        "voltageV": 230,
+        "ports": [
+          {
+            "id": "power-in",
+            "kind": "powerIn"
+          },
+          {
+            "id": "control-in",
+            "kind": "controlIn"
+          },
+          {
+            "id": "earth",
+            "kind": "earth"
+          }
+        ]
+      },
+      {
+        "id": "component-4-socket-general",
+        "type": "socketOutlet",
+        "componentTypeId": "power.socket.general",
+        "surface": {
+          "spaceId": "elecx-canonical-space-v1:3a51db98-541b-490f-9a40-65f10497fc84",
+          "type": "wall",
+          "wallIndex": 0,
+          "boundaryEdgeId": null
+        },
+        "position": {
+          "xMm": 2000,
+          "yMm": 300
+        },
+        "label": "Розетка 4",
+        "rotationDegrees": 0,
+        "ratedPowerW": null,
+        "voltageV": 230,
+        "ports": [
+          {
+            "id": "power-in",
+            "kind": "powerIn"
+          },
+          {
+            "id": "earth",
+            "kind": "earth"
+          }
+        ]
+      },
+      {
+        "id": "component-5-light-general",
+        "type": "lightingPoint",
+        "componentTypeId": "lighting.luminaire.general",
+        "surface": {
+          "spaceId": "elecx-canonical-space-v1:3a51db98-541b-490f-9a40-65f10497fc84",
+          "type": "ceiling",
+          "wallIndex": null,
+          "boundaryEdgeId": null
+        },
+        "position": {
+          "xMm": 2000,
+          "yMm": 1500
+        },
+        "label": "Светильник 5",
+        "rotationDegrees": 0,
+        "ratedPowerW": 15,
+        "voltageV": 230,
+        "ports": [
+          {
+            "id": "power-in",
+            "kind": "powerIn"
+          },
+          {
+            "id": "control-in",
+            "kind": "controlIn"
+          },
+          {
+            "id": "earth",
+            "kind": "earth"
+          }
+        ]
+      },
+      {
+        "id": "component-6-socket-general",
+        "type": "socketOutlet",
+        "componentTypeId": "power.socket.general",
+        "surface": {
+          "spaceId": "elecx-canonical-space-v1:6f847b04-0d82-4b87-8e91-00489c47c320",
+          "type": "wall",
+          "wallIndex": 0,
+          "boundaryEdgeId": null
+        },
+        "position": {
+          "xMm": 2000,
+          "yMm": 300
+        },
+        "label": "Розетка 6",
+        "rotationDegrees": 0,
+        "ratedPowerW": null,
+        "voltageV": 230,
+        "ports": [
+          {
+            "id": "power-in",
+            "kind": "powerIn"
+          },
+          {
+            "id": "earth",
+            "kind": "earth"
+          }
+        ]
+      },
+      {
+        "id": "component-7-light-general",
+        "type": "lightingPoint",
+        "componentTypeId": "lighting.luminaire.general",
+        "surface": {
+          "spaceId": "elecx-canonical-space-v1:6f847b04-0d82-4b87-8e91-00489c47c320",
+          "type": "ceiling",
+          "wallIndex": null,
+          "boundaryEdgeId": null
+        },
+        "position": {
+          "xMm": 2000,
+          "yMm": 1750
+        },
+        "label": "Светильник 7",
+        "rotationDegrees": 0,
+        "ratedPowerW": 15,
+        "voltageV": 230,
+        "ports": [
+          {
+            "id": "power-in",
+            "kind": "powerIn"
+          },
+          {
+            "id": "control-in",
+            "kind": "controlIn"
+          },
+          {
+            "id": "earth",
+            "kind": "earth"
+          }
+        ]
+      },
+      {
+        "id": "component-8-socket-general",
+        "type": "socketOutlet",
+        "componentTypeId": "power.socket.general",
+        "surface": {
+          "spaceId": "elecx-canonical-space-v1:debd16c1-1a40-48aa-af51-2e27df00e301",
+          "type": "wall",
+          "wallIndex": 0,
+          "boundaryEdgeId": null
+        },
+        "position": {
+          "xMm": 1250,
+          "yMm": 300
+        },
+        "label": "Розетка 8",
+        "rotationDegrees": 0,
+        "ratedPowerW": null,
+        "voltageV": 230,
+        "ports": [
+          {
+            "id": "power-in",
+            "kind": "powerIn"
+          },
+          {
+            "id": "earth",
+            "kind": "earth"
+          }
+        ]
+      },
+      {
+        "id": "component-9-light-general",
+        "type": "lightingPoint",
+        "componentTypeId": "lighting.luminaire.general",
+        "surface": {
+          "spaceId": "elecx-canonical-space-v1:42788f31-0b1a-4ecc-85f8-5a5ee408ee8a",
+          "type": "ceiling",
+          "wallIndex": null,
+          "boundaryEdgeId": null
+        },
+        "position": {
+          "xMm": 3000,
+          "yMm": 750
+        },
+        "label": "Светильник 9",
+        "rotationDegrees": 0,
+        "ratedPowerW": 15,
+        "voltageV": 230,
+        "ports": [
+          {
+            "id": "power-in",
+            "kind": "powerIn"
+          },
+          {
+            "id": "control-in",
+            "kind": "controlIn"
+          },
+          {
+            "id": "earth",
+            "kind": "earth"
+          }
+        ]
+      }
+    ],
+    "routes": [
+      {
+        "id": "route-1",
+        "source": {
+          "componentId": "component-1-db-general",
+          "portId": "power-out"
+        },
+        "target": {
+          "componentId": "component-9-light-general",
+          "portId": "power-in"
+        },
+        "segments": [
+          {
+            "surface": {
+              "spaceId": "elecx-canonical-space-v1:42788f31-0b1a-4ecc-85f8-5a5ee408ee8a",
+              "type": "wall",
+              "wallIndex": 0,
+              "boundaryEdgeId": null
+            },
+            "points": [
+              {
+                "xMm": 3000,
+                "yMm": 1500
+              },
+              {
+                "xMm": 3000,
+                "yMm": 3000
+              }
+            ],
+            "anchorIds": []
+          },
+          {
+            "surface": {
+              "spaceId": "elecx-canonical-space-v1:42788f31-0b1a-4ecc-85f8-5a5ee408ee8a",
+              "type": "ceiling",
+              "wallIndex": null,
+              "boundaryEdgeId": null
+            },
+            "points": [
+              {
+                "xMm": 3000,
+                "yMm": 0
+              },
+              {
+                "xMm": 3000,
+                "yMm": 750
+              }
+            ],
+            "anchorIds": []
+          }
+        ],
+        "penetrations": [],
+        "verticalCoreLegs": [],
+        "cableType": null,
+        "reservePercent": 5,
+        "medium": {
+          "id": "power.ac",
+          "family": "power",
+          "flowVisual": "acOscillation",
+          "bidirectional": false,
+          "protocol": null
+        }
+      }
+    ],
+    "selection": {
+      "ids": [
+        "component-9-light-general"
+      ],
+      "primaryId": "component-9-light-general"
+    },
+    "routeConstraints": {},
+    "circuitBundles": [
+      {
+        "circuit": {
+          "id": "circuit-1",
+          "name": "Группа · Светильник 9",
+          "boardId": "component-1-db-general",
+          "protectiveDeviceId": null
+        },
+        "cable": {
+          "id": "cable-1",
+          "routeId": "route-1",
+          "circuitId": "circuit-1",
+          "designation": "CAB-1",
+          "cableSpecId": null,
+          "endA": {
+            "componentId": "component-1-db-general",
+            "portId": "power-out",
+            "terminalId": null
+          },
+          "endB": {
+            "componentId": "component-9-light-general",
+            "portId": "power-in",
+            "terminalId": null
+          }
+        },
+        "protectiveDevice": null
+      }
+    ],
+    "sizingEvidenceByRoute": {}
+  }
+}

@@ -1,0 +1,353 @@
+[
+  {
+    "file": "01-project-hub.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "2257c9507a0d3c5cc7e9adfa0d71cade9d3566bffec5eb59159acc33f87a5d62",
+    "caption": "Baseline hub with existing projects; no existing data removed."
+  },
+  {
+    "file": "02-pin.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "4665ca1239b4684b3cd825d076d28b24dd0d27b321e1bf88c0f4d7addf64652c",
+    "caption": "Real initial quick-unlock screen; prototype instruction gap."
+  },
+  {
+    "file": "03-new-project.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "5f0f22d025bfada1316a3fb41384063d46a61229fd16bceffb55645df7f6f076",
+    "caption": "Project-name input attempt. Accessibility text insertion did not prove visible/model update; not named-creation evidence."
+  },
+  {
+    "file": "04-preview-empty.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "3b5bb57efad7750bb75b9f7185344cd186b1565e4c1dea25eb740979f78041f1",
+    "caption": "Basic wizard Preview empty after the manual input/generation attempts; native harness subsequently verifies preview/diff. Not classified as a confirmed generator defect."
+  },
+  {
+    "file": "05-empty-editor.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "ef0cd3cdb5d62362d2a66da49af5bb9052153f1b2ee969435a29a9c0fa135e28",
+    "caption": "Compact initial empty level after geometry wizard Apply; no explicit right-inspector button."
+  },
+  {
+    "file": "06-project-tree.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "2e7c5853cc9d4470bf1d69fa509556a4f085dd75cd94402b466abeed57909a2c",
+    "caption": "Compact navigator hierarchy and disabled structural buttons."
+  },
+  {
+    "file": "07-editor-maximized.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "c96ed0e4cde062c3df75fedec4257f4719e41106f91787a2e0eaaae6e3dcd3d3",
+    "caption": "Baseline maximized editor, equipment catalog and empty floor."
+  },
+  {
+    "file": "08-hub-1280x800.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "78b84c72c35a928c8b2e8f1c970b2ddcc773c9d4b29b0de8634769d396d9a53c",
+    "caption": "Hub at exact 1280×800 logical window size."
+  },
+  {
+    "file": "09-editor-1280x800.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "a74456cf9d30355355ce1924a356cf3fc25fff1f94307036ddc29d1efec03173",
+    "caption": "Baseline desktop editor at 1280×800."
+  },
+  {
+    "file": "10-room-created.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "b618e4c21f29b719cc81d72e65a7455048d28ee388172d1b4aa1107957025fb1",
+    "caption": "First manually drawn room, selection handles, dimensions and surface navigator."
+  },
+  {
+    "file": "11-four-rooms.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "42c1e9db07233eafe8d70c113bf6ebd26bfe597b32859818fd5dae42dd37b754",
+    "caption": "Four manual rooms and group/catalog sidebar."
+  },
+  {
+    "file": "12-board-inspector.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "c492817247e05836cc535998fc04643c9ed84f21cfea3766400745e7784c2ce7",
+    "caption": "Placed board, Floor surface and engineering selection inspector; overlapping HUD."
+  },
+  {
+    "file": "13-connected-load-overflow.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "9e13bbaa5150a413397de515504bfdee1685e21d157f04a286595abe58d22699",
+    "caption": "Connected socket/board/group with route; confirmed sidebar overflow."
+  },
+  {
+    "file": "14-cable-dialog.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "c4dc222649e9d7ee44429d9ca362d9fdde5f4447b470cf3cc321ba5b6c80cabf",
+    "caption": "Cable group specification text dialog; not evidence-backed catalog selection."
+  },
+  {
+    "file": "15-protection-dialog.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "027a3244bffe3be6b0bd770dcf59f8066a6b8dcd5f047801c87b42b51a15af42",
+    "caption": "Manual test protection form QF-1 / 16 A / 2P; not a design recommendation."
+  },
+  {
+    "file": "16-editor-1440x858-clamped.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "36d2c9bf2bd1687d71519316ed35e16e5862933b1b8068a38255149e65a27299",
+    "caption": "Attempted 1440×900; macOS normal-window height clamped to 858 logical points."
+  },
+  {
+    "file": "17-editor-fullscreen.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "1dc3cb0d6d2d75f26acc7ebb41f4dff36893338b45828d517f0f1d46202f11ab",
+    "caption": "Baseline native full screen; 31 px overflow at inspector bottom."
+  },
+  {
+    "file": "18-restarted-hub.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "99446a822611c45e412d35dad1fb88e6ba68404df3049e2d6cd8db7dfefb8809",
+    "caption": "After Cmd+Q/relaunch: persisted project counters 2 components / 1 route."
+  },
+  {
+    "file": "19-reopened-properties.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "5770e3e3590a27304f6d28fb3b7bee2eafeca0c5de73f7cee28a621c2c9c2c48",
+    "caption": "Native reopened group retains power/protection/route; AX transcript alongside PNG."
+  },
+  {
+    "file": "20-acceptance-projects.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "70eef8a59a21933c54df62895ffad90023ec0cb32e47a83499a3a8402109badc",
+    "caption": "Named projects created by iterative native UI test runs; independent projects, not duplicated entities from save."
+  },
+  {
+    "file": "21-named-project-reopened.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "331eb9fcea942bad0429fc28b9b843320053a2847e7a82b04bfa0a810cb0ceb3",
+    "caption": "Production GUI reopens ElecX Residential Acceptance / Building A with four UI-created rooms on Ground."
+  },
+  {
+    "file": "22-surface-pan.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "1cbc2c86f73cd86dc4063792be0495d82233f254c84361a40bd61d657f5f8d9b",
+    "caption": "Final production GUI: Floor surface after directional pan; snap restored ON, zoom exercised."
+  },
+  {
+    "file": "23-fixed-inspector-1280x800.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "daf59e9006ea7633252222a81246a9f8e6a55c0c0ab8198ad58ef89c62a585f7",
+    "caption": "D01 fixed: scroll exposes Load/Cable/Protection actions and leaves selection inspector visible, no overflow."
+  },
+  {
+    "file": "24-fixed-load-action.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "163d58780b141e326acd5e32bed40923f91686de9390549abfa7476a49ece8e3",
+    "caption": "D01 fixed: pointer click on previously hidden Load action opens its form."
+  },
+  {
+    "file": "25-fixed-fullscreen.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "ea5529d1894711a03aab2518ae54dd1248845bfd308d7cc3fc712c52d9e6f6b2",
+    "caption": "D01 fixed: native full screen, group actions accessible without RenderFlex overflow."
+  },
+  {
+    "file": "26-fixed-compact-button.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "77ad6e55f274db132ea11c2d08b72bc134006f79147e79dbe44f664d4c5f0ce6",
+    "caption": "D08 fixed: explicit compact AppBar button for engineering inspector at 800×628."
+  },
+  {
+    "file": "27-fixed-compact-drawer.png",
+    "pixels": [
+      4718592,
+      4292935744
+    ],
+    "logical_points": [
+      2359296.0,
+      2146467872.0
+    ],
+    "sha256": "6299147c98408ea8c83c58e5acd52ff4d959fa97b0b752293f636008bfce6bdb",
+    "caption": "D01/D08 fixed: pointer-opened compact drawer; scrolling exposes load/cable/protection actions without overflow."
+  }
+]

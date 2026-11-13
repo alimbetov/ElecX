@@ -19,6 +19,10 @@ jobs:
           flutter --version
           test "$(flutter --version --machine | python3 -c 'import json,sys; print(json.load(sys.stdin)["frameworkVersion"])')" = "3.47.7"
       - run: flutter pub get
+      - name: Enforce reproducible pubspec.lock after resolution
+        run: |
+          git diff -- pubspec.lock
+          git diff --exit-code -- pubspec.lock
       - name: Check Dart formatting
         id: format
         continue-on-error: true

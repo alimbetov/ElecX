@@ -1,0 +1,164 @@
+import '../../../engine/power_evidence_selection_engine.dart';
+
+/// Verified safety outcomes are supplied by trusted engineering review,
+/// never by the caller constructing a preview.
+enum EngineeringVerifiedSafetyFinding { supported, contradicted, indeterminate }
+
+/// Review records must be loaded from a trusted, authenticated ingestion
+/// boundary. Constructing one in application code is not proof of authenticity.
+final class EngineeringEvidenceReviewRecord {
+  const EngineeringEvidenceReviewRecord({
+    required this.sourceId,
+    required this.revision,
+    required this.contentSha256,
+    required this.approvalId,
+    required this.jurisdiction,
+    required this.applicationScope,
+    required this.isApproved,
+    required this.isRevoked,
+    this.evidencePurpose,
+    this.subjectCircuitId,
+    this.verifiedSafetyFinding,
+    this.verifiedRuleProfileFingerprint,
+    this.verifiedCalculationFingerprint,
+    this.verifiedFaultEnvelopeFingerprint,
+    this.verifiedProtectionLimitsFingerprint,
+    this.verifiedUpstreamProtectionCatalogId,
+    this.verifiedResidualTopologyFingerprint,
+    this.verifiedManufacturerPairFingerprint,
+  });
+
+  final String sourceId;
+  final String revision;
+  final String contentSha256;
+  final String approvalId;
+  final String jurisdiction;
+  final String applicationScope;
+  final bool isApproved;
+  final bool isRevoked;
+
+  /// Optional verified metadata from authenticated evidence ingestion.
+  /// Safety proof consumers must reject an absent or wrong purpose/subject.
+  final String? evidencePurpose;
+  final String? subjectCircuitId;
+  final EngineeringVerifiedSafetyFinding? verifiedSafetyFinding;
+
+  /// Authenticated digest of the actual numerical rule profile, not just its
+  /// normative document identity. Missing evidence cannot authorize a PASS.
+  final String? verifiedRuleProfileFingerprint;
+
+  /// Frozen, independently reviewed numerical input bundle for one P11
+  /// circuit. Review of a generic source ID cannot authorize altered values.
+  final String? verifiedCalculationFingerprint;
+
+  /// Separate signed fault-scenario envelope, to avoid conflating it with
+  /// the independently reviewed load/protection calculation snapshot.
+  final String? verifiedFaultEnvelopeFingerprint;
+
+  /// Independently attested policy-specific RCD/RCBO operating thresholds.
+  final String? verifiedProtectionLimitsFingerprint;
+
+  /// Approved upstream protective device identity for the reviewed pair.
+  final String? verifiedUpstreamProtectionCatalogId;
+
+  /// Authenticated board / MCB / upstream RCD circuit coverage snapshot.
+  final String? verifiedResidualTopologyFingerprint;
+
+  /// SHA-256 of the exact manufacturer articles, table revision and fault range.
+  final String? verifiedManufacturerPairFingerprint;
+}
+
+/// The production implementation must be backed by a versioned, authenticated
+/// evidence registry. In particular, the caller must not supply its own reviews.
+abstract interface class TrustedEngineeringEvidenceRegistry {
+  /// Immutable registry version, checked again at the commit boundary.
+  String get revision;
+
+  EngineeringEvidenceReviewRecord? lookup(String sourceId);
+}
+
+enum EngineeringEvidenceReviewIssue {
+  missingRequiredSources,
+  missingSource,
+  mismatchedIdentity,
+  unapprovedSource,
+  revokedSource,
+  wrongJurisdiction,
+  wrongApplicationScope,
+  invalidRegistryRevision,
+}
+
+final class EngineeringEvidenceReviewResult {
+  EngineeringEvidenceReviewResult({
+    required this.registryRevision,
+    required Iterable<EngineeringEvidenceReviewIssue> issues,
+  }) : issues = List.unmodifiable(issues);
+
+  final String registryRevision;
+  final List<EngineeringEvidenceReviewIssue> issues;
+
+  bool get isQualified => issues.isEmpty;
+}
+
+/// Read-only authenticity/applicability preflight. This does NOT grant Apply:
+/// board ratings, fault/thermal protection, topology, canonical versioning and
+/// transactional revalidation are independent mandatory gates.
+abstract final class EngineeringEvidenceReviewGate {
+  static EngineeringEvidenceReviewResult evaluate({
+    required Iterable<PowerEvidenceSourcePin> requiredSources,
+    required TrustedEngineeringEvidenceRegistry registry,
+    required String jurisdiction,
+    required String applicationScope,
+  }) {
+    final issues = <EngineeringEvidenceReviewIssue>{};
+    final revision = registry.revision.trim();
+    if (revision.isEmpty ||
+        jurisdiction.trim().isEmpty ||
+        applicationScope.trim().isEmpty) {
+      issues.add(EngineeringEvidenceReviewIssue.invalidRegistryRevision);
+    }
+
+    final pins = requiredSources.toList()
+      ..sort((a, b) => a.sourceId.compareTo(b.sourceId));
+    if (pins.isEmpty) {
+      issues.add(EngineeringEvidenceReviewIssue.missingRequiredSources);
+    }
+    final visited = <String>{};
+    for (final pin in pins) {
+      if (!visited.add(pin.sourceId)) {
+        issues.add(EngineeringEvidenceReviewIssue.mismatchedIdentity);
+        continue;
+      }
+      final record = registry.lookup(pin.sourceId);
+      if (record == null) {
+        issues.add(EngineeringEvidenceReviewIssue.missingSource);
+        continue;
+      }
+      if (record.sourceId != pin.sourceId ||
+          record.revision != pin.revision ||
+          record.contentSha256 != pin.contentSha256 ||
+          record.approvalId != pin.approvalId) {
+        issues.add(EngineeringEvidenceReviewIssue.mismatchedIdentity);
+      }
+      if (!record.isApproved) {
+        issues.add(EngineeringEvidenceReviewIssue.unapprovedSource);
+      }
+      if (record.isRevoked) {
+        issues.add(EngineeringEvidenceReviewIssue.revokedSource);
+      }
+      if (record.jurisdiction != jurisdiction) {
+        issues.add(EngineeringEvidenceReviewIssue.wrongJurisdiction);
+      }
+      if (record.applicationScope != applicationScope) {
+        issues.add(EngineeringEvidenceReviewIssue.wrongApplicationScope);
+      }
+    }
+    return EngineeringEvidenceReviewResult(
+      registryRevision: revision,
+      issues: [
+        for (final issue in EngineeringEvidenceReviewIssue.values)
+          if (issues.contains(issue)) issue,
+      ],
+    );
+  }
+}

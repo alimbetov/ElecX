@@ -13,6 +13,9 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   drift: ^2.20.0
+  # Explicit native-asset pin; Dart hook verifies upstream SHA-256.
+  sqlite3: 3.9.0
+  crypto: 3.0.7
   path: ^1.9.0
   path_provider: ^2.1.4
 
@@ -22,6 +25,17 @@ dev_dependencies:
   integration_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+
+# Official sqlite3 build-hook transport selection. OS packages must be
+# independently qualified for production Linux/macOS; other targets keep
+# upstream SHA-256-verified, bundled native assets.
+hooks:
+  user_defines:
+    sqlite3:
+      source:
+        linux: system
+        macos: system
+        default: sqlite3
 
 flutter:
   uses-material-design: true

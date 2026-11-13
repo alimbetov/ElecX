@@ -169,7 +169,11 @@ final class ElectricalCableRoute {
     for (var index = 0; index + 1 < segments.length; index++) {
       final before = segments[index];
       final after = segments[index + 1];
-      if (before.points.isEmpty || after.points.isEmpty) continue;
+      if (before.points.isEmpty || after.points.isEmpty) {
+        throw ArgumentError(
+          'Route $id transition ${index + 1} has an empty surface segment.',
+        );
+      }
       if (before.surface == after.surface) {
         if (before.points.last != after.points.first) {
           throw ArgumentError(
@@ -246,6 +250,23 @@ final class ElectricalCableRoute {
           '${leg.verticalCoreId}.',
         );
       }
+      var transitionCount = 0;
+      for (var index = 0; index + 1 < segments.length; index++) {
+        if (_verticalCoreLegMatchesTransition(
+          leg,
+          segments[index],
+          segments[index + 1],
+        )) {
+          transitionCount++;
+        }
+      }
+      if (transitionCount != 1) {
+        throw ArgumentError(
+          'VerticalCore leg ${leg.fromSlabId}->${leg.toSlabId} must '
+          'bind to exactly one adjacent route transition; '
+          'found $transitionCount.',
+        );
+      }
     }
   }
 
@@ -272,6 +293,14 @@ final class ElectricalCableRoute {
     if (fromMatches.length != 1 || toMatches.length != 1) return false;
     final from = fromMatches.single;
     final to = toMatches.single;
+    // A straight vertical leg cannot change room or XY between slabs.
+    // Different rooms need an explicit routed horizontal segment instead.
+    if (from.exitAnchor.surface.type != SurfacePlaneType.floor ||
+        to.entryAnchor.surface.type != SurfacePlaneType.ceiling ||
+        from.exitAnchor.surface.spaceId != to.entryAnchor.surface.spaceId ||
+        from.exitAnchor.point != to.entryAnchor.point) {
+      return false;
+    }
     return from.exitAnchor.surface == before.surface &&
         from.exitAnchor.point == before.points.last &&
         to.entryAnchor.surface == after.surface &&

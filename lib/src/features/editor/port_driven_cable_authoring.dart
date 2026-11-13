@@ -155,6 +155,66 @@ extension PortDrivenCableAuthoring on EditorController {
     return List.unmodifiable(targets);
   }
 
+  /// Read-only discovery for compatible endpoints in *other* rooms.
+  ///
+  /// Electrical compatibility is not proof of a physical route: the editor
+  /// deliberately does not offer these as finish targets until an approved
+  /// cross-room penetration/continuation has been authored and validated.
+  /// Never use this list to bypass the exact host/port commit boundary.
+  List<PortDrivenCableCompletionTarget> get blockedCrossRoomCableTargets {
+    final binding = portDrivenCableStartBinding;
+    if (binding == null ||
+        p2.history.mutationRevision != binding.p2MutationRevision) {
+      return const <PortDrivenCableCompletionTarget>[];
+    }
+    final source = _componentById(p2.components, binding.componentId);
+    final startPort = source == null ? null : _portById(source, binding.portId);
+    if (source == null ||
+        startPort == null ||
+        startPort.kind != binding.portKind) {
+      return const <PortDrivenCableCompletionTarget>[];
+    }
+    final remoteRole = binding.role == PortDrivenCableEndpointRole.source
+        ? PortDrivenCableEndpointRole.target
+        : PortDrivenCableEndpointRole.source;
+    final targets = <PortDrivenCableCompletionTarget>[];
+    for (final component in p2.components) {
+      if (component.id == source.id ||
+          component.surface.spaceId == source.surface.spaceId) {
+        continue;
+      }
+      for (final port in component.ports) {
+        if (!_roleAccepts(port.kind, remoteRole)) continue;
+        final compatible = binding.role == PortDrivenCableEndpointRole.source
+            ? ElectricalPortCompatibility.areCompatible(
+                startPort.kind,
+                port.kind,
+              )
+            : ElectricalPortCompatibility.areCompatible(
+                port.kind,
+                startPort.kind,
+              );
+        if (!compatible) continue;
+        targets.add(PortDrivenCableCompletionTarget(
+          componentId: component.id,
+          componentLabel: component.label,
+          portId: port.id,
+          portKind: port.kind,
+          role: remoteRole,
+          surface: component.surface,
+          position: component.position,
+        ));
+      }
+    }
+    targets.sort((a, b) {
+      final bySpace = a.surface.spaceId.compareTo(b.surface.spaceId);
+      if (bySpace != 0) return bySpace;
+      final byComponent = a.componentId.compareTo(b.componentId);
+      return byComponent != 0 ? byComponent : a.portId.compareTo(b.portId);
+    });
+    return List.unmodifiable(targets);
+  }
+
   bool snapPortDrivenCableCompletionTarget({
     required String componentId,
     required String portId,

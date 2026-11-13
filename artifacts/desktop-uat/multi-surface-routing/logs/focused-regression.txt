@@ -1,0 +1,14 @@
+Upgrading analysis_options.yaml to exclude build and platform directories.
+00:00 +0: loading /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/p12_engineering_proposal_source_test.dart
+00:00 +0: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/p12_engineering_review_panel_test.dart: P12 review reports missing canonical runtime honestly
+00:00 +1: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/p12_engineering_review_panel_test.dart: P12 review reports missing canonical runtime honestly
+00:00 +2: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/p12_engineering_review_panel_test.dart: P12 review reports missing canonical runtime honestly
+00:00 +3: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/p12_engineering_review_panel_test.dart: P12 review reports missing canonical runtime honestly
+00:00 +4: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/p12_engineering_review_panel_test.dart: P12 review reports missing canonical runtime honestly
+00:00 +5: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/p12_engineering_review_panel_test.dart: P12 review inspects project-owned state, no invented diff
+00:01 +6: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/p12_engineering_review_panel_test.dart: P12 review inspects project-owned state, no invented diff
+00:01 +7: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/p12_engineering_review_panel_test.dart: P12 review inspects project-owned state, no invented diff
+00:01 +8: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/p12_engineering_review_panel_test.dart: P12 review inspects project-owned state, no invented diff
+00:01 +9: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/p12_engineering_review_panel_test.dart: P12 shows source-backed unresolved proposal and diagnostic
+00:01 +10: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/p12_engineering_review_panel_test.dart: P12 diff is only shown when frozen baseline is supplied
+00:02 +11: All tests passed!

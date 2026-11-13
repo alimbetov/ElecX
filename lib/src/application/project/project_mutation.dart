@@ -202,6 +202,9 @@ final class ProjectEngineeringMetadataDiff {
     this.boundaryConstructionRegistryChanged = false,
     this.generationProvenanceRegistryChanged = false,
     this.appliedEngineeringProposalRegistryChanged = false,
+    this.powerSelectionsChanged = false,
+    this.residualProtectionChanged = false,
+    this.engineeringStateChanged = false,
     this.siteLayoutChanged = false,
   });
 
@@ -214,6 +217,9 @@ final class ProjectEngineeringMetadataDiff {
         boundaryConstructionRegistryChanged = false,
         generationProvenanceRegistryChanged = false,
         appliedEngineeringProposalRegistryChanged = false,
+        powerSelectionsChanged = false,
+        residualProtectionChanged = false,
+        engineeringStateChanged = false,
         siteLayoutChanged = false;
 
   factory ProjectEngineeringMetadataDiff.between(
@@ -241,6 +247,12 @@ final class ProjectEngineeringMetadataDiff {
         appliedEngineeringProposalRegistryChanged: !before
             .appliedEngineeringProposalRegistry
             .sameAs(after.appliedEngineeringProposalRegistry),
+        powerSelectionsChanged:
+            !before.powerSelections.sameAs(after.powerSelections),
+        residualProtectionChanged:
+            !before.residualProtection.sameAs(after.residualProtection),
+        engineeringStateChanged:
+            !before.engineeringState.sameAs(after.engineeringState),
       );
 
   final ProjectEngineeringNorth? beforeProjectNorth;
@@ -251,6 +263,9 @@ final class ProjectEngineeringMetadataDiff {
   final bool boundaryConstructionRegistryChanged;
   final bool generationProvenanceRegistryChanged;
   final bool appliedEngineeringProposalRegistryChanged;
+  final bool powerSelectionsChanged;
+  final bool residualProtectionChanged;
+  final bool engineeringStateChanged;
   final bool siteLayoutChanged;
 
   bool get projectNorthChanged => beforeProjectNorth != afterProjectNorth;
@@ -262,7 +277,10 @@ final class ProjectEngineeringMetadataDiff {
       !boundaryWallProfileRegistryChanged &&
       !boundaryConstructionRegistryChanged &&
       !generationProvenanceRegistryChanged &&
-      !appliedEngineeringProposalRegistryChanged;
+      !appliedEngineeringProposalRegistryChanged &&
+      !powerSelectionsChanged &&
+      !residualProtectionChanged &&
+      !engineeringStateChanged;
   bool get isNotEmpty => !isEmpty;
 }
 
@@ -414,6 +432,9 @@ abstract final class CandidateGraphValidator {
           stores: state.stores,
           engineeringMetadata: state.engineeringMetadata));
     }
+    state.engineeringMetadata.powerSelections.validateAgainst(
+      state.engineeringMetadata.engineeringState,
+    );
     state.engineeringMetadata.boundaryHostedObjectRegistry.validateAgainst(
       state.stores.boundaries,
     );
@@ -630,6 +651,7 @@ final class ProjectMutationSession {
       entityDiff: stateDiff.entityDiff,
       engineeringMetadataDiff: stateDiff.engineeringMetadataDiff,
     );
+    _requirePowerCommitGuard(changeSet);
     commitGuard?.call(before, committed, changeSet);
     _requireVersion(request.expectedVersion);
     _current = committed;
@@ -672,6 +694,11 @@ final class ProjectMutationSession {
       entityDiff: stateDiff.entityDiff,
       engineeringMetadataDiff: stateDiff.engineeringMetadataDiff,
     );
+    if (changeSet.engineeringMetadataDiff.powerSelectionsChanged ||
+        changeSet.engineeringMetadataDiff.residualProtectionChanged) {
+      _requirePowerCommitGuard(changeSet);
+      commitGuard?.call(before, restored, changeSet);
+    }
     _current = restored;
     _boundaryIdentityRegistry =
         restored.engineeringMetadata.boundaryEdgeIdentityRegistry;
@@ -706,12 +733,26 @@ final class ProjectMutationSession {
       entityDiff: stateDiff.entityDiff,
       engineeringMetadataDiff: stateDiff.engineeringMetadataDiff,
     );
+    if (changeSet.engineeringMetadataDiff.powerSelectionsChanged ||
+        changeSet.engineeringMetadataDiff.residualProtectionChanged) {
+      _requirePowerCommitGuard(changeSet);
+      commitGuard?.call(before, restored, changeSet);
+    }
     _current = restored;
     _boundaryIdentityRegistry =
         restored.engineeringMetadata.boundaryEdgeIdentityRegistry;
     _redoStack.removeLast();
     _undoStack.add(record);
     return ProjectMutationResult(project: restored, changeSet: changeSet);
+  }
+
+  void _requirePowerCommitGuard(ProjectChangeSet changeSet) {
+    final diff = changeSet.engineeringMetadataDiff;
+    if ((diff.powerSelectionsChanged || diff.residualProtectionChanged) &&
+        commitGuard == null) {
+      throw StateError(
+          'POWER/RCD mutation requires an authenticated commit guard.');
+    }
   }
 
   ProjectAggregateRoot _commitState({

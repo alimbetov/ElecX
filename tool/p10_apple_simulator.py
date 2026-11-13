@@ -148,7 +148,7 @@ def drive_native(udid):
          f"--vm-service-port={port}", "--disable-service-auth-codes",
          "--disable-vm-service-publication", "--start-paused",
          "--enable-dart-profiling", "--enable-checked-mode", "--verify-entry-points"],
-        "native-launch", 60)
+        "native-launch", 120)
     uri = wait_for_vm_service(port)
     run(["flutter", "drive", "--verbose", "--no-pub", "--no-dds",
          f"--use-existing-app={uri}",

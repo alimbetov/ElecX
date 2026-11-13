@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../domain/electrical_placement.dart';
 import '../../domain/surfaces.dart';
+import 'cable_authoring_guidance.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 import 'manual_cable_draft_persistence.dart';
@@ -40,6 +41,9 @@ class CableAuthoringDraftBar extends StatelessWidget {
         : controller.compatiblePortDrivenCableTargets;
     final readyToFinish =
         binding != null && controller.portDrivenCableReadyToFinish;
+    final remoteTargets = binding == null
+        ? const <PortDrivenCableCompletionTarget>[]
+        : controller.blockedCrossRoomCableTargets;
     final selectedComponent = controller.p2.selectedComponent;
     final selectedPorts = selectedComponent == null
         ? const <ElectricalPortDefinition>[]
@@ -52,6 +56,13 @@ class CableAuthoringDraftBar extends StatelessWidget {
         : controller.routeSegments.any(
             (segment) => segment.points.length >= 2,
           );
+    var surfaceTransitions = 0;
+    for (var i = 1; i < controller.routeSegments.length; i++) {
+      if (controller.routeSegments[i - 1].surface !=
+          controller.routeSegments[i].surface) {
+        surfaceTransitions++;
+      }
+    }
 
     return Material(
       key: const ValueKey('cable-authoring-draft-bar'),
@@ -80,6 +91,26 @@ class CableAuthoringDraftBar extends StatelessWidget {
                 ),
               ],
             ),
+            CableAuthoringGuidance(
+              hasSource: binding != null,
+              hasDraft: hasDraft,
+              hasCompatibleTarget: completionTargets.isNotEmpty,
+              readyToFinish: readyToFinish,
+              transitionDisconnected: transitionDisconnected,
+              crossRoomBlocked: remoteTargets.isNotEmpty,
+            ),
+            const SizedBox(height: 7),
+            if (surfaceTransitions > 0) ...[
+              const SizedBox(height: 5),
+              Text(
+                'Участков: ${controller.routeSegments.length} · '
+                'Переходов между поверхностями: '
+                '$surfaceTransitions · '
+                'Физическая проверка при сохранении',
+                key: const ValueKey('cable-draft-transition-summary'),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
             const SizedBox(height: 5),
             Text(
               transitionDisconnected
@@ -182,6 +213,44 @@ class CableAuthoringDraftBar extends StatelessWidget {
                       ),
                   ],
                 ),
+            ],
+            if (remoteTargets.isNotEmpty) ...[
+              const SizedBox(height: 7),
+              Container(
+                key: const ValueKey('cable-cross-room-targets-blocked'),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .errorContainer
+                      .withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Совместимые нагрузки в других комнатах: '
+                      '${remoteTargets.length}',
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Электрическая совместимость не подтверждает '
+                      'кабельный проход. Для соединения комнат требуются '
+                      'каноническая смежность, строительная конструкция '
+                      'и утверждённый переход через границу. '
+                      'Прокладка без них заблокирована.',
+                      key: ValueKey('cable-cross-room-passage-required'),
+                    ),
+                    for (final target in remoteTargets.take(4))
+                      Text(
+                        '${target.surface.spaceId} · '
+                        '${target.componentLabel} · ${target.portId}',
+                      ),
+                  ],
+                ),
+              ),
             ],
             const SizedBox(height: 7),
             Wrap(

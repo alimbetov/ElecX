@@ -94,7 +94,8 @@ void main() {
       expect(redone.geometricLengthMm, 2000);
 
       final document = EditorProjectDocument.capture(workspace);
-      expect(document.schemaVersion, 8);
+      expect(
+          document.schemaVersion, EditorProjectDocument.currentSchemaVersion);
       final json = document.toJson();
       final routeJson =
           (((json['p2']! as Map)['routes']! as List).single as Map);
@@ -141,7 +142,7 @@ void main() {
       expect(routes, isEmpty);
 
       final decoded = EditorProjectDocument.fromJson(json);
-      expect(decoded.schemaVersion, 8);
+      expect(decoded.schemaVersion, EditorProjectDocument.currentSchemaVersion);
       expect(decoded.p2State.routes, isEmpty);
     });
   });

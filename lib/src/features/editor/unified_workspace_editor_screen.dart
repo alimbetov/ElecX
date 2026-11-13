@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../domain/project_orientation.dart';
+import '../../application/project/engineering/p12_engineering_proposal_source.dart';
 import '../../domain/route_host.dart';
 import '../shared/production_error_boundary.dart';
 import 'canonical_editor_production_runtime.dart';
@@ -12,7 +13,8 @@ import 'canonical_editor_workspace_adapter.dart';
 import 'canonical_space_semantics_adapter.dart';
 import 'canonical_project_navigator.dart';
 import 'context_minimap.dart';
-import 'device_catalog_panel.dart';
+import 'engineering_inspector_panel.dart';
+import 'p12_engineering_review_panel.dart';
 import 'editor_building_workspace.dart';
 import 'editor_controller.dart';
 import 'editor_document_history.dart';
@@ -24,8 +26,6 @@ import 'editor_project_recovery.dart';
 import 'project_north_edit_dialog.dart';
 import 'project_persistence_metadata.dart';
 import 'project_save_diagnostics.dart';
-import 'room_circuit_overview.dart';
-import 'room_circuit_panel.dart';
 import 'room_surface_navigator.dart';
 import 'space_semantics_inspector.dart';
 import 'space_semantics_inspector_editing.dart';
@@ -974,6 +974,60 @@ class _UnifiedWorkspaceEditorScreenState
     }
   }
 
+  void _openP12EngineeringReview() {
+    // Resolve at click-time; never cache a stale project snapshot in UI state.
+    final project = _canonicalProjectMatchesScreen
+        ? _canonicalResolvedRuntime?.session.project
+        : null;
+    P12EngineeringProposalSnapshot? proposalSnapshot;
+    String? unavailableReason;
+    if (project != null) {
+      try {
+        proposalSnapshot = P12EngineeringProposalReadGate.read(
+          current: project,
+          source: _canonicalResolvedRuntime?.p12EngineeringProposalSource,
+        );
+      } catch (error) {
+        unavailableReason =
+            'Предложение P12 отклонено: не совпадает с текущей версией '
+            'проекта либо источник недоступен. Пересчитайте Preview.';
+      }
+    }
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        key: const ValueKey('p12-review-dialog'),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 740, maxHeight: 720),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: P12EngineeringReviewPanel(
+                      project: project,
+                      proposalSnapshot: proposalSnapshot,
+                      proposalUnavailableReason: unavailableReason,
+                    ),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    key: const ValueKey('p12-review-close'),
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Закрыть'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _openMiniMap() {
     showContextMiniMapSheet(
       context: context,
@@ -1180,20 +1234,10 @@ class _UnifiedWorkspaceEditorScreenState
                   : Drawer(
                       width: EditorLayoutPolicy.inspectorWidth(mode),
                       child: SafeArea(
-                        child: Column(
-                          children: [
-                            if (_spaceSemanticsInspector(compact: true)
-                                case final semanticsInspector?) ...[
-                              semanticsInspector,
-                              const Divider(height: 1),
-                            ],
-                            RoomCircuitOverviewPanel(controller: controller),
-                            RoomCircuitPanel(controller: controller),
-                            const Divider(height: 1),
-                            Expanded(
-                              child: DeviceCatalogPanel(controller: controller),
-                            ),
-                          ],
+                        child: EngineeringInspectorPanel(
+                          controller: controller,
+                          semanticsInspector:
+                              _spaceSemanticsInspector(compact: true),
                         ),
                       ),
                     ),
@@ -1208,6 +1252,7 @@ class _UnifiedWorkspaceEditorScreenState
                 onSaveProject: _saveProject,
                 onOpenProject: _openSavedProject,
                 onOpenMiniMap: _openMiniMap,
+                onOpenP12EngineeringReview: _openP12EngineeringReview,
               ),
               body: Column(
                 children: [
@@ -1366,6 +1411,7 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.onSaveProject,
     required this.onOpenProject,
     required this.onOpenMiniMap,
+    required this.onOpenP12EngineeringReview,
   });
 
   final EditorBuildingWorkspace workspace;
@@ -1378,6 +1424,7 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onSaveProject;
   final VoidCallback onOpenProject;
   final VoidCallback onOpenMiniMap;
+  final VoidCallback onOpenP12EngineeringReview;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -1392,6 +1439,19 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
             : 'ElecX · ${projectMetadata.projectName} · ${workspace.activeLevel?.displayName ?? ''}',
       ),
       actions: [
+        IconButton(
+          key: const ValueKey('p12-review-open'),
+          tooltip: 'P12 · Проверка инженерного проекта',
+          onPressed: onOpenP12EngineeringReview,
+          icon: const Icon(Icons.fact_check_outlined),
+        ),
+        if (compact)
+          IconButton(
+            key: const ValueKey('project-inspector-open'),
+            tooltip: 'Открыть инженерную панель',
+            onPressed: () => Scaffold.of(context).openEndDrawer(),
+            icon: const Icon(Icons.tune),
+          ),
         if (!compact)
           Padding(
             key: const ValueKey('project-save-status'),
@@ -1567,14 +1627,12 @@ class _CatalogPanel extends StatelessWidget {
             ),
           ),
           const Divider(height: 1),
-          if (semanticsInspector != null) ...[
-            semanticsInspector!,
-            const Divider(height: 1),
-          ],
-          RoomCircuitOverviewPanel(controller: controller),
-          RoomCircuitPanel(controller: controller),
-          const Divider(height: 1),
-          Expanded(child: DeviceCatalogPanel(controller: controller)),
+          Expanded(
+            child: EngineeringInspectorPanel(
+              controller: controller,
+              semanticsInspector: semanticsInspector,
+            ),
+          ),
         ],
       );
 }

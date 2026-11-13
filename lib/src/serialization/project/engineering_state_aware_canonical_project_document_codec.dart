@@ -32,6 +32,11 @@ final class EngineeringStateAwareCanonicalProjectDocumentCodec
 
   @override
   ProjectDocument encode(ProjectSnapshot snapshot) {
+    if (!snapshot.aggregate.engineeringMetadata.powerSelections.isEmpty) {
+      throw const FormatException(
+        'Canonical POWER selections require project schema v21.',
+      );
+    }
     final metadata = snapshot.aggregate.engineeringMetadata;
     final state = metadata.engineeringState;
     state.requireKnownServiceEntries(metadata.siteLayout.serviceAnchors.keys);

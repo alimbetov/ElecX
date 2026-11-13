@@ -223,6 +223,22 @@ EntityId _allocateEntityId(
 
 /// C5 commands are pure planners over current canonical state plus one immutable
 /// reservation. They do not allocate identities from buildCandidate.
+/// Explicitly prevents incomplete engineering reviews from entering the
+/// production mutation lifecycle. A preview is allowed for inspection.
+abstract interface class PreviewOnlyReservedProjectCommand {
+  String get commitBlockReason;
+}
+
+/// Opt-in command contract for future qualified P12 Apply. Revalidates all
+/// safety evidence against the *current* project immediately before commit.
+/// An existing PreviewOnlyReservedProjectCommand is never exempted by this.
+abstract interface class TransactionalEngineeringSafetyRevalidation {
+  void revalidateEngineeringSafety({
+    required ProjectAggregateRoot current,
+    required ProjectAggregateRoot candidate,
+  });
+}
+
 abstract interface class ReservedProjectCommand {
   String get commandType;
 
@@ -582,10 +598,37 @@ final class ReservedProjectMutationCoordinator {
       );
     }
 
+    if (planned._command is PreviewOnlyReservedProjectCommand) {
+      final blocked = planned._command as PreviewOnlyReservedProjectCommand;
+      throw StateError(blocked.commitBlockReason);
+    }
+
     planned._command.validateReservation(
       current: session.current,
       reservation: planned.reservation,
     );
+
+    // Future P12 Apply commands must participate in transaction-bound safety
+    // review. A fabricated or incomplete Preview still cannot be committed.
+    final canonicalPowerChanged = session
+                .current.engineeringMetadata.powerSelections.fingerprint !=
+            planned.candidate.engineeringMetadata.powerSelections.fingerprint ||
+        session.current.engineeringMetadata.residualProtection.fingerprint !=
+            planned
+                .candidate.engineeringMetadata.residualProtection.fingerprint;
+    if ((canonicalPowerChanged ||
+            planned._command.commandType.startsWith('p12')) &&
+        planned._command is! TransactionalEngineeringSafetyRevalidation) {
+      throw StateError(
+          'P12 Apply requires transaction-bound engineering safety revalidation.');
+    }
+    if (planned._command is TransactionalEngineeringSafetyRevalidation) {
+      (planned._command as TransactionalEngineeringSafetyRevalidation)
+          .revalidateEngineeringSafety(
+        current: session.current,
+        candidate: planned.candidate,
+      );
+    }
 
     final result = session.commit(
       ProjectMutationRequest(
