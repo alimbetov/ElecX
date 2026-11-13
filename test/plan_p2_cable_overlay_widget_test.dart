@@ -58,6 +58,14 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('P2 трассы (не P11)'), findsOneWidget);
+    expect(find.byKey(ValueKey('plan-component-${board.id}')), findsOneWidget);
+    expect(find.byKey(ValueKey('plan-component-${socket.id}')), findsOneWidget);
+    controller.p2.setLayerVisible(EditorLayerId.electrical, false);
+    await tester.pump();
+    expect(find.byKey(ValueKey('plan-component-${board.id}')), findsNothing);
+    controller.p2.setLayerVisible(EditorLayerId.electrical, true);
+    await tester.pump();
+    expect(find.byKey(ValueKey('plan-component-${board.id}')), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     controller.p2.setLayerVisible(EditorLayerId.cableRoutes, false);
