@@ -1,0 +1,117 @@
+{
+  "date": "2026-11-13 Asia/Almaty",
+  "localEvidenceDirectory": "/Users/ruslanalimbetov/Documents/electra/ElecX-r4-evidence-20261113",
+  "rawLogsCommitted": false,
+  "files": [
+    {
+      "file": "01-before-plan-equipment.png",
+      "bytes": 490688,
+      "sha256": "5e02a41f0badbabf4dd94118288f65e9e1e437d92d5bbdb637adb392708b1a1b"
+    },
+    {
+      "file": "02-reopen-hub.png",
+      "bytes": 398199,
+      "sha256": "73102d06fe7112f5c760001aa689cc59ab3c902135229f131ad50021bf2acc5d"
+    },
+    {
+      "file": "03-all-thirteen-on-plan.ax.txt",
+      "bytes": 5661,
+      "sha256": "10196e9851abd5611516c671ee092bbf81074598d756457d5e9c4cec4b11124a"
+    },
+    {
+      "file": "03-all-thirteen-on-plan.png",
+      "bytes": 526453,
+      "sha256": "4a3502d7ba8501e21000af6cf2d1c9f09e31218bbcedc0047495d8fd1465cab9"
+    },
+    {
+      "file": "04-remote-board-blocked.ax.txt",
+      "bytes": 4862,
+      "sha256": "eb65e05197adcdb8b0cfc411bcbcfe2a9c82d5a230661618454137ddc06c5900"
+    },
+    {
+      "file": "04-remote-board-blocked.png",
+      "bytes": 526069,
+      "sha256": "a4081700c941b7d63426385eb07fb4fd8781702895fe62375d2c0298129bb84f"
+    },
+    {
+      "file": "analyze-final.log",
+      "bytes": 96,
+      "sha256": "bb7009642ec8336084c6034a7b19c31ab46340245516abd54cf3a4b88b749fc3"
+    },
+    {
+      "file": "analyze.log",
+      "bytes": 305,
+      "sha256": "7c17ef01b65ad949e11cfcc5dbba27b8fb8fc0ff40bcc441834519f652b6ccc0"
+    },
+    {
+      "file": "fixture-green.log",
+      "bytes": 349,
+      "sha256": "0b2803022bbf174be945336172831e2be1a5d8d05f0c1bb1e34def1e9271f0bb"
+    },
+    {
+      "file": "fixture-red.log",
+      "bytes": 1113,
+      "sha256": "a953a1c4b07cbed976ec81d196eb92e6686cc37b676366c93fa25dff33d9fe80"
+    },
+    {
+      "file": "format.log",
+      "bytes": 49,
+      "sha256": "7564241d57e54b8d503ef1bd0f433a362a1d661c44a9c41a83c92da456267013"
+    },
+    {
+      "file": "full-final.log",
+      "bytes": 419199,
+      "sha256": "c9fec68f2959c24d86dc027a0ffef253991dcf32e66715ee1c7b10fa5181e6f3"
+    },
+    {
+      "file": "full.log",
+      "bytes": 417906,
+      "sha256": "34f996d7d1c70be1da44f086c149becb5b1fdafd9cd52db2d31a66cb8e0fae4c"
+    },
+    {
+      "file": "native-final.log",
+      "bytes": 858,
+      "sha256": "5695e5ed36b03903c7a3b734d6e95f2a6985699eabec2cdfd714612c2649563a"
+    },
+    {
+      "file": "native-plan.log",
+      "bytes": 927,
+      "sha256": "20d8e2f211694cca00126bdfd57f2afd2ddd85860aaea34f9a0f91b1803aba24"
+    },
+    {
+      "file": "native.log",
+      "bytes": 927,
+      "sha256": "323d3ba420bcab422e1b73c87445ead5e33dc82639860135d1e73a0e23d5bf02"
+    },
+    {
+      "file": "plan-all-rooms-green.log",
+      "bytes": 1391,
+      "sha256": "012021244ba90cdb06c7f8bd67ea0fcb78c6147b6176a736fa33f8197363f139"
+    },
+    {
+      "file": "plan-all-rooms-red.log",
+      "bytes": 2257,
+      "sha256": "e6e453b39a12d55a644aa3d486f83a552d7f841930551c176e1e3969f652e7cd"
+    },
+    {
+      "file": "plan-green-final.log",
+      "bytes": 1782,
+      "sha256": "e0ad241e6d376a0d512697bcfba4a879fb15fff82467f3e3aef11741c336af61"
+    },
+    {
+      "file": "plan-green.log",
+      "bytes": 1422,
+      "sha256": "ee3a673ecfc9eed583316aa6dc13403271fd4d295493cda49931d21ce0296925"
+    },
+    {
+      "file": "plan-red.log",
+      "bytes": 2194,
+      "sha256": "ac1aa1e3daa048b5c87f6774f9b371d93d72b9a2fdd5e37a4024d3c4c6f6f7bd"
+    },
+    {
+      "file": "reopened-inventory.json",
+      "bytes": 8744,
+      "sha256": "c956f86d95e17dc399567f7173f3903f26e56cd713438cd6a9cbde03a7b9ee3d"
+    }
+  ]
+}
