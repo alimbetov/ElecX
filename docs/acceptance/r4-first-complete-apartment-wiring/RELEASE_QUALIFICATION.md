@@ -14,3 +14,7 @@
 - Оставшиеся P0: doors/adjacency/physical passage ownership; canonical multi-load grouping и правильная lighting topology; apartment-wide proposal/Diff/atomic Apply; route editing и full Save/Reopen native E2E.
 
 Это отчёт о проверенном этапе, а не объявление R4 завершённым. Полный E2E не может быть заменён количеством unit-тестов.
+
+## Текущий этап 2026-11-19
+
+**PARTIAL сохраняется.** Предыдущие сведения «0 трасс / route editing NOT RUN» относятся к историческому этапу 2026-11-13. Сейчас native подтверждены 9 питающих кабельных трасс, 6 групп, пакетный Apply, ручное изменение потолочного участка, Undo/Redo и Save-Quit-Reopen. Это не полная электрическая схема: управление от выключателей и нормативная квалификация не завершены. Шесть same-SHA CI не заменяются локальными тестами; merge main и release не выполнялись.

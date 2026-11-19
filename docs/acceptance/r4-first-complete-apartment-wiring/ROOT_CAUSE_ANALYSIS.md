@@ -29,3 +29,11 @@
 2. Canonical doors/adjacency/physical passage authoring, затем apartment routing graph через подтверждённые стены. Дверь сама по себе не разрешает кабельный проход.
 3. Frozen wiring proposal → существующий ReservedProjectMutationCoordinator → Diff → atomic Apply, отдельно от P12 нормативного выбора.
 4. Ручные обязательные точки/переназначение проходок с повторной геометрической проверкой, Save/Quit/Reopen всей схемы и полноценный native acceptance.
+
+## Дополнение 2026-11-19
+
+Отсутствие кабеля было не только проблемой отображения: demo создавал устройства без applied route, а room panel допускал только локальный щит. Добавлен физический router соседних помещений с обязательными профилями обеих сторон перегородки и Preview/Apply, затем пакетная команда квартиры.
+
+Отдельно выявлен разрыв в управлении геометрией: SurfaceCanvas сопоставлял старые wall ordinals с постоянными BoundaryEdgeId простым равенством. Новый CableSurfaceProjection проверяет canonical binding и геометрию boundary projection; нормативный контекст, hit testing и ручки используют тот же host. При изменении числа изгибов сохраняются идентификаторы концов и создаются новые внутренние anchors; проходки сохраняются.
+
+Цифра 0 в текстовом поле раньше запускала reset viewport. Canvas shortcuts теперь пропускают ввод EditableText.

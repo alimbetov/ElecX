@@ -18,3 +18,13 @@ Toolchain: Flutter 3.47.7 / Dart 3.13.5, macOS arm64. Worktree ElecX-p12-r3-audi
 | flutter --no-version-check run --no-pub -d macos -t lib/main.dart | native build/start PASS; production GUI отдельно | native.log, native-plan.log, native-final.log |
 
 Перед full-final завершены все code/test изменения. RED-тесты не отключены и не ослаблены. Неудовлетворённые требования полного R4 перечислены отдельно; проходящие 2107 тестов не объявлены полным E2E. Повторное присоединение CUA после Quit временно давало noWindowsAvailable; reset CUA восстановил управление, после чего реальная финальная проверка выполнена.
+
+## Дополнение 2026-11-19
+
+- Профильный прогон `cable_route_edit_session_test`, `cable_canvas_hit_testing_test`, `r4_apartment_production_workflow_test`: 15 PASS. Включает добавление изгибов с durable anchors, блокировку недопустимых preview, неподвижность концов, пакет из 8 новых трасс + существующая, 6 групп, Undo/Redo и вход из плана в редактор поверхности.
+- RED при добавлении режима: несовпадение active wall ref и canonical route host. Исправлено разрешение host через проверенную проекцию.
+- Тестовое ожидание pumpAndSettle заменено ограниченным pump только после перехода к выбранной трассе: её direction animation непрерывна. Проверки результата и идентичности host сохранены.
+- Native GUI: изменение 5100→5500 мм, Undo/Redo, Save→Quit→Reopen; полное равенство сохранённых routes/components/circuitBundles.
+- Финальный analyzer: no issues. Format: 959 files, 0 changes.
+
+Полный финальный `flutter --no-version-check test --no-pub --reporter expanded`: **2109 PASS**, 2m29s (`full-trajectory.log`). Статический анализ и форматирование выполнены на том же содержимом кода.

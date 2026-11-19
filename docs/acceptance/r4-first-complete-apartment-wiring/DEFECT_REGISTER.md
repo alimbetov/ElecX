@@ -12,3 +12,13 @@
 | R4-D08 | P0 | R4 fixture пока без doors/adjacency и подтверждённых проходок | OPEN; фиктивные переходы не создавались |
 
 Ни один OPEN не считается PASS из-за зелёных unit-тестов. Нативная проверка первой версии D03 выявила дефект, который локальный single-room тест не ловил; это исправлено отдельным production Hub regression.
+
+## Дополнение 2026-11-19
+
+- Исправлено: удалённый щит недоступен в room panel; физический Preview с явной причиной блокировки.
+- Исправлено: отсутствует общая команда apartment wiring; пакетный Apply, stale-preview guard, один history command.
+- Исправлено: отсутствует явный вход в изменение траектории; добавлен режим и выбор поверхности.
+- Исправлено: canonical стеновые hosts не совпадают с canvas refs, ручки недоступны; проверенная проекция без угадывания номера стены.
+- Исправлено: изменение геометрии теряет anchorIds; durable endpoint anchors сохранены.
+- Исправлено: ввод 0 в поле конструкции вызывает canvas shortcut.
+- OPEN: полноценная lighting control topology / L/N/PE / cable sizing / protective devices / canonical graph bridge / doors and adjacency.

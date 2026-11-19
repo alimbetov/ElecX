@@ -113,5 +113,92 @@
       "bytes": 8744,
       "sha256": "c956f86d95e17dc399567f7173f3903f26e56cd713438cd6a9cbde03a7b9ee3d"
     }
-  ]
+  ],
+  "latestStage": {
+    "date": "2026-11-19 Asia/Almaty",
+    "status": "PARTIAL",
+    "localEvidenceDirectory": "/Users/ruslanalimbetov/Documents/electra/ElecX-r4-evidence-20261119",
+    "files": [
+      {
+        "file": "01-missing-wall-evidence.png",
+        "bytes": 662833,
+        "sha256": "3dcee758bf993073b6d91dd57b9333140d40099cea4c81fa7157734515f782f0"
+      },
+      {
+        "file": "02-eight-routes-preview.png",
+        "bytes": 527721,
+        "sha256": "a64421e12fb1fe9c01ef3212cee6a4001ba2a764843b2719732c99fd324b6ac4"
+      },
+      {
+        "file": "03-nine-routes-saved.png",
+        "bytes": 550637,
+        "sha256": "10458c88bce3eec460323ba7088ffd79e30468e6bf337f7c7e820dc856366a40"
+      },
+      {
+        "file": "04-trajectory-moved.png",
+        "bytes": 604964,
+        "sha256": "752d590ebf65dbcae7e0dff96cc47009f6f2945acd9e4ed2eda57d39ce2b9f1e"
+      },
+      {
+        "file": "analyze.log",
+        "bytes": 518,
+        "sha256": "25b00b10a5e7ab36bcab0dc94ebd5748dc1608bdf3f56b634ca354b039548ec9"
+      },
+      {
+        "file": "apartment-command-red.log",
+        "bytes": 2228,
+        "sha256": "0447d25c0ae6ec91a42195d5df937357286c13d490c00550ffd204a9389b8933"
+      },
+      {
+        "file": "before-restart.json",
+        "bytes": 76016,
+        "sha256": "b9edd7eadd9932385dd18494d1c76d1f90d78036db971c8ad289de361e94070a"
+      },
+      {
+        "file": "focused.log",
+        "bytes": 875,
+        "sha256": "b921254c49b6f52e763d4ca18b58856f383042272e17b29b7424cb8e2fa3c597"
+      },
+      {
+        "file": "format-final.log",
+        "bytes": 49,
+        "sha256": "8a1e562e921d0cc2778319457ac3e74a3fdf04e204de8723ead5c12f273c4ac2"
+      },
+      {
+        "file": "full-trajectory.log",
+        "bytes": 419615,
+        "sha256": "28ac33f86b4362ecb129370f1b1bbe945c8170b1914c6d1a4bd43eba44052938"
+      },
+      {
+        "file": "full.log",
+        "bytes": 423456,
+        "sha256": "ea10a109fd34434fc26fe9588bc655fd2b82d1744dc2c9324ca333eff652e622"
+      },
+      {
+        "file": "native-reopen.log",
+        "bytes": 900,
+        "sha256": "2958852b88c653bf70f2111c16efb600dde98c3254bb06c09833efde8f3718ff"
+      },
+      {
+        "file": "native.log",
+        "bytes": 1399,
+        "sha256": "93cd50c97555715ea54adf4934ce4c25413d73c30f7e4e7cf55ebdc268a7e9cc"
+      },
+      {
+        "file": "restart-verification.json",
+        "bytes": 91,
+        "sha256": "27db68934b8a74328bae38fdbc8fd590f83f043967f7c91d40e99f6f3dd07334"
+      },
+      {
+        "file": "trajectory-analyze.log",
+        "bytes": 96,
+        "sha256": "bb7009642ec8336084c6034a7b19c31ab46340245516abd54cf3a4b88b749fc3"
+      },
+      {
+        "file": "trajectory-tests.log",
+        "bytes": 2639,
+        "sha256": "4c04fcfc3f8c7fcde09efc755b0f8c5f95b37776af4dd53ece531a47369ffa6a"
+      }
+    ]
+  }
 }
