@@ -173,8 +173,12 @@ class CableTrajectorySummary extends StatelessWidget {
         children: [
           Text('Откуда: $sourceLabel'),
           Text('Куда: $targetLabel'),
-          Text('Геометрическая длина: ${geometricLengthMm.toStringAsFixed(0)} мм'),
-          Text('Монтажная длина: ${installationLengthMm.toStringAsFixed(0)} мм'),
+          Text(
+            'Геометрическая длина: ${geometricLengthMm.toStringAsFixed(0)} мм',
+          ),
+          Text(
+            'Монтажная длина: ${installationLengthMm.toStringAsFixed(0)} мм',
+          ),
           Text('Участков: $segmentCount'),
         ],
       );
