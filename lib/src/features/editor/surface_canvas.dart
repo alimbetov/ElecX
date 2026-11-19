@@ -34,6 +34,8 @@ import 'cable_canvas_port_acquisition.dart';
 import 'cable_edit_access.dart';
 import 'cable_editor_ui_session.dart';
 import 'cable_route_controls.dart';
+import 'cable_trajectory_panel.dart';
+import 'cable_surface_projection.dart';
 import 'cad_visual_tokens.dart';
 import 'canvas_component_controls.dart';
 import 'canvas_viewport_navigator.dart';
@@ -48,6 +50,18 @@ import 'port_driven_cable_authoring.dart';
 import 'route_selection_session.dart';
 import 'surface_transition_navigator.dart';
 import 'viewport_zoom_policy.dart';
+
+RoomSurfaceRef _routeSurface(EditorController controller) {
+  final active = controller.activeSurface!;
+  for (final route in controller.p2.routes) {
+    for (final segment in route.segments) {
+      if (CableSurfaceProjection.same(controller, active, segment.surface)) {
+        return segment.surface;
+      }
+    }
+  }
+  return active;
+}
 
 class SurfaceCanvas extends StatefulWidget {
   const SurfaceCanvas({
@@ -660,7 +674,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
       });
 
   RouteNormativeContext _routeContext(_SurfaceProjection projection) {
-    final surface = controller.activeSurface!;
+    final surface = _routeSurface(controller);
     final context = controller.routeNormativeContextFor(surface);
     if (context == null) {
       throw StateError('No normative route context for ${surface.id}.');
@@ -678,8 +692,8 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
       return null;
     }
     final route = controller.routeSelection.selectedRoute;
-    final surface = controller.activeSurface;
-    if (route == null || surface == null) return null;
+    final surface = _routeSurface(controller);
+    if (route == null) return null;
     return CableCanvasHitTesting.hitTest(
       route: route,
       surface: surface,
@@ -1146,6 +1160,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                       _beginCableDrag(cableHit, projection)) {
                     return;
                   }
+                  if (controller.cableUi.trajectoryEditing) return;
                   final handleOwner = _componentForHandle(raw, projection);
                   final component =
                       handleOwner ?? _componentAt(raw, projection);
@@ -1323,6 +1338,11 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                     label: Text('Трасса: $routeId · переходы активны'),
                   ),
                 ),
+            Positioned(
+              right: 12,
+              top: 110,
+              child: CableTrajectoryPanel(controller: controller),
+            ),
             if (cableRoutesVisible &&
                 controller.routeSelection.selectedRouteId != null)
               Positioned(
@@ -2335,8 +2355,8 @@ class _SurfacePainter extends CustomPainter {
       );
     }
 
-    final activeSurface = controller.activeSurface;
-    if (activeSurface == null) return;
+    if (controller.activeSurface == null) return;
+    final activeSurface = _routeSurface(controller);
     final activeHost = RouteHostRef.indoor(activeSurface);
     for (final route in _allHostedRoutes()) {
       final selected = route.routeId == selectedRouteId;

@@ -1,3 +1,4 @@
+import 'apartment_wiring_preview.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -1439,6 +1440,15 @@ class _WorkspaceAppBar extends StatelessWidget implements PreferredSizeWidget {
             : 'ElecX · ${projectMetadata.projectName} · ${workspace.activeLevel?.displayName ?? ''}',
       ),
       actions: [
+        if (workspace.context == EditorWorkspaceContext.buildingLevel)
+          TextButton.icon(
+            key: const ValueKey('apartment-wire'),
+            onPressed: projectIoBusy
+                ? null
+                : () => showApartmentWiringPreview(context, workspace.editor),
+            icon: const Icon(Icons.alt_route),
+            label: Text(compact ? 'Проводка' : 'Проложить электропроводку'),
+          ),
         IconButton(
           key: const ValueKey('p12-review-open'),
           tooltip: 'P12 · Проверка инженерного проекта',

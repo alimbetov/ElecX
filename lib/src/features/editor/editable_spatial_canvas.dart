@@ -17,6 +17,9 @@ import '../../engine/render_policy.dart';
 import '../../engine/spatial_scene_index.dart';
 import '../../engine/world_camera.dart';
 import 'electrical_host_geometry_guard.dart';
+import 'cable_editor_ui_session.dart';
+import 'cable_trajectory_panel.dart';
+import 'route_selection_session.dart';
 import 'canonical_room_surface_runtime_registry.dart';
 import 'canonical_room_boundary_projection.dart';
 import 'editor_controller.dart';
@@ -76,6 +79,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
       _cancelTransientInteraction,
     );
     controller.p2.addListener(_onP2RoutesChanged);
+    controller.routeSelection.addListener(_onP2RoutesChanged);
     _rebuildIndex(force: true);
   }
 
@@ -90,12 +94,14 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
         _cancelTransientInteraction,
       );
       oldWidget.controller.p2.removeListener(_onP2RoutesChanged);
+      oldWidget.controller.routeSelection.removeListener(_onP2RoutesChanged);
       _lastViewportRevision = controller.viewportCommandRevision;
       controller.viewportCommandListenable.addListener(_onViewportCommand);
       controller.editCancellationListenable.addListener(
         _cancelTransientInteraction,
       );
       controller.p2.addListener(_onP2RoutesChanged);
+      controller.routeSelection.addListener(_onP2RoutesChanged);
       _selectedExternalEdgeIndex = null;
       _selectedExternalSpaceId = null;
       _selectedExternalPullSign = 1;
@@ -110,6 +116,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
       _cancelTransientInteraction,
     );
     controller.p2.removeListener(_onP2RoutesChanged);
+    controller.routeSelection.removeListener(_onP2RoutesChanged);
     super.dispose();
   }
 
@@ -380,6 +387,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
   }
 
   void _beginPrimaryDrag(PointerDownEvent event) {
+    if (controller.cableUi.trajectoryEditing) return;
     if (controller.tool != EditorTool.select) {
       return;
     }
@@ -556,7 +564,31 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     });
   }
 
-  void _tap(TapUpDetails details) {
+  void _tap(TapUpDetails details, PlanCableProjection projection) {
+    if (controller.cableUi.trajectoryEditing) {
+      String? nearest;
+      var distance = 14.0;
+      for (final segment in projection.segments) {
+        for (var i = 1; i < segment.points.length; i++) {
+          final a = _toScreen(segment.points[i - 1]);
+          final b = _toScreen(segment.points[i]);
+          final delta = b - a;
+          final length = delta.distanceSquared;
+          final offset = details.localPosition - a;
+          final t = length == 0
+              ? 0.0
+              : ((offset.dx * delta.dx + offset.dy * delta.dy) / length)
+                  .clamp(0.0, 1.0);
+          final d = (details.localPosition - (a + delta * t)).distance;
+          if (d < distance) {
+            nearest = segment.routeId;
+            distance = d;
+          }
+        }
+      }
+      if (nearest != null) controller.routeSelection.select(nearest);
+      return;
+    }
     if (_dragKind != null) {
       return;
     }
@@ -899,7 +931,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                 },
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTapUp: _tap,
+                  onTapUp: (details) => _tap(details, cableProjection),
                   onScaleStart: _startTouch,
                   onScaleUpdate: _updateTouch,
                   onScaleEnd: _endTouch,
@@ -927,6 +959,11 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                 ),
               ),
             if (externalWallGizmo != null) externalWallGizmo,
+            Positioned(
+              left: 10,
+              top: 100,
+              child: CableTrajectoryPanel(controller: controller),
+            ),
             Positioned(
               right: compact ? 8 : 12,
               top: compact ? 8 : 12,

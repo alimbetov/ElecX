@@ -1,6 +1,11 @@
 import 'dart:io';
 
 import 'package:elecx/src/domain/electrical_placement.dart';
+import 'package:elecx/src/domain/boundary_construction_registry.dart';
+import 'package:elecx/src/domain/boundary_host_migration.dart';
+import 'package:elecx/src/domain/electrical_routing.dart';
+import 'package:elecx/src/domain/project_identity.dart';
+import 'package:elecx/src/engine/adjacent_room_cable_router.dart';
 
 import 'package:elecx/src/domain/project_aggregate.dart';
 import 'package:elecx/src/features/editor/canonical_editor_demo_generation.dart';
@@ -75,6 +80,63 @@ void main() {
           EditorProjectDocument.fromJson(generated.document.toJson());
       expect(decoded.p2State.components.map((item) => item.id),
           placements.map((item) => item.id));
+
+      final board = placements.singleWhere(
+          (c) => c.type == ElectricalComponentType.distributionBoard);
+      final socket = placements
+          .firstWhere((c) => c.type == ElectricalComponentType.socketOutlet);
+      final binding = generated.canonicalHandle.binding;
+      final edgeOrder = {
+        for (final id in generated.roomIds)
+          binding.legacySpaceIds[id]!:
+              handle.session.project.index.boundary(id)!.orderedEdgeIds,
+      };
+      final identities = SecureRandomEntityIdFactory();
+      buildRoute() => AdjacentRoomCableRouter.build(
+            level: activeLevel.level,
+            source: board,
+            target: socket,
+            routeId: 'r4-test-route',
+            edgeOrderBySpace: edgeOrder,
+            canonicalSpaceIdResolver: binding.canonicalSpaceIdForLegacy,
+            constructions: handle.session.project.engineeringMetadata
+                .boundaryConstructionRegistry,
+            identityFactory: identities,
+          );
+      expect(buildRoute, throwsStateError);
+      // Explicit test construction evidence, never a fallback in the router.
+      final profile = BoundaryConstructionProfile(
+        kind: BoundaryConstructionKind.wall,
+        thicknessMm: 100,
+        materialId: 'test-partition',
+      );
+      final result = handle.session.boundaryConstructionEditing
+          .setWallConstructions(profiles: {
+        BoundaryEdgeHostRef(
+            spaceId: generated.roomIds[3],
+            edgeId: edgeOrder[board.surface.spaceId]!.first): profile,
+        BoundaryEdgeHostRef(
+            spaceId: generated.roomIds[0],
+            edgeId: edgeOrder[socket.surface.spaceId]![2]): profile,
+      }, expectedVersion: handle.session.project.version)!;
+      handle.runtimeConfig.onCanonicalMutationCommitted!(
+          handle.session, result);
+      final routed = buildRoute();
+      expect(routed.penetrations, hasLength(1));
+      expect(routed.hiddenPenetrationLengthMm, 100);
+      expect(routed.segments.map((s) => s.surface.spaceId).toSet(),
+          {board.surface.spaceId, socket.surface.spaceId});
+      expect(
+          routed.segments.every((s) => s.anchorIds.length == s.points.length),
+          isTrue);
+      expect(
+          ElectricalConnectivityValidator.routeIsConnected(
+              route: routed, components: placements),
+          isTrue);
+      expect(
+          ElectricalConnectivityValidator.routeIsPhysicallyAnchored(
+              route: routed, components: placements),
+          isTrue);
 
       final reopened = await CanonicalEditorProductionHandle.loadOrBootstrap(
         legacyDocument: generated.document,

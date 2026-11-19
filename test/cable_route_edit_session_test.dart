@@ -1,4 +1,5 @@
 import 'package:elecx/src/domain/electrical_routing.dart';
+import 'package:elecx/src/domain/project_identity.dart';
 import 'package:elecx/src/domain/surfaces.dart';
 import 'package:elecx/src/engine/normative_route_engine.dart';
 import 'package:elecx/src/features/editor/cable_route_constraints.dart';
@@ -6,6 +7,50 @@ import 'package:elecx/src/features/editor/cable_route_edit_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('editing preserves endpoint anchors when adding bends', () {
+    final surface = RoomSurfaceRef.wall('room', 0);
+    final route = ElectricalCableRoute(
+      id: 'anchored',
+      source: const ElectricalEndpointRef(componentId: 'a', portId: 'out'),
+      target: const ElectricalEndpointRef(componentId: 'b', portId: 'in'),
+      segments: [
+        ElectricalRouteSegment(
+          surface: surface,
+          points: const [SurfacePointMm(200, 200), SurfacePointMm(1800, 200)],
+          anchorIds: [RouteAnchorId('source'), RouteAnchorId('target')],
+        )
+      ],
+    );
+    ElectricalCableRoute? committed;
+    final session = CableRouteEditSession(onCommit: (_, after) {
+      committed = after;
+      return true;
+    });
+    addTearDown(session.dispose);
+    session.start(
+        route: route,
+        segmentIndex: 0,
+        context: RouteNormativeContext(
+          surface: surface,
+          widthMm: 2000,
+          heightMm: 1600,
+          edgeClearanceMm: 100,
+        ));
+    expect(
+        session.preview(const [
+          SurfacePointMm(200, 200),
+          SurfacePointMm(200, 600),
+          SurfacePointMm(1800, 600),
+          SurfacePointMm(1800, 200)
+        ]),
+        isTrue);
+    expect(session.commit(), isTrue);
+    final anchors = committed!.segments.single.anchorIds;
+    expect(anchors, hasLength(4));
+    expect(anchors.first, RouteAnchorId('source'));
+    expect(anchors.last, RouteAnchorId('target'));
+    expect(anchors.toSet(), hasLength(4));
+  });
   final surface = RoomSurfaceRef.wall('room-101', 0);
   final context = RouteNormativeContext(
     surface: surface,

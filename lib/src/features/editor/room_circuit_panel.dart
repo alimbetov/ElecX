@@ -10,6 +10,7 @@ import 'circuit_engineering_status.dart';
 import 'circuit_sizing_evidence.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
+import 'remote_board_route_preview.dart';
 
 class RoomCircuitPanel extends StatelessWidget {
   const RoomCircuitPanel({super.key, required this.controller});
@@ -194,6 +195,35 @@ class RoomCircuitPanel extends StatelessWidget {
             )
             .toList(growable: false);
         if (boards.isEmpty) {
+          final remoteBoards = p2.components.where((item) =>
+              item.type == ElectricalComponentType.distributionBoard &&
+              item.surface.spaceId != selected.surface.spaceId);
+          if (remoteBoards.isNotEmpty) {
+            return Card(
+                margin: const EdgeInsets.all(8),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text('Щит в другом помещении'),
+                      const Text(
+                          'Требуется допустимый путь и подтверждённая конструкция общей стены.'),
+                      for (final board in remoteBoards)
+                        FilledButton.tonalIcon(
+                          key: ValueKey(
+                              'preview-remote-board-route-${board.id}'),
+                          onPressed: () => showRemoteBoardRoutePreview(context,
+                              controller: controller,
+                              board: board,
+                              load: selected),
+                          icon: const Icon(Icons.route_outlined),
+                          label: Text('Предпросмотр · ${board.label}'),
+                        ),
+                    ],
+                  ),
+                ));
+          }
           return const _CircuitCard(
             title: 'Электрическая группа',
             body: 'В этой комнате нет щита. Разместите щит из каталога.',

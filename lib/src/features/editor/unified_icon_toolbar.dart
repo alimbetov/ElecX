@@ -6,6 +6,7 @@ import '../../domain/surfaces.dart';
 import '../../engine/editor_layers.dart';
 import '../../engine/route_engine.dart';
 import 'canonical_boundary_topology_migration_runtime.dart';
+import 'cable_editor_ui_session.dart';
 import 'component_catalog_session.dart';
 import 'editor_controller.dart';
 import 'editor_document_history.dart';
@@ -32,7 +33,8 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final history = controller.documentHistory;
     return ListenableBuilder(
-      listenable: Listenable.merge(<Listenable>[controller.p2, history]),
+      listenable: Listenable.merge(
+          <Listenable>[controller.p2, history, controller.cableUi]),
       builder: (context, _) => _buildToolbar(context, history),
     );
   }
@@ -84,6 +86,15 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
         tool: EditorTool.cableRoute,
         icon: Icons.alt_route,
         tooltip: 'Ручная кабельная трасса (C)',
+      ),
+      IconButton.filledTonal(
+        key: const ValueKey('cable-trajectory-mode'),
+        tooltip: 'Редактировать траектории кабелей',
+        isSelected: controller.cableUi.trajectoryEditing,
+        onPressed: () => controller.cableUi.setTrajectoryEditing(
+          !controller.cableUi.trajectoryEditing,
+        ),
+        icon: const Icon(Icons.edit_road, size: 20),
       ),
       if (stableEdgeId != null) ...[
         const _ToolbarDivider(),
@@ -271,6 +282,7 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
         tooltip: tooltip,
         onPressed: () {
           controller.placementCursor.cancel();
+          controller.cableUi.setTrajectoryEditing(false);
           controller.setTool(tool);
         },
       );

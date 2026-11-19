@@ -16,6 +16,20 @@ final class CableEditorUiSession extends ChangeNotifier {
 
   final EditorController _controller;
   CableRoutingMode _mode = CableRoutingMode.auto;
+  bool _trajectoryEditing = false;
+  bool get trajectoryEditing => _trajectoryEditing;
+
+  void setTrajectoryEditing(bool value) {
+    if (_trajectoryEditing == value) return;
+    _controller.setTool(EditorTool.select);
+    if (_controller.p2.placementType != null) {
+      _controller.p2.setPlacementType(null);
+    }
+    _trajectoryEditing = value;
+    if (value) _mode = CableRoutingMode.assisted;
+    notifyListeners();
+  }
+
   String? _activeRouteId;
   int? _activeSegmentIndex;
   int? _activePointIndex;
