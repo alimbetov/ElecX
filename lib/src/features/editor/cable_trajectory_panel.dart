@@ -55,16 +55,6 @@ class CableTrajectoryPanel extends StatelessWidget {
                     ]),
                     if (routes.isEmpty) ...[
                       const Text('В проекте пока нет кабельных трасс.'),
-                      const SizedBox(height: 8),
-                      FilledButton.tonalIcon(
-                        key: const ValueKey('trajectory-start-manual-route'),
-                        onPressed: () {
-                          controller.cableUi.setTrajectoryEditing(false);
-                          controller.setTool(EditorTool.cableRoute);
-                        },
-                        icon: const Icon(Icons.alt_route),
-                        label: const Text('Проложить кабель вручную'),
-                      ),
                     ] else
                       DropdownButton<String>(
                         key: const ValueKey('trajectory-route-picker'),
@@ -85,6 +75,16 @@ class CableTrajectoryPanel extends StatelessWidget {
                           if (id != null) controller.routeSelection.select(id);
                         },
                       ),
+                    const SizedBox(height: 8),
+                    FilledButton.tonalIcon(
+                      key: const ValueKey('trajectory-start-manual-route'),
+                      onPressed: () {
+                        controller.cableUi.setTrajectoryEditing(false);
+                        controller.setTool(EditorTool.cableRoute);
+                      },
+                      icon: const Icon(Icons.alt_route),
+                      label: const Text('Новый кабель · вручную'),
+                    ),
                     if (selected == null && routes.isNotEmpty)
                       const Text(
                         '1. Выберите кабель в списке или нажмите на его '
