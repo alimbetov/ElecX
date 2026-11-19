@@ -309,7 +309,10 @@ class EditorKeyboardScope extends StatelessWidget {
             controller.requestViewportCommand(EditorViewportCommand.reset),
         const SingleActivator(LogicalKeyboardKey.numpad0): () =>
             controller.requestViewportCommand(EditorViewportCommand.reset),
-      },
+      }.map((activator, callback) => MapEntry(
+            _CanvasShortcutActivator(activator),
+            callback,
+          )),
       child: Focus(
         autofocus: true,
         child: Stack(
@@ -329,5 +332,32 @@ class EditorKeyboardScope extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Text editors own typing/editing keys. A canvas shortcut must decline the
+/// event entirely, rather than consume it and merely skip its callback.
+final class _CanvasShortcutActivator implements ShortcutActivator {
+  const _CanvasShortcutActivator(this.delegate);
+  final ShortcutActivator delegate;
+
+  @override
+  Iterable<LogicalKeyboardKey>? get triggers => delegate.triggers;
+
+  @override
+  String debugDescribeKeys() => delegate.debugDescribeKeys();
+
+  @override
+  bool accepts(KeyEvent event, HardwareKeyboard state) {
+    final context = FocusManager.instance.primaryFocus?.context;
+    var editing = context?.widget is EditableText;
+    context?.visitAncestorElements((element) {
+      if (element.widget is EditableText) {
+        editing = true;
+        return false;
+      }
+      return true;
+    });
+    return !editing && delegate.accepts(event, state);
   }
 }
