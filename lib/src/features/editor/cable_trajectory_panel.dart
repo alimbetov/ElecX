@@ -53,9 +53,19 @@ class CableTrajectoryPanel extends StatelessWidget {
                         icon: const Icon(Icons.close),
                       ),
                     ]),
-                    if (routes.isEmpty)
-                      const Text('Сначала создайте кабельную трассу.')
-                    else
+                    if (routes.isEmpty) ...[
+                      const Text('В проекте пока нет кабельных трасс.'),
+                      const SizedBox(height: 8),
+                      FilledButton.tonalIcon(
+                        key: const ValueKey('trajectory-start-manual-route'),
+                        onPressed: () {
+                          controller.cableUi.setTrajectoryEditing(false);
+                          controller.setTool(EditorTool.cableRoute);
+                        },
+                        icon: const Icon(Icons.alt_route),
+                        label: const Text('Проложить кабель вручную'),
+                      ),
+                    ] else
                       DropdownButton<String>(
                         key: const ValueKey('trajectory-route-picker'),
                         isExpanded: true,
@@ -75,10 +85,30 @@ class CableTrajectoryPanel extends StatelessWidget {
                           if (id != null) controller.routeSelection.select(id);
                         },
                       ),
-                    const Text(
-                      'Выберите участок. На его поверхности перетаскивайте круглые вершины или квадратные ручки линий. Отпустите для применения; Undo отменяет изменение.',
-                    ),
-                    if (selected != null)
+                    if (selected == null && routes.isNotEmpty)
+                      const Text(
+                        '1. Выберите кабель в списке или нажмите на его '
+                        'линию на плане. 2. Выберите поверхность. '
+                        '3. Переместите изгиб и сохраните проект.',
+                        key: ValueKey('trajectory-empty-selection-hint'),
+                      ),
+                    if (selected != null) ...[
+                      CableTrajectorySummary(
+                        sourceLabel: names[selected.source.componentId] ??
+                            selected.source.componentId,
+                        targetLabel: names[selected.target.componentId] ??
+                            selected.target.componentId,
+                        geometricLengthMm: selected.geometricLengthMm,
+                        installationLengthMm: selected.installationLengthMm,
+                        segmentCount: selected.segments.length,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Выберите участок ниже. Квадратная ручка '
+                        'перемещает отрезок, круглая вершина меняет '
+                        'поворот. Undo отменяет изменение.',
+                      ),
+                      const SizedBox(height: 5),
                       Wrap(
                         spacing: 4,
                         children: [
@@ -108,11 +138,44 @@ class CableTrajectoryPanel extends StatelessWidget {
                             ),
                         ],
                       ),
+                    ],
                   ],
                 ),
               ),
             ),
           );
         },
+      );
+}
+
+/// Compact, read-only cable metrics sourced exclusively from the committed
+/// physical route. No estimates or normative qualification are inferred.
+class CableTrajectorySummary extends StatelessWidget {
+  const CableTrajectorySummary({
+    required this.sourceLabel,
+    required this.targetLabel,
+    required this.geometricLengthMm,
+    required this.installationLengthMm,
+    required this.segmentCount,
+    super.key,
+  });
+
+  final String sourceLabel;
+  final String targetLabel;
+  final double geometricLengthMm;
+  final double installationLengthMm;
+  final int segmentCount;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        key: const ValueKey('trajectory-selected-summary'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Откуда: $sourceLabel'),
+          Text('Куда: $targetLabel'),
+          Text('Геометрическая длина: ${geometricLengthMm.toStringAsFixed(0)} мм'),
+          Text('Монтажная длина: ${installationLengthMm.toStringAsFixed(0)} мм'),
+          Text('Участков: $segmentCount'),
+        ],
       );
 }
