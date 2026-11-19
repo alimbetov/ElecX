@@ -19,8 +19,10 @@ void main() {
       ),
     );
 
-    expect(find.byKey(const ValueKey('trajectory-selected-summary')),
-        findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('trajectory-selected-summary')),
+      findsOneWidget,
+    );
     expect(find.text('Откуда: Щит ЩР'), findsOneWidget);
     expect(find.text('Куда: Розетка 1'), findsOneWidget);
     expect(find.text('Геометрическая длина: 5100 мм'), findsOneWidget);
