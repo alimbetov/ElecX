@@ -296,7 +296,10 @@ void main() {
       await _boundedPump(tester);
 
       expect(find.byType(CanonicalProjectNavigator), findsOneWidget);
-      expect(find.byTooltip('Комната (R)'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('create-room-dimensions')),
+        findsOneWidget,
+      );
       final directRoom = tester.widget<OutlinedButton>(
         find.widgetWithText(OutlinedButton, '+ Room'),
       );
@@ -306,15 +309,28 @@ void main() {
         reason: 'Geometry-less +Room must remain fail-closed in production.',
       );
 
-      await tester.tap(find.byTooltip('Комната (R)'));
+      await tester.tap(find.byKey(const ValueKey('create-room-dimensions')));
       await _boundedPump(tester);
-      final canvas = find.byType(SpatialCanvas);
-      expect(canvas, findsOneWidget);
-      final rect = tester.getRect(canvas);
-      await tester.tapAt(rect.center + const Offset(-120, -80));
-      await _boundedPump(tester);
+      expect(find.byKey(const ValueKey('room-dimensions-dialog')),
+          findsOneWidget);
       expect(handle.session.project.stores.spaces, isEmpty);
-      await tester.tapAt(rect.center + const Offset(120, 80));
+      await tester.enterText(
+        find.byKey(const ValueKey('room-name-input')),
+        'Production Room',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('room-x-input')), '1200',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('room-y-input')), '1400',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('room-width-input')), '4000',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('room-length-input')), '3200',
+      );
+      await tester.tap(find.byKey(const ValueKey('room-dimensions-submit')));
       await _boundedPump(tester);
 
       expect(handle.session.project.stores.spaces, hasLength(1));
