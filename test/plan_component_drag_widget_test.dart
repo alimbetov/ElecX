@@ -19,7 +19,7 @@ void main() {
       controller.dispose();
     });
     controller.showWall(0);
-    final wall = RoomSurfaceRef.wall('room-101', 0);
+    final wall = RoomSurfaceRef.wall('room-101', 1);
     final board = controller.p2.placeComponent(
       type: ElectricalComponentType.distributionBoard,
       surface: wall,
@@ -43,18 +43,19 @@ void main() {
     );
     expect(controller.finishManualCableDraft(), isTrue);
     final routeId = controller.p2.routes.single.id;
-    // A connected route must be movable by the canonical transaction before
-    // qualifying the plan pointer adapter.
+    controller.p2.select(socket.id);
+    // Move the socket on an opening-free physical wall: the demo's first wall
+    // contains a door, so moving the board into it would correctly be rejected.
     expect(controller.p2.beginMoveSelectedComponent(), isTrue);
     expect(
       controller.p2.previewMoveSelectedComponent(
-        const SurfacePointMm(800, 1200),
+        const SurfacePointMm(2500, 1200),
       ),
       isTrue,
     );
     controller.p2.cancelMoveSelectedComponent();
     final before =
-        controller.p2.components.firstWhere((item) => item.id == board.id);
+        controller.p2.components.firstWhere((item) => item.id == socket.id);
     controller.setTool(EditorTool.select);
     controller.showPlan();
 
@@ -70,12 +71,12 @@ void main() {
       ),
     );
     await tester.drag(
-      find.byKey(ValueKey('plan-component-${board.id}')),
-      const Offset(55, 0),
+      find.byKey(ValueKey('plan-component-${socket.id}')),
+      const Offset(0, -40),
     );
     await tester.pump();
     final after =
-        controller.p2.components.firstWhere((item) => item.id == board.id);
+        controller.p2.components.firstWhere((item) => item.id == socket.id);
     expect(after.id, before.id);
     expect(after.surface, before.surface);
     expect(after.position.xMm, greaterThan(before.position.xMm));
@@ -88,7 +89,7 @@ void main() {
     controller.p2.undo();
     expect(
       controller.p2.components
-          .firstWhere((item) => item.id == board.id)
+          .firstWhere((item) => item.id == socket.id)
           .position,
       before.position,
     );
@@ -96,7 +97,7 @@ void main() {
     controller.p2.redo();
     expect(
       controller.p2.components
-          .firstWhere((item) => item.id == board.id)
+          .firstWhere((item) => item.id == socket.id)
           .position,
       after.position,
     );
