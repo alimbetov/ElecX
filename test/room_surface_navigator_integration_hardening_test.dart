@@ -92,7 +92,10 @@ void main() {
       await _pumpScreen(tester, fixture);
 
       var floorFocused = false;
-      for (var i = 0; i < 80 && !floorFocused; i++) {
+      // The horizontal equipment palette adds legitimate keyboard-focusable
+      // search and category controls. Traverse the complete desktop shell
+      // rather than assuming the earlier 80-control focus budget.
+      for (var i = 0; i < 180 && !floorFocused; i++) {
         await tester.sendKeyEvent(LogicalKeyboardKey.tab);
         await tester.pump();
         floorFocused = _focusIsInsideKey(const ValueKey('room-surface-floor'));
