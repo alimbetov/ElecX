@@ -94,8 +94,16 @@ abstract final class PlanComponentMoveProjection {
             !wall.profile.containsPoint(position.xMm, position.yMm)) {
           return false;
         }
+        final canonicalOrdinal = component.surface.boundaryEdgeId == null
+            ? null
+            : orderedEdgeIds?.indexOf(component.surface.boundaryEdgeId!);
         for (final opening in openings) {
-          if (opening.hostWall != component.surface) continue;
+          final sameHost = opening.hostWall == component.surface ||
+              (canonicalOrdinal != null &&
+                  canonicalOrdinal >= 0 &&
+                  opening.hostWall.spaceId == component.surface.spaceId &&
+                  opening.hostWall.wallIndex == canonicalOrdinal);
+          if (!sameHost) continue;
           if (position.xMm > opening.offsetFromStartMm &&
               position.xMm < opening.endOffsetMm &&
               position.yMm > opening.sillHeightMm &&
