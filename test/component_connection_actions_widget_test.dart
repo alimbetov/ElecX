@@ -304,5 +304,4 @@ void main() {
     );
     expect(controller.p2.routes, isEmpty);
   });
-
 }
