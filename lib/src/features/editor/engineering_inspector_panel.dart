@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'component_connection_actions.dart';
 import 'device_catalog_panel.dart';
 import 'editor_controller.dart';
 import 'room_circuit_overview.dart';
@@ -31,6 +32,7 @@ class EngineeringInspectorPanel extends StatelessWidget {
                     semanticsInspector!,
                     const Divider(height: 1),
                   ],
+                  ComponentConnectionActions(controller: controller),
                   RoomCircuitOverviewPanel(controller: controller),
                   RoomCircuitPanel(controller: controller),
                 ],
