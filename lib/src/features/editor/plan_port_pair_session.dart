@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../domain/electrical_placement.dart';
 import '../../domain/electrical_routing.dart';
 import '../../domain/surfaces.dart';
+import '../../engine/normative_route_engine.dart';
 import '../../engine/editor_layers.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
@@ -29,6 +30,8 @@ final class PlanPortPairSession extends ChangeNotifier {
   SurfacePointMm? _sourcePosition;
   RoomSurfaceRef? _targetHost;
   SurfacePointMm? _targetPosition;
+  Object? _levelAtStart;
+  List<ArchitecturalOpening> _openingsAtStart = const [];
 
   bool get active => _startComponentId != null;
   bool get choosingTarget => active && _targetComponentId == null;
@@ -43,7 +46,10 @@ final class PlanPortPairSession extends ChangeNotifier {
       _byId(_targetComponentId);
 
   bool get revisionCurrent =>
-      active && controller.p2.history.mutationRevision == _revision;
+      active &&
+      controller.p2.history.mutationRevision == _revision &&
+      identical(controller.level, _levelAtStart) &&
+      _sameOpenings(controller.openings, _openingsAtStart);
 
   bool get ready {
     final source = sourceComponent;
@@ -67,7 +73,45 @@ final class PlanPortPairSession extends ChangeNotifier {
         target.surface == _targetHost &&
         target.position == _targetPosition &&
         source.surface == target.surface &&
-        compatiblePortsFor(target).any((port) => port.id == _targetPortId);
+        compatiblePortsFor(target).any((port) => port.id == _targetPortId) &&
+        straightRouteBlockReason == null;
+  }
+
+  /// Explanatory fail-closed validation of the proposed straight segment.
+  ///
+  /// Choosing electrically compatible ports alone does not prove that a
+  /// direct cable avoids doors, windows or non-orthogonal geometry. This is
+  /// a preliminary physical check, not KZ normative certification.
+  String? get straightRouteBlockReason {
+    if (!active || _targetComponentId == null) return null;
+    if (!revisionCurrent) {
+      return 'Планировка или параметры проекта изменились. '
+          'Выберите порты заново.';
+    }
+    final source = sourceComponent;
+    final target = targetComponent;
+    if (source == null || target == null) {
+      return 'Устройство было удалено или недоступно.';
+    }
+    if (source.surface != target.surface ||
+        source.surface != _sourceHost ||
+        target.surface != _targetHost ||
+        source.position != _sourcePosition ||
+        target.position != _targetPosition) {
+      return 'Изменились физические привязки устройств.';
+    }
+    final context = controller.routeNormativeContextFor(source.surface);
+    if (context == null) {
+      return 'Не удалось подтвердить физическую поверхность кабеля.';
+    }
+    final validation = NormativeRouteEngine.validate(
+      points: [source.position, target.position],
+      context: context,
+    );
+    if (!validation.isValid) {
+      return validation.issues.first.message;
+    }
+    return null;
   }
 
   double? get straightLengthMm {
@@ -108,6 +152,8 @@ final class PlanPortPairSession extends ChangeNotifier {
     _sourcePosition = source.position;
     _targetHost = null;
     _targetPosition = null;
+    _levelAtStart = controller.level;
+    _openingsAtStart = List.unmodifiable(controller.openings);
     notifyListeners();
     return true;
   }
@@ -200,7 +246,20 @@ final class PlanPortPairSession extends ChangeNotifier {
     _sourcePosition = null;
     _targetHost = null;
     _targetPosition = null;
+    _levelAtStart = null;
+    _openingsAtStart = const [];
     notifyListeners();
+  }
+
+  static bool _sameOpenings(
+    List<ArchitecturalOpening> current,
+    List<ArchitecturalOpening> baseline,
+  ) {
+    if (current.length != baseline.length) return false;
+    for (var i = 0; i < current.length; i++) {
+      if (!identical(current[i], baseline[i])) return false;
+    }
+    return true;
   }
 
   ElectricalComponentPlacement? _byId(String? componentId) {
