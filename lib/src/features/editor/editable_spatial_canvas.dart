@@ -754,16 +754,24 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
         ElectricalComponentType.lightingPoint => Icons.lightbulb_outline,
         _ => Icons.sensors,
       };
+      final selected = controller.p2.selection.contains(component.id);
+      final scheme = Theme.of(context).colorScheme;
       result.add(Positioned(
-        left: position.dx - 14,
-        top: position.dy - 14,
-        width: 28,
-        height: 28,
+        left: position.dx - 16,
+        top: position.dy - 16,
+        width: 32,
+        height: 32,
         child: Tooltip(
           message: component.label,
           child: Material(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            shape: const CircleBorder(),
+            color: selected
+                ? scheme.primaryContainer
+                : scheme.surfaceContainerHighest,
+            shape: CircleBorder(
+              side: selected
+                  ? BorderSide(color: scheme.primary, width: 2)
+                  : BorderSide.none,
+            ),
             child: InkWell(
               key: ValueKey('plan-component-${component.id}'),
               customBorder: const CircleBorder(),
@@ -772,10 +780,12 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                   : () {
                       controller.p2.select(component.id);
                     },
-              child: Icon(icon,
-                  size: 19,
-                  semanticLabel: component.label,
-                  color: Theme.of(context).colorScheme.primary),
+              child: Icon(
+                icon,
+                size: 19,
+                semanticLabel: component.label,
+                color: scheme.primary,
+              ),
             ),
           ),
         ),
