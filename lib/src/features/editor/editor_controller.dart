@@ -711,6 +711,10 @@ final class EditorController extends ChangeNotifier {
     roomSequence += 1;
     level = level.copyWith(spaces: [...level.spaces, room]);
     selectedSpaceId = id;
+    // Room creation is a durable architecture mutation, even when invoked
+    // through the dimensions dialog rather than the two-click canvas tool.
+    // Always notify history, dirty-state tracking and autosave directly.
+    notifyListeners();
   }
 
   void restoreDocumentArchitecture({
