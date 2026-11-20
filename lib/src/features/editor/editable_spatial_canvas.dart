@@ -331,7 +331,14 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
           );
     controller.componentTransform.preview(
       snapped ?? preview.position,
-      isValid: snapped != null,
+      isValid: snapped != null &&
+          PlanComponentMoveProjection.allowedOnHost(
+            space: space,
+            component: component,
+            position: snapped,
+            orderedEdgeIds: edgeOrder,
+            openings: controller.openings,
+          ),
     );
   }
 
