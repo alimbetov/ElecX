@@ -43,7 +43,8 @@ class _EngineeringInspectorPanelState extends State<EngineeringInspectorPanel> {
                       key: const ValueKey('room-semantics-toggle'),
                       dense: true,
                       visualDensity: VisualDensity.compact,
-                      leading: const Icon(Icons.meeting_room_outlined, size: 20),
+                      leading:
+                          const Icon(Icons.meeting_room_outlined, size: 20),
                       title: const Text('Room Semantic'),
                       trailing: Icon(
                         _roomSemanticsExpanded
@@ -54,8 +55,7 @@ class _EngineeringInspectorPanelState extends State<EngineeringInspectorPanel> {
                         _roomSemanticsExpanded = !_roomSemanticsExpanded;
                       }),
                     ),
-                    if (_roomSemanticsExpanded)
-                      widget.semanticsInspector!,
+                    if (_roomSemanticsExpanded) widget.semanticsInspector!,
                     const Divider(height: 1),
                   ],
                   ComponentConnectionActions(controller: widget.controller),
