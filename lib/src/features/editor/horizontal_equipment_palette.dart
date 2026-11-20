@@ -37,7 +37,8 @@ class HorizontalEquipmentPalette extends StatefulWidget {
       _HorizontalEquipmentPaletteState();
 }
 
-class _HorizontalEquipmentPaletteState extends State<HorizontalEquipmentPalette> {
+class _HorizontalEquipmentPaletteState
+    extends State<HorizontalEquipmentPalette> {
   final TextEditingController _search = TextEditingController();
   ComponentCategory? _category;
   final Set<ComponentSubcategory> _collapsedGroups = {};
@@ -59,9 +60,11 @@ class _HorizontalEquipmentPaletteState extends State<HorizontalEquipmentPalette>
     if (active == null || !entry.mounting.allows(active)) {
       if (entry.mounting.allowedSurfaces.contains(SurfacePlaneType.wall)) {
         controller.showWall(0);
-      } else if (entry.mounting.allowedSurfaces.contains(SurfacePlaneType.ceiling)) {
+      } else if (entry.mounting.allowedSurfaces
+          .contains(SurfacePlaneType.ceiling)) {
         controller.showCeiling();
-      } else if (entry.mounting.allowedSurfaces.contains(SurfacePlaneType.floor)) {
+      } else if (entry.mounting.allowedSurfaces
+          .contains(SurfacePlaneType.floor)) {
         controller.showFloor();
       }
     }
@@ -274,7 +277,9 @@ class _HorizontalEquipmentPaletteState extends State<HorizontalEquipmentPalette>
                       Text(entry.code,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.labelSmall
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelSmall
                               ?.copyWith(color: scheme.onSurfaceVariant)),
                     ],
                   ),
@@ -296,7 +301,8 @@ class _HorizontalEquipmentPaletteState extends State<HorizontalEquipmentPalette>
           width: 148,
           child: Padding(
             padding: const EdgeInsets.all(12),
-            child: Text(entry.name, style: Theme.of(context).textTheme.bodySmall),
+            child:
+                Text(entry.name, style: Theme.of(context).textTheme.bodySmall),
           ),
         ),
       ),
@@ -307,47 +313,47 @@ class _HorizontalEquipmentPaletteState extends State<HorizontalEquipmentPalette>
 }
 
 String _categoryTitle(ComponentCategory c) => switch (c) {
-  ComponentCategory.power => 'Силовые',
-  ComponentCategory.lighting => 'Освещение',
-  ComponentCategory.data => 'Данные',
-  ComponentCategory.cctv => 'Камеры',
-  ComponentCategory.accessControl => 'СКУД',
-  ComponentCategory.fireSafety => 'Пожарные',
-  ComponentCategory.automation => 'Автоматика',
-  ComponentCategory.infrastructure => 'Инфраструктура',
-  ComponentCategory.custom => 'Прочее',
-};
+      ComponentCategory.power => 'Силовые',
+      ComponentCategory.lighting => 'Освещение',
+      ComponentCategory.data => 'Данные',
+      ComponentCategory.cctv => 'Камеры',
+      ComponentCategory.accessControl => 'СКУД',
+      ComponentCategory.fireSafety => 'Пожарные',
+      ComponentCategory.automation => 'Автоматика',
+      ComponentCategory.infrastructure => 'Инфраструктура',
+      ComponentCategory.custom => 'Прочее',
+    };
 
 String _subcategoryTitle(ComponentSubcategory c) => switch (c) {
-  ComponentSubcategory.socketOutlet => 'Розетки',
-  ComponentSubcategory.switchControl => 'Выключатели',
-  ComponentSubcategory.luminaire => 'Светильники',
-  ComponentSubcategory.distributionBoard => 'Щиты',
-  ComponentSubcategory.junctionBox => 'Распредкоробки',
-  ComponentSubcategory.powerSource => 'Источники',
-  ComponentSubcategory.motorDrive => 'Приводы',
-  ComponentSubcategory.dataOutlet => 'LAN / СКС',
-  ComponentSubcategory.accessPoint => 'Wi-Fi / PoE',
-  ComponentSubcategory.camera => 'Камеры',
-  ComponentSubcategory.accessReader => 'Считыватели',
-  ComponentSubcategory.detector => 'Извещатели',
-  ComponentSubcategory.contactSensor => 'Датчики',
-  ComponentSubcategory.fiberTermination => 'Оптика',
-  ComponentSubcategory.controller => 'Контроллеры',
-  ComponentSubcategory.custom => 'Прочее',
-};
+      ComponentSubcategory.socketOutlet => 'Розетки',
+      ComponentSubcategory.switchControl => 'Выключатели',
+      ComponentSubcategory.luminaire => 'Светильники',
+      ComponentSubcategory.distributionBoard => 'Щиты',
+      ComponentSubcategory.junctionBox => 'Распредкоробки',
+      ComponentSubcategory.powerSource => 'Источники',
+      ComponentSubcategory.motorDrive => 'Приводы',
+      ComponentSubcategory.dataOutlet => 'LAN / СКС',
+      ComponentSubcategory.accessPoint => 'Wi-Fi / PoE',
+      ComponentSubcategory.camera => 'Камеры',
+      ComponentSubcategory.accessReader => 'Считыватели',
+      ComponentSubcategory.detector => 'Извещатели',
+      ComponentSubcategory.contactSensor => 'Датчики',
+      ComponentSubcategory.fiberTermination => 'Оптика',
+      ComponentSubcategory.controller => 'Контроллеры',
+      ComponentSubcategory.custom => 'Прочее',
+    };
 
 IconData _icon(EngineeringSystemClass c) => switch (c) {
-  EngineeringSystemClass.powerAc || EngineeringSystemClass.powerDc =>
-    Icons.power_outlined,
-  EngineeringSystemClass.lighting => Icons.lightbulb_outline,
-  EngineeringSystemClass.structuredCabling ||
-  EngineeringSystemClass.poeNetwork ||
-  EngineeringSystemClass.fiberOptic => Icons.lan_outlined,
-  EngineeringSystemClass.cctv => Icons.videocam_outlined,
-  EngineeringSystemClass.accessControl => Icons.badge_outlined,
-  EngineeringSystemClass.fireAlarm => Icons.local_fire_department_outlined,
-  EngineeringSystemClass.automationBus || EngineeringSystemClass.dryContact =>
-    Icons.memory_outlined,
-  EngineeringSystemClass.custom => Icons.widgets_outlined,
-};
+      EngineeringSystemClass.powerAc || EngineeringSystemClass.powerDc =>
+        Icons.power_outlined,
+      EngineeringSystemClass.lighting => Icons.lightbulb_outline,
+      EngineeringSystemClass.structuredCabling ||
+      EngineeringSystemClass.poeNetwork ||
+      EngineeringSystemClass.fiberOptic => Icons.lan_outlined,
+      EngineeringSystemClass.cctv => Icons.videocam_outlined,
+      EngineeringSystemClass.accessControl => Icons.badge_outlined,
+      EngineeringSystemClass.fireAlarm => Icons.local_fire_department_outlined,
+      EngineeringSystemClass.automationBus || EngineeringSystemClass.dryContact =>
+        Icons.memory_outlined,
+      EngineeringSystemClass.custom => Icons.widgets_outlined,
+    };
