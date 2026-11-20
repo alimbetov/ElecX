@@ -18,7 +18,6 @@ import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:elecx/src/features/editor/editor_project_document.dart';
 import 'package:elecx/src/features/editor/initial_editor_project_document.dart';
 import 'package:elecx/src/features/editor/project_persistence_metadata.dart';
-import 'package:elecx/src/features/editor/spatial_canvas.dart';
 import 'package:elecx/src/features/editor/unified_workspace_editor_screen.dart';
 import 'package:elecx/src/infrastructure/project/json_project_repository.dart';
 import 'package:elecx/src/serialization/project/engineering_state_aware_canonical_project_document_codec.dart';
