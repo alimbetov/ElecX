@@ -19,6 +19,7 @@ import 'canonical_space_semantics_adapter.dart';
 import 'canonical_project_navigator.dart';
 import 'context_minimap.dart';
 import 'engineering_inspector_panel.dart';
+import 'horizontal_equipment_palette.dart';
 import 'p12_engineering_review_panel.dart';
 import 'editor_building_workspace.dart';
 import 'editor_controller.dart';
@@ -1476,12 +1477,23 @@ class _DesktopWorkspace extends StatelessWidget {
           ),
         const VerticalDivider(width: 1),
         Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(EditorUiTokens.canvasInset),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(EditorUiTokens.panelRadius),
-              child: canvas,
-            ),
+          child: Column(
+            children: [
+              HorizontalEquipmentPalette(
+                controller: workspace.editor,
+                expanded: shell.equipmentPaletteExpanded,
+                onToggle: shell.toggleEquipmentPalette,
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(EditorUiTokens.canvasInset),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(EditorUiTokens.panelRadius),
+                    child: canvas,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         const VerticalDivider(width: 1),
@@ -1497,7 +1509,7 @@ class _DesktopWorkspace extends StatelessWidget {
         else
           _SideRail(
             icon: Icons.widgets_outlined,
-            tooltip: 'Показать каталог оборудования',
+            tooltip: 'Показать инженерный инспектор',
             onPressed: shell.toggleInspector,
           ),
       ],
@@ -1766,9 +1778,9 @@ class _CatalogPanel extends StatelessWidget {
         children: [
           ListTile(
             dense: true,
-            title: const Text('Компоненты'),
+            title: const Text('Инженерные свойства'),
             trailing: IconButton(
-              tooltip: 'Свернуть каталог',
+              tooltip: 'Свернуть инспектор',
               onPressed: onCollapse,
               icon: Icon(Icons.chevron_right),
             ),
@@ -1778,6 +1790,7 @@ class _CatalogPanel extends StatelessWidget {
             child: EngineeringInspectorPanel(
               controller: controller,
               semanticsInspector: semanticsInspector,
+              showCatalog: false,
             ),
           ),
         ],
