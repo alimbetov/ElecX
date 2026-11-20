@@ -203,7 +203,15 @@ abstract final class CableCanvasHitTesting {
     final b = points[edgeIndex + 1];
     final horizontal = a.yMm == b.yMm;
     final vertical = a.xMm == b.xMm;
-    if (!horizontal && !vertical) return points;
+    if (!horizontal && !vertical) {
+      return _compactOrthogonal([
+        ...points.take(edgeIndex + 1),
+        SurfacePointMm(target.xMm, a.yMm),
+        target,
+        SurfacePointMm(b.xMm, target.yMm),
+        ...points.skip(edgeIndex + 1),
+      ]);
+    }
 
     final movedA = horizontal
         ? SurfacePointMm(a.xMm, target.yMm)

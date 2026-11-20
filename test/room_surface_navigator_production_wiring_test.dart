@@ -1,4 +1,7 @@
 import 'dart:math';
+import 'package:elecx/src/domain/surfaces.dart';
+import 'package:elecx/src/domain/electrical_placement.dart';
+import 'package:elecx/src/features/editor/cable_surface_projection.dart';
 
 import 'package:elecx/src/application/project/project_mutation.dart';
 import 'package:elecx/src/application/project/project_structure_authoring.dart';
@@ -26,6 +29,37 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('durable wall equipment is visible on its legacy canvas plane',
+      (tester) async {
+    _useDesktopSurface(tester);
+    final semantics = tester.ensureSemantics();
+    final fixture = _fixture(selectRoom: true);
+    await _pumpScreen(tester, fixture);
+    final controller = _navigatorController(tester);
+    await tester.tap(find.byKey(const ValueKey('room-surface-wall-0')));
+    await tester.pump();
+    final host =
+        RoomSurfaceRef.wallByBoundaryEdge('room-101', fixture.edgeIds.first);
+    expect(
+        CableSurfaceProjection.same(
+            controller, host, controller.activeSurface!),
+        isTrue);
+    expect(controller.routeNormativeContextFor(host)?.surface, host);
+    expect(
+        controller.routeNormativeContextFor(RoomSurfaceRef.wallByBoundaryEdge(
+            'room-101', BoundaryEdgeId('missing-edge'))),
+        isNull);
+    final device = controller.p2.placeComponent(
+        type: ElectricalComponentType.socketOutlet,
+        surface: host,
+        position: const SurfacePointMm(2000, 1200));
+    await tester.pump();
+    expect(tester.getSemantics(find.byType(SurfaceCanvas)).toStringDeep(),
+        contains('${device.label}, электрический компонент'));
+    semantics.dispose();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'production navigator selects walls by stable BoundaryEdgeId',
     (tester) async {

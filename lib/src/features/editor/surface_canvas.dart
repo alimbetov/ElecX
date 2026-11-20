@@ -34,6 +34,7 @@ import 'cable_canvas_port_acquisition.dart';
 import 'cable_edit_access.dart';
 import 'cable_editor_ui_session.dart';
 import 'cable_route_controls.dart';
+import 'cable_surface_projection.dart';
 import 'cad_visual_tokens.dart';
 import 'canvas_component_controls.dart';
 import 'canvas_viewport_navigator.dart';
@@ -48,6 +49,22 @@ import 'port_driven_cable_authoring.dart';
 import 'route_selection_session.dart';
 import 'surface_transition_navigator.dart';
 import 'viewport_zoom_policy.dart';
+
+RoomSurfaceRef _routeSurface(EditorController controller) {
+  final active = controller.activeSurface!;
+  final selected = controller.routeSelection.selectedRoute;
+  for (final route in [
+    if (selected != null) selected,
+    ...controller.p2.routes
+  ]) {
+    for (final segment in route.segments) {
+      if (CableSurfaceProjection.same(controller, active, segment.surface)) {
+        return segment.surface;
+      }
+    }
+  }
+  return active;
+}
 
 class SurfaceCanvas extends StatefulWidget {
   const SurfaceCanvas({
@@ -307,7 +324,10 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
     _SurfaceProjection projection,
   ) {
     final component = controller.p2.selectedComponent;
-    if (component == null || component.surface != controller.activeSurface) {
+    if (component == null ||
+        (controller.activeSurface == null ||
+            !CableSurfaceProjection.same(
+                controller, component.surface, controller.activeSurface!))) {
       return;
     }
     final session = controller.componentTransform;
@@ -523,7 +543,10 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
     ElectricalComponentPlacement? best;
     var bestDistance = double.infinity;
     for (final component in controller.p2.components.reversed) {
-      if (component.surface != surface) continue;
+      if (!CableSurfaceProjection.same(
+          controller, component.surface, surface)) {
+        continue;
+      }
       final dx = (component.position.xMm - point.xMm).toDouble();
       final dy = (component.position.yMm - point.yMm).toDouble();
       final distance = math.sqrt(dx * dx + dy * dy);
@@ -660,7 +683,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
       });
 
   RouteNormativeContext _routeContext(_SurfaceProjection projection) {
-    final surface = controller.activeSurface!;
+    final surface = _routeSurface(controller);
     final context = controller.routeNormativeContextFor(surface);
     if (context == null) {
       throw StateError('No normative route context for ${surface.id}.');
@@ -678,7 +701,8 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
       return null;
     }
     final route = controller.routeSelection.selectedRoute;
-    final surface = controller.activeSurface;
+    final surface =
+        controller.activeSurface == null ? null : _routeSurface(controller);
     if (route == null || surface == null) return null;
     return CableCanvasHitTesting.hitTest(
       route: route,
@@ -989,7 +1013,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
     final surface = controller.activeSurface;
     final objects = <SelectableBounds>[
       for (final component in controller.p2.components)
-        if (component.surface == surface)
+        if (CableSurfaceProjection.same(controller, component.surface, surface))
           SelectableBounds(
             id: component.id,
             kind: SelectionKind.electricalComponent,
@@ -1809,7 +1833,10 @@ class _SurfacePainter extends CustomPainter {
         if (surface == null) return nodes;
         if (electricalVisible) {
           for (final component in controller.p2.components) {
-            if (component.surface != surface) continue;
+            if (!CableSurfaceProjection.same(
+                controller, component.surface, surface)) {
+              continue;
+            }
             final center = projection.surfaceToViewport(component.position);
             nodes.add(
               CustomPainterSemantics(
@@ -2335,8 +2362,8 @@ class _SurfacePainter extends CustomPainter {
       );
     }
 
-    final activeSurface = controller.activeSurface;
-    if (activeSurface == null) return;
+    if (controller.activeSurface == null) return;
+    final activeSurface = _routeSurface(controller);
     final activeHost = RouteHostRef.indoor(activeSurface);
     for (final route in _allHostedRoutes()) {
       final selected = route.routeId == selectedRouteId;
@@ -2577,7 +2604,10 @@ class _SurfacePainter extends CustomPainter {
     if (!electricalVisible) return;
     final surface = controller.activeSurface;
     for (final component in controller.p2.components) {
-      if (component.surface != surface) continue;
+      if (!CableSurfaceProjection.same(
+          controller, component.surface, surface)) {
+        continue;
+      }
       final center = projection.surfaceToViewport(component.position);
       final selected = controller.p2.selection.contains(component.id);
       _drawComponentSymbol(canvas, component.type, center, selected);
@@ -2586,7 +2616,8 @@ class _SurfacePainter extends CustomPainter {
     final transformPreview = controller.componentTransform.previewState;
     if (transformPreview != null &&
         !transformPreview.isValid &&
-        transformPreview.surface == surface) {
+        CableSurfaceProjection.same(
+            controller, transformPreview.surface, surface)) {
       ElectricalComponentPlacement? previewComponent;
       for (final component in controller.p2.components) {
         if (component.id == transformPreview.componentId) {

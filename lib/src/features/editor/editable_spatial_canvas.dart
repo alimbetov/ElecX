@@ -4,6 +4,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../domain/geometry.dart';
+import '../../domain/project_identity.dart';
+import '../../domain/electrical_placement.dart';
 import '../../domain/project_model.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/adaptive_grid.dart';
@@ -15,7 +17,10 @@ import '../../engine/render_policy.dart';
 import '../../engine/spatial_scene_index.dart';
 import '../../engine/world_camera.dart';
 import 'electrical_host_geometry_guard.dart';
+import 'canonical_room_surface_runtime_registry.dart';
+import 'canonical_room_boundary_projection.dart';
 import 'editor_controller.dart';
+import 'route_selection_session.dart';
 import 'editor_p2_session.dart';
 import 'editor_viewport_commands.dart';
 import 'viewport_zoom_policy.dart';
@@ -72,6 +77,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
       _cancelTransientInteraction,
     );
     controller.p2.addListener(_onP2RoutesChanged);
+    controller.routeSelection.addListener(_onP2RoutesChanged);
     _rebuildIndex(force: true);
   }
 
@@ -86,12 +92,14 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
         _cancelTransientInteraction,
       );
       oldWidget.controller.p2.removeListener(_onP2RoutesChanged);
+      oldWidget.controller.routeSelection.removeListener(_onP2RoutesChanged);
       _lastViewportRevision = controller.viewportCommandRevision;
       controller.viewportCommandListenable.addListener(_onViewportCommand);
       controller.editCancellationListenable.addListener(
         _cancelTransientInteraction,
       );
       controller.p2.addListener(_onP2RoutesChanged);
+      controller.routeSelection.addListener(_onP2RoutesChanged);
       _selectedExternalEdgeIndex = null;
       _selectedExternalSpaceId = null;
       _selectedExternalPullSign = 1;
@@ -106,6 +114,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
       _cancelTransientInteraction,
     );
     controller.p2.removeListener(_onP2RoutesChanged);
+    controller.routeSelection.removeListener(_onP2RoutesChanged);
     super.dispose();
   }
 
@@ -689,6 +698,65 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     );
   }
 
+  List<Widget> _equipmentMarkers(Map<String, List<BoundaryEdgeId>> edgeOrder) {
+    final spaces = {
+      for (final space in controller.level.spaces) space.id: space
+    };
+    final result = <Widget>[];
+    for (final component in controller.p2.components) {
+      final space = spaces[component.surface.spaceId];
+      if (space == null) continue;
+      final point = PlanCableRouteProjector.projectPoint(
+        space: space,
+        surface: component.surface,
+        point: component.position,
+        orderedEdgeIds: edgeOrder[space.id],
+      );
+      if (point == null) continue;
+      final position = _toScreen(point);
+      if (position.dx < 0 ||
+          position.dy < 0 ||
+          position.dx > _size.width ||
+          position.dy > _size.height) {
+        continue;
+      }
+      final icon = switch (component.type) {
+        ElectricalComponentType.distributionBoard => Icons.electrical_services,
+        ElectricalComponentType.socketOutlet => Icons.power,
+        ElectricalComponentType.switchControl => Icons.toggle_on_outlined,
+        ElectricalComponentType.lightingPoint => Icons.lightbulb_outline,
+        _ => Icons.sensors,
+      };
+      result.add(Positioned(
+        left: position.dx - 14,
+        top: position.dy - 14,
+        width: 28,
+        height: 28,
+        child: Tooltip(
+          message: component.label,
+          child: Material(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            shape: const CircleBorder(),
+            child: InkWell(
+              key: ValueKey('plan-component-${component.id}'),
+              customBorder: const CircleBorder(),
+              onTap: controller.tool != EditorTool.select
+                  ? null
+                  : () {
+                      controller.p2.select(component.id);
+                    },
+              child: Icon(icon,
+                  size: 19,
+                  semanticLabel: component.label,
+                  color: Theme.of(context).colorScheme.primary),
+            ),
+          ),
+        ),
+      ));
+    }
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
     _rebuildIndex();
@@ -706,8 +774,40 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
         final scheme = Theme.of(context).colorScheme;
         final pullMeasureOverlay = _buildPullMeasureOverlay(scheme);
         final externalWallGizmo = _buildExternalWallGizmo(scheme);
+        final boundaryEdgeOrder = <String, List<BoundaryEdgeId>>{};
+        final routingContext =
+            CanonicalRoomSurfaceRuntimeRegistry.physicalRoutingContextFor(
+                controller);
+        if (routingContext != null) {
+          for (final space in controller.level.spaces) {
+            final canonicalId =
+                routingContext.canonicalSpaceIdForLegacy(space.id);
+            if (canonicalId == null) continue;
+            final canonicalSpace =
+                routingContext.project.index.space(canonicalId);
+            final topology = routingContext.project.index.boundary(canonicalId);
+            if (canonicalSpace == null ||
+                topology == null ||
+                routingContext.binding.legacyLevelIds[canonicalSpace.levelId] !=
+                    controller.level.id) {
+              continue;
+            }
+            try {
+              final projection = CanonicalRoomBoundaryProjection.build(
+                canonicalSpaceId: canonicalId,
+                legacySpaceId: space.id,
+                canonicalTopology: topology,
+                legacySpace: space,
+              );
+              boundaryEdgeOrder[space.id] = projection.orderedEdgeIds;
+            } on CanonicalRoomBoundaryProjectionException {
+              // A stale/missing host is omitted, never guessed from selection.
+            }
+          }
+        }
         final cableProjection = PlanCableRouteProjector.project(
           level: controller.level,
+          boundaryEdgeOrderBySpace: boundaryEdgeOrder,
           routes: controller.p2.layers.isVisible(EditorLayerId.cableRoutes)
               ? controller.p2.routes
               : const [],
@@ -811,6 +911,8 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                 ),
               ),
             ),
+            if (controller.p2.layers.isVisible(EditorLayerId.electrical))
+              ..._equipmentMarkers(boundaryEdgeOrder),
             if (cableProjection.segments.isNotEmpty ||
                 cableProjection.hasIncompleteProjection)
               Positioned(
@@ -821,9 +923,9 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                     key: const ValueKey('plan-p2-cable-overlay-status'),
                     avatar: const Icon(Icons.cable, size: 16),
                     label: Text(
-                      'P2 трассы (не P11) · '
-                      '${cableProjection.segments.length} сегм.'
-                      '${cableProjection.hasIncompleteProjection ? " · неподтверждённые поверхности: ${cableProjection.skippedSurfaceSegments}" : ""}',
+                      'Кабели · '
+                      '${cableProjection.segments.length} участков · фиолетовый — потолок'
+                      '${cableProjection.hasIncompleteProjection ? " · не отображено: ${cableProjection.skippedSurfaceSegments}" : ""}',
                     ),
                     visualDensity: VisualDensity.compact,
                   ),
@@ -872,6 +974,7 @@ class _PlanPainter extends CustomPainter {
     required this.cableProjection,
     required this.scheme,
   })  : selectedSpaceId = controller.selectedSpaceId,
+        selectedRouteId = controller.routeSelection.selectedRouteId,
         selectedOpeningId = controller.selectedOpeningId,
         dimensionsVisible = controller.dimensionsVisible,
         tool = controller.tool,
@@ -900,6 +1003,7 @@ class _PlanPainter extends CustomPainter {
   final List<EngineeringSpace> visibleSpaces;
   final RenderLod lod;
   final String? selectedSpaceId;
+  final String? selectedRouteId;
   final String? selectedOpeningId;
   final bool dimensionsVisible;
   final EditorTool tool;
@@ -952,10 +1056,11 @@ class _PlanPainter extends CustomPainter {
       };
       final paint = Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.2
+        ..strokeWidth = segment.routeId == selectedRouteId ? 2.6 : 1.1
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
-        ..color = color.withValues(alpha: 0.9);
+        ..color = color.withValues(
+            alpha: segment.routeId == selectedRouteId ? 1 : 0.42);
       if (segment.isVerticalPlanMarker) {
         final center = p(segment.points.first, size);
         canvas.drawCircle(center, 5, paint);
@@ -1204,6 +1309,7 @@ class _PlanPainter extends CustomPainter {
       oldDelegate.camera != camera ||
       oldDelegate.sceneFingerprint != sceneFingerprint ||
       oldDelegate.selectedSpaceId != selectedSpaceId ||
+      oldDelegate.selectedRouteId != selectedRouteId ||
       oldDelegate.selectedOpeningId != selectedOpeningId ||
       oldDelegate.dimensionsVisible != dimensionsVisible ||
       oldDelegate.tool != tool ||

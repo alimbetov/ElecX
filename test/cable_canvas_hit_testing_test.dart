@@ -5,6 +5,23 @@ import 'package:elecx/src/features/editor/cable_canvas_hit_testing.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('diagonal manual segment can become an editable orthogonal dogleg', () {
+    const points = [SurfacePointMm(3000, 1500), SurfacePointMm(3600, 800)];
+    final moved = CableCanvasHitTesting.moveSegment(
+      points: points,
+      edgeIndex: 0,
+      target: const SurfacePointMm(4000, 1200),
+    );
+    expect(moved.first, points.first);
+    expect(moved.last, points.last);
+    expect(moved, contains(const SurfacePointMm(4000, 1200)));
+    for (var i = 1; i < moved.length; i++) {
+      expect(
+          moved[i].xMm == moved[i - 1].xMm || moved[i].yMm == moved[i - 1].yMm,
+          isTrue);
+    }
+  });
+
   final surface = RoomSurfaceRef.wall('room-1', 0);
 
   ElectricalCableRoute route(List<SurfacePointMm> points) =>

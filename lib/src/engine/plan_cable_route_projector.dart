@@ -1,5 +1,6 @@
 import '../domain/electrical_routing.dart';
 import '../domain/geometry.dart';
+import '../domain/project_identity.dart';
 import '../domain/project_model.dart';
 import '../domain/surfaces.dart';
 
@@ -39,6 +40,7 @@ abstract final class PlanCableRouteProjector {
   static PlanCableProjection project({
     required BuildingLevel level,
     required Iterable<ElectricalCableRoute> routes,
+    Map<String, List<BoundaryEdgeId>> boundaryEdgeOrderBySpace = const {},
   }) {
     final spaces = {for (final space in level.spaces) space.id: space};
     final projected = <PlanCableProjectedSegment>[];
@@ -54,8 +56,18 @@ abstract final class PlanCableRouteProjector {
           skipped++;
           continue;
         }
-        final points = _projectPoints(space, segment);
-        if (points == null) {
+        final points = <MmPoint>[];
+        for (final point in segment.points) {
+          final projected = projectPoint(
+            space: space,
+            surface: segment.surface,
+            point: point,
+            orderedEdgeIds: boundaryEdgeOrderBySpace[space.id],
+          );
+          if (projected == null) break;
+          points.add(projected);
+        }
+        if (points.length != segment.points.length) {
           skipped++;
           continue;
         }
@@ -72,35 +84,46 @@ abstract final class PlanCableRouteProjector {
     );
   }
 
-  static List<MmPoint>? _projectPoints(
-    EngineeringSpace space,
-    ElectricalRouteSegment segment,
-  ) {
-    switch (segment.surface.type) {
+  /// Projects equipment and route geometry through one surface transform.
+  /// Canonical walls require the authoritative, geometry-verified edge order.
+  static MmPoint? projectPoint({
+    required EngineeringSpace space,
+    required RoomSurfaceRef surface,
+    required SurfacePointMm point,
+    List<BoundaryEdgeId>? orderedEdgeIds,
+  }) {
+    if (surface.spaceId != space.id) return null;
+    switch (surface.type) {
       case SurfacePlaneType.floor:
       case SurfacePlaneType.ceiling:
         final bounds = space.boundary.bounds;
-        return [
-          for (final point in segment.points)
-            MmPoint(bounds.left + point.xMm, bounds.bottom + point.yMm),
-        ];
+        return MmPoint(bounds.left + point.xMm, bounds.bottom + point.yMm);
       case SurfacePlaneType.wall:
-        // A canonical BoundaryEdgeId needs its authoritative edge order.
-        // Never substitute a guessed ordinal for that identity.
-        final ordinal = segment.surface.wallIndex;
-        if (ordinal == null) return null;
         RoomWallSurface wall;
         try {
-          wall = RoomSurfaceResolver.wall(space, ordinal);
+          if (surface.boundaryEdgeId != null) {
+            if (orderedEdgeIds == null ||
+                orderedEdgeIds.toSet().length != orderedEdgeIds.length) {
+              return null;
+            }
+            wall = RoomSurfaceResolver.wallByBoundaryEdge(
+              space,
+              orderedEdgeIds,
+              surface.boundaryEdgeId!,
+            );
+          } else {
+            final ordinal = surface.wallIndex;
+            if (ordinal == null) return null;
+            wall = RoomSurfaceResolver.wall(space, ordinal);
+          }
         } on RangeError {
           return null;
         } on ArgumentError {
           return null;
+        } on StateError {
+          return null;
         }
-        return [
-          for (final point in segment.points)
-            RoomSurfaceResolver.wallLocalToPlan(wall, point.xMm),
-        ];
+        return RoomSurfaceResolver.wallLocalToPlan(wall, point.xMm);
     }
   }
 }

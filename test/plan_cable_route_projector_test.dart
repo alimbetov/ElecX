@@ -156,4 +156,37 @@ void main() {
     expect(result.skippedSurfaceSegments, 1);
     expect(result.segments, isEmpty);
   });
+  test('canonical wall uses exact current edge order and skips missing edge',
+      () {
+    final controller = EditorController.demo();
+    addTearDown(controller.dispose);
+    final space = controller.level.spaces.first;
+    final edges = [for (var i = 0; i < 4; i++) BoundaryEdgeId('edge-$i')];
+    final physicalRoute = route([
+      ElectricalRouteSegment(
+        surface: RoomSurfaceRef.wallByBoundaryEdge(space.id, edges[2]),
+        points: const [SurfacePointMm(100, 1000), SurfacePointMm(600, 1000)],
+      ),
+    ]);
+    final mapped = PlanCableRouteProjector.project(
+      level: controller.level,
+      routes: [physicalRoute],
+      boundaryEdgeOrderBySpace: {space.id: edges},
+    );
+    expect(mapped.skippedSurfaceSegments, 0);
+    final wall = RoomSurfaceResolver.wall(space, 2);
+    expect(mapped.segments.single.points, [
+      RoomSurfaceResolver.wallLocalToPlan(wall, 100),
+      RoomSurfaceResolver.wallLocalToPlan(wall, 600),
+    ]);
+    final missing = PlanCableRouteProjector.project(
+      level: controller.level,
+      routes: [physicalRoute],
+      boundaryEdgeOrderBySpace: {
+        space.id: [edges[0], edges[1], BoundaryEdgeId('replacement'), edges[3]],
+      },
+    );
+    expect(missing.segments, isEmpty);
+    expect(missing.skippedSurfaceSegments, 1);
+  });
 }

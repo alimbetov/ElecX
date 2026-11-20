@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../domain/electrical_routing.dart';
+import '../../domain/project_identity.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/normative_route_engine.dart';
 import 'cable_route_constraints.dart';
@@ -144,6 +145,7 @@ final class CableRouteEditSession extends ChangeNotifier
     final replacement = ElectricalRouteSegment(
       surface: origin.segments[index].surface,
       points: List.unmodifiable(points),
+      anchorIds: _editedAnchors(origin.segments[index], points),
     );
     ElectricalCableRoute route;
     try {
@@ -255,6 +257,24 @@ final class CableRouteEditSession extends ChangeNotifier
             if (i == index) replacement else route.segments[i],
         ],
       );
+
+  static List<RouteAnchorId> _editedAnchors(
+    ElectricalRouteSegment origin,
+    List<SurfacePointMm> points,
+  ) {
+    if (origin.anchorIds.isEmpty) return const [];
+    if (points.length == origin.points.length) return origin.anchorIds;
+    final factory = SecureRandomEntityIdFactory();
+    return List.unmodifiable([
+      for (var i = 0; i < points.length; i++)
+        if (i == 0)
+          origin.anchorIds.first
+        else if (i == points.length - 1)
+          origin.anchorIds.last
+        else
+          factory.newRouteAnchorId(),
+    ]);
+  }
 
   static List<SurfacePointMm> _removeConsecutiveDuplicates(
     List<SurfacePointMm> points,

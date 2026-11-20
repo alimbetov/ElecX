@@ -42,6 +42,11 @@ void main() {
     );
     expect(controller.finishManualCableDraft(), isTrue);
     expect(controller.p2.routes, hasLength(1));
+    final otherRoomSocket = controller.p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: RoomSurfaceRef.wall('corridor-1', 0),
+      position: const SurfacePointMm(1000, 300),
+    );
     controller.showPlan();
 
     await tester.pumpWidget(MaterialApp(
@@ -57,7 +62,17 @@ void main() {
       find.byKey(const ValueKey('plan-p2-cable-overlay-status')),
       findsOneWidget,
     );
-    expect(find.textContaining('P2 трассы (не P11)'), findsOneWidget);
+    expect(find.textContaining('Кабели ·'), findsOneWidget);
+    expect(find.byKey(ValueKey('plan-component-${board.id}')), findsOneWidget);
+    expect(find.byKey(ValueKey('plan-component-${socket.id}')), findsOneWidget);
+    expect(find.byKey(ValueKey('plan-component-${otherRoomSocket.id}')),
+        findsOneWidget);
+    controller.p2.setLayerVisible(EditorLayerId.electrical, false);
+    await tester.pump();
+    expect(find.byKey(ValueKey('plan-component-${board.id}')), findsNothing);
+    controller.p2.setLayerVisible(EditorLayerId.electrical, true);
+    await tester.pump();
+    expect(find.byKey(ValueKey('plan-component-${board.id}')), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     controller.p2.setLayerVisible(EditorLayerId.cableRoutes, false);

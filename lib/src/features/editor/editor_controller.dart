@@ -7,6 +7,7 @@ import '../../domain/surface_routing.dart';
 import '../../domain/surfaces.dart';
 import '../../engine/normative_route_engine.dart';
 import '../../engine/snap_engine.dart';
+import 'cable_surface_projection.dart';
 
 enum EditorTool { select, roomRectangle, guide, cableRoute }
 
@@ -227,9 +228,11 @@ final class EditorController extends ChangeNotifier {
   }
 
   RouteNormativeContext? routeNormativeContextFor(RoomSurfaceRef surface) {
+    final local = CableSurfaceProjection.local(this, surface);
+    if (local == null) return null;
     EngineeringSpace? space;
     for (final candidate in level.spaces) {
-      if (candidate.id == surface.spaceId) {
+      if (candidate.id == local.spaceId) {
         space = candidate;
         break;
       }
@@ -237,7 +240,7 @@ final class EditorController extends ChangeNotifier {
     if (space == null) return null;
 
     if (surface.type == SurfacePlaneType.wall) {
-      final wallIndex = surface.wallIndex;
+      final wallIndex = local.wallIndex;
       if (wallIndex == null) return null;
       final wall = RoomSurfaceResolver.wall(space, wallIndex);
       return RouteNormativeContext(
@@ -251,7 +254,7 @@ final class EditorController extends ChangeNotifier {
         ],
         obstacles: [
           for (final opening in openings)
-            if (opening.hostWall == surface)
+            if (CableSurfaceProjection.same(this, opening.hostWall, surface))
               RouteObstacleMm(
                 id: opening.id,
                 leftMm: opening.offsetFromStartMm,
