@@ -228,8 +228,9 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                   'подтверждено.',
                   style: TextStyle(fontSize: 11),
                 ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
                   children: [
                     FilledButton(
                       key: const ValueKey('plan-port-apply-on-plan'),
