@@ -87,7 +87,8 @@ class _HorizontalEquipmentPaletteState
           return (_category == null || taxonomy.category == _category) &&
               (query.isEmpty ||
                   entry.name.toLowerCase().contains(query) ||
-                  entry.code.toLowerCase().contains(query));
+                  entry.code.toLowerCase().contains(query) ||
+                  entry.id.toLowerCase().contains(query));
         }).toList(growable: false);
         final grouped = <ComponentSubcategory, List<ComponentCatalogEntryV2>>{};
         for (final entry in filtered) {
