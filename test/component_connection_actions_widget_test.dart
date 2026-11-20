@@ -28,6 +28,7 @@ void main() {
       ),
     );
     expect(find.textContaining(board.label), findsOneWidget);
+    expect(find.textContaining('Комната 101 · Стена'), findsOneWidget);
     expect(find.textContaining('500 × 1200 мм'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('component-open-host')));
     await tester.pump();
