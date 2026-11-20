@@ -344,16 +344,19 @@ String _subcategoryTitle(ComponentSubcategory c) => switch (c) {
     };
 
 IconData _icon(EngineeringSystemClass c) => switch (c) {
-      EngineeringSystemClass.powerAc || EngineeringSystemClass.powerDc =>
+      EngineeringSystemClass.powerAc ||
+      EngineeringSystemClass.powerDc =>
         Icons.power_outlined,
       EngineeringSystemClass.lighting => Icons.lightbulb_outline,
       EngineeringSystemClass.structuredCabling ||
       EngineeringSystemClass.poeNetwork ||
-      EngineeringSystemClass.fiberOptic => Icons.lan_outlined,
+      EngineeringSystemClass.fiberOptic =>
+        Icons.lan_outlined,
       EngineeringSystemClass.cctv => Icons.videocam_outlined,
       EngineeringSystemClass.accessControl => Icons.badge_outlined,
       EngineeringSystemClass.fireAlarm => Icons.local_fire_department_outlined,
-      EngineeringSystemClass.automationBus || EngineeringSystemClass.dryContact =>
+      EngineeringSystemClass.automationBus ||
+      EngineeringSystemClass.dryContact =>
         Icons.memory_outlined,
       EngineeringSystemClass.custom => Icons.widgets_outlined,
     };
