@@ -2,6 +2,7 @@ import 'package:elecx/src/features/editor/editor_controller.dart';
 import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:elecx/src/features/editor/horizontal_equipment_palette.dart';
 import 'package:elecx/src/features/editor/surface_canvas.dart';
+import 'package:elecx/src/engine/editor_layers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -98,4 +99,47 @@ void main() {
         controller.p2.components.last.componentTypeId, 'power.socket.general');
     expect(tester.takeException(), isNull);
   });
+  testWidgets('locked electrical layer rejects a palette wall drop',
+      (tester) async {
+    final controller = EditorController.demo();
+    addTearDown(() {
+      controller.disposeP2State();
+      controller.dispose();
+    });
+    controller.selectSpace(controller.level.spaces.first.id);
+    controller.showWall(0);
+    controller.p2.layers.setLocked(EditorLayerId.electrical, true);
+    await tester.binding.setSurfaceSize(const Size(1200, 820));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Column(
+          children: [
+            HorizontalEquipmentPalette(
+              controller: controller,
+              expanded: true,
+              onToggle: () {},
+            ),
+            Expanded(child: SurfaceCanvas(controller: controller)),
+          ],
+        ),
+      ),
+    ));
+    await tester.pump();
+    final card = find.byKey(
+      const ValueKey('equipment-palette-item-power.socket.general'),
+    );
+    expect(card, findsOneWidget);
+    final countBefore = controller.p2.components.length;
+    final gesture = await tester.startGesture(tester.getCenter(card));
+    await gesture.moveBy(const Offset(0, 45));
+    await tester.pump();
+    await gesture.moveTo(tester.getCenter(find.byType(SurfaceCanvas)));
+    await tester.pump();
+    await gesture.up();
+    await tester.pump();
+    expect(controller.p2.components.length, countBefore);
+    expect(tester.takeException(), isNull);
+  });
+
 }
