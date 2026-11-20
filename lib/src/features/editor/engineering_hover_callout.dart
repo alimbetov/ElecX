@@ -34,11 +34,14 @@ class EngineeringHoverInfo {
       };
 
   String get purpose => switch (type) {
-        ElectricalComponentType.socketOutlet => 'Точка подключения электропитания',
+        ElectricalComponentType.socketOutlet =>
+          'Точка подключения электропитания',
         ElectricalComponentType.switchControl => 'Управление освещением',
         ElectricalComponentType.lightingPoint => 'Точка освещения',
-        ElectricalComponentType.distributionBoard => 'Распределение электрических цепей',
-        ElectricalComponentType.junctionBox => 'Соединение электрических проводников',
+        ElectricalComponentType.distributionBoard =>
+          'Распределение электрических цепей',
+        ElectricalComponentType.junctionBox =>
+          'Соединение электрических проводников',
         ElectricalComponentType.powerSource => 'Источник электрической энергии',
         ElectricalComponentType.curtainMotor => 'Электропривод',
         ElectricalComponentType.custom => 'Инженерный компонент',
@@ -144,7 +147,8 @@ class _EngineeringHoverCalloutState extends State<EngineeringHoverCallout>
     }
     const height = 94.0;
     const gap = 26.0;
-    final toRight = info.anchor.dx + gap + width + 8 <= widget.viewportSize.width;
+    final toRight =
+        info.anchor.dx + gap + width + 8 <= widget.viewportSize.width;
     final left = (toRight ? info.anchor.dx + gap : info.anchor.dx - width - gap)
         .clamp(8.0, math.max(8.0, widget.viewportSize.width - width - 8)).toDouble();
     final top = (info.anchor.dy - height - 20)
@@ -211,9 +215,12 @@ class _EngineeringHoverCalloutState extends State<EngineeringHoverCallout>
                             '${info.typeName} · ${info.label}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
                           ),
                           const SizedBox(height: 5),
                           Text(
@@ -227,9 +234,12 @@ class _EngineeringHoverCalloutState extends State<EngineeringHoverCallout>
                               info.room!,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: scheme.primary,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                    color: scheme.primary,
+                                  ),
                             ),
                         ],
                       ),
@@ -287,5 +297,8 @@ class _CalloutLeaderPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _CalloutLeaderPainter old) =>
-      from != old.from || to != old.to || color != old.color || glow != old.glow;
+      from != old.from ||
+      to != old.to ||
+      color != old.color ||
+      glow != old.glow;
 }
