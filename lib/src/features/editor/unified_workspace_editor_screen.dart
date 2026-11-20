@@ -423,6 +423,15 @@ class _UnifiedWorkspaceEditorScreenState
       return;
     }
 
+    // Guard the asynchronous dialog against changing the active project or
+    // floor while it is open. A stale user intent must not commit elsewhere.
+    final editorAtOpen = controller;
+    final workspaceAtOpen = workspace;
+    final levelAtOpen = controller.level.id;
+    final canonicalSessionAtOpen = canonical?.session;
+    final activeCanonicalLevelAtOpen =
+        canonicalSessionAtOpen?.navigation.activeLevelId;
+    final canonicalVersionAtOpen = canonicalSessionAtOpen?.project.version;
     final spaces = controller.level.spaces;
     final originX = spaces.isEmpty
         ? 0
@@ -444,6 +453,20 @@ class _UnifiedWorkspaceEditorScreenState
       ),
     );
     if (result == null || !mounted) return;
+    if (!identical(controller, editorAtOpen) ||
+        !identical(workspace, workspaceAtOpen) ||
+        controller.level.id != levelAtOpen ||
+        !identical(_canonicalResolvedRuntime?.session,
+            canonicalSessionAtOpen) ||
+        canonicalSessionAtOpen?.navigation.activeLevelId !=
+            activeCanonicalLevelAtOpen ||
+        canonicalSessionAtOpen?.project.version != canonicalVersionAtOpen) {
+      _showProjectMessage(
+        'Проект или этаж изменился. Повторно откройте создание комнаты.',
+        isError: true,
+      );
+      return;
+    }
     try {
       if (config != null && canonical != null) {
         final levelId = canonical.session.navigation.activeLevelId!;
