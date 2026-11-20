@@ -145,7 +145,8 @@ void main() {
     controller.showPlan();
     final pair = controller.planPortPair;
     expect(pair.start(componentId: board.id, portId: 'power-out'), isTrue);
-    expect(pair.chooseTarget(componentId: socket.id, portId: 'power-in'), isTrue);
+    expect(
+        pair.chooseTarget(componentId: socket.id, portId: 'power-in'), isTrue);
     expect(pair.straightRouteBlockReason, contains('door-101-a'));
     expect(pair.ready, isFalse);
     expect(pair.applyStraightRoute(), isFalse);
@@ -173,14 +174,16 @@ void main() {
     controller.showPlan();
     final pair = controller.planPortPair;
     expect(pair.start(componentId: board.id, portId: 'power-out'), isTrue);
-    expect(pair.chooseTarget(componentId: socket.id, portId: 'power-in'), isTrue);
+    expect(
+        pair.chooseTarget(componentId: socket.id, portId: 'power-in'), isTrue);
     expect(pair.straightRouteBlockReason, contains('ортогональным'));
     expect(pair.ready, isFalse);
     expect(pair.applyStraightRoute(), isFalse);
     expect(controller.p2.routes, isEmpty);
   });
 
-  test('changing structural openings without P2 edit invalidates an active pair',
+  test(
+      'changing structural openings without P2 edit invalidates an active pair',
       () {
     final controller = EditorController.demo();
     addTearDown(() {
@@ -201,7 +204,8 @@ void main() {
     controller.showPlan();
     final pair = controller.planPortPair;
     expect(pair.start(componentId: board.id, portId: 'power-out'), isTrue);
-    expect(pair.chooseTarget(componentId: socket.id, portId: 'power-in'), isTrue);
+    expect(
+        pair.chooseTarget(componentId: socket.id, portId: 'power-in'), isTrue);
     expect(pair.ready, isTrue);
     final revision = controller.p2.history.mutationRevision;
 
@@ -235,7 +239,8 @@ void main() {
     controller.showPlan();
     final pair = controller.planPortPair;
     expect(pair.start(componentId: board.id, portId: 'power-out'), isTrue);
-    expect(pair.chooseTarget(componentId: socket.id, portId: 'power-in'), isTrue);
+    expect(
+        pair.chooseTarget(componentId: socket.id, portId: 'power-in'), isTrue);
     expect(pair.ready, isTrue);
     final oldRevision = controller.p2.history.mutationRevision;
     controller.level = controller.level.copyWith(
@@ -245,5 +250,4 @@ void main() {
     expect(pair.revisionCurrent, isFalse);
     expect(pair.applyStraightRoute(), isFalse);
   });
-
 }
