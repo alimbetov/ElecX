@@ -57,6 +57,26 @@ void main() {
     expect(right.distanceMm, 1000);
   });
 
+  test('opening blocks nearest wall hit without jumping to another wall', () {
+    final room = MmPolygon.rectangle(
+      const MmPoint(0, 0),
+      const MmPoint(4000, 3000),
+    );
+    final guides = WallDistanceGuideCalculator.fromAnchor(
+      room: room,
+      anchor: const MmPoint(2000, 1500),
+      acceptWallHit: (edgeIndex, fraction) {
+        // Right wall (edge 1), central opening 25–75% of the length.
+        return !(edgeIndex == 1 && fraction >= 0.25 && fraction <= 0.75);
+      },
+    );
+    expect(guides.length, 3);
+    expect(
+      guides.any((guide) => guide.direction == WallGuideDirection.right),
+      false,
+    );
+  });
+
   test('outside room: no fabricated dimensions', () {
     final room = MmPolygon.rectangle(
       const MmPoint(0, 0),
