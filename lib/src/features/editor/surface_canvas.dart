@@ -41,6 +41,9 @@ import 'canvas_component_controls.dart';
 import 'canvas_viewport_navigator.dart';
 import 'component_transform_session.dart';
 import 'editor_controller.dart';
+import 'component_catalog_session.dart';
+import 'catalog_component_placement.dart';
+import 'horizontal_equipment_palette.dart';
 import 'editor_interaction_policy.dart';
 import 'editor_p2_session.dart';
 import 'editor_viewport_commands.dart';
@@ -852,6 +855,51 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
     return SurfacePointMm(result.b.x, result.b.y);
   }
 
+  bool _canAcceptEquipment(EquipmentPaletteDragData payload) {
+    final surface = controller.activeSurface;
+    final entry = controller.componentCatalog.byId(payload.catalogId);
+    return surface != null &&
+        entry != null &&
+        entry.canPlaceOn(surface) &&
+        controller.p2.layers.isVisible(EditorLayerId.electrical) &&
+        !controller.p2.layers.isLocked(EditorLayerId.electrical) &&
+        !controller.boundaryEditing.active &&
+        !controller.cableUi.trajectoryEditing;
+  }
+
+  void _dropEquipmentOnSurface(
+    EquipmentPaletteDragData payload,
+    Offset globalPosition,
+    BuildContext canvasContext,
+    _SurfaceProjection projection,
+  ) {
+    if (!_canAcceptEquipment(payload)) return;
+    final render = canvasContext.findRenderObject();
+    if (render is! RenderBox || !render.hasSize) return;
+    final local = render.globalToLocal(globalPosition);
+    final raw = projection.viewportToSurface(local);
+    if (raw == null) return;
+    final point = _snapSurfacePoint(raw, projection);
+    if (!_pointIsUsable(point, projection)) return;
+    final entry = controller.componentCatalog.byId(payload.catalogId);
+    final surface = controller.activeSurface;
+    if (entry == null || surface == null) return;
+    if (surface.type == SurfacePlaneType.wall) {
+      final insideOpening = controller.activeWallOpenings.any((opening) {
+        return point.xMm > opening.offsetFromStartMm &&
+            point.xMm < opening.endOffsetMm &&
+            point.yMm > opening.sillHeightMm &&
+            point.yMm < opening.topMm;
+      });
+      if (insideOpening) return;
+    }
+    controller.p2.placeCatalogComponent(
+      entry: entry,
+      surface: surface,
+      position: point,
+    );
+  }
+
   void _handleTap(
     TapUpDetails details,
     _SurfaceProjection projection,
@@ -1102,7 +1150,16 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
           EditorLayerId.cableRoutes,
         );
 
-        return Stack(
+        return DragTarget<EquipmentPaletteDragData>(
+          onWillAcceptWithDetails: (details) =>
+              _canAcceptEquipment(details.data),
+          onAcceptWithDetails: (details) => _dropEquipmentOnSurface(
+            details.data,
+            details.offset,
+            context,
+            projection,
+          ),
+          builder: (context, candidates, rejects) => Stack(
           children: [
             Positioned.fill(
               child: RepaintBoundary(
@@ -1424,6 +1481,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                 ),
               ),
           ],
+          ),
         );
       },
     );
