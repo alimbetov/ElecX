@@ -18,6 +18,8 @@ import '../../engine/spatial_scene_index.dart';
 import '../../engine/world_camera.dart';
 import 'electrical_host_geometry_guard.dart';
 import 'cable_editor_ui_session.dart';
+import 'component_transform_session.dart';
+import 'plan_component_move_projection.dart';
 import 'cable_trajectory_panel.dart';
 import 'route_selection_session.dart';
 import 'canonical_room_surface_runtime_registry.dart';
@@ -66,6 +68,9 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
   int? _selectedExternalEdgeIndex;
   String? _selectedExternalSpaceId;
   int _selectedExternalPullSign = 1;
+  String? _planMovingComponentId;
+  MmPoint? _planMoveStart;
+  Offset _planMoveDelta = Offset.zero;
 
   EditorController get controller => widget.controller;
 
@@ -117,11 +122,100 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     );
     controller.p2.removeListener(_onP2RoutesChanged);
     controller.routeSelection.removeListener(_onP2RoutesChanged);
+    _endPlanComponentMove(cancel: true);
     super.dispose();
   }
 
   void _onP2RoutesChanged() {
     if (mounted) setState(() {});
+  }
+
+  void _startPlanComponentMove(
+    ElectricalComponentPlacement component,
+    EngineeringSpace space,
+    List<BoundaryEdgeId>? edgeOrder,
+  ) {
+    if (controller.tool != EditorTool.select ||
+        controller.cableUi.trajectoryEditing ||
+        controller.p2.placementType != null ||
+        controller.routeSegments.isNotEmpty ||
+        controller.p2.layers.isLocked(EditorLayerId.electrical) ||
+        !controller.p2.layers.isVisible(EditorLayerId.electrical)) {
+      return;
+    }
+    final start = PlanComponentMoveProjection.planPointFor(
+      space: space,
+      component: component,
+      orderedEdgeIds: edgeOrder,
+    );
+    if (start == null) return;
+    controller.p2.select(component.id);
+    if (!controller.componentTransform.begin()) return;
+    _planMovingComponentId = component.id;
+    _planMoveStart = start;
+    _planMoveDelta = Offset.zero;
+  }
+
+  void _updatePlanComponentMove(
+    String componentId,
+    DragUpdateDetails details,
+    List<BoundaryEdgeId>? edgeOrder,
+  ) {
+    if (_planMovingComponentId != componentId) return;
+    final start = _planMoveStart;
+    final preview = controller.componentTransform.previewState;
+    if (start == null || preview == null) return;
+    final component = controller.p2.selectedComponent;
+    final space = controller.level.spaces
+        .where((item) => item.id == component?.surface.spaceId)
+        .firstOrNull;
+    if (component == null || component.id != componentId || space == null) {
+      controller.componentTransform.cancel();
+      _clearPlanMove();
+      return;
+    }
+    _planMoveDelta += details.delta;
+    final worldPoint = PlanComponentMoveProjection.draggedPlanPoint(
+      initialPoint: start,
+      dxPx: _planMoveDelta.dx,
+      dyPx: _planMoveDelta.dy,
+      mmPerPixel: _camera.mmPerPixel,
+    );
+    final candidate = PlanComponentMoveProjection.fromPlan(
+      space: space,
+      component: component,
+      planPoint: worldPoint,
+      orderedEdgeIds: edgeOrder,
+    );
+    final step = space.grid.minorStepMm;
+    final snapped = candidate == null || !controller.snapEnabled
+        ? candidate
+        : SurfacePointMm(
+            (candidate.xMm / step).round() * step,
+            component.surface.type == SurfacePlaneType.wall
+                ? candidate.yMm
+                : (candidate.yMm / step).round() * step,
+          );
+    controller.componentTransform.preview(
+      snapped ?? preview.position,
+      isValid: snapped != null,
+    );
+  }
+
+  void _endPlanComponentMove({required bool cancel}) {
+    if (_planMovingComponentId == null) return;
+    if (cancel || !controller.componentTransform.validate()) {
+      controller.componentTransform.cancel();
+    } else if (!controller.componentTransform.commit()) {
+      controller.componentTransform.cancel();
+    }
+    _clearPlanMove();
+  }
+
+  void _clearPlanMove() {
+    _planMovingComponentId = null;
+    _planMoveStart = null;
+    _planMoveDelta = Offset.zero;
   }
 
   void _onViewportCommand() {
@@ -131,6 +225,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
   }
 
   void _cancelTransientInteraction() {
+    _endPlanComponentMove(cancel: true);
     if (_dragKind != null) {
       _finishPrimaryDrag(cancelled: true);
     }
@@ -772,19 +867,33 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                   ? BorderSide(color: scheme.primary, width: 2)
                   : BorderSide.none,
             ),
-            child: InkWell(
-              key: ValueKey('plan-component-${component.id}'),
-              customBorder: const CircleBorder(),
-              onTap: controller.tool != EditorTool.select
-                  ? null
-                  : () {
-                      controller.p2.select(component.id);
-                    },
-              child: Icon(
-                icon,
-                size: 19,
-                semanticLabel: component.label,
-                color: scheme.primary,
+            child: GestureDetector(
+              onPanStart: (_) => _startPlanComponentMove(
+                component,
+                space,
+                edgeOrder[space.id],
+              ),
+              onPanUpdate: (details) => _updatePlanComponentMove(
+                component.id,
+                details,
+                edgeOrder[space.id],
+              ),
+              onPanEnd: (_) => _endPlanComponentMove(cancel: false),
+              onPanCancel: () => _endPlanComponentMove(cancel: true),
+              child: InkWell(
+                key: ValueKey('plan-component-${component.id}'),
+                customBorder: const CircleBorder(),
+                onTap: controller.tool != EditorTool.select
+                    ? null
+                    : () {
+                        controller.p2.select(component.id);
+                      },
+                child: Icon(
+                  icon,
+                  size: 19,
+                  semanticLabel: component.label,
+                  color: scheme.primary,
+                ),
               ),
             ),
           ),
