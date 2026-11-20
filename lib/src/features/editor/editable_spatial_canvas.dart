@@ -27,6 +27,7 @@ import 'cable_trajectory_panel.dart';
 import 'route_selection_session.dart';
 import 'canonical_room_surface_runtime_registry.dart';
 import 'canonical_room_boundary_projection.dart';
+import 'component_catalog_session.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 import 'catalog_component_placement.dart';
