@@ -36,6 +36,7 @@ class _DynamicWallDimensionsOverlayState
     with SingleTickerProviderStateMixin {
   late final AnimationController _opacity;
   Timer? _pendingHide;
+  Timer? _pendingCleanup;
   List<WallDistanceGuide> _lastValid = const [];
 
   bool get _hasSelection =>
@@ -51,28 +52,14 @@ class _DynamicWallDimensionsOverlayState
       reverseDuration: const Duration(milliseconds: 350),
     );
     _lastValid = widget.guides;
-    _opacity.addStatusListener(_onOpacityStatus);
     widget.held.addListener(_heldChanged);
-  }
-
-  void _onOpacityStatus(AnimationStatus status) {
-    if (status != AnimationStatus.dismissed) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted ||
-          _hasSelection ||
-          widget.held.value ||
-          _lastValid.isEmpty ||
-          _opacity.value != 0) {
-        return;
-      }
-      setState(() => _lastValid = const []);
-    });
   }
 
   void _heldChanged() {
     if (!mounted) return;
     if (widget.held.value) {
       _pendingHide?.cancel();
+      _pendingCleanup?.cancel();
       _opacity.animateTo(
         1.0,
         duration: const Duration(milliseconds: 150),
@@ -84,18 +71,27 @@ class _DynamicWallDimensionsOverlayState
 
   void _hide({bool afterHold = false}) {
     _pendingHide?.cancel();
+    _pendingCleanup?.cancel();
     if (widget.held.value) return;
     _pendingHide = Timer(
       Duration(milliseconds: afterHold ? 150 : 200),
       () {
         if (!mounted || widget.held.value || _hasSelection) return;
+        final fadeDuration =
+            Duration(milliseconds: afterHold ? 700 : 350);
         if (MediaQuery.disableAnimationsOf(context)) {
           _opacity.value = 0;
+          setState(() => _lastValid = const []);
         } else {
-          _opacity.animateTo(
-            0.0,
-            duration: Duration(milliseconds: afterHold ? 700 : 350),
-          );
+          _opacity.animateTo(0.0, duration: fadeDuration);
+          // Cleanup is tied to the presentation contract, rather than
+          // relying on a status callback at the next scheduled animation
+          // frame. This also makes widget tests deterministic.
+          _pendingCleanup = Timer(fadeDuration, () {
+            if (!mounted || widget.held.value || _hasSelection) return;
+            _opacity.value = 0;
+            setState(() => _lastValid = const []);
+          });
         }
       },
     );
@@ -110,6 +106,7 @@ class _DynamicWallDimensionsOverlayState
     }
     if (widget.sceneId != oldWidget.sceneId) {
       _pendingHide?.cancel();
+      _pendingCleanup?.cancel();
       _lastValid = const [];
       _opacity.value = 0;
     }
@@ -117,12 +114,14 @@ class _DynamicWallDimensionsOverlayState
       // Invalid/unknown host must never display measurements from another
       // selected component, including while Distance is held.
       _pendingHide?.cancel();
+      _pendingCleanup?.cancel();
       _lastValid = const [];
       _opacity.value = 0;
       return;
     }
     if (_hasSelection) {
       _pendingHide?.cancel();
+      _pendingCleanup?.cancel();
       _lastValid = widget.guides;
       if (MediaQuery.disableAnimationsOf(context)) {
         _opacity.value = 1;
@@ -142,8 +141,8 @@ class _DynamicWallDimensionsOverlayState
   @override
   void dispose() {
     _pendingHide?.cancel();
+    _pendingCleanup?.cancel();
     widget.held.removeListener(_heldChanged);
-    _opacity.removeStatusListener(_onOpacityStatus);
     _opacity.dispose();
     super.dispose();
   }
