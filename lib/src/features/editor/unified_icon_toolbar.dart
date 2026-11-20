@@ -428,8 +428,8 @@ class _LayerMenuButton extends StatelessWidget {
       onPressed: () => _showLayers(context),
       icon: const Icon(Icons.layers_outlined, size: 20),
       style: IconButton.styleFrom(
-        minimumSize: Size(target, target),
-        maximumSize: Size(target, target),
+        minimumSize: Size(widget.target, widget.target),
+        maximumSize: Size(widget.target, widget.target),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
         backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
       ),
@@ -578,7 +578,7 @@ IconData _catalogIcon(EngineeringSystemClass systemClass) =>
     };
 
 /// Momentary hold, never a persistent dimensions toggle.
-class _DistanceHoldButton extends StatelessWidget {
+class _DistanceHoldButton extends StatefulWidget {
   const _DistanceHoldButton({
     required this.controller,
     required this.target,
@@ -587,15 +587,47 @@ class _DistanceHoldButton extends StatelessWidget {
   final EditorController controller;
   final double target;
 
+  @override
+  State<_DistanceHoldButton> createState() => _DistanceHoldButtonState();
+}
+
+class _DistanceHoldButtonState extends State<_DistanceHoldButton>
+    with WidgetsBindingObserver {
   void _release() {
-    if (controller.distanceGuideHeld.value) {
-      controller.distanceGuideHeld.value = false;
+    if (widget.controller.distanceGuideHeld.value) {
+      widget.controller.distanceGuideHeld.value = false;
     }
   }
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didUpdateWidget(covariant _DistanceHoldButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.widget.controller.distanceGuideHeld.value = false;
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) _release();
+  }
+
+  @override
+  void dispose() {
+    _release();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) => ValueListenableBuilder<bool>(
-        valueListenable: controller.distanceGuideHeld,
+        valueListenable: widget.controller.distanceGuideHeld,
         builder: (context, held, _) => Focus(
           onFocusChange: (focused) {
             if (!focused) _release();
@@ -605,14 +637,14 @@ class _DistanceHoldButton extends StatelessWidget {
               return KeyEventResult.ignored;
             }
             if (event is KeyDownEvent) {
-              controller.distanceGuideHeld.value = true;
+              widget.controller.distanceGuideHeld.value = true;
             } else if (event is KeyUpEvent) {
               _release();
             }
             return KeyEventResult.handled;
           },
           child: Listener(
-            onPointerDown: (_) => controller.distanceGuideHeld.value = true,
+            onPointerDown: (_) => widget.controller.distanceGuideHeld.value = true,
             onPointerUp: (_) => _release(),
             onPointerCancel: (_) => _release(),
             child: Padding(
