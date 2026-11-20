@@ -12,11 +12,13 @@ class EngineeringInspectorPanel extends StatefulWidget {
   const EngineeringInspectorPanel({
     required this.controller,
     this.semanticsInspector,
+    this.showCatalog = true,
     super.key,
   });
 
   final EditorController controller;
   final Widget? semanticsInspector;
+  final bool showCatalog;
 
   @override
   State<EngineeringInspectorPanel> createState() =>
@@ -31,9 +33,21 @@ class _EngineeringInspectorPanelState extends State<EngineeringInspectorPanel> {
   @override
   Widget build(BuildContext context) => Column(
         children: [
-          Flexible(
-            flex: 2,
-            child: SingleChildScrollView(
+          if (widget.showCatalog)
+            Flexible(
+              flex: 2,
+              child: _engineeringContext(),
+            )
+          else
+            Expanded(child: _engineeringContext()),
+          if (widget.showCatalog) ...[
+            const Divider(height: 1),
+            Expanded(child: DeviceCatalogPanel(controller: widget.controller)),
+          ],
+        ],
+      );
+
+  Widget _engineeringContext() => SingleChildScrollView(
               key: const ValueKey('engineering-context-scroll'),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -63,10 +77,6 @@ class _EngineeringInspectorPanelState extends State<EngineeringInspectorPanel> {
                   RoomCircuitPanel(controller: widget.controller),
                 ],
               ),
-            ),
-          ),
-          const Divider(height: 1),
-          Expanded(child: DeviceCatalogPanel(controller: widget.controller)),
-        ],
-      );
+            );
+
 }
