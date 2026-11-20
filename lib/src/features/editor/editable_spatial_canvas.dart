@@ -175,10 +175,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     );
   }
 
-  Widget? _planPortPairOverlay(
-    Map<String, List<BoundaryEdgeId>> edgeOrder,
-    ColorScheme scheme,
-  ) {
+  Widget? _planPortPairOverlay(ColorScheme scheme) {
     final pair = controller.planPortPair;
     if (!pair.active) return null;
     final source = pair.sourceComponent;
@@ -1221,7 +1218,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
               ),
             if (controller.p2.layers.isVisible(EditorLayerId.electrical))
               ..._equipmentMarkers(boundaryEdgeOrder),
-            if (_planPortPairOverlay(boundaryEdgeOrder, scheme) case final overlay?)
+            if (_planPortPairOverlay(scheme) case final overlay?)
               overlay,
             if (cableProjection.segments.isNotEmpty ||
                 cableProjection.hasIncompleteProjection)
