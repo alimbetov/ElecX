@@ -146,9 +146,9 @@ class _EngineeringHoverCalloutState extends State<EngineeringHoverCallout>
     const gap = 26.0;
     final toRight = info.anchor.dx + gap + width + 8 <= widget.viewportSize.width;
     final left = (toRight ? info.anchor.dx + gap : info.anchor.dx - width - gap)
-        .clamp(8.0, math.max(8, widget.viewportSize.width - width - 8));
+        .clamp(8.0, math.max(8.0, widget.viewportSize.width - width - 8));
     final top = (info.anchor.dy - height - 20)
-        .clamp(8.0, math.max(8, widget.viewportSize.height - height - 8));
+        .clamp(8.0, math.max(8.0, widget.viewportSize.height - height - 8));
     final end = Offset(
       toRight ? left : left + width,
       (top + height / 2).clamp(top + 8, top + height - 8),
