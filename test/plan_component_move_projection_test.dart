@@ -7,8 +7,9 @@ import 'package:elecx/src/features/editor/plan_component_move_projection.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  final controller = EditorController.demo();
-  addTearDown(controller.dispose);
+  late EditorController controller;
+  setUp(() => controller = EditorController.demo());
+  tearDown(() => controller.dispose());
 
   test(
       'wall plan movement changes only longitudinal offset, not mounting height',
