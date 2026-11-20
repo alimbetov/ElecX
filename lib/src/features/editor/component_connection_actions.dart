@@ -218,14 +218,19 @@ class ComponentConnectionActions extends StatelessWidget {
         },
       );
 
-  static String _surfaceName(ElectricalComponentPlacement component) {
+  String _surfaceName(ElectricalComponentPlacement component) {
     final surface = component.surface;
+    final roomName = controller.level.spaces
+            .where((space) => space.id == surface.spaceId)
+            .map((space) => space.name)
+            .firstOrNull ??
+        surface.spaceId;
     final typeLabel = switch (surface.type) {
       SurfacePlaneType.wall => 'Стена',
       SurfacePlaneType.ceiling => 'Потолок',
       SurfacePlaneType.floor => 'Пол',
     };
-    return '${surface.spaceId} · $typeLabel'
+    return '$roomName · $typeLabel'
         '${surface.wallIndex == null ? '' : ' · №${surface.wallIndex! + 1}'}';
   }
 
