@@ -44,6 +44,7 @@ void main() {
     final routeId = controller.p2.routes.single.id;
     final before = controller.p2.components
         .firstWhere((item) => item.id == board.id);
+    controller.setTool(EditorTool.select);
     controller.showPlan();
 
     await tester.pumpWidget(
