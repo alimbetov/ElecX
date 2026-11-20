@@ -154,6 +154,7 @@ final class EditorController extends ChangeNotifier {
   MmPoint? draftStart;
   bool snapEnabled = true;
   bool dimensionsVisible = true;
+  final ValueNotifier<bool> distanceGuideHeld = ValueNotifier<bool>(false);
   int floorGridMm = 500;
   int roomSequence = 102;
   int openingSequence = 1;
@@ -173,6 +174,7 @@ final class EditorController extends ChangeNotifier {
   bool get isSurfaceNavigationNotification => _surfaceNavigationNotification;
 
   void requestEditCancellation() {
+    distanceGuideHeld.value = false;
     _editCancellationRevision.value++;
   }
 
@@ -739,6 +741,7 @@ final class EditorController extends ChangeNotifier {
 
   @override
   void dispose() {
+    distanceGuideHeld.dispose();
     _editCancellationRevision.dispose();
     super.dispose();
   }
