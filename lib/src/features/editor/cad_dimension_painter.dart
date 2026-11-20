@@ -21,7 +21,7 @@ abstract final class CadDimensionPainter {
     double opacity = 1.0,
   }) {
     final color = active ? scheme.primary : scheme.outline;
-    final alpha = opacity.clamp(0.0, 1.0);
+    final alpha = opacity.clamp(0.0, 1.0).toDouble();
     final paint = Paint()
       ..color = color.withValues(
         alpha: (lightweight ? 0.65 : (active ? 0.92 : 0.78)) * alpha,
