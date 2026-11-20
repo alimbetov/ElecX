@@ -39,32 +39,12 @@ abstract final class PlanComponentMoveProjection {
           planPoint.y - bounds.bottom,
         );
       case SurfacePlaneType.wall:
-        RoomWallSurface wall;
-        try {
-          final edgeId = component.surface.boundaryEdgeId;
-          if (edgeId != null) {
-            if (orderedEdgeIds == null ||
-                orderedEdgeIds.toSet().length != orderedEdgeIds.length) {
-              return null;
-            }
-            wall = RoomSurfaceResolver.wallByBoundaryEdge(
-              space,
-              orderedEdgeIds,
-              edgeId,
-            );
-          } else {
-            final index = component.surface.wallIndex;
-            if (index == null) return null;
-            wall = RoomSurfaceResolver.wall(space, index);
-          }
-        } on RangeError {
-          return null;
-        } on ArgumentError {
-          return null;
-        } on StateError {
-          return null;
-        }
-
+        final wall = _wall(
+          space: space,
+          surface: component.surface,
+          orderedEdgeIds: orderedEdgeIds,
+        );
+        if (wall == null) return null;
         final dx = wall.end.x - wall.start.x;
         final dy = wall.end.y - wall.start.y;
         final length = wall.lengthMm;
@@ -83,6 +63,77 @@ abstract final class PlanComponentMoveProjection {
         final y = component.position.yMm;
         if (!wall.profile.containsPoint(x, y)) return null;
         return SurfacePointMm(x, y);
+    }
+  }
+
+  /// Re-checks the snapped position; rounding can otherwise escape a short
+  /// physical wall or move equipment into a structural opening.
+  static bool allowedOnHost({
+    required EngineeringSpace space,
+    required ElectricalComponentPlacement component,
+    required SurfacePointMm position,
+    List<BoundaryEdgeId>? orderedEdgeIds,
+    Iterable<ArchitecturalOpening> openings = const [],
+  }) {
+    if (component.surface.spaceId != space.id) return false;
+    switch (component.surface.type) {
+      case SurfacePlaneType.floor:
+      case SurfacePlaneType.ceiling:
+        final bounds = space.boundary.bounds;
+        return space.boundary.contains(
+          MmPoint(bounds.left + position.xMm, bounds.bottom + position.yMm),
+        );
+      case SurfacePlaneType.wall:
+        final wall = _wall(
+          space: space,
+          surface: component.surface,
+          orderedEdgeIds: orderedEdgeIds,
+        );
+        if (wall == null ||
+            position.yMm != component.position.yMm ||
+            !wall.profile.containsPoint(position.xMm, position.yMm)) {
+          return false;
+        }
+        for (final opening in openings) {
+          if (opening.hostWall != component.surface) continue;
+          if (position.xMm > opening.offsetFromStartMm &&
+              position.xMm < opening.endOffsetMm &&
+              position.yMm > opening.sillHeightMm &&
+              position.yMm < opening.topMm) {
+            return false;
+          }
+        }
+        return true;
+    }
+  }
+
+  static RoomWallSurface? _wall({
+    required EngineeringSpace space,
+    required RoomSurfaceRef surface,
+    required List<BoundaryEdgeId>? orderedEdgeIds,
+  }) {
+    try {
+      final edgeId = surface.boundaryEdgeId;
+      if (edgeId != null) {
+        if (orderedEdgeIds == null ||
+            orderedEdgeIds.toSet().length != orderedEdgeIds.length) {
+          return null;
+        }
+        return RoomSurfaceResolver.wallByBoundaryEdge(
+          space,
+          orderedEdgeIds,
+          edgeId,
+        );
+      }
+      final index = surface.wallIndex;
+      if (index == null) return null;
+      return RoomSurfaceResolver.wall(space, index);
+    } on RangeError {
+      return null;
+    } on ArgumentError {
+      return null;
+    } on StateError {
+      return null;
     }
   }
 
