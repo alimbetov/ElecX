@@ -19,9 +19,10 @@ void main() {
     final originalCount = canvas.controller.level.spaces.length;
     await tester.tap(find.byKey(const ValueKey('create-room-dimensions')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('room-dimensions-dialog')), findsOneWidget);
-    await tester.enterText(find.byKey(const ValueKey('room-name-input')),
-        'Комната по размерам');
+    expect(
+        find.byKey(const ValueKey('room-dimensions-dialog')), findsOneWidget);
+    await tester.enterText(
+        find.byKey(const ValueKey('room-name-input')), 'Комната по размерам');
     await tester.enterText(
         find.byKey(const ValueKey('room-width-input')), '4200');
     await tester.enterText(
