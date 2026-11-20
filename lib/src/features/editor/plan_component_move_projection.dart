@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import '../../domain/electrical_placement.dart';
 import '../../domain/geometry.dart';
 import '../../domain/project_identity.dart';
