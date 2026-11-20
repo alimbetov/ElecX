@@ -168,6 +168,11 @@ void main() {
       ),
     ));
     await tester.pump();
+    await tester.enterText(
+      find.byKey(const ValueKey('equipment-palette-search')),
+      'DB-GENERAL',
+    );
+    await tester.pump();
     final card = find.byKey(
       const ValueKey('equipment-palette-item-power.distribution-board.general'),
     );
