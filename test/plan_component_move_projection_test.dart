@@ -127,4 +127,61 @@ void main() {
       const MmPoint(1740, 1880),
     );
   });
+  test('snapping cannot place a device outside its wall or into a doorway', () {
+    final space = controller.level.spaces.first;
+    final component = ElectricalComponentPlacement(
+      id: 'socket-guard',
+      type: ElectricalComponentType.socketOutlet,
+      surface: RoomSurfaceRef.wall(space.id, 0),
+      position: const SurfacePointMm(500, 1200),
+      label: 'Socket guard',
+    );
+    expect(
+      PlanComponentMoveProjection.allowedOnHost(
+        space: space,
+        component: component,
+        position: const SurfacePointMm(500, 1200),
+        openings: controller.openings,
+      ),
+      isTrue,
+    );
+    expect(
+      PlanComponentMoveProjection.allowedOnHost(
+        space: space,
+        component: component,
+        position: const SurfacePointMm(1000, 1200),
+        openings: controller.openings,
+      ),
+      isFalse,
+    );
+    expect(
+      PlanComponentMoveProjection.allowedOnHost(
+        space: space,
+        component: component,
+        position: const SurfacePointMm(4300, 1200),
+        openings: controller.openings,
+      ),
+      isFalse,
+    );
+  });
+
+  test('flat plan drag never changes wall mounting height', () {
+    final space = controller.level.spaces.first;
+    final component = ElectricalComponentPlacement(
+      id: 'socket-height',
+      type: ElectricalComponentType.socketOutlet,
+      surface: RoomSurfaceRef.wall(space.id, 1),
+      position: const SurfacePointMm(600, 1200),
+      label: 'Socket height',
+    );
+    expect(
+      PlanComponentMoveProjection.allowedOnHost(
+        space: space,
+        component: component,
+        position: const SurfacePointMm(800, 1400),
+      ),
+      isFalse,
+    );
+  });
+
 }
