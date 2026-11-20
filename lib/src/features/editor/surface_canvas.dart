@@ -1210,7 +1210,8 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                         controller.boundaryEditing.active) {
                       return;
                     }
-                    final raw = projection.viewportToSurface(event.localPosition);
+                    final raw =
+                        projection.viewportToSurface(event.localPosition);
                     if (raw == null) return;
                     final cableHit = _cableHitAt(raw, projection, event.kind);
                     if (cableHit != null &&
@@ -1229,7 +1230,8 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                             ? SelectionMode.replace
                             : _selectionModeForKeyboard(),
                       );
-                      if (!controller.p2.selection.contains(component.id)) return;
+                      if (!controller.p2.selection.contains(component.id))
+                        return;
                       if (!controller.componentTransform.begin()) return;
                       _dragComponentId = component.id;
                       _dragStartPosition = component.position;
@@ -1256,13 +1258,14 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                       setState(() => _marqueeCurrent = event.localPosition);
                       return;
                     }
-                    final previewPosition = event.kind == PointerDeviceKind.touch
-                        ? event.localPosition -
-                            Offset(
-                              0,
-                              _policy(event.kind).pointerPreviewOffsetPx,
-                            )
-                        : event.localPosition;
+                    final previewPosition =
+                        event.kind == PointerDeviceKind.touch
+                            ? event.localPosition -
+                                Offset(
+                                  0,
+                                  _policy(event.kind).pointerPreviewOffsetPx,
+                                )
+                            : event.localPosition;
                     if (event.buttons == 0 &&
                         event.kind != PointerDeviceKind.touch) {
                       _updateCablePortHover(previewPosition, projection);
@@ -1379,14 +1382,16 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                   left: 12,
                   bottom: bottomEditorVisible ? 148 : 12,
                   child: Chip(
-                    avatar: const Icon(Icons.add_location_alt_outlined, size: 18),
+                    avatar:
+                        const Icon(Icons.add_location_alt_outlined, size: 18),
                     label: Text(
                       'Размещение: ${ElectricalComponentDefaults.defaultLabel(type)}',
                     ),
                   ),
                 ),
               if (cableRoutesVisible)
-                if (controller.routeSelection.selectedRouteId case final routeId?)
+                if (controller.routeSelection.selectedRouteId
+                    case final routeId?)
                   Positioned(
                     left: 12,
                     bottom: bottomEditorVisible ? 188 : 52,
@@ -1408,7 +1413,8 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                   child: CableRouteControls(
                     mode: controller.cableUi.mode,
                     onModeChanged: controller.cableUi.setMode,
-                    segmentFocused: controller.cableUi.activeSegmentIndex != null,
+                    segmentFocused:
+                        controller.cableUi.activeSegmentIndex != null,
                     segmentLocked: controller.cableUi.activeSegmentLocked,
                     onToggleSegmentLock:
                         controller.cableUi.toggleActiveSegmentLock,
