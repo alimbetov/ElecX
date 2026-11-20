@@ -694,13 +694,16 @@ final class EditorController extends ChangeNotifier {
     selectSpace(null);
   }
 
-  void addRectangleRoom(MmPoint a, MmPoint b) {
+  void addRectangleRoom(MmPoint a, MmPoint b, {String? name}) {
     if ((a.x - b.x).abs() < 300 || (a.y - b.y).abs() < 300) return;
     final boundary = MmPolygon.rectangle(a, b);
     final id = 'room-$roomSequence';
+    final resolvedName = name?.trim();
     final room = EngineeringSpace(
       id: id,
-      name: 'Комната $roomSequence',
+      name: resolvedName == null || resolvedName.isEmpty
+          ? 'Комната $roomSequence'
+          : resolvedName,
       type: SpaceType.room,
       boundary: boundary,
       referenceFrame: RoomReferenceFrame(origin: boundary.bounds.center),
