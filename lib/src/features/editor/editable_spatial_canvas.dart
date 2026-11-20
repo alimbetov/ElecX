@@ -1330,7 +1330,8 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                 selectionId: controller.tool == EditorTool.select
                     ? controller.p2.selectedComponent?.id
                     : null,
-                sceneId: '${identityHashCode(controller)}:${controller.level.id}',
+                sceneId:
+                    '${identityHashCode(controller)}:${controller.level.id}',
                 guides: _dynamicWallGuides(boundaryEdgeOrder),
                 camera: _camera,
                 viewport: _size,
