@@ -29,6 +29,8 @@ import 'canonical_room_surface_runtime_registry.dart';
 import 'canonical_room_boundary_projection.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
+import 'catalog_component_placement.dart';
+import 'horizontal_equipment_palette.dart';
 import 'editor_viewport_commands.dart';
 import 'viewport_zoom_policy.dart';
 import 'plan_geometry_editor_actions.dart';
@@ -818,6 +820,117 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     });
   }
 
+  bool _canAcceptEquipment(EquipmentPaletteDragData data) {
+    final entry = controller.componentCatalog.byId(data.catalogId);
+    return entry != null &&
+        controller.level.spaces.isNotEmpty &&
+        controller.p2.layers.isVisible(EditorLayerId.electrical) &&
+        !controller.p2.layers.isLocked(EditorLayerId.electrical) &&
+        !controller.cableUi.trajectoryEditing &&
+        _dragKind == null;
+  }
+
+  void _dropEquipmentOnPlan(
+    EquipmentPaletteDragData data,
+    Offset globalPosition,
+    BuildContext canvasContext,
+    Map<String, List<BoundaryEdgeId>> edgeOrder,
+  ) {
+    if (!_canAcceptEquipment(data)) return;
+    final render = canvasContext.findRenderObject();
+    if (render is! RenderBox || !render.hasSize) return;
+    final world = _toWorld(render.globalToLocal(globalPosition));
+    final entry = controller.componentCatalog.byId(data.catalogId);
+    if (entry == null) return;
+
+    final candidateSpaces = [
+      if (controller.selectedSpace case final selected?) selected,
+      ...controller.level.spaces.where(
+        (space) => space.id != controller.selectedSpaceId,
+      ),
+    ];
+    for (final space in candidateSpaces) {
+      final inside = space.boundary.contains(world);
+      if (entry.mounting.allowedSurfaces.contains(SurfacePlaneType.wall)) {
+        final canonicalContext =
+            CanonicalRoomSurfaceRuntimeRegistry.physicalRoutingContextFor(
+                controller);
+        final ordered = edgeOrder[space.id];
+        if (canonicalContext == null || ordered != null) {
+          final walls = ordered == null
+              ? RoomSurfaceResolver.walls(space)
+              : RoomSurfaceResolver.wallsByBoundaryEdges(space, ordered);
+          for (final wall in walls) {
+            final dx = (wall.end.x - wall.start.x).toDouble();
+            final dy = (wall.end.y - wall.start.y).toDouble();
+            final length = wall.lengthMm.toDouble();
+            if (length == 0) continue;
+            final deltaX = (world.x - wall.start.x).toDouble();
+            final deltaY = (world.y - wall.start.y).toDouble();
+            final along = (deltaX * dx + deltaY * dy) / length;
+            final distance = (deltaX * dy - deltaY * dx).abs() / length;
+            if (distance > math.max(150, _camera.mmPerPixel * 20) ||
+                along < 0 ||
+                along > length) {
+              continue;
+            }
+            final height = entry.mounting.preferredHeightMm ??
+                wall.heightMm ~/ 2;
+            final position = SurfacePointMm(along.round(), height);
+            if (!wall.profile.containsPoint(
+                    position.xMm, position.yMm)) {
+              continue;
+            }
+            final blockedByOpening = controller.openings.any((opening) {
+              if (opening.hostWall != wall.ref) return false;
+              return position.xMm > opening.offsetFromStartMm &&
+                  position.xMm < opening.endOffsetMm &&
+                  position.yMm > opening.sillHeightMm &&
+                  position.yMm < opening.topMm;
+            });
+            if (blockedByOpening || !entry.canPlaceOn(wall.ref)) continue;
+            if (controller.selectedSpaceId != space.id) {
+              controller.selectSpace(space.id);
+            }
+            controller.p2.placeCatalogComponent(
+              entry: entry,
+              surface: wall.ref,
+              position: position,
+            );
+            return;
+          }
+        }
+      }
+      if (!inside) continue;
+      final targetType =
+          entry.mounting.allowedSurfaces.contains(SurfacePlaneType.floor)
+              ? SurfacePlaneType.floor
+              : entry.mounting.allowedSurfaces.contains(
+                    SurfacePlaneType.ceiling,
+                  )
+                  ? SurfacePlaneType.ceiling
+                  : null;
+      if (targetType == null) continue;
+      final target = targetType == SurfacePlaneType.floor
+          ? RoomSurfaceRef.floor(space.id)
+          : RoomSurfaceRef.ceiling(space.id);
+      if (!entry.canPlaceOn(target)) continue;
+      final bounds = space.boundary.bounds;
+      if (controller.selectedSpaceId != space.id) {
+        controller.selectSpace(space.id);
+      }
+      controller.p2.placeCatalogComponent(
+        entry: entry,
+        surface: target,
+        position: SurfacePointMm(
+          world.x - bounds.left,
+          world.y - bounds.bottom,
+        ),
+      );
+      return;
+    }
+  }
+
   void _tap(TapUpDetails details, PlanCableProjection projection) {
     if (controller.cableUi.trajectoryEditing) {
       String? nearest;
@@ -1207,7 +1320,16 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
               : const [],
         );
 
-        return Stack(
+        return DragTarget<EquipmentPaletteDragData>(
+          onWillAcceptWithDetails: (details) =>
+              _canAcceptEquipment(details.data),
+          onAcceptWithDetails: (details) => _dropEquipmentOnPlan(
+            details.data,
+            details.offset,
+            context,
+            boundaryEdgeOrder,
+          ),
+          builder: (context, candidates, rejects) => Stack(
           children: [
             Positioned.fill(
               child: RepaintBoundary(
@@ -1391,6 +1513,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                 ),
               ),
           ],
+          ),
         );
       },
     );
