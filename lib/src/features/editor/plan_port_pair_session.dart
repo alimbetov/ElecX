@@ -48,7 +48,20 @@ final class PlanPortPairSession extends ChangeNotifier {
   bool get ready {
     final source = sourceComponent;
     final target = targetComponent;
-    if (!revisionCurrent || source == null || target == null) return false;
+    if (!revisionCurrent ||
+        source == null ||
+        target == null ||
+        controller.viewMode != EditorViewMode.plan ||
+        controller.tool != EditorTool.select ||
+        controller.p2.isManipulating ||
+        controller.routeSegments.isNotEmpty ||
+        controller.portDrivenCableStartBinding != null ||
+        !controller.p2.layers.isVisible(EditorLayerId.electrical) ||
+        controller.p2.layers.isLocked(EditorLayerId.electrical) ||
+        !controller.p2.layers.isVisible(EditorLayerId.cableRoutes) ||
+        controller.p2.layers.isLocked(EditorLayerId.cableRoutes)) {
+      return false;
+    }
     return source.surface == _sourceHost &&
         source.position == _sourcePosition &&
         target.surface == _targetHost &&
