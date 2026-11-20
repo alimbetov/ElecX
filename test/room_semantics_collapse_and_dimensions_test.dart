@@ -93,7 +93,8 @@ void main() {
         find.byKey(const ValueKey('room-width-input')), '120');
     await tester.tap(find.byKey(const ValueKey('room-dimensions-submit')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('room-dimensions-dialog')), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('room-dimensions-dialog')), findsOneWidget);
     expect(find.text('От 300 до 100 000 мм'), findsOneWidget);
   });
 }
