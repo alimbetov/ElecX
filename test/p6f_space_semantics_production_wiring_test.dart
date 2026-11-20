@@ -36,6 +36,8 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('room-semantics-toggle')));
+      await tester.pumpAndSettle();
 
       expect(find.byType(SpaceSemanticsInspector), findsOneWidget);
       expect(
@@ -80,6 +82,8 @@ void main() {
           ),
         ),
       );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('room-semantics-toggle')));
       await tester.pumpAndSettle();
 
       final usage = find.byKey(const ValueKey('space-semantics-usage'));
@@ -133,6 +137,8 @@ void main() {
           ),
         ),
       );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('room-semantics-toggle')));
       await tester.pumpAndSettle();
 
       expect(find.byType(SpaceSemanticsInspector), findsOneWidget);
