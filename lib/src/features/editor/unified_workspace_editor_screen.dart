@@ -456,8 +456,8 @@ class _UnifiedWorkspaceEditorScreenState
     if (!identical(controller, editorAtOpen) ||
         !identical(workspace, workspaceAtOpen) ||
         controller.level.id != levelAtOpen ||
-        !identical(_canonicalResolvedRuntime?.session,
-            canonicalSessionAtOpen) ||
+        !identical(
+            _canonicalResolvedRuntime?.session, canonicalSessionAtOpen) ||
         canonicalSessionAtOpen?.navigation.activeLevelId !=
             activeCanonicalLevelAtOpen ||
         canonicalSessionAtOpen?.project.version != canonicalVersionAtOpen) {
