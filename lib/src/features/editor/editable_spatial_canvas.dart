@@ -198,7 +198,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     return Positioned(
       key: const ValueKey('plan-port-pair-overlay'),
       left: 12,
-      bottom: 56,
+      top: 12,
       child: Material(
         elevation: 4,
         borderRadius: BorderRadius.circular(10),
