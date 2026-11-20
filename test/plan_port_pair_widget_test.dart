@@ -139,4 +139,76 @@ void main() {
     expect(controller.planPortPair.active, isFalse);
     expect(controller.p2.routes, isEmpty);
   });
+  testWidgets('door crossing disables plan Apply and explains obstruction',
+      (tester) async {
+    final controller = EditorController.demo();
+    addTearDown(() {
+      controller.disposeP2State();
+      controller.dispose();
+    });
+    final wall = RoomSurfaceRef.wall('room-101', 0);
+    final board = controller.p2.placeComponent(
+      type: ElectricalComponentType.distributionBoard,
+      surface: wall,
+      position: const SurfacePointMm(500, 1200),
+    );
+    final socket = controller.p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: wall,
+      position: const SurfacePointMm(2200, 1200),
+    );
+    controller.showPlan();
+    controller.p2.select(board.id);
+    expect(
+      controller.planPortPair.start(
+        componentId: board.id,
+        portId: 'power-out',
+      ),
+      isTrue,
+    );
+    expect(
+      controller.planPortPair.chooseTarget(
+        componentId: socket.id,
+        portId: 'power-in',
+      ),
+      isTrue,
+    );
+    await tester.binding.setSurfaceSize(const Size(1400, 860));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Row(
+            children: [
+              Expanded(child: SpatialCanvas(controller: controller)),
+              SizedBox(
+                width: 400,
+                child: SingleChildScrollView(
+                  child: ComponentConnectionActions(controller: controller),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    expect(
+      find.byKey(const ValueKey('plan-port-physical-blocked')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('plan-port-geometry-blocked')),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const ValueKey('plan-port-apply-on-plan')),
+          )
+          .onPressed,
+      isNull,
+    );
+    expect(controller.p2.routes, isEmpty);
+  });
+
 }
