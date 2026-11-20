@@ -29,6 +29,7 @@ abstract final class WallDistanceGuideCalculator {
     required MmPolygon room,
     required MmPoint anchor,
     double epsilonMm = 0.001,
+    bool Function(int edgeIndex, double edgeFraction)? acceptWallHit,
   }) {
     if (!room.contains(anchor) && !_onBoundary(room, anchor)) {
       return const [];
@@ -44,6 +45,8 @@ abstract final class WallDistanceGuideCalculator {
       final dx = directionVector.$1;
       final dy = directionVector.$2;
       double? nearest;
+      int? nearestEdge;
+      double? nearestFraction;
       final points = room.vertices;
       for (var i = 0; i < points.length; i++) {
         final a = points[i];
@@ -59,9 +62,19 @@ abstract final class WallDistanceGuideCalculator {
         if (t <= epsilonMm || u < -epsilonMm || u > 1 + epsilonMm) {
           continue;
         }
-        if (nearest == null || t < nearest) nearest = t;
+        if (nearest == null || t < nearest) {
+          nearest = t;
+          nearestEdge = i;
+          nearestFraction = u;
+        }
       }
       if (nearest == null || !nearest.isFinite) continue;
+      if (acceptWallHit != null &&
+          !acceptWallHit(nearestEdge!, nearestFraction!)) {
+        // An opening is not a physical wall. Never jump through it to a
+        // farther boundary and label that distance as a wall clearance.
+        continue;
+      }
       final target = MmPoint(
         (anchor.x + dx * nearest).round(),
         (anchor.y + dy * nearest).round(),
