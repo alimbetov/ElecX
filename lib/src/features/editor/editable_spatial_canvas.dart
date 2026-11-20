@@ -875,11 +875,10 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                 along > length) {
               continue;
             }
-            final height = entry.mounting.preferredHeightMm ??
-                wall.heightMm ~/ 2;
+            final height =
+                entry.mounting.preferredHeightMm ?? wall.heightMm ~/ 2;
             final position = SurfacePointMm(along.round(), height);
-            if (!wall.profile.containsPoint(
-                    position.xMm, position.yMm)) {
+            if (!wall.profile.containsPoint(position.xMm, position.yMm)) {
               continue;
             }
             final blockedByOpening = controller.openings.any((opening) {
@@ -1331,189 +1330,189 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
             boundaryEdgeOrder,
           ),
           builder: (context, candidates, rejects) => Stack(
-          children: [
-            Positioned.fill(
-              child: RepaintBoundary(
-                child: CustomPaint(
-                  painter: _PlanPainter(
-                    controller: controller,
-                    camera: _camera,
-                    visibleSpaces: visibleSpaces,
-                    lod: lod,
-                    previewBoundary: _previewBoundary,
-                    previewOpening: _previewOpening,
-                    cableProjection: cableProjection,
-                    scheme: scheme,
+            children: [
+              Positioned.fill(
+                child: RepaintBoundary(
+                  child: CustomPaint(
+                    painter: _PlanPainter(
+                      controller: controller,
+                      camera: _camera,
+                      visibleSpaces: visibleSpaces,
+                      lod: lod,
+                      previewBoundary: _previewBoundary,
+                      previewOpening: _previewOpening,
+                      cableProjection: cableProjection,
+                      scheme: scheme,
+                    ),
                   ),
                 ),
               ),
-            ),
-            if (pullMeasureOverlay != null) pullMeasureOverlay,
-            Positioned.fill(
-              child: Listener(
-                behavior: HitTestBehavior.opaque,
-                onPointerHover: (event) {
-                  _updatePullSideFromPointer(event.localPosition);
-                },
-                onPointerSignal: (event) {
-                  if (event is! PointerScrollEvent) return;
-                  final factor = ViewportZoomPolicy.factorForScrollDelta(
-                    dx: event.scrollDelta.dx,
-                    dy: event.scrollDelta.dy,
-                  );
-                  if (factor == null) return;
-                  GestureBinding.instance.pointerSignalResolver.register(
-                    event,
-                    (_) => _zoomAt(event.localPosition, factor),
-                  );
-                },
-                onPointerDown: (event) {
-                  _activePointers.add(event.pointer);
-                  if (_activePointers.length > 1) {
-                    if (_dragKind != null) {
+              if (pullMeasureOverlay != null) pullMeasureOverlay,
+              Positioned.fill(
+                child: Listener(
+                  behavior: HitTestBehavior.opaque,
+                  onPointerHover: (event) {
+                    _updatePullSideFromPointer(event.localPosition);
+                  },
+                  onPointerSignal: (event) {
+                    if (event is! PointerScrollEvent) return;
+                    final factor = ViewportZoomPolicy.factorForScrollDelta(
+                      dx: event.scrollDelta.dx,
+                      dy: event.scrollDelta.dy,
+                    );
+                    if (factor == null) return;
+                    GestureBinding.instance.pointerSignalResolver.register(
+                      event,
+                      (_) => _zoomAt(event.localPosition, factor),
+                    );
+                  },
+                  onPointerDown: (event) {
+                    _activePointers.add(event.pointer);
+                    if (_activePointers.length > 1) {
+                      if (_dragKind != null) {
+                        _finishPrimaryDrag(cancelled: true);
+                      }
+                      return;
+                    }
+                    if (event.buttons == kMiddleMouseButton) {
+                      _panPointer = event.pointer;
+                      _panAnchor = event.localPosition;
+                      return;
+                    }
+                    if (event.buttons == kPrimaryMouseButton) {
+                      _beginPrimaryDrag(event);
+                    }
+                  },
+                  onPointerMove: (event) {
+                    final anchor = _panAnchor;
+                    if (anchor != null && event.pointer == _panPointer) {
+                      final delta = event.localPosition - anchor;
+                      _panAnchor = event.localPosition;
+                      setState(() {
+                        _camera = _camera.panPixels(delta.dx, delta.dy);
+                      });
+                      return;
+                    }
+                    if (event.buttons == 0) {
+                      _updatePullSideFromPointer(event.localPosition);
+                    }
+                    _updatePrimaryDrag(event);
+                  },
+                  onPointerUp: (event) {
+                    _activePointers.remove(event.pointer);
+                    if (event.pointer == _panPointer) {
+                      _panPointer = null;
+                      _panAnchor = null;
+                    }
+                    if (event.pointer == _primaryDragPointer) {
+                      _finishPrimaryDrag(cancelled: false);
+                    }
+                  },
+                  onPointerCancel: (event) {
+                    _activePointers.remove(event.pointer);
+                    if (event.pointer == _panPointer) {
+                      _panPointer = null;
+                      _panAnchor = null;
+                    }
+                    if (event.pointer == _primaryDragPointer) {
                       _finishPrimaryDrag(cancelled: true);
                     }
-                    return;
-                  }
-                  if (event.buttons == kMiddleMouseButton) {
-                    _panPointer = event.pointer;
-                    _panAnchor = event.localPosition;
-                    return;
-                  }
-                  if (event.buttons == kPrimaryMouseButton) {
-                    _beginPrimaryDrag(event);
-                  }
-                },
-                onPointerMove: (event) {
-                  final anchor = _panAnchor;
-                  if (anchor != null && event.pointer == _panPointer) {
-                    final delta = event.localPosition - anchor;
-                    _panAnchor = event.localPosition;
-                    setState(() {
-                      _camera = _camera.panPixels(delta.dx, delta.dy);
-                    });
-                    return;
-                  }
-                  if (event.buttons == 0) {
-                    _updatePullSideFromPointer(event.localPosition);
-                  }
-                  _updatePrimaryDrag(event);
-                },
-                onPointerUp: (event) {
-                  _activePointers.remove(event.pointer);
-                  if (event.pointer == _panPointer) {
-                    _panPointer = null;
-                    _panAnchor = null;
-                  }
-                  if (event.pointer == _primaryDragPointer) {
-                    _finishPrimaryDrag(cancelled: false);
-                  }
-                },
-                onPointerCancel: (event) {
-                  _activePointers.remove(event.pointer);
-                  if (event.pointer == _panPointer) {
-                    _panPointer = null;
-                    _panAnchor = null;
-                  }
-                  if (event.pointer == _primaryDragPointer) {
-                    _finishPrimaryDrag(cancelled: true);
-                  }
-                },
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTapUp: (details) => _tap(details, cableProjection),
-                  onScaleStart: _startTouch,
-                  onScaleUpdate: _updateTouch,
-                  onScaleEnd: _endTouch,
-                ),
-              ),
-            ),
-            if (controller.planPortPair.ready)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: CustomPaint(
-                    painter: _PlanPortPairPainter(
-                      source: _planPairWorldPoint(
-                        controller.planPortPair.sourceComponent,
-                        boundaryEdgeOrder,
-                      ),
-                      target: _planPairWorldPoint(
-                        controller.planPortPair.targetComponent,
-                        boundaryEdgeOrder,
-                      ),
-                      camera: _camera,
-                      scheme: scheme,
-                      viewport: _size,
-                    ),
+                  },
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapUp: (details) => _tap(details, cableProjection),
+                    onScaleStart: _startTouch,
+                    onScaleUpdate: _updateTouch,
+                    onScaleEnd: _endTouch,
                   ),
                 ),
               ),
-            Positioned.fill(
-              child: DynamicWallDimensionsOverlay(
-                selectionId: controller.tool == EditorTool.select
-                    ? controller.p2.selectedComponent?.id
-                    : null,
-                sceneId:
-                    '${identityHashCode(controller)}:${controller.level.id}:'
-                    '${controller.selectedSpaceId}',
-                guides: _dynamicWallGuides(boundaryEdgeOrder),
-                camera: _camera,
-                viewport: _size,
-                held: controller.distanceGuideHeld,
+              if (controller.planPortPair.ready)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: CustomPaint(
+                      painter: _PlanPortPairPainter(
+                        source: _planPairWorldPoint(
+                          controller.planPortPair.sourceComponent,
+                          boundaryEdgeOrder,
+                        ),
+                        target: _planPairWorldPoint(
+                          controller.planPortPair.targetComponent,
+                          boundaryEdgeOrder,
+                        ),
+                        camera: _camera,
+                        scheme: scheme,
+                        viewport: _size,
+                      ),
+                    ),
+                  ),
+                ),
+              Positioned.fill(
+                child: DynamicWallDimensionsOverlay(
+                  selectionId: controller.tool == EditorTool.select
+                      ? controller.p2.selectedComponent?.id
+                      : null,
+                  sceneId:
+                      '${identityHashCode(controller)}:${controller.level.id}:'
+                      '${controller.selectedSpaceId}',
+                  guides: _dynamicWallGuides(boundaryEdgeOrder),
+                  camera: _camera,
+                  viewport: _size,
+                  held: controller.distanceGuideHeld,
+                ),
               ),
-            ),
-            if (controller.p2.layers.isVisible(EditorLayerId.electrical))
-              ..._equipmentMarkers(boundaryEdgeOrder),
-            if (_planPortPairOverlay(scheme) case final overlay?) overlay,
-            if (cableProjection.segments.isNotEmpty ||
-                cableProjection.hasIncompleteProjection)
+              if (controller.p2.layers.isVisible(EditorLayerId.electrical))
+                ..._equipmentMarkers(boundaryEdgeOrder),
+              if (_planPortPairOverlay(scheme) case final overlay?) overlay,
+              if (cableProjection.segments.isNotEmpty ||
+                  cableProjection.hasIncompleteProjection)
+                Positioned(
+                  left: 10,
+                  top: 58,
+                  child: IgnorePointer(
+                    child: Chip(
+                      key: const ValueKey('plan-p2-cable-overlay-status'),
+                      avatar: const Icon(Icons.cable, size: 16),
+                      label: Text(
+                        'P2 трассы (не P11) · '
+                        '${cableProjection.segments.length} сегм.'
+                        '${cableProjection.hasIncompleteProjection ? " · неподтверждённые поверхности: ${cableProjection.skippedSurfaceSegments}" : ""}',
+                      ),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                ),
+              if (externalWallGizmo != null) externalWallGizmo,
               Positioned(
                 left: 10,
-                top: 58,
-                child: IgnorePointer(
+                top: 100,
+                child: CableTrajectoryPanel(controller: controller),
+              ),
+              Positioned(
+                right: compact ? 8 : 12,
+                top: compact ? 8 : 12,
+                child: _ViewportControls(
+                  compact: compact,
+                  lod: lod,
+                  mmPerPixel: _camera.mmPerPixel,
+                  onFitLevel: _fitLevel,
+                  onFitSelection: _fitSelection,
+                  onZoomIn: () => _zoomAt(_size.center(Offset.zero), 1.25),
+                  onZoomOut: () => _zoomAt(_size.center(Offset.zero), 0.8),
+                ),
+              ),
+              if (controller.tool == EditorTool.select &&
+                  controller.selectedSpace != null)
+                const Positioned(
+                  left: 10,
+                  bottom: 10,
                   child: Chip(
-                    key: const ValueKey('plan-p2-cable-overlay-status'),
-                    avatar: const Icon(Icons.cable, size: 16),
-                    label: Text(
-                      'P2 трассы (не P11) · '
-                      '${cableProjection.segments.length} сегм.'
-                      '${cableProjection.hasIncompleteProjection ? " · неподтверждённые поверхности: ${cableProjection.skippedSurfaceSegments}" : ""}',
-                    ),
+                    avatar: Icon(Icons.edit_outlined, size: 16),
+                    label: Text('Select: ● вершина · ■ стена · проём'),
                     visualDensity: VisualDensity.compact,
                   ),
                 ),
-              ),
-            if (externalWallGizmo != null) externalWallGizmo,
-            Positioned(
-              left: 10,
-              top: 100,
-              child: CableTrajectoryPanel(controller: controller),
-            ),
-            Positioned(
-              right: compact ? 8 : 12,
-              top: compact ? 8 : 12,
-              child: _ViewportControls(
-                compact: compact,
-                lod: lod,
-                mmPerPixel: _camera.mmPerPixel,
-                onFitLevel: _fitLevel,
-                onFitSelection: _fitSelection,
-                onZoomIn: () => _zoomAt(_size.center(Offset.zero), 1.25),
-                onZoomOut: () => _zoomAt(_size.center(Offset.zero), 0.8),
-              ),
-            ),
-            if (controller.tool == EditorTool.select &&
-                controller.selectedSpace != null)
-              const Positioned(
-                left: 10,
-                bottom: 10,
-                child: Chip(
-                  avatar: Icon(Icons.edit_outlined, size: 16),
-                  label: Text('Select: ● вершина · ■ стена · проём'),
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-          ],
+            ],
           ),
         );
       },
