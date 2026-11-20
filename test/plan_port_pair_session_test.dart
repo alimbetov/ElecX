@@ -238,7 +238,9 @@ void main() {
     expect(pair.chooseTarget(componentId: socket.id, portId: 'power-in'), isTrue);
     expect(pair.ready, isTrue);
     final oldRevision = controller.p2.history.mutationRevision;
-    controller.level = controller.level.copyWith(name: 'New revision');
+    controller.level = controller.level.copyWith(
+      spaces: List.of(controller.level.spaces),
+    );
     expect(controller.p2.history.mutationRevision, oldRevision);
     expect(pair.revisionCurrent, isFalse);
     expect(pair.applyStraightRoute(), isFalse);
