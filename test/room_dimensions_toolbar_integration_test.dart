@@ -39,6 +39,13 @@ void main() {
     expect(created.boundary.bounds.left, 1000);
     expect(created.boundary.bounds.bottom, 2000);
     expect(canvas.controller.selectedSpaceId, created.id);
+    expect(canvas.controller.documentHistory.canUndo, isTrue);
+    expect(canvas.controller.documentHistory.undo(), isTrue);
+    await tester.pump();
+    expect(canvas.controller.level.spaces.length, originalCount);
+    expect(canvas.controller.documentHistory.redo(), isTrue);
+    await tester.pump();
+    expect(canvas.controller.level.spaces.last.name, 'Комната по размерам');
     expect(tester.takeException(), isNull);
   });
 }
