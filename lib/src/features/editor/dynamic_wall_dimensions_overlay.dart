@@ -113,6 +113,14 @@ class _DynamicWallDimensionsOverlayState
       _lastValid = const [];
       _opacity.value = 0;
     }
+    if (widget.selectionId != null && widget.guides.isEmpty) {
+      // Invalid/unknown host must never display measurements from another
+      // selected component, including while Distance is held.
+      _pendingHide?.cancel();
+      _lastValid = const [];
+      _opacity.value = 0;
+      return;
+    }
     if (_hasSelection) {
       _pendingHide?.cancel();
       _lastValid = widget.guides;
