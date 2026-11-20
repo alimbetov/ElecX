@@ -112,12 +112,14 @@ void main() {
           ),
         ),
       );
-      expect(find.byKey(const ValueKey('component-cable-source')), findsNothing);
+      expect(
+          find.byKey(const ValueKey('component-cable-source')), findsNothing);
       await tester.tap(
         find.byKey(const ValueKey('component-connect-port-power-out')),
       );
       await tester.pump();
-      expect(find.byKey(const ValueKey('component-cable-source')), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('component-cable-source')), findsOneWidget);
       expect(
         find.byKey(ValueKey('component-complete-${socket.id}-power-in')),
         findsOneWidget,
@@ -135,7 +137,8 @@ void main() {
         find.byKey(ValueKey('component-complete-${socket.id}-power-in')),
       );
       await tester.pump();
-      expect(find.byKey(const ValueKey('component-cable-ready')), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('component-cable-ready')), findsOneWidget);
       expect(controller.p2.routes, isEmpty);
       await tester.tap(find.byKey(const ValueKey('component-finish-route')));
       await tester.pump();
@@ -249,5 +252,4 @@ void main() {
     );
     expect(controller.p2.routes, isEmpty);
   });
-
 }
