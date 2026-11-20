@@ -41,6 +41,7 @@ import 'canvas_viewport_navigator.dart';
 import 'component_transform_session.dart';
 import 'editor_controller.dart';
 import 'editor_interaction_policy.dart';
+import 'engineering_hover_callout.dart';
 import 'editor_p2_session.dart';
 import 'editor_viewport_commands.dart';
 import 'hosted_route_session.dart';
@@ -95,6 +96,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
   SurfacePointMm? _dragStartPosition;
   CableCanvasHit? _cableDragHit;
   PortDrivenCableCompletionTarget? _hoveredCablePort;
+  String? _hoverComponentId;
   final Set<int> _activePointers = <int>{};
   Offset? _marqueeStart;
   Offset? _marqueeCurrent;
@@ -200,6 +202,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
     _dragComponentId = null;
     _dragStartPosition = null;
     _cableDragHit = null;
+    _hoverComponentId = null;
     _activePointers.clear();
   }
 
@@ -530,6 +533,47 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
     if (_hoveredCablePort != null && mounted) {
       setState(() => _hoveredCablePort = null);
     }
+  }
+
+  void _updateEngineeringHover(Offset viewportPoint, _SurfaceProjection projection) {
+    final canShow = controller.tool == EditorTool.select &&
+        controller.p2.placementType == null &&
+        !controller.boundaryEditing.active &&
+        !controller.componentTransform.active &&
+        !controller.cableRouteEdit.active &&
+        !controller.cableEndpointTransform.active &&
+        _dragComponentId == null && _cableDragHit == null &&
+        _panAnchor == null && _activePointers.isEmpty;
+    final raw = canShow ? projection.viewportToSurface(viewportPoint) : null;
+    final candidate = raw == null ? null : _componentAt(raw, projection);
+    if (_hoverComponentId != candidate?.id && mounted) {
+      setState(() => _hoverComponentId = candidate?.id);
+    }
+  }
+
+  void _clearEngineeringHover() {
+    if (_hoverComponentId != null && mounted) {
+      setState(() => _hoverComponentId = null);
+    }
+  }
+
+  EngineeringHoverInfo? _engineeringHoverInfo(_SurfaceProjection projection) {
+    final id = _hoverComponentId;
+    if (id == null) return null;
+    for (final component in controller.p2.components) {
+      if (component.id != id ||
+          !CableSurfaceProjection.same(controller, component.surface, controller.activeSurface!)) {
+        continue;
+      }
+      return EngineeringHoverInfo(
+        id: component.id,
+        type: component.type,
+        label: component.label,
+        anchor: projection.surfaceToViewport(component.position),
+        room: controller.selectedSpace?.name,
+      );
+    }
+    return null;
   }
 
   ElectricalComponentPlacement? _componentAt(
@@ -1134,6 +1178,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                 onPointerHover: (event) {
                   _updateBoundaryHover(event.localPosition, projection);
                   _updateCablePortHover(event.localPosition, projection);
+                  _updateEngineeringHover(event.localPosition, projection);
                 },
                 onPointerSignal: (event) {
                   if (event is! PointerScrollEvent) return;
@@ -1148,6 +1193,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                   );
                 },
                 onPointerDown: (event) {
+                  _clearEngineeringHover();
                   _activePointers.add(event.pointer);
                   if (_activePointers.length > 1) {
                     _finishPointer(projection, cancelled: true);
@@ -1218,6 +1264,7 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                   if (event.buttons == 0 &&
                       event.kind != PointerDeviceKind.touch) {
                     _updateCablePortHover(previewPosition, projection);
+                    _updateEngineeringHover(previewPosition, projection);
                   }
                   if (_cableDragHit != null && event.buttons != 0) {
                     final raw = projection.viewportToSurface(previewPosition);
@@ -1245,7 +1292,10 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                   _finishPointer(projection, cancelled: true);
                 },
                 child: MouseRegion(
-                  onExit: (_) => _clearCablePortHover(),
+                  onExit: (_) {
+                    _clearCablePortHover();
+                    _clearEngineeringHover();
+                  },
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onTapUp: (details) =>
@@ -1263,6 +1313,12 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                 ),
               ),
             ),
+            Positioned.fill(
+                child: EngineeringHoverCallout(
+                  target: _engineeringHoverInfo(projection),
+                  viewportSize: _size,
+                ),
+              ),
             if (_marqueeRect case final rect?)
               Positioned(
                 left: rect.left,
