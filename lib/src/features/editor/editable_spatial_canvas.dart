@@ -773,7 +773,8 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     return result;
   }
 
-  EngineeringHoverInfo? _planHoverInfo(Map<String, List<BoundaryEdgeId>> edges) {
+  EngineeringHoverInfo? _planHoverInfo(
+      Map<String, List<BoundaryEdgeId>> edges) {
     final id = _hoverPlanComponentId;
     if (id == null || controller.tool != EditorTool.select) return null;
     for (final component in controller.p2.components) {
