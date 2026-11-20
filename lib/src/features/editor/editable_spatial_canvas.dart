@@ -20,6 +20,7 @@ import 'electrical_host_geometry_guard.dart';
 import 'canonical_room_surface_runtime_registry.dart';
 import 'canonical_room_boundary_projection.dart';
 import 'editor_controller.dart';
+import 'engineering_hover_callout.dart';
 import 'route_selection_session.dart';
 import 'editor_p2_session.dart';
 import 'editor_viewport_commands.dart';
@@ -53,6 +54,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
   Offset? _touchStartFocal;
   int _sceneFingerprint = -1;
   int _lastViewportRevision = 0;
+  String? _hoverPlanComponentId;
 
   _PlanDragKind? _dragKind;
   int? _dragIndex;
@@ -732,14 +734,28 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
         top: position.dy - 14,
         width: 28,
         height: 28,
-        child: Tooltip(
-          message: component.label,
+        child: MouseRegion(
+          onEnter: (_) {
+            if (controller.tool == EditorTool.select && mounted) {
+              setState(() => _hoverPlanComponentId = component.id);
+            }
+          },
+          onExit: (_) {
+            if (_hoverPlanComponentId == component.id && mounted) {
+              setState(() => _hoverPlanComponentId = null);
+            }
+          },
           child: Material(
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
             shape: const CircleBorder(),
             child: InkWell(
               key: ValueKey('plan-component-${component.id}'),
               customBorder: const CircleBorder(),
+              onTapDown: (_) {
+                if (_hoverPlanComponentId != null) {
+                  setState(() => _hoverPlanComponentId = null);
+                }
+              },
               onTap: controller.tool != EditorTool.select
                   ? null
                   : () {
@@ -755,6 +771,37 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
       ));
     }
     return result;
+  }
+
+  EngineeringHoverInfo? _planHoverInfo(Map<String, List<BoundaryEdgeId>> edges) {
+    final id = _hoverPlanComponentId;
+    if (id == null || controller.tool != EditorTool.select) return null;
+    for (final component in controller.p2.components) {
+      if (component.id != id) continue;
+      EngineeringSpace? space;
+      for (final candidate in controller.level.spaces) {
+        if (candidate.id == component.surface.spaceId) {
+          space = candidate;
+          break;
+        }
+      }
+      if (space == null) return null;
+      final projected = PlanCableRouteProjector.projectPoint(
+        space: space,
+        surface: component.surface,
+        point: component.position,
+        orderedEdgeIds: edges[space.id],
+      );
+      if (projected == null) return null;
+      return EngineeringHoverInfo(
+        id: component.id,
+        type: component.type,
+        label: component.label,
+        room: space.name,
+        anchor: _toScreen(projected),
+      );
+    }
+    return null;
   }
 
   @override
@@ -851,6 +898,9 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                   );
                 },
                 onPointerDown: (event) {
+                  if (_hoverPlanComponentId != null) {
+                    setState(() => _hoverPlanComponentId = null);
+                  }
                   _activePointers.add(event.pointer);
                   if (_activePointers.length > 1) {
                     if (_dragKind != null) {
@@ -913,6 +963,14 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
             ),
             if (controller.p2.layers.isVisible(EditorLayerId.electrical))
               ..._equipmentMarkers(boundaryEdgeOrder),
+            Positioned.fill(
+              child: EngineeringHoverCallout(
+                target: controller.p2.layers.isVisible(EditorLayerId.electrical)
+                    ? _planHoverInfo(boundaryEdgeOrder)
+                    : null,
+                viewportSize: _size,
+              ),
+            ),
             if (cableProjection.segments.isNotEmpty ||
                 cableProjection.hasIncompleteProjection)
               Positioned(
