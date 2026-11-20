@@ -906,8 +906,8 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
           entry.mounting.allowedSurfaces.contains(SurfacePlaneType.floor)
               ? SurfacePlaneType.floor
               : entry.mounting.allowedSurfaces.contains(
-                    SurfacePlaneType.ceiling,
-                  )
+                  SurfacePlaneType.ceiling,
+                )
                   ? SurfacePlaneType.ceiling
                   : null;
       if (targetType == null) continue;
