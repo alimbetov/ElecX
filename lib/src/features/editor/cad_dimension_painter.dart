@@ -87,8 +87,7 @@ abstract final class CadDimensionPainter {
     if (boxedLabel) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(box, const Radius.circular(3)),
-        Paint()
-          ..color = scheme.surface.withValues(alpha: 0.9 * alpha),
+        Paint()..color = scheme.surface.withValues(alpha: 0.9 * alpha),
       );
       canvas.drawRRect(
         RRect.fromRectAndRadius(box, const Radius.circular(3)),
