@@ -22,7 +22,9 @@ void main() {
     controller.p2.select(board.id);
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: ComponentConnectionActions(controller: controller)),
+        home: Scaffold(
+          body: ComponentConnectionActions(controller: controller),
+        ),
       ),
     );
     expect(find.textContaining(board.label), findsOneWidget);
@@ -49,7 +51,9 @@ void main() {
     controller.p2.select(board.id);
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: ComponentConnectionActions(controller: controller)),
+        home: Scaffold(
+          body: ComponentConnectionActions(controller: controller),
+        ),
       ),
     );
     await tester.tap(
@@ -71,10 +75,14 @@ void main() {
     });
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: ComponentConnectionActions(controller: controller)),
+        home: Scaffold(
+          body: ComponentConnectionActions(controller: controller),
+        ),
       ),
     );
-    expect(find.byKey(const ValueKey('component-connection-actions')),
-        findsNothing);
+    expect(
+      find.byKey(const ValueKey('component-connection-actions')),
+      findsNothing,
+    );
   });
 }
