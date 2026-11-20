@@ -622,7 +622,7 @@ class _DistanceHoldButton extends StatelessWidget {
                 tooltip: 'Distance · Удерживать размеры',
                 isSelected: held,
                 onPressed: _release,
-                icon: const Icon(Icons.social_distance_outlined, size: 20),
+                icon: const Icon(Icons.square_foot, size: 20),
                 style: IconButton.styleFrom(
                   minimumSize: Size(target, target),
                   maximumSize: Size(target, target),
