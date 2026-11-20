@@ -93,7 +93,8 @@ class ComponentConnectionActions extends StatelessWidget {
                       'строительный переход.',
                     ),
                     if (ports.isEmpty)
-                      const Text('У устройства нет доступных портов для кабеля.')
+                      const Text(
+                          'У устройства нет доступных портов для кабеля.')
                     else
                       Wrap(
                         spacing: 6,
@@ -101,7 +102,8 @@ class ComponentConnectionActions extends StatelessWidget {
                         children: [
                           for (final port in ports)
                             FilledButton.tonalIcon(
-                              key: ValueKey('component-connect-port-${port.id}'),
+                              key:
+                                  ValueKey('component-connect-port-${port.id}'),
                               onPressed: () {
                                 if (!controller
                                     .beginPortDrivenCableFromSelectedPort(
@@ -121,7 +123,7 @@ class ComponentConnectionActions extends StatelessWidget {
                       ),
                   ] else if (binding != null) ...[
                     Text(
-                      'Источник: ${sourceLabel ?? binding.componentId}'
+                      'Начало трассы: ${sourceLabel ?? binding.componentId}'
                       ' · порт ${binding.portId}',
                       key: const ValueKey('component-cable-source'),
                     ),
