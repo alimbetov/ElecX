@@ -6,6 +6,7 @@ import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 import 'manual_cable_draft_persistence.dart';
 import 'port_driven_cable_authoring.dart';
+import 'plan_port_pair_session.dart';
 import 'surface_transition_navigator.dart';
 
 /// Direct production entry points for placement and port-driven cable editing.
@@ -154,7 +155,7 @@ class ComponentConnectionActions extends StatelessWidget {
                         spacing: 6,
                         runSpacing: 4,
                         children: [
-                          for (final port in ports)
+                          for (final port in ports) ...[
                             FilledButton.tonalIcon(
                               key:
                                   ValueKey('component-connect-port-${port.id}'),
@@ -193,6 +194,7 @@ class ComponentConnectionActions extends StatelessWidget {
                               icon: const Icon(Icons.link),
                               label: Text('Соединить на плане · ${port.id}'),
                             ),
+                          ],
                         ],
                       ),
                   ] else if (binding != null) ...[
