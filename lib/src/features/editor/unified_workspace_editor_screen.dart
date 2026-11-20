@@ -1488,7 +1488,8 @@ class _DesktopWorkspace extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.all(EditorUiTokens.canvasInset),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(EditorUiTokens.panelRadius),
+                    borderRadius:
+                        BorderRadius.circular(EditorUiTokens.panelRadius),
                     child: canvas,
                   ),
                 ),
