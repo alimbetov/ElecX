@@ -6,8 +6,8 @@ import 'editor_controller.dart';
 import 'room_circuit_overview.dart';
 import 'room_circuit_panel.dart';
 
-/// Keeps circuit actions reachable when room semantics and warnings grow.
-/// The equipment catalog retains its own bounded scrolling viewport.
+/// Right-hand engineering context; the desktop equipment matrix lives
+/// separately above the canvas. Compact layouts may retain a catalog here.
 class EngineeringInspectorPanel extends StatefulWidget {
   const EngineeringInspectorPanel({
     required this.controller,
@@ -26,8 +26,6 @@ class EngineeringInspectorPanel extends StatefulWidget {
 }
 
 class _EngineeringInspectorPanelState extends State<EngineeringInspectorPanel> {
-  // Presentation only; switching projects must not change the engineering
-  // graph or mark the project dirty.
   bool _roomSemanticsExpanded = false;
 
   @override
@@ -57,13 +55,12 @@ class _EngineeringInspectorPanelState extends State<EngineeringInspectorPanel> {
                 key: const ValueKey('room-semantics-toggle'),
                 dense: true,
                 visualDensity: VisualDensity.compact,
-                leading:
-                    const Icon(Icons.meeting_room_outlined, size: 20),
+                leading: const Icon(Icons.meeting_room_outlined, size: 20),
                 title: const Text('Room Semantic'),
                 trailing: Icon(
                   _roomSemanticsExpanded
-                ? Icons.expand_less
-                : Icons.expand_more,
+                      ? Icons.expand_less
+                      : Icons.expand_more,
                 ),
                 onTap: () => setState(() {
                   _roomSemanticsExpanded = !_roomSemanticsExpanded;
@@ -77,6 +74,5 @@ class _EngineeringInspectorPanelState extends State<EngineeringInspectorPanel> {
             RoomCircuitPanel(controller: widget.controller),
           ],
         ),
-            );
-
+      );
 }
