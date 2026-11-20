@@ -1,0 +1,31 @@
+00:00 +0: loading /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/room_surface_navigator_production_wiring_test.dart
+00:00 +0: durable wall equipment is visible on its legacy canvas plane
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following assertion was thrown running a test:
+A SemanticsHandle was active at the end of the test.
+All SemanticsHandle instances must be disposed by calling dispose() on the SemanticsHandle.
+
+When the exception was thrown, this was the stack:
+#0      WidgetTester._verifySemanticsHandlesWereDisposed (package:flutter_test/src/widget_tester.dart:1074:7)
+#1      WidgetTester._endOfTestVerifications (package:flutter_test/src/widget_tester.dart:1063:5)
+#2      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1969:22)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+The test description was:
+  durable wall equipment is visible on its legacy canvas plane
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:01 +0 -1: durable wall equipment is visible on its legacy canvas plane [E]
+  Test failed. See exception logs above.
+  The test description was: durable wall equipment is visible on its legacy canvas plane
+  
+00:01 +0 -1: production navigator selects walls by stable BoundaryEdgeId
+00:01 +1 -1: mouse button and keyboard wall actions converge on stable edge identity
+00:01 +2 -1: canonical runtime capture carries BoundaryEdgeId and no wall ordinal
+00:02 +3 -1: collapse stays presentation-only and preserves canonical navigation
+00:02 +4 -1: canonical level-only context keeps Room Surface Navigator hidden
+00:02 +5 -1: Some tests failed.
+
+Failing tests:
+  /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/room_surface_navigator_production_wiring_test.dart: durable wall equipment is visible on its legacy canvas plane

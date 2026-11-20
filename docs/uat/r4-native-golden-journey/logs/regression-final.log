@@ -1,0 +1,29 @@
+00:00 +0: loading /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_p2_cable_overlay_widget_test.dart
+00:00 +0: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_cable_route_projector_test.dart: Wall vertical leg is a point and ceiling cable has plan geometry
+00:00 +1: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_cable_route_projector_test.dart: Wall vertical leg is a point and ceiling cable has plan geometry
+00:00 +2: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_cable_route_projector_test.dart: Wall vertical leg is a point and ceiling cable has plan geometry
+00:00 +3: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_cable_route_projector_test.dart: Wall vertical leg is a point and ceiling cable has plan geometry
+00:00 +4: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_cable_route_projector_test.dart: Wall vertical leg is a point and ceiling cable has plan geometry
+00:00 +5: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/cable_canvas_hit_testing_test.dart: three-point auto route exposes endpoint-adjacent segment handles
+00:00 +6: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_cable_route_projector_test.dart: independent room spans are not joined by an invented wall passage
+00:00 +7: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_cable_route_projector_test.dart: independent room spans are not joined by an invented wall passage
+00:00 +8: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/cable_canvas_hit_testing_test.dart: last segment drag inserts dogleg and keeps target endpoint fixed
+00:00 +9: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_cable_route_projector_test.dart: unqualified cross-room transition is rejected before projection
+00:00 +10: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_cable_route_projector_test.dart: unqualified cross-room transition is rejected before projection
+00:00 +11: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_cable_route_projector_test.dart: unknown/canonical-unmapped wall host is skipped, never guessed
+00:00 +12: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_cable_route_projector_test.dart: canonical wall uses exact current edge order and skips missing edge
+00:00 +13: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_p2_cable_overlay_widget_test.dart: real committed P2 cable appears on plan and respects layer
+00:00 +14: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_p2_cable_overlay_widget_test.dart: real committed P2 cable appears on plan and respects layer
+00:00 +15: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_p2_cable_overlay_widget_test.dart: real committed P2 cable appears on plan and respects layer
+00:00 +16: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_p2_cable_overlay_widget_test.dart: real committed P2 cable appears on plan and respects layer
+00:00 +17: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_p2_cable_overlay_widget_test.dart: real committed P2 cable appears on plan and respects layer
+00:00 +18: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_p2_cable_overlay_widget_test.dart: real committed P2 cable appears on plan and respects layer
+00:00 +19: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_p2_cable_overlay_widget_test.dart: real committed P2 cable appears on plan and respects layer
+00:00 +20: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_p2_cable_overlay_widget_test.dart: real committed P2 cable appears on plan and respects layer
+00:00 +21: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/room_surface_navigator_production_wiring_test.dart: durable wall equipment is visible on its legacy canvas plane
+00:01 +22: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/room_surface_navigator_production_wiring_test.dart: production navigator selects walls by stable BoundaryEdgeId
+00:02 +23: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/room_surface_navigator_production_wiring_test.dart: mouse button and keyboard wall actions converge on stable edge identity
+00:02 +24: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/room_surface_navigator_production_wiring_test.dart: canonical runtime capture carries BoundaryEdgeId and no wall ordinal
+00:02 +25: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/room_surface_navigator_production_wiring_test.dart: collapse stays presentation-only and preserves canonical navigation
+00:03 +26: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/room_surface_navigator_production_wiring_test.dart: canonical level-only context keeps Room Surface Navigator hidden
+00:03 +27: All tests passed!

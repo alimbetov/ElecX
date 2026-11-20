@@ -1,0 +1,634 @@
+{
+  "schemaVersion": 9,
+  "metadata": {
+    "projectId": "project-hocbb221t2-981a09ghf2v0",
+    "projectName": "Аудит 20261120",
+    "createdAt": "2026-11-20T16:08:04.299686Z",
+    "updatedAt": "2026-11-20T16:11:44.599046Z"
+  },
+  "building": {
+    "building": {
+      "id": "building-project-hocbb221t2-981a09ghf2v0",
+      "name": "Аудит 20261120",
+      "levels": [
+        {
+          "id": "level-project-hocbb221t2-981a09ghf2v0-1",
+          "name": "Этаж 1",
+          "elevationMm": 0,
+          "spaces": [
+            {
+              "id": "elecx-canonical-space-v1:db9325b8-2079-4a3e-b49f-1d5d1140c0b1",
+              "name": "Гостиная",
+              "type": "room",
+              "boundary": [
+                {
+                  "x": 0,
+                  "y": 0
+                },
+                {
+                  "x": 6000,
+                  "y": 0
+                },
+                {
+                  "x": 6000,
+                  "y": 4500
+                },
+                {
+                  "x": 0,
+                  "y": 4500
+                }
+              ],
+              "referenceFrame": {
+                "origin": {
+                  "x": 3000,
+                  "y": 2250
+                },
+                "rotationRadians": 0.0
+              },
+              "grid": {
+                "minorStepMm": 100,
+                "majorEvery": 10
+              },
+              "wallProfiles": {}
+            },
+            {
+              "id": "elecx-canonical-space-v1:b57faefe-9e5d-4c2e-8651-391572d75041",
+              "name": "Кухня",
+              "type": "room",
+              "boundary": [
+                {
+                  "x": 6000,
+                  "y": 0
+                },
+                {
+                  "x": 9600,
+                  "y": 0
+                },
+                {
+                  "x": 9600,
+                  "y": 3000
+                },
+                {
+                  "x": 6000,
+                  "y": 3000
+                }
+              ],
+              "referenceFrame": {
+                "origin": {
+                  "x": 7800,
+                  "y": 1500
+                },
+                "rotationRadians": 0.0
+              },
+              "grid": {
+                "minorStepMm": 100,
+                "majorEvery": 10
+              },
+              "wallProfiles": {}
+            },
+            {
+              "id": "elecx-canonical-space-v1:c8b20ea9-9627-4b94-b0eb-5b05fe16182a",
+              "name": "Спальня",
+              "type": "room",
+              "boundary": [
+                {
+                  "x": 0,
+                  "y": 4500
+                },
+                {
+                  "x": 4200,
+                  "y": 4500
+                },
+                {
+                  "x": 4200,
+                  "y": 8100
+                },
+                {
+                  "x": 0,
+                  "y": 8100
+                }
+              ],
+              "referenceFrame": {
+                "origin": {
+                  "x": 2100,
+                  "y": 6300
+                },
+                "rotationRadians": 0.0
+              },
+              "grid": {
+                "minorStepMm": 100,
+                "majorEvery": 10
+              },
+              "wallProfiles": {}
+            },
+            {
+              "id": "elecx-canonical-space-v1:2a6faedd-ce65-4989-b534-394cc3312768",
+              "name": "Санузел",
+              "type": "room",
+              "boundary": [
+                {
+                  "x": 4200,
+                  "y": 4500
+                },
+                {
+                  "x": 6600,
+                  "y": 4500
+                },
+                {
+                  "x": 6600,
+                  "y": 6700
+                },
+                {
+                  "x": 4200,
+                  "y": 6700
+                }
+              ],
+              "referenceFrame": {
+                "origin": {
+                  "x": 5400,
+                  "y": 5600
+                },
+                "rotationRadians": 0.0
+              },
+              "grid": {
+                "minorStepMm": 100,
+                "majorEvery": 10
+              },
+              "wallProfiles": {}
+            }
+          ]
+        }
+      ]
+    },
+    "levels": [
+      {
+        "level": {
+          "id": "level-project-hocbb221t2-981a09ghf2v0-1",
+          "name": "Этаж 1",
+          "elevationMm": 0,
+          "spaces": [
+            {
+              "id": "elecx-canonical-space-v1:db9325b8-2079-4a3e-b49f-1d5d1140c0b1",
+              "name": "Гостиная",
+              "type": "room",
+              "boundary": [
+                {
+                  "x": 0,
+                  "y": 0
+                },
+                {
+                  "x": 6000,
+                  "y": 0
+                },
+                {
+                  "x": 6000,
+                  "y": 4500
+                },
+                {
+                  "x": 0,
+                  "y": 4500
+                }
+              ],
+              "referenceFrame": {
+                "origin": {
+                  "x": 3000,
+                  "y": 2250
+                },
+                "rotationRadians": 0.0
+              },
+              "grid": {
+                "minorStepMm": 100,
+                "majorEvery": 10
+              },
+              "wallProfiles": {}
+            },
+            {
+              "id": "elecx-canonical-space-v1:b57faefe-9e5d-4c2e-8651-391572d75041",
+              "name": "Кухня",
+              "type": "room",
+              "boundary": [
+                {
+                  "x": 6000,
+                  "y": 0
+                },
+                {
+                  "x": 9600,
+                  "y": 0
+                },
+                {
+                  "x": 9600,
+                  "y": 3000
+                },
+                {
+                  "x": 6000,
+                  "y": 3000
+                }
+              ],
+              "referenceFrame": {
+                "origin": {
+                  "x": 7800,
+                  "y": 1500
+                },
+                "rotationRadians": 0.0
+              },
+              "grid": {
+                "minorStepMm": 100,
+                "majorEvery": 10
+              },
+              "wallProfiles": {}
+            },
+            {
+              "id": "elecx-canonical-space-v1:c8b20ea9-9627-4b94-b0eb-5b05fe16182a",
+              "name": "Спальня",
+              "type": "room",
+              "boundary": [
+                {
+                  "x": 0,
+                  "y": 4500
+                },
+                {
+                  "x": 4200,
+                  "y": 4500
+                },
+                {
+                  "x": 4200,
+                  "y": 8100
+                },
+                {
+                  "x": 0,
+                  "y": 8100
+                }
+              ],
+              "referenceFrame": {
+                "origin": {
+                  "x": 2100,
+                  "y": 6300
+                },
+                "rotationRadians": 0.0
+              },
+              "grid": {
+                "minorStepMm": 100,
+                "majorEvery": 10
+              },
+              "wallProfiles": {}
+            },
+            {
+              "id": "elecx-canonical-space-v1:2a6faedd-ce65-4989-b534-394cc3312768",
+              "name": "Санузел",
+              "type": "room",
+              "boundary": [
+                {
+                  "x": 4200,
+                  "y": 4500
+                },
+                {
+                  "x": 6600,
+                  "y": 4500
+                },
+                {
+                  "x": 6600,
+                  "y": 6700
+                },
+                {
+                  "x": 4200,
+                  "y": 6700
+                }
+              ],
+              "referenceFrame": {
+                "origin": {
+                  "x": 5400,
+                  "y": 5600
+                },
+                "rotationRadians": 0.0
+              },
+              "grid": {
+                "minorStepMm": 100,
+                "majorEvery": 10
+              },
+              "wallProfiles": {}
+            }
+          ]
+        },
+        "levelNumber": 1,
+        "kind": "residential",
+        "floorToFloorHeightMm": 3000,
+        "zones": []
+      }
+    ],
+    "verticalCores": []
+  },
+  "canonicalSlabs": {},
+  "site": {
+    "site": {
+      "id": "site-project-hocbb221t2-981a09ghf2v0",
+      "name": "Аудит 20261120",
+      "buildings": [
+        {
+          "id": "building-project-hocbb221t2-981a09ghf2v0",
+          "name": "Аудит 20261120",
+          "levels": [
+            {
+              "id": "level-project-hocbb221t2-981a09ghf2v0-1",
+              "name": "Этаж 1",
+              "elevationMm": 0,
+              "spaces": [
+                {
+                  "id": "elecx-canonical-space-v1:db9325b8-2079-4a3e-b49f-1d5d1140c0b1",
+                  "name": "Гостиная",
+                  "type": "room",
+                  "boundary": [
+                    {
+                      "x": 0,
+                      "y": 0
+                    },
+                    {
+                      "x": 6000,
+                      "y": 0
+                    },
+                    {
+                      "x": 6000,
+                      "y": 4500
+                    },
+                    {
+                      "x": 0,
+                      "y": 4500
+                    }
+                  ],
+                  "referenceFrame": {
+                    "origin": {
+                      "x": 3000,
+                      "y": 2250
+                    },
+                    "rotationRadians": 0.0
+                  },
+                  "grid": {
+                    "minorStepMm": 100,
+                    "majorEvery": 10
+                  },
+                  "wallProfiles": {}
+                },
+                {
+                  "id": "elecx-canonical-space-v1:b57faefe-9e5d-4c2e-8651-391572d75041",
+                  "name": "Кухня",
+                  "type": "room",
+                  "boundary": [
+                    {
+                      "x": 6000,
+                      "y": 0
+                    },
+                    {
+                      "x": 9600,
+                      "y": 0
+                    },
+                    {
+                      "x": 9600,
+                      "y": 3000
+                    },
+                    {
+                      "x": 6000,
+                      "y": 3000
+                    }
+                  ],
+                  "referenceFrame": {
+                    "origin": {
+                      "x": 7800,
+                      "y": 1500
+                    },
+                    "rotationRadians": 0.0
+                  },
+                  "grid": {
+                    "minorStepMm": 100,
+                    "majorEvery": 10
+                  },
+                  "wallProfiles": {}
+                },
+                {
+                  "id": "elecx-canonical-space-v1:c8b20ea9-9627-4b94-b0eb-5b05fe16182a",
+                  "name": "Спальня",
+                  "type": "room",
+                  "boundary": [
+                    {
+                      "x": 0,
+                      "y": 4500
+                    },
+                    {
+                      "x": 4200,
+                      "y": 4500
+                    },
+                    {
+                      "x": 4200,
+                      "y": 8100
+                    },
+                    {
+                      "x": 0,
+                      "y": 8100
+                    }
+                  ],
+                  "referenceFrame": {
+                    "origin": {
+                      "x": 2100,
+                      "y": 6300
+                    },
+                    "rotationRadians": 0.0
+                  },
+                  "grid": {
+                    "minorStepMm": 100,
+                    "majorEvery": 10
+                  },
+                  "wallProfiles": {}
+                },
+                {
+                  "id": "elecx-canonical-space-v1:2a6faedd-ce65-4989-b534-394cc3312768",
+                  "name": "Санузел",
+                  "type": "room",
+                  "boundary": [
+                    {
+                      "x": 4200,
+                      "y": 4500
+                    },
+                    {
+                      "x": 6600,
+                      "y": 4500
+                    },
+                    {
+                      "x": 6600,
+                      "y": 6700
+                    },
+                    {
+                      "x": 4200,
+                      "y": 6700
+                    }
+                  ],
+                  "referenceFrame": {
+                    "origin": {
+                      "x": 5400,
+                      "y": 5600
+                    },
+                    "rotationRadians": 0.0
+                  },
+                  "grid": {
+                    "minorStepMm": 100,
+                    "majorEvery": 10
+                  },
+                  "wallProfiles": {}
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "projectNorthDegrees": 0.0,
+      "solarContext": null
+    },
+    "outdoorZones": [],
+    "connections": []
+  },
+  "workspace": {
+    "context": "buildingLevel",
+    "activeLevelNumber": 1,
+    "selectedZoneId": null,
+    "activeOutdoorZoneId": null,
+    "openingsByLevel": {
+      "1": []
+    },
+    "resume": {
+      "selectedSpaceId": "elecx-canonical-space-v1:db9325b8-2079-4a3e-b49f-1d5d1140c0b1",
+      "selectedOpeningId": null,
+      "activeSurface": null,
+      "canonicalSurface": {
+        "spaceId": "db9325b8-2079-4a3e-b49f-1d5d1140c0b1",
+        "kind": "wall",
+        "boundaryEdgeId": "f03adc16-3b3c-4a43-a9d4-8a813d137c90"
+      },
+      "viewMode": "plan",
+      "snapEnabled": true,
+      "dimensionsVisible": true,
+      "floorGridMm": 500,
+      "zoom": 1.0,
+      "roomSequence": 1,
+      "openingSequence": 1
+    }
+  },
+  "p2": {
+    "components": [
+      {
+        "id": "component-1-socket-general",
+        "type": "socketOutlet",
+        "componentTypeId": "power.socket.general",
+        "surface": {
+          "spaceId": "elecx-canonical-space-v1:db9325b8-2079-4a3e-b49f-1d5d1140c0b1",
+          "type": "wall",
+          "wallIndex": 0,
+          "boundaryEdgeId": null
+        },
+        "position": {
+          "xMm": 4200,
+          "yMm": 800
+        },
+        "label": "Розетка 1",
+        "rotationDegrees": 0,
+        "ratedPowerW": null,
+        "voltageV": 230,
+        "ports": [
+          {
+            "id": "power-in",
+            "kind": "powerIn"
+          },
+          {
+            "id": "earth",
+            "kind": "earth"
+          }
+        ]
+      },
+      {
+        "id": "component-2-db-general",
+        "type": "distributionBoard",
+        "componentTypeId": "power.distribution-board.general",
+        "surface": {
+          "spaceId": "elecx-canonical-space-v1:db9325b8-2079-4a3e-b49f-1d5d1140c0b1",
+          "type": "wall",
+          "wallIndex": 0,
+          "boundaryEdgeId": null
+        },
+        "position": {
+          "xMm": 3000,
+          "yMm": 1500
+        },
+        "label": "Распределительный щит 2",
+        "rotationDegrees": 0,
+        "ratedPowerW": null,
+        "voltageV": 230,
+        "ports": [
+          {
+            "id": "power-out",
+            "kind": "powerOut"
+          },
+          {
+            "id": "earth",
+            "kind": "earth"
+          }
+        ]
+      }
+    ],
+    "routes": [
+      {
+        "id": "route-1",
+        "source": {
+          "componentId": "component-2-db-general",
+          "portId": "power-out"
+        },
+        "target": {
+          "componentId": "component-1-socket-general",
+          "portId": "power-in"
+        },
+        "segments": [
+          {
+            "surface": {
+              "spaceId": "elecx-canonical-space-v1:db9325b8-2079-4a3e-b49f-1d5d1140c0b1",
+              "type": "wall",
+              "wallIndex": 0,
+              "boundaryEdgeId": null
+            },
+            "points": [
+              {
+                "xMm": 3000,
+                "yMm": 1500
+              },
+              {
+                "xMm": 3000,
+                "yMm": 1100
+              },
+              {
+                "xMm": 4200,
+                "yMm": 1100
+              },
+              {
+                "xMm": 4200,
+                "yMm": 800
+              }
+            ],
+            "anchorIds": []
+          }
+        ],
+        "penetrations": [],
+        "verticalCoreLegs": [],
+        "cableType": null,
+        "reservePercent": 5,
+        "medium": {
+          "id": "other.generic",
+          "family": "other",
+          "flowVisual": "neutralPulse",
+          "bidirectional": false,
+          "protocol": null
+        }
+      }
+    ],
+    "selection": {
+      "ids": [],
+      "primaryId": null
+    },
+    "routeConstraints": {},
+    "circuitBundles": [],
+    "sizingEvidenceByRoute": {}
+  }
+}

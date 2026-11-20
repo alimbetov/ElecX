@@ -1,0 +1,49 @@
+00:00 +0: loading /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_p2_cable_overlay_widget_test.dart
+00:00 +0: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/cable_canvas_hit_testing_test.dart: diagonal manual segment can become an editable orthogonal dogleg
+00:00 +0 -1: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/cable_canvas_hit_testing_test.dart: diagonal manual segment can become an editable orthogonal dogleg [E]
+  Expected: contains <Instance of 'SurfacePointMm'>
+    Actual: [Instance of 'SurfacePointMm', Instance of 'SurfacePointMm']
+     Which: does not contain <Instance of 'SurfacePointMm'>
+  
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 473:18  expect
+  test/cable_canvas_hit_testing_test.dart 15:5        main.<fn>
+  
+00:00 +0 -1: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/cable_canvas_hit_testing_test.dart: endpoint handles outrank vertices and segments
+00:00 +1 -1: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/cable_canvas_hit_testing_test.dart: interior vertex can be selected
+00:00 +2 -1: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/cable_canvas_hit_testing_test.dart: vertex drag creates a movable orthogonal dogleg
+00:00 +3 -1: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/cable_canvas_hit_testing_test.dart: three-point auto route exposes endpoint-adjacent segment handles
+00:00 +4 -1: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/cable_canvas_hit_testing_test.dart: first segment drag inserts dogleg and keeps source endpoint fixed
+00:00 +5 -1: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/cable_canvas_hit_testing_test.dart: last segment drag inserts dogleg and keeps target endpoint fixed
+00:00 +6 -1: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/cable_canvas_hit_testing_test.dart: interior segment drag keeps orthogonal run parallel
+00:00 +7 -1: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_p2_cable_overlay_widget_test.dart: real committed P2 cable appears on plan and respects layer
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+Expected: exactly one matching candidate
+  Actual: _KeyWidgetFinder:<Found 0 widgets with key [<'plan-component-component-1'>]: []>
+   Which: means none were found but one was expected
+
+When the exception was thrown, this was the stack:
+#4      main.<anonymous closure> (file:///Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_p2_cable_overlay_widget_test.dart:61:5)
+<asynchronous suspension>
+#5      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#6      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1953:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+This was caught by the test expectation on the following line:
+  file:///Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_p2_cable_overlay_widget_test.dart line 61
+The test description was:
+  real committed P2 cable appears on plan and respects layer
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:00 +7 -2: /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_p2_cable_overlay_widget_test.dart: real committed P2 cable appears on plan and respects layer [E]
+  Test failed. See exception logs above.
+  The test description was: real committed P2 cable appears on plan and respects layer
+  
+00:00 +7 -2: Some tests failed.
+
+Failing tests:
+  /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/cable_canvas_hit_testing_test.dart: diagonal manual segment can become an editable orthogonal dogleg
+  /Users/ruslanalimbetov/Documents/electra/ElecX-desktop-uat/test/plan_p2_cable_overlay_widget_test.dart: real committed P2 cable appears on plan and respects layer

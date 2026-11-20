@@ -1,0 +1,168 @@
+Window: "elecx", App: elecx.
+0 standard window elecx, Secondary Actions: Raise
+	1 container elecx
+		2 container (settable) Уровень 1 · Гостиная
+PROJECT
+2.5D: click surface · keyboard: ←/→ walls, ↑ ceiling, ↓ floor
+SELECT // READY
+PLAN
+SNAP ON
+GRID 100
+			3 container (settable)
+				4 button (settable)
+				5 container (settable) ElecX · Новый проект4. 20261113 · 1
+				6 button (settable)
+				7 text (settable) Saved
+				8 button (settable)
+				9 button (settable)
+				10 button (settable) Compass
+					11 button (settable)
+				12 button (settable)
+				13 button (settable)
+				14 button (settable)
+			15 container (settable)
+				16 button (settable)
+				17 button (settable)
+				18 button (settable)
+				19 button (settable)
+				20 button (settable)
+				21 button (settable)
+				22 button (settable)
+				23 button (settable)
+				24 button (settable)
+				25 button (settable)
+				26 button (settable)
+				27 button (settable)
+			28 container (settable)
+				29 button (settable) Новый проект4. 20261113
+				30 button (settable) Новый проект4. 20261113
+				31 button (settable) Этаж 1
+				32 button (settable) Гостиная
+			33 container (settable)
+				34 container (settable) Новый проект4. 20261113
+					35 button (settable)
+					36 button (settable)
+				37 button (settable) Новый проект4. 20261113
+					38 button (settable)
+				39 button (settable) Этаж 1
+					40 button (settable)
+				41 button (settable) Гостиная
+				42 button (settable) Коридор
+				43 button (settable) Кухня
+				44 button (settable) Спальня
+			45 button (settable) + Building
+			46 button (settable) + Level
+			47 button (settable) + Room
+			48 container (settable) ROOM SURFACES
+Гостиная · 4.00 × 3.50 m
+Current surface: Plan
+				49 button (settable)
+			50 container (settable) Room surface preview, Plan, canonical room 2179d5cf-4ff8-43f6-8b26-0751d07df48e
+			51 button (settable) Plan, current surface
+				52 button (settable) Plan
+			53 button (settable) Floor
+				54 button (settable) Floor
+			55 button (settable) Ceiling
+				56 button (settable) Ceiling
+			57 container (settable)
+				58 button (settable) Wall 1
+					59 button (settable) W1 · 4.00m
+				60 button (settable) Wall 2
+					61 button (settable) W2 · 3.50m
+				62 button (settable) Wall 3
+					63 button (settable) W3 · 4.00m
+				64 button (settable) Wall 4
+					65 button (settable) W4 · 3.50m
+			66 button (settable)
+			67 button (settable)
+			68 text (settable) P2 трассы (не P11) · 9 сегм. · неподтверждённые поверхности: 24
+			69 text (settable) Select: ● вершина · ■ стена · проём
+			70 container (settable) detail · 15.1 mm/px
+				71 button (settable)
+				72 button (settable)
+				73 button (settable)
+				74 button (settable)
+			75 container (settable) Компоненты
+				76 button (settable)
+			77 container (settable)
+				78 container (settable) Room semantics inspector
+					79 container (settable)
+						80 text (settable) ROOM SEMANTICS
+						81 text (settable) Гостиная
+						82 button (settable) Usage
+Unknown
+						83 text (settable) Openings
+						84 text (settable) No canonical openings
+						85 text (settable) Adjacent spaces
+						86 text (settable) No canonical adjacency
+						87 text (settable) Classifications
+						88 text (settable) No overlay classifications
+				89 text (settable) Группы комнаты · 3
+ДАННЫЕ 3
+				90 text (settable) Электрическая группа
+Выберите нагрузку, чтобы подключить её к щиту.
+			91 container (settable)
+				92 text (settable) EQUIPMENT MATRIX
+14
+				93 text field (settable)
+				94 container (settable)
+					95 button (settable) Все
+					96 button (settable) Силовые
+					97 button (settable) Освещение
+					98 button (settable) Данные
+					99 button (settable) CCTV
+					100 button (settable) СКУД
+					101 button (settable) Пожарные
+					102 button (settable) Автоматика
+				103 container (settable)
+					104 button (settable) Плоскость
+					105 button (settable) Повтор
+				106 container (settable) РОЗЕТКИ
+1
+ВЫКЛЮЧАТЕЛИ
+1
+СВЕТИЛЬНИКИ
+1
+ПРИВОДЫ
+1
+РАСПРЕДЕЛИТЕЛЬНЫЕ КОРОБКИ
+1
+ИСТОЧНИКИ ПИТАНИЯ
+1
+ЩИТЫ
+1
+КАМЕРЫ
+1
+LAN / СКС
+1
+WI-FI / POE
+1
+ИЗВЕЩАТЕЛИ
+1
+СЧИТЫВАТЕЛИ
+1
+КОНТАКТЫ / ДАТЧИКИ
+1
+ПРОЧЕЕ
+1
+					107 text (settable) Розетка
+SOCKET-GENERAL · POWERAC
+стена · H 300 mm
+					108 text (settable) Выключатель
+SWITCH-GENERAL · LIGHTING
+стена · H 900 mm
+					109 text (settable) Светильник
+LIGHT-GENERAL · LIGHTING
+потолок, стена
+	110 close button
+	111 full screen button Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
+	112 minimize button
+	113 text elecx
+114 menu bar
+	115 elecx
+	116 Edit
+	117 View
+	118 Window
+	119 Help
+
+The focused UI element is 1 container elecx

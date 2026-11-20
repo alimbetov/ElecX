@@ -1,0 +1,38 @@
+Launching lib/main.dart on macOS in debug mode...
+Building macOS application...                                   
+✓ Built build/macos/Build/Products/Debug/elecx.app
+[IMPORTANT:flutter/shell/platform/embedder/embedder_surface_metal_impeller.mm(53)] Using the Impeller rendering backend (MetalSDF).
+Failed to foreground app; open returned 1
+Syncing files to device macOS...                                   231ms
+
+Flutter run key commands.
+r Hot reload. 🔥🔥🔥
+R Hot restart.
+h List all available interactive commands.
+d Detach (terminate "flutter run" but leave application running).
+c Clear the screen
+q Quit (terminate the application on the device).
+
+A Dart VM Service on macOS is available at: http://127.0.0.1:60774/LW2PAGE_vZM=/
+The Flutter DevTools debugger and profiler on macOS is available at: http://127.0.0.1:60774/LW2PAGE_vZM=/devtools/?uri=ws://127.0.0.1:60774/LW2PAGE_vZM=/ws
+
+Performing hot reload...                                        
+Reloaded 11 of 1316 libraries in 3,705ms (compile: 153 ms, reload: 1827 ms, reassemble: 1680 ms).
+
+Performing hot reload...                                        
+lib/src/features/editor/surface_canvas.dart:1013:72: Error: The argument type 'RoomSurfaceRef?' can't be assigned to the parameter type 'RoomSurfaceRef'.
+ - 'RoomSurfaceRef' is from 'package:elecx/src/domain/surfaces.dart' ('lib/src/domain/surfaces.dart').
+        if (CableSurfaceProjection.same(controller, component.surface, surface))
+                                                                       ^
+lib/src/features/editor/surface_canvas.dart:2602:71: Error: The argument type 'RoomSurfaceRef?' can't be assigned to the parameter type 'RoomSurfaceRef'.
+ - 'RoomSurfaceRef' is from 'package:elecx/src/domain/surfaces.dart' ('lib/src/domain/surfaces.dart').
+      if (!CableSurfaceProjection.same(controller, component.surface, surface))
+                                                                      ^
+lib/src/features/editor/surface_canvas.dart:2613:51: Error: The argument type 'RoomSurfaceRef?' can't be assigned to the parameter type 'RoomSurfaceRef'.
+ - 'RoomSurfaceRef' is from 'package:elecx/src/domain/surfaces.dart' ('lib/src/domain/surfaces.dart').
+            controller, transformPreview.surface, surface)) {
+                                                  ^
+Try again after fixing the above error(s).
+
+Performing hot reload...                                        
+Reloaded 86 of 1317 libraries in 1,422ms (compile: 631 ms, reload: 337 ms, reassemble: 403 ms).

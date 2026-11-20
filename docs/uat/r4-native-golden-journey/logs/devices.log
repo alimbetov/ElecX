@@ -1,0 +1,12 @@
+Found 3 connected devices:
+  iPhone 16e (mobile) • F14C5499-5869-4936-82BC-42C4722A6D60 • ios            • com.apple.CoreSimulator.SimRuntime.iOS-26-3 (simulator)
+  macOS (desktop)     • macos                                • darwin-arm64   • macOS 15.6 24G84 darwin-arm64
+  Chrome (web)        • chrome                               • web-javascript • Google Chrome 158.0.8127.36
+
+Checking for wireless devices...
+
+No wireless devices were found.
+
+Run "flutter emulators" to list and start any available device emulators.
+
+If you expected another device to be detected, please run "flutter doctor" to diagnose potential issues. You may also try increasing the time to wait for connected devices with the "--device-timeout" flag. Visit https://flutter.dev/setup/ for troubleshooting tips.
