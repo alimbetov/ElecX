@@ -1010,9 +1010,12 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
         .firstOrNull;
     if (space == null) return const [];
     final preview = controller.componentTransform.previewState;
-    final effective = preview != null &&
-            preview.componentId == component.id &&
-            preview.isValid
+    if (preview != null &&
+        preview.componentId == component.id &&
+        !preview.isValid) {
+      return const [];
+    }
+    final effective = preview != null && preview.componentId == component.id
         ? component.copyWith(position: preview.position)
         : component;
     final anchor = PlanComponentMoveProjection.planPointFor(
@@ -1307,7 +1310,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                 selectionId: controller.tool == EditorTool.select
                     ? controller.p2.selectedComponent?.id
                     : null,
-                sceneId: controller.level.id,
+                sceneId: '${identityHashCode(controller)}:${controller.level.id}',
                 guides: _dynamicWallGuides(boundaryEdgeOrder),
                 camera: _camera,
                 viewport: _size,
