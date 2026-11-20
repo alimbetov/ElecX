@@ -1331,7 +1331,8 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                     ? controller.p2.selectedComponent?.id
                     : null,
                 sceneId:
-                    '${identityHashCode(controller)}:${controller.level.id}',
+                    '${identityHashCode(controller)}:${controller.level.id}:'
+                    '${controller.selectedSpaceId}',
                 guides: _dynamicWallGuides(boundaryEdgeOrder),
                 camera: _camera,
                 viewport: _size,
