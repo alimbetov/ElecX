@@ -881,8 +881,19 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
             if (!wall.profile.containsPoint(position.xMm, position.yMm)) {
               continue;
             }
+            final wallOrdinal = wall.ref.boundaryEdgeId == null
+                ? wall.ref.wallIndex
+                : ordered?.indexOf(wall.ref.boundaryEdgeId!);
             final blockedByOpening = controller.openings.any((opening) {
-              if (opening.hostWall != wall.ref) return false;
+              final host = opening.hostWall;
+              if (host.spaceId != space.id) return false;
+              final sameWall = host == wall.ref ||
+                  (wall.ref.boundaryEdgeId != null &&
+                      host.boundaryEdgeId == wall.ref.boundaryEdgeId) ||
+                  (wallOrdinal != null &&
+                      wallOrdinal >= 0 &&
+                      host.wallIndex == wallOrdinal);
+              if (!sameWall) return false;
               return position.xMm > opening.offsetFromStartMm &&
                   position.xMm < opening.endOffsetMm &&
                   position.yMm > opening.sillHeightMm &&
