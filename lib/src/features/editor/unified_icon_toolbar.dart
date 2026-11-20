@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../domain/component_catalog_v2.dart';
 import '../../domain/engineering_graph.dart';
@@ -166,6 +167,8 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
         onPressed: () =>
             controller.setDimensionsVisible(!controller.dimensionsVisible),
       ),
+      if (controller.viewMode == EditorViewMode.plan)
+        _DistanceHoldButton(controller: controller, target: _target),
       const _ToolbarDivider(),
       _iconButton(
         context,
@@ -573,3 +576,63 @@ IconData _catalogIcon(EngineeringSystemClass systemClass) =>
       EngineeringSystemClass.dryContact => Icons.sensors_outlined,
       EngineeringSystemClass.custom => Icons.add_box_outlined,
     };
+
+/// Momentary hold, never a persistent dimensions toggle.
+class _DistanceHoldButton extends StatelessWidget {
+  const _DistanceHoldButton({
+    required this.controller,
+    required this.target,
+  });
+
+  final EditorController controller;
+  final double target;
+
+  void _release() {
+    if (controller.distanceGuideHeld.value) {
+      controller.distanceGuideHeld.value = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<bool>(
+        valueListenable: controller.distanceGuideHeld,
+        builder: (context, held, _) => Focus(
+          onFocusChange: (focused) {
+            if (!focused) _release();
+          },
+          onKeyEvent: (node, event) {
+            if (event.logicalKey != LogicalKeyboardKey.space) {
+              return KeyEventResult.ignored;
+            }
+            if (event is KeyDownEvent) {
+              controller.distanceGuideHeld.value = true;
+            } else if (event is KeyUpEvent) {
+              _release();
+            }
+            return KeyEventResult.handled;
+          },
+          child: Listener(
+            onPointerDown: (_) => controller.distanceGuideHeld.value = true,
+            onPointerUp: (_) => _release(),
+            onPointerCancel: (_) => _release(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 1),
+              child: IconButton.filledTonal(
+                key: const ValueKey('distance-hold-button'),
+                tooltip: 'Distance · Удерживать размеры',
+                isSelected: held,
+                onPressed: _release,
+                icon: const Icon(Icons.social_distance_outlined, size: 20),
+                style: IconButton.styleFrom(
+                  minimumSize: Size(target, target),
+                  maximumSize: Size(target, target),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(7),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+}
