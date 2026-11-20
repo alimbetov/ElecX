@@ -428,8 +428,8 @@ class _LayerMenuButton extends StatelessWidget {
       onPressed: () => _showLayers(context),
       icon: const Icon(Icons.layers_outlined, size: 20),
       style: IconButton.styleFrom(
-        minimumSize: Size(widget.target, widget.target),
-        maximumSize: Size(widget.target, widget.target),
+        minimumSize: Size(target, target),
+        maximumSize: Size(target, target),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
         backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
       ),
