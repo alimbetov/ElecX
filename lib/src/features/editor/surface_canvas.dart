@@ -535,15 +535,18 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
     }
   }
 
-  void _updateEngineeringHover(Offset viewportPoint, _SurfaceProjection projection) {
+  void _updateEngineeringHover(
+      Offset viewportPoint, _SurfaceProjection projection) {
     final canShow = controller.tool == EditorTool.select &&
         controller.p2.placementType == null &&
         !controller.boundaryEditing.active &&
         !controller.componentTransform.active &&
         !controller.cableRouteEdit.active &&
         !controller.cableEndpointTransform.active &&
-        _dragComponentId == null && _cableDragHit == null &&
-        _panAnchor == null && _activePointers.isEmpty;
+        _dragComponentId == null &&
+        _cableDragHit == null &&
+        _panAnchor == null &&
+        _activePointers.isEmpty;
     final raw = canShow ? projection.viewportToSurface(viewportPoint) : null;
     final candidate = raw == null ? null : _componentAt(raw, projection);
     if (_hoverComponentId != candidate?.id && mounted) {
@@ -571,7 +574,8 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
     }
     for (final component in controller.p2.components) {
       if (component.id != id ||
-          !CableSurfaceProjection.same(controller, component.surface, controller.activeSurface!)) {
+          !CableSurfaceProjection.same(
+              controller, component.surface, controller.activeSurface!)) {
         continue;
       }
       return EngineeringHoverInfo(
@@ -1323,11 +1327,11 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
               ),
             ),
             Positioned.fill(
-                child: EngineeringHoverCallout(
-                  target: _engineeringHoverInfo(projection),
-                  viewportSize: _size,
-                ),
+              child: EngineeringHoverCallout(
+                target: _engineeringHoverInfo(projection),
+                viewportSize: _size,
               ),
+            ),
             if (_marqueeRect case final rect?)
               Positioned(
                 left: rect.left,
