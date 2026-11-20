@@ -18,7 +18,7 @@ void main() {
       controller.disposeP2State();
       controller.dispose();
     });
-    controller.showWall(0);
+    controller.showWall(1);
     final wall = RoomSurfaceRef.wall('room-101', 1);
     final board = controller.p2.placeComponent(
       type: ElectricalComponentType.distributionBoard,
