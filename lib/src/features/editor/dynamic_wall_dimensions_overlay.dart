@@ -56,13 +56,17 @@ class _DynamicWallDimensionsOverlayState
   }
 
   void _onOpacityStatus(AnimationStatus status) {
-    if (status == AnimationStatus.dismissed &&
-        !_hasSelection &&
-        !widget.held.value &&
-        _lastValid.isNotEmpty &&
-        mounted) {
+    if (status != AnimationStatus.dismissed) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          _hasSelection ||
+          widget.held.value ||
+          _lastValid.isEmpty ||
+          _opacity.value != 0) {
+        return;
+      }
       setState(() => _lastValid = const []);
-    }
+    });
   }
 
   void _heldChanged() {
