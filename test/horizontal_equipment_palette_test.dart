@@ -141,5 +141,4 @@ void main() {
     expect(controller.p2.components.length, countBefore);
     expect(tester.takeException(), isNull);
   });
-
 }
