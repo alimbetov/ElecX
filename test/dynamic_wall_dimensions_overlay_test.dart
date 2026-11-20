@@ -46,15 +46,15 @@ void main() {
       ),
     );
 
-    expect(find.byKey(const ValueKey('dynamic-wall-dimensions')),
-        findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('dynamic-wall-dimensions')), findsOneWidget);
     held.value = true;
     await tester.pump();
     update(() => selected = null);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1100));
-    expect(find.byKey(const ValueKey('dynamic-wall-dimensions')),
-        findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('dynamic-wall-dimensions')), findsOneWidget);
 
     held.value = false;
     await tester.pump();
