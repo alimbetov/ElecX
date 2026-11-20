@@ -51,7 +51,18 @@ class _DynamicWallDimensionsOverlayState
       reverseDuration: const Duration(milliseconds: 350),
     );
     _lastValid = widget.guides;
+    _opacity.addStatusListener(_onOpacityStatus);
     widget.held.addListener(_heldChanged);
+  }
+
+  void _onOpacityStatus(AnimationStatus status) {
+    if (status == AnimationStatus.dismissed &&
+        !_hasSelection &&
+        !widget.held.value &&
+        _lastValid.isNotEmpty &&
+        mounted) {
+      setState(() => _lastValid = const []);
+    }
   }
 
   void _heldChanged() {
@@ -120,6 +131,7 @@ class _DynamicWallDimensionsOverlayState
   void dispose() {
     _pendingHide?.cancel();
     widget.held.removeListener(_heldChanged);
+    _opacity.removeStatusListener(_onOpacityStatus);
     _opacity.dispose();
     super.dispose();
   }
