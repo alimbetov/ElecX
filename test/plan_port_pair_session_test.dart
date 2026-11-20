@@ -125,4 +125,123 @@ void main() {
     pair.reset();
     expect(pair.active, isFalse);
   });
+  test('doors invalidate a straight wall proposal before physical commit', () {
+    final controller = EditorController.demo();
+    addTearDown(() {
+      controller.disposeP2State();
+      controller.dispose();
+    });
+    final wall = RoomSurfaceRef.wall('room-101', 0);
+    final board = controller.p2.placeComponent(
+      type: ElectricalComponentType.distributionBoard,
+      surface: wall,
+      position: const SurfacePointMm(500, 1200),
+    );
+    final socket = controller.p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: wall,
+      position: const SurfacePointMm(2200, 1200),
+    );
+    controller.showPlan();
+    final pair = controller.planPortPair;
+    expect(pair.start(componentId: board.id, portId: 'power-out'), isTrue);
+    expect(pair.chooseTarget(componentId: socket.id, portId: 'power-in'), isTrue);
+    expect(pair.straightRouteBlockReason, contains('door-101-a'));
+    expect(pair.ready, isFalse);
+    expect(pair.applyStraightRoute(), isFalse);
+    expect(controller.p2.routes, isEmpty);
+    expect(controller.routeSegments, isEmpty);
+  });
+
+  test('a diagonal segment cannot appear as a ready straight proposal', () {
+    final controller = EditorController.demo();
+    addTearDown(() {
+      controller.disposeP2State();
+      controller.dispose();
+    });
+    final wall = RoomSurfaceRef.wall('room-101', 1);
+    final board = controller.p2.placeComponent(
+      type: ElectricalComponentType.distributionBoard,
+      surface: wall,
+      position: const SurfacePointMm(500, 1100),
+    );
+    final socket = controller.p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: wall,
+      position: const SurfacePointMm(1700, 1600),
+    );
+    controller.showPlan();
+    final pair = controller.planPortPair;
+    expect(pair.start(componentId: board.id, portId: 'power-out'), isTrue);
+    expect(pair.chooseTarget(componentId: socket.id, portId: 'power-in'), isTrue);
+    expect(pair.straightRouteBlockReason, contains('ортогональным'));
+    expect(pair.ready, isFalse);
+    expect(pair.applyStraightRoute(), isFalse);
+    expect(controller.p2.routes, isEmpty);
+  });
+
+  test('changing structural openings without P2 edit invalidates an active pair',
+      () {
+    final controller = EditorController.demo();
+    addTearDown(() {
+      controller.disposeP2State();
+      controller.dispose();
+    });
+    final wall = RoomSurfaceRef.wall('room-101', 1);
+    final board = controller.p2.placeComponent(
+      type: ElectricalComponentType.distributionBoard,
+      surface: wall,
+      position: const SurfacePointMm(500, 1200),
+    );
+    final socket = controller.p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: wall,
+      position: const SurfacePointMm(1700, 1200),
+    );
+    controller.showPlan();
+    final pair = controller.planPortPair;
+    expect(pair.start(componentId: board.id, portId: 'power-out'), isTrue);
+    expect(pair.chooseTarget(componentId: socket.id, portId: 'power-in'), isTrue);
+    expect(pair.ready, isTrue);
+    final revision = controller.p2.history.mutationRevision;
+
+    controller.openings = [...controller.openings]..removeLast();
+    expect(controller.p2.history.mutationRevision, revision);
+    expect(pair.revisionCurrent, isFalse);
+    expect(pair.ready, isFalse);
+    expect(pair.straightRouteBlockReason, contains('Выберите порты заново'));
+    expect(pair.applyStraightRoute(), isFalse);
+    expect(controller.p2.routes, isEmpty);
+  });
+
+  test('a new level revision invalidates active selection without P2 mutation',
+      () {
+    final controller = EditorController.demo();
+    addTearDown(() {
+      controller.disposeP2State();
+      controller.dispose();
+    });
+    final wall = RoomSurfaceRef.wall('room-101', 1);
+    final board = controller.p2.placeComponent(
+      type: ElectricalComponentType.distributionBoard,
+      surface: wall,
+      position: const SurfacePointMm(500, 1200),
+    );
+    final socket = controller.p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: wall,
+      position: const SurfacePointMm(1700, 1200),
+    );
+    controller.showPlan();
+    final pair = controller.planPortPair;
+    expect(pair.start(componentId: board.id, portId: 'power-out'), isTrue);
+    expect(pair.chooseTarget(componentId: socket.id, portId: 'power-in'), isTrue);
+    expect(pair.ready, isTrue);
+    final oldRevision = controller.p2.history.mutationRevision;
+    controller.level = controller.level.copyWith(name: 'New revision');
+    expect(controller.p2.history.mutationRevision, oldRevision);
+    expect(pair.revisionCurrent, isFalse);
+    expect(pair.applyStraightRoute(), isFalse);
+  });
+
 }
