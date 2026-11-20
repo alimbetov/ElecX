@@ -32,24 +32,25 @@ void main() {
         ),
       ),
     ));
-    expect(find.byKey(const ValueKey('equipment-palette-scroll')),
-        findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('equipment-palette-scroll')), findsOneWidget);
     expect(find.byKey(const ValueKey('equipment-palette-categories')),
         findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('equipment-palette-toggle')));
     await tester.pump();
-    expect(find.byKey(const ValueKey('equipment-palette-scroll')), findsNothing);
+    expect(
+        find.byKey(const ValueKey('equipment-palette-scroll')), findsNothing);
     await tester.tap(find.byKey(const ValueKey('equipment-palette-toggle')));
     await tester.pump();
-    expect(find.byKey(const ValueKey('equipment-palette-scroll')),
-        findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('equipment-palette-scroll')), findsOneWidget);
     await tester.enterText(
       find.byKey(const ValueKey('equipment-palette-search')),
       'socket.general',
     );
     await tester.pump();
-    expect(find.byKey(const ValueKey('equipment-palette-scroll')),
-        findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('equipment-palette-scroll')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -93,8 +94,8 @@ void main() {
     await gesture.up();
     await tester.pump();
     expect(controller.p2.components.length, before + 1);
-    expect(controller.p2.components.last.componentTypeId,
-        'power.socket.general');
+    expect(
+        controller.p2.components.last.componentTypeId, 'power.socket.general');
     expect(tester.takeException(), isNull);
   });
 }
