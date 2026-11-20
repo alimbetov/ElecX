@@ -119,6 +119,14 @@ class ComponentConnectionActions extends StatelessWidget {
                         'Прямая трасса — кандидат, не нормативное подтверждение.',
                         key: const ValueKey('plan-port-preview-hint'),
                       ),
+                    if (planPair.straightRouteBlockReason case final reason?)
+                      Text(
+                        'Прямая прокладка заблокирована: $reason',
+                        key: const ValueKey('plan-port-geometry-blocked'),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
                     const SizedBox(height: 5),
                     FilledButton.icon(
                       key: const ValueKey('plan-port-apply'),
