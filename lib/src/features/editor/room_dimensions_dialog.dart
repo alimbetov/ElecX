@@ -121,10 +121,9 @@ class _RoomDimensionsDialogState extends State<RoomDimensionsDialog> {
                       labelText: 'Название',
                       border: OutlineInputBorder(),
                     ),
-                    validator: (value) =>
-                        value == null || value.trim().isEmpty
-                            ? 'Укажите название'
-                            : null,
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Укажите название'
+                        : null,
                   ),
                   const SizedBox(height: 14),
                   Row(
