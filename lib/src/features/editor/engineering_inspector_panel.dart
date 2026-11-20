@@ -48,35 +48,35 @@ class _EngineeringInspectorPanelState extends State<EngineeringInspectorPanel> {
       );
 
   Widget _engineeringContext() => SingleChildScrollView(
-              key: const ValueKey('engineering-context-scroll'),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (widget.semanticsInspector != null) ...[
-                    ListTile(
-                      key: const ValueKey('room-semantics-toggle'),
-                      dense: true,
-                      visualDensity: VisualDensity.compact,
-                      leading:
-                          const Icon(Icons.meeting_room_outlined, size: 20),
-                      title: const Text('Room Semantic'),
-                      trailing: Icon(
-                        _roomSemanticsExpanded
-                            ? Icons.expand_less
-                            : Icons.expand_more,
-                      ),
-                      onTap: () => setState(() {
-                        _roomSemanticsExpanded = !_roomSemanticsExpanded;
-                      }),
-                    ),
-                    if (_roomSemanticsExpanded) widget.semanticsInspector!,
-                    const Divider(height: 1),
-                  ],
-                  ComponentConnectionActions(controller: widget.controller),
-                  RoomCircuitOverviewPanel(controller: widget.controller),
-                  RoomCircuitPanel(controller: widget.controller),
-                ],
+        key: const ValueKey('engineering-context-scroll'),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (widget.semanticsInspector != null) ...[
+              ListTile(
+                key: const ValueKey('room-semantics-toggle'),
+                dense: true,
+                visualDensity: VisualDensity.compact,
+                leading:
+                    const Icon(Icons.meeting_room_outlined, size: 20),
+                title: const Text('Room Semantic'),
+                trailing: Icon(
+                  _roomSemanticsExpanded
+                ? Icons.expand_less
+                : Icons.expand_more,
+                ),
+                onTap: () => setState(() {
+                  _roomSemanticsExpanded = !_roomSemanticsExpanded;
+                }),
               ),
+              if (_roomSemanticsExpanded) widget.semanticsInspector!,
+              const Divider(height: 1),
+            ],
+            ComponentConnectionActions(controller: widget.controller),
+            RoomCircuitOverviewPanel(controller: widget.controller),
+            RoomCircuitPanel(controller: widget.controller),
+          ],
+        ),
             );
 
 }
