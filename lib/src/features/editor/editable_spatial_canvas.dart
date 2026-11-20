@@ -223,6 +223,12 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                 ),
                 if (pair.straightLengthMm case final length?)
                   Text('Прямой участок: ${length.toStringAsFixed(0)} мм'),
+                if (pair.straightRouteBlockReason case final reason?)
+                  Text(
+                    'Маршрут недопустим: $reason',
+                    key: const ValueKey('plan-port-physical-blocked'),
+                    style: TextStyle(color: scheme.error),
+                  ),
                 const Text(
                   'Кандидат геометрии; нормативное соответствие не '
                   'подтверждено.',
