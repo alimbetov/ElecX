@@ -1230,8 +1230,9 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
                             ? SelectionMode.replace
                             : _selectionModeForKeyboard(),
                       );
-                      if (!controller.p2.selection.contains(component.id))
+                      if (!controller.p2.selection.contains(component.id)) {
                         return;
+                      }
                       if (!controller.componentTransform.begin()) return;
                       _dragComponentId = component.id;
                       _dragStartPosition = component.position;
