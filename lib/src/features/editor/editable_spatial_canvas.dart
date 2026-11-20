@@ -21,6 +21,8 @@ import 'cable_editor_ui_session.dart';
 import 'component_transform_session.dart';
 import 'plan_component_move_projection.dart';
 import 'plan_port_pair_session.dart';
+import 'dynamic_wall_dimensions_overlay.dart';
+import 'wall_distance_guide_calculator.dart';
 import 'cable_trajectory_panel.dart';
 import 'route_selection_session.dart';
 import 'canonical_room_surface_runtime_registry.dart';
@@ -993,6 +995,38 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     );
   }
 
+  List<WallDistanceGuide> _dynamicWallGuides(
+    Map<String, List<BoundaryEdgeId>> edgeOrder,
+  ) {
+    if (controller.viewMode != EditorViewMode.plan ||
+        controller.tool != EditorTool.select ||
+        !controller.p2.layers.isVisible(EditorLayerId.electrical)) {
+      return const [];
+    }
+    final component = controller.p2.selectedComponent;
+    if (component == null) return const [];
+    final space = controller.level.spaces
+        .where((item) => item.id == component.surface.spaceId)
+        .firstOrNull;
+    if (space == null) return const [];
+    final preview = controller.componentTransform.previewState;
+    final effective = preview != null &&
+            preview.componentId == component.id &&
+            preview.isValid
+        ? component.copyWith(position: preview.position)
+        : component;
+    final anchor = PlanComponentMoveProjection.planPointFor(
+      space: space,
+      component: effective,
+      orderedEdgeIds: edgeOrder[space.id],
+    );
+    if (anchor == null) return const [];
+    return WallDistanceGuideCalculator.fromAnchor(
+      room: space.boundary,
+      anchor: anchor,
+    );
+  }
+
   List<Widget> _equipmentMarkers(Map<String, List<BoundaryEdgeId>> edgeOrder) {
     final spaces = {
       for (final space in controller.level.spaces) space.id: space
@@ -1268,6 +1302,18 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                   ),
                 ),
               ),
+            Positioned.fill(
+              child: DynamicWallDimensionsOverlay(
+                selectionId: controller.tool == EditorTool.select
+                    ? controller.p2.selectedComponent?.id
+                    : null,
+                sceneId: controller.level.id,
+                guides: _dynamicWallGuides(boundaryEdgeOrder),
+                camera: _camera,
+                viewport: _size,
+                held: controller.distanceGuideHeld,
+              ),
+            ),
             if (controller.p2.layers.isVisible(EditorLayerId.electrical))
               ..._equipmentMarkers(boundaryEdgeOrder),
             if (_planPortPairOverlay(scheme) case final overlay?) overlay,
