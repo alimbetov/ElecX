@@ -103,7 +103,8 @@ class _DynamicWallDimensionsOverlayState
       _lastValid = widget.guides;
       if (MediaQuery.disableAnimationsOf(context)) {
         _opacity.value = 1;
-      } else {
+      } else if (_opacity.status != AnimationStatus.forward &&
+          _opacity.value < 1.0) {
         _opacity.animateTo(
           1.0,
           duration: const Duration(milliseconds: 150),
