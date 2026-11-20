@@ -1,3 +1,4 @@
+import 'package:elecx/src/features/editor/editor_document_history.dart';
 import 'package:elecx/src/features/editor/editor_project_document.dart';
 import 'package:elecx/src/features/editor/spatial_canvas.dart';
 import 'package:elecx/src/features/editor/unified_workspace_editor_screen.dart';
