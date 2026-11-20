@@ -141,7 +141,8 @@ class _EngineeringHoverCalloutState extends State<EngineeringHoverCallout>
     if (info == null || widget.viewportSize.isEmpty) {
       return const SizedBox.shrink();
     }
-    final width = math.min(260.0, math.max(0.0, widget.viewportSize.width - 16));
+    final width =
+        math.min(260.0, math.max(0.0, widget.viewportSize.width - 16));
     if (width < 100 || widget.viewportSize.height < 96) {
       return const SizedBox.shrink();
     }
