@@ -1,4 +1,5 @@
 import 'package:elecx/src/features/editor/editor_controller.dart';
+import 'package:elecx/src/features/editor/editor_p2_session.dart';
 import 'package:elecx/src/features/editor/engineering_inspector_panel.dart';
 import 'package:elecx/src/features/editor/room_dimensions_dialog.dart';
 import 'package:flutter/material.dart';
