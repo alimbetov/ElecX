@@ -69,17 +69,14 @@ abstract final class PlanComponentMoveProjection {
         final dy = wall.end.y - wall.start.y;
         final length = wall.lengthMm;
         if (length <= 0) return null;
-        final along =
-            ((planPoint.x - wall.start.x) * dx +
+        final along = ((planPoint.x - wall.start.x) * dx +
                 (planPoint.y - wall.start.y) * dy) /
             length;
         final distance = ((planPoint.x - wall.start.x) * dy -
                     (planPoint.y - wall.start.y) * dx)
                 .abs() /
             length;
-        if (distance > wallPickToleranceMm ||
-            along < 0 ||
-            along > length) {
+        if (distance > wallPickToleranceMm || along < 0 || along > length) {
           return null;
         }
         final x = along.round();

@@ -59,8 +59,10 @@ void main() {
     await tester.pump();
     expect(controller.planPortPair.ready, isTrue);
     expect(controller.p2.routes, isEmpty);
-    expect(find.byKey(const ValueKey('plan-port-pair-overlay')), findsOneWidget);
-    expect(find.byKey(const ValueKey('plan-port-apply-on-plan')), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('plan-port-pair-overlay')), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('plan-port-apply-on-plan')), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('plan-port-apply-on-plan')));
     await tester.pump();

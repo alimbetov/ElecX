@@ -37,8 +37,7 @@ final class PlanPortPairSession extends ChangeNotifier {
   String? get targetComponentId => _targetComponentId;
   String? get targetPortId => _targetPortId;
 
-  ElectricalComponentPlacement? get sourceComponent =>
-      _byId(_startComponentId);
+  ElectricalComponentPlacement? get sourceComponent => _byId(_startComponentId);
 
   ElectricalComponentPlacement? get targetComponent =>
       _byId(_targetComponentId);
@@ -55,8 +54,7 @@ final class PlanPortPairSession extends ChangeNotifier {
         target.surface == _targetHost &&
         target.position == _targetPosition &&
         source.surface == target.surface &&
-        compatiblePortsFor(target)
-            .any((port) => port.id == _targetPortId);
+        compatiblePortsFor(target).any((port) => port.id == _targetPortId);
   }
 
   double? get straightLengthMm {
@@ -83,7 +81,8 @@ final class PlanPortPairSession extends ChangeNotifier {
         controller.p2.layers.isLocked(EditorLayerId.electrical) ||
         !controller.p2.layers.isVisible(EditorLayerId.cableRoutes) ||
         controller.p2.layers.isLocked(EditorLayerId.cableRoutes) ||
-        !controller.cableAuthoringPortsFor(source)
+        !controller
+            .cableAuthoringPortsFor(source)
             .any((port) => port.id == portId)) {
       return false;
     }
@@ -112,9 +111,8 @@ final class PlanPortPairSession extends ChangeNotifier {
         source.position != _sourcePosition) {
       return const [];
     }
-    final startPort = source.ports
-        .where((port) => port.id == _startPortId)
-        .firstOrNull;
+    final startPort =
+        source.ports.where((port) => port.id == _startPortId).firstOrNull;
     if (startPort == null) return const [];
     return List.unmodifiable([
       for (final port in controller.cableAuthoringPortsFor(candidate))

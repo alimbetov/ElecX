@@ -31,7 +31,8 @@ void main() {
       position: const SurfacePointMm(2200, 1200),
     );
     controller.p2.select(board.id);
-    expect(controller.beginPortDrivenCableFromSelectedPort('power-out'), isTrue);
+    expect(
+        controller.beginPortDrivenCableFromSelectedPort('power-out'), isTrue);
     controller.surfaceTap(socket.position);
     expect(
       controller.snapPortDrivenCableCompletionTarget(
@@ -42,8 +43,8 @@ void main() {
     );
     expect(controller.finishManualCableDraft(), isTrue);
     final routeId = controller.p2.routes.single.id;
-    final before = controller.p2.components
-        .firstWhere((item) => item.id == board.id);
+    final before =
+        controller.p2.components.firstWhere((item) => item.id == board.id);
     controller.setTool(EditorTool.select);
     controller.showPlan();
 
@@ -63,8 +64,8 @@ void main() {
       const Offset(55, 0),
     );
     await tester.pump();
-    final after = controller.p2.components
-        .firstWhere((item) => item.id == board.id);
+    final after =
+        controller.p2.components.firstWhere((item) => item.id == board.id);
     expect(after.id, before.id);
     expect(after.surface, before.surface);
     expect(after.position.xMm, greaterThan(before.position.xMm));

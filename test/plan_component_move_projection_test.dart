@@ -10,7 +10,8 @@ void main() {
   final controller = EditorController.demo();
   addTearDown(controller.dispose);
 
-  test('wall plan movement changes only longitudinal offset, not mounting height',
+  test(
+      'wall plan movement changes only longitudinal offset, not mounting height',
       () {
     final space = controller.level.spaces.first;
     final component = ElectricalComponentPlacement(
@@ -73,8 +74,7 @@ void main() {
     );
   });
 
-  test('missing or stale canonical boundary identity blocks plan movement',
-      () {
+  test('missing or stale canonical boundary identity blocks plan movement', () {
     final space = controller.level.spaces.first;
     final ids = [
       for (var i = 0; i < space.boundary.vertices.length; i++)

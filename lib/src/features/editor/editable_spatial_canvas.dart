@@ -154,6 +154,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
         controller.p2.select(target.id);
       }
     }
+
     if (ports.length == 1) {
       choose(ports.single.id);
       return;
@@ -1220,8 +1221,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
               ),
             if (controller.p2.layers.isVisible(EditorLayerId.electrical))
               ..._equipmentMarkers(boundaryEdgeOrder),
-            if (_planPortPairOverlay(scheme) case final overlay?)
-              overlay,
+            if (_planPortPairOverlay(scheme) case final overlay?) overlay,
             if (cableProjection.segments.isNotEmpty ||
                 cableProjection.hasIncompleteProjection)
               Positioned(
