@@ -427,8 +427,8 @@ class _UnifiedWorkspaceEditorScreenState
     final originX = spaces.isEmpty
         ? 0
         : spaces.map((s) => s.boundary.bounds.right).reduce(
-                (a, b) => a > b ? a : b,
-              ) +
+                  (a, b) => a > b ? a : b,
+                ) +
             500;
     final originY = spaces.isEmpty
         ? 0
