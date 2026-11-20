@@ -6,6 +6,7 @@ final class EditorShellState extends ChangeNotifier {
   bool _contextBarVisible = true;
   bool _compassRequestedVisible = false;
   bool _roomSurfaceNavigatorCollapsed = false;
+  bool _equipmentPaletteExpanded = true;
   bool _focusMode = false;
 
   bool get navigatorVisible => _navigatorVisible && !_focusMode;
@@ -30,6 +31,14 @@ final class EditorShellState extends ChangeNotifier {
   bool get roomSurfaceNavigatorCollapsed => _roomSurfaceNavigatorCollapsed;
 
   bool get focusMode => _focusMode;
+
+  bool get equipmentPaletteExpanded => _equipmentPaletteExpanded && !_focusMode;
+
+  void toggleEquipmentPalette() {
+    if (_focusMode) return;
+    _equipmentPaletteExpanded = !_equipmentPaletteExpanded;
+    notifyListeners();
+  }
 
   void toggleNavigator() {
     if (_focusMode) {
