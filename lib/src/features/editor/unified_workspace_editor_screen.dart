@@ -3,6 +3,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../application/project/project_room_rectangle_authoring.dart';
+import '../../domain/boundary_topology.dart';
+import '../../domain/geometry.dart';
+
 import '../../domain/project_orientation.dart';
 import '../../application/project/engineering/p12_engineering_proposal_source.dart';
 import '../../domain/route_host.dart';
@@ -28,6 +32,7 @@ import 'project_north_edit_dialog.dart';
 import 'project_persistence_metadata.dart';
 import 'project_save_diagnostics.dart';
 import 'room_surface_navigator.dart';
+import 'room_dimensions_dialog.dart';
 import 'space_semantics_inspector.dart';
 import 'space_semantics_inspector_editing.dart';
 import 'editor_shell_state.dart';
@@ -391,6 +396,113 @@ class _UnifiedWorkspaceEditorScreenState
       return result;
     } catch (_) {
       return null;
+    }
+  }
+
+  Future<void> _createRoomFromDimensions() async {
+    if (workspace.context != EditorWorkspaceContext.buildingLevel ||
+        controller.viewMode != EditorViewMode.plan) {
+      _showProjectMessage('Создание комнаты доступно на плане этажа.',
+          isError: true);
+      return;
+    }
+    final canonical = _canonicalResolvedRuntime;
+    final config = widget.canonicalRuntime;
+    if (config != null &&
+        (canonical == null ||
+            !_canonicalProjectMatchesScreen ||
+            !config.authoringEnabled ||
+            canonical.persistenceOwnerProjectId !=
+                canonical.session.project.id ||
+            canonical.session.navigation.activeLevelId == null)) {
+      _showProjectMessage(
+        'Создание комнаты недоступно: требуется активный этаж и '
+        'подключённый canonical persistence owner.',
+        isError: true,
+      );
+      return;
+    }
+
+    final spaces = controller.level.spaces;
+    final originX = spaces.isEmpty
+        ? 0
+        : spaces.map((s) => s.boundary.bounds.right).reduce(
+                (a, b) => a > b ? a : b,
+              ) +
+            500;
+    final originY = spaces.isEmpty
+        ? 0
+        : spaces.map((s) => s.boundary.bounds.bottom).reduce(
+              (a, b) => a < b ? a : b,
+            );
+    final result = await showDialog<RoomDimensionsInput>(
+      context: context,
+      builder: (context) => RoomDimensionsDialog(
+        initialXMm: originX,
+        initialYMm: originY,
+        initialName: 'Комната ${controller.roomSequence}',
+      ),
+    );
+    if (result == null || !mounted) return;
+    try {
+      if (config != null && canonical != null) {
+        final levelId = canonical.session.navigation.activeLevelId!;
+        final committed = RoomRectangleAuthoringService(
+          session: canonical.session,
+          mutations: canonical.wizardMutations,
+        ).commit(
+          RoomRectangleAuthoringIntent(
+            levelId: levelId,
+            first: BoundaryPointMm(
+              xMm: result.xMm,
+              yMm: result.yMm,
+            ),
+            second: BoundaryPointMm(
+              xMm: result.xMm + result.widthMm,
+              yMm: result.yMm + result.lengthMm,
+            ),
+            name: result.name,
+          ),
+        );
+        controller.documentHistory.recordCanonicalCommit(
+          session: canonical.session,
+          label: committed.commit.mutation.changeSet.commandType,
+          rematerialize: () => _pushCanonicalToEditor(),
+        );
+        try {
+          config.onCanonicalMutationCommitted!(
+            canonical.session,
+            committed.commit.mutation,
+          );
+          config.onAuthoringCommitted?.call(
+            canonical.session,
+            committed.spaceId,
+          );
+        } finally {
+          _pushCanonicalToEditor();
+          _onCanonicalProjectChanged();
+        }
+      } else {
+        controller.addRectangleRoom(
+          MmPoint(result.xMm, result.yMm),
+          MmPoint(
+            result.xMm + result.widthMm,
+            result.yMm + result.lengthMm,
+          ),
+        );
+        controller.setTool(EditorTool.select);
+      }
+      if (mounted) {
+        _showProjectMessage('Комната «${result.name}» создана.');
+      }
+    } catch (error, stackTrace) {
+      _reportCanonicalCutoverError(error, stackTrace);
+      if (mounted) {
+        _showProjectMessage(
+          'Не удалось создать комнату. Проверьте геометрию и активный этаж.',
+          isError: true,
+        );
+      }
     }
   }
 
@@ -1260,6 +1372,7 @@ class _UnifiedWorkspaceEditorScreenState
                   UnifiedEditorIconToolbar(
                     controller: controller,
                     compact: !desktop,
+                    onCreateRoom: _createRoomFromDimensions,
                   ),
                   if (_canonicalBlocked != null)
                     _CanonicalCutoverBlockedBanner(result: _canonicalBlocked!),
