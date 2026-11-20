@@ -53,6 +53,9 @@ void main() {
     final board = document.p2State.components.last;
     await tester.tap(find.byKey(ValueKey('plan-component-${load.id}')));
     await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('component-connection-actions')),
+        findsOneWidget);
+    expect(find.byKey(const ValueKey('component-open-host')), findsOneWidget);
     expect(find.byKey(ValueKey('preview-remote-board-route-${board.id}')),
         findsOneWidget);
     final remote =
