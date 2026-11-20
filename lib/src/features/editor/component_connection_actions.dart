@@ -17,11 +17,16 @@ class ComponentConnectionActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-        listenable: Listenable.merge([controller, controller.p2]),
+        listenable: Listenable.merge([
+          controller,
+          controller.p2,
+          controller.planPortPair,
+        ]),
         builder: (context, _) {
           final selected = controller.p2.selectedComponent;
           final binding = controller.portDrivenCableStartBinding;
-          if (selected == null && binding == null) {
+          final planPair = controller.planPortPair;
+          if (selected == null && binding == null && !planPair.active) {
             return const SizedBox.shrink();
           }
           final hasDraft = controller.routeSegments.isNotEmpty;
@@ -67,7 +72,7 @@ class ComponentConnectionActions extends StatelessWidget {
                     const SizedBox(height: 6),
                     OutlinedButton.icon(
                       key: const ValueKey('component-open-host'),
-                      onPressed: hasDraft
+                      onPressed: hasDraft || planPair.active
                           ? null
                           : () {
                               if (!SurfaceTransitionNavigator.navigate(
@@ -86,7 +91,56 @@ class ComponentConnectionActions extends StatelessWidget {
                     ),
                   ],
                   const SizedBox(height: 8),
-                  if (binding == null && !hasDraft) ...[
+                  if (planPair.active) ...[
+                    Text(
+                      'Соединение на плане: '
+                      '${planPair.sourceComponent?.label ?? planPair.sourceComponentId}'
+                      ' · ${planPair.sourcePortId}',
+                      key: const ValueKey('plan-port-source-status'),
+                    ),
+                    const SizedBox(height: 5),
+                    if (!planPair.revisionCurrent)
+                      const Text(
+                        'Проект изменился. Отмените выбор и начните снова.',
+                        key: ValueKey('plan-port-stale-warning'),
+                      )
+                    else if (planPair.choosingTarget)
+                      const Text(
+                        'Щёлкните по целевому устройству на плане. '
+                        'Совместимый порт можно выбрать мышью.',
+                        key: ValueKey('plan-port-pick-target-hint'),
+                      )
+                    else
+                      Text(
+                        'Приёмник: '
+                        '${planPair.targetComponent?.label ?? planPair.targetComponentId}'
+                        ' · ${planPair.targetPortId}. '
+                        'Прямая трасса — кандидат, не нормативное подтверждение.',
+                        key: const ValueKey('plan-port-preview-hint'),
+                      ),
+                    const SizedBox(height: 5),
+                    FilledButton.icon(
+                      key: const ValueKey('plan-port-apply'),
+                      onPressed: planPair.ready
+                          ? () {
+                              if (!planPair.applyStraightRoute()) {
+                                _showFailure(
+                                  context,
+                                  'Прямую физическую трассу построить нельзя. '
+                                  'Используйте ручную прокладку по поверхности.',
+                                );
+                              }
+                            }
+                          : null,
+                      icon: const Icon(Icons.check),
+                      label: const Text('Проверить и проложить'),
+                    ),
+                    TextButton(
+                      key: const ValueKey('plan-port-cancel'),
+                      onPressed: planPair.reset,
+                      child: const Text('Отмена соединения'),
+                    ),
+                  ] else if (binding == null && !hasDraft) ...[
                     const Text(
                       'Выберите начальный порт. Затем укажите путь и конечный '
                       'порт на той же поверхности или через подтверждённый '
@@ -118,6 +172,26 @@ class ComponentConnectionActions extends StatelessWidget {
                               },
                               icon: const Icon(Icons.cable),
                               label: Text('Кабель от ${port.id}'),
+                            ),
+                            OutlinedButton.icon(
+                              key: ValueKey('plan-port-start-${port.id}'),
+                              onPressed:
+                                  controller.viewMode == EditorViewMode.plan
+                                      ? () {
+                                          if (!planPair.start(
+                                            componentId: selected!.id,
+                                            portId: port.id,
+                                          )) {
+                                            _showFailure(
+                                              context,
+                                              'Не удалось начать выбор портов '
+                                              'на плане. Проверьте слои и черновик.',
+                                            );
+                                          }
+                                        }
+                                      : null,
+                              icon: const Icon(Icons.link),
+                              label: Text('Соединить на плане · ${port.id}'),
                             ),
                         ],
                       ),
