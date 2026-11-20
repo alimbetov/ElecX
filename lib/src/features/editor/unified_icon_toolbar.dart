@@ -20,11 +20,13 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
   const UnifiedEditorIconToolbar({
     required this.controller,
     this.compact = false,
+    this.onCreateRoom,
     super.key,
   });
 
   final EditorController controller;
   final bool compact;
+  final VoidCallback? onCreateRoom;
 
   double get _target => compact
       ? EditorUiTokens.compactCommandTarget
@@ -70,11 +72,12 @@ class UnifiedEditorIconToolbar extends StatelessWidget {
         tooltip: 'Выбор (V)',
       ),
       if (controller.viewMode == EditorViewMode.plan)
-        _toolButton(
+        _iconButton(
           context,
-          tool: EditorTool.roomRectangle,
+          buttonKey: const ValueKey('create-room-dimensions'),
           icon: Icons.crop_square,
-          tooltip: 'Комната (R)',
+          tooltip: 'Создать комнату по ширине и длине',
+          onPressed: onCreateRoom,
         ),
       _toolButton(
         context,
