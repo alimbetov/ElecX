@@ -1160,327 +1160,327 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
             projection,
           ),
           builder: (context, candidates, rejects) => Stack(
-          children: [
-            Positioned.fill(
-              child: RepaintBoundary(
-                child: CustomPaint(
-                  painter: _SurfacePainter(
-                    controller,
-                    projection,
-                    lod,
-                    scheme,
-                    flowAnimation: _routeFlow,
-                    hoveredCablePort: _hoveredCablePort,
-                  ),
-                ),
-              ),
-            ),
-            Positioned.fill(
-              child: Listener(
-                behavior: HitTestBehavior.opaque,
-                onPointerHover: (event) {
-                  _updateBoundaryHover(event.localPosition, projection);
-                  _updateCablePortHover(event.localPosition, projection);
-                },
-                onPointerSignal: (event) {
-                  if (event is! PointerScrollEvent) return;
-                  final factor = ViewportZoomPolicy.factorForScrollDelta(
-                    dx: event.scrollDelta.dx,
-                    dy: event.scrollDelta.dy,
-                  );
-                  if (factor == null) return;
-                  GestureBinding.instance.pointerSignalResolver.register(
-                    event,
-                    (_) => _zoomAt(event.localPosition, factor, extent),
-                  );
-                },
-                onPointerDown: (event) {
-                  _activePointers.add(event.pointer);
-                  if (_activePointers.length > 1) {
-                    _finishPointer(projection, cancelled: true);
-                    return;
-                  }
-                  if (event.buttons == kMiddleMouseButton) {
-                    _panAnchor = event.localPosition;
-                    return;
-                  }
-                  if (event.buttons != kPrimaryMouseButton ||
-                      controller.tool != EditorTool.select ||
-                      controller.p2.placementType != null ||
-                      controller.boundaryEditing.active) {
-                    return;
-                  }
-                  final raw = projection.viewportToSurface(event.localPosition);
-                  if (raw == null) return;
-                  final cableHit = _cableHitAt(raw, projection, event.kind);
-                  if (cableHit != null &&
-                      _beginCableDrag(cableHit, projection)) {
-                    return;
-                  }
-                  if (controller.cableUi.trajectoryEditing) return;
-                  final handleOwner = _componentForHandle(raw, projection);
-                  final component =
-                      handleOwner ?? _componentAt(raw, projection);
-                  if (component != null) {
-                    controller.routeSelection.clear();
-                    controller.p2.select(
-                      component.id,
-                      mode: handleOwner != null
-                          ? SelectionMode.replace
-                          : _selectionModeForKeyboard(),
-                    );
-                    if (!controller.p2.selection.contains(component.id)) return;
-                    if (!controller.componentTransform.begin()) return;
-                    _dragComponentId = component.id;
-                    _dragStartPosition = component.position;
-                  } else {
-                    _marqueeStart = event.localPosition;
-                    _marqueeCurrent = event.localPosition;
-                  }
-                },
-                onPointerMove: (event) {
-                  if (controller.boundaryEditing.active) {
-                    _updateBoundaryHover(event.localPosition, projection);
-                  }
-                  final anchor = _panAnchor;
-                  if (anchor != null) {
-                    final delta = event.localPosition - anchor;
-                    _panAnchor = event.localPosition;
-                    setState(() {
-                      _camera = _camera!.panPixels(delta.dx, delta.dy);
-                    });
-                    return;
-                  }
-                  if (_marqueeStart != null &&
-                      event.buttons == kPrimaryMouseButton) {
-                    setState(() => _marqueeCurrent = event.localPosition);
-                    return;
-                  }
-                  final previewPosition = event.kind == PointerDeviceKind.touch
-                      ? event.localPosition -
-                          Offset(
-                            0,
-                            _policy(event.kind).pointerPreviewOffsetPx,
-                          )
-                      : event.localPosition;
-                  if (event.buttons == 0 &&
-                      event.kind != PointerDeviceKind.touch) {
-                    _updateCablePortHover(previewPosition, projection);
-                  }
-                  if (_cableDragHit != null && event.buttons != 0) {
-                    final raw = projection.viewportToSurface(previewPosition);
-                    if (raw == null) return;
-                    _previewCableDrag(event, raw, projection);
-                    return;
-                  }
-                  if (_dragComponentId != null && event.buttons != 0) {
-                    final raw = projection.viewportToSurface(previewPosition);
-                    if (raw == null) return;
-                    var point = _snapSurfacePoint(raw, projection);
-                    point = _applyDragConstraint(point);
-                    controller.componentTransform.preview(
-                      point,
-                      isValid: _pointIsUsable(point, projection),
-                    );
-                  }
-                },
-                onPointerUp: (event) {
-                  _activePointers.remove(event.pointer);
-                  _finishPointer(projection, cancelled: false);
-                },
-                onPointerCancel: (event) {
-                  _activePointers.remove(event.pointer);
-                  _finishPointer(projection, cancelled: true);
-                },
-                child: MouseRegion(
-                  onExit: (_) => _clearCablePortHover(),
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTapUp: (details) =>
-                        _handleTap(details, projection, surface),
-                    onDoubleTapDown: (details) => _handleDoubleTap(
-                      details,
+            children: [
+              Positioned.fill(
+                child: RepaintBoundary(
+                  child: CustomPaint(
+                    painter: _SurfacePainter(
+                      controller,
                       projection,
-                      surface,
-                      space.boundary.vertices,
+                      lod,
+                      scheme,
+                      flowAnimation: _routeFlow,
+                      hoveredCablePort: _hoveredCablePort,
                     ),
-                    onScaleStart: _startTouchGesture,
-                    onScaleUpdate: _updateTouchGesture,
-                    onScaleEnd: _endTouchGesture,
                   ),
                 ),
               ),
-            ),
-            if (_marqueeRect case final rect?)
-              Positioned(
-                left: rect.left,
-                top: rect.top,
-                width: rect.width,
-                height: rect.height,
-                child: IgnorePointer(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: CadVisualTokens.selectedFill(scheme),
-                      border: Border.all(
-                        color: CadVisualTokens.selectedGeometry(scheme),
+              Positioned.fill(
+                child: Listener(
+                  behavior: HitTestBehavior.opaque,
+                  onPointerHover: (event) {
+                    _updateBoundaryHover(event.localPosition, projection);
+                    _updateCablePortHover(event.localPosition, projection);
+                  },
+                  onPointerSignal: (event) {
+                    if (event is! PointerScrollEvent) return;
+                    final factor = ViewportZoomPolicy.factorForScrollDelta(
+                      dx: event.scrollDelta.dx,
+                      dy: event.scrollDelta.dy,
+                    );
+                    if (factor == null) return;
+                    GestureBinding.instance.pointerSignalResolver.register(
+                      event,
+                      (_) => _zoomAt(event.localPosition, factor, extent),
+                    );
+                  },
+                  onPointerDown: (event) {
+                    _activePointers.add(event.pointer);
+                    if (_activePointers.length > 1) {
+                      _finishPointer(projection, cancelled: true);
+                      return;
+                    }
+                    if (event.buttons == kMiddleMouseButton) {
+                      _panAnchor = event.localPosition;
+                      return;
+                    }
+                    if (event.buttons != kPrimaryMouseButton ||
+                        controller.tool != EditorTool.select ||
+                        controller.p2.placementType != null ||
+                        controller.boundaryEditing.active) {
+                      return;
+                    }
+                    final raw = projection.viewportToSurface(event.localPosition);
+                    if (raw == null) return;
+                    final cableHit = _cableHitAt(raw, projection, event.kind);
+                    if (cableHit != null &&
+                        _beginCableDrag(cableHit, projection)) {
+                      return;
+                    }
+                    if (controller.cableUi.trajectoryEditing) return;
+                    final handleOwner = _componentForHandle(raw, projection);
+                    final component =
+                        handleOwner ?? _componentAt(raw, projection);
+                    if (component != null) {
+                      controller.routeSelection.clear();
+                      controller.p2.select(
+                        component.id,
+                        mode: handleOwner != null
+                            ? SelectionMode.replace
+                            : _selectionModeForKeyboard(),
+                      );
+                      if (!controller.p2.selection.contains(component.id)) return;
+                      if (!controller.componentTransform.begin()) return;
+                      _dragComponentId = component.id;
+                      _dragStartPosition = component.position;
+                    } else {
+                      _marqueeStart = event.localPosition;
+                      _marqueeCurrent = event.localPosition;
+                    }
+                  },
+                  onPointerMove: (event) {
+                    if (controller.boundaryEditing.active) {
+                      _updateBoundaryHover(event.localPosition, projection);
+                    }
+                    final anchor = _panAnchor;
+                    if (anchor != null) {
+                      final delta = event.localPosition - anchor;
+                      _panAnchor = event.localPosition;
+                      setState(() {
+                        _camera = _camera!.panPixels(delta.dx, delta.dy);
+                      });
+                      return;
+                    }
+                    if (_marqueeStart != null &&
+                        event.buttons == kPrimaryMouseButton) {
+                      setState(() => _marqueeCurrent = event.localPosition);
+                      return;
+                    }
+                    final previewPosition = event.kind == PointerDeviceKind.touch
+                        ? event.localPosition -
+                            Offset(
+                              0,
+                              _policy(event.kind).pointerPreviewOffsetPx,
+                            )
+                        : event.localPosition;
+                    if (event.buttons == 0 &&
+                        event.kind != PointerDeviceKind.touch) {
+                      _updateCablePortHover(previewPosition, projection);
+                    }
+                    if (_cableDragHit != null && event.buttons != 0) {
+                      final raw = projection.viewportToSurface(previewPosition);
+                      if (raw == null) return;
+                      _previewCableDrag(event, raw, projection);
+                      return;
+                    }
+                    if (_dragComponentId != null && event.buttons != 0) {
+                      final raw = projection.viewportToSurface(previewPosition);
+                      if (raw == null) return;
+                      var point = _snapSurfacePoint(raw, projection);
+                      point = _applyDragConstraint(point);
+                      controller.componentTransform.preview(
+                        point,
+                        isValid: _pointIsUsable(point, projection),
+                      );
+                    }
+                  },
+                  onPointerUp: (event) {
+                    _activePointers.remove(event.pointer);
+                    _finishPointer(projection, cancelled: false);
+                  },
+                  onPointerCancel: (event) {
+                    _activePointers.remove(event.pointer);
+                    _finishPointer(projection, cancelled: true);
+                  },
+                  child: MouseRegion(
+                    onExit: (_) => _clearCablePortHover(),
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTapUp: (details) =>
+                          _handleTap(details, projection, surface),
+                      onDoubleTapDown: (details) => _handleDoubleTap(
+                        details,
+                        projection,
+                        surface,
+                        space.boundary.vertices,
+                      ),
+                      onScaleStart: _startTouchGesture,
+                      onScaleUpdate: _updateTouchGesture,
+                      onScaleEnd: _endTouchGesture,
+                    ),
+                  ),
+                ),
+              ),
+              if (_marqueeRect case final rect?)
+                Positioned(
+                  left: rect.left,
+                  top: rect.top,
+                  width: rect.width,
+                  height: rect.height,
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: CadVisualTokens.selectedFill(scheme),
+                        border: Border.all(
+                          color: CadVisualTokens.selectedGeometry(scheme),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            if (surface.type == SurfacePlaneType.wall)
-              Positioned(
-                left: compact ? 8 : 12,
-                top: compact ? 8 : 12,
-                child: BoundaryEditPanel(
-                  controller: controller,
-                  compact: compact,
-                ),
-              ),
-            Positioned(
-              right: compact ? 8 : 12,
-              top: compact ? 8 : 12,
-              child: _ViewportBadge(lod: lod, mmPerPixel: camera.mmPerPixel),
-            ),
-            Positioned(
-              right: compact ? 8 : 12,
-              top: compact ? 48 : 52,
-              child: CanvasViewportNavigator(
-                onPan: _panViewport,
-                onZoomIn: () =>
-                    _zoomAt(_size.center(Offset.zero), 1.25, extent),
-                onZoomOut: () =>
-                    _zoomAt(_size.center(Offset.zero), 0.8, extent),
-                onFit: () => setState(() => _camera = _fittedCamera(extent)),
-              ),
-            ),
-            Positioned(
-              right: compact ? 8 : 12,
-              bottom: bottomEditorVisible ? 148 : (compact ? 8 : 12),
-              child: _EdgeNavigationHint(surface: surface),
-            ),
-            if (electricalVisible)
-              if (controller.p2.selectedComponent case final component?)
+              if (surface.type == SurfacePlaneType.wall)
                 Positioned(
                   left: compact ? 8 : 12,
-                  bottom: bottomEditorVisible ? 148 : (compact ? 8 : 12),
-                  child: CanvasComponentControls(
-                    label: component.label,
-                    stepMm: _componentNudgeStepMm,
-                    onStepChanged: (value) =>
-                        setState(() => _componentNudgeStepMm = value),
-                    onMove: (dx, dy) =>
-                        _nudgeSelectedComponent(dx, dy, projection),
-                    onDelete: controller.p2.deleteSelection,
+                  top: compact ? 8 : 12,
+                  child: BoundaryEditPanel(
+                    controller: controller,
+                    compact: compact,
                   ),
                 ),
-            if (controller.p2.placementType case final type?)
               Positioned(
-                left: 12,
-                bottom: bottomEditorVisible ? 148 : 12,
-                child: Chip(
-                  avatar: const Icon(Icons.add_location_alt_outlined, size: 18),
-                  label: Text(
-                    'Размещение: ${ElectricalComponentDefaults.defaultLabel(type)}',
-                  ),
+                right: compact ? 8 : 12,
+                top: compact ? 8 : 12,
+                child: _ViewportBadge(lod: lod, mmPerPixel: camera.mmPerPixel),
+              ),
+              Positioned(
+                right: compact ? 8 : 12,
+                top: compact ? 48 : 52,
+                child: CanvasViewportNavigator(
+                  onPan: _panViewport,
+                  onZoomIn: () =>
+                      _zoomAt(_size.center(Offset.zero), 1.25, extent),
+                  onZoomOut: () =>
+                      _zoomAt(_size.center(Offset.zero), 0.8, extent),
+                  onFit: () => setState(() => _camera = _fittedCamera(extent)),
                 ),
               ),
-            if (cableRoutesVisible)
-              if (controller.routeSelection.selectedRouteId case final routeId?)
+              Positioned(
+                right: compact ? 8 : 12,
+                bottom: bottomEditorVisible ? 148 : (compact ? 8 : 12),
+                child: _EdgeNavigationHint(surface: surface),
+              ),
+              if (electricalVisible)
+                if (controller.p2.selectedComponent case final component?)
+                  Positioned(
+                    left: compact ? 8 : 12,
+                    bottom: bottomEditorVisible ? 148 : (compact ? 8 : 12),
+                    child: CanvasComponentControls(
+                      label: component.label,
+                      stepMm: _componentNudgeStepMm,
+                      onStepChanged: (value) =>
+                          setState(() => _componentNudgeStepMm = value),
+                      onMove: (dx, dy) =>
+                          _nudgeSelectedComponent(dx, dy, projection),
+                      onDelete: controller.p2.deleteSelection,
+                    ),
+                  ),
+              if (controller.p2.placementType case final type?)
                 Positioned(
                   left: 12,
-                  bottom: bottomEditorVisible ? 188 : 52,
+                  bottom: bottomEditorVisible ? 148 : 12,
                   child: Chip(
-                    avatar: const Icon(Icons.alt_route, size: 18),
-                    label: Text('Трасса: $routeId · переходы активны'),
-                  ),
-                ),
-            Positioned(
-              right: 12,
-              top: 110,
-              child: CableTrajectoryPanel(controller: controller),
-            ),
-            if (cableRoutesVisible &&
-                controller.routeSelection.selectedRouteId != null)
-              Positioned(
-                left: compact ? 8 : 12,
-                top: compact ? 56 : 60,
-                child: CableRouteControls(
-                  mode: controller.cableUi.mode,
-                  onModeChanged: controller.cableUi.setMode,
-                  segmentFocused: controller.cableUi.activeSegmentIndex != null,
-                  segmentLocked: controller.cableUi.activeSegmentLocked,
-                  onToggleSegmentLock:
-                      controller.cableUi.toggleActiveSegmentLock,
-                  pointFocused: controller.cableUi.activePointIndex != null,
-                  pointIsWaypoint: controller.cableUi.activePointIsWaypoint,
-                  onToggleWaypoint: _toggleActiveWaypoint,
-                  validation: controller
-                          .cableEndpointTransform.previewState?.validation ??
-                      controller.cableRouteEdit.previewState?.validation,
-                  previewInvalid: controller.cableEndpointTransform.active &&
-                      controller.cableEndpointTransform.previewState == null,
-                ),
-              ),
-            if (cableRoutesVisible &&
-                controller.tool == EditorTool.cableRoute &&
-                controller.routeSegments.isNotEmpty)
-              Positioned(
-                right: compact ? 8 : 12,
-                bottom: bottomEditorVisible ? 148 : 12,
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 6,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TextButton.icon(
-                          key: const ValueKey('manual-cable-cancel'),
-                          onPressed: controller.cancelManualCableDraft,
-                          icon: const Icon(Icons.close, size: 16),
-                          label: const Text('Отмена'),
-                        ),
-                        const SizedBox(width: 4),
-                        FilledButton.icon(
-                          key: const ValueKey('manual-cable-finish'),
-                          onPressed: controller.finishManualCableDraft,
-                          icon: const Icon(Icons.check, size: 16),
-                          label: const Text('Завершить'),
-                        ),
-                      ],
+                    avatar: const Icon(Icons.add_location_alt_outlined, size: 18),
+                    label: Text(
+                      'Размещение: ${ElectricalComponentDefaults.defaultLabel(type)}',
                     ),
                   ),
                 ),
-              ),
-            if (controller.componentTransform.previewState case final preview?
-                when !preview.isValid)
-              Positioned(
-                left: compact ? 8 : 12,
-                top: compact ? 104 : 108,
-                child: Chip(
-                  key: const ValueKey('component-preview-invalid'),
-                  avatar: Icon(
-                    Icons.error_outline,
-                    color: scheme.error,
-                    size: 18,
+              if (cableRoutesVisible)
+                if (controller.routeSelection.selectedRouteId case final routeId?)
+                  Positioned(
+                    left: 12,
+                    bottom: bottomEditorVisible ? 188 : 52,
+                    child: Chip(
+                      avatar: const Icon(Icons.alt_route, size: 18),
+                      label: Text('Трасса: $routeId · переходы активны'),
+                    ),
                   ),
-                  label: const Text('Невалидная позиция · commit запрещён'),
-                ),
-              ),
-            if (surface.type == SurfacePlaneType.wall)
               Positioned(
-                left: compact ? 8 : 12,
-                right: compact ? 8 : 12,
-                bottom: 0,
-                child: BoundaryBottomEditor(
-                  controller: controller,
-                  compact: compact,
-                ),
+                right: 12,
+                top: 110,
+                child: CableTrajectoryPanel(controller: controller),
               ),
-          ],
+              if (cableRoutesVisible &&
+                  controller.routeSelection.selectedRouteId != null)
+                Positioned(
+                  left: compact ? 8 : 12,
+                  top: compact ? 56 : 60,
+                  child: CableRouteControls(
+                    mode: controller.cableUi.mode,
+                    onModeChanged: controller.cableUi.setMode,
+                    segmentFocused: controller.cableUi.activeSegmentIndex != null,
+                    segmentLocked: controller.cableUi.activeSegmentLocked,
+                    onToggleSegmentLock:
+                        controller.cableUi.toggleActiveSegmentLock,
+                    pointFocused: controller.cableUi.activePointIndex != null,
+                    pointIsWaypoint: controller.cableUi.activePointIsWaypoint,
+                    onToggleWaypoint: _toggleActiveWaypoint,
+                    validation: controller
+                            .cableEndpointTransform.previewState?.validation ??
+                        controller.cableRouteEdit.previewState?.validation,
+                    previewInvalid: controller.cableEndpointTransform.active &&
+                        controller.cableEndpointTransform.previewState == null,
+                  ),
+                ),
+              if (cableRoutesVisible &&
+                  controller.tool == EditorTool.cableRoute &&
+                  controller.routeSegments.isNotEmpty)
+                Positioned(
+                  right: compact ? 8 : 12,
+                  bottom: bottomEditorVisible ? 148 : 12,
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextButton.icon(
+                            key: const ValueKey('manual-cable-cancel'),
+                            onPressed: controller.cancelManualCableDraft,
+                            icon: const Icon(Icons.close, size: 16),
+                            label: const Text('Отмена'),
+                          ),
+                          const SizedBox(width: 4),
+                          FilledButton.icon(
+                            key: const ValueKey('manual-cable-finish'),
+                            onPressed: controller.finishManualCableDraft,
+                            icon: const Icon(Icons.check, size: 16),
+                            label: const Text('Завершить'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              if (controller.componentTransform.previewState case final preview?
+                  when !preview.isValid)
+                Positioned(
+                  left: compact ? 8 : 12,
+                  top: compact ? 104 : 108,
+                  child: Chip(
+                    key: const ValueKey('component-preview-invalid'),
+                    avatar: Icon(
+                      Icons.error_outline,
+                      color: scheme.error,
+                      size: 18,
+                    ),
+                    label: const Text('Невалидная позиция · commit запрещён'),
+                  ),
+                ),
+              if (surface.type == SurfacePlaneType.wall)
+                Positioned(
+                  left: compact ? 8 : 12,
+                  right: compact ? 8 : 12,
+                  bottom: 0,
+                  child: BoundaryBottomEditor(
+                    controller: controller,
+                    compact: compact,
+                  ),
+                ),
+            ],
           ),
         );
       },
