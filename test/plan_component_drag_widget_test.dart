@@ -43,6 +43,16 @@ void main() {
     );
     expect(controller.finishManualCableDraft(), isTrue);
     final routeId = controller.p2.routes.single.id;
+    // A connected route must be movable by the canonical transaction before
+    // qualifying the plan pointer adapter.
+    expect(controller.p2.beginMoveSelectedComponent(), isTrue);
+    expect(
+      controller.p2.previewMoveSelectedComponent(
+        const SurfacePointMm(800, 1200),
+      ),
+      isTrue,
+    );
+    controller.p2.cancelMoveSelectedComponent();
     final before =
         controller.p2.components.firstWhere((item) => item.id == board.id);
     controller.setTool(EditorTool.select);
