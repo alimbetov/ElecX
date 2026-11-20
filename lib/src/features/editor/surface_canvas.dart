@@ -559,7 +559,16 @@ class _SurfaceCanvasState extends State<SurfaceCanvas>
 
   EngineeringHoverInfo? _engineeringHoverInfo(_SurfaceProjection projection) {
     final id = _hoverComponentId;
-    if (id == null) return null;
+    if (id == null ||
+        controller.tool != EditorTool.select ||
+        controller.boundaryEditing.active ||
+        controller.p2.placementType != null ||
+        controller.componentTransform.active ||
+        controller.cableRouteEdit.active ||
+        controller.cableEndpointTransform.active ||
+        !controller.p2.layers.isVisible(EditorLayerId.electrical)) {
+      return null;
+    }
     for (final component in controller.p2.components) {
       if (component.id != id ||
           !CableSurfaceProjection.same(controller, component.surface, controller.activeSurface!)) {
