@@ -77,8 +77,7 @@ class _DynamicWallDimensionsOverlayState
       Duration(milliseconds: afterHold ? 150 : 200),
       () {
         if (!mounted || widget.held.value || _hasSelection) return;
-        final fadeDuration =
-            Duration(milliseconds: afterHold ? 700 : 350);
+        final fadeDuration = Duration(milliseconds: afterHold ? 700 : 350);
         if (MediaQuery.disableAnimationsOf(context)) {
           _opacity.value = 0;
           setState(() => _lastValid = const []);
