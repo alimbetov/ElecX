@@ -195,10 +195,10 @@ class _DynamicDimensionsPainter extends CustomPainter {
       final end = _screenPoint(guide, end: true);
       if ((end - start).distance < 36) continue;
       final offset = switch (guide.direction) {
-        WallGuideDirection.left || WallGuideDirection.right =>
+        WallGuideDirection.left ||
+        WallGuideDirection.right =>
           const Offset(0, -17),
-        WallGuideDirection.down || WallGuideDirection.up =>
-          const Offset(17, 0),
+        WallGuideDirection.down || WallGuideDirection.up => const Offset(17, 0),
       };
       CadDimensionPainter.drawLinear(
         canvas,
