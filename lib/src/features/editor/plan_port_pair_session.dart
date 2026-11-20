@@ -213,9 +213,23 @@ final class PlanPortPairSession extends ChangeNotifier {
     final startPortId = _startPortId!;
     final targetId = _targetComponentId!;
     final targetPortId = _targetPortId!;
+    final previousSelection = controller.p2.selection;
+
+    void restoreWorkspaceAfterFailure() {
+      controller.cancelManualCableDraft(exitTool: true);
+      controller.setTool(EditorTool.select);
+      controller.showPlan();
+      final previousId = previousSelection.primaryId;
+      if (previousId != null) {
+        controller.p2.select(previousId);
+      } else {
+        controller.p2.clearSelection();
+      }
+    }
 
     controller.p2.select(sourceId);
     if (!controller.beginPortDrivenCableFromSelectedPort(startPortId)) {
+      restoreWorkspaceAfterFailure();
       return false;
     }
     final snapped = controller.snapPortDrivenCableCompletionTarget(
@@ -224,8 +238,7 @@ final class PlanPortPairSession extends ChangeNotifier {
     );
     final committed = snapped && controller.finishManualCableDraft();
     if (!committed) {
-      controller.cancelManualCableDraft(exitTool: true);
-      controller.showPlan();
+      restoreWorkspaceAfterFailure();
       return false;
     }
     controller.setTool(EditorTool.select);
