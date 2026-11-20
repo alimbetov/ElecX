@@ -184,4 +184,30 @@ void main() {
     );
   });
 
+  test('canonical wall drag rejects legacy door through verified edge mapping',
+      () {
+    final space = controller.level.spaces.first;
+    final ids = [
+      for (var i = 0; i < space.boundary.vertices.length; i++)
+        BoundaryEdgeId('edge-$i'),
+    ];
+    final component = ElectricalComponentPlacement(
+      id: 'canonical-guard',
+      type: ElectricalComponentType.socketOutlet,
+      surface: RoomSurfaceRef.wallByBoundaryEdge(space.id, ids[0]),
+      position: const SurfacePointMm(500, 1200),
+      label: 'Canonical guard',
+    );
+    expect(
+      PlanComponentMoveProjection.allowedOnHost(
+        space: space,
+        component: component,
+        position: const SurfacePointMm(1000, 1200),
+        orderedEdgeIds: ids,
+        openings: controller.openings,
+      ),
+      isFalse,
+    );
+  });
+
 }
