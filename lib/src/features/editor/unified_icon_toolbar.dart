@@ -609,7 +609,7 @@ class _DistanceHoldButtonState extends State<_DistanceHoldButton>
   void didUpdateWidget(covariant _DistanceHoldButton oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
-      oldWidget.widget.controller.distanceGuideHeld.value = false;
+      oldWidget.controller.distanceGuideHeld.value = false;
     }
   }
 
@@ -644,7 +644,8 @@ class _DistanceHoldButtonState extends State<_DistanceHoldButton>
             return KeyEventResult.handled;
           },
           child: Listener(
-            onPointerDown: (_) => widget.controller.distanceGuideHeld.value = true,
+            onPointerDown: (_) =>
+                widget.controller.distanceGuideHeld.value = true,
             onPointerUp: (_) => _release(),
             onPointerCancel: (_) => _release(),
             child: Padding(
@@ -656,8 +657,8 @@ class _DistanceHoldButtonState extends State<_DistanceHoldButton>
                 onPressed: _release,
                 icon: const Icon(Icons.square_foot, size: 20),
                 style: IconButton.styleFrom(
-                  minimumSize: Size(target, target),
-                  maximumSize: Size(target, target),
+                  minimumSize: Size(widget.target, widget.target),
+                  maximumSize: Size(widget.target, widget.target),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(7),
                   ),
