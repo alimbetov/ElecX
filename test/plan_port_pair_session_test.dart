@@ -13,7 +13,7 @@ void main() {
       controller.disposeP2State();
       controller.dispose();
     });
-    final host = RoomSurfaceRef.wall('room-101', 0);
+    final host = RoomSurfaceRef.wall('room-101', 1);
     final board = controller.p2.placeComponent(
       type: ElectricalComponentType.distributionBoard,
       surface: host,
