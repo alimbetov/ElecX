@@ -4,6 +4,7 @@ import '../../domain/component_catalog_v2.dart';
 import '../../domain/component_taxonomy.dart';
 import '../../domain/engineering_graph.dart';
 import '../../domain/surfaces.dart';
+import 'component_catalog_session.dart';
 import 'editor_controller.dart';
 import 'editor_p2_session.dart';
 import 'engineering_placement_cursor_session.dart';
