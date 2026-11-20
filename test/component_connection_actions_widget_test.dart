@@ -252,4 +252,57 @@ void main() {
     );
     expect(controller.p2.routes, isEmpty);
   });
+  testWidgets('stale endpoint after load edit cannot be silently committed',
+      (tester) async {
+    final controller = EditorController.demo();
+    addTearDown(() {
+      controller.disposeP2State();
+      controller.dispose();
+    });
+    final wall = RoomSurfaceRef.wall('room-101', 0);
+    final board = controller.p2.placeComponent(
+      type: ElectricalComponentType.distributionBoard,
+      surface: wall,
+      position: const SurfacePointMm(500, 1200),
+    );
+    final load = controller.p2.placeComponent(
+      type: ElectricalComponentType.socketOutlet,
+      surface: wall,
+      position: const SurfacePointMm(2200, 1200),
+    );
+    controller.p2.select(board.id);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ComponentConnectionActions(controller: controller),
+        ),
+      ),
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('component-connect-port-power-out')),
+    );
+    await tester.pump();
+    await tester.tap(
+      find.byKey(ValueKey('component-complete-${load.id}-power-in')),
+    );
+    await tester.pump();
+    expect(find.byKey(const ValueKey('component-cable-ready')), findsOneWidget);
+    controller.p2.updateLoadElectricalData(
+      componentId: load.id,
+      ratedPowerW: 500,
+      voltageV: 230,
+    );
+    await tester.pump();
+    expect(find.byKey(const ValueKey('component-cable-ready')), findsNothing);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const ValueKey('component-finish-route')),
+          )
+          .onPressed,
+      isNull,
+    );
+    expect(controller.p2.routes, isEmpty);
+  });
+
 }
