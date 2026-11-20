@@ -1027,6 +1027,26 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     return WallDistanceGuideCalculator.fromAnchor(
       room: space.boundary,
       anchor: anchor,
+      acceptWallHit: (edgeIndex, fraction) {
+        final vertices = space.boundary.vertices;
+        final length = vertices[edgeIndex]
+            .distanceTo(vertices[(edgeIndex + 1) % vertices.length]);
+        final hitOffset = length * fraction;
+        for (final opening in controller.openings) {
+          if (opening.hostWall.spaceId != space.id) continue;
+          final canonicalEdge = opening.hostWall.boundaryEdgeId;
+          final wallIndex = canonicalEdge == null
+              ? opening.hostWall.wallIndex
+              : edgeOrder[space.id]?.indexOf(canonicalEdge);
+          if (wallIndex == null || wallIndex < 0) return false;
+          if (wallIndex == edgeIndex &&
+              hitOffset >= opening.offsetFromStartMm &&
+              hitOffset <= opening.endOffsetMm) {
+            return false;
+          }
+        }
+        return true;
+      },
     );
   }
 
