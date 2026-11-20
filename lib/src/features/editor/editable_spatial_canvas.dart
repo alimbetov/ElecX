@@ -20,6 +20,7 @@ import 'electrical_host_geometry_guard.dart';
 import 'cable_editor_ui_session.dart';
 import 'component_transform_session.dart';
 import 'plan_component_move_projection.dart';
+import 'plan_port_pair_session.dart';
 import 'cable_trajectory_panel.dart';
 import 'route_selection_session.dart';
 import 'canonical_room_surface_runtime_registry.dart';
@@ -85,6 +86,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     );
     controller.p2.addListener(_onP2RoutesChanged);
     controller.routeSelection.addListener(_onP2RoutesChanged);
+    controller.planPortPair.addListener(_onP2RoutesChanged);
     _rebuildIndex(force: true);
   }
 
@@ -107,6 +109,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
       );
       controller.p2.addListener(_onP2RoutesChanged);
       controller.routeSelection.addListener(_onP2RoutesChanged);
+    controller.planPortPair.addListener(_onP2RoutesChanged);
       _selectedExternalEdgeIndex = null;
       _selectedExternalSpaceId = null;
       _selectedExternalPullSign = 1;
@@ -122,12 +125,131 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     );
     controller.p2.removeListener(_onP2RoutesChanged);
     controller.routeSelection.removeListener(_onP2RoutesChanged);
+    controller.planPortPair.removeListener(_onP2RoutesChanged);
     _endPlanComponentMove(cancel: true);
     super.dispose();
   }
 
   void _onP2RoutesChanged() {
     if (mounted) setState(() {});
+  }
+
+  void _pickPlanTarget(ElectricalComponentPlacement target) {
+    final pair = controller.planPortPair;
+    final ports = pair.compatiblePortsFor(target);
+    if (ports.isEmpty) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Прямой кабель недоступен: нет совместимого порта на той же '
+            'физической поверхности. Для другого помещения нужна проходка.',
+          ),
+        ),
+      );
+      return;
+    }
+    void choose(String portId) {
+      if (pair.chooseTarget(componentId: target.id, portId: portId)) {
+        controller.p2.select(target.id);
+      }
+    }
+    if (ports.length == 1) {
+      choose(ports.single.id);
+      return;
+    }
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: Text('Порт устройства · ${target.label}'),
+        children: [
+          for (final port in ports)
+            SimpleDialogOption(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                choose(port.id);
+              },
+              child: Text(port.id),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget? _planPortPairOverlay(
+    Map<String, List<BoundaryEdgeId>> edgeOrder,
+    ColorScheme scheme,
+  ) {
+    final pair = controller.planPortPair;
+    if (!pair.active) return null;
+    final source = pair.sourceComponent;
+    final target = pair.targetComponent;
+    if (source == null) return null;
+
+    void apply() {
+      if (!pair.applyStraightRoute()) {
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Прямая трасса отклонена физической проверкой. '
+              'Выполните ручную прокладку через допустимые поверхности.',
+            ),
+          ),
+        );
+      }
+    }
+
+    return Positioned(
+      key: const ValueKey('plan-port-pair-overlay'),
+      left: 12,
+      bottom: 56,
+      child: Material(
+        elevation: 4,
+        borderRadius: BorderRadius.circular(10),
+        color: scheme.surfaceContainerHigh,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 340),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Соединение портов · предпросмотр'),
+                const SizedBox(height: 5),
+                Text('От: ${source.label} · ${pair.sourcePortId}'),
+                Text(
+                  target == null
+                      ? 'Щёлкните по устройству-приёмнику на плане'
+                      : 'К: ${target.label} · ${pair.targetPortId}',
+                ),
+                if (pair.straightLengthMm case final length?)
+                  Text('Прямой участок: ${length.toStringAsFixed(0)} мм'),
+                const Text(
+                  'Кандидат геометрии; нормативное соответствие не '
+                  'подтверждено.',
+                  style: TextStyle(fontSize: 11),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FilledButton(
+                      key: const ValueKey('plan-port-apply-on-plan'),
+                      onPressed: pair.ready ? apply : null,
+                      child: const Text('Проверить и проложить'),
+                    ),
+                    TextButton(
+                      key: const ValueKey('plan-port-cancel-on-plan'),
+                      onPressed: pair.reset,
+                      child: const Text('Отмена'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _startPlanComponentMove(
@@ -820,6 +942,22 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     );
   }
 
+  MmPoint? _planPairWorldPoint(
+    ElectricalComponentPlacement? component,
+    Map<String, List<BoundaryEdgeId>> edgeOrder,
+  ) {
+    if (component == null) return null;
+    final space = controller.level.spaces
+        .where((item) => item.id == component.surface.spaceId)
+        .firstOrNull;
+    if (space == null) return null;
+    return PlanComponentMoveProjection.planPointFor(
+      space: space,
+      component: component,
+      orderedEdgeIds: edgeOrder[space.id],
+    );
+  }
+
   List<Widget> _equipmentMarkers(Map<String, List<BoundaryEdgeId>> edgeOrder) {
     final spaces = {
       for (final space in controller.level.spaces) space.id: space
@@ -886,7 +1024,11 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                 onTap: controller.tool != EditorTool.select
                     ? null
                     : () {
-                        controller.p2.select(component.id);
+                        if (controller.planPortPair.choosingTarget) {
+                          _pickPlanTarget(component);
+                        } else {
+                          controller.p2.select(component.id);
+                        }
                       },
                 child: Icon(
                   icon,
@@ -1057,8 +1199,30 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
                 ),
               ),
             ),
+            if (controller.planPortPair.ready)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: CustomPaint(
+                    painter: _PlanPortPairPainter(
+                      source: _planPairWorldPoint(
+                        controller.planPortPair.sourceComponent,
+                        boundaryEdgeOrder,
+                      ),
+                      target: _planPairWorldPoint(
+                        controller.planPortPair.targetComponent,
+                        boundaryEdgeOrder,
+                      ),
+                      camera: _camera,
+                      scheme: scheme,
+                      viewport: _size,
+                    ),
+                  ),
+                ),
+              ),
             if (controller.p2.layers.isVisible(EditorLayerId.electrical))
               ..._equipmentMarkers(boundaryEdgeOrder),
+            if (_planPortPairOverlay(boundaryEdgeOrder, scheme) case final overlay?)
+              overlay,
             if (cableProjection.segments.isNotEmpty ||
                 cableProjection.hasIncompleteProjection)
               Positioned(
@@ -1593,4 +1757,64 @@ class _ViewportControls extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The dashed preview is never a committed cable or normative clearance.
+class _PlanPortPairPainter extends CustomPainter {
+  const _PlanPortPairPainter({
+    required this.source,
+    required this.target,
+    required this.camera,
+    required this.scheme,
+    required this.viewport,
+  });
+
+  final MmPoint? source;
+  final MmPoint? target;
+  final WorldCamera camera;
+  final ColorScheme scheme;
+  final Size viewport;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (source == null || target == null) return;
+    final a = camera.worldToScreen(
+      viewportWidthPx: viewport.width,
+      viewportHeightPx: viewport.height,
+      point: source!,
+    );
+    final b = camera.worldToScreen(
+      viewportWidthPx: viewport.width,
+      viewportHeightPx: viewport.height,
+      point: target!,
+    );
+    final start = Offset(a.x, a.y);
+    final end = Offset(b.x, b.y);
+    final delta = end - start;
+    final length = delta.distance;
+    if (length < 1) return;
+    final paint = Paint()
+      ..color = scheme.tertiary
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+    const dash = 9.0;
+    const gap = 6.0;
+    for (var d = 0.0; d < length; d += dash + gap) {
+      canvas.drawLine(
+        start + delta * (d / length),
+        start + delta * (math.min(length, d + dash) / length),
+        paint,
+      );
+    }
+    canvas.drawCircle(start, 5, paint);
+    canvas.drawCircle(end, 5, paint);
+  }
+
+  @override
+  bool shouldRepaint(_PlanPortPairPainter old) =>
+      source != old.source ||
+      target != old.target ||
+      camera != old.camera ||
+      viewport != old.viewport ||
+      scheme != old.scheme;
 }
