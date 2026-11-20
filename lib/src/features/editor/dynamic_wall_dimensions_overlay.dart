@@ -217,6 +217,26 @@ class _DynamicDimensionsPainter extends CustomPainter {
         opacity: opacity,
       );
     }
+    if (guides.isNotEmpty) {
+      final anchor = _screenPoint(guides.first, end: false);
+      final label = TextPainter(
+        text: TextSpan(
+          text: 'От точки установки',
+          style: TextStyle(
+            fontSize: 9,
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.7 * opacity),
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      final position = anchor + const Offset(17, 20);
+      if (position.dx >= 0 &&
+          position.dy >= 0 &&
+          position.dx + label.width < size.width &&
+          position.dy + label.height < size.height) {
+        label.paint(canvas, position);
+      }
+    }
     canvas.restore();
   }
 
