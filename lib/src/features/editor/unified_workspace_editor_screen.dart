@@ -489,6 +489,7 @@ class _UnifiedWorkspaceEditorScreenState
             result.xMm + result.widthMm,
             result.yMm + result.lengthMm,
           ),
+          name: result.name,
         );
         controller.setTool(EditorTool.select);
       }
