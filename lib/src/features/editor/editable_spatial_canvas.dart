@@ -273,7 +273,17 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     );
     if (start == null) return;
     controller.p2.select(component.id);
-    if (!controller.componentTransform.begin()) return;
+    if (!controller.componentTransform.begin()) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Перемещение недоступно: проверьте слои и блокировки '
+            'подключённой трассы.',
+          ),
+        ),
+      );
+      return;
+    }
     _planMovingComponentId = component.id;
     _planMoveStart = start;
     _planMoveDelta = Offset.zero;
@@ -327,12 +337,23 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
 
   void _endPlanComponentMove({required bool cancel}) {
     if (_planMovingComponentId == null) return;
-    if (cancel || !controller.componentTransform.validate()) {
+    final invalid = !cancel && !controller.componentTransform.validate();
+    if (cancel || invalid) {
       controller.componentTransform.cancel();
     } else if (!controller.componentTransform.commit()) {
       controller.componentTransform.cancel();
     }
     _clearPlanMove();
+    if (invalid && mounted) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Недопустимое положение устройства. Исходная точка и '
+            'электрические соединения сохранены.',
+          ),
+        ),
+      );
+    }
   }
 
   void _clearPlanMove() {
@@ -989,6 +1010,11 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
         _ => Icons.sensors,
       };
       final selected = controller.p2.selection.contains(component.id);
+      final isPairSource =
+          controller.planPortPair.sourceComponentId == component.id;
+      final isPairTarget =
+          controller.planPortPair.targetComponentId == component.id;
+      final highlighted = selected || isPairSource || isPairTarget;
       final scheme = Theme.of(context).colorScheme;
       result.add(Positioned(
         left: position.dx - 16,
@@ -996,14 +1022,23 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
         width: 32,
         height: 32,
         child: Tooltip(
-          message: component.label,
+          message: isPairSource
+              ? '${component.label} · начальный порт'
+              : isPairTarget
+                  ? '${component.label} · конечный порт'
+                  : component.label,
           child: Material(
-            color: selected
-                ? scheme.primaryContainer
-                : scheme.surfaceContainerHighest,
+            color: isPairSource
+                ? scheme.tertiaryContainer
+                : highlighted
+                    ? scheme.primaryContainer
+                    : scheme.surfaceContainerHighest,
             shape: CircleBorder(
-              side: selected
-                  ? BorderSide(color: scheme.primary, width: 2)
+              side: highlighted
+                  ? BorderSide(
+                      color: isPairSource ? scheme.tertiary : scheme.primary,
+                      width: 2,
+                    )
                   : BorderSide.none,
             ),
             child: GestureDetector(
