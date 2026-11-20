@@ -102,6 +102,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
       );
       oldWidget.controller.p2.removeListener(_onP2RoutesChanged);
       oldWidget.controller.routeSelection.removeListener(_onP2RoutesChanged);
+      oldWidget.controller.planPortPair.removeListener(_onP2RoutesChanged);
       _lastViewportRevision = controller.viewportCommandRevision;
       controller.viewportCommandListenable.addListener(_onViewportCommand);
       controller.editCancellationListenable.addListener(
@@ -109,7 +110,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
       );
       controller.p2.addListener(_onP2RoutesChanged);
       controller.routeSelection.addListener(_onP2RoutesChanged);
-    controller.planPortPair.addListener(_onP2RoutesChanged);
+      controller.planPortPair.addListener(_onP2RoutesChanged);
       _selectedExternalEdgeIndex = null;
       _selectedExternalSpaceId = null;
       _selectedExternalPullSign = 1;
@@ -255,6 +256,7 @@ class _SpatialCanvasState extends State<SpatialCanvas> {
     List<BoundaryEdgeId>? edgeOrder,
   ) {
     if (controller.tool != EditorTool.select ||
+        controller.planPortPair.active ||
         controller.cableUi.trajectoryEditing ||
         controller.p2.placementType != null ||
         controller.routeSegments.isNotEmpty ||
