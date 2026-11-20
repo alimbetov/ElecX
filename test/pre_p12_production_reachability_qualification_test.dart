@@ -311,24 +311,28 @@ void main() {
 
       await tester.tap(find.byKey(const ValueKey('create-room-dimensions')));
       await _boundedPump(tester);
-      expect(find.byKey(const ValueKey('room-dimensions-dialog')),
-          findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('room-dimensions-dialog')), findsOneWidget);
       expect(handle.session.project.stores.spaces, isEmpty);
       await tester.enterText(
         find.byKey(const ValueKey('room-name-input')),
         'Production Room',
       );
       await tester.enterText(
-        find.byKey(const ValueKey('room-x-input')), '1200',
+        find.byKey(const ValueKey('room-x-input')),
+        '1200',
       );
       await tester.enterText(
-        find.byKey(const ValueKey('room-y-input')), '1400',
+        find.byKey(const ValueKey('room-y-input')),
+        '1400',
       );
       await tester.enterText(
-        find.byKey(const ValueKey('room-width-input')), '4000',
+        find.byKey(const ValueKey('room-width-input')),
+        '4000',
       );
       await tester.enterText(
-        find.byKey(const ValueKey('room-length-input')), '3200',
+        find.byKey(const ValueKey('room-length-input')),
+        '3200',
       );
       await tester.tap(find.byKey(const ValueKey('room-dimensions-submit')));
       await _boundedPump(tester);
